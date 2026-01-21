@@ -1,0 +1,27 @@
+@font-face {
+    font-family: 'Rufina';
+    src: url('Rufina-Bold.woff2') format('woff2'),
+        url('Rufina-Bold.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Clarika Geometric';
+    src: url('ClarikaGeometric-Light.woff2') format('woff2'),
+        url('ClarikaGeometric-Light.woff') format('woff');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Rufina';
+    src: url('Rufina-Regular.woff2') format('woff2'),
+        url('Rufina-Regular.woff') format('woff');
+    font-weight: normal;
+    font-style: 400;
+    font-display: swap;
+}
+
