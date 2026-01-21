@@ -504,34 +504,39 @@
     });
 }(jQuery));
 
-const picker = new Litepicker({
-    element: document.getElementById('dateRange'),
-    singleMode: false,
-    numberOfMonths: 1,
-    numberOfColumns: 1,
-    format: 'DD MMM YYYY',
-    lang: 'es-ES',
-    tooltipText: {
-        one: 'día',
-        other: 'días'
-    },
-    tooltipNumber: (totalDays) => totalDays,
-});
+// Litepicker solo se inicializa si existe el elemento y la librería está cargada
+if (typeof Litepicker !== 'undefined' && document.getElementById('dateRange')) {
+    const picker = new Litepicker({
+        element: document.getElementById('dateRange'),
+        singleMode: false,
+        numberOfMonths: 1,
+        numberOfColumns: 1,
+        format: 'DD MMM YYYY',
+        lang: 'es-ES',
+        tooltipText: {
+            one: 'día',
+            other: 'días'
+        },
+        tooltipNumber: (totalDays) => totalDays,
+    });
+}
 
+// Selector de pasajeros solo se inicializa si existe el elemento
 const input = document.getElementById('passengerInput');
 const dropdown = document.getElementById('passengerDropdown');
 
-let counts = {
-    adult: 0,
-    child: 0,
-    infant: 0
-};
+if (input && dropdown) {
+    let counts = {
+        adult: 0,
+        child: 0,
+        infant: 0
+    };
 
-input.addEventListener('click', () => {
-    dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-});
+    input.addEventListener('click', () => {
+        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+    });
 
-document.querySelectorAll('.counter button').forEach(btn => {
+    document.querySelectorAll('.counter button').forEach(btn => {
     btn.addEventListener('click', () => {
         const type = btn.dataset.type;
         const action = btn.dataset.action;
@@ -544,47 +549,51 @@ document.querySelectorAll('.counter button').forEach(btn => {
     });
 });
 
-function updateText() {
-    const total = counts.adult + counts.child + counts.infant;
-    document.getElementById('passengerText').innerText =
-        total > 0 ? `${total} Pasajeros` : '0 Pasajeros';
+    function updateText() {
+        const total = counts.adult + counts.child + counts.infant;
+        document.getElementById('passengerText').innerText =
+            total > 0 ? `${total} Pasajeros` : '0 Pasajeros';
+    }
+
+    // close on outside click
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.passenger-select')) {
+            dropdown.style.display = 'none';
+        }
+    });
 }
 
-// close on outside click
-document.addEventListener('click', e => {
-    if (!e.target.closest('.passenger-select')) {
-        dropdown.style.display = 'none';
-    }
-});
-
+// Selector de preferencia de contacto solo se inicializa si existe el elemento
 const prefInput = document.getElementById('preferenciaInput');
 const prefDropdown = document.getElementById('preferenciaDropdown');
 const prefText = document.getElementById('preferenciaText');
 const prefValue = document.getElementById('preferenciaValue');
 
-// toggle dropdown
-prefInput.addEventListener('click', () => {
-    prefDropdown.style.display =
-        prefDropdown.style.display === 'block' ? 'none' : 'block';
-});
-
-// select option
-document.querySelectorAll('#preferenciaDropdown .dr-option').forEach(option => {
-    option.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        const value = option.innerText;
-
-        prefText.innerText = value;
-        prefValue.value = value;
-
-        prefDropdown.style.display = 'none';
+if (prefInput && prefDropdown && prefText && prefValue) {
+    // toggle dropdown
+    prefInput.addEventListener('click', () => {
+        prefDropdown.style.display =
+            prefDropdown.style.display === 'block' ? 'none' : 'block';
     });
-});
 
-// close on outside click
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.passenger-select')) {
-        prefDropdown.style.display = 'none';
-    }
-});
+    // select option
+    document.querySelectorAll('#preferenciaDropdown .dr-option').forEach(option => {
+        option.addEventListener('click', (e) => {
+            e.preventDefault();
+
+            const value = option.innerText;
+
+            prefText.innerText = value;
+            prefValue.value = value;
+
+            prefDropdown.style.display = 'none';
+        });
+    });
+
+    // close on outside click
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.passenger-select')) {
+            prefDropdown.style.display = 'none';
+        }
+    });
+}
