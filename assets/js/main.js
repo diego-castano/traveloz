@@ -1,7 +1,7 @@
 (function ($) {
     "use strict";
     
-    // Sticky Header con hide/show en scroll
+     // Sticky Header con hide/show en scroll
     (function() {
         const header = document.querySelector('.header-area');
         if (!header) return;
@@ -69,25 +69,25 @@
                 {
                     breakpoint: 991,
                     settings: {
-                         slidesToShow: 1,
+                        slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false
+                        autoplay: false
                     }
                 },
                 {
                     breakpoint: 800,
                     settings: {
-                         slidesToShow: 1,
+                        slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false
+                        autoplay: false
                     }
                 },
                 {
                     breakpoint: 750,
                     settings: {
-                         slidesToShow: 1,
+                        slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false
+                        autoplay: false
                     }
                 },
                 {
@@ -95,7 +95,7 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false
+                        autoplay: false
                     }
                 },
                 {
@@ -103,14 +103,14 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false
+                        autoplay: false
                     }
                 }
 
               ]
         });
 
-      
+
 
         $('.box-slider').slick({
             dots: false,
@@ -147,18 +147,21 @@
                     breakpoint: 750,
                     settings: {
                         slidesToShow: 2,
+                        arrows:false
                     }
                 },
                 {
                     breakpoint: 600,
                     settings: {
                         slidesToShow: 1,
+                        arrows:false
                     }
                 },
                 {
                     breakpoint: 480,
                     settings: {
                         slidesToShow: 1,
+                        arrows:false
                     }
                 }
 
@@ -288,10 +291,10 @@
             autoplaySpeed: 4000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#fff' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#fff' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
-            
+
         });
-        
-        
+
+
         $('.icon-teaser-slider').slick({
             dots: false,
             arrows: false,
@@ -314,31 +317,34 @@
                 {
                     breakpoint: 991,
                     settings: {
-                         slidesToShow: 1,
+                        slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false,
+                        centerPadding: '40px',
+                        autoplay: false,
                         dots: true,
-                        arrows: true,
+                        arrows: false,
                     }
                 },
                 {
                     breakpoint: 800,
                     settings: {
-                         slidesToShow: 1,
+                        slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false,
+                        centerPadding: '40px',
+                        autoplay: false,
                         dots: true,
-                        arrows: true,
+                        arrows: false,
                     }
                 },
                 {
                     breakpoint: 750,
                     settings: {
-                         slidesToShow: 1,
-                       centerMode: true,
-                        autoplay:false,
+                        slidesToShow: 1,
+                        centerMode: true,
+                        centerPadding: '40px',
+                        autoplay: false,
                         dots: true,
-                        arrows: true,
+                        arrows: false,
                     }
                 },
                 {
@@ -346,9 +352,10 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false,
+                        centerPadding: '40px',
+                        autoplay: false,
                         dots: true,
-                        arrows: true,
+                        arrows: false,
                     }
                 },
                 {
@@ -356,15 +363,16 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false,
+                        centerPadding: '40px',
+                        autoplay: false,
                         dots: true,
-                        arrows: true,
+                        arrows: false,
                     }
                 }
 
               ]
         });
-        
+
         $('.logo-slider').slick({
             dots: false,
             arrows: false,
@@ -387,9 +395,9 @@
                 {
                     breakpoint: 991,
                     settings: {
-                         slidesToShow: 1,
+                        slidesToShow: 1,
                         centerMode: true,
-                        autoplay:false,
+                        autoplay: false,
                         dots: true,
                         arrows: true,
                     }
@@ -397,9 +405,9 @@
                 {
                     breakpoint: 800,
                     settings: {
-                         slidesToShow: 4,
+                        slidesToShow: 4,
                         centerMode: true,
-                        autoplay:false,
+                        autoplay: false,
                         dots: false,
                         arrows: true,
                     }
@@ -407,9 +415,9 @@
                 {
                     breakpoint: 750,
                     settings: {
-                         slidesToShow: 4,
-                        centerMode: true,
-                        autoplay:false,
+                        slidesToShow: 4,
+                        centerMode: false,
+                        autoplay: false,
                         dots: false,
                         arrows: true,
                     }
@@ -417,9 +425,9 @@
                 {
                     breakpoint: 600,
                     settings: {
-                         slidesToShow: 3,
-                        centerMode: true,
-                        autoplay:false,
+                        lidesToShow: 3,
+                        centerMode: false,
+                        autoplay: false,
                         dots: false,
                         arrows: true,
                     }
@@ -427,9 +435,9 @@
                 {
                     breakpoint: 480,
                     settings: {
-                        slidesToShow: 2,
-                        centerMode: true,
-                        autoplay:false,
+                        slidesToShow: 3,
+                        centerMode: false,
+                        autoplay: false,
                         dots: false,
                         arrows: true,
                     }
@@ -496,18 +504,28 @@
         $(".mainmenu ul li:has(ul)");
         //Mobile Menu End
 
+$(document).on('click', '.accordion-button', function () {
+// remove class from all items
+$('.accordion-item').removeClass('active');
 
 
+// add class to the clicked accordion item
+$(this).closest('.accordion-item').addClass('active');
+});
+
+        
+        
 
 
 
     });
 }(jQuery));
 
-// Litepicker solo se inicializa si existe el elemento y la librería está cargada
-if (typeof Litepicker !== 'undefined' && document.getElementById('dateRange')) {
+const dateRangeEl = document.getElementById('dateRange');
+
+if (dateRangeEl) {
     const picker = new Litepicker({
-        element: document.getElementById('dateRange'),
+        element: dateRangeEl,
         singleMode: false,
         numberOfMonths: 1,
         numberOfColumns: 1,
@@ -521,7 +539,6 @@ if (typeof Litepicker !== 'undefined' && document.getElementById('dateRange')) {
     });
 }
 
-// Selector de pasajeros solo se inicializa si existe el elemento
 const input = document.getElementById('passengerInput');
 const dropdown = document.getElementById('passengerDropdown');
 
@@ -533,25 +550,31 @@ if (input && dropdown) {
     };
 
     input.addEventListener('click', () => {
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
+        dropdown.style.display =
+            dropdown.style.display === 'block' ? 'none' : 'block';
     });
 
     document.querySelectorAll('.counter button').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const type = btn.dataset.type;
-        const action = btn.dataset.action;
+        btn.addEventListener('click', () => {
+            const type = btn.dataset.type;
+            const action = btn.dataset.action;
 
-        if (action === 'plus') counts[type]++;
-        if (action === 'minus' && counts[type] > 0) counts[type]--;
+            if (action === 'plus') counts[type]++;
+            if (action === 'minus' && counts[type] > 0) counts[type]--;
 
-        document.getElementById(type + 'Count').innerText = counts[type];
-        updateText();
+            const countEl = document.getElementById(type + 'Count');
+            if (countEl) countEl.innerText = counts[type];
+
+            updatePassengerText();
+        });
     });
-});
 
-    function updateText() {
+    function updatePassengerText() {
         const total = counts.adult + counts.child + counts.infant;
-        document.getElementById('passengerText').innerText =
+        const textEl = document.getElementById('passengerText');
+        if (!textEl) return;
+
+        textEl.innerText =
             total > 0 ? `${total} Pasajeros` : '0 Pasajeros';
     }
 
@@ -563,7 +586,6 @@ if (input && dropdown) {
     });
 }
 
-// Selector de preferencia de contacto solo se inicializa si existe el elemento
 const prefInput = document.getElementById('preferenciaInput');
 const prefDropdown = document.getElementById('preferenciaDropdown');
 const prefText = document.getElementById('preferenciaText');
@@ -577,12 +599,11 @@ if (prefInput && prefDropdown && prefText && prefValue) {
     });
 
     // select option
-    document.querySelectorAll('#preferenciaDropdown .dr-option').forEach(option => {
-        option.addEventListener('click', (e) => {
+    prefDropdown.querySelectorAll('.dr-option').forEach(option => {
+        option.addEventListener('click', e => {
             e.preventDefault();
 
             const value = option.innerText;
-
             prefText.innerText = value;
             prefValue.value = value;
 
@@ -591,9 +612,131 @@ if (prefInput && prefDropdown && prefText && prefValue) {
     });
 
     // close on outside click
-    document.addEventListener('click', (e) => {
+    document.addEventListener('click', e => {
         if (!e.target.closest('.passenger-select')) {
             prefDropdown.style.display = 'none';
         }
     });
 }
+
+
+
+
+document.querySelectorAll('.expand-toggle').forEach(button => {
+    button.addEventListener('click', function () {
+        this.closest('.expand-wrapper').classList.toggle('expanded');
+    });
+});
+document.addEventListener("DOMContentLoaded", () => {
+    const element = document.querySelector(".anim-text");
+    const text = element.textContent;
+    const speed = 80; // typing speed in ms
+
+    element.textContent = ""; // clear text first
+    let index = 0;
+
+    function typeWriter() {
+        if (index < text.length) {
+            element.textContent += text.charAt(index);
+            index++;
+            setTimeout(typeWriter, speed);
+        }
+    }
+
+    typeWriter();
+});
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    const dropdown = document.getElementById("csDropdown");
+    if (!dropdown) return;
+
+    const selected = dropdown.querySelector(".cs_selected");
+    const options = dropdown.querySelector(".cs_options");
+    if (!selected || !options) return;
+
+    // Toggle
+    selected.addEventListener("click", () => {
+        const isOpen = options.style.display === "block";
+        options.style.display = isOpen ? "none" : "block";
+        dropdown.classList.toggle("open", !isOpen);
+    });
+
+    // Select
+    options.querySelectorAll("li").forEach(option => {
+        option.addEventListener("click", () => {
+            selected.childNodes[0].nodeValue = option.textContent + " ";
+            options.style.display = "none";
+            dropdown.classList.remove("open");
+        });
+    });
+
+    // Outside click
+    document.addEventListener("click", e => {
+        if (!dropdown.contains(e.target)) {
+            options.style.display = "none";
+            dropdown.classList.remove("open");
+        }
+    });
+});
+
+(function() {
+        const header = document.querySelector('.top-heading.stck');
+        if (!header) return;
+        
+        let lastScrollY = window.scrollY;
+        let ticking = false;
+        const scrollThreshold = 80; // Píxeles antes de activar el estado compacto
+        
+        function updateHeader() {
+            const currentScrollY = window.scrollY;
+            
+            // Agregar/quitar clase scrolled (versión compacta)
+            if (currentScrollY > scrollThreshold) {
+                header.classList.add('hit-top');
+            } else {
+                header.classList.remove('hit-top');
+            }
+            
+            // Hide on scroll down, show on scroll up
+            if (currentScrollY > lastScrollY && currentScrollY > 150) {
+                // Scrolling down - ocultar
+                header.classList.add('hidden');
+            } else {
+                // Scrolling up - mostrar
+                header.classList.remove('hidden');
+            }
+            
+            lastScrollY = currentScrollY;
+            ticking = false;
+        }
+        
+        window.addEventListener('scroll', function() {
+            if (!ticking) {
+                window.requestAnimationFrame(updateHeader);
+                ticking = true;
+            }
+        });
+        
+        // Check inicial
+        updateHeader();
+    })();
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    const fileInputs = document.querySelectorAll(".file-up input[type='file']");
+
+    if (!fileInputs.length) return;
+
+    fileInputs.forEach(input => {
+        input.addEventListener("change", function () {
+            const fileName = this.files[0]?.name;
+            if (!fileName) return;
+
+            const label = this.closest(".file-up")?.querySelector(".file-label");
+            if (label) {
+                label.textContent = fileName;
+            }
+        });
+    });
+});

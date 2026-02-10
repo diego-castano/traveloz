@@ -9,13 +9,12 @@
     <meta name="description" content="Contactá con TravelOz. Estamos para ayudarte a planificar tu próximo viaje. Escribinos tus ideas, comentarios o preguntas y te responderemos a la brevedad.">
 
 
-    <!-- Favicons comentados - archivos no disponibles aún
+
     <link rel="icon" type="image/png" href="assets/img/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="assets/img/favicon/favicon.svg" />
     <link rel="shortcut icon" href="assets/img/favicon/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/img/favicon/apple-touch-icon.png" />
     <link rel="manifest" href="assets/img/favicon/site.webmanifest" />
-    -->
     <link rel="stylesheet" href="assets/vendors/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="assets/vendors/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/vendors/slick/slick-theme.css" />
@@ -28,7 +27,7 @@
 <body>
 
     <div class="main-wrapper">
-         <!-- Header Start -->
+        <!-- Header Start -->
         <header class="header-area">
             <div class="container wide">
                 <div class="header-inn d-flex align-items-center justify-content-between">
@@ -40,7 +39,7 @@
                             <nav id="menu">
                                 <ul>
                                     <li>
-                                       <span></span>
+                                        <span></span>
                                         <a href="destinos.html">DESTINOS</a>
                                         <ul>
                                             <li><a href="destination-listing.html">África</a></li>
@@ -52,31 +51,30 @@
                                         </ul>
                                     </li>
                                     <li><a href="corporativo.html">CORPORATIVO</a></li>
-                                    <li><a href="destinos.html">DESTINOS</a></li>
                                     <li><a href="about.html">NOSOTROS</a></li>
                                     <li><a href="contact.html">CONTACTO</a></li>
                                 </ul>
                             </nav>
                         </div>
-                         <div id="menu-toggle">
-                                <span></span><span></span><span></span>
-                            </div>
+                        <div id="menu-toggle">
+                            <span></span><span></span><span></span>
+                        </div>
                     </div>
                 </div>
             </div>
         </header>
         <!-- Header End -->
         <!-- Content Start -->
-        <section class="content-area gradient-page-bg">
+        <section class="content-area contact-area gradient-page-bg"  id="contact-box">
             <div class="container">
                 <div class="row">
                     <div class="col-lg-5 col-md-6 mx-auto">
                         <div class="content-box style2">
                             <div class="text-center mb_50">
                                 <h2 class="section-heading">¡Conversemos!</h2>
-                            <p class="sub-text">Ideas, comentarios, preguntas... Todo lo que quieras compartir es bienvenido, ¡queremos escucharte!</p>
+                                <p class="sub-text">Ideas, comentarios, preguntas... Todo lo que quieras compartir es bienvenido, ¡queremos escucharte!</p>
                             </div>
-                            <form>
+                            <form id="contact-form">
                                 <ul class="row">
                                     <li class="col-sm-12">
                                         <label for="f_name">Full Name</label>
@@ -84,7 +82,7 @@
                                     </li>
                                     <li class="col-sm-12">
                                         <label for="l_name">Last Name</label>
-                                        <input type="text" id="f_name" placeholder="Apellido">
+                                        <input type="text" id="l_name" placeholder="Apellido">
                                     </li>
                                     <li class="col-sm-12">
                                         <label for="phn">Phone</label>
@@ -102,14 +100,16 @@
                                 <div class="text-start">
                                     <button type="submit" class="contact-btn">Enviar</button>
                                 </div>
+                                <p id="success-msg" style="display:none; color:white; margin-top:15px;" class="text-center">¡Mensaje enviado con éxito!</p>
                             </form>
                         </div>
+
                     </div>
                 </div>
             </div>
         </section>
         <!-- Content End -->
-        
+
         <!-- Footer Start -->
         <footer class="footer-area">
             <div class="container wide relative">
@@ -141,7 +141,7 @@
                         <div class="footer-link ps-lg-5">
                             <h3 class="title">Información útil</h3>
                             <ul>
-                                <li><a href="contact.html">Trabajá con nosotros</a></li>
+                                <li><a href="work-with-us.html">Trabajar con nosotros</a></li>
                                 <li><a href="terms.html">Términos y condiciones</a></li>
                                 <li><a href="faq.html">Preguntas frecuentes</a></li>
                                 <li><a href="about.html">Agencia registrada</a></li>
@@ -159,7 +159,7 @@
         </footer>
         <!-- Footer End -->
     </div>
-    
+
     <a class="footer-whatsapp" href="javascript:;"><img src="assets/img/whatsapp.webp" alt="image"></a>
 
 
@@ -168,6 +168,31 @@
     <script src="assets/vendors/bootstrap/js/bootstrap.min.js"></script>
     <script src="assets/vendors/slick/slick.min.js"></script>
     <script src="assets/js/main.js"></script>
+
+<script>
+document.getElementById("contact-form").addEventListener("submit", function(e) {
+    e.preventDefault(); // prevent actual form submission
+
+    const box = document.getElementById("contact-box");
+    const successMsg = document.getElementById("success-msg");
+    const btn = this.querySelector(".contact-btn");
+
+    // Apply success styles
+    box.classList.add("success");
+    successMsg.style.display = "block";
+
+    // Optional: disable button to prevent multiple clicks
+    btn.disabled = true;
+
+    // Reset form after a few seconds if you want
+    setTimeout(() => {
+        this.reset();
+        box.classList.remove("success");
+        successMsg.style.display = "none";
+        btn.disabled = false;
+    }, 5000); // 5 seconds
+});
+</script>
 
 
 </body>

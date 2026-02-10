@@ -9,13 +9,11 @@
     <meta name="description" content="Detalle de destino turístico con TravelOz. Consultá precios, alojamientos, servicios incluidos y formas de pago. Contactanos para reservar tu viaje.">
 
 
-    <!-- Favicons comentados - archivos no disponibles aún
     <link rel="icon" type="image/png" href="assets/img/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="assets/img/favicon/favicon.svg" />
     <link rel="shortcut icon" href="assets/img/favicon/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/img/favicon/apple-touch-icon.png" />
     <link rel="manifest" href="assets/img/favicon/site.webmanifest" />
-    -->
     <link rel="stylesheet" href="assets/vendors/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="assets/vendors/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/vendors/slick/slick-theme.css" />
@@ -28,9 +26,9 @@
 
 <body>
 
-    <div class="main-wrapper">
-         <!-- Header Start -->
-        <header class="header-area">
+    <div class="main-wrapper alt">
+        <!-- Header Start -->
+        <header class="header-area not_sticky">
             <div class="container wide">
                 <div class="header-inn d-flex align-items-center justify-content-between">
                     <div class="header-logo">
@@ -53,7 +51,6 @@
                                         </ul>
                                     </li>
                                     <li><a href="corporativo.html">CORPORATIVO</a></li>
-                                    <li><a href="destinos.html">DESTINOS</a></li>
                                     <li><a href="about.html">NOSOTROS</a></li>
                                     <li><a href="contact.html">CONTACTO</a></li>
                                 </ul>
@@ -73,9 +70,29 @@
                 <div class="row">
                     <div class="col-lg-8 col-md-7">
                         <div class="content-box style3 bg_white">
-                            <div class="top-heading">
-                                <h2 class="title"><strong>Búzios</strong></h2>
-                                <p class="date"><span class="icon"><i class="fa-regular fa-calendar-check"></i></span>Septiembre a noviembre</p>
+                            <div class="top-heading stck">
+                                <div class="row">
+                                    <div class="col-7">
+                                        <div>
+                                            <h2 class="title"><strong>Búzios</strong></h2>
+
+                                            <p class="date"><span class="icon"><i class="fa-regular fa-calendar-check"></i></span>Septiembre a noviembre</p>
+                                        </div>
+
+                                    </div>
+                                    <div class="col-5">
+                                        <div class="large-price d-md-none ">
+                                            <div class="price-left">
+                                                <span class="d-block title">DESDE</span>
+                                                <span class="d-block title2">USD</span>
+                                            </div>
+                                            <div class="price-right">
+                                                <span class="main-price d-block">594</span>
+                                            </div>
+                                        </div>
+                                        <span class="d-block pr_notes text-end d-md-none ">Precio por persona <br> en base doble</span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="image-slider style3">
                                 <div class="slide">
@@ -121,7 +138,7 @@
                                                     </div>
                                                     <div class="right text-end">
                                                         <span class="price">USD 594</span>
-                                                        <p>Por persona en base doble</p>
+                                                        <p>Por persona <br> en base doble</p>
                                                     </div>
                                                 </div>
                                                 <div class="meta ver2">
@@ -130,7 +147,7 @@
                                                     </div>
                                                     <div class="right text-end">
                                                         <span class="price">USD 594</span>
-                                                        <p>Por persona en base doble</p>
+                                                        <p>Por persona <br> en base doble</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -149,7 +166,7 @@
                                                     </div>
                                                     <div class="right text-end">
                                                         <span class="price">USD 594</span>
-                                                        <p>Por persona en base doble</p>
+                                                        <p>Por persona <br> en base doble</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -168,7 +185,7 @@
                                                     </div>
                                                     <div class="right text-end">
                                                         <span class="price">USD 594</span>
-                                                        <p>Por persona en base doble</p>
+                                                        <p>Por persona <br> en base doble</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -177,7 +194,8 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="payment-box">
+
+                        <div class="payment-box  d-none d-md-block">
                             <div class="heading">
                                 <h2 class="h2">Formas de pago</h2>
                             </div>
@@ -228,7 +246,7 @@
                                             </div>
                                             <div class="col-lg-3 col-6">
                                                 <div class="payment-icon">
-                                                    <img src="assets/img/banco.png" alt="">
+                                                    <img src="assets/img/banco.svg" alt="">
                                                 </div>
                                             </div>
                                         </div>
@@ -238,7 +256,7 @@
                         </div>
                     </div>
                     <div class="col-lg-4 col-md-5">
-                        <div class="sidebar-form">
+                        <div class="sidebar-form sticky">
                             <div class="large-price">
                                 <div class="price-left">
                                     <span class="d-block title">DESDE</span>
@@ -248,7 +266,7 @@
                                     <span class="main-price d-block">594</span>
                                 </div>
                             </div>
-                            <span class="d-block price-desc text-center">Por persona en base doble</span>
+                            <span class="d-block price-desc text-center">Por persona <br> en base doble</span>
                             <span class="d-block form-title">Contactate con nosotros</span>
                             <form>
                                 <ul>
@@ -265,50 +283,51 @@
                                         <div class="passenger-select">
                                             <div class="passenger-input" id="passengerInput">
                                                 <span id="passengerText">0 Pasajeros</span>
-                                                <span class="arrow">▾</span>
+                                                <span class="arrow"><img src="assets/img/arrow-down.svg" alt=""></span>
                                             </div>
 
                                             <div class="passenger-dropdown" id="passengerDropdown">
                                                 <div class="row align-items-lg-center">
-                                                    <div class="col-lg-7">
+                                                    <div class="col-7">
                                                         <strong>Adultos</strong>
                                                         <small>Mayores de 18 años</small>
                                                     </div>
-                                                    <div class="col-lg-5">
+                                                    <div class=" col-5">
                                                         <div class="counter">
-                                                            <button type="button" data-type="adult" data-action="minus">−</button>
+                                                            <button type="button" data-type="adult" data-action="minus"><img src="assets/img/minus.svg" alt=""></button>
                                                             <span id="adultCount">0</span>
-                                                            <button type="button" data-type="adult" data-action="plus">+</button>
+                                                            <button type="button" data-type="adult" data-action="plus"><img src="assets/img/plus.svg" alt=""></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row align-items-lg-center">
+                                                    <div class="col-7">
+                                                        <strong>Menores de 2 años</strong>
+                                                    </div>
+                                                    <div class="col-5">
+                                                        <div class="counter">
+                                                            <button type="button" data-type="infant" data-action="minus"><img src="assets/img/minus.svg" alt=""></button>
+                                                            <span id="infantCount">0</span>
+                                                            <button type="button" data-type="infant" data-action="plus"><img src="assets/img/plus.svg" alt=""></button>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 <div class="row align-items-lg-center">
-                                                    <div class="col-lg-7">
+                                                    <div class="col-7">
                                                         <strong>Niños</strong>
                                                         <small>Mayores de 2 años</small>
                                                     </div>
-                                                    <div class="col-lg-5">
+                                                    <div class="col-5">
                                                         <div class="counter">
-                                                            <button type="button" data-type="child" data-action="minus">−</button>
+                                                            <button type="button" data-type="child" data-action="minus"><img src="assets/img/minus.svg" alt=""></button>
                                                             <span id="childCount">0</span>
-                                                            <button type="button" data-type="child" data-action="plus">+</button>
+                                                            <button type="button" data-type="child" data-action="plus"><img src="assets/img/plus.svg" alt=""></button>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div class="row align-items-lg-center">
-                                                    <div class="col-lg-7">
-                                                        <strong>Menores de 2 años</strong>
-                                                    </div>
-                                                    <div class="col-lg-5">
-                                                        <div class="counter">
-                                                            <button type="button" data-type="infant" data-action="minus">−</button>
-                                                            <span id="infantCount">0</span>
-                                                            <button type="button" data-type="infant" data-action="plus">+</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                
                                             </div>
                                         </div>
 
@@ -324,8 +343,8 @@
 
                                         <div class="passenger-select">
                                             <div class="passenger-input" id="preferenciaInput">
-                                                <span id="preferenciaText">How do we communicate?</span>
-                                                <span class="arrow">▾</span>
+                                                <span id="preferenciaText">Canal de comunicación</span>
+                                                <span class="arrow"><img src="assets/img/arrow-down.svg" alt=""></span>
                                             </div>
 
                                             <div class="passenger-dropdown" id="preferenciaDropdown">
@@ -368,6 +387,65 @@
                                 </div>
                             </form>
                         </div>
+                        <div class="payment-box  d-md-none">
+                            <div class="heading">
+                                <h2 class="h2">Formas de pago</h2>
+                            </div>
+                            <div class="content">
+                                <div class="row g-lg-4 g-3">
+                                    <div class="col-md-6">
+                                        <span class="d-block title">Tarjetas de crédito</span>
+                                        <div class="row g-3">
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/visa.png" alt="">
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/dca.png" alt="">
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/mastercard.png" alt="">
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/ae.png" alt="">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <span class="d-block title">Transferencia bancaria</span>
+                                        <div class="row g-3">
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/santander.png" alt="">
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/itau.png" alt="">
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/bbva.png" alt="">
+                                                </div>
+                                            </div>
+                                            <div class="col-lg-3 col-3">
+                                                <div class="payment-icon">
+                                                    <img src="assets/img/banco.svg" alt="">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -399,14 +477,14 @@
                                                 <span class="main-price d-block">756</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     <div class="slide">
-                         <a href="destinos-detalle.html" class="box-card">
+                        <a href="destinos-detalle.html" class="box-card">
                             <img src="assets/img/cabo.webp" alt="">
                             <div class="text">
                                 <h3 class="title">Arraial do Cabo</h3>
@@ -430,14 +508,14 @@
                                                 <span class="main-price d-block">602</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     <div class="slide">
-                          <a href="destinos-detalle.html" class="box-card">
+                        <a href="destinos-detalle.html" class="box-card">
                             <img src="assets/img/cancun.webp" alt="">
                             <div class="text">
                                 <h3 class="title">Cancún</h3>
@@ -461,14 +539,14 @@
                                                 <span class="main-price d-block">1141</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     <div class="slide">
-                          <a href="destinos-detalle.html" class="box-card">
+                        <a href="destinos-detalle.html" class="box-card">
                             <img src="assets/img/rio.webp" alt="">
                             <div class="text">
                                 <h3 class="title">Río de Janeiro e Ilha Grande</h3>
@@ -492,14 +570,14 @@
                                                 <span class="main-price d-block">600</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     <div class="slide">
-                          <a href="destinos-detalle.html" class="box-card">
+                        <a href="destinos-detalle.html" class="box-card">
                             <img src="assets/img/natal.webp" alt="">
                             <div class="text">
                                 <h3 class="title">Natal y Pipa</h3>
@@ -523,14 +601,14 @@
                                                 <span class="main-price d-block">756</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     <div class="slide">
-                          <a href="destinos-detalle.html" class="box-card">
+                        <a href="destinos-detalle.html" class="box-card">
                             <img src="assets/img/cabo.webp" alt="">
                             <div class="text">
                                 <h3 class="title">Arraial do Cabo</h3>
@@ -554,14 +632,14 @@
                                                 <span class="main-price d-block">602</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     <div class="slide">
-                          <a href="destinos-detalle.html" class="box-card">
+                        <a href="destinos-detalle.html" class="box-card">
                             <img src="assets/img/cancun.webp" alt="">
                             <div class="text">
                                 <h3 class="title">Cancún</h3>
@@ -585,14 +663,14 @@
                                                 <span class="main-price d-block">1141</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
                     <div class="slide">
-                          <a href="destinos-detalle.html" class="box-card">
+                        <a href="destinos-detalle.html" class="box-card">
                             <img src="assets/img/rio.webp" alt="">
                             <div class="text">
                                 <h3 class="title">Río de Janeiro e Ilha Grande</h3>
@@ -616,7 +694,7 @@
                                                 <span class="main-price d-block">600</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
@@ -659,7 +737,7 @@
                         <div class="footer-link ps-lg-5">
                             <h3 class="title">Información útil</h3>
                             <ul>
-                                <li><a href="contact.html">Trabajá con nosotros</a></li>
+                                <li><a href="work-with-us.html">Trabajar con nosotros</a></li>
                                 <li><a href="terms.html">Términos y condiciones</a></li>
                                 <li><a href="faq.html">Preguntas frecuentes</a></li>
                                 <li><a href="about.html">Agencia registrada</a></li>

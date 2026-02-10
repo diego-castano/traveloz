@@ -9,13 +9,11 @@
     <meta name="description" content="Descubrí nuestros paquetes turísticos. Roma, Búzios, Cancún, Machu Picchu y más destinos increíbles con pasajes, alojamiento y traslados incluidos.">
 
 
-    <!-- Favicons comentados - archivos no disponibles aún
     <link rel="icon" type="image/png" href="assets/img/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="assets/img/favicon/favicon.svg" />
     <link rel="shortcut icon" href="assets/img/favicon/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="assets/img/favicon/apple-touch-icon.png" />
     <link rel="manifest" href="assets/img/favicon/site.webmanifest" />
-    -->
     <link rel="stylesheet" href="assets/vendors/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="assets/vendors/bootstrap/css/bootstrap.min.css" />
     <link rel="stylesheet" href="assets/vendors/slick/slick-theme.css" />
@@ -29,8 +27,8 @@
 <body>
 
     <div class="main-wrapper">
-         <!-- Header Start -->
-        <header class="header-area">
+        <!-- Header Start -->
+        <header class="header-area ">
             <div class="container wide">
                 <div class="header-inn d-flex align-items-center justify-content-between">
                     <div class="header-logo">
@@ -53,7 +51,6 @@
                                         </ul>
                                     </li>
                                     <li><a href="corporativo.html">CORPORATIVO</a></li>
-                                    <li><a href="destinos.html">DESTINOS</a></li>
                                     <li><a href="about.html">NOSOTROS</a></li>
                                     <li><a href="contact.html">CONTACTO</a></li>
                                 </ul>
@@ -75,19 +72,65 @@
                         <form>
                             <div class="inner-flex">
                                 <div class="filter-fields">
-                                <div class="inner-field">
-                                    <label for="location"><img src="assets/img/location-icon.svg" alt="icon"></label>
-                                    <input type="search" id="location" placeholder="Destino">
+                                    <div class="inner-field">
+                                        <label for="location"><img src="assets/img/location-icon.svg" alt="icon"></label>
+                                        <input type="search" id="location" placeholder="Destino">
+                                    </div>
+                                    <div class="inner-field">
+                                        <label for="location2" class="file-label"><img src="assets/img/file.svg" alt="icon"></label>
+                                        <input type="text" id="location2" placeholder="Temporada">
+                                    </div>
                                 </div>
-                                <div class="inner-field">
-                                    <label for="location2" class="file-label"><img src="assets/img/file.svg" alt="icon"></label>
-                                    <input type="text" id="location2" placeholder="Temporada">
-                                </div>
-                            </div>
-                            <button type="submit"><img src="assets/img/search-icon.svg" alt="search"> Buscar</button>
+                                <button type="submit"><img src="assets/img/search-icon.svg" alt="search"> Buscar</button>
                             </div>
                         </form>
                     </div>
+                </div>
+                <div class="filter_select d-md-flex justify-content-end align-items-center mb-4">
+                    <strong>Ordenar por</strong>
+                    <div class="cs_dropdown d-none d-md-block" id="csDropdown">
+                        <span class="cs_selected">
+                            Menor precio
+                            <i class="cs_arrow"></i>
+                        </span>
+
+                        <ul class="cs_options">
+                            <li data-value="low">Menor precio</li>
+                            <li data-value="high">Mayor precio</li>
+                            <li data-value="az">A - Z</li>
+                        </ul>
+                    </div>
+                    <div class="cs_checkbox d-md-none">
+                        <ul>
+                            <li>
+                                <div class="chk_item">
+                                    <input type="radio" name="chk" id="chk1">
+                                    <label for="chk1">
+                                        Menor precio
+
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="chk_item">
+                                    <input type="radio" name="chk" id="chk2">
+                                    <label for="chk2">
+                                        Mayor precio
+                                    </label>
+                                </div>
+                            </li>
+                            <li>
+                                <div class="chk_item">
+                                    <input type="radio" name="chk" id="chk3">
+                                    <label for="chk3">
+                                        A - Z
+
+                                    </label>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
                 </div>
                 <div class="row g-lg-4 g-3">
                     <div class="col-xxl-3 col-lg-4 col-sm-6">
@@ -115,13 +158,13 @@
                                                 <span class="main-price d-block">1499</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                       <div class="col-xxl-3 col-lg-4 col-sm-6">
+                    <div class="col-xxl-3 col-lg-4 col-sm-6">
                         <a href="destinos-detalle.html" class="box-card alt">
                             <img src="assets/img/buzios.webp" alt="">
                             <div class="text">
@@ -146,13 +189,13 @@
                                                 <span class="main-price d-block">594</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                       <div class="col-xxl-3 col-lg-4 col-sm-6">
+                    <div class="col-xxl-3 col-lg-4 col-sm-6">
                         <a href="destinos-detalle.html" class="box-card alt">
                             <img src="assets/img/encanto.webp" alt="">
                             <div class="text">
@@ -177,13 +220,13 @@
                                                 <span class="main-price d-block">1234</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                       <div class="col-xxl-3 col-lg-4 col-sm-6">
+                    <div class="col-xxl-3 col-lg-4 col-sm-6">
                         <a href="destinos-detalle.html" class="box-card alt">
                             <img src="assets/img/encanto.webp" alt="">
                             <div class="text">
@@ -208,13 +251,13 @@
                                                 <span class="main-price d-block">761</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                       <div class="col-xxl-3 col-lg-4 col-sm-6">
+                    <div class="col-xxl-3 col-lg-4 col-sm-6">
                         <a href="destinos-detalle.html" class="box-card alt">
                             <img src="assets/img/londres.webp" alt="">
                             <div class="text">
@@ -239,13 +282,13 @@
                                                 <span class="main-price d-block">761</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                       <div class="col-xxl-3 col-lg-4 col-sm-6">
+                    <div class="col-xxl-3 col-lg-4 col-sm-6">
                         <a href="destinos-detalle.html" class="box-card alt">
                             <img src="assets/img/machu.webp" alt="">
                             <div class="text">
@@ -270,13 +313,13 @@
                                                 <span class="main-price d-block">694</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                       <div class="col-xxl-3 col-lg-4 col-sm-6">
+                    <div class="col-xxl-3 col-lg-4 col-sm-6">
                         <a href="destinos-detalle.html" class="box-card alt">
                             <img src="assets/img/disney.webp" alt="">
                             <div class="text">
@@ -301,13 +344,13 @@
                                                 <span class="main-price d-block">2299</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
                         </a>
                     </div>
-                       <div class="col-xxl-3 col-lg-4 col-sm-6">
+                    <div class="col-xxl-3 col-lg-4 col-sm-6">
                         <a href="destinos-detalle.html" class="box-card alt">
                             <img src="assets/img/cancun.webp" alt="">
                             <div class="text">
@@ -332,7 +375,7 @@
                                                 <span class="main-price d-block">1372</span>
                                             </div>
                                         </div>
-                                        <span class="d-block text-end">Precio por persona en base doble</span>
+                                        <span class="d-block text-end">Precio por persona <br> en base doble</span>
                                     </div>
                                 </div>
                             </div>
@@ -374,7 +417,7 @@
                         <div class="footer-link ps-lg-5">
                             <h3 class="title">Información útil</h3>
                             <ul>
-                                <li><a href="contact.html">Trabajá con nosotros</a></li>
+                                <li><a href="work-with-us.html">Trabajar con nosotros</a></li>
                                 <li><a href="terms.html">Términos y condiciones</a></li>
                                 <li><a href="faq.html">Preguntas frecuentes</a></li>
                                 <li><a href="about.html">Agencia registrada</a></li>
