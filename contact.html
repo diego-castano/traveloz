@@ -51,6 +51,7 @@
                                         </ul>
                                     </li>
                                     <li><a href="corporativo.html">CORPORATIVO</a></li>
+                                    <li><a href="javascript:;">BLOG</a></li>
                                     <li><a href="about.html">NOSOTROS</a></li>
                                     <li><a href="contact.html">CONTACTO</a></li>
                                 </ul>
@@ -67,43 +68,46 @@
         <!-- Content Start -->
         <section class="content-area contact-area gradient-page-bg"  id="contact-box">
             <div class="container">
-                <div class="row">
-                    <div class="col-lg-5 col-md-6 mx-auto">
-                        <div class="content-box style2">
-                            <div class="text-center mb_50">
-                                <h2 class="section-heading">¡Conversemos!</h2>
-                                <p class="sub-text">Ideas, comentarios, preguntas... Todo lo que quieras compartir es bienvenido, ¡queremos escucharte!</p>
-                            </div>
+                <div class="content-box style2 contact-form-wrapper">
+                    <!-- Row 1: Texto más ancho -->
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8 col-md-10 text-center mb_50">
+                            <h1 class="h2 text_white mb-4 section-heading">¡Conversemos!</h1>
+                            <p class="sub-text text_white">Ideas, comentarios, preguntas... Todo lo que quieras compartir<br>es bienvenido, ¡queremos escucharte!</p>
+                        </div>
+                    </div>
+                    <!-- Row 2: Formulario más angosto -->
+                    <div class="row justify-content-center">
+                        <div class="col-lg-5 col-md-7">
                             <form id="contact-form">
                                 <ul class="row">
                                     <li class="col-sm-12">
-                                        <label for="f_name">Full Name</label>
-                                        <input type="text" id="f_name" placeholder="Full Name*">
+                                        <label for="f_name">Nombre</label>
+                                        <input type="text" id="f_name" placeholder="Nombre *">
                                     </li>
                                     <li class="col-sm-12">
-                                        <label for="l_name">Last Name</label>
+                                        <label for="l_name">Apellido</label>
                                         <input type="text" id="l_name" placeholder="Apellido">
                                     </li>
                                     <li class="col-sm-12">
-                                        <label for="phn">Phone</label>
+                                        <label for="phn">Teléfono</label>
                                         <input type="text" id="phn" placeholder="Teléfono *">
                                     </li>
                                     <li class="col-sm-12">
-                                        <label for="email">Email</label>
+                                        <label for="email">E-mail</label>
                                         <input type="email" id="email" placeholder="E-mail">
                                     </li>
                                     <li class="col-sm-12">
-                                        <label for="msg">Message</label>
+                                        <label for="msg">Comentarios</label>
                                         <textarea id="msg" placeholder="Comentarios"></textarea>
                                     </li>
                                 </ul>
-                                <div class="text-start">
+                                <div class="text-center">
                                     <button type="submit" class="contact-btn">Enviar</button>
                                 </div>
                                 <p id="success-msg" style="display:none; color:white; margin-top:15px;" class="text-center">¡Mensaje enviado con éxito!</p>
                             </form>
                         </div>
-
                     </div>
                 </div>
             </div>

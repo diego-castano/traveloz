@@ -1,49 +1,63 @@
 (function ($) {
     "use strict";
-    
-     // Sticky Header con hide/show en scroll
-    (function() {
+
+    // Sticky Header con hide/show en scroll
+    (function () {
         const header = document.querySelector('.header-area');
         if (!header) return;
-        
+
+        const scrollThreshold = 100; // Píxeles antes de activar el estado compacto
         let lastScrollY = window.scrollY;
         let ticking = false;
-        const scrollThreshold = 80; // Píxeles antes de activar el estado compacto
-        
+
+        // Medir altura inicial
+        const headerHeight = header.offsetHeight;
+
         function updateHeader() {
             const currentScrollY = window.scrollY;
-            
-            // Agregar/quitar clase scrolled (versión compacta)
-            if (currentScrollY > scrollThreshold) {
-                header.classList.add('scrolled');
+
+            // Agregar/quitar clase scrolled (versión compacta/fixed)
+            if (currentScrollY > scrollThreshold && window.innerWidth > 991) {
+                if (!header.classList.contains('scrolled')) {
+                    header.classList.add('scrolled');
+                    // Evitar el salto de contenido añadiendo padding al body
+                    document.body.style.paddingTop = headerHeight + 'px';
+                }
             } else {
-                header.classList.remove('scrolled');
+                if (header.classList.contains('scrolled')) {
+                    header.classList.remove('scrolled');
+                    document.body.style.paddingTop = '0';
+                }
             }
-            
-            // Hide on scroll down, show on scroll up
-            if (currentScrollY > lastScrollY && currentScrollY > 150) {
-                // Scrolling down - ocultar
-                header.classList.add('hidden');
+
+            // Hide on scroll down, show on scroll up (solo si ya es scrolled y no es móvil)
+            if (currentScrollY > 400 && window.innerWidth > 991) {
+                if (currentScrollY > lastScrollY) {
+                    // Scrolling down - ocultar
+                    header.classList.add('hidden');
+                } else {
+                    // Scrolling up - mostrar
+                    header.classList.remove('hidden');
+                }
             } else {
-                // Scrolling up - mostrar
                 header.classList.remove('hidden');
             }
-            
+
             lastScrollY = currentScrollY;
             ticking = false;
         }
-        
-        window.addEventListener('scroll', function() {
+
+        window.addEventListener('scroll', function () {
             if (!ticking) {
                 window.requestAnimationFrame(updateHeader);
                 ticking = true;
             }
         });
-        
+
         // Check inicial
         updateHeader();
     })();
-    
+
     jQuery(document).ready(function ($) {
 
 
@@ -107,7 +121,7 @@
                     }
                 }
 
-              ]
+            ]
         });
 
 
@@ -147,25 +161,25 @@
                     breakpoint: 750,
                     settings: {
                         slidesToShow: 2,
-                        arrows:false
+                        arrows: false
                     }
                 },
                 {
                     breakpoint: 600,
                     settings: {
                         slidesToShow: 1,
-                        arrows:false
+                        arrows: false
                     }
                 },
                 {
                     breakpoint: 480,
                     settings: {
                         slidesToShow: 1,
-                        arrows:false
+                        arrows: false
                     }
                 }
 
-              ]
+            ]
         });
 
 
@@ -219,7 +233,7 @@
                     }
                 }
 
-              ]
+            ]
         });
 
         $('.image-text-slider').slick({
@@ -272,7 +286,7 @@
                     }
                 }
 
-              ]
+            ]
         });
 
 
@@ -370,7 +384,7 @@
                     }
                 }
 
-              ]
+            ]
         });
 
         $('.logo-slider').slick({
@@ -443,7 +457,7 @@
                     }
                 }
 
-              ]
+            ]
         });
 
 
@@ -504,17 +518,17 @@
         $(".mainmenu ul li:has(ul)");
         //Mobile Menu End
 
-$(document).on('click', '.accordion-button', function () {
-// remove class from all items
-$('.accordion-item').removeClass('active');
+        $(document).on('click', '.accordion-button', function () {
+            // remove class from all items
+            $('.accordion-item').removeClass('active');
 
 
-// add class to the clicked accordion item
-$(this).closest('.accordion-item').addClass('active');
-});
+            // add class to the clicked accordion item
+            $(this).closest('.accordion-item').addClass('active');
+        });
 
-        
-        
+
+
 
 
 
@@ -680,47 +694,53 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 
-(function() {
-        const header = document.querySelector('.top-heading.stck');
-        if (!header) return;
-        
-        let lastScrollY = window.scrollY;
-        let ticking = false;
-        const scrollThreshold = 80; // Píxeles antes de activar el estado compacto
-        
-        function updateHeader() {
-            const currentScrollY = window.scrollY;
-            
-            // Agregar/quitar clase scrolled (versión compacta)
-            if (currentScrollY > scrollThreshold) {
-                header.classList.add('hit-top');
-            } else {
-                header.classList.remove('hit-top');
-            }
-            
-            // Hide on scroll down, show on scroll up
-            if (currentScrollY > lastScrollY && currentScrollY > 150) {
-                // Scrolling down - ocultar
-                header.classList.add('hidden');
-            } else {
-                // Scrolling up - mostrar
-                header.classList.remove('hidden');
-            }
-            
-            lastScrollY = currentScrollY;
-            ticking = false;
+(function () {
+    const header = document.querySelector('.top-heading.stck');
+    if (!header) return;
+
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+    const scrollThreshold = 80; // Píxeles antes de activar el estado compacto
+
+    function updateHeader() {
+        const currentScrollY = window.scrollY;
+
+        if (window.innerWidth <= 991) {
+            header.classList.remove('hit-top');
+            header.classList.remove('hidden');
+            return;
         }
-        
-        window.addEventListener('scroll', function() {
-            if (!ticking) {
-                window.requestAnimationFrame(updateHeader);
-                ticking = true;
-            }
-        });
-        
-        // Check inicial
-        updateHeader();
-    })();
+
+        // Agregar/quitar clase scrolled (versión compacta)
+        if (currentScrollY > scrollThreshold) {
+            header.classList.add('hit-top');
+        } else {
+            header.classList.remove('hit-top');
+        }
+
+        // Hide on scroll down, show on scroll up
+        if (currentScrollY > lastScrollY && currentScrollY > 150) {
+            // Scrolling down - ocultar
+            header.classList.add('hidden');
+        } else {
+            // Scrolling up - mostrar
+            header.classList.remove('hidden');
+        }
+
+        lastScrollY = currentScrollY;
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', function () {
+        if (!ticking) {
+            window.requestAnimationFrame(updateHeader);
+            ticking = true;
+        }
+    });
+
+    // Check inicial
+    updateHeader();
+})();
 
 
 document.addEventListener("DOMContentLoaded", function () {

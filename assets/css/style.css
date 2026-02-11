@@ -174,15 +174,68 @@ section {
     background: #fff
 }
 
+.main-wrapper {
+    padding-top: 130px;
+}
+
+.main-wrapper.has-hero {
+    padding-top: 0;
+}
+
+.main-wrapper.alt {
+    padding-top: 85px;
+}
+
 /*Write CSS From Here*/
 
 .header-area {
-    border-bottom: 8px solid #D3D3D3
+    border-bottom: 8px solid #D3D3D3;
+    background: #fff;
+    width: 100%;
+    z-index: 2000;
+    position: relative;
+    transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), background 0.4s ease, box-shadow 0.4s ease;
+}
+
+.header-area.scrolled {
+    position: fixed;
+    top: 0;
+    left: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    animation: slideDown 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.header-area.hidden {
+    transform: translateY(-100%);
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
 }
 
 .header-inn {
-    padding: 20px 0;
+    padding: 24px 0;
+    transition: padding 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
 
+.header-area.scrolled .header-inn {
+    padding: 12px 0 16px;
+}
+
+.header-logo a img {
+    transition: height 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.header-area.scrolled .header-logo a img {
+    height: 38px;
+    width: auto;
 }
 
 .header-menu ul {
@@ -347,8 +400,15 @@ section {
 }
 
 .footer-area {
-    padding: 100px 0;
+    padding: 60px 0;
     background: #282828
+}
+
+.footer-left p {
+    font-size: 16px;
+    line-height: 24px;
+    color: #fff;
+    margin-bottom: 20px;
 }
 
 .footer-left ul {
@@ -359,7 +419,8 @@ section {
 
 .footer-logo {
     margin-bottom: 30px;
-    display: inline-block
+    display: inline-block;
+    width: 140px;
 }
 
 .footer-left ul li {
@@ -386,8 +447,8 @@ section {
     display: flex;
     align-items: flex-start;
     line-height: 120%;
-    margin-bottom: 20px;
-    font-size: 18px
+    margin-bottom: 12px;
+    font-size: 16px
 }
 
 .footer-link.style2 .icon {
@@ -396,10 +457,10 @@ section {
 }
 
 .footer-link .title {
-    font-size: 26px;
+    font-size: 22px;
     color: #F43E55;
     font-family: 'Clarika Geometric';
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     font-weight: 700;
 }
 
@@ -411,8 +472,9 @@ section {
 
 .footer-link li {
     color: #fff;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
     line-height: 100%;
+    font-size: 16px;
 }
 
 .footer-link li:last-child {
@@ -433,7 +495,7 @@ section {
     list-style: none;
     display: flex;
     align-items: center;
-    padding-top: 50px
+    padding-top: 30px
 }
 
 .footer-brand-logo li {
@@ -716,19 +778,20 @@ section {
 }
 
 .text-box.style1 {
-    background: rgba(169, 169, 168, 0.08);
+    background: #fff;
     padding: 30px;
-    border-radius: 15px;
+    border-radius: 10px;
     margin-top: 30px;
-    border: 1px solid rgba(112, 112, 112, 0.08);
-    position: relative
+    border: 1px solid #707070;
+    position: relative;
 }
 
 .text-box.style1 .h4 {
     display: flex;
-    font-size: 28px;
+    font-size: 22px;
     color: #A05ED3;
-    margin-bottom: 0
+    margin-bottom: 5px;
+    font-weight: 700;
 }
 
 .text-box.style1 .h4 ul {
@@ -757,14 +820,23 @@ section {
 }
 
 .text-box.style1 .meta.ver2 {
-    border-top: 1px solid #dee2e6;
+    border-top: 1px solid #707070;
     padding-top: 30px;
+    margin-top: 20px;
 }
 
 .text-box.style1 .meta .price {
     color: #F43E55;
-    font-size: 28px;
-    font-weight: 700
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.text-box.style1 .meta p {
+    font-size: 14px;
+    font-weight: 400;
+    margin-bottom: 0;
+    color: #9A9A99;
 }
 
 .content-box.style3 .date .icon {
@@ -773,11 +845,13 @@ section {
 
 .content-box.style3 .left .icon {
     color: #A05ED3;
-    margin-right: 8px
+    margin-right: 8px;
+    font-size: 18px;
 }
 
 .content-box.style3 .left .link {
     color: #A05ED3;
+    font-size: 18px;
 }
 
 .content-box.style3 .left .link:hover {
@@ -938,6 +1012,7 @@ section {
 
 .sidebar-form .large-price {
     justify-content: center;
+    margin-bottom: 5px;
 }
 
 .sidebar-form ul {
@@ -984,8 +1059,8 @@ section {
 }
 
 .price-desc {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 300;
 }
 
 .sidebar-form .form-title {
@@ -1180,10 +1255,11 @@ section {
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
+    margin-bottom: 10px;
 }
 
 .box-card .text .text-end {
-    line-height: 20px;
+    line-height: 18px;
     font-size: 14px;
     font-weight: 400;
 }
@@ -1198,7 +1274,9 @@ section {
     background: #ffd6d6 !important;
 }
 
-.litepicker .container__months {}
+.litepicker .container__months {
+    display: flex;
+}
 
 .passenger-select {
     position: relative;
@@ -1411,12 +1489,9 @@ section {
 }
 
 .inner-media-content {
-    font-size: 20px;
-    line-height: 26px
-}
-
-.inner-media-content {
-    padding: 25px 0
+    font-size: 18px;
+    line-height: 24px;
+    padding: 35px 0;
 }
 
 .about-notes {
@@ -1498,6 +1573,7 @@ section {
 
 .faq-tabs button.active img {
     filter: brightness(0) invert(1);
+    -webkit-filter: brightness(0) invert(1);
 }
 
 .faq-tab-content .plain-content {
@@ -1674,7 +1750,6 @@ section {
     z-index: 99;
     visibility: hidden;
     opacity: 0;
-    -ms-filter: "alpha(opacity=0)";
     -webkit-transition: all .4s;
     transition: all .4s;
     text-align: left;
@@ -1699,13 +1774,12 @@ section {
     padding: 7px;
     display: block;
     opacity: 1;
-    text-transform: capitalize
+    text-transform: initial
 }
 
 .mainmenu ul li:hover>ul {
     visibility: visible;
     opacity: 1;
-    -ms-filter: "alpha(opacity=100)";
 }
 
 
@@ -1835,17 +1909,56 @@ header.scrolled {
     font-family: 'Clarika Geometric'
 }
 
-.work-with-us .sub-text {
-    font-size: 24px;
-    color: #282828
+.work-with-us {
+    background: #F9F9FA;
+    padding: 80px 0 160px;
 }
 
 .work-with-us .section-heading {
-    font-size: 50px
+    font-size: 48px;
+    margin-bottom: 25px;
 }
 
-.work-with-us {
-    background: #F9F9FA
+.work-with-us .sub-text p {
+    font-size: 18px;
+    line-height: 24px;
+    color: #3C3C3C;
+    margin-top: 15px;
+}
+
+.video-placeholder {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    background: #ccc;
+    height: 100%;
+}
+
+.video-placeholder img {
+    filter: brightness(0.7);
+    -webkit-filter: brightness(0.7);
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.video-overlay span {
+    font-size: 45px;
+    color: #fff;
+    font-family: 'Clarika Geometric';
+    font-weight: 300;
 }
 
 .work-with-us form ul {
@@ -1862,14 +1975,26 @@ header.scrolled {
 .work-with-us form textarea,
 .work-with-us .file-up {
     width: 100%;
-    background: transparent;
-    border-radius: 4px;
-    padding: 12px 14px;
-    font-size: 14px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 15px 20px;
+    font-size: 18px;
     color: #333;
     outline: none;
-    font-size: 18px;
-    border: 2px solid #333333;
+    border: 1px solid #D9D9D9;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.work-with-us form input::placeholder,
+.work-with-us form textarea::placeholder {
+    color: #9A9A99;
+    font-family: inherit;
+}
+
+.work-with-us form input:focus,
+.work-with-us form textarea:focus {
+    border-color: #A05ED3;
 }
 
 .work-with-us form textarea {
@@ -1908,10 +2033,22 @@ header.scrolled {
     justify-content: center;
 }
 
+.work-with-us .file-up .placeholder-title {
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    font-size: 16px;
+    color: #9A9A99;
+    z-index: 0;
+    font-family: inherit;
+}
+
 .work-with-us .file-up .file-label {
     color: #A05ED3;
-    margin-top: 5px;
-    font-size: 22px;
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: inherit;
 }
 
 .work-with-us form button {
@@ -2013,7 +2150,7 @@ header.scrolled {
 }
 
 .hero-area {
-    height: calc(100vh - 90px);
+    height: 100vh;
     display: flex;
     align-items: center;
 }
@@ -2056,15 +2193,79 @@ strong {
 }
 
 .content-area.contact-area {
-    padding: 50px 0;
+    padding: 100px 0 140px;
 }
 
-.content-area.contact-area .mb_50 {
-    margin-bottom: 30px;
+.contact-area.gradient-page-bg {
+    background: linear-gradient(180deg, #7a5cd1 0%, #ad5285 100%) !important;
 }
 
-.content-box.style2 form input {
-    height: 50px
+.contact-form-wrapper {
+    background: transparent !important;
+}
+
+.contact-form-wrapper .section-heading {
+    font-size: 70px !important;
+    font-weight: 300 !important;
+    margin-bottom: 15px;
+}
+
+.contact-form-wrapper .sub-text {
+    font-size: 20px !important;
+    line-height: 26px !important;
+    letter-spacing: 1px;
+    font-weight: 100 !important;
+}
+
+.contact-form-wrapper form ul.row {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.contact-form-wrapper form ul.row li {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.contact-form-wrapper form input,
+.contact-form-wrapper form textarea {
+    background: transparent !important;
+    border: 2px solid rgba(255, 255, 255, 0.9) !important;
+    color: #fff !important;
+    font-family: inherit !important;
+    padding: 12px 18px !important;
+    border-radius: 6px !important;
+    height: auto !important;
+    margin-bottom: 10px;
+    font-size: 15px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.contact-form-wrapper form textarea {
+    height: 110px !important;
+    resize: none;
+}
+
+.contact-form-wrapper form input::placeholder,
+.contact-form-wrapper form textarea::placeholder {
+    color: rgba(255, 255, 255, 0.8) !important;
+    font-family: inherit !important;
+    font-size: 15px !important;
+}
+
+.contact-form-wrapper .contact-btn {
+    background: #fff !important;
+    color: #8c57cf !important;
+    font-weight: 400 !important;
+    width: auto !important;
+    min-width: 180px;
+    border-radius: 30px !important;
+    padding: 10px 50px !important;
+    margin-top: 15px;
+    font-size: 16px !important;
+    text-transform: none !important;
+    border: none !important;
 }
 
 .content-box.style2 form textarea {
@@ -2653,7 +2854,11 @@ header.header-area.header-dark {
     }
 
     .main-wrapper {
-        padding-top: 80px
+        padding-top: 85px;
+    }
+
+    .main-wrapper.has-hero {
+        padding-top: 0;
     }
 
     .image-box-slider.alt .slick-list {
@@ -2666,7 +2871,7 @@ header.header-area.header-dark {
 
     .main-wrapper.alt {
         overflow-x: hidden;
-        padding: 0
+        padding-top: 85px;
     }
 
     .header-inn {
@@ -3231,7 +3436,7 @@ header.header-area.header-dark {
     }
 
     .hero-area {
-        height: calc(100vh - 70px);
+        height: 100vh;
         display: flex;
         align-items: center;
     }
@@ -3244,7 +3449,7 @@ header.header-area.header-dark {
 
     .footer-logo {
         display: inline-block;
-        width: 150px;
+        width: 120px;
         margin: 0 auto 20px;
         display: block;
     }
@@ -3255,13 +3460,13 @@ header.header-area.header-dark {
     }
 
     .footer-link.style2 li {
-        margin-bottom: 17px;
+        margin-bottom: 12px;
         font-size: 16px;
         justify-content: center;
     }
 
     .footer-link .title {
-        font-size: 24px
+        font-size: 20px
     }
 
     .footer-brand-logo li {
@@ -3427,7 +3632,7 @@ header.header-area.header-dark {
     .expand-content p {
         display: -webkit-box;
         -webkit-line-clamp: 3;
-        /* 👈 show only 3 lines */
+        line-clamp: 3;
         -webkit-box-orient: vertical;
         overflow: hidden;
         transition: all 0.3s ease;
@@ -3436,6 +3641,7 @@ header.header-area.header-dark {
     /* Expanded state */
     .expand-wrapper.expanded .expand-content p {
         -webkit-line-clamp: unset;
+        line-clamp: unset;
     }
 
     .expand-toggle {
