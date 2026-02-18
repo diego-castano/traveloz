@@ -760,3 +760,37 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 });
+
+/* =============================================
+   MODAL AGENCIA REGISTRADA
+   ============================================= */
+
+function openAgenciaModal() {
+    const modal = document.getElementById('agenciaModal');
+    if (!modal) return;
+    modal.classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeAgenciaModal() {
+    const modal = document.getElementById('agenciaModal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    document.body.style.overflow = '';
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('agenciaModal');
+    if (!modal) return;
+
+    // Cerrar al hacer click en el overlay
+    modal.querySelector('.agencia-overlay').addEventListener('click', closeAgenciaModal);
+
+    // Cerrar con tecla Escape
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal.classList.contains('is-open')) {
+            closeAgenciaModal();
+        }
+    });
+});
+

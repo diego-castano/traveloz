@@ -172,7 +172,7 @@
                                 <li><a href="work-with-us.html">Trabajar con nosotros</a></li>
                                 <li><a href="terms.html">Términos y condiciones</a></li>
                                 <li><a href="faq.html">Preguntas frecuentes</a></li>
-                                <li><a href="about.html">Agencia registrada</a></li>
+                                <li><a href="javascript:;" onclick="openAgenciaModal()">Agencia registrada</a></li>
                             </ul>
                         </div>
                     </div>
@@ -198,6 +198,23 @@
     <script src="assets/js/main.js"></script>
 
 
+
+    <!-- Modal Agencia Registrada -->
+    <div id="agenciaModal" role="dialog" aria-modal="true" aria-label="Agencia registrada">
+        <div class="agencia-overlay"></div>
+        <div class="agencia-box">
+            <div class="agencia-header">
+                <p class="agencia-header-title">Agencia Registrada</p>
+                <button class="agencia-close" onclick="closeAgenciaModal()" aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <div class="agencia-img-wrap">
+                <img src="agencia.jpeg" alt="Certificado de agencia registrada - TravelOz">
+            </div>
+            <div class="agencia-footer">
+                <p>TravelOz &mdash; Agencia de viajes registrada ante el Ministerio de Turismo del Uruguay</p>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
