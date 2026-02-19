@@ -70,7 +70,7 @@
             centerMode: false,
             autoplay: true,
             infinite: true,
-            autoplaySpeed: 4000,
+            autoplaySpeed: 3000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#9A9A9A' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#9A9A9A' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
             responsive: [
@@ -85,7 +85,7 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay: false
+                        autoplay: true
                     }
                 },
                 {
@@ -93,7 +93,7 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay: false
+                        autoplay: true
                     }
                 },
                 {
@@ -101,7 +101,7 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay: false
+                        autoplay: true
                     }
                 },
                 {
@@ -109,7 +109,7 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay: false
+                        autoplay: true
                     }
                 },
                 {
@@ -117,7 +117,7 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay: false
+                        autoplay: true
                     }
                 }
 
@@ -135,7 +135,7 @@
             centerMode: false,
             autoplay: true,
             infinite: true,
-            autoplaySpeed: 4000,
+            autoplaySpeed: 3000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#9A9A9A' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#9A9A9A' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
             responsive: [
@@ -192,7 +192,7 @@
             centerMode: false,
             autoplay: true,
             infinite: true,
-            autoplaySpeed: 4000,
+            autoplaySpeed: 3000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#785AE5' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#785AE5' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
             responsive: [
@@ -245,7 +245,7 @@
             centerMode: false,
             autoplay: true,
             infinite: true,
-            autoplaySpeed: 4000,
+            autoplaySpeed: 3000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#9A9A9A' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#9A9A9A' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
             responsive: [
@@ -302,7 +302,7 @@
             centerMode: false,
             autoplay: true,
             infinite: true,
-            autoplaySpeed: 4000,
+            autoplaySpeed: 3000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#fff' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#fff' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
 
@@ -318,7 +318,7 @@
             centerMode: false,
             autoplay: true,
             infinite: true,
-            autoplaySpeed: 4000,
+            autoplaySpeed: 3000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#777' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#777' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
             responsive: [
@@ -334,7 +334,7 @@
                         slidesToShow: 1,
                         centerMode: true,
                         centerPadding: '40px',
-                        autoplay: false,
+                        autoplay: true,
                         dots: true,
                         arrows: false,
                     }
@@ -345,7 +345,7 @@
                         slidesToShow: 1,
                         centerMode: true,
                         centerPadding: '40px',
-                        autoplay: false,
+                        autoplay: true,
                         dots: true,
                         arrows: false,
                     }
@@ -356,7 +356,7 @@
                         slidesToShow: 1,
                         centerMode: true,
                         centerPadding: '40px',
-                        autoplay: false,
+                        autoplay: true,
                         dots: true,
                         arrows: false,
                     }
@@ -367,7 +367,7 @@
                         slidesToShow: 1,
                         centerMode: true,
                         centerPadding: '40px',
-                        autoplay: false,
+                        autoplay: true,
                         dots: true,
                         arrows: false,
                     }
@@ -378,7 +378,7 @@
                         slidesToShow: 1,
                         centerMode: true,
                         centerPadding: '40px',
-                        autoplay: false,
+                        autoplay: true,
                         dots: true,
                         arrows: false,
                     }
@@ -396,7 +396,7 @@
             centerMode: false,
             autoplay: true,
             infinite: true,
-            autoplaySpeed: 4000,
+            autoplaySpeed: 3000,
             prevArrow: "<button class='slick-prev slick-arrow slick-disabled' aria label='Previous' type='button' aria-disabled='true'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'><path fill='#777' d='M169.4 297.4C156.9 309.9 156.9 330.2 169.4 342.7L361.4 534.7C373.9 547.2 394.2 547.2 406.7 534.7C419.2 522.2 419.2 501.9 406.7 489.4L237.3 320L406.6 150.6C419.1 138.1 419.1 117.8 406.6 105.3C394.1 92.8 373.8 92.8 361.3 105.3L169.3 297.3z'/></svg></span><span class='d-none'>PREV</span></button>",
             nextArrow: "<button class='slick-next slick-arrow' aria-label='Next' type='button' aria-disabled='false'><span><svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 640 640'> <path fill='#777' d='M471.1 297.4C483.6 309.9 483.6 330.2 471.1 342.7L279.1 534.7C266.6 547.2 246.3 547.2 233.8 534.7C221.3 522.2 221.3 501.9 233.8 489.4L403.2 320L233.9 150.6C221.4 138.1 221.4 117.8 233.9 105.3C246.4 92.8 266.7 92.8 279.2 105.3L471.2 297.3z' /> </svg></span><span class='d-none'>NEXT</span></button>",
             responsive: [
@@ -411,7 +411,7 @@
                     settings: {
                         slidesToShow: 1,
                         centerMode: true,
-                        autoplay: false,
+                        autoplay: true,
                         dots: true,
                         arrows: true,
                     }
@@ -421,7 +421,7 @@
                     settings: {
                         slidesToShow: 4,
                         centerMode: true,
-                        autoplay: false,
+                        autoplay: true,
                         dots: false,
                         arrows: true,
                     }
@@ -431,7 +431,7 @@
                     settings: {
                         slidesToShow: 4,
                         centerMode: false,
-                        autoplay: false,
+                        autoplay: true,
                         dots: false,
                         arrows: true,
                     }
@@ -441,7 +441,7 @@
                     settings: {
                         lidesToShow: 3,
                         centerMode: false,
-                        autoplay: false,
+                        autoplay: true,
                         dots: false,
                         arrows: true,
                     }
@@ -451,7 +451,7 @@
                     settings: {
                         slidesToShow: 3,
                         centerMode: false,
-                        autoplay: false,
+                        autoplay: true,
                         dots: false,
                         arrows: true,
                     }
@@ -654,6 +654,8 @@ document.addEventListener("DOMContentLoaded", () => {
             element.textContent += text.charAt(index);
             index++;
             setTimeout(typeWriter, speed);
+        } else {
+            element.classList.remove("anim-text");
         }
     }
 
@@ -793,4 +795,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
 
