@@ -535,6 +535,25 @@
     });
 }(jQuery));
 
+// Force autoplay on mobile Safari
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('video.hero-video').forEach(function(video) {
+        video.setAttribute('playsinline', '');
+        video.setAttribute('muted', '');
+        video.muted = true;
+        var playPromise = video.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(function() {
+                // Retry on user interaction
+                document.addEventListener('touchstart', function retryPlay() {
+                    video.play();
+                    document.removeEventListener('touchstart', retryPlay);
+                }, { once: true });
+            });
+        }
+    });
+});
+
 const dateRangeEl = document.getElementById('dateRange');
 
 if (dateRangeEl) {

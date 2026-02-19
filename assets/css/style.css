@@ -2363,6 +2363,7 @@ strong {
     gap: 12px;
 }
 
+.contact-form-wrapper .quote-pax-counter input,
 .quote-pax-counter input {
     border: none !important;
     text-align: center;
@@ -2374,6 +2375,12 @@ strong {
     -moz-appearance: textfield;
     background: transparent !important;
     color: #fff !important;
+    border-radius: 0 !important;
+    height: 32px !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    max-width: 32px !important;
+    line-height: 32px !important;
 }
 
 .quote-pax-counter input::-webkit-outer-spin-button,
@@ -2435,12 +2442,17 @@ strong {
     cursor: pointer;
 }
 
+.contact-form-wrapper .quote-checkbox-label input[type="checkbox"],
 .quote-checkbox-label input[type="checkbox"] {
     width: 18px !important;
-    height: 18px;
+    height: 18px !important;
     accent-color: #fff;
     cursor: pointer;
     flex-shrink: 0;
+    padding: 0 !important;
+    border: none !important;
+    margin: 0 !important;
+    max-width: 18px !important;
 }
 
 .quote-icon-circle {
@@ -3441,7 +3453,19 @@ header.header-area.header-dark {
     }
 
     .quote-pax-field {
+        flex: none;
         justify-content: space-between;
+    }
+
+    .quote-pax-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 18px;
+    }
+
+    .quote-pax-counter input {
+        width: 28px !important;
+        font-size: 16px !important;
     }
 
     .work-with-us .sub-text {
