@@ -5,7 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Cotizá tu viaje - TravelOz</title>
-    <meta name="description" content="Solicitá tu cotización de viaje con TravelOz. Completá el formulario y recibí tu presupuesto en menos de 24hs.">
+    <meta name="description"
+        content="Solicitá tu cotización de viaje con TravelOz. Completá el formulario y recibí tu presupuesto en menos de 24hs.">
 
     <link rel="icon" type="image/png" href="assets/img/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="assets/img/favicon/favicon.svg" />
@@ -71,7 +72,8 @@
                     <div class="row justify-content-center">
                         <div class="col-lg-8 col-md-10 text-center mb_50">
                             <h1 class="h2 text_white mb-4 section-heading">Cotizá tu viaje</h1>
-                            <p class="sub-text text_white">Completá el formulario y recibí tu presupuesto<br class="d-none d-md-block"> en menos de 24 horas.</p>
+                            <p class="sub-text text_white">Completá el formulario y recibí tu presupuesto<br
+                                    class="d-none d-md-block"> en menos de 24 horas.</p>
                         </div>
                     </div>
                     <!-- Form -->
@@ -79,6 +81,16 @@
                         <div class="col-lg-5 col-md-7">
                             <form id="cotizacion-form">
                                 <ul class="row">
+                                    <li class="col-sm-12">
+                                        <label for="q_soy">Soy</label>
+                                        <select id="q_soy" required>
+                                            <option value="" disabled selected>Soy *</option>
+                                            <option value="Empleado del Hospital Británico">Empleado del Hospital
+                                                Británico</option>
+                                            <option value="Socio del Hospital Británico">Socio del Hospital Británico
+                                            </option>
+                                        </select>
+                                    </li>
                                     <li class="col-sm-12">
                                         <label for="q_name">Nombre y apellido</label>
                                         <input type="text" id="q_name" placeholder="Nombre y apellido *" required>
@@ -93,60 +105,84 @@
                                     </li>
                                     <li class="col-sm-12">
                                         <label for="q_destino">Ciudad de destino</label>
-                                        <select id="q_destino" required>
-                                            <option value="" disabled selected>Destino *</option>
-                                            <option value="Buenos Aires">Buenos Aires</option>
-                                            <option value="Río de Janeiro">Río de Janeiro</option>
-                                            <option value="São Paulo">São Paulo</option>
-                                            <option value="Florianópolis">Florianópolis</option>
-                                            <option value="Santiago de Chile">Santiago de Chile</option>
-                                            <option value="Lima">Lima</option>
-                                            <option value="Bogotá">Bogotá</option>
-                                            <option value="Cancún">Cancún</option>
-                                            <option value="Punta Cana">Punta Cana</option>
-                                            <option value="Miami">Miami</option>
-                                            <option value="Nueva York">Nueva York</option>
-                                            <option value="Orlando">Orlando</option>
-                                            <option value="Madrid">Madrid</option>
-                                            <option value="Barcelona">Barcelona</option>
-                                            <option value="Roma">Roma</option>
-                                            <option value="París">París</option>
-                                            <option value="Londres">Londres</option>
-                                            <option value="Otro">Otro destino</option>
-                                        </select>
+                                        <input type="text" id="q_destino" placeholder="Destino *" required>
                                     </li>
                                     <li class="col-sm-12">
                                         <label for="q_dates">Fechas</label>
-                                        <input type="text" id="q_dates" placeholder="Salida - Regreso *" readonly required>
+                                        <input type="text" id="q_dates" placeholder="Salida - Regreso *" readonly
+                                            required>
                                     </li>
                                     <li class="col-sm-12">
-                                        <label for="q_adultos">Pasajeros</label>
-                                        <div class="quote-pax-row">
-                                            <div class="quote-pax-field">
-                                                <span class="quote-pax-label">Adultos</span>
-                                                <div class="quote-pax-counter">
-                                                    <button type="button" class="quote-pax-btn" data-action="minus" data-target="q_adultos">−</button>
-                                                    <input type="number" id="q_adultos" value="1" min="1" max="20" readonly>
-                                                    <button type="button" class="quote-pax-btn" data-action="plus" data-target="q_adultos">+</button>
-                                                </div>
+                                        <label>Pasajeros*</label>
+                                        <input type="hidden" name="adults">
+                                        <input type="hidden" name="children">
+                                        <input type="hidden" name="infants">
+
+                                        <div class="passenger-select">
+                                            <div class="passenger-input" id="passengerInput">
+                                                <span id="passengerText">Cantidad de pasajeros</span>
+                                                <span class="arrow"><img src="assets/img/arrow-down.svg" alt=""></span>
                                             </div>
-                                            <div class="quote-pax-field">
-                                                <span class="quote-pax-label">Menores</span>
-                                                <div class="quote-pax-counter">
-                                                    <button type="button" class="quote-pax-btn" data-action="minus" data-target="q_menores">−</button>
-                                                    <input type="number" id="q_menores" value="0" min="0" max="10" readonly>
-                                                    <button type="button" class="quote-pax-btn" data-action="plus" data-target="q_menores">+</button>
+
+                                            <div class="passenger-dropdown" id="passengerDropdown">
+                                                <div class="row align-items-lg-center">
+                                                    <div class="col-7">
+                                                        <strong>Adultos</strong>
+                                                        <small>Mayores de 18 años</small>
+                                                    </div>
+                                                    <div class=" col-5">
+                                                        <div class="counter">
+                                                            <button type="button" data-type="adult"
+                                                                data-action="minus"><img src="assets/img/minus.svg"
+                                                                    alt=""></button>
+                                                            <span id="adultCount">0</span>
+                                                            <button type="button" data-type="adult"
+                                                                data-action="plus"><img src="assets/img/plus.svg"
+                                                                    alt=""></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row align-items-lg-center">
+                                                    <div class="col-7">
+                                                        <strong>Menores de 2 años</strong>
+                                                    </div>
+                                                    <div class="col-5">
+                                                        <div class="counter">
+                                                            <button type="button" data-type="infant"
+                                                                data-action="minus"><img src="assets/img/minus.svg"
+                                                                    alt=""></button>
+                                                            <span id="infantCount">0</span>
+                                                            <button type="button" data-type="infant"
+                                                                data-action="plus"><img src="assets/img/plus.svg"
+                                                                    alt=""></button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row align-items-lg-center">
+                                                    <div class="col-7">
+                                                        <strong>Niños</strong>
+                                                        <small>Mayores de 2 años</small>
+                                                    </div>
+                                                    <div class="col-5">
+                                                        <div class="counter">
+                                                            <button type="button" data-type="child"
+                                                                data-action="minus"><img src="assets/img/minus.svg"
+                                                                    alt=""></button>
+                                                            <span id="childCount">0</span>
+                                                            <button type="button" data-type="child"
+                                                                data-action="plus"><img src="assets/img/plus.svg"
+                                                                    alt=""></button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </li>
-                                    <li class="col-sm-12" id="edades-container" style="display:none;">
-                                        <label>Edades de menores</label>
-                                        <div id="edades-fields" class="quote-edades-row"></div>
-                                    </li>
                                     <li class="col-sm-12">
                                         <label for="q_obs">Observaciones</label>
-                                        <textarea id="q_obs" placeholder="Flexibilidad de fechas, otros destinos a cotizar, etc."></textarea>
+                                        <textarea id="q_obs"
+                                            placeholder="Flexibilidad de fechas, otros destinos a cotizar, etc."></textarea>
                                     </li>
                                     <li class="col-sm-12">
                                         <label class="quote-checkbox-label">
@@ -158,7 +194,9 @@
                                 <div class="text-center">
                                     <button type="submit" class="contact-btn">Cotizar</button>
                                 </div>
-                                <p id="success-msg" style="display:none; color:white; margin-top:15px;" class="text-center">¡Solicitud enviada con éxito! Te contactaremos en menos de 24hs.</p>
+                                <p id="success-msg" style="display:none; color:white; margin-top:15px;"
+                                    class="text-center">¡Solicitud enviada con éxito! Te contactaremos en menos de 24hs.
+                                </p>
                             </form>
                         </div>
                     </div>
@@ -245,13 +283,18 @@
                 <div class="row">
                     <div class="col-lg-3 col-sm-6">
                         <div class="footer-left">
-                            <a class="footer-logo" href="index.html"><img src="assets/img/footer-logo.webp" alt="image"></a>
-                            <p>Unimos agilidad, profesionalismo y tarifas competitivas para que vivas la mejor experiencia de viaje.
+                            <a class="footer-logo" href="index.html"><img src="assets/img/footer-logo.webp"
+                                    alt="image"></a>
+                            <p>Unimos agilidad, profesionalismo y tarifas competitivas para que vivas la mejor
+                                experiencia de viaje.
                             </p>
                             <ul>
-                                <li><a href="https://www.instagram.com/traveloz.uy/" target="_blank"><i class="fa-brands fa-instagram"></i></a></li>
-                                <li><a href="https://www.facebook.com/traveloz.uy/" target="_blank"><i class="fa-brands fa-facebook-f"></i></a></li>
-                                <li><a href="https://www.linkedin.com/company/travelozuy" target="_blank"><i class="fa-brands fa-linkedin-in"></i></a></li>
+                                <li><a href="https://www.instagram.com/traveloz.uy/" target="_blank"><i
+                                            class="fa-brands fa-instagram"></i></a></li>
+                                <li><a href="https://www.facebook.com/traveloz.uy/" target="_blank"><i
+                                            class="fa-brands fa-facebook-f"></i></a></li>
+                                <li><a href="https://www.linkedin.com/company/travelozuy" target="_blank"><i
+                                            class="fa-brands fa-linkedin-in"></i></a></li>
                             </ul>
                         </div>
                     </div>
@@ -259,9 +302,13 @@
                         <div class="footer-link style2 ps-lg-4">
                             <h3 class="title">Contacto</h3>
                             <ul>
-                                <li><span class="icon"><i class="fa-solid fa-location-dot"></i></span><a href="javascript:;">Av. Dr. Luis Alberto de Herrera 1343 Of. 301 - Edificio Trade Plaza</a></li>
-                                <li><span class="icon"><i class="fa-solid fa-envelope"></i></span><a href="mailto:info@traveloz.com.uy">info@traveloz.com.uy</a></li>
-                                <li><span class="icon"><i class="fa-solid fa-mobile-screen-button"></i></span><a href="tel:+598 2628 1717">+598 2628 1717</a></li>
+                                <li><span class="icon"><i class="fa-solid fa-location-dot"></i></span><a
+                                        href="javascript:;">Av. Dr. Luis Alberto de Herrera 1343 Of. 301 - Edificio
+                                        Trade Plaza</a></li>
+                                <li><span class="icon"><i class="fa-solid fa-envelope"></i></span><a
+                                        href="mailto:info@traveloz.com.uy">info@traveloz.com.uy</a></li>
+                                <li><span class="icon"><i class="fa-solid fa-mobile-screen-button"></i></span><a
+                                        href="tel:+598 2628 1717">+598 2628 1717</a></li>
                                 <li><span class="icon"><i class="fa-solid fa-clock"></i></span>09:30 AM - 18:30 PM</li>
                             </ul>
                         </div>
@@ -269,7 +316,7 @@
                     <div class="col-lg-3 col-sm-6">
                         <div class="footer-link ps-lg-5">
                             <h3 class="title">Información útil</h3>
-                             <ul>
+                            <ul>
                                 <li><a href="work-with-us.html">Trabaja con nosotros</a></li>
                                 <li><a href="terms.html">Términos y condiciones</a></li>
                                 <li><a href="faq.html">Preguntas frecuentes</a></li>
@@ -279,7 +326,7 @@
                     </div>
                     <div class="col-lg-3 col-sm-6">
                         <ul class="footer-brand-logo">
-                            <li> <a href="index.html"><img src="assets/img/footer-un.webp" alt="image"></a></li>
+                            <li> <a href="index.html"><img src="assets/img/logouruguaynatural.png" alt="image"></a></li>
                             <li><a href="index.html"><img src="assets/img/footer-aud.webp" alt="image"></a></li>
                         </ul>
                     </div>
@@ -298,85 +345,43 @@
     <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
     <script src="assets/js/main.js"></script>
 
-<script>
-// Date picker
-document.addEventListener('DOMContentLoaded', function() {
-    new Litepicker({
-        element: document.getElementById('q_dates'),
-        singleMode: false,
-        format: 'DD MMM YYYY',
-        minDate: new Date(),
-        numberOfMonths: 1,
-        numberOfColumns: 1,
-        lang: 'es-ES',
-        tooltipText: {
-            one: 'día',
-            other: 'días'
-        },
-        tooltipNumber: function(totalDays) { return totalDays; }
-    });
+    <script>
+        // Date picker
+        document.addEventListener('DOMContentLoaded', function () {
+            new Litepicker({
+                element: document.getElementById('q_dates'),
+                singleMode: false,
+                format: 'DD MMM YYYY',
+                minDate: new Date(),
+                numberOfMonths: 1,
+                numberOfColumns: 1,
+                lang: 'es-ES',
+                tooltipText: {
+                    one: 'día',
+                    other: 'días'
+                },
+                tooltipNumber: function (totalDays) { return totalDays; }
+            });
 
-    // Pax counter buttons
-    document.querySelectorAll('.quote-pax-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var target = document.getElementById(this.dataset.target);
-            var val = parseInt(target.value);
-            var min = parseInt(target.min);
-            var max = parseInt(target.max);
-            if (this.dataset.action === 'plus' && val < max) {
-                target.value = val + 1;
-            } else if (this.dataset.action === 'minus' && val > min) {
-                target.value = val - 1;
-            }
-            if (this.dataset.target === 'q_menores') {
-                updateEdades();
-            }
+            // Form submit
+            document.getElementById('cotizacion-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+                var box = document.getElementById('cotizacion-box');
+                var successMsg = document.getElementById('success-msg');
+                var btn = this.querySelector('.contact-btn');
+                box.classList.add('success');
+                successMsg.style.display = 'block';
+                btn.disabled = true;
+                var form = this;
+                setTimeout(function () {
+                    form.reset();
+                    box.classList.remove('success');
+                    successMsg.style.display = 'none';
+                    btn.disabled = false;
+                }, 5000);
+            });
         });
-    });
-
-    function updateEdades() {
-        var count = parseInt(document.getElementById('q_menores').value);
-        var container = document.getElementById('edades-container');
-        var fields = document.getElementById('edades-fields');
-        fields.innerHTML = '';
-        if (count > 0) {
-            container.style.display = '';
-            for (var i = 0; i < count; i++) {
-                var input = document.createElement('input');
-                input.type = 'number';
-                input.min = '0';
-                input.max = '17';
-                input.placeholder = 'Edad menor ' + (i + 1);
-                input.required = true;
-                input.className = 'quote-edad-input';
-                fields.appendChild(input);
-            }
-        } else {
-            container.style.display = 'none';
-        }
-    }
-
-    // Form submit
-    document.getElementById('cotizacion-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        var box = document.getElementById('cotizacion-box');
-        var successMsg = document.getElementById('success-msg');
-        var btn = this.querySelector('.contact-btn');
-        box.classList.add('success');
-        successMsg.style.display = 'block';
-        btn.disabled = true;
-        var form = this;
-        setTimeout(function() {
-            form.reset();
-            box.classList.remove('success');
-            successMsg.style.display = 'none';
-            btn.disabled = false;
-            document.getElementById('edades-container').style.display = 'none';
-            document.getElementById('edades-fields').innerHTML = '';
-        }, 5000);
-    });
-});
-</script>
+    </script>
 
     <!-- Modal Agencia Registrada -->
     <div id="agenciaModal" role="dialog" aria-modal="true" aria-label="Agencia registrada">

@@ -535,21 +535,39 @@
     });
 }(jQuery));
 
-// Force autoplay on mobile Safari
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('video.hero-video').forEach(function(video) {
+// Force autoplay on mobile Safari (aplica a index.html y corporativo.html)
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('video.hero-video').forEach(function (video) {
+        // Atributos necesarios para Safari iOS
         video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
         video.setAttribute('muted', '');
         video.muted = true;
-        var playPromise = video.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(function() {
-                // Retry on user interaction
-                document.addEventListener('touchstart', function retryPlay() {
-                    video.play();
-                    document.removeEventListener('touchstart', retryPlay);
-                }, { once: true });
-            });
+
+        // Forzar load antes de play para Safari
+        video.load();
+
+        var tryPlay = function () {
+            var playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(function () {
+                    // Retry on first user interaction (touch o scroll)
+                    var retry = function () {
+                        video.play();
+                        document.removeEventListener('touchstart', retry);
+                        document.removeEventListener('scroll', retry);
+                    };
+                    document.addEventListener('touchstart', retry, { once: true });
+                    document.addEventListener('scroll', retry, { once: true });
+                });
+            }
+        };
+
+        // Intentar play inmediatamente
+        if (video.readyState >= 2) {
+            tryPlay();
+        } else {
+            video.addEventListener('loadeddata', tryPlay, { once: true });
         }
     });
 });
@@ -572,51 +590,52 @@ if (dateRangeEl) {
     });
 }
 
-const input = document.getElementById('passengerInput');
-const dropdown = document.getElementById('passengerDropdown');
+const inputs = document.querySelectorAll('.passenger-input');
+inputs.forEach(input => {
+    const dropdown = input.nextElementSibling;
+    if (input && dropdown && dropdown.classList.contains('passenger-dropdown')) {
+        let counts = {
+            adult: 0,
+            child: 0,
+            infant: 0
+        };
 
-if (input && dropdown) {
-    let counts = {
-        adult: 0,
-        child: 0,
-        infant: 0
-    };
-
-    input.addEventListener('click', () => {
-        dropdown.style.display =
-            dropdown.style.display === 'block' ? 'none' : 'block';
-    });
-
-    document.querySelectorAll('.counter button').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const type = btn.dataset.type;
-            const action = btn.dataset.action;
-
-            if (action === 'plus') counts[type]++;
-            if (action === 'minus' && counts[type] > 0) counts[type]--;
-
-            const countEl = document.getElementById(type + 'Count');
-            if (countEl) countEl.innerText = counts[type];
-
-            updatePassengerText();
+        input.addEventListener('click', () => {
+            dropdown.style.display =
+                dropdown.style.display === 'block' ? 'none' : 'block';
         });
-    });
 
-    function updatePassengerText() {
-        const total = counts.adult + counts.child + counts.infant;
-        const textEl = document.getElementById('passengerText');
-        if (!textEl) return;
+        dropdown.querySelectorAll('.counter button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.type;
+                const action = btn.dataset.action;
 
-        textEl.innerText =
-            total > 0 ? `${total} Pasajeros` : '0 Pasajeros';
+                if (action === 'plus') counts[type]++;
+                if (action === 'minus' && counts[type] > 0) counts[type]--;
+
+                const countEl = dropdown.querySelector('.' + type + 'Count') || document.getElementById(type + 'Count');
+                if (countEl) countEl.innerText = counts[type];
+
+                updatePassengerText(input, counts);
+            });
+        });
+
+        // close on outside click
+        document.addEventListener('click', e => {
+            if (!e.target.closest('.passenger-select')) {
+                dropdown.style.display = 'none';
+            }
+        });
     }
+});
 
-    // close on outside click
-    document.addEventListener('click', e => {
-        if (!e.target.closest('.passenger-select')) {
-            dropdown.style.display = 'none';
-        }
-    });
+function updatePassengerText(input, counts) {
+    const total = counts.adult + counts.child + counts.infant;
+    const textEl = input.querySelector('span:first-child') || document.getElementById('passengerText');
+    if (!textEl) return;
+
+    textEl.innerText =
+        total > 0 ? `${total} Pasajeros` : '0 Pasajeros';
 }
 
 const prefInput = document.getElementById('preferenciaInput');

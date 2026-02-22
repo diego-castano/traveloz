@@ -271,7 +271,13 @@ section {
     top: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover
+    object-fit: cover;
+    -webkit-object-fit: cover;
+    object-position: center center;
+    -webkit-object-position: center center;
+    /* Necesario para Safari iOS */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 .hero-text {
@@ -508,6 +514,13 @@ section {
 
 .footer-brand-logo li:last-child {
     margin-right: 0
+}
+
+.footer-brand-logo li img {
+    max-height: 100px;
+    max-width: 100%;
+    width: auto;
+    height: auto;
 }
 
 .footer-whatsapp {
@@ -1610,7 +1623,7 @@ section {
     font-family: 'Clarika Geometric';
 }
 
-.faq-tab-content .plain-content > h2:first-child {
+.faq-tab-content .plain-content>h2:first-child {
     display: none;
 }
 
@@ -2332,6 +2345,36 @@ strong {
 .contact-form-wrapper form select option {
     background: #7a5cd1;
     color: #fff;
+}
+
+.contact-form-wrapper .passenger-select {
+    max-width: 100%;
+}
+
+.contact-form-wrapper .passenger-input {
+    background: transparent !important;
+    border: 2px solid rgba(255, 255, 255, 0.9) !important;
+    color: #fff !important;
+    padding: 12px 18px !important;
+    border-radius: 6px !important;
+    height: auto !important;
+    margin-bottom: 10px;
+    font-size: 15px !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.contact-form-wrapper .passenger-input span#passengerText {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.contact-form-wrapper .passenger-input .arrow img {
+    filter: brightness(0) invert(1);
+    -webkit-filter: brightness(0) invert(1);
+    width: 12px;
+    height: 8px;
 }
 
 .quote-pax-row {
@@ -3127,6 +3170,27 @@ header.header-area.header-dark {
 
     .p_150 {
         padding: 0;
+    }
+
+    /* Fix hero-area height en Safari iOS mobile */
+    .hero-area {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        min-height: 100svh;
+        height: 100vh;
+        height: 100svh;
+    }
+
+    /* Fix video en Safari iOS mobile */
+    .hero-video {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        -webkit-object-fit: cover;
+        min-height: 100%;
     }
 
     .hero-sub-title {
