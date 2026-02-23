@@ -590,7 +590,7 @@ if (dateRangeEl) {
     });
 }
 
-const inputs = document.querySelectorAll('.passenger-input');
+const inputs = document.querySelectorAll('.passenger-input:not(#preferenciaInput)');
 inputs.forEach(input => {
     const dropdown = input.nextElementSibling;
     if (input && dropdown && dropdown.classList.contains('passenger-dropdown')) {
