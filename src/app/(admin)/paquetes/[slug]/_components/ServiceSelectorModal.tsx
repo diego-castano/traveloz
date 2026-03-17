@@ -201,7 +201,7 @@ export default function ServiceSelectorModal({
     <Modal open={open} onOpenChange={onOpenChange} size="lg">
       <ModalHeader title="Agregar Servicio">{null}</ModalHeader>
       <ModalBody>
-        <Tabs defaultValue="aereos" layoutId="serviceSelectorTabs">
+        <Tabs defaultValue="aereos" layoutId="serviceSelectorTabs" variant="dark">
           <TabsList>
             <TabsTrigger value="aereos">
               <span className="flex items-center gap-1.5">

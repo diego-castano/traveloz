@@ -7,17 +7,21 @@ import { cn } from '@/components/lib/cn';
 import { springs } from '@/components/lib/animations';
 
 /* ------------------------------------------------------------------ */
-/*  Context to share active value + layoutId across sub-components     */
+/*  Context to share active value + layoutId + variant                  */
 /* ------------------------------------------------------------------ */
+
+type TabsVariant = 'light' | 'dark';
 
 interface TabsContextValue {
   activeValue: string | undefined;
   layoutId: string;
+  variant: TabsVariant;
 }
 
 const TabsContext = React.createContext<TabsContextValue>({
   activeValue: undefined,
   layoutId: 'activeTab',
+  variant: 'light',
 });
 
 /* ------------------------------------------------------------------ */
@@ -29,6 +33,8 @@ interface TabsProps {
   defaultValue?: string;
   onValueChange?: (value: string) => void;
   layoutId?: string;
+  /** Color scheme: 'light' for light backgrounds, 'dark' for dark backgrounds */
+  variant?: TabsVariant;
   className?: string;
   children: React.ReactNode;
 }
@@ -38,6 +44,7 @@ function Tabs({
   defaultValue,
   onValueChange,
   layoutId = 'activeTab',
+  variant = 'light',
   className,
   children,
 }: TabsProps) {
@@ -59,7 +66,7 @@ function Tabs({
   );
 
   return (
-    <TabsContext.Provider value={{ activeValue, layoutId }}>
+    <TabsContext.Provider value={{ activeValue, layoutId, variant }}>
       <RadixTabs.Root
         value={activeValue}
         defaultValue={defaultValue}
@@ -82,10 +89,13 @@ interface TabsListProps {
 }
 
 function TabsList({ className, children }: TabsListProps) {
+  const { variant } = React.useContext(TabsContext);
+
   return (
     <RadixTabs.List
       className={cn(
-        'relative flex border-b border-neutral-200',
+        'relative flex border-b',
+        variant === 'dark' ? 'border-white/10' : 'border-neutral-200',
         className
       )}
     >
@@ -105,7 +115,7 @@ interface TabsTriggerProps {
 }
 
 function TabsTrigger({ value, className, children }: TabsTriggerProps) {
-  const { activeValue, layoutId } = React.useContext(TabsContext);
+  const { activeValue, layoutId, variant } = React.useContext(TabsContext);
   const isActive = activeValue === value;
 
   return (
@@ -113,8 +123,9 @@ function TabsTrigger({ value, className, children }: TabsTriggerProps) {
       value={value}
       className={cn(
         'relative px-4 py-2.5 text-[13.5px] font-medium transition-colors',
-        'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50',
-        'data-[state=active]:text-neutral-900 data-[state=active]:font-semibold',
+        variant === 'dark'
+          ? 'text-white/50 hover:text-white/90 hover:bg-white/8 data-[state=active]:text-white data-[state=active]:font-semibold'
+          : 'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50 data-[state=active]:text-neutral-900 data-[state=active]:font-semibold',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/40',
         className
       )}
@@ -166,4 +177,4 @@ function TabsContent({ value, className, children }: TabsContentProps) {
 /* ------------------------------------------------------------------ */
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
-export type { TabsProps, TabsListProps, TabsTriggerProps, TabsContentProps };
+export type { TabsProps, TabsListProps, TabsTriggerProps, TabsContentProps, TabsVariant };
