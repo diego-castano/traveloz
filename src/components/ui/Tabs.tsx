@@ -85,7 +85,7 @@ function TabsList({ className, children }: TabsListProps) {
   return (
     <RadixTabs.List
       className={cn(
-        'relative flex border-b border-white/10',
+        'relative flex border-b border-neutral-200',
         className
       )}
     >
@@ -113,9 +113,9 @@ function TabsTrigger({ value, className, children }: TabsTriggerProps) {
       value={value}
       className={cn(
         'relative px-4 py-2.5 text-[13.5px] font-medium transition-colors',
-        'text-white/50 hover:text-white/90 hover:bg-white/8',
-        'data-[state=active]:text-white data-[state=active]:font-semibold',
-        'focus-visible:outline-none focus-visible:shadow-focus-teal',
+        'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-50',
+        'data-[state=active]:text-neutral-900 data-[state=active]:font-semibold',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400/40',
         className
       )}
     >
