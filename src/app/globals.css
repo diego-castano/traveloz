@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Select dropdown CSS animations using data-state attributes */
+/* Radix Select does not support forceMount on Content (position="popper"), */
+/* so we use CSS data-state animations instead of Motion AnimatePresence */
+.SelectContent[data-state="open"] {
+  animation: dropdownIn 200ms ease-out;
+}
+
+.SelectContent[data-state="closed"] {
+  animation: dropdownOut 150ms ease-in;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-8px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+@keyframes dropdownOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+    filter: blur(2px);
+  }
+}

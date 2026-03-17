@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <base href="/presentacion_traveloz/">
+  <title>TravelOz — Flujo del Backend Admin</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- NAVBAR -->
+  <!-- ═══════════════════════════════════════════ -->
+  <nav class="navbar" id="navbar">
+    <div class="navbar-inner">
+      <div class="navbar-brand">
+        <img src="header-logo.webp" alt="TravelOz" class="brand-logo">
+      </div>
+      <ul class="navbar-links">
+        <li><a href="#proyecto" class="nav-link active">Proyecto</a></li>
+        <li><a href="#modulos" class="nav-link">Módulos</a></li>
+        <li><a href="#conexiones" class="nav-link">Conexiones</a></li>
+        <li><a href="#pricing" class="nav-link">Pricing</a></li>
+        <li><a href="#flujo" class="nav-link">Flujo</a></li>
+        <li><a href="#roles" class="nav-link">Roles</a></li>
+        <li><a href="#reglas" class="nav-link">Reglas</a></li>
+        <li><a href="#cliente" class="nav-link">Para el Cliente</a></li>
+        <li><a href="#datos" class="nav-link">Datos</a></li>
+        <li><a href="#stack" class="nav-link">Stack</a></li>
+      </ul>
+      <button class="navbar-toggle" id="navToggle" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- HERO -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="hero" id="proyecto">
+    <div class="hero-bg">
+      <div class="hero-orb hero-orb--violet"></div>
+      <div class="hero-orb hero-orb--teal"></div>
+      <div class="hero-noise"></div>
+    </div>
+    <div class="hero-content">
+      <img src="header-logo.webp" alt="TravelOz" class="hero-logo">
+      <p class="hero-subtitle">Sistema unificado de gestión de paquetes turísticos con propagación automática de precios, servicios reutilizables y experiencia premium.</p>
+      <div class="hero-stats">
+        <a href="#modulos" class="stat-card stat-card--link">
+          <span class="stat-number" data-count="7">0</span>
+          <span class="stat-label">Módulos principales</span>
+        </a>
+        <a href="#roles" class="stat-card stat-card--link">
+          <span class="stat-number" data-count="3">0</span>
+          <span class="stat-label">Roles de usuario</span>
+        </a>
+        <a href="#cliente" class="stat-card stat-card--link">
+          <span class="stat-number" data-count="25">0</span>
+          <span class="stat-label">Profesionales</span>
+        </a>
+        <a href="#reglas" class="stat-card stat-card--link">
+          <span class="stat-number" data-count="12">0</span>
+          <span class="stat-label">Reglas de negocio</span>
+        </a>
+      </div>
+      <a href="#modulos" class="hero-cta">Explorar módulos</a>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- DESCRIPCIÓN DEL PROYECTO -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section" id="descripcion">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Contexto</span>
+        <h2 class="section-title">Descripción del Proyecto</h2>
+        <p class="section-subtitle">Un admin moderno, rápido y visualmente espectacular que transforma la operación diaria.</p>
+      </div>
+      <div class="grid-2">
+        <div class="glass-card">
+          <div class="card-icon card-icon--violet">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4"/></svg>
+          </div>
+          <h3>TravelOz</h3>
+          <p>Marca principal. Turismo tradicional + corporativo. 48K seguidores en Instagram. Sede en Montevideo, Av. Luis Alberto de Herrera 1343.</p>
+          <span class="tag">Marca principal</span>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon card-icon--teal">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+          </div>
+          <h3>Destinico</h3>
+          <p>Marca secundaria. Mismo servicio, audiencia diferente. URL separada, datos independientes. Backend y código compartido.</p>
+          <span class="tag tag--teal">Marca secundaria</span>
+        </div>
+      </div>
+      <div class="glass-card glass-card--wide">
+        <h3>El problema que resolvemos</h3>
+        <div class="pain-points">
+          <div class="pain-point">
+            <span class="pain-icon">1</span>
+            <div>
+              <strong>Desconexión servicios-paquetes</strong>
+              <p>Actualmente los servicios y paquetes no están vinculados. Cambiar un precio requiere editar cada paquete manualmente, uno por uno.</p>
+            </div>
+          </div>
+          <div class="pain-point">
+            <span class="pain-icon">2</span>
+            <div>
+              <strong>Demasiados pasos</strong>
+              <p>Navegación fragmentada entre múltiples pestañas y pantallas para una sola operación.</p>
+            </div>
+          </div>
+          <div class="pain-point">
+            <span class="pain-icon">3</span>
+            <div>
+              <strong>Sin datos para decisiones</strong>
+              <p>Cero reportes. Las decisiones de qué paquetes armar se toman por intuición, no por datos del sistema.</p>
+            </div>
+          </div>
+          <div class="pain-point">
+            <span class="pain-icon">4</span>
+            <div>
+              <strong>Gestión doble</strong>
+              <p>Dos marcas = cargar todo dos veces. El nuevo sistema unifica la gestión con datos independientes.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MÓDULOS DEL ADMINISTRADOR -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section--dark" id="modulos">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Sidebar</span>
+        <h2 class="section-title">Módulos del Administrador</h2>
+        <p class="section-subtitle">7 módulos principales en sidebar plano sin dropdowns, agrupados en 3 secciones.</p>
+      </div>
+
+      <!-- Module group: General -->
+      <div class="module-group">
+        <h3 class="module-group-title">General</h3>
+        <div class="module-grid">
+          <div class="module-card" data-module="dashboard">
+            <div class="module-number">01</div>
+            <div class="module-icon module-icon--violet">
+              <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+            </div>
+            <h4>Dashboard</h4>
+            <p>Vista resumen con stat cards animadas, actividad reciente, acceso rápido a módulos y gráficas de estado general.</p>
+            <div class="module-features">
+              <span>Stat cards</span>
+              <span>Actividad reciente</span>
+              <span>Accesos rápidos</span>
+            </div>
+          </div>
+          <div class="module-card" data-module="paquetes">
+            <div class="module-number">02</div>
+            <div class="module-icon module-icon--violet">
+              <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+            <h4>Paquetes</h4>
+            <p>Entidad central. CRUD completo con 5 tabs: Datos, Servicios, Precios, Fotos, Publicación. Clonado, búsqueda instantánea, filtros inteligentes.</p>
+            <div class="module-features">
+              <span>5 tabs</span>
+              <span>Precio en vivo</span>
+              <span>Clonar</span>
+              <span>Filtros</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module group: Servicios -->
+      <div class="module-group">
+        <h3 class="module-group-title">Servicios</h3>
+        <div class="services-grid">
+          <div class="service-card" data-module="aereos">
+            <div class="service-icon">
+              <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 19V5m0 0L5 12m7-7l7 7" transform="rotate(-45 16 16)"/><path d="M5 25h22"/></svg>
+            </div>
+            <div class="service-info">
+              <h4>Aéreos</h4>
+              <p>Vuelos reutilizables. Precio por persona con variación por periodo. Ruta, destino, aerolínea, equipaje, itinerario.</p>
+            </div>
+            <div class="service-tags">
+              <span>Por persona</span>
+              <span>Precio x periodo</span>
+              <span>Reutilizable</span>
+            </div>
+          </div>
+          <div class="service-card" data-module="alojamientos">
+            <div class="service-icon">
+              <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 26V8a2 2 0 012-2h20a2 2 0 012 2v18"/><path d="M4 14h24M12 26V14m8 12V14"/></svg>
+            </div>
+            <div class="service-info">
+              <h4>Alojamientos</h4>
+              <p>Hoteles con fotos y categoría. Precio por noche por persona (base doble), varía por periodo y régimen.</p>
+            </div>
+            <div class="service-tags">
+              <span>Por noche/persona</span>
+              <span>Base doble</span>
+              <span>Precio x periodo + régimen</span>
+              <span>Fotos</span>
+            </div>
+          </div>
+          <div class="service-card" data-module="traslados">
+            <div class="service-icon">
+              <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 17h22M5 17l3-10h16l3 10M9 22a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
+            </div>
+            <div class="service-info">
+              <h4>Traslados</h4>
+              <p>Tabla editable inline. Precio fijo único sin variación temporal. Nombre, tipo (regular/privado), ciudad, proveedor.</p>
+            </div>
+            <div class="service-tags">
+              <span>Precio fijo único</span>
+              <span>Sin variación temporal</span>
+              <span>Inline edit</span>
+            </div>
+          </div>
+          <div class="service-card" data-module="seguros">
+            <div class="service-icon">
+              <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 28s10-5 10-12.5V7l-10-3.5L6 7v8.5C6 23 16 28 16 28z"/></svg>
+            </div>
+            <div class="service-info">
+              <h4>Seguros</h4>
+              <p>Costo por día, sin variación por periodo. Proveedor, plan, cobertura (texto libre). ~4 proveedores, ~100 planes.</p>
+            </div>
+            <div class="service-tags">
+              <span>Costo por día</span>
+              <span>Sin variación temporal</span>
+              <span>~4 proveedores</span>
+            </div>
+          </div>
+          <div class="service-card" data-module="circuitos">
+            <div class="service-icon">
+              <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="16" cy="16" r="11"/><path d="M16 5a11 11 0 00-7.78 3.22m0 15.56A11 11 0 0016 27"/><path d="M10 16h12M16 10v12"/></svg>
+            </div>
+            <div class="service-info">
+              <h4>Circuitos / Cruceros</h4>
+              <p>Itinerarios día por día con proveedor. Precio total del circuito con variación por periodo. Se muestra automáticamente en el paquete.</p>
+            </div>
+            <div class="service-tags">
+              <span>Precio total del circuito</span>
+              <span>Varía x periodo</span>
+              <span>Itinerario auto</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module group: Sistema -->
+      <div class="module-group">
+        <h3 class="module-group-title">Sistema</h3>
+        <div class="system-grid">
+          <div class="system-card">
+            <div class="system-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2"/><circle cx="10" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <h4>Proveedores</h4>
+              <p>Entidad normalizada. Nombre + contacto. Evita duplicados.</p>
+            </div>
+          </div>
+          <div class="system-card">
+            <div class="system-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 10h16M4 14h10"/></svg>
+            </div>
+            <div>
+              <h4>Catálogos</h4>
+              <p>Temporadas, tipos de paquete, países/ciudades, regímenes, etiquetas.</p>
+            </div>
+          </div>
+          <div class="system-card">
+            <div class="system-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-3-3.87M9 3.13a4 4 0 010 7.75"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <h4>Perfiles y Roles</h4>
+              <p>Gestión de usuarios: Admin, Vendedor, Marketing. Sin auto-registro.</p>
+            </div>
+          </div>
+          <div class="system-card">
+            <div class="system-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+            </div>
+            <div>
+              <h4>Notificaciones</h4>
+              <p>Wizard 7 pasos: seleccionar etiqueta → filtrar paquetes → elegir paquetes → previsualizar template → confirmar destinatarios → enviar email → ver historial. Email vía servicio transaccional (Resend/SendGrid). Historial completo con fecha, etiqueta, paquetes enviados y destinatarios. Cada paquete incluye link directo al frontend público.</p>
+            </div>
+          </div>
+          <div class="system-card">
+            <div class="system-icon">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            </div>
+            <div>
+              <h4>Reporting</h4>
+              <p>Paquetes por destino, hoteles más usados, proveedores, visitas web.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- CONEXIÓN ENTRE MÓDULOS -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section" id="conexiones">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Arquitectura</span>
+        <h2 class="section-title">Conexión entre Módulos</h2>
+        <p class="section-subtitle">Cómo se relacionan las entidades entre sí. El paquete es el centro y los servicios se asignan a él.</p>
+      </div>
+
+      <!-- Visual SVG Diagram -->
+      <div class="diagram-wrapper">
+        <svg class="diagram-svg" viewBox="0 0 1040 610" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- Gradients -->
+            <linearGradient id="grad-teal" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#3BBFAD"/>
+              <stop offset="100%" stop-color="#3BBFAD" stop-opacity="0.4"/>
+            </linearGradient>
+            <linearGradient id="grad-violet" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#A05ED3"/>
+              <stop offset="100%" stop-color="#A05ED3" stop-opacity="0.4"/>
+            </linearGradient>
+            <linearGradient id="grad-neutral" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#8A8DB5"/>
+              <stop offset="100%" stop-color="#8A8DB5" stop-opacity="0.2"/>
+            </linearGradient>
+            <linearGradient id="paquete-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#A05ED3"/>
+              <stop offset="100%" stop-color="#7A3CA8"/>
+            </linearGradient>
+            <!-- Glow filter for center node -->
+            <filter id="glow-violet" x="-30%" y="-30%" width="160%" height="160%">
+              <feGaussianBlur stdDeviation="8" result="blur"/>
+              <feFlood flood-color="#A05ED3" flood-opacity="0.25"/>
+              <feComposite in2="blur" operator="in"/>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <!-- Arrow marker -->
+            <marker id="arrow-teal" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 3.5 L0 7 Z" fill="#3BBFAD" opacity="0.6"/>
+            </marker>
+            <marker id="arrow-violet" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 3.5 L0 7 Z" fill="#A05ED3" opacity="0.6"/>
+            </marker>
+            <marker id="arrow-neutral" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0 0 L10 3.5 L0 7 Z" fill="#8A8DB5" opacity="0.4"/>
+            </marker>
+          </defs>
+
+          <!-- ROW LABELS -->
+          <text x="30" y="95" font-family="Clarika Geometric, sans-serif" font-size="10" font-weight="700" fill="#3BBFAD" letter-spacing="2">SERVICIOS</text>
+          <text x="30" y="310" font-family="Clarika Geometric, sans-serif" font-size="10" font-weight="700" fill="#A05ED3" letter-spacing="2">CENTRO</text>
+          <text x="30" y="445" font-family="Clarika Geometric, sans-serif" font-size="10" font-weight="700" fill="#8A8DB5" letter-spacing="2">SOPORTE</text>
+          <text x="30" y="565" font-family="Clarika Geometric, sans-serif" font-size="10" font-weight="700" fill="#A05ED3" letter-spacing="2">SALIDA</text>
+
+          <!-- ═══ CONNECTION LINES (behind nodes) ═══ -->
+          <!-- Services → Paquete (curved paths from center of each service node) -->
+          <path d="M175 158 C175 210, 420 240, 420 280" stroke="url(#grad-teal)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.5" marker-end="url(#arrow-teal)"/>
+          <path d="M365 158 C365 210, 450 240, 450 280" stroke="url(#grad-teal)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.5" marker-end="url(#arrow-teal)"/>
+          <path d="M555 158 C555 210, 480 250, 480 280" stroke="url(#grad-teal)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.5" marker-end="url(#arrow-teal)"/>
+          <path d="M745 158 C745 210, 520 240, 510 280" stroke="url(#grad-teal)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.5" marker-end="url(#arrow-teal)"/>
+          <path d="M935 158 C935 210, 560 240, 540 280" stroke="url(#grad-teal)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.5" marker-end="url(#arrow-teal)"/>
+
+          <!-- Proveedores → Services (dashed, subtle — Proveedor connects to all service types) -->
+          <path d="M300 430 C200 350, 175 240, 175 158" stroke="url(#grad-neutral)" stroke-width="1" stroke-dasharray="3 3" opacity="0.2"/>
+          <path d="M340 430 C340 350, 365 240, 365 158" stroke="url(#grad-neutral)" stroke-width="1" stroke-dasharray="3 3" opacity="0.2"/>
+          <path d="M380 430 C450 350, 555 240, 555 158" stroke="url(#grad-neutral)" stroke-width="1" stroke-dasharray="3 3" opacity="0.2"/>
+          <path d="M400 430 C550 350, 745 240, 745 158" stroke="url(#grad-neutral)" stroke-width="1" stroke-dasharray="3 3" opacity="0.2"/>
+
+          <!-- Soporte → Paquete (subtle, from center of each support node) -->
+          <path d="M175 430 C175 395, 420 375, 420 360" stroke="url(#grad-neutral)" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.3" marker-end="url(#arrow-neutral)"/>
+          <path d="M365 430 C365 400, 450 375, 450 360" stroke="url(#grad-neutral)" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.3" marker-end="url(#arrow-neutral)"/>
+          <path d="M595 430 C595 400, 510 375, 510 360" stroke="url(#grad-neutral)" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.3" marker-end="url(#arrow-neutral)"/>
+          <path d="M785 430 C785 395, 540 375, 540 360" stroke="url(#grad-neutral)" stroke-width="1.2" stroke-dasharray="4 4" opacity="0.3" marker-end="url(#arrow-neutral)"/>
+
+          <!-- Paquete → Salida (violet) -->
+          <path d="M420 360 C400 420, 250 480, 250 540" stroke="url(#grad-violet)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.45" marker-end="url(#arrow-violet)"/>
+          <path d="M480 360 C480 440, 480 480, 480 540" stroke="url(#grad-violet)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.45" marker-end="url(#arrow-violet)"/>
+          <path d="M540 360 C560 420, 710 480, 710 540" stroke="url(#grad-violet)" stroke-width="1.8" stroke-dasharray="6 3" opacity="0.45" marker-end="url(#arrow-violet)"/>
+
+          <!--
+            PENDIENTE DE VALIDAR CON CLIENTE:
+            - Traslados: ¿el precio fijo es por persona o por servicio/vehículo?
+            - Seguros: ¿el costo por día es por persona o por póliza?
+            - Circuitos: ¿el precio total es por persona o por grupo?
+            Solo Aéreos ("por persona") y Alojamientos ("por noche por persona, base doble")
+            fueron confirmados explícitamente.
+          -->
+
+          <!-- ═══ SERVICE NODES (top row — taller, 3 lines: name, unit, variation) ═══ -->
+          <g class="diagram-node">
+            <rect x="100" y="80" width="150" height="78" rx="12" fill="#E6F8F5" stroke="#3BBFAD" stroke-width="1.5"/>
+            <text x="175" y="100" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="14" fill="#2A9E8E">Aéreos</text>
+            <text x="175" y="118" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="400" font-size="10" fill="#6B6F99">Por persona</text>
+            <text x="175" y="134" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="9" fill="#3BBFAD">Varía por periodo</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="290" y="80" width="150" height="78" rx="12" fill="#E6F8F5" stroke="#3BBFAD" stroke-width="1.5"/>
+            <text x="365" y="100" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="14" fill="#2A9E8E">Alojamientos</text>
+            <text x="365" y="118" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="400" font-size="10" fill="#6B6F99">Por noche/persona · Base doble</text>
+            <text x="365" y="134" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="9" fill="#3BBFAD">Varía por periodo + régimen</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="480" y="80" width="150" height="78" rx="12" fill="#E6F8F5" stroke="#3BBFAD" stroke-width="1.5"/>
+            <text x="555" y="100" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="14" fill="#2A9E8E">Traslados</text>
+            <text x="555" y="118" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="400" font-size="10" fill="#6B6F99">Precio fijo único</text>
+            <text x="555" y="134" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="9" fill="#8A8DB5">Sin variación</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="670" y="80" width="150" height="78" rx="12" fill="#E6F8F5" stroke="#3BBFAD" stroke-width="1.5"/>
+            <text x="745" y="100" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="14" fill="#2A9E8E">Seguros</text>
+            <text x="745" y="118" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="400" font-size="10" fill="#6B6F99">Costo por día</text>
+            <text x="745" y="134" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="9" fill="#8A8DB5">Sin variación</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="860" y="80" width="150" height="78" rx="12" fill="#E6F8F5" stroke="#3BBFAD" stroke-width="1.5"/>
+            <text x="935" y="100" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="14" fill="#2A9E8E">Circuitos</text>
+            <text x="935" y="118" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="400" font-size="10" fill="#6B6F99">Precio total · x periodo</text>
+            <text x="935" y="134" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="9" fill="#3BBFAD">Varía por periodo</text>
+          </g>
+
+          <!-- ═══ PAQUETE — CENTER NODE (with glow) ═══ -->
+          <g class="diagram-node diagram-node--main" filter="url(#glow-violet)">
+            <rect x="370" y="280" width="220" height="80" rx="16" fill="url(#paquete-gradient)" stroke="#B278D6" stroke-width="2"/>
+            <text x="480" y="314" text-anchor="middle" font-family="Rufina, Georgia, serif" font-weight="700" font-size="22" fill="white">PAQUETE</text>
+            <text x="480" y="340" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="400" font-size="12" fill="rgba(255,255,255,0.75)">Entidad central del sistema</text>
+          </g>
+
+          <!-- ═══ SOPORTE NODES (support row) ═══ -->
+          <g class="diagram-node">
+            <rect x="100" y="430" width="150" height="46" rx="10" fill="#F5F6FA" stroke="#D2D5E5" stroke-width="1"/>
+            <text x="175" y="458" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="13" fill="#6B6F99">Catálogos</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="290" y="430" width="150" height="46" rx="10" fill="#F5F6FA" stroke="#D2D5E5" stroke-width="1"/>
+            <text x="365" y="458" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="13" fill="#6B6F99">Proveedores</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="520" y="430" width="150" height="46" rx="10" fill="#F5F6FA" stroke="#D2D5E5" stroke-width="1"/>
+            <text x="595" y="458" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="13" fill="#6B6F99">Etiquetas</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="710" y="430" width="150" height="46" rx="10" fill="#F5F6FA" stroke="#D2D5E5" stroke-width="1"/>
+            <text x="785" y="458" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="500" font-size="13" fill="#6B6F99">Temporadas</text>
+          </g>
+
+          <!-- ═══ SALIDA NODES (output row) ═══ -->
+          <g class="diagram-node">
+            <rect x="160" y="540" width="180" height="50" rx="12" fill="#F5EDFA" stroke="#B278D6" stroke-width="1.5"/>
+            <text x="250" y="570" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="13" fill="#A05ED3">Frontend Público</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="390" y="540" width="180" height="50" rx="12" fill="#F5EDFA" stroke="#B278D6" stroke-width="1.5"/>
+            <text x="480" y="570" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="13" fill="#A05ED3">Notificaciones</text>
+          </g>
+          <g class="diagram-node">
+            <rect x="620" y="540" width="180" height="50" rx="12" fill="#F5EDFA" stroke="#B278D6" stroke-width="1.5"/>
+            <text x="710" y="570" text-anchor="middle" font-family="Clarika Geometric, sans-serif" font-weight="700" font-size="13" fill="#A05ED3">Reportes</text>
+          </g>
+        </svg>
+      </div>
+
+      <div class="glass-card glass-card--wide">
+        <h3>Relaciones clave</h3>
+        <div class="relations-grid">
+          <div class="relation">
+            <div class="relation-from">Aéreo</div>
+            <div class="relation-arrow">N:M</div>
+            <div class="relation-to">Paquete</div>
+            <p>Un aéreo MVD→CUN se reutiliza en paquetes de Cancún, Playa del Carmen, Costa Mujeres, Tulum.</p>
+          </div>
+          <div class="relation">
+            <div class="relation-from">Alojamiento</div>
+            <div class="relation-arrow">N:M</div>
+            <div class="relation-to">Paquete</div>
+            <p>Un paquete multi-destino (Río + Búzios) tiene múltiples hoteles asignados.</p>
+          </div>
+          <div class="relation">
+            <div class="relation-from">Proveedor</div>
+            <div class="relation-arrow">1:N</div>
+            <div class="relation-to">Todos los servicios</div>
+            <p>Cada aéreo, alojamiento, traslado y seguro se vincula a un proveedor normalizado. Un proveedor puede abastecer múltiples tipos de servicio.</p>
+          </div>
+          <div class="relation">
+            <div class="relation-from">Etiqueta</div>
+            <div class="relation-arrow">N:M</div>
+            <div class="relation-to">Paquete → Frontend URL</div>
+            <p>Tag "Black Friday" → traveloz.com.uy/tag/black-friday muestra todos los paquetes con esa etiqueta.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MODELO DE PRICING POR SERVICIO -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section--dark" id="pricing">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Pricing</span>
+        <h2 class="section-title">Modelo de Pricing por Servicio</h2>
+        <p class="section-subtitle">Cada tipo de servicio tiene su propia unidad de precio y lógica de variación temporal.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="pricing-card-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 19V5m0 0L5 12m7-7l7 7" transform="rotate(-45 16 16)"/><path d="M5 25h22"/></svg>
+          </div>
+          <h4>Aéreos</h4>
+          <div class="pricing-detail">
+            <span class="pricing-label">Unidad</span>
+            <span class="pricing-value">USD por persona</span>
+          </div>
+          <div class="pricing-detail">
+            <span class="pricing-label">Variación</span>
+            <span class="pricing-value">Por periodo (temporada)</span>
+          </div>
+          <div class="pricing-example">
+            <span>Baja: $700</span>
+            <span>Alta: $900</span>
+            <span>Vacaciones: $1,100</span>
+          </div>
+        </div>
+
+        <div class="pricing-card">
+          <div class="pricing-card-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 26V8a2 2 0 012-2h20a2 2 0 012 2v18"/><path d="M4 14h24M12 26V14m8 12V14"/></svg>
+          </div>
+          <h4>Alojamientos</h4>
+          <div class="pricing-detail">
+            <span class="pricing-label">Unidad</span>
+            <span class="pricing-value">USD por noche, por persona</span>
+          </div>
+          <div class="pricing-detail">
+            <span class="pricing-label">Variación</span>
+            <span class="pricing-value">Por periodo + tipo habitación</span>
+          </div>
+          <div class="pricing-example">
+            <span>Std Baja: $85/n</span>
+            <span>Sup Alta: $140/n</span>
+          </div>
+        </div>
+
+        <div class="pricing-card">
+          <div class="pricing-card-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 17h22M5 17l3-10h16l3 10M9 22a2 2 0 100-4 2 2 0 000 4zm14 0a2 2 0 100-4 2 2 0 000 4z"/></svg>
+          </div>
+          <h4>Traslados</h4>
+          <div class="pricing-detail">
+            <span class="pricing-label">Unidad</span>
+            <span class="pricing-value">USD precio fijo por servicio</span>
+          </div>
+          <div class="pricing-detail">
+            <span class="pricing-label">Variación</span>
+            <span class="pricing-value">Sin variación temporal</span>
+          </div>
+          <div class="pricing-example">
+            <span>In/Out Aeropuerto: $45</span>
+          </div>
+        </div>
+
+        <div class="pricing-card">
+          <div class="pricing-card-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M16 28s10-5 10-12.5V7l-10-3.5L6 7v8.5C6 23 16 28 16 28z"/></svg>
+          </div>
+          <h4>Seguros</h4>
+          <div class="pricing-detail">
+            <span class="pricing-label">Unidad</span>
+            <span class="pricing-value">USD por día, por persona</span>
+          </div>
+          <div class="pricing-detail">
+            <span class="pricing-label">Variación</span>
+            <span class="pricing-value">Por plan de cobertura</span>
+          </div>
+          <div class="pricing-example">
+            <span>Básico: $8/día</span>
+            <span>Premium: $15/día</span>
+          </div>
+        </div>
+
+        <div class="pricing-card">
+          <div class="pricing-card-icon">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="16" cy="16" r="11"/><path d="M10 16h12M16 10v12"/></svg>
+          </div>
+          <h4>Circuitos / Cruceros</h4>
+          <div class="pricing-detail">
+            <span class="pricing-label">Unidad</span>
+            <span class="pricing-value">USD por persona, paquete completo</span>
+          </div>
+          <div class="pricing-detail">
+            <span class="pricing-label">Variación</span>
+            <span class="pricing-value">Por periodo (temporada)</span>
+          </div>
+          <div class="pricing-example">
+            <span>Baja: $1,800</span>
+            <span>Alta: $2,400</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Factor divisor, no markup multiplicativo.</strong> El precio de venta se calcula como Neto ÷ Factor (ej. $2,450 ÷ 0.90 = $2,722). El factor vive en cada opción del paquete, no a nivel global.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- OPCIONES POR PAQUETE -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section" id="opciones">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Opciones</span>
+        <h2 class="section-title">Opciones por Paquete — Combinaciones Hoteleras</h2>
+        <p class="section-subtitle">Un paquete tiene servicios fijos compartidos y múltiples opciones que varían solo en alojamiento.</p>
+      </div>
+
+      <div class="options-demo">
+        <div class="options-fixed">
+          <h4>Servicios fijos (compartidos)</h4>
+          <p>Estos servicios son iguales en todas las opciones del paquete.</p>
+          <div class="options-fixed-items">
+            <div class="options-fixed-item">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5m0 0L5 12m7-7l7 7" transform="rotate(-45 9 9)"/></svg>
+              <span>Aéreo MVD → CUN → MVD</span>
+            </div>
+            <div class="options-fixed-item">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11h14M3 11l2-6h10l2 6M6 14a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+              <span>Traslado In/Out Aeropuerto</span>
+            </div>
+            <div class="options-fixed-item">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 16s6-3 6-7.5V4L9 2.5 3 4v4.5C3 13 9 16 9 16z"/></svg>
+              <span>Seguro Assist Card Premium</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="options-cards">
+          <div class="option-card option-card--featured">
+            <div class="option-badge">Opción A</div>
+            <h4>Grand Oasis Cancún</h4>
+            <p class="option-hotel-detail">5 estrellas — All Inclusive — Superior</p>
+            <div class="option-pricing">
+              <div class="option-price-row">
+                <span>Neto</span>
+                <span class="option-price-value">$2,450</span>
+              </div>
+              <div class="option-price-row">
+                <span>Factor</span>
+                <span class="option-price-value">0.90</span>
+              </div>
+              <div class="option-price-row option-price-row--total">
+                <span>Venta</span>
+                <span class="option-price-value">$2,722</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="option-card">
+            <div class="option-badge">Opción B</div>
+            <h4>Hyatt Zilara</h4>
+            <p class="option-hotel-detail">5 estrellas — All Inclusive — Deluxe</p>
+            <div class="option-pricing">
+              <div class="option-price-row">
+                <span>Neto</span>
+                <span class="option-price-value">$2,980</span>
+              </div>
+              <div class="option-price-row">
+                <span>Factor</span>
+                <span class="option-price-value">0.88</span>
+              </div>
+              <div class="option-price-row option-price-row--total">
+                <span>Venta</span>
+                <span class="option-price-value">$3,386</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="option-card">
+            <div class="option-badge">Opción C</div>
+            <h4>Paradisus Cancún</h4>
+            <p class="option-hotel-detail">5 estrellas — All Inclusive — Junior Suite</p>
+            <div class="option-pricing">
+              <div class="option-price-row">
+                <span>Neto</span>
+                <span class="option-price-value">$3,200</span>
+              </div>
+              <div class="option-price-row">
+                <span>Factor</span>
+                <span class="option-price-value">0.87</span>
+              </div>
+              <div class="option-price-row option-price-row--total">
+                <span>Venta</span>
+                <span class="option-price-value">$3,678</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <strong>Cada opción = combinación hotelera única.</strong> El neto de cada opción se calcula sumando los servicios fijos + el alojamiento de esa opción. Cada opción tiene su propio factor y precio de venta independiente.
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- FLUJO OPERATIVO -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section--dark" id="flujo">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Operación</span>
+        <h2 class="section-title">Flujo Operativo Completo</h2>
+        <p class="section-subtitle">De los servicios al paquete publicado — el ciclo de punta a punta.</p>
+      </div>
+
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-step">1</div>
+          <div class="timeline-content">
+            <h4>Cargar catálogos base</h4>
+            <p>Temporadas, tipos de paquete, países/ciudades, regímenes, etiquetas, proveedores. El admin tiene autonomía 100% para crear "Baja 2027" cuando quiera.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-step">2</div>
+          <div class="timeline-content">
+            <h4>Cargar servicios</h4>
+            <p>Aéreos con precios por periodo, alojamientos con fotos y régimen, traslados con precio fijo, seguros con costo/día. Todo ANTES de crear paquetes.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-step">3</div>
+          <div class="timeline-content">
+            <h4>Crear paquete</h4>
+            <p>Título, noches, salidas, tipo, temporada, validez, tags, fotos. Asignar servicios existentes desde la misma pantalla. El sistema genera el "incluye" automáticamente.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-step">4</div>
+          <div class="timeline-content">
+            <h4>Calcular precio por opción</h4>
+            <p><strong>Neto</strong> (auto-suma de servicios de la opción) <strong>÷ Factor</strong> (editable, ej. 0.90) = <strong>Precio de venta</strong> (auto-calculado, sobreescribible). Todo en USD, por persona base doble. Cada opción del paquete tiene su propio neto, factor y precio.</p>
+            <div class="price-flow">
+              <span class="price-box price-box--neto">Neto<br><small>$2,450</small></span>
+              <span class="price-arrow">÷</span>
+              <span class="price-box price-box--markup">Factor<br><small>0.90</small></span>
+              <span class="price-arrow">=</span>
+              <span class="price-box price-box--venta">Venta<br><small>$2,722</small></span>
+            </div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-step">5</div>
+          <div class="timeline-content">
+            <h4>Publicar</h4>
+            <p>El paquete aparece en el frontend público. Si tiene tags, aparece en landing pages. Si está destacado, aparece en la sección "destacados" del home.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-step">6</div>
+          <div class="timeline-content">
+            <h4>Actualizar precios (diario)</h4>
+            <p>Llega nueva tarifa → cambiar precio del servicio → <strong>TODOS los paquetes que usan ese servicio se actualizan automáticamente</strong>. El admin nunca edita paquetes uno por uno.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-step">7</div>
+          <div class="timeline-content">
+            <h4>Notificar vendedores</h4>
+            <p>Seleccionar etiqueta de campaña → ver paquetes → seleccionar → template automático con links → enviar email a grupo de ventas.</p>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-step">8</div>
+          <div class="timeline-content">
+            <h4>Ciclo de vida</h4>
+            <p>Borrador → Activo → Auto-desactivado (por fecha validez) → Reactivable (cambiar fechas y precios) → Clonable.</p>
+            <div class="lifecycle">
+              <span class="lc-state lc-state--draft">Borrador</span>
+              <span class="lc-arrow">→</span>
+              <span class="lc-state lc-state--active">Activo</span>
+              <span class="lc-arrow">→</span>
+              <span class="lc-state lc-state--inactive">Auto-desactivado</span>
+              <span class="lc-arrow">→</span>
+              <span class="lc-state lc-state--reactivated">Reactivado</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ROLES Y PERMISOS -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section" id="roles">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Acceso</span>
+        <h2 class="section-title">Roles y Permisos</h2>
+        <p class="section-subtitle">3 roles con permisos diferenciados. Sin auto-registro — el admin crea las cuentas.</p>
+      </div>
+
+      <div class="roles-grid">
+        <div class="role-card role-card--admin">
+          <div class="role-badge">Admin</div>
+          <h4>Administrador</h4>
+          <p class="role-count">1 por marca (2 total)</p>
+          <ul class="role-permissions">
+            <li class="perm-yes">Control total sobre todos los módulos</li>
+            <li class="perm-yes">Crear, editar, clonar, eliminar entidades</li>
+            <li class="perm-yes">Publicar/despublicar paquetes</li>
+            <li class="perm-yes">Gestionar usuarios</li>
+            <li class="perm-yes">Enviar notificaciones</li>
+            <li class="perm-yes">Ver Neto + Factor + Margen + Precio venta</li>
+            <li class="perm-yes">Ver reportes</li>
+          </ul>
+        </div>
+        <div class="role-card role-card--vendedor">
+          <div class="role-badge role-badge--teal">Vendedor</div>
+          <h4>Vendedor</h4>
+          <p class="role-count">1 login compartido por marca</p>
+          <ul class="role-permissions">
+            <li class="perm-yes">Ver paquetes (solo lectura)</li>
+            <li class="perm-yes">Ver composición: aéreo, hotel, traslado</li>
+            <li class="perm-yes">Ver precio de venta</li>
+            <li class="perm-yes">Ver desglose neto por servicio</li>
+            <li class="perm-no">No puede crear, editar, eliminar</li>
+            <li class="perm-no">No ve botones de acción</li>
+            <li class="perm-no">No ve factor ni margen</li>
+            <li class="perm-no">Solo accede a Paquetes</li>
+          </ul>
+        </div>
+        <div class="role-card role-card--marketing">
+          <div class="role-badge role-badge--orange">Marketing</div>
+          <h4>Marketing / Reporting</h4>
+          <p class="role-count">A definir</p>
+          <ul class="role-permissions">
+            <li class="perm-yes">Ver paquetes (solo lectura)</li>
+            <li class="perm-yes">Acceso a reportes y gráficas</li>
+            <li class="perm-yes">Ver precio de venta</li>
+            <li class="perm-no">No puede modificar nada</li>
+            <li class="perm-no">No ve costos internos</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- REGLAS DE NEGOCIO CRÍTICAS -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section--dark" id="reglas">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Reglas</span>
+        <h2 class="section-title">Reglas de Negocio Críticas</h2>
+        <p class="section-subtitle">12 reglas que definen el comportamiento del sistema y que NO se pueden romper.</p>
+      </div>
+
+      <div class="rules-list">
+        <div class="rule-row rule-row--highlight">
+          <div class="rule-num">01</div>
+          <div class="rule-body">
+            <h4>Propagación automática de precios</h4>
+            <p>Al cambiar el precio de un servicio, el neto de TODOS los paquetes que lo usan se recalcula automáticamente. El precio de venta se ajusta según el markup de cada paquete.</p>
+          </div>
+          <span class="rule-priority">Prioridad máxima</span>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">02</div>
+          <div class="rule-body">
+            <h4>Servicios reutilizables</h4>
+            <p>Un aéreo MVD→CUN se usa en paquetes de Cancún, Playa del Carmen, Costa Mujeres y Tulum. No se duplican servicios.</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">03</div>
+          <div class="rule-body">
+            <h4>Precios por periodo</h4>
+            <p>Un aéreo puede tener precio baja ($700), alta ($900), y vacaciones ($1100). El sistema matchea las fechas del paquete con los periodos del servicio.</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">04</div>
+          <div class="rule-body">
+            <h4>Auto-desactivación por validez</h4>
+            <p>Al llegar la fecha validez_hasta, el paquete se desactiva solo del frontend. No se elimina — queda disponible para reactivar.</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">05</div>
+          <div class="rule-body">
+            <h4>Multi-marca con datos independientes</h4>
+            <p>TravelOz y Destinico = misma app, mismo código. Los datos son completamente separados. Todo filtrado por brand_id.</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">06</div>
+          <div class="rule-body">
+            <h4>Texto visual vs. vinculación interna</h4>
+            <p>Cada servicio asignado tiene una vinculación interna (para costos/propagación) y un texto display editable (para lo que muestra el frontend en "incluye").</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">07</div>
+          <div class="rule-body">
+            <h4>Tags y URLs del frontend</h4>
+            <p>Las etiquetas se asocian a URLs. Tag "Black Friday" → /tag/black-friday. Son administrables desde el backend y clave para campañas de marketing.</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">08</div>
+          <div class="rule-body">
+            <h4>Soft delete global</h4>
+            <p>Nunca se borra un registro físicamente. Todas las entidades tienen deletedAt. Las queries filtran por defecto registros no eliminados.</p>
+          </div>
+        </div>
+        <div class="rule-row rule-row--highlight">
+          <div class="rule-num">09</div>
+          <div class="rule-body">
+            <h4>Precio manual: notificación de conflicto</h4>
+            <p>Si el admin sobreescribe el precio de venta calculado, el sistema muestra una advertencia visual permanente indicando que el precio es manual y no coincide con el cálculo automático (neto ÷ factor).</p>
+          </div>
+          <span class="rule-priority">Importante</span>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">10</div>
+          <div class="rule-body">
+            <h4>USD por persona, base doble</h4>
+            <p>Todos los precios del sistema (neto, venta, servicios) se manejan en USD y por persona en base doble. Esta es la unidad estándar de la industria turística en Uruguay.</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">11</div>
+          <div class="rule-body">
+            <h4>Servicios compartidos, opciones únicas</h4>
+            <p>Los servicios (aéreo, traslado, seguro) son compartidos entre todas las opciones del paquete. Solo los alojamientos varían entre opciones — cada opción es una combinación hotelera distinta.</p>
+          </div>
+        </div>
+        <div class="rule-row">
+          <div class="rule-num">12</div>
+          <div class="rule-body">
+            <h4>Campo "salida" no es fecha</h4>
+            <p>El campo "salida" en un paquete es un texto libre descriptivo (ej. "Salidas diarias", "Lunes y Jueves"), NO una fecha calendario. Las fechas reales se controlan con validez_desde y validez_hasta.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- PUNTOS IMPORTANTES PARA EL CLIENTE -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section" id="cliente">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Valor</span>
+        <h2 class="section-title">Puntos Importantes para el Cliente</h2>
+        <p class="section-subtitle">Lo que el equipo de TravelOz/Destinico gana con el nuevo sistema.</p>
+      </div>
+
+      <div class="benefits-list">
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--violet">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 16 10-12h-9l1-16z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Propagación instantánea de precios</h4>
+            <p>Cambiar el precio de un aéreo actualiza TODOS los paquetes donde está. De horas de trabajo manual a 2 minutos.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--teal">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Todo en una sola pantalla</h4>
+            <p>Datos, precios, fotos, servicios — sin saltar entre pestañas ni pantallas. Menos errores, más velocidad operativa.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--violet">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Búsqueda y filtros instantáneos</h4>
+            <p>Escribir "Cancún" muestra todo lo relacionado al instante. Filtros por temporada, estado, tipo de paquete.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--teal">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Vista vendedor en 1 clic</h4>
+            <p>El vendedor ve la composición completa del paquete sin acceder a costos internos. Respuesta al lead en minutos, no en horas.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--violet">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Reactivar paquetes de temporadas anteriores</h4>
+            <p>Paquetes desactivados del año pasado se reutilizan — solo cambiar fechas y precios. Sin recargar desde cero nunca más.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--teal">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Datos reales para tomar decisiones</h4>
+            <p>Reportes de paquetes por destino, hoteles más usados, proveedores, visitas web. Inteligencia comercial integrada al sistema.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--violet">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Notificaciones integradas al sistema</h4>
+            <p>Email a vendedores con template automático generado desde datos reales del sistema. Sin copy-paste manual ni errores.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--teal">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Autonomía total sobre catálogos</h4>
+            <p>Todos los catálogos son administrables por el equipo. Crear temporada "Baja 2027" en un clic, sin depender del equipo de desarrollo.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--violet">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.049 10.1c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.547-4.673z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Paquetes destacados en el home</h4>
+            <p>Marcar paquetes como "destacados" desde el admin y aparecen automáticamente en la sección principal del sitio público. Control editorial sin tocar código.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--teal">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Landing pages por etiqueta</h4>
+            <p>Cada etiqueta genera automáticamente una landing page en el frontend. Tag "Europa Verano" → URL /tag/europa-verano con todos los paquetes filtrados. Ideal para campañas.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--violet">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Paquetes relacionados automáticos</h4>
+            <p>El sistema sugiere paquetes relacionados basándose en destino y etiquetas compartidas. El visitante del sitio siempre tiene opciones relevantes a la vista.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--teal">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Búsqueda inteligente global</h4>
+            <p>Buscar desde cualquier pantalla del admin. Resultados unificados de paquetes, servicios y proveedores con navegación directa al detalle.</p>
+          </div>
+        </div>
+        <div class="benefit-row">
+          <div class="benefit-icon-wrap benefit-icon--violet">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="12" cy="18" r="2"/></svg>
+          </div>
+          <div class="benefit-body">
+            <h4>Drag & drop para ordenar servicios</h4>
+            <p>Reordenar los servicios dentro de un paquete arrastrando. El orden en el admin es el orden que ve el cliente en el "incluye" del frontend.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- ESTRUCTURA DE DATOS POR ENTIDAD -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section--dark" id="datos">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Datos</span>
+        <h2 class="section-title">Estructura de Datos por Entidad</h2>
+        <p class="section-subtitle">Campos principales de cada entidad del sistema. Todas incluyen id, brand_id, createdAt, updatedAt, deletedAt.</p>
+      </div>
+
+      <div class="entity-grid">
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--violet">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+            <h4>Paquete</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>titulo, subtitulo, descripcion</li>
+            <li>noches, salida (texto libre)</li>
+            <li>tipo_paquete_id, temporada_id</li>
+            <li>validez_desde, validez_hasta</li>
+            <li>destacado, orden, estado</li>
+            <li>imagen_principal, galeria[]</li>
+            <li>meta_title, meta_description, slug</li>
+          </ul>
+          <div class="entity-sub">
+            <strong>Opciones:</strong> paquete_id, nombre, neto_calculado, factor, precio_venta, precio_manual, orden
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--teal">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19V5m0 0L5 12m7-7l7 7" transform="rotate(-45 11 11)"/><path d="M3 19h16"/></svg>
+            </div>
+            <h4>Aéreo</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>origen, destino (ciudad_id)</li>
+            <li>aerolinea, numero_vuelo</li>
+            <li>equipaje, clase</li>
+            <li>notas_internas</li>
+          </ul>
+          <div class="entity-sub">
+            <strong>Precios:</strong> aereo_id, periodo_id, precio (USD/persona)
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--teal">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 19V7a2 2 0 012-2h14a2 2 0 012 2v12"/><path d="M3 11h18M9 19V11m6 8V11"/></svg>
+            </div>
+            <h4>Alojamiento</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>nombre, ciudad_id, direccion</li>
+            <li>estrellas, regimen_id</li>
+            <li>descripcion, amenities</li>
+            <li>fotos[], proveedor_id</li>
+          </ul>
+          <div class="entity-sub">
+            <strong>Precios:</strong> alojamiento_id, periodo_id, tipo_habitacion, precio (USD/noche/persona)
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--teal">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 13h14M4 13l2-7h10l2 7M7 16a1.5 1.5 0 100-3 1.5 1.5 0 000 3zm8 0a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"/></svg>
+            </div>
+            <h4>Traslado</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>nombre, tipo (in/out/privado)</li>
+            <li>ciudad_id, proveedor_id</li>
+            <li>precio (USD fijo)</li>
+            <li>notas</li>
+          </ul>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--teal">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 20s7-3.5 7-9V5.5l-7-2.5-7 2.5V11c0 5.5 7 9 7 9z"/></svg>
+            </div>
+            <h4>Seguro</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>proveedor_id, plan</li>
+            <li>cobertura (texto libre)</li>
+            <li>costo_por_dia (USD/día/persona)</li>
+          </ul>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--teal">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="M7 11h8M11 7v8"/></svg>
+            </div>
+            <h4>Circuito / Crucero</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>nombre, proveedor_id</li>
+            <li>duracion_dias, descripcion</li>
+            <li>itinerario[] (día, título, descripción)</li>
+          </ul>
+          <div class="entity-sub">
+            <strong>Precios:</strong> circuito_id, periodo_id, precio (USD/persona)
+          </div>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--neutral">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            </div>
+            <h4>Proveedor</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>nombre, contacto</li>
+            <li>email, telefono</li>
+            <li>notas</li>
+          </ul>
+        </div>
+
+        <div class="entity-card">
+          <div class="entity-header">
+            <div class="entity-icon entity-icon--neutral">
+              <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h.01M5 3h4a1.5 1.5 0 011.06.44l5.5 5.5a1.5 1.5 0 010 2.12l-5.5 5.5a1.5 1.5 0 01-2.12 0l-5.5-5.5A1.5 1.5 0 013 10V5a2 2 0 012-2z"/></svg>
+            </div>
+            <h4>Etiqueta</h4>
+          </div>
+          <ul class="entity-fields">
+            <li>nombre, slug</li>
+            <li>color, icono</li>
+            <li>descripcion</li>
+            <li>orden, activa</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- INTEGRACIONES Y NOTAS TÉCNICAS -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section" id="integraciones">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Integraciones</span>
+        <h2 class="section-title">Integraciones y Notas Técnicas</h2>
+        <p class="section-subtitle">Conexiones con sistemas externos y funcionalidades planificadas.</p>
+      </div>
+
+      <div class="integration-grid">
+        <div class="glass-card">
+          <div class="card-icon card-icon--violet">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          </div>
+          <h3>Bitrix24 CRM</h3>
+          <p>Integración bidireccional planificada. Los leads del formulario de contacto del frontend se sincronizan con Bitrix24 automáticamente. Los paquetes actualizados se reflejan en el CRM para que ventas tenga información actualizada.</p>
+          <span class="tag">Fase 2</span>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon card-icon--teal">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+          </div>
+          <h3>Migración de datos</h3>
+          <p>Los datos actuales (Excel/sistemas legacy) se migran al nuevo sistema. Script de migración para importar paquetes, servicios, proveedores y catálogos existentes preservando IDs y relaciones.</p>
+          <span class="tag tag--teal">Pre-launch</span>
+        </div>
+        <div class="glass-card">
+          <div class="card-icon card-icon--violet">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z"/></svg>
+          </div>
+          <h3>Cotizador público</h3>
+          <p>Post-launch: formulario público donde el visitante selecciona destino, fechas y preferencias, y el sistema genera una cotización automática basada en los precios reales del admin. Envío por email al lead.</p>
+          <span class="tag">Post-launch</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- STACK TÉCNICO -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section--dark" id="stack">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">Tech</span>
+        <h2 class="section-title">Stack Técnico</h2>
+        <p class="section-subtitle">Tecnologías seleccionadas para rendimiento, escalabilidad y experiencia premium.</p>
+      </div>
+
+      <div class="stack-grid">
+        <div class="stack-card">
+          <div class="stack-logo">N</div>
+          <h4>Next.js 14</h4>
+          <p>App Router, Server Components, API Routes</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-logo">TS</div>
+          <h4>TypeScript</h4>
+          <p>Tipado estricto en todas las entidades</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-logo">PG</div>
+          <h4>PostgreSQL</h4>
+          <p>Base de datos relacional, multi-tenancy</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-logo">P</div>
+          <h4>Prisma ORM</h4>
+          <p>Migraciones, type-safe queries, schema</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-logo">TW</div>
+          <h4>Tailwind CSS</h4>
+          <p>Utility-first con design tokens custom</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-logo">FM</div>
+          <h4>Framer Motion</h4>
+          <p>Animaciones fluidas Apple-level</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-logo">RW</div>
+          <h4>Railway</h4>
+          <p>Hosting, un deploy para ambas marcas</p>
+        </div>
+        <div class="stack-card">
+          <div class="stack-logo">DS</div>
+          <h4>Liquid Horizon</h4>
+          <p>Design system glassmorphism + claymorphism</p>
+        </div>
+      </div>
+
+      <div class="glass-card glass-card--wide" style="margin-top: 3rem;">
+        <h3>Design System: Liquid Horizon v3</h3>
+        <p style="margin-bottom: 1.5rem;">Glassmorphism + Liquid Glass + Claymorphism + Apple-like interactions. Sidebar violeta→negro. Cada interacción tiene peso, cada transición tiene propósito, cada superficie respira.</p>
+        <div class="design-preview">
+          <div class="dp-swatch dp-swatch--violet">Violet 500</div>
+          <div class="dp-swatch dp-swatch--teal">Teal 400</div>
+          <div class="dp-swatch dp-swatch--dark">Neutral 900</div>
+          <div class="dp-swatch dp-swatch--glass">Glass frosted</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- FOOTER -->
+  <!-- ═══════════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <img src="header-logo.webp" alt="TravelOz" class="footer-logo">
+          <span>TravelOz Backend — Latitud Nómade</span>
+        </div>
+        <p class="footer-copy">Documento de referencia — Marzo 2026</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
