@@ -73,7 +73,6 @@ export default function AlojamientoDetailPage() {
   const [paisId, setPaisId] = useState(alojamiento?.paisId ?? "");
   const [ciudadId, setCiudadId] = useState(alojamiento?.ciudadId ?? "");
   const [categoria, setCategoria] = useState(String(alojamiento?.categoria ?? 3));
-  const [proveedorId, setProveedorId] = useState(alojamiento?.proveedorId ?? "");
   const [sitioWeb, setSitioWeb] = useState(alojamiento?.sitioWeb ?? "");
 
   // Cascading ciudades
@@ -102,7 +101,6 @@ export default function AlojamientoDetailPage() {
       paisId,
       ciudadId,
       categoria: Number(categoria),
-      proveedorId,
       sitioWeb: sitioWeb.trim() || null,
     });
     toast("success", "Alojamiento actualizado", "Los cambios fueron guardados correctamente.");
@@ -336,16 +334,6 @@ export default function AlojamientoDetailPage() {
                   { value: "4", label: "4 estrellas" },
                   { value: "5", label: "5 estrellas" },
                 ]}
-                disabled={isReadOnly}
-              />
-
-              {/* Proveedor */}
-              <Select
-                label="Proveedor"
-                value={proveedorId}
-                onValueChange={setProveedorId}
-                placeholder="Seleccionar proveedor..."
-                options={proveedores.map((p) => ({ value: p.id, label: p.nombre }))}
                 disabled={isReadOnly}
               />
 

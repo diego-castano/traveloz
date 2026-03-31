@@ -22,6 +22,7 @@ export interface Paquete {
   id: string;
   brandId: string;
   titulo: string;
+  destino: string;
   descripcion: string;
   textoVisual: string | null;
   noches: number;
@@ -33,6 +34,7 @@ export interface Paquete {
   estado: EstadoPaquete;
   destacado: boolean;
   netoCalculado: number;
+  /** Factor divisor (0.01-1.00). Precio venta = neto / factor. Ej: 0.88 = ~13.6% margen */
   markup: number;
   precioVenta: number;
   moneda: string;
@@ -51,6 +53,11 @@ export interface Aereo {
   aerolinea: string;
   equipaje: string;
   itinerario: string;
+  escalas: number;
+  codigoVueloIda: string;
+  codigoVueloVuelta: string;
+  duracionIda: string;
+  duracionVuelta: string;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -64,7 +71,6 @@ export interface Alojamiento {
   ciudadId: string;
   paisId: string;
   categoria: number;
-  proveedorId: string;
   sitioWeb: string | null;
   createdAt: string;
   updatedAt: string;
@@ -111,6 +117,8 @@ export interface Circuito {
   deletedAt: string | null;
 }
 
+export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS';
+
 /** Service provider (for transfers, insurance, and circuits). */
 export interface Proveedor {
   id: string;
@@ -120,6 +128,7 @@ export interface Proveedor {
   email: string | null;
   telefono: string | null;
   notas: string | null;
+  servicio: CategoriaServicio;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -198,7 +207,6 @@ export interface PrecioAereo {
   periodoDesde: string;
   periodoHasta: string;
   precioAdulto: number;
-  precioMenor: number;
 }
 
 /** Price period for a hotel (nightly rate under a specific meal regime). */
@@ -253,6 +261,17 @@ export interface PaqueteEtiqueta {
   id: string;
   paqueteId: string;
   etiquetaId: string;
+}
+
+/** Hotel option grouping for a package — each option has its own hotel combination, factor and sale price. */
+export interface OpcionHotelera {
+  id: string;
+  paqueteId: string;
+  nombre: string;
+  alojamientoIds: string[];
+  factor: number;
+  precioVenta: number;
+  orden: number;
 }
 
 // ---------------------------------------------------------------------------

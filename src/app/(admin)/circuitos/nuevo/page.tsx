@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/Input";
@@ -24,7 +24,11 @@ export default function NuevoCircuitoPage() {
   const { activeBrandId } = useBrand();
   const { canEdit } = useAuth();
   const { toast } = useToast();
-  const proveedores = useProveedores();
+  const allProveedores = useProveedores();
+  const proveedoresCircuitos = useMemo(
+    () => allProveedores.filter((p) => p.servicio === "CIRCUITOS" && !p.deletedAt),
+    [allProveedores],
+  );
 
   // -- VENDEDOR guard: redirect if cannot edit --
   useEffect(() => {
@@ -104,7 +108,7 @@ export default function NuevoCircuitoPage() {
             value={proveedorId}
             onValueChange={setProveedorId}
             placeholder="Seleccionar proveedor..."
-            options={proveedores.map((p) => ({ value: p.id, label: p.nombre }))}
+            options={proveedoresCircuitos.map((p) => ({ value: p.id, label: p.nombre }))}
           />
 
           {/* Create button */}

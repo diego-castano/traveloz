@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -21,7 +22,8 @@ import {
   useProveedores,
 } from "@/components/providers/CatalogProvider";
 import { useToast } from "@/components/ui/Toast";
-import { Plus, Plane, Hotel, Bus, Shield, MapIcon } from "lucide-react";
+import { Plus, Plane, Hotel, Bus, Shield, MapIcon, Search } from "lucide-react";
+import { cn } from "@/components/lib/cn";
 import type {
   Aereo,
   Alojamiento,
@@ -58,6 +60,7 @@ export default function ServiceSelectorModal({
     assignCircuito,
   } = usePackageActions();
   const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
 
   // All available services
   const aereos = useAereos();
@@ -190,6 +193,9 @@ export default function ServiceSelectorModal({
     toast("success", "Circuito agregado", `${circuito.nombre} asignado al paquete.`);
   };
 
+  // -- Search match helper --
+  const sq = searchQuery.toLowerCase().trim();
+
   // -- Empty state per tab --
   const emptyMessage = (tipo: string) => (
     <div className="flex items-center justify-center py-8 text-white/40 text-sm">
@@ -201,7 +207,7 @@ export default function ServiceSelectorModal({
     <Modal open={open} onOpenChange={onOpenChange} size="lg">
       <ModalHeader title="Agregar Servicio">{null}</ModalHeader>
       <ModalBody>
-        <Tabs defaultValue="aereos" layoutId="serviceSelectorTabs" variant="dark">
+        <Tabs defaultValue="aereos" layoutId="serviceSelectorTabs" variant="dark" onValueChange={() => setSearchQuery("")}>
           <TabsList>
             <TabsTrigger value="aereos">
               <span className="flex items-center gap-1.5">
@@ -237,34 +243,49 @@ export default function ServiceSelectorModal({
 
           {/* Aereos Tab */}
           <TabsContent value="aereos">
+            <div className="px-1 pt-1 pb-3">
+              <Input
+                placeholder="Buscar aereos..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+                size="sm"
+              />
+            </div>
             {availableAereos.length === 0 ? (
               emptyMessage("aereos")
             ) : (
               <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div className="divide-y divide-white/15">
-                  {availableAereos.map((aereo) => (
-                    <div
-                      key={aereo.id}
-                      className="flex items-center justify-between px-4 py-3"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">
-                          {aereo.ruta}
-                        </span>
-                        <span className="text-xs text-white/50">
-                          {aereo.destino} &middot; {aereo.aerolinea}
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        leftIcon={<Plus className="h-3 w-3" />}
-                        onClick={() => handleAssignAereo(aereo)}
+                  {availableAereos.map((aereo) => {
+                    const matches = !sq || aereo.ruta.toLowerCase().includes(sq) || aereo.destino.toLowerCase().includes(sq) || aereo.aerolinea.toLowerCase().includes(sq);
+                    return (
+                      <div
+                        key={aereo.id}
+                        className={cn(
+                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
+                          matches ? "opacity-100" : "opacity-30"
+                        )}
                       >
-                        Agregar
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-white">
+                            {aereo.ruta}
+                          </span>
+                          <span className="text-xs text-white/50">
+                            {aereo.destino} &middot; {aereo.aerolinea}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          leftIcon={<Plus className="h-3 w-3" />}
+                          onClick={() => handleAssignAereo(aereo)}
+                        >
+                          Agregar
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </Card>
             )}
@@ -272,6 +293,15 @@ export default function ServiceSelectorModal({
 
           {/* Alojamientos Tab */}
           <TabsContent value="alojamientos">
+            <div className="px-1 pt-1 pb-3">
+              <Input
+                placeholder="Buscar alojamientos..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+                size="sm"
+              />
+            </div>
             {availableAlojamientos.length === 0 ? (
               emptyMessage("alojamientos")
             ) : (
@@ -280,10 +310,14 @@ export default function ServiceSelectorModal({
                   {availableAlojamientos.map((aloj) => {
                     const ciudadNombre = ciudadMap.get(aloj.ciudadId) ?? "";
                     const stars = "\u2605".repeat(aloj.categoria);
+                    const matches = !sq || aloj.nombre.toLowerCase().includes(sq) || ciudadNombre.toLowerCase().includes(sq);
                     return (
                       <div
                         key={aloj.id}
-                        className="flex items-center justify-between px-4 py-3"
+                        className={cn(
+                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
+                          matches ? "opacity-100" : "opacity-30"
+                        )}
                       >
                         <div className="flex flex-col">
                           <span className="text-sm font-medium text-white">
@@ -312,34 +346,49 @@ export default function ServiceSelectorModal({
 
           {/* Traslados Tab */}
           <TabsContent value="traslados">
+            <div className="px-1 pt-1 pb-3">
+              <Input
+                placeholder="Buscar traslados..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+                size="sm"
+              />
+            </div>
             {availableTraslados.length === 0 ? (
               emptyMessage("traslados")
             ) : (
               <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div className="divide-y divide-white/15">
-                  {availableTraslados.map((traslado) => (
-                    <div
-                      key={traslado.id}
-                      className="flex items-center justify-between px-4 py-3"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">
-                          {traslado.nombre}
-                        </span>
-                        <span className="text-xs text-white/50">
-                          {traslado.tipo} &middot; USD {traslado.precio}
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        leftIcon={<Plus className="h-3 w-3" />}
-                        onClick={() => handleAssignTraslado(traslado)}
+                  {availableTraslados.map((traslado) => {
+                    const matches = !sq || traslado.nombre.toLowerCase().includes(sq) || traslado.tipo.toLowerCase().includes(sq);
+                    return (
+                      <div
+                        key={traslado.id}
+                        className={cn(
+                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
+                          matches ? "opacity-100" : "opacity-30"
+                        )}
                       >
-                        Agregar
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-white">
+                            {traslado.nombre}
+                          </span>
+                          <span className="text-xs text-white/50">
+                            {traslado.tipo} &middot; USD {traslado.precio}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          leftIcon={<Plus className="h-3 w-3" />}
+                          onClick={() => handleAssignTraslado(traslado)}
+                        >
+                          Agregar
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </Card>
             )}
@@ -347,6 +396,15 @@ export default function ServiceSelectorModal({
 
           {/* Seguros Tab */}
           <TabsContent value="seguros">
+            <div className="px-1 pt-1 pb-3">
+              <Input
+                placeholder="Buscar seguros..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+                size="sm"
+              />
+            </div>
             {availableSeguros.length === 0 ? (
               emptyMessage("seguros")
             ) : (
@@ -354,10 +412,14 @@ export default function ServiceSelectorModal({
                 <div className="divide-y divide-white/15">
                   {availableSeguros.map((seguro) => {
                     const provNombre = proveedorMap.get(seguro.proveedorId) ?? "";
+                    const matches = !sq || seguro.plan.toLowerCase().includes(sq) || seguro.cobertura.toLowerCase().includes(sq) || provNombre.toLowerCase().includes(sq);
                     return (
                       <div
                         key={seguro.id}
-                        className="flex items-center justify-between px-4 py-3"
+                        className={cn(
+                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
+                          matches ? "opacity-100" : "opacity-30"
+                        )}
                       >
                         <div className="flex flex-col">
                           <span className="text-sm font-medium text-white">
@@ -386,34 +448,49 @@ export default function ServiceSelectorModal({
 
           {/* Circuitos Tab */}
           <TabsContent value="circuitos">
+            <div className="px-1 pt-1 pb-3">
+              <Input
+                placeholder="Buscar circuitos..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                leftIcon={<Search className="w-4 h-4" />}
+                size="sm"
+              />
+            </div>
             {availableCircuitos.length === 0 ? (
               emptyMessage("circuitos")
             ) : (
               <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div className="divide-y divide-white/15">
-                  {availableCircuitos.map((circuito) => (
-                    <div
-                      key={circuito.id}
-                      className="flex items-center justify-between px-4 py-3"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium text-white">
-                          {circuito.nombre}
-                        </span>
-                        <span className="text-xs text-white/50">
-                          {circuito.noches} noches
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        leftIcon={<Plus className="h-3 w-3" />}
-                        onClick={() => handleAssignCircuito(circuito)}
+                  {availableCircuitos.map((circuito) => {
+                    const matches = !sq || circuito.nombre.toLowerCase().includes(sq);
+                    return (
+                      <div
+                        key={circuito.id}
+                        className={cn(
+                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
+                          matches ? "opacity-100" : "opacity-30"
+                        )}
                       >
-                        Agregar
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-white">
+                            {circuito.nombre}
+                          </span>
+                          <span className="text-xs text-white/50">
+                            {circuito.noches} noches
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          leftIcon={<Plus className="h-3 w-3" />}
+                          onClick={() => handleAssignCircuito(circuito)}
+                        >
+                          Agregar
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </Card>
             )}

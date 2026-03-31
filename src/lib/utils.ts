@@ -94,12 +94,74 @@ export function calcularNeto(
 // ---------------------------------------------------------------------------
 
 /**
- * Calculate the sale price by applying a percentage markup to the net cost.
- * @example calcularVenta(1000, 35) // 1350
- * @example calcularVenta(0, 50) // 0
+ * Calculate the sale price by dividing net cost by a factor.
+ * @example calcularVenta(1000, 0.77) // 1299
+ * @example calcularVenta(0, 0.88) // 0
  */
-export function calcularVenta(neto: number, markup: number): number {
-  return Math.round(neto * (1 + markup / 100));
+export function calcularVenta(neto: number, factor: number): number {
+  if (factor <= 0 || factor > 1) return neto;
+  return Math.round(neto / factor);
+}
+
+// ---------------------------------------------------------------------------
+// calcularNetoFijos -- fixed costs shared across all hotel options
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculate fixed costs shared across all hotel options (flights + transfers + insurance + circuits).
+ */
+export function calcularNetoFijos(
+  assignedAereos: { aereo: Aereo; precioAereo?: PrecioAereo }[],
+  assignedTraslados: Traslado[],
+  assignedSeguros: { seguro: Seguro; diasCobertura?: number }[],
+  assignedCircuitos: { circuito: Circuito; precioCircuito?: PrecioCircuito }[],
+  noches: number,
+): number {
+  let neto = 0;
+  neto += assignedAereos.reduce((sum, a) => sum + (a.precioAereo?.precioAdulto ?? 0), 0);
+  neto += assignedTraslados.reduce((sum, t) => sum + t.precio, 0);
+  neto += assignedSeguros.reduce((sum, s) => {
+    const dias = s.diasCobertura ?? noches;
+    return sum + s.seguro.costoPorDia * dias;
+  }, 0);
+  neto += assignedCircuitos.reduce((sum, c) => sum + (c.precioCircuito?.precio ?? 0), 0);
+  return neto;
+}
+
+// ---------------------------------------------------------------------------
+// calcularNetoAlojamientos -- accommodation cost for a specific hotel option
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculate accommodation cost for a specific hotel option.
+ */
+export function calcularNetoAlojamientos(
+  alojamientoIds: string[],
+  allAssignedAlojamientos: {
+    alojamiento: Alojamiento;
+    precioAlojamiento?: PrecioAlojamiento;
+    nochesEnEste?: number;
+  }[],
+  defaultNoches: number,
+): number {
+  return alojamientoIds.reduce((sum, id) => {
+    const found = allAssignedAlojamientos.find(a => a.alojamiento.id === id);
+    if (!found) return sum;
+    const noches = found.nochesEnEste ?? defaultNoches;
+    return sum + (found.precioAlojamiento?.precioPorNoche ?? 0) * noches;
+  }, 0);
+}
+
+// ---------------------------------------------------------------------------
+// calcularVentaOpcion -- sale price for a hotel option
+// ---------------------------------------------------------------------------
+
+/**
+ * Calculate sale price for a hotel option: (fixed costs + accommodation costs) / factor
+ */
+export function calcularVentaOpcion(netoFijos: number, netoAloj: number, factor: number): number {
+  if (factor <= 0 || factor > 1) return netoFijos + netoAloj;
+  return Math.round((netoFijos + netoAloj) / factor);
 }
 
 // ---------------------------------------------------------------------------

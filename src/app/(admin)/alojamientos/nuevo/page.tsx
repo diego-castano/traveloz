@@ -38,7 +38,6 @@ export default function NuevoAlojamientoPage() {
   const [paisId, setPaisId] = useState("");
   const [ciudadId, setCiudadId] = useState("");
   const [categoria, setCategoria] = useState("3");
-  const [proveedorId, setProveedorId] = useState("");
   const [sitioWeb, setSitioWeb] = useState("");
 
   // Cascading ciudades based on selected paisId
@@ -71,7 +70,6 @@ export default function NuevoAlojamientoPage() {
       ciudadId,
       paisId,
       categoria: Number(categoria),
-      proveedorId,
       sitioWeb: sitioWeb.trim() || null,
     });
     toast("success", "Alojamiento creado", `"${nombre}" fue creado correctamente`);
@@ -133,15 +131,6 @@ export default function NuevoAlojamientoPage() {
               { value: "4", label: "4 estrellas" },
               { value: "5", label: "5 estrellas" },
             ]}
-          />
-
-          {/* Proveedor */}
-          <Select
-            label="Proveedor"
-            value={proveedorId}
-            onValueChange={setProveedorId}
-            placeholder="Seleccionar proveedor..."
-            options={proveedores.map((p) => ({ value: p.id, label: p.nombre }))}
           />
 
           {/* Sitio Web */}

@@ -71,6 +71,21 @@ export default function FotosTab({ paquete }: FotosTabProps) {
     [fotos, updateFoto],
   );
 
+  const handleSetPrincipal = useCallback(
+    (id: string) => {
+      // Move target to front (orden 0), shift others
+      const target = fotos.find((f) => f.id === id);
+      if (!target) return;
+      const reordered = [target, ...fotos.filter((f) => f.id !== id)];
+      reordered.forEach((f, i) => {
+        if (f.orden !== i) {
+          updateFoto({ ...f, orden: i });
+        }
+      });
+    },
+    [fotos, updateFoto],
+  );
+
   return (
     <Card className="p-6">
       {/* Section title */}
@@ -84,6 +99,7 @@ export default function FotosTab({ paquete }: FotosTabProps) {
         onAdd={canEdit ? handleAdd : undefined}
         onRemove={canEdit ? handleRemove : undefined}
         onReorder={canEdit ? handleReorder : undefined}
+        onSetPrincipal={canEdit ? handleSetPrincipal : undefined}
         maxImages={10}
       />
 

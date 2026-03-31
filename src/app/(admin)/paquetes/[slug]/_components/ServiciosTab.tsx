@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -278,9 +279,12 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     <div className="space-y-4">
       {/* Header with add button */}
       <div className="flex items-center justify-between">
-        <h3 className="text-base font-semibold text-neutral-800">
-          Servicios Asignados
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-semibold text-neutral-800">
+            Servicios Asignados
+          </h3>
+          <AutoSaveIndicator status="saved" />
+        </div>
         {canEdit && (
           <Button
             variant="primary"

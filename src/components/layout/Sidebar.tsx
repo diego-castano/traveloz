@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
 import Image from "next/image";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
@@ -20,6 +20,7 @@ import {
   Truck,
   ChevronsLeft,
   ChevronsRight,
+  X,
 } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -27,6 +28,48 @@ import { useBrand } from "@/components/providers/BrandProvider";
 import { springs } from "@/components/lib/animations";
 import { cn } from "@/components/lib/cn";
 import type { LucideIcon } from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Sidebar context -- allows Topbar (and others) to control mobile sidebar
+// ---------------------------------------------------------------------------
+
+interface SidebarContextValue {
+  mobileOpen: boolean;
+  setMobileOpen: (open: boolean) => void;
+  isMobile: boolean;
+}
+
+const SidebarContext = createContext<SidebarContextValue>({
+  mobileOpen: false,
+  setMobileOpen: () => {},
+  isMobile: false,
+});
+
+export const useSidebar = () => useContext(SidebarContext);
+
+export function SidebarProvider({ children }: { children: React.ReactNode }) {
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Close mobile sidebar on route change
+  const pathname = usePathname();
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  return (
+    <SidebarContext.Provider value={{ isMobile, mobileOpen, setMobileOpen }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Navigation data structure
@@ -86,6 +129,7 @@ export function Sidebar() {
   const { visibleModules } = useAuth();
   const { activeBrand } = useBrand();
   const pathname = usePathname();
+  const { isMobile, mobileOpen, setMobileOpen } = useSidebar();
 
   // Filter nav groups by role-visible modules
   const filteredGroups = navGroups
@@ -100,12 +144,43 @@ export function Sidebar() {
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  // On mobile, the sidebar is always "expanded" when open (never collapsed)
+  const effectiveCollapsed = isMobile ? false : collapsed;
+  const effectiveWidth = isMobile
+    ? mobileOpen ? 252 : 0
+    : collapsed ? 64 : 252;
+
   return (
     <Tooltip.Provider delayDuration={300}>
+      {/* Mobile backdrop overlay */}
+      <AnimatePresence>
+        {isMobile && mobileOpen && (
+          <motion.div
+            className="fixed inset-0 z-[99]"
+            style={{
+              background: "rgba(10,10,30,0.5)",
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
       <motion.aside
-        animate={{ width: collapsed ? 64 : 252 }}
+        animate={{
+          width: effectiveWidth,
+          x: isMobile && !mobileOpen ? -252 : 0,
+        }}
         transition={springs.gentle}
-        className="relative z-[100] h-screen flex-shrink-0 overflow-hidden flex flex-col"
+        className={cn(
+          "h-screen flex-shrink-0 overflow-hidden flex flex-col",
+          isMobile ? "fixed left-0 top-0 z-[100]" : "relative z-[100]",
+        )}
         style={{
           background: activeBrand.sidebarGradient,
           backdropFilter: `blur(${activeBrand.sidebarBlur})`,
@@ -125,8 +200,8 @@ export function Sidebar() {
         {/* ----------------------------------------------------------------- */}
         {/* Logo area */}
         {/* ----------------------------------------------------------------- */}
-        <div className="relative flex h-[60px] flex-shrink-0 items-center px-4">
-          {collapsed ? (
+        <div className="relative flex h-[60px] flex-shrink-0 items-center px-4 justify-between">
+          {effectiveCollapsed ? (
             /* Collapsed: isotipo cuadrado */
             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center">
               <Image
@@ -147,6 +222,17 @@ export function Sidebar() {
               className="object-contain"
             />
           )}
+
+          {/* Mobile close button */}
+          {isMobile && mobileOpen && (
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+              style={{ color: "rgba(255,255,255,0.5)" }}
+            >
+              <X size={18} strokeWidth={1.75} />
+            </button>
+          )}
         </div>
 
         {/* ----------------------------------------------------------------- */}
@@ -164,7 +250,7 @@ export function Sidebar() {
               )}
 
               {/* Group label (only when expanded) */}
-              {!collapsed && (
+              {!effectiveCollapsed && (
                 <div
                   className="mb-2 mt-4 px-3 text-[10px] font-medium uppercase"
                   style={{
@@ -186,7 +272,7 @@ export function Sidebar() {
                     href={item.href}
                     className={cn(
                       "flex items-center gap-3 rounded-[10px] text-[13px] transition-all duration-200 cursor-pointer group",
-                      collapsed
+                      effectiveCollapsed
                         ? "justify-center px-0 py-2.5"
                         : "px-3 py-2.5",
                     )}
@@ -225,14 +311,14 @@ export function Sidebar() {
                     }}
                   >
                     <Icon size={18} strokeWidth={1.75} className="flex-shrink-0" />
-                    {!collapsed && (
+                    {!effectiveCollapsed && (
                       <span className="truncate">{item.label}</span>
                     )}
                   </Link>
                 );
 
                 // When collapsed, wrap in Tooltip
-                if (collapsed) {
+                if (effectiveCollapsed) {
                   return (
                     <Tooltip.Root key={item.id}>
                       <Tooltip.Trigger asChild>
@@ -269,25 +355,27 @@ export function Sidebar() {
         </nav>
 
         {/* ----------------------------------------------------------------- */}
-        {/* Collapse toggle button */}
+        {/* Collapse toggle button (hidden on mobile) */}
         {/* ----------------------------------------------------------------- */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="relative flex h-12 w-full items-center justify-center transition-colors duration-200"
-          style={{ color: "rgba(255,255,255,0.2)" }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "rgba(255,255,255,0.5)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "rgba(255,255,255,0.2)";
-          }}
-        >
-          {collapsed ? (
-            <ChevronsRight size={18} strokeWidth={1.75} />
-          ) : (
-            <ChevronsLeft size={18} strokeWidth={1.75} />
-          )}
-        </button>
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="relative flex h-12 w-full items-center justify-center transition-colors duration-200"
+            style={{ color: "rgba(255,255,255,0.2)" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(255,255,255,0.2)";
+            }}
+          >
+            {collapsed ? (
+              <ChevronsRight size={18} strokeWidth={1.75} />
+            ) : (
+              <ChevronsLeft size={18} strokeWidth={1.75} />
+            )}
+          </button>
+        )}
       </motion.aside>
     </Tooltip.Provider>
   );

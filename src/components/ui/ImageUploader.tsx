@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useRef, useState, useCallback } from "react";
-import { motion } from "motion/react";
-import { Upload, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Upload, X, Star } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
@@ -22,6 +22,7 @@ export interface ImageUploaderProps {
   onAdd?: (urls: string[]) => void;
   onRemove?: (id: string) => void;
   onReorder?: (images: ImageItem[]) => void;
+  onSetPrincipal?: (id: string) => void;
   maxImages?: number;
   className?: string;
 }
@@ -35,11 +36,13 @@ export function ImageUploader({
   onAdd,
   onRemove,
   onReorder,
+  onSetPrincipal,
   maxImages = 10,
   className,
 }: ImageUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
   const [dragItemIndex, setDragItemIndex] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canAddMore = images.length < maxImages;
@@ -195,49 +198,120 @@ export function ImageUploader({
       {/* Thumbnail grid */}
       {images.length > 0 && (
         <div className="grid grid-cols-5 gap-3 mt-3">
-          {images.map((image, index) => (
-            <motion.div
-              key={image.id}
-              draggable
-              onDragStart={() => handleThumbnailDragStart(index)}
-              onDragOver={handleThumbnailDragOver}
-              onDrop={() => handleThumbnailDrop(index)}
-              onDragEnd={handleThumbnailDragEnd}
-              whileDrag={{ scale: 1.03, zIndex: 10 }}
-              transition={springs.bouncy}
-              className={cn(
-                "relative w-20 h-20 rounded-clay overflow-hidden cursor-grab active:cursor-grabbing",
-                "group",
-                dragItemIndex === index && "opacity-50",
-              )}
-            >
-              <img
-                src={image.url}
-                alt={image.alt || `Imagen ${index + 1}`}
-                className="object-cover w-full h-full"
-              />
+          {images.map((image, index) => {
+            const isFirst = index === 0;
+            const isConfirmingDelete = confirmDeleteId === image.id;
 
-              {/* Remove button */}
-              {onRemove && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(image.id);
-                  }}
-                  className={cn(
-                    "absolute top-1 right-1 w-5 h-5 rounded-full",
-                    "bg-black/50 text-white",
-                    "inline-flex items-center justify-center",
-                    "opacity-0 group-hover:opacity-100 transition-opacity",
-                    "hover:bg-red-500",
+            return (
+              <motion.div
+                key={image.id}
+                layout
+                layoutId={`img-${image.id}`}
+                draggable
+                onDragStart={() => handleThumbnailDragStart(index)}
+                onDragOver={handleThumbnailDragOver}
+                onDrop={() => handleThumbnailDrop(index)}
+                onDragEnd={handleThumbnailDragEnd}
+                whileDrag={{
+                  scale: 1.12,
+                  zIndex: 50,
+                  boxShadow: "0 12px 28px rgba(0,0,0,0.25)",
+                  rotate: 2,
+                }}
+                transition={springs.gentle}
+                className={cn(
+                  "relative w-20 h-20 rounded-clay overflow-hidden cursor-grab active:cursor-grabbing",
+                  "group",
+                  dragItemIndex === index && "opacity-50",
+                  isFirst && "ring-2 ring-amber-400 ring-offset-1",
+                )}
+              >
+                <img
+                  src={image.url}
+                  alt={image.alt || `Imagen ${index + 1}`}
+                  className="object-cover w-full h-full"
+                />
+
+                {/* Principal badge */}
+                {isFirst && (
+                  <div className="absolute top-1 left-1 flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-400 text-amber-900">
+                    <Star className="w-3 h-3 fill-current" />
+                    Principal
+                  </div>
+                )}
+
+                {/* Delete confirmation overlay */}
+                <AnimatePresence>
+                  {isConfirmingDelete && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute inset-0 bg-red-500/80 flex flex-col items-center justify-center gap-1 z-20"
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemove?.(image.id);
+                          setConfirmDeleteId(null);
+                        }}
+                        className="text-[10px] font-semibold text-white bg-red-700 px-2 py-0.5 rounded-full hover:bg-red-800 transition-colors"
+                      >
+                        Eliminar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeleteId(null);
+                        }}
+                        className="text-[10px] text-white/80 hover:text-white transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </motion.div>
                   )}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </motion.div>
-          ))}
+                </AnimatePresence>
+
+                {/* Hover action buttons */}
+                {!isConfirmingDelete && (
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 py-1 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Mark as principal */}
+                    {onSetPrincipal && !isFirst && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSetPrincipal(image.id);
+                        }}
+                        className="w-5 h-5 rounded-full bg-white/20 text-white inline-flex items-center justify-center hover:bg-amber-400 hover:text-amber-900 transition-colors"
+                        title="Marcar como principal"
+                      >
+                        <Star className="h-3 w-3" />
+                      </button>
+                    )}
+
+                    {/* Remove button */}
+                    {onRemove && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDeleteId(image.id);
+                        }}
+                        className="w-5 h-5 rounded-full bg-white/20 text-white inline-flex items-center justify-center hover:bg-red-500 transition-colors"
+                        title="Eliminar imagen"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
         </div>
       )}
     </div>

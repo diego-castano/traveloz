@@ -12,7 +12,7 @@ import { formatCurrency } from '@/lib/utils';
 
 interface PriceDisplayProps {
   neto: number;
-  markup: number; // percentage, e.g. 35
+  markup: number; // factor divisor, e.g. 0.88
   venta: number;
   onMarkupChange?: (markup: number) => void;
   onVentaChange?: (venta: number) => void;
@@ -106,7 +106,7 @@ function PriceDisplay({
             'uppercase text-orange-400 font-medium tracking-wide'
           )}
         >
-          Markup
+          Factor
         </span>
         {editable ? (
           <input
@@ -119,8 +119,9 @@ function PriceDisplay({
               'rounded-md border border-neutral-150/50 bg-white/50 px-1.5 py-0.5',
               'focus:outline-none focus:shadow-focus-teal'
             )}
-            min={0}
-            max={100}
+            min={0.01}
+            max={1}
+            step={0.01}
           />
         ) : (
           <span
@@ -129,7 +130,7 @@ function PriceDisplay({
               'font-mono text-orange-400 font-semibold'
             )}
           >
-            {markup}%
+            {markup}
           </span>
         )}
       </div>

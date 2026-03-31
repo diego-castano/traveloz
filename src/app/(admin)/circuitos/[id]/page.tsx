@@ -49,7 +49,11 @@ export default function CircuitoDetailPage() {
     deletePrecioCircuito,
   } = useServiceActions();
 
-  const proveedores = useProveedores();
+  const allProveedores = useProveedores();
+  const proveedoresCircuitos = useMemo(
+    () => allProveedores.filter((p) => p.servicio === "CIRCUITOS" && !p.deletedAt),
+    [allProveedores],
+  );
 
   // -- Derive data --
   const circuito = serviceState.circuitos.find((c) => c.id === id && !c.deletedAt);
@@ -311,7 +315,7 @@ export default function CircuitoDetailPage() {
                 setHeaderForm((f) => ({ ...f, proveedorId: v }))
               }
               placeholder="Seleccionar proveedor..."
-              options={proveedores.map((p) => ({ value: p.id, label: p.nombre }))}
+              options={proveedoresCircuitos.map((p) => ({ value: p.id, label: p.nombre }))}
               disabled={!canEdit}
             />
 

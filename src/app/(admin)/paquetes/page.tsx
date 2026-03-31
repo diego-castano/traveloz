@@ -23,6 +23,7 @@ import {
   usePaquetes,
   usePackageActions,
   usePackageState,
+  useAllOpcionesHoteleras,
 } from "@/components/providers/PackageProvider";
 import {
   useTemporadas,
@@ -62,6 +63,20 @@ export default function PaquetesPage() {
   const temporadas = useTemporadas();
   const tiposPaquete = useTiposPaquete();
   const aereos = useAereos();
+  const allOpciones = useAllOpcionesHoteleras();
+
+  // Pre-compute opciones map per paquete
+  const opcionesMap = useMemo(() => {
+    const map: Record<string, { precios: number[]; factors: number[] }> = {};
+    for (const op of allOpciones) {
+      if (!map[op.paqueteId]) {
+        map[op.paqueteId] = { precios: [], factors: [] };
+      }
+      map[op.paqueteId].precios.push(op.precioVenta);
+      map[op.paqueteId].factors.push(op.factor);
+    }
+    return map;
+  }, [allOpciones]);
 
   // Component state
   const [search, setSearch] = useState("");
@@ -276,6 +291,7 @@ export default function PaquetesPage() {
         </div>
       ) : (
         <>
+          <div className="relative">
           <Table>
             <TableHeader>
               <TableRow>
@@ -302,7 +318,7 @@ export default function PaquetesPage() {
                   <TableCell className="font-medium text-neutral-800">
                     {paquete.titulo}
                   </TableCell>
-                  <TableCell>{destinoMap[paquete.id] ?? "--"}</TableCell>
+                  <TableCell>{paquete.destino || destinoMap[paquete.id] || "--"}</TableCell>
                   <TableCell>{temporadaMap[paquete.temporadaId] ?? "--"}</TableCell>
                   <TableCell>{paquete.noches}</TableCell>
                   <TableCell>
@@ -316,10 +332,28 @@ export default function PaquetesPage() {
                     </TableCell>
                   )}
                   {canSeePricing.markup && (
-                    <TableCell variant="markup">{paquete.markup}%</TableCell>
+                    <TableCell variant="markup">
+                      {(() => {
+                        const ops = opcionesMap[paquete.id];
+                        if (ops && ops.factors.length > 1) {
+                          const minF = Math.min(...ops.factors);
+                          const maxF = Math.max(...ops.factors);
+                          return `${minF} — ${maxF}`;
+                        }
+                        return ops?.factors[0] ?? paquete.markup;
+                      })()}
+                    </TableCell>
                   )}
                   <TableCell variant="price" className="font-semibold">
-                    {formatCurrency(paquete.precioVenta)}
+                    {(() => {
+                      const ops = opcionesMap[paquete.id];
+                      if (ops && ops.precios.length > 1) {
+                        const minP = Math.min(...ops.precios);
+                        const maxP = Math.max(...ops.precios);
+                        return `${formatCurrency(minP)} — ${formatCurrency(maxP)}`;
+                      }
+                      return formatCurrency(ops?.precios[0] ?? paquete.precioVenta);
+                    })()}
                   </TableCell>
                   {canEdit && (
                     <TableCell>
@@ -369,6 +403,9 @@ export default function PaquetesPage() {
               ))}
             </TableBody>
           </Table>
+          {/* Right fade scroll indicator (mobile) */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-white/80 to-transparent md:hidden" />
+          </div>
 
           <div className="mt-4 flex justify-center">
             <Pagination

@@ -51,7 +51,11 @@ export default function SegurosPage() {
   // Data hooks
   const seguros = useSeguros();
   const { createSeguro, updateSeguro, deleteSeguro } = useServiceActions();
-  const proveedores = useProveedores();
+  const allProveedores = useProveedores();
+  const proveedoresSeguros = useMemo(
+    () => allProveedores.filter((p) => p.servicio === "SEGUROS" && !p.deletedAt),
+    [allProveedores],
+  );
   const packageState = usePackageState();
 
   // Package usage count map
@@ -68,14 +72,14 @@ export default function SegurosPage() {
     return map;
   }, [packageState.paqueteSeguros]);
 
-  // Proveedor lookup map for O(1) display in table
+  // Proveedor lookup map for O(1) display in table (use allProveedores for name resolution)
   const proveedorMap = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of proveedores) {
+    for (const p of allProveedores) {
       map[p.id] = p.nombre;
     }
     return map;
-  }, [proveedores]);
+  }, [allProveedores]);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -307,7 +311,7 @@ export default function SegurosPage() {
           <div className="flex flex-col gap-4">
             <Select
               label="Proveedor"
-              options={proveedores.map((p) => ({ value: p.id, label: p.nombre }))}
+              options={proveedoresSeguros.map((p) => ({ value: p.id, label: p.nombre }))}
               value={form.proveedorId}
               onValueChange={(v) => setForm((f) => ({ ...f, proveedorId: v }))}
               placeholder="Seleccionar proveedor..."

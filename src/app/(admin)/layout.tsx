@@ -9,6 +9,7 @@
 //   - Topbar: sticky top bar with breadcrumb, brand selector, user menu
 //   - AdminBackground: color orbs + SVG noise backdrop
 //   - PageTransitionWrapper: AnimatePresence page transitions
+//   - SidebarProvider: shared mobile sidebar state for Topbar hamburger
 //
 // Auth redirect: if not authenticated, redirect to /login synchronously
 // (return null to prevent flash of admin content before redirect completes)
@@ -16,7 +17,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { Sidebar, SidebarProvider } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { AdminBackground } from "@/components/layout/AdminBackground";
 import { PageTransitionWrapper } from "@/components/layout/PageTransitionWrapper";
@@ -39,19 +40,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar />
-        <main className="relative flex-1 overflow-y-auto">
-          <AdminBackground />
-          <div className="relative z-[1] p-7">
-            <PageTransitionWrapper>
-              {children}
-            </PageTransitionWrapper>
-          </div>
-        </main>
+    <SidebarProvider>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Topbar />
+          <main className="relative flex-1 overflow-y-auto">
+            <AdminBackground />
+            <div className="relative z-[1] p-4 md:p-7">
+              <PageTransitionWrapper>
+                {children}
+              </PageTransitionWrapper>
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }

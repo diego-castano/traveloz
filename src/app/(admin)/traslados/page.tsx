@@ -45,7 +45,11 @@ export default function TrasladosPage() {
   // Data hooks
   const traslados = useTraslados();
   const packageState = usePackageState();
-  const proveedores = useProveedores();
+  const allProveedores = useProveedores();
+  const proveedoresTraslados = useMemo(
+    () => allProveedores.filter((p) => p.servicio === "TRASLADOS" && !p.deletedAt),
+    [allProveedores],
+  );
   const paises = usePaises();
   const { createTraslado, updateTraslado, deleteTraslado } = useServiceActions();
 
@@ -82,11 +86,11 @@ export default function TrasladosPage() {
 
   const proveedorMap = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const p of proveedores) {
+    for (const p of allProveedores) {
       m[p.id] = p.nombre;
     }
     return m;
-  }, [proveedores]);
+  }, [allProveedores]);
 
   const ciudadMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -141,8 +145,8 @@ export default function TrasladosPage() {
   );
 
   const proveedorOptions = useMemo(
-    () => proveedores.map((p) => ({ value: p.id, label: p.nombre })),
-    [proveedores],
+    () => proveedoresTraslados.map((p) => ({ value: p.id, label: p.nombre })),
+    [proveedoresTraslados],
   );
 
   // ---------------------------------------------------------------------------

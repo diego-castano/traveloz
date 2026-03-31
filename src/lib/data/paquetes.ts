@@ -13,6 +13,7 @@ import type {
   PaqueteCircuito,
   PaqueteFoto,
   PaqueteEtiqueta,
+  OpcionHotelera,
 } from '../types';
 
 const SEED_DATE = '2026-01-15T00:00:00.000Z';
@@ -29,6 +30,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-1',
     brandId: 'brand-1',
     titulo: 'Buzios Relax',
+    destino: 'Buzios',
     descripcion: 'Escapate a las playas paradisiacas de Buzios con 7 noches en un hotel boutique de primera categoria. Disfruta del sol, la arena blanca y la gastronomia brasilena en un entorno unico.',
     textoVisual: 'Relax total en Buzios',
     noches: 7,
@@ -41,8 +43,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: true,
     // Pricing: aereo-1 baja 420 + alojamiento-1 baja 180*7=1260 + traslado-1 35*2=70 + seguro-1 8*7=56 = 1806 neto
     netoCalculado: 1806,
-    markup: 30,
-    precioVenta: 2348,
+    markup: 0.77,
+    precioVenta: 2346,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -53,6 +55,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-2',
     brandId: 'brand-1',
     titulo: 'Cancun All Inclusive',
+    destino: 'Cancun',
     descripcion: 'Vivi la experiencia all inclusive en Cancun con 7 noches en un resort 5 estrellas frente al mar Caribe. Incluye vuelos, traslados y seguro de viaje completo.',
     textoVisual: 'Todo incluido en el Caribe',
     noches: 7,
@@ -65,8 +68,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: true,
     // Pricing: aereo-2 alta 890 + alojamiento-3 alta 340*7=2380 + traslado-2 25*2=50 + seguro-3 10*7=70 = 3390 neto
     netoCalculado: 3390,
-    markup: 28,
-    precioVenta: 4339,
+    markup: 0.78,
+    precioVenta: 4346,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -77,6 +80,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-3',
     brandId: 'brand-1',
     titulo: 'Punta Cana Paradise',
+    destino: 'Punta Cana',
     descripcion: 'Descubri el paraiso en Punta Cana con 7 noches all inclusive en el Barcelo Bavaro Palace. Playas de arena blanca, aguas cristalinas y entretenimiento para toda la familia.',
     textoVisual: null,
     noches: 7,
@@ -89,8 +93,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-3 baja 620 + alojamiento-5 baja 200*7=1400 + traslado-4 30*2=60 + seguro-1 8*7=56 = 2136 neto
     netoCalculado: 2136,
-    markup: 32,
-    precioVenta: 2820,
+    markup: 0.76,
+    precioVenta: 2811,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -101,6 +105,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-4',
     brandId: 'brand-1',
     titulo: 'Miami Shopping',
+    destino: 'Miami',
     descripcion: 'Cinco noches en Miami con hotel en South Beach y traslados incluidos. Aprovecha para recorrer los outlets, disfrutar de la gastronomia y la vida nocturna de la Magic City.',
     textoVisual: 'Shopping & Beach en Miami',
     noches: 5,
@@ -113,8 +118,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-4 alta 980 + alojamiento-7 alta 350*5=1750 + traslado-5 40*2=80 + seguro-2 14*5=70 = 2880 neto
     netoCalculado: 2880,
-    markup: 35,
-    precioVenta: 3950,
+    markup: 0.73,
+    precioVenta: 3945,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -125,6 +130,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-5',
     brandId: 'brand-1',
     titulo: 'Portugal Magnifico',
+    destino: 'Portugal',
     descripcion: 'Recorre Portugal de punta a punta con este circuito guiado de 8 noches. Desde Lisboa hasta Porto, pasando por Sintra, Coimbra y el Valle del Duero. Incluye vuelos, circuito completo y seguro.',
     textoVisual: 'Circuito completo por Portugal',
     noches: 8,
@@ -137,8 +143,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: true,
     // Pricing: aereo-7 alta 1180 + circuito-1 alta 1890 + traslado-6 35*2=70 + seguro-4 18*8=144 = 3284 neto
     netoCalculado: 3284,
-    markup: 30,
-    precioVenta: 4269,
+    markup: 0.77,
+    precioVenta: 4265,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -149,6 +155,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-6',
     brandId: 'brand-1',
     titulo: 'Rio + Buzios Clasico',
+    destino: 'Rio de Janeiro + Buzios',
     descripcion: 'Combina lo mejor de Rio de Janeiro y Buzios en un paquete multi-destino de 10 noches. Cinco noches en la ciudad maravillosa y cinco en la peninsula mas exclusiva de Brasil.',
     textoVisual: 'Dos destinos, un viaje',
     noches: 10,
@@ -161,8 +168,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-1 baja 420 + alojamiento-6 baja 280*5=1400 + alojamiento-1 baja 180*5=900 + traslado-1 35*2=70 + seguro-2 14*10=140 = 2930 neto
     netoCalculado: 2930,
-    markup: 33,
-    precioVenta: 3897,
+    markup: 0.75,
+    precioVenta: 3907,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -173,6 +180,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-7',
     brandId: 'brand-1',
     titulo: 'Escapada Buenos Aires',
+    destino: 'Buenos Aires',
     descripcion: 'Cuatro noches en la capital del tango. Recorre San Telmo, La Boca, Recoleta y Puerto Madero. Gastronomia de primer nivel y espectaculos de tango incluidos.',
     textoVisual: null,
     noches: 4,
@@ -186,8 +194,8 @@ export const SEED_PAQUETES: Paquete[] = [
     // Pricing: uses brand-2 aereo-9 EZE route as reference proxy, approx neto
     // aereo ~180 + alojamiento est ~100*4=400 + seguro ~8*4=32 = 612 neto
     netoCalculado: 612,
-    markup: 40,
-    precioVenta: 857,
+    markup: 0.71,
+    precioVenta: 862,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -198,6 +206,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-8',
     brandId: 'brand-1',
     titulo: 'Orlando Magic',
+    destino: 'Orlando',
     descripcion: 'Siete noches en Orlando con acceso a los mejores parques tematicos del mundo. Disney, Universal y SeaWorld te esperan. Incluye vuelos, hotel y seguro de viaje.',
     textoVisual: 'Parques y diversion en familia',
     noches: 7,
@@ -210,8 +219,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: true,
     // Pricing: aereo-4 vacaciones 1050 + alojamiento-7 alta 350*7=2450 + traslado-5 40*2=80 + seguro-3 10*7=70 = 3650 neto
     netoCalculado: 3650,
-    markup: 28,
-    precioVenta: 4700,
+    markup: 0.78,
+    precioVenta: 4679,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -222,6 +231,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-9',
     brandId: 'brand-1',
     titulo: 'Salvador de Bahia Tropical',
+    destino: 'Salvador de Bahia',
     descripcion: 'Siete noches en Salvador de Bahia, cuna del axe y la cultura afrobrasilena. Playas tropicales, Pelourinho historico y la mejor gastronomia bahiana.',
     textoVisual: null,
     noches: 7,
@@ -234,8 +244,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-6 baja 480 + alojamiento est ~130*7=910 + traslado est ~35*2=70 + seguro-5 7*7=49 = 1509 neto
     netoCalculado: 1509,
-    markup: 35,
-    precioVenta: 2037,
+    markup: 0.74,
+    precioVenta: 2039,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -246,6 +256,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-10',
     brandId: 'brand-1',
     titulo: 'Madrid Cultural',
+    destino: 'Madrid',
     descripcion: 'Seis noches en la capital espanola. Visita el Museo del Prado, el Palacio Real, el Parque del Retiro y disfruta de las tapas en los bares del centro historico.',
     textoVisual: 'Arte, cultura y tapas',
     noches: 6,
@@ -258,8 +269,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-7 alta 1180 + alojamiento-8 alta 290*6=1740 + traslado-6 35*2=70 + seguro-1 8*6=48 = 3038 neto
     netoCalculado: 3038,
-    markup: 30,
-    precioVenta: 3949,
+    markup: 0.77,
+    precioVenta: 3946,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -272,6 +283,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-11',
     brandId: 'brand-2',
     titulo: 'Caribe Sonado',
+    destino: 'Cancun',
     descripcion: 'Siete noches en Cancun en el espectacular Hyatt Ziva con regimen all inclusive. Playas de ensueno, snorkel en arrecifes de coral y excursiones a Chichen Itza.',
     textoVisual: 'El Caribe que sonaste',
     noches: 7,
@@ -284,8 +296,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-11 alta 920 + alojamiento-9 alta 350*7=2450 + traslado-8 25*2=50 + seguro-7 8*7=56 = 3476 neto
     netoCalculado: 3476,
-    markup: 30,
-    precioVenta: 4519,
+    markup: 0.77,
+    precioVenta: 4514,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -296,6 +308,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-12',
     brandId: 'brand-2',
     titulo: 'Punta Cana Deluxe',
+    destino: 'Punta Cana',
     descripcion: 'Siete noches en el Hard Rock Hotel Punta Cana con todo incluido. Piscinas, spa, entretenimiento en vivo y playas paradisiacas en la Republica Dominicana.',
     textoVisual: null,
     noches: 7,
@@ -308,8 +321,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-12 baja 640 + alojamiento-10 baja 210*7=1470 + traslado est ~30*2=60 + seguro-8 10*7=70 = 2240 neto
     netoCalculado: 2240,
-    markup: 32,
-    precioVenta: 2957,
+    markup: 0.76,
+    precioVenta: 2947,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -320,6 +333,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-13',
     brandId: 'brand-2',
     titulo: 'Brasil Express',
+    destino: 'Rio de Janeiro',
     descripcion: 'Cinco noches en Rio de Janeiro para quienes quieren conocer la ciudad maravillosa en poco tiempo. Cristo Redentor, Pan de Azucar, Copacabana e Ipanema.',
     textoVisual: 'Rio en 5 dias',
     noches: 5,
@@ -332,8 +346,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo-8 baja 440 + alojamiento-11 baja 130*5=650 + traslado-7 35*2=70 + seguro-7 8*5=40 = 1200 neto
     netoCalculado: 1200,
-    markup: 35,
-    precioVenta: 1620,
+    markup: 0.74,
+    precioVenta: 1622,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -344,6 +358,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-14',
     brandId: 'brand-2',
     titulo: 'Turquia Magica',
+    destino: 'Turquia',
     descripcion: 'Diez noches recorriendo Turquia desde Estambul hasta Capadocia. Circuito guiado completo con vuelos, traslados, hoteles cueva en Goreme y visitas a Efeso y Pamukkale.',
     textoVisual: 'Oriente y Occidente en un viaje',
     noches: 10,
@@ -356,8 +371,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo est ~1100 + circuito-2 alta 2150 + seguro-8 10*10=100 = 3350 neto
     netoCalculado: 3350,
-    markup: 30,
-    precioVenta: 4355,
+    markup: 0.77,
+    precioVenta: 4351,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -368,6 +383,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-15',
     brandId: 'brand-2',
     titulo: 'Florianopolis Sol',
+    destino: 'Florianopolis',
     descripcion: 'Siete noches en Florianopolis, la isla de la magia. Playas de aguas cristalinas, dunas de Joaquina, laguna de la Conceicao y la mejor vida nocturna del sur de Brasil.',
     textoVisual: null,
     noches: 7,
@@ -380,8 +396,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo est ~380 + alojamiento est ~125*7=875 + traslado est ~35*2=70 + seguro-7 8*7=56 = 1381 neto
     netoCalculado: 1381,
-    markup: 33,
-    precioVenta: 1837,
+    markup: 0.75,
+    precioVenta: 1841,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -392,6 +408,7 @@ export const SEED_PAQUETES: Paquete[] = [
     id: 'paquete-16',
     brandId: 'brand-2',
     titulo: 'Costa Rica Aventura',
+    destino: 'Costa Rica',
     descripcion: 'Ocho noches de aventura en Costa Rica. Volcanes, selvas tropicales, rafting, tirolesas y playas del Pacifico. Un destino para los amantes de la naturaleza y la adrenalina.',
     textoVisual: 'Aventura pura en Centroamerica',
     noches: 8,
@@ -404,8 +421,8 @@ export const SEED_PAQUETES: Paquete[] = [
     destacado: false,
     // Pricing: aereo est ~900 + alojamiento est ~120*8=960 + traslado est ~30*2=60 + seguro-8 10*8=80 = 2000 neto
     netoCalculado: 2000,
-    markup: 38,
-    precioVenta: 2760,
+    markup: 0.73,
+    precioVenta: 2740,
     moneda: 'USD',
     ordenServicios: [],
     createdAt: SEED_DATE,
@@ -666,4 +683,41 @@ export const SEED_PAQUETE_ETIQUETAS: PaqueteEtiqueta[] = [
 
   // paquete-16: Costa Rica Aventura (Escapadas b2)
   { id: 'petiq-23', paqueteId: 'paquete-16', etiquetaId: 'etiqueta-12' }, // Escapadas (brand-2)
+];
+
+// ---------------------------------------------------------------------------
+// SEED_OPCIONES_HOTELERAS -- Hotel options per package
+// Each option groups 1+ alojamientos with its own factor and sale price.
+// ---------------------------------------------------------------------------
+
+export const SEED_OPCIONES_HOTELERAS: OpcionHotelera[] = [
+  // paquete-1: Buzios Relax (brand-1) - 2 options
+  { id: 'opcion-1', paqueteId: 'paquete-1', nombre: 'Opcion Boutique', alojamientoIds: ['alojamiento-1'], factor: 0.77, precioVenta: 2346, orden: 1 },
+  { id: 'opcion-2', paqueteId: 'paquete-1', nombre: 'Opcion Economica', alojamientoIds: ['alojamiento-2'], factor: 0.80, precioVenta: 1883, orden: 2 },
+
+  // paquete-2: Cancun All Inclusive (brand-1) - 2 options
+  { id: 'opcion-3', paqueteId: 'paquete-2', nombre: 'Iberostar 5*', alojamientoIds: ['alojamiento-3'], factor: 0.78, precioVenta: 4346, orden: 1 },
+  { id: 'opcion-4', paqueteId: 'paquete-2', nombre: 'Grand Oasis 4*', alojamientoIds: ['alojamiento-4'], factor: 0.80, precioVenta: 3388, orden: 2 },
+
+  // paquete-3: Punta Cana Paradise (brand-1)
+  { id: 'opcion-5', paqueteId: 'paquete-3', nombre: 'Barcelo Bavaro 5*', alojamientoIds: ['alojamiento-5'], factor: 0.76, precioVenta: 2811, orden: 1 },
+
+  // paquete-4: Miami Shopping (brand-1)
+  { id: 'opcion-6', paqueteId: 'paquete-4', nombre: 'Fontainebleau 5*', alojamientoIds: ['alojamiento-7'], factor: 0.73, precioVenta: 3945, orden: 1 },
+
+  // paquete-6: Rio + Buzios (brand-1) - 3 options (multi-hotel)
+  { id: 'opcion-7', paqueteId: 'paquete-6', nombre: 'Premium', alojamientoIds: ['alojamiento-6', 'alojamiento-1'], factor: 0.75, precioVenta: 3907, orden: 1 },
+  { id: 'opcion-8', paqueteId: 'paquete-6', nombre: 'Estandar', alojamientoIds: ['alojamiento-6', 'alojamiento-2'], factor: 0.78, precioVenta: 3474, orden: 2 },
+
+  // paquete-8: Orlando Magic (brand-1)
+  { id: 'opcion-9', paqueteId: 'paquete-8', nombre: 'Fontainebleau 5*', alojamientoIds: ['alojamiento-7'], factor: 0.78, precioVenta: 4679, orden: 1 },
+
+  // paquete-11: Caribe Sonado (brand-2)
+  { id: 'opcion-10', paqueteId: 'paquete-11', nombre: 'Hyatt Ziva 5*', alojamientoIds: ['alojamiento-9'], factor: 0.77, precioVenta: 4514, orden: 1 },
+
+  // paquete-12: Punta Cana Deluxe (brand-2)
+  { id: 'opcion-11', paqueteId: 'paquete-12', nombre: 'Hard Rock 5*', alojamientoIds: ['alojamiento-10'], factor: 0.76, precioVenta: 2947, orden: 1 },
+
+  // paquete-13: Brasil Express (brand-2) - 1 option
+  { id: 'opcion-12', paqueteId: 'paquete-13', nombre: 'Windsor Atlantica 4*', alojamientoIds: ['alojamiento-11'], factor: 0.74, precioVenta: 1622, orden: 1 },
 ];

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Eye, Pencil, Copy, Trash2, Building2 } from "lucide-react";
+import { Plus, Eye, Pencil, Copy, Trash2, Building2, Bus, ShieldCheck, Map } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { SearchFilter } from "@/components/ui/SearchFilter";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import {
   Table,
   TableHeader,
@@ -25,6 +26,7 @@ import {
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { cn } from "@/components/lib/cn";
 import type { Proveedor } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -59,30 +61,37 @@ export default function ProveedoresPage() {
     email: "",
     telefono: "",
     notas: "",
+    servicio: "SEGUROS" as import("@/lib/types").CategoriaServicio,
   });
 
   // List state
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [filtroServicio, setFiltroServicio] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Filtered and paginated data
   // ---------------------------------------------------------------------------
 
   const filteredProveedores = useMemo(() => {
-    if (!search.trim()) return proveedores;
-    const q = search.toLowerCase();
-    return proveedores.filter(
-      (p) =>
-        p.nombre.toLowerCase().includes(q) ||
-        (p.email ?? "").toLowerCase().includes(q),
-    );
-  }, [proveedores, search]);
+    return proveedores.filter((p) => {
+      if (filtroServicio && p.servicio !== filtroServicio) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        if (
+          !p.nombre.toLowerCase().includes(q) &&
+          !(p.email ?? "").toLowerCase().includes(q)
+        )
+          return false;
+      }
+      return true;
+    });
+  }, [proveedores, search, filtroServicio]);
 
-  // Reset page when search changes
+  // Reset page when search or filter changes
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, filtroServicio]);
 
   const totalPages = Math.ceil(filteredProveedores.length / PAGE_SIZE);
 
@@ -97,7 +106,7 @@ export default function ProveedoresPage() {
 
   function handleOpenCreate() {
     setEditTarget(null);
-    setForm({ nombre: "", contacto: "", email: "", telefono: "", notas: "" });
+    setForm({ nombre: "", contacto: "", email: "", telefono: "", notas: "", servicio: "SEGUROS" });
     setModalOpen(true);
   }
 
@@ -109,6 +118,7 @@ export default function ProveedoresPage() {
       email: p.email ?? "",
       telefono: p.telefono ?? "",
       notas: p.notas ?? "",
+      servicio: p.servicio,
     });
     setModalOpen(true);
   }
@@ -133,6 +143,7 @@ export default function ProveedoresPage() {
       email: p.email ?? "",
       telefono: p.telefono ?? "",
       notas: p.notas ?? "",
+      servicio: p.servicio,
     });
     toast("success", "Proveedor clonado", `Se creo una copia de "${p.nombre}"`);
   }
@@ -180,8 +191,30 @@ export default function ProveedoresPage() {
         filters={[]}
         onFilterToggle={() => undefined}
         placeholder="Buscar por nombre o email..."
-        className="mb-6"
+        className="mb-4"
       />
+
+      {/* Filter chips by servicio */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {(["TRASLADOS", "SEGUROS", "CIRCUITOS"] as const).map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setFiltroServicio((prev) => (prev === cat ? null : cat))}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              filtroServicio === cat
+                ? "bg-brand-teal-400 text-white shadow-glow-teal"
+                : "bg-white/60 text-neutral-500 hover:bg-white/80 border border-neutral-150/50",
+            )}
+            style={filtroServicio === cat ? {} : { backdropFilter: "blur(8px)" }}
+          >
+            {cat === "TRASLADOS" && <Bus className="w-3.5 h-3.5" />}
+            {cat === "SEGUROS" && <ShieldCheck className="w-3.5 h-3.5" />}
+            {cat === "CIRCUITOS" && <Map className="w-3.5 h-3.5" />}
+            {cat.charAt(0) + cat.slice(1).toLowerCase()}
+          </button>
+        ))}
+      </div>
 
       {filteredProveedores.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
@@ -300,6 +333,16 @@ export default function ProveedoresPage() {
               value={form.notas}
               onChange={(e) => setForm((f) => ({ ...f, notas: e.target.value }))}
               placeholder="Notas adicionales..."
+            />
+            <Select
+              label="Servicio"
+              value={form.servicio}
+              onValueChange={(v) => setForm((f) => ({ ...f, servicio: v as import("@/lib/types").CategoriaServicio }))}
+              options={[
+                { value: "SEGUROS", label: "Seguros" },
+                { value: "TRASLADOS", label: "Traslados" },
+                { value: "CIRCUITOS", label: "Circuitos" },
+              ]}
             />
           </div>
         </ModalBody>

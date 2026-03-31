@@ -165,7 +165,6 @@ export default function AlojamientosPage() {
       ciudadId: alojamiento.ciudadId,
       paisId: alojamiento.paisId,
       categoria: alojamiento.categoria,
-      proveedorId: alojamiento.proveedorId,
       sitioWeb: alojamiento.sitioWeb,
     });
     toast("success", "Alojamiento clonado", `Se creo una copia de "${alojamiento.nombre}"`);
@@ -232,7 +231,6 @@ export default function AlojamientosPage() {
                 <TableHead>Ciudad</TableHead>
                 <TableHead>Pais</TableHead>
                 <TableHead>Categoria</TableHead>
-                <TableHead>Proveedor</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -257,7 +255,6 @@ export default function AlojamientosPage() {
                   <TableCell>
                     <StarRating categoria={alojamiento.categoria} />
                   </TableCell>
-                  <TableCell>{proveedorMap[alojamiento.proveedorId] ?? "--"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button

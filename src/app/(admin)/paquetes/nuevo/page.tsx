@@ -63,6 +63,7 @@ export default function NuevoPaquetePage() {
     const newPaquete = createPaquete({
       brandId: activeBrandId,
       titulo: titulo.trim(),
+      destino: "",
       descripcion,
       textoVisual: textoVisual || null,
       noches,

@@ -109,6 +109,11 @@ export default function AereosPage() {
       aerolinea: aereo.aerolinea,
       equipaje: aereo.equipaje,
       itinerario: aereo.itinerario,
+      escalas: aereo.escalas,
+      codigoVueloIda: aereo.codigoVueloIda,
+      codigoVueloVuelta: aereo.codigoVueloVuelta,
+      duracionIda: aereo.duracionIda,
+      duracionVuelta: aereo.duracionVuelta,
     });
     toast("success", "Aereo clonado", `Se creo una copia de "${aereo.ruta}"`);
   }
@@ -166,6 +171,7 @@ export default function AereosPage() {
         </div>
       ) : (
         <>
+          <div className="relative">
           <Table>
             <TableHeader>
               <TableRow>
@@ -244,6 +250,9 @@ export default function AereosPage() {
               ))}
             </TableBody>
           </Table>
+          {/* Right fade scroll indicator (mobile) */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-white/80 to-transparent md:hidden" />
+          </div>
 
           <div className="mt-4 flex justify-center">
             <Pagination

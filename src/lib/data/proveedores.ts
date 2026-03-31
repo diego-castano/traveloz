@@ -3,7 +3,7 @@
 // All contact data realistic format. Phone numbers in +598 format.
 // ---------------------------------------------------------------------------
 
-import type { Proveedor } from '../types';
+import type { Proveedor, CategoriaServicio } from '../types';
 
 const SEED_DATE = '2026-01-15T00:00:00.000Z';
 
@@ -21,6 +21,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'comercial@universalassistance.com',
     telefono: '+598 2900 1234',
     notas: 'Proveedor principal de seguros de viaje. Cobertura global.',
+    servicio: 'SEGUROS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -33,6 +34,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'ventas@assistcard.com.uy',
     telefono: '+598 2901 5678',
     notas: 'Seguros premium con alta cobertura. Red global de asistencia.',
+    servicio: 'SEGUROS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -45,6 +47,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'info@tarjetasceleste.com.uy',
     telefono: '+598 2902 3456',
     notas: 'Opcion economica para seguros basicos.',
+    servicio: 'SEGUROS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -58,6 +61,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'reservas@sevenstransfers.com',
     telefono: '+598 2903 7890',
     notas: 'Traslados regulares y privados en Brasil y Caribe.',
+    servicio: 'TRASLADOS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -70,6 +74,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'operaciones@brt.com.uy',
     telefono: '+598 2904 2345',
     notas: 'Traslados aeroportuarios en multiples destinos.',
+    servicio: 'TRASLADOS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -83,6 +88,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'agencias@europamundo.com',
     telefono: '+598 2905 6789',
     notas: 'Circuitos guiados por Europa. Partner principal para circuitos.',
+    servicio: 'CIRCUITOS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -96,6 +102,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'comercial@universalassistance.com',
     telefono: '+598 2900 1234',
     notas: 'Seguros para DestinoIcono. Mismo proveedor, contrato diferente.',
+    servicio: 'SEGUROS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -108,6 +115,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'ventas@assistcard.com.uy',
     telefono: '+598 2901 5678',
     notas: 'Seguros premium para DestinoIcono.',
+    servicio: 'SEGUROS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -120,6 +128,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'reservas@sevenstransfers.com',
     telefono: '+598 2903 7890',
     notas: 'Traslados para DestinoIcono.',
+    servicio: 'TRASLADOS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,
@@ -132,6 +141,7 @@ export const SEED_PROVEEDORES: Proveedor[] = [
     email: 'agencias@europamundo.com',
     telefono: '+598 2905 6789',
     notas: 'Circuitos guiados para DestinoIcono.',
+    servicio: 'CIRCUITOS',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
     deletedAt: null,

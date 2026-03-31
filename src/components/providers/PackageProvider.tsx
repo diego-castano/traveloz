@@ -16,6 +16,7 @@ import type {
   PaqueteCircuito,
   PaqueteFoto,
   PaqueteEtiqueta,
+  OpcionHotelera,
 } from "@/lib/types";
 import {
   SEED_PAQUETES,
@@ -26,6 +27,7 @@ import {
   SEED_PAQUETE_CIRCUITOS,
   SEED_PAQUETE_FOTOS,
   SEED_PAQUETE_ETIQUETAS,
+  SEED_OPCIONES_HOTELERAS,
 } from "@/lib/data";
 import { useBrand } from "./BrandProvider";
 
@@ -41,6 +43,7 @@ interface PackageState {
   paqueteCircuitos: PaqueteCircuito[];
   paqueteFotos: PaqueteFoto[];
   paqueteEtiquetas: PaqueteEtiqueta[];
+  opcionesHoteleras: OpcionHotelera[];
 }
 
 const initialState: PackageState = {
@@ -52,6 +55,7 @@ const initialState: PackageState = {
   paqueteCircuitos: SEED_PAQUETE_CIRCUITOS,
   paqueteFotos: SEED_PAQUETE_FOTOS,
   paqueteEtiquetas: SEED_PAQUETE_ETIQUETAS,
+  opcionesHoteleras: SEED_OPCIONES_HOTELERAS,
 };
 
 // ---------------------------------------------------------------------------
@@ -89,7 +93,11 @@ type PackageAction =
   | { type: "DELETE_PAQUETE_FOTO"; payload: string }
   // PaqueteEtiqueta (hard delete)
   | { type: "ADD_PAQUETE_ETIQUETA"; payload: PaqueteEtiqueta }
-  | { type: "DELETE_PAQUETE_ETIQUETA"; payload: string };
+  | { type: "DELETE_PAQUETE_ETIQUETA"; payload: string }
+  // OpcionHotelera (hard delete)
+  | { type: "ADD_OPCION_HOTELERA"; payload: OpcionHotelera }
+  | { type: "UPDATE_OPCION_HOTELERA"; payload: OpcionHotelera }
+  | { type: "DELETE_OPCION_HOTELERA"; payload: string };
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -153,6 +161,9 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
       const clonedEtiquetas = state.paqueteEtiquetas
         .filter((pe) => pe.paqueteId === source.id)
         .map((pe) => ({ ...pe, id: crypto.randomUUID(), paqueteId: newId }));
+      const clonedOpciones = state.opcionesHoteleras
+        .filter((o) => o.paqueteId === source.id)
+        .map((o) => ({ ...o, id: crypto.randomUUID(), paqueteId: newId }));
       return {
         ...state,
         paquetes: [...state.paquetes, cloned],
@@ -163,6 +174,7 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
         paqueteCircuitos: [...state.paqueteCircuitos, ...clonedCircuitos],
         paqueteFotos: [...state.paqueteFotos, ...clonedFotos],
         paqueteEtiquetas: [...state.paqueteEtiquetas, ...clonedEtiquetas],
+        opcionesHoteleras: [...state.opcionesHoteleras, ...clonedOpciones],
       };
     }
 
@@ -293,6 +305,27 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
         ...state,
         paqueteEtiquetas: state.paqueteEtiquetas.filter(
           (e) => e.id !== action.payload,
+        ),
+      };
+
+    // -- OpcionHotelera (hard delete) --
+    case "ADD_OPCION_HOTELERA":
+      return {
+        ...state,
+        opcionesHoteleras: [...state.opcionesHoteleras, action.payload],
+      };
+    case "UPDATE_OPCION_HOTELERA":
+      return {
+        ...state,
+        opcionesHoteleras: state.opcionesHoteleras.map((o) =>
+          o.id === action.payload.id ? action.payload : o,
+        ),
+      };
+    case "DELETE_OPCION_HOTELERA":
+      return {
+        ...state,
+        opcionesHoteleras: state.opcionesHoteleras.filter(
+          (o) => o.id !== action.payload,
         ),
       };
 
@@ -493,9 +526,44 @@ export function usePackageActions() {
       },
       removeEtiqueta: (id: string) =>
         dispatch({ type: "DELETE_PAQUETE_ETIQUETA", payload: id }),
+
+      // -- OpcionHotelera CRUD --
+      createOpcionHotelera: (
+        data: Omit<OpcionHotelera, "id">,
+      ): OpcionHotelera => {
+        const opcion: OpcionHotelera = { ...data, id: crypto.randomUUID() };
+        dispatch({ type: "ADD_OPCION_HOTELERA", payload: opcion });
+        return opcion;
+      },
+      updateOpcionHotelera: (opcion: OpcionHotelera) =>
+        dispatch({ type: "UPDATE_OPCION_HOTELERA", payload: opcion }),
+      deleteOpcionHotelera: (id: string) =>
+        dispatch({ type: "DELETE_OPCION_HOTELERA", payload: id }),
     }),
     [dispatch],
   );
+}
+
+// ---------------------------------------------------------------------------
+// OpcionesHoteleras selector hook
+// ---------------------------------------------------------------------------
+export function useOpcionesHoteleras(paqueteId: string): OpcionHotelera[] {
+  const state = usePackageState();
+  return useMemo(
+    () =>
+      state.opcionesHoteleras
+        .filter((o) => o.paqueteId === paqueteId)
+        .sort((a, b) => a.orden - b.orden),
+    [state.opcionesHoteleras, paqueteId],
+  );
+}
+
+// ---------------------------------------------------------------------------
+// All opciones hoteleras (bulk, for listing pages)
+// ---------------------------------------------------------------------------
+export function useAllOpcionesHoteleras(): OpcionHotelera[] {
+  const state = usePackageState();
+  return state.opcionesHoteleras;
 }
 
 // ---------------------------------------------------------------------------

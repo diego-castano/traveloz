@@ -27,7 +27,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-1', // Buzios
     paisId: 'pais-1',     // Brasil
     categoria: 5,
-    proveedorId: 'proveedor-4', // Sevens
     sitioWeb: 'https://www.casasbrancas.com.br',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -40,7 +39,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-1', // Buzios
     paisId: 'pais-1',     // Brasil
     categoria: 4,
-    proveedorId: 'proveedor-4', // Sevens
     sitioWeb: 'https://www.insoliabuzios.com.br',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -53,7 +51,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-6', // Cancun
     paisId: 'pais-2',     // Mexico
     categoria: 5,
-    proveedorId: 'proveedor-5', // BRT
     sitioWeb: 'https://www.iberostar.com',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -66,7 +63,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-6', // Cancun
     paisId: 'pais-2',     // Mexico
     categoria: 4,
-    proveedorId: 'proveedor-5', // BRT
     sitioWeb: 'https://www.oasishotels.com',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -79,7 +75,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-10', // Punta Cana
     paisId: 'pais-3',      // Republica Dominicana
     categoria: 5,
-    proveedorId: 'proveedor-5', // BRT
     sitioWeb: 'https://www.barcelo.com',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -92,7 +87,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-2', // Rio de Janeiro
     paisId: 'pais-1',     // Brasil
     categoria: 5,
-    proveedorId: 'proveedor-4', // Sevens
     sitioWeb: 'https://www.belmond.com/copacabana-palace',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -105,7 +99,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-15', // Miami
     paisId: 'pais-5',      // Estados Unidos
     categoria: 5,
-    proveedorId: 'proveedor-5', // BRT
     sitioWeb: 'https://www.fontainebleau.com',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -118,7 +111,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-18', // Madrid
     paisId: 'pais-6',      // Espana
     categoria: 5,
-    proveedorId: 'proveedor-6', // Europa Mundo
     sitioWeb: 'https://www.plazaespanadesign.com',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -132,7 +124,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-24', // Cancun (brand-2)
     paisId: 'pais-8',      // Mexico (brand-2)
     categoria: 5,
-    proveedorId: 'proveedor-9', // Sevens
     sitioWeb: 'https://www.hyatt.com/ziva-cancun',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -145,7 +136,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-26', // Punta Cana (brand-2)
     paisId: 'pais-9',      // Republica Dominicana (brand-2)
     categoria: 5,
-    proveedorId: 'proveedor-9', // Sevens
     sitioWeb: 'https://www.hardrockhotels.com/punta-cana',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -158,7 +148,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-21', // Rio de Janeiro (brand-2)
     paisId: 'pais-7',      // Brasil (brand-2)
     categoria: 4,
-    proveedorId: 'proveedor-9', // Sevens
     sitioWeb: 'https://www.windsorhoteis.com',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -171,7 +160,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-29', // Miami (brand-2)
     paisId: 'pais-11',     // Estados Unidos (brand-2)
     categoria: 4,
-    proveedorId: 'proveedor-9', // Sevens
     sitioWeb: 'https://www.hilton.com/miami-downtown',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -184,7 +172,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-31', // Madrid (brand-2)
     paisId: 'pais-12',     // Espana (brand-2)
     categoria: 4,
-    proveedorId: 'proveedor-10', // Europa Mundo
     sitioWeb: 'https://www.cataloniahotels.com',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
@@ -197,7 +184,6 @@ export const SEED_ALOJAMIENTOS: Alojamiento[] = [
     ciudadId: 'ciudad-20', // Buzios (brand-2)
     paisId: 'pais-7',      // Brasil (brand-2)
     categoria: 4,
-    proveedorId: 'proveedor-9', // Sevens
     sitioWeb: 'https://www.insoliabuzios.com.br',
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,

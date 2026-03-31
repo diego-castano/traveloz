@@ -89,4 +89,11 @@ export const DEMO_USERS: AuthUser[] = [
     role: "VENDEDOR",
     brandId: "brand-2",
   },
+  {
+    id: "user-6",
+    name: "Marketing TravelOz",
+    email: "marketing@traveloz.com.uy",
+    role: "MARKETING",
+    brandId: "brand-1",
+  },
 ];

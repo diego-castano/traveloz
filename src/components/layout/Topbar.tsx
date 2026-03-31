@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { glassMaterials } from "@/components/lib/glass";
 import { interactions } from "@/components/lib/animations";
-import { ChevronDown, LogOut, User, Building2, Check } from "lucide-react";
+import { ChevronDown, LogOut, User, Building2, Check, Search, Menu } from "lucide-react";
+import { useSidebar } from "@/components/layout/Sidebar";
+import { SearchModal } from "@/components/ui/SearchModal";
 import { useState } from "react";
 
 // ---------------------------------------------------------------------------
@@ -66,12 +68,13 @@ export function Topbar() {
   const { activeBrand, activeBrandId, brands, switchBrand } = useBrand();
   const breadcrumbItems = generateBreadcrumbs(pathname);
 
+  const { isMobile, setMobileOpen } = useSidebar();
   const [brandOpen, setBrandOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
   return (
     <header
-      className="sticky top-0 z-[20] flex h-[54px] items-center justify-between px-6"
+      className="sticky top-0 z-[20] flex h-[54px] items-center justify-between px-4 md:px-6"
       style={{
         ...glassMaterials.frosted,
         backdropFilter: "blur(24px) saturate(180%)",
@@ -79,11 +82,44 @@ export function Topbar() {
         borderBottom: "1px solid rgba(255,255,255,0.25)",
       }}
     >
-      {/* Left section: Breadcrumb */}
-      <Breadcrumb items={breadcrumbItems} />
+      {/* Left section: Hamburger (mobile) + Breadcrumb */}
+      <div className="flex items-center gap-2">
+        {isMobile && (
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="p-2 rounded-lg hover:bg-white/30 transition-colors md:hidden"
+          >
+            <Menu className="w-5 h-5 text-neutral-600" />
+          </button>
+        )}
+        <Breadcrumb items={breadcrumbItems} />
+      </div>
 
       {/* Right section: Brand selector + Solo lectura badge + User menu */}
       <div className="flex items-center gap-3">
+        {/* ----------------------------------------------------------------- */}
+        {/* Global search trigger (Cmd+K)                                      */}
+        {/* ----------------------------------------------------------------- */}
+        <button
+          onClick={() =>
+            document.dispatchEvent(
+              new KeyboardEvent("keydown", { key: "k", metaKey: true })
+            )
+          }
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm text-neutral-400 hover:text-neutral-600 transition-colors"
+          style={{
+            background: "rgba(255,255,255,0.5)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid rgba(255,255,255,0.3)",
+          }}
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span className="hidden md:inline text-xs">Buscar...</span>
+          <kbd className="hidden md:flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] text-neutral-400 bg-white/50">
+            ⌘K
+          </kbd>
+        </button>
+
         {/* ----------------------------------------------------------------- */}
         {/* Brand selector dropdown (Radix DropdownMenu)                       */}
         {/* ----------------------------------------------------------------- */}
@@ -217,6 +253,9 @@ export function Topbar() {
           backgroundSize: "200% 100%",
         }}
       />
+
+      {/* Global search modal (Cmd+K) */}
+      <SearchModal />
     </header>
   );
 }

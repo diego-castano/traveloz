@@ -2,10 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Trash2, Check, X, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Check, X, Plus, Plane } from "lucide-react";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { glassMaterials } from "@/components/lib/glass";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { PriceImpactModal } from "@/components/ui/PriceImpactModal";
 import {
@@ -21,6 +23,12 @@ import type { PrecioAereo } from "@/lib/types";
 // ---------------------------------------------------------------------------
 // Inline input styling consistent with glass pattern
 // ---------------------------------------------------------------------------
+
+const equipajeOptions = [
+  { value: 'Articulo personal', label: 'Articulo personal' },
+  { value: 'Articulo personal + Equipaje de mano', label: 'Articulo personal + Equipaje de mano' },
+  { value: 'Equipaje de mano + Equipaje en bodega', label: 'Equipaje de mano + Equipaje en bodega' },
+];
 
 const inlineInputClassName =
   "w-full rounded-[6px] border border-neutral-150/50 bg-white/70 px-2 py-1 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#3BBFAD] focus:shadow-[0_0_0_2px_rgba(255,255,255,0.8),0_0_0_4px_rgba(59,191,173,0.4)] focus:bg-white/85 transition-all backdrop-blur-sm";
@@ -60,6 +68,11 @@ export default function AereoDetailPage() {
   const [aerolinea, setAerolinea] = useState(aereo?.aerolinea ?? "");
   const [equipaje, setEquipaje] = useState(aereo?.equipaje ?? "");
   const [itinerario, setItinerario] = useState(aereo?.itinerario ?? "");
+  const [escalas, setEscalas] = useState(aereo?.escalas ?? 0);
+  const [codigoVueloIda, setCodigoVueloIda] = useState(aereo?.codigoVueloIda ?? "");
+  const [codigoVueloVuelta, setCodigoVueloVuelta] = useState(aereo?.codigoVueloVuelta ?? "");
+  const [duracionIda, setDuracionIda] = useState(aereo?.duracionIda ?? "");
+  const [duracionVuelta, setDuracionVuelta] = useState(aereo?.duracionVuelta ?? "");
 
   // -- Price table inline edit state --
   const [editingRowId, setEditingRowId] = useState<string | null>(null);
@@ -116,6 +129,11 @@ export default function AereoDetailPage() {
       aerolinea,
       equipaje,
       itinerario,
+      escalas,
+      codigoVueloIda,
+      codigoVueloVuelta,
+      duracionIda,
+      duracionVuelta,
     });
     toast("success", "Vuelo actualizado", "Los datos del vuelo fueron guardados.");
   }
@@ -173,7 +191,6 @@ export default function AereoDetailPage() {
       periodoDesde: newRow.periodoDesde ?? "",
       periodoHasta: newRow.periodoHasta ?? "",
       precioAdulto: Number(newRow.precioAdulto ?? 0),
-      precioMenor: Number(newRow.precioMenor ?? 0),
     });
     setAddingRow(false);
     setNewRow({});
@@ -234,21 +251,102 @@ export default function AereoDetailPage() {
             />
           </div>
 
-          {/* Aerolinea + Equipaje */}
-          <Input
-            label="Aerolinea"
-            value={aerolinea}
-            onChange={(e) => setAerolinea(e.target.value)}
-            placeholder="Iberia"
-            readOnly={!canEdit}
-          />
-          <Input
-            label="Equipaje"
-            value={equipaje}
-            onChange={(e) => setEquipaje(e.target.value)}
-            placeholder="23kg bodega"
-            readOnly={!canEdit}
-          />
+          {/* Aerolinea */}
+          <div className="col-span-1 md:col-span-2">
+            <Input
+              label="Aerolinea"
+              value={aerolinea}
+              onChange={(e) => setAerolinea(e.target.value)}
+              placeholder="Iberia"
+              readOnly={!canEdit}
+            />
+          </div>
+
+          {/* Detalles de Vuelo -- flight ticket visual */}
+          <div className="col-span-1 md:col-span-2">
+            <h3 className="text-[13px] font-semibold text-neutral-700 mb-2">Detalles de Vuelo</h3>
+            <div className="rounded-[12px] p-4" style={glassMaterials.frostedSubtle}>
+              {/* Flight path visualization */}
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-lg font-mono font-bold text-neutral-800">
+                    {ruta.split(' - ')[0] || 'ORG'}
+                  </div>
+                  <div className="text-xs text-neutral-400">Origen</div>
+                </div>
+                <div className="flex-1 relative flex items-center">
+                  <div className="w-full border-t-2 border-dashed border-neutral-200" />
+                  {escalas > 0 && Array.from({ length: escalas }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute w-2.5 h-2.5 rounded-full bg-[#3BBFAD] border-2 border-white"
+                      style={{
+                        left: `${((i + 1) / (escalas + 1)) * 100}%`,
+                        transform: 'translate(-50%, -50%)',
+                        top: '0',
+                      }}
+                    />
+                  ))}
+                  <Plane className="absolute right-0 -top-2.5 w-5 h-5 text-[#3BBFAD]" />
+                </div>
+                <div className="text-center">
+                  <div className="text-lg font-mono font-bold text-neutral-800">
+                    {ruta.split(' - ')[1] || 'DST'}
+                  </div>
+                  <div className="text-xs text-neutral-400">Destino</div>
+                </div>
+              </div>
+
+              {/* Flight details grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Input
+                  label="Codigo Ida"
+                  value={codigoVueloIda}
+                  onChange={(e) => setCodigoVueloIda(e.target.value)}
+                  placeholder="AA 1234"
+                  readOnly={!canEdit}
+                />
+                <Input
+                  label="Duracion Ida"
+                  value={duracionIda}
+                  onChange={(e) => setDuracionIda(e.target.value)}
+                  placeholder="3h 30m"
+                  readOnly={!canEdit}
+                />
+                <Input
+                  label="Codigo Vuelta"
+                  value={codigoVueloVuelta}
+                  onChange={(e) => setCodigoVueloVuelta(e.target.value)}
+                  placeholder="AA 1235"
+                  readOnly={!canEdit}
+                />
+                <Input
+                  label="Duracion Vuelta"
+                  value={duracionVuelta}
+                  onChange={(e) => setDuracionVuelta(e.target.value)}
+                  placeholder="3h 30m"
+                  readOnly={!canEdit}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <Input
+                  label="Escalas"
+                  type="number"
+                  value={String(escalas)}
+                  onChange={(e) => setEscalas(Number(e.target.value))}
+                  placeholder="0"
+                  readOnly={!canEdit}
+                />
+                <Select
+                  label="Equipaje"
+                  value={equipaje}
+                  onValueChange={setEquipaje}
+                  options={equipajeOptions}
+                  disabled={!canEdit}
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Itinerario -- full width textarea */}
           <div className="col-span-1 md:col-span-2">
@@ -311,9 +409,6 @@ export default function AereoDetailPage() {
                       <th className="text-right py-2 pr-3 text-[12px] font-medium text-neutral-500">
                         Neto Adulto / persona (USD)
                       </th>
-                      <th className="text-right py-2 pr-3 text-[12px] font-medium text-neutral-500">
-                        Neto Menor / persona (USD)
-                      </th>
                       {canEdit && (
                         <th className="text-right py-2 text-[12px] font-medium text-neutral-500">
                           Acciones
@@ -368,19 +463,6 @@ export default function AereoDetailPage() {
                               }
                             />
                           </td>
-                          <td className="py-2 pr-3">
-                            <input
-                              type="number"
-                              className={inlineInputClassName + " text-right"}
-                              value={draftRow.precioMenor ?? ""}
-                              onChange={(e) =>
-                                setDraftRow((d) => ({
-                                  ...d,
-                                  precioMenor: Number(e.target.value),
-                                }))
-                              }
-                            />
-                          </td>
                           <td className="py-2">
                             <div className="flex items-center justify-end gap-1">
                               <Button
@@ -416,9 +498,6 @@ export default function AereoDetailPage() {
                           </td>
                           <td className="py-2.5 pr-3 text-right font-medium text-neutral-800">
                             {formatCurrency(precio.precioAdulto)}
-                          </td>
-                          <td className="py-2.5 pr-3 text-right font-medium text-neutral-800">
-                            {formatCurrency(precio.precioMenor)}
                           </td>
                           {canEdit && (
                             <td className="py-2.5">
@@ -485,20 +564,6 @@ export default function AereoDetailPage() {
                               setNewRow((r) => ({
                                 ...r,
                                 precioAdulto: Number(e.target.value),
-                              }))
-                            }
-                          />
-                        </td>
-                        <td className="py-2 pr-3">
-                          <input
-                            type="number"
-                            className={inlineInputClassName + " text-right"}
-                            value={newRow.precioMenor ?? ""}
-                            placeholder="0"
-                            onChange={(e) =>
-                              setNewRow((r) => ({
-                                ...r,
-                                precioMenor: Number(e.target.value),
                               }))
                             }
                           />
