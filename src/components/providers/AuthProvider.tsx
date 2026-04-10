@@ -1,14 +1,19 @@
 "use client";
 
 import {
+  SessionProvider,
+  useSession,
+  signIn,
+  signOut,
+} from "next-auth/react";
+import {
   createContext,
   useCallback,
   useContext,
   useMemo,
-  useState,
 } from "react";
 import type { Role, AuthUser } from "@/lib/auth";
-import { roleConfig, DEMO_USERS } from "@/lib/auth";
+import { roleConfig } from "@/lib/auth";
 
 // ---------------------------------------------------------------------------
 // Context value interface
@@ -21,7 +26,7 @@ interface AuthContextValue {
   canEdit: boolean;
   canSeePricing: { neto: boolean; markup: boolean; venta: boolean };
   visibleModules: string[];
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 }
 
@@ -31,30 +36,41 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 // ---------------------------------------------------------------------------
-// Provider
+// Inner provider -- consumes the NextAuth session
 // ---------------------------------------------------------------------------
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+function AuthProviderInner({ children }: { children: React.ReactNode }) {
+  const { data: session } = useSession();
 
-  const login = useCallback((email: string, password: string): boolean => {
-    // Simulated login -- password is always "admin"
-    if (password !== "admin") return false;
-
-    const found = DEMO_USERS.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase(),
-    );
-    if (!found) return false;
-
-    setUser(found);
-    return true;
-  }, []);
-
-  const logout = useCallback(() => {
-    setUser(null);
-  }, []);
+  const user = useMemo<AuthUser | null>(() => {
+    if (!session?.user) return null;
+    const u = session.user as any;
+    return {
+      id: u.id,
+      name: u.name || "",
+      email: u.email || "",
+      role: u.role as Role,
+      brandId: u.brandId as string,
+    };
+  }, [session]);
 
   // Derive role-based permissions from roleConfig
   const config = user ? roleConfig[user.role] : null;
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<boolean> => {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      return !result?.error;
+    },
+    [],
+  );
+
+  const logout = useCallback(async () => {
+    await signOut({ redirect: false });
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -76,6 +92,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+// ---------------------------------------------------------------------------
+// Provider -- wraps children with NextAuth SessionProvider
+// ---------------------------------------------------------------------------
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SessionProvider>
+      <AuthProviderInner>{children}</AuthProviderInner>
+    </SessionProvider>
+  );
 }
 
 // ---------------------------------------------------------------------------

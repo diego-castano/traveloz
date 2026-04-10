@@ -2,10 +2,10 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 
-export type AutoSaveStatus = 'saved' | 'saving' | 'unsaved';
+export type AutoSaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
 interface UseAutoSaveOptions {
-  onSave: () => void;
+  onSave: () => void | Promise<void>;
   debounceMs?: number;
   enabled?: boolean;
 }
@@ -28,23 +28,28 @@ export function useAutoSave({ onSave, debounceMs = 2000, enabled = true }: UseAu
 
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    timerRef.current = setTimeout(() => {
+    timerRef.current = setTimeout(async () => {
       setStatus('saving');
-      // Simulate async save (in mockup, save is synchronous)
-      setTimeout(() => {
-        onSave();
+      try {
+        await onSave();
         if (isMountedRef.current) setStatus('saved');
-      }, 400);
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+        if (isMountedRef.current) setStatus('error');
+      }
     }, debounceMs);
   }, [onSave, debounceMs, enabled]);
 
-  const saveNow = useCallback(() => {
+  const saveNow = useCallback(async () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     setStatus('saving');
-    setTimeout(() => {
-      onSave();
+    try {
+      await onSave();
       if (isMountedRef.current) setStatus('saved');
-    }, 300);
+    } catch (err) {
+      console.error('Save failed:', err);
+      if (isMountedRef.current) setStatus('error');
+    }
   }, [onSave]);
 
   return { status, markDirty, saveNow };

@@ -43,13 +43,13 @@ export default function NuevoCircuitoPage() {
   const [proveedorId, setProveedorId] = useState("");
 
   // -- Create handler --
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!nombre.trim()) {
       toast("warning", "Nombre requerido", "Ingresa un nombre para el circuito.");
       return;
     }
 
-    const newCircuito = createCircuito({
+    const newCircuito = await createCircuito({
       brandId: activeBrandId,
       nombre: nombre.trim(),
       noches: Number(noches),

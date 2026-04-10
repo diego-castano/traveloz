@@ -1,0 +1,459 @@
+// TravelOz Travel Agency Admin Panel - Prisma Schema
+// PostgreSQL on Railway
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────
+
+enum EstadoPaquete {
+  BORRADOR
+  ACTIVO
+  INACTIVO
+}
+
+enum TipoTraslado {
+  REGULAR
+  PRIVADO
+}
+
+enum CategoriaServicio {
+  TRASLADOS
+  SEGUROS
+  CIRCUITOS
+}
+
+enum Role {
+  ADMIN
+  VENDEDOR
+  MARKETING
+}
+
+// ──────────────────────────────────────────────
+// Models
+// ──────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(VENDEDOR)
+  brandId      String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([brandId])
+}
+
+model Paquete {
+  id             String        @id @default(cuid())
+  brandId        String
+  titulo         String
+  destino        String
+  descripcion    String?       @db.Text
+  textoVisual    String?       @db.Text
+  noches         Int
+  salidas        String?
+  temporadaId    String?
+  tipoPaqueteId  String?
+  validezDesde   String?
+  validezHasta   String?
+  estado         EstadoPaquete @default(BORRADOR)
+  destacado      Boolean       @default(false)
+  netoCalculado  Float         @default(0)
+  markup         Float         @default(0)
+  precioVenta    Float         @default(0)
+  moneda         String        @default("USD")
+  ordenServicios String[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+
+  temporada         Temporada?           @relation(fields: [temporadaId], references: [id])
+  tipoPaquete       TipoPaquete?         @relation(fields: [tipoPaqueteId], references: [id])
+  fotos             PaqueteFoto[]
+  etiquetas         PaqueteEtiqueta[]
+  aereos            PaqueteAereo[]
+  alojamientos      PaqueteAlojamiento[]
+  traslados         PaqueteTraslado[]
+  seguros           PaqueteSeguro[]
+  circuitos         PaqueteCircuito[]
+  opcionesHoteleras OpcionHotelera[]
+
+  @@index([brandId])
+}
+
+model Aereo {
+  id                String    @id @default(cuid())
+  brandId           String
+  ruta              String
+  destino           String
+  aerolinea         String?
+  equipaje          String?
+  itinerario        String?
+  escalas           Int       @default(0)
+  codigoVueloIda    String?
+  codigoVueloVuelta String?
+  duracionIda       String?
+  duracionVuelta    String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  precios  PrecioAereo[]
+  paquetes PaqueteAereo[]
+
+  @@index([brandId])
+}
+
+model PrecioAereo {
+  id           String   @id @default(cuid())
+  aereoId      String
+  periodoDesde String
+  periodoHasta String
+  precioAdulto Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  aereo Aereo @relation(fields: [aereoId], references: [id], onDelete: Cascade)
+}
+
+model Alojamiento {
+  id        String    @id @default(cuid())
+  brandId   String
+  nombre    String
+  ciudadId  String?
+  paisId    String?
+  categoria Int?
+  sitioWeb  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  precios  PrecioAlojamiento[]
+  fotos    AlojamientoFoto[]
+  ciudad   Ciudad?              @relation(fields: [ciudadId], references: [id])
+  pais     Pais?                @relation(fields: [paisId], references: [id])
+  paquetes PaqueteAlojamiento[]
+
+  @@index([brandId])
+}
+
+model PrecioAlojamiento {
+  id             String   @id @default(cuid())
+  alojamientoId  String
+  periodoDesde   String
+  periodoHasta   String
+  precioPorNoche Float
+  regimenId      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  alojamiento Alojamiento @relation(fields: [alojamientoId], references: [id], onDelete: Cascade)
+  regimen     Regimen?    @relation(fields: [regimenId], references: [id])
+}
+
+model AlojamientoFoto {
+  id            String @id @default(cuid())
+  alojamientoId String
+  url           String
+  alt           String
+  orden         Int    @default(0)
+
+  alojamiento Alojamiento @relation(fields: [alojamientoId], references: [id], onDelete: Cascade)
+}
+
+model Traslado {
+  id          String       @id @default(cuid())
+  brandId     String
+  nombre      String
+  tipo        TipoTraslado @default(REGULAR)
+  ciudadId    String?
+  paisId      String?
+  proveedorId String?
+  precio      Float
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+
+  proveedor Proveedor?        @relation(fields: [proveedorId], references: [id])
+  ciudad    Ciudad?           @relation(fields: [ciudadId], references: [id])
+  pais      Pais?             @relation(fields: [paisId], references: [id])
+  paquetes  PaqueteTraslado[]
+
+  @@index([brandId])
+}
+
+model Seguro {
+  id          String    @id @default(cuid())
+  brandId     String
+  proveedorId String?
+  plan        String
+  cobertura   String?
+  costoPorDia Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  proveedor Proveedor?      @relation(fields: [proveedorId], references: [id])
+  paquetes  PaqueteSeguro[]
+
+  @@index([brandId])
+}
+
+model Circuito {
+  id          String    @id @default(cuid())
+  brandId     String
+  nombre      String
+  noches      Int
+  proveedorId String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  itinerario CircuitoDia[]
+  precios    PrecioCircuito[]
+  proveedor  Proveedor?        @relation(fields: [proveedorId], references: [id])
+  paquetes   PaqueteCircuito[]
+
+  @@index([brandId])
+}
+
+model CircuitoDia {
+  id          String  @id @default(cuid())
+  circuitoId  String
+  numeroDia   Int
+  titulo      String
+  descripcion String? @db.Text
+  orden       Int     @default(0)
+
+  circuito Circuito @relation(fields: [circuitoId], references: [id], onDelete: Cascade)
+}
+
+model PrecioCircuito {
+  id           String   @id @default(cuid())
+  circuitoId   String
+  periodoDesde String
+  periodoHasta String
+  precio       Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  circuito Circuito @relation(fields: [circuitoId], references: [id], onDelete: Cascade)
+}
+
+model Proveedor {
+  id        String            @id @default(cuid())
+  brandId   String
+  nombre    String
+  contacto  String?
+  email     String?
+  telefono  String?
+  notas     String?           @db.Text
+  servicio  CategoriaServicio
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  deletedAt DateTime?
+
+  traslados Traslado[]
+  seguros   Seguro[]
+  circuitos Circuito[]
+
+  @@index([brandId])
+}
+
+model Temporada {
+  id        String   @id @default(cuid())
+  brandId   String
+  nombre    String
+  orden     Int      @default(0)
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paquetes Paquete[]
+
+  @@index([brandId])
+}
+
+model TipoPaquete {
+  id        String   @id @default(cuid())
+  brandId   String
+  nombre    String
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paquetes Paquete[]
+
+  @@index([brandId])
+}
+
+model Etiqueta {
+  id        String   @id @default(cuid())
+  brandId   String
+  nombre    String
+  slug      String
+  color     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paquetes PaqueteEtiqueta[]
+
+  @@index([brandId])
+}
+
+model Pais {
+  id        String   @id @default(cuid())
+  brandId   String
+  nombre    String
+  codigo    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ciudades     Ciudad[]
+  alojamientos Alojamiento[]
+  traslados    Traslado[]
+
+  @@index([brandId])
+}
+
+model Ciudad {
+  id        String   @id @default(cuid())
+  paisId    String
+  nombre    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pais         Pais          @relation(fields: [paisId], references: [id])
+  alojamientos Alojamiento[]
+  traslados    Traslado[]
+}
+
+model Regimen {
+  id        String   @id @default(cuid())
+  brandId   String
+  nombre    String
+  abrev     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  precios PrecioAlojamiento[]
+
+  @@index([brandId])
+}
+
+// ──────────────────────────────────────────────
+// Junction / Assignment Tables
+// ──────────────────────────────────────────────
+
+model PaqueteAereo {
+  id           String  @id @default(cuid())
+  paqueteId    String
+  aereoId      String
+  textoDisplay String?
+  orden        Int     @default(0)
+
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  aereo   Aereo   @relation(fields: [aereoId], references: [id])
+
+  @@unique([paqueteId, aereoId])
+}
+
+model PaqueteAlojamiento {
+  id            String  @id @default(cuid())
+  paqueteId     String
+  alojamientoId String
+  nochesEnEste  Int?
+  textoDisplay  String?
+  orden         Int     @default(0)
+
+  paquete     Paquete     @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  alojamiento Alojamiento @relation(fields: [alojamientoId], references: [id])
+
+  @@unique([paqueteId, alojamientoId])
+}
+
+model PaqueteTraslado {
+  id           String  @id @default(cuid())
+  paqueteId    String
+  trasladoId   String
+  textoDisplay String?
+  orden        Int     @default(0)
+
+  paquete  Paquete  @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  traslado Traslado @relation(fields: [trasladoId], references: [id])
+
+  @@unique([paqueteId, trasladoId])
+}
+
+model PaqueteSeguro {
+  id            String  @id @default(cuid())
+  paqueteId     String
+  seguroId      String
+  diasCobertura Int?
+  textoDisplay  String?
+  orden         Int     @default(0)
+
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  seguro  Seguro  @relation(fields: [seguroId], references: [id])
+
+  @@unique([paqueteId, seguroId])
+}
+
+model PaqueteCircuito {
+  id           String  @id @default(cuid())
+  paqueteId    String
+  circuitoId   String
+  textoDisplay String?
+  orden        Int     @default(0)
+
+  paquete  Paquete  @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  circuito Circuito @relation(fields: [circuitoId], references: [id])
+
+  @@unique([paqueteId, circuitoId])
+}
+
+model PaqueteFoto {
+  id        String @id @default(cuid())
+  paqueteId String
+  url       String
+  alt       String
+  orden     Int    @default(0)
+
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+}
+
+model PaqueteEtiqueta {
+  id         String @id @default(cuid())
+  paqueteId  String
+  etiquetaId String
+
+  paquete  Paquete  @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  etiqueta Etiqueta @relation(fields: [etiquetaId], references: [id])
+
+  @@unique([paqueteId, etiquetaId])
+}
+
+model OpcionHotelera {
+  id             String   @id @default(cuid())
+  paqueteId      String
+  nombre         String
+  alojamientoIds String[]
+  factor         Float
+  precioVenta    Float
+  orden          Int      @default(0)
+
+  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+}

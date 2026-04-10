@@ -4,16 +4,18 @@ import {
   createContext,
   useContext,
   useReducer,
+  useEffect,
   useMemo,
   type Dispatch,
 } from "react";
 import type { AuthUser, Role } from "@/lib/auth";
-import { DEMO_USERS } from "@/lib/auth";
+import * as userActions from '@/actions/user.actions';
 
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
 // ---------------------------------------------------------------------------
 type UserAction =
+  | { type: "SET_ALL"; payload: AuthUser[] }
   | { type: "ADD_USER"; payload: AuthUser }
   | { type: "UPDATE_USER"; payload: AuthUser }
   | { type: "DELETE_USER"; payload: string };
@@ -21,14 +23,21 @@ type UserAction =
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
-function userReducer(state: AuthUser[], action: UserAction): AuthUser[] {
+interface UserState {
+  users: AuthUser[];
+  loading: boolean;
+}
+
+function userReducer(state: UserState, action: UserAction): UserState {
   switch (action.type) {
+    case "SET_ALL":
+      return { users: action.payload, loading: false };
     case "ADD_USER":
-      return [...state, action.payload];
+      return { ...state, users: [...state.users, action.payload] };
     case "UPDATE_USER":
-      return state.map((u) => (u.id === action.payload.id ? action.payload : u));
+      return { ...state, users: state.users.map((u) => (u.id === action.payload.id ? action.payload : u)) };
     case "DELETE_USER":
-      return state.filter((u) => u.id !== action.payload);
+      return { ...state, users: state.users.filter((u) => u.id !== action.payload) };
     default:
       return state;
   }
@@ -37,14 +46,23 @@ function userReducer(state: AuthUser[], action: UserAction): AuthUser[] {
 // ---------------------------------------------------------------------------
 // Contexts (split state / dispatch)
 // ---------------------------------------------------------------------------
-const UserStateContext = createContext<AuthUser[] | null>(null);
+const UserStateContext = createContext<UserState | null>(null);
 const UserDispatchContext = createContext<Dispatch<UserAction> | null>(null);
 
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(userReducer, DEMO_USERS);
+  const [state, dispatch] = useReducer(userReducer, { users: [], loading: true });
+
+  useEffect(() => {
+    let cancelled = false;
+    userActions.getUsers().then((users) => {
+      if (cancelled) return;
+      dispatch({ type: "SET_ALL", payload: users });
+    }).catch(console.error);
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <UserStateContext.Provider value={state}>
@@ -58,7 +76,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 // Raw hooks
 // ---------------------------------------------------------------------------
-function useUserState(): AuthUser[] {
+function useUserState(): UserState {
   const ctx = useContext(UserStateContext);
   if (!ctx) {
     throw new Error("useUserState must be used within a <UserProvider>");
@@ -83,7 +101,7 @@ function useUserDispatch(): Dispatch<UserAction> {
  * Only ADMIN users should call this from the Perfiles page.
  */
 export function useUsers(): AuthUser[] {
-  return useUserState();
+  return useUserState().users;
 }
 
 export function useUserActions() {
@@ -91,18 +109,17 @@ export function useUserActions() {
 
   return useMemo(
     () => ({
-      createUser: (data: Omit<AuthUser, "id">): AuthUser => {
-        const user: AuthUser = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_USER", payload: user });
-        return user;
+      createUser: async (data: Omit<AuthUser, "id">) => {
+        const entity = await userActions.createUser({ ...data, password: 'admin' });
+        dispatch({ type: "ADD_USER", payload: entity as any });
+        return entity as any;
       },
-      updateUser: (user: AuthUser): void => {
+      updateUser: async (user: AuthUser) => {
+        await userActions.updateUser(user.id, user);
         dispatch({ type: "UPDATE_USER", payload: user });
       },
-      deleteUser: (id: string): void => {
+      deleteUser: async (id: string) => {
+        await userActions.deleteUser(id);
         dispatch({ type: "DELETE_USER", payload: id });
       },
     }),

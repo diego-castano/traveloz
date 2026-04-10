@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useReducer,
+  useEffect,
   useMemo,
   type Dispatch,
 } from "react";
@@ -19,24 +20,14 @@ import type {
   CircuitoDia,
   PrecioCircuito,
 } from "@/lib/types";
-import {
-  SEED_AEREOS,
-  SEED_PRECIOS_AEREO,
-  SEED_ALOJAMIENTOS,
-  SEED_PRECIOS_ALOJAMIENTO,
-  SEED_ALOJAMIENTO_FOTOS,
-  SEED_TRASLADOS,
-  SEED_SEGUROS,
-  SEED_CIRCUITOS,
-  SEED_CIRCUITO_DIAS,
-  SEED_PRECIOS_CIRCUITO,
-} from "@/lib/data";
+import * as serviceActions from "@/actions/service.actions";
 import { useBrand } from "./BrandProvider";
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 interface ServiceState {
+  loading: boolean;
   aereos: Aereo[];
   preciosAereo: PrecioAereo[];
   alojamientos: Alojamiento[];
@@ -50,22 +41,24 @@ interface ServiceState {
 }
 
 const initialState: ServiceState = {
-  aereos: SEED_AEREOS,
-  preciosAereo: SEED_PRECIOS_AEREO,
-  alojamientos: SEED_ALOJAMIENTOS,
-  preciosAlojamiento: SEED_PRECIOS_ALOJAMIENTO,
-  alojamientoFotos: SEED_ALOJAMIENTO_FOTOS,
-  traslados: SEED_TRASLADOS,
-  seguros: SEED_SEGUROS,
-  circuitos: SEED_CIRCUITOS,
-  circuitoDias: SEED_CIRCUITO_DIAS,
-  preciosCircuito: SEED_PRECIOS_CIRCUITO,
+  loading: true,
+  aereos: [],
+  preciosAereo: [],
+  alojamientos: [],
+  preciosAlojamiento: [],
+  alojamientoFotos: [],
+  traslados: [],
+  seguros: [],
+  circuitos: [],
+  circuitoDias: [],
+  preciosCircuito: [],
 };
 
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
 // ---------------------------------------------------------------------------
 type ServiceAction =
+  | { type: "SET_ALL"; payload: ServiceState }
   // Aereo (soft delete)
   | { type: "ADD_AEREO"; payload: Aereo }
   | { type: "UPDATE_AEREO"; payload: Aereo }
@@ -112,6 +105,9 @@ type ServiceAction =
 // ---------------------------------------------------------------------------
 function serviceReducer(state: ServiceState, action: ServiceAction): ServiceState {
   switch (action.type) {
+    case "SET_ALL":
+      return action.payload;
+
     // -- Aereo (soft delete) --
     case "ADD_AEREO":
       return { ...state, aereos: [...state.aereos, action.payload] };
@@ -322,7 +318,40 @@ const ServiceDispatchContext = createContext<Dispatch<ServiceAction> | null>(nul
 // Provider
 // ---------------------------------------------------------------------------
 export function ServiceProvider({ children }: { children: React.ReactNode }) {
+  const { activeBrandId } = useBrand();
   const [state, dispatch] = useReducer(serviceReducer, initialState);
+
+  useEffect(() => {
+    let cancelled = false;
+    dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
+
+    serviceActions
+      .getAllServices(activeBrandId)
+      .then((data) => {
+        if (cancelled) return;
+        dispatch({
+          type: "SET_ALL",
+          payload: {
+            loading: false,
+            aereos: data.aereos as any,
+            preciosAereo: data.preciosAereo as any,
+            alojamientos: data.alojamientos as any,
+            preciosAlojamiento: data.preciosAlojamiento as any,
+            alojamientoFotos: data.alojamientoFotos as any,
+            traslados: data.traslados as any,
+            seguros: data.seguros as any,
+            circuitos: data.circuitos as any,
+            circuitoDias: data.circuitoDias as any,
+            preciosCircuito: data.preciosCircuito as any,
+          },
+        });
+      })
+      .catch(console.error);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBrandId]);
 
   return (
     <ServiceStateContext.Provider value={state}>
@@ -425,195 +454,170 @@ export function useServiceActions() {
   return useMemo(
     () => ({
       // -- Aereo --
-      createAereo: (
+      createAereo: async (
         data: Omit<Aereo, "id" | "createdAt" | "updatedAt" | "deletedAt">,
-      ): Aereo => {
-        const now = new Date().toISOString();
-        const entity: Aereo = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        dispatch({ type: "ADD_AEREO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createAereo(data);
+        dispatch({ type: "ADD_AEREO", payload: entity as any });
+        return entity as any;
       },
-      updateAereo: (entity: Aereo) =>
-        dispatch({
-          type: "UPDATE_AEREO",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteAereo: (id: string) =>
-        dispatch({ type: "DELETE_AEREO", payload: id }),
+      updateAereo: async (entity: Aereo) => {
+        await serviceActions.updateAereo(entity.id, entity);
+        dispatch({ type: "UPDATE_AEREO", payload: entity });
+      },
+      deleteAereo: async (id: string) => {
+        await serviceActions.deleteAereo(id);
+        dispatch({ type: "DELETE_AEREO", payload: id });
+      },
 
       // -- PrecioAereo --
-      createPrecioAereo: (data: Omit<PrecioAereo, "id">): PrecioAereo => {
-        const entity: PrecioAereo = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PRECIO_AEREO", payload: entity });
-        return entity;
+      createPrecioAereo: async (data: Omit<PrecioAereo, "id">) => {
+        const entity = await serviceActions.createPrecioAereo(data);
+        dispatch({ type: "ADD_PRECIO_AEREO", payload: entity as any });
+        return entity as any;
       },
-      updatePrecioAereo: (entity: PrecioAereo) =>
-        dispatch({ type: "UPDATE_PRECIO_AEREO", payload: entity }),
-      deletePrecioAereo: (id: string) =>
-        dispatch({ type: "DELETE_PRECIO_AEREO", payload: id }),
+      updatePrecioAereo: async (entity: PrecioAereo) => {
+        await serviceActions.updatePrecioAereo(entity.id, entity);
+        dispatch({ type: "UPDATE_PRECIO_AEREO", payload: entity });
+      },
+      deletePrecioAereo: async (id: string) => {
+        await serviceActions.deletePrecioAereo(id);
+        dispatch({ type: "DELETE_PRECIO_AEREO", payload: id });
+      },
 
       // -- Alojamiento --
-      createAlojamiento: (
+      createAlojamiento: async (
         data: Omit<Alojamiento, "id" | "createdAt" | "updatedAt" | "deletedAt">,
-      ): Alojamiento => {
-        const now = new Date().toISOString();
-        const entity: Alojamiento = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        dispatch({ type: "ADD_ALOJAMIENTO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createAlojamiento(data);
+        dispatch({ type: "ADD_ALOJAMIENTO", payload: entity as any });
+        return entity as any;
       },
-      updateAlojamiento: (entity: Alojamiento) =>
-        dispatch({
-          type: "UPDATE_ALOJAMIENTO",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteAlojamiento: (id: string) =>
-        dispatch({ type: "DELETE_ALOJAMIENTO", payload: id }),
+      updateAlojamiento: async (entity: Alojamiento) => {
+        await serviceActions.updateAlojamiento(entity.id, entity);
+        dispatch({ type: "UPDATE_ALOJAMIENTO", payload: entity });
+      },
+      deleteAlojamiento: async (id: string) => {
+        await serviceActions.deleteAlojamiento(id);
+        dispatch({ type: "DELETE_ALOJAMIENTO", payload: id });
+      },
 
       // -- PrecioAlojamiento --
-      createPrecioAlojamiento: (
+      createPrecioAlojamiento: async (
         data: Omit<PrecioAlojamiento, "id">,
-      ): PrecioAlojamiento => {
-        const entity: PrecioAlojamiento = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PRECIO_ALOJAMIENTO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createPrecioAlojamiento(data);
+        dispatch({ type: "ADD_PRECIO_ALOJAMIENTO", payload: entity as any });
+        return entity as any;
       },
-      updatePrecioAlojamiento: (entity: PrecioAlojamiento) =>
-        dispatch({ type: "UPDATE_PRECIO_ALOJAMIENTO", payload: entity }),
-      deletePrecioAlojamiento: (id: string) =>
-        dispatch({ type: "DELETE_PRECIO_ALOJAMIENTO", payload: id }),
+      updatePrecioAlojamiento: async (entity: PrecioAlojamiento) => {
+        await serviceActions.updatePrecioAlojamiento(entity.id, entity);
+        dispatch({ type: "UPDATE_PRECIO_ALOJAMIENTO", payload: entity });
+      },
+      deletePrecioAlojamiento: async (id: string) => {
+        await serviceActions.deletePrecioAlojamiento(id);
+        dispatch({ type: "DELETE_PRECIO_ALOJAMIENTO", payload: id });
+      },
 
       // -- AlojamientoFoto --
-      createAlojamientoFoto: (
+      createAlojamientoFoto: async (
         data: Omit<AlojamientoFoto, "id">,
-      ): AlojamientoFoto => {
-        const entity: AlojamientoFoto = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_ALOJAMIENTO_FOTO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createAlojamientoFoto(data);
+        dispatch({ type: "ADD_ALOJAMIENTO_FOTO", payload: entity as any });
+        return entity as any;
       },
-      updateAlojamientoFoto: (entity: AlojamientoFoto) =>
-        dispatch({ type: "UPDATE_ALOJAMIENTO_FOTO", payload: entity }),
-      deleteAlojamientoFoto: (id: string) =>
-        dispatch({ type: "DELETE_ALOJAMIENTO_FOTO", payload: id }),
+      updateAlojamientoFoto: async (entity: AlojamientoFoto) => {
+        await serviceActions.updateAlojamientoFoto(entity.id, entity);
+        dispatch({ type: "UPDATE_ALOJAMIENTO_FOTO", payload: entity });
+      },
+      deleteAlojamientoFoto: async (id: string) => {
+        await serviceActions.deleteAlojamientoFoto(id);
+        dispatch({ type: "DELETE_ALOJAMIENTO_FOTO", payload: id });
+      },
 
       // -- Traslado --
-      createTraslado: (
+      createTraslado: async (
         data: Omit<Traslado, "id" | "createdAt" | "updatedAt" | "deletedAt">,
-      ): Traslado => {
-        const now = new Date().toISOString();
-        const entity: Traslado = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        dispatch({ type: "ADD_TRASLADO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createTraslado(data);
+        dispatch({ type: "ADD_TRASLADO", payload: entity as any });
+        return entity as any;
       },
-      updateTraslado: (entity: Traslado) =>
-        dispatch({
-          type: "UPDATE_TRASLADO",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteTraslado: (id: string) =>
-        dispatch({ type: "DELETE_TRASLADO", payload: id }),
+      updateTraslado: async (entity: Traslado) => {
+        await serviceActions.updateTraslado(entity.id, entity);
+        dispatch({ type: "UPDATE_TRASLADO", payload: entity });
+      },
+      deleteTraslado: async (id: string) => {
+        await serviceActions.deleteTraslado(id);
+        dispatch({ type: "DELETE_TRASLADO", payload: id });
+      },
 
       // -- Seguro --
-      createSeguro: (
+      createSeguro: async (
         data: Omit<Seguro, "id" | "createdAt" | "updatedAt" | "deletedAt">,
-      ): Seguro => {
-        const now = new Date().toISOString();
-        const entity: Seguro = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        dispatch({ type: "ADD_SEGURO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createSeguro(data);
+        dispatch({ type: "ADD_SEGURO", payload: entity as any });
+        return entity as any;
       },
-      updateSeguro: (entity: Seguro) =>
-        dispatch({
-          type: "UPDATE_SEGURO",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteSeguro: (id: string) =>
-        dispatch({ type: "DELETE_SEGURO", payload: id }),
+      updateSeguro: async (entity: Seguro) => {
+        await serviceActions.updateSeguro(entity.id, entity);
+        dispatch({ type: "UPDATE_SEGURO", payload: entity });
+      },
+      deleteSeguro: async (id: string) => {
+        await serviceActions.deleteSeguro(id);
+        dispatch({ type: "DELETE_SEGURO", payload: id });
+      },
 
       // -- Circuito --
-      createCircuito: (
+      createCircuito: async (
         data: Omit<Circuito, "id" | "createdAt" | "updatedAt" | "deletedAt">,
-      ): Circuito => {
-        const now = new Date().toISOString();
-        const entity: Circuito = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        dispatch({ type: "ADD_CIRCUITO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createCircuito(data);
+        dispatch({ type: "ADD_CIRCUITO", payload: entity as any });
+        return entity as any;
       },
-      updateCircuito: (entity: Circuito) =>
-        dispatch({
-          type: "UPDATE_CIRCUITO",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteCircuito: (id: string) =>
-        dispatch({ type: "DELETE_CIRCUITO", payload: id }),
+      updateCircuito: async (entity: Circuito) => {
+        await serviceActions.updateCircuito(entity.id, entity);
+        dispatch({ type: "UPDATE_CIRCUITO", payload: entity });
+      },
+      deleteCircuito: async (id: string) => {
+        await serviceActions.deleteCircuito(id);
+        dispatch({ type: "DELETE_CIRCUITO", payload: id });
+      },
 
       // -- CircuitoDia --
-      createCircuitoDia: (data: Omit<CircuitoDia, "id">): CircuitoDia => {
-        const entity: CircuitoDia = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_CIRCUITO_DIA", payload: entity });
-        return entity;
+      createCircuitoDia: async (data: Omit<CircuitoDia, "id">) => {
+        const entity = await serviceActions.createCircuitoDia(data);
+        dispatch({ type: "ADD_CIRCUITO_DIA", payload: entity as any });
+        return entity as any;
       },
-      updateCircuitoDia: (entity: CircuitoDia) =>
-        dispatch({ type: "UPDATE_CIRCUITO_DIA", payload: entity }),
-      deleteCircuitoDia: (id: string) =>
-        dispatch({ type: "DELETE_CIRCUITO_DIA", payload: id }),
+      updateCircuitoDia: async (entity: CircuitoDia) => {
+        await serviceActions.updateCircuitoDia(entity.id, entity);
+        dispatch({ type: "UPDATE_CIRCUITO_DIA", payload: entity });
+      },
+      deleteCircuitoDia: async (id: string) => {
+        await serviceActions.deleteCircuitoDia(id);
+        dispatch({ type: "DELETE_CIRCUITO_DIA", payload: id });
+      },
 
       // -- PrecioCircuito --
-      createPrecioCircuito: (
+      createPrecioCircuito: async (
         data: Omit<PrecioCircuito, "id">,
-      ): PrecioCircuito => {
-        const entity: PrecioCircuito = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PRECIO_CIRCUITO", payload: entity });
-        return entity;
+      ) => {
+        const entity = await serviceActions.createPrecioCircuito(data);
+        dispatch({ type: "ADD_PRECIO_CIRCUITO", payload: entity as any });
+        return entity as any;
       },
-      updatePrecioCircuito: (entity: PrecioCircuito) =>
-        dispatch({ type: "UPDATE_PRECIO_CIRCUITO", payload: entity }),
-      deletePrecioCircuito: (id: string) =>
-        dispatch({ type: "DELETE_PRECIO_CIRCUITO", payload: id }),
+      updatePrecioCircuito: async (entity: PrecioCircuito) => {
+        await serviceActions.updatePrecioCircuito(entity.id, entity);
+        dispatch({ type: "UPDATE_PRECIO_CIRCUITO", payload: entity });
+      },
+      deletePrecioCircuito: async (id: string) => {
+        await serviceActions.deletePrecioCircuito(id);
+        dispatch({ type: "DELETE_PRECIO_CIRCUITO", payload: id });
+      },
     }),
     [dispatch],
   );

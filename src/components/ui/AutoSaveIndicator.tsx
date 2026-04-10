@@ -27,6 +27,12 @@ const statusConfig = {
     dotColor: '#B0B4CD',
     textColor: '#8A8DB5',
   },
+  error: {
+    icon: Circle,
+    label: 'Error al guardar',
+    dotColor: '#E74C5F',
+    textColor: '#CC2030',
+  },
 };
 
 export function AutoSaveIndicator({ status }: AutoSaveIndicatorProps) {

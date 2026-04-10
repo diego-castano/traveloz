@@ -51,7 +51,7 @@ export default function NuevoPaquetePage() {
   const [tipoPaqueteId, setTipoPaqueteId] = useState(tiposPaquete[0]?.id ?? "");
 
   // -- Create handler --
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!titulo.trim()) {
       toast("warning", "Titulo requerido", "Ingresa un nombre para el paquete.");
       return;
@@ -60,7 +60,7 @@ export default function NuevoPaquetePage() {
     const now = new Date().toISOString();
     const oneYearLater = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
 
-    const newPaquete = createPaquete({
+    const newPaquete = await createPaquete({
       brandId: activeBrandId,
       titulo: titulo.trim(),
       destino: "",

@@ -55,12 +55,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const success = auth.login(email, password);
+    const success = await auth.login(email, password);
     if (success) {
       router.push("/");
     } else {

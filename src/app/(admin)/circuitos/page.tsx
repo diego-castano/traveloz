@@ -116,10 +116,10 @@ export default function CircuitosPage() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  function handleClone(e: React.MouseEvent, c: Circuito) {
+  async function handleClone(e: React.MouseEvent, c: Circuito) {
     e.stopPropagation();
     // Deep clone: Circuito + all CircuitoDia + all PrecioCircuito
-    const newC = createCircuito({
+    const newC = await createCircuito({
       brandId: c.brandId,
       nombre: "Copia de " + c.nombre,
       noches: c.noches,

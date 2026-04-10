@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useReducer,
   useMemo,
   type Dispatch,
@@ -18,23 +19,14 @@ import type {
   PaqueteEtiqueta,
   OpcionHotelera,
 } from "@/lib/types";
-import {
-  SEED_PAQUETES,
-  SEED_PAQUETE_AEREOS,
-  SEED_PAQUETE_ALOJAMIENTOS,
-  SEED_PAQUETE_TRASLADOS,
-  SEED_PAQUETE_SEGUROS,
-  SEED_PAQUETE_CIRCUITOS,
-  SEED_PAQUETE_FOTOS,
-  SEED_PAQUETE_ETIQUETAS,
-  SEED_OPCIONES_HOTELERAS,
-} from "@/lib/data";
+import * as packageActions from "@/actions/package.actions";
 import { useBrand } from "./BrandProvider";
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 interface PackageState {
+  loading: boolean;
   paquetes: Paquete[];
   paqueteAereos: PaqueteAereo[];
   paqueteAlojamientos: PaqueteAlojamiento[];
@@ -47,21 +39,23 @@ interface PackageState {
 }
 
 const initialState: PackageState = {
-  paquetes: SEED_PAQUETES,
-  paqueteAereos: SEED_PAQUETE_AEREOS,
-  paqueteAlojamientos: SEED_PAQUETE_ALOJAMIENTOS,
-  paqueteTraslados: SEED_PAQUETE_TRASLADOS,
-  paqueteSeguros: SEED_PAQUETE_SEGUROS,
-  paqueteCircuitos: SEED_PAQUETE_CIRCUITOS,
-  paqueteFotos: SEED_PAQUETE_FOTOS,
-  paqueteEtiquetas: SEED_PAQUETE_ETIQUETAS,
-  opcionesHoteleras: SEED_OPCIONES_HOTELERAS,
+  loading: true,
+  paquetes: [],
+  paqueteAereos: [],
+  paqueteAlojamientos: [],
+  paqueteTraslados: [],
+  paqueteSeguros: [],
+  paqueteCircuitos: [],
+  paqueteFotos: [],
+  paqueteEtiquetas: [],
+  opcionesHoteleras: [],
 };
 
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
 // ---------------------------------------------------------------------------
 type PackageAction =
+  | { type: "SET_ALL"; payload: PackageState }
   // Paquete (soft delete)
   | { type: "ADD_PAQUETE"; payload: Paquete }
   | { type: "UPDATE_PAQUETE"; payload: Paquete }
@@ -104,6 +98,9 @@ type PackageAction =
 // ---------------------------------------------------------------------------
 function packageReducer(state: PackageState, action: PackageAction): PackageState {
   switch (action.type) {
+    case "SET_ALL":
+      return { ...action.payload, loading: false };
+
     // -- Paquete (soft delete) --
     case "ADD_PAQUETE":
       return { ...state, paquetes: [...state.paquetes, action.payload] };
@@ -345,6 +342,33 @@ const PackageDispatchContext = createContext<Dispatch<PackageAction> | null>(nul
 // ---------------------------------------------------------------------------
 export function PackageProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(packageReducer, initialState);
+  const { activeBrandId } = useBrand();
+
+  useEffect(() => {
+    let cancelled = false;
+    dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
+
+    packageActions.getAllPackageData(activeBrandId).then((data) => {
+      if (cancelled) return;
+      dispatch({
+        type: "SET_ALL",
+        payload: {
+          loading: false,
+          paquetes: data.paquetes as any,
+          paqueteAereos: data.paqueteAereos as any,
+          paqueteAlojamientos: data.paqueteAlojamientos as any,
+          paqueteTraslados: data.paqueteTraslados as any,
+          paqueteSeguros: data.paqueteSeguros as any,
+          paqueteCircuitos: data.paqueteCircuitos as any,
+          paqueteFotos: data.paqueteFotos as any,
+          paqueteEtiquetas: data.paqueteEtiquetas as any,
+          opcionesHoteleras: data.opcionesHoteleras as any,
+        },
+      });
+    }).catch(console.error);
+
+    return () => { cancelled = true; };
+  }, [activeBrandId]);
 
   return (
     <PackageStateContext.Provider value={state}>
@@ -407,138 +431,149 @@ export function usePackageActions() {
   return useMemo(
     () => ({
       // -- Paquete CRUD --
-      createPaquete: (
+      createPaquete: async (
         data: Omit<Paquete, "id" | "createdAt" | "updatedAt" | "deletedAt">,
-      ): Paquete => {
-        const now = new Date().toISOString();
-        const paquete: Paquete = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        dispatch({ type: "ADD_PAQUETE", payload: paquete });
-        return paquete;
+      ) => {
+        const entity = await packageActions.createPaquete(data as any);
+        dispatch({ type: "ADD_PAQUETE", payload: entity as any });
+        return entity as any;
       },
-      updatePaquete: (paquete: Paquete) =>
-        dispatch({
-          type: "UPDATE_PAQUETE",
-          payload: { ...paquete, updatedAt: new Date().toISOString() },
-        }),
-      deletePaquete: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE", payload: id }),
-      clonePaquete: (id: string) =>
-        dispatch({ type: "CLONE_PAQUETE", payload: id }),
+      updatePaquete: async (paquete: Paquete) => {
+        await packageActions.updatePaquete(paquete.id, paquete as any);
+        dispatch({ type: "UPDATE_PAQUETE", payload: paquete });
+      },
+      deletePaquete: async (id: string) => {
+        await packageActions.deletePaquete(id);
+        dispatch({ type: "DELETE_PAQUETE", payload: id });
+      },
+      clonePaquete: async (id: string) => {
+        const result = await packageActions.clonePaquete(id);
+        dispatch({ type: "ADD_PAQUETE", payload: result.paquete as any });
+        for (const r of result.paqueteAereos) dispatch({ type: "ADD_PAQUETE_AEREO", payload: r as any });
+        for (const r of result.paqueteAlojamientos) dispatch({ type: "ADD_PAQUETE_ALOJAMIENTO", payload: r as any });
+        for (const r of result.paqueteTraslados) dispatch({ type: "ADD_PAQUETE_TRASLADO", payload: r as any });
+        for (const r of result.paqueteSeguros) dispatch({ type: "ADD_PAQUETE_SEGURO", payload: r as any });
+        for (const r of result.paqueteCircuitos) dispatch({ type: "ADD_PAQUETE_CIRCUITO", payload: r as any });
+        for (const r of result.paqueteFotos) dispatch({ type: "ADD_PAQUETE_FOTO", payload: r as any });
+        for (const r of result.paqueteEtiquetas) dispatch({ type: "ADD_PAQUETE_ETIQUETA", payload: r as any });
+        for (const r of result.opcionesHoteleras) dispatch({ type: "ADD_OPCION_HOTELERA", payload: r as any });
+      },
 
       // -- Aereo assignment --
-      assignAereo: (data: Omit<PaqueteAereo, "id">): PaqueteAereo => {
-        const assignment: PaqueteAereo = { ...data, id: crypto.randomUUID() };
-        dispatch({ type: "ADD_PAQUETE_AEREO", payload: assignment });
-        return assignment;
+      assignAereo: async (data: Omit<PaqueteAereo, "id">) => {
+        const entity = await packageActions.assignAereo(data as any);
+        dispatch({ type: "ADD_PAQUETE_AEREO", payload: entity as any });
+        return entity as any;
       },
-      removeAereo: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE_AEREO", payload: id }),
-      updateAereoAssignment: (assignment: PaqueteAereo) =>
-        dispatch({ type: "UPDATE_PAQUETE_AEREO", payload: assignment }),
+      removeAereo: async (id: string) => {
+        await packageActions.removeAereo(id);
+        dispatch({ type: "DELETE_PAQUETE_AEREO", payload: id });
+      },
+      updateAereoAssignment: async (assignment: PaqueteAereo) => {
+        await packageActions.updateAereoAssignment(assignment.id, assignment as any);
+        dispatch({ type: "UPDATE_PAQUETE_AEREO", payload: assignment });
+      },
 
       // -- Alojamiento assignment --
-      assignAlojamiento: (
-        data: Omit<PaqueteAlojamiento, "id">,
-      ): PaqueteAlojamiento => {
-        const assignment: PaqueteAlojamiento = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PAQUETE_ALOJAMIENTO", payload: assignment });
-        return assignment;
+      assignAlojamiento: async (data: Omit<PaqueteAlojamiento, "id">) => {
+        const entity = await packageActions.assignAlojamiento(data as any);
+        dispatch({ type: "ADD_PAQUETE_ALOJAMIENTO", payload: entity as any });
+        return entity as any;
       },
-      removeAlojamiento: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE_ALOJAMIENTO", payload: id }),
-      updateAlojamientoAssignment: (assignment: PaqueteAlojamiento) =>
-        dispatch({ type: "UPDATE_PAQUETE_ALOJAMIENTO", payload: assignment }),
+      removeAlojamiento: async (id: string) => {
+        await packageActions.removeAlojamiento(id);
+        dispatch({ type: "DELETE_PAQUETE_ALOJAMIENTO", payload: id });
+      },
+      updateAlojamientoAssignment: async (assignment: PaqueteAlojamiento) => {
+        await packageActions.updateAlojamientoAssignment(assignment.id, assignment as any);
+        dispatch({ type: "UPDATE_PAQUETE_ALOJAMIENTO", payload: assignment });
+      },
 
       // -- Traslado assignment --
-      assignTraslado: (data: Omit<PaqueteTraslado, "id">): PaqueteTraslado => {
-        const assignment: PaqueteTraslado = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PAQUETE_TRASLADO", payload: assignment });
-        return assignment;
+      assignTraslado: async (data: Omit<PaqueteTraslado, "id">) => {
+        const entity = await packageActions.assignTraslado(data as any);
+        dispatch({ type: "ADD_PAQUETE_TRASLADO", payload: entity as any });
+        return entity as any;
       },
-      removeTraslado: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE_TRASLADO", payload: id }),
-      updateTrasladoAssignment: (assignment: PaqueteTraslado) =>
-        dispatch({ type: "UPDATE_PAQUETE_TRASLADO", payload: assignment }),
+      removeTraslado: async (id: string) => {
+        await packageActions.removeTraslado(id);
+        dispatch({ type: "DELETE_PAQUETE_TRASLADO", payload: id });
+      },
+      updateTrasladoAssignment: async (assignment: PaqueteTraslado) => {
+        await packageActions.updateTrasladoAssignment(assignment.id, assignment as any);
+        dispatch({ type: "UPDATE_PAQUETE_TRASLADO", payload: assignment });
+      },
 
       // -- Seguro assignment --
-      assignSeguro: (data: Omit<PaqueteSeguro, "id">): PaqueteSeguro => {
-        const assignment: PaqueteSeguro = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PAQUETE_SEGURO", payload: assignment });
-        return assignment;
+      assignSeguro: async (data: Omit<PaqueteSeguro, "id">) => {
+        const entity = await packageActions.assignSeguro(data as any);
+        dispatch({ type: "ADD_PAQUETE_SEGURO", payload: entity as any });
+        return entity as any;
       },
-      removeSeguro: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE_SEGURO", payload: id }),
-      updateSeguroAssignment: (assignment: PaqueteSeguro) =>
-        dispatch({ type: "UPDATE_PAQUETE_SEGURO", payload: assignment }),
+      removeSeguro: async (id: string) => {
+        await packageActions.removeSeguro(id);
+        dispatch({ type: "DELETE_PAQUETE_SEGURO", payload: id });
+      },
+      updateSeguroAssignment: async (assignment: PaqueteSeguro) => {
+        await packageActions.updateSeguroAssignment(assignment.id, assignment as any);
+        dispatch({ type: "UPDATE_PAQUETE_SEGURO", payload: assignment });
+      },
 
       // -- Circuito assignment --
-      assignCircuito: (
-        data: Omit<PaqueteCircuito, "id">,
-      ): PaqueteCircuito => {
-        const assignment: PaqueteCircuito = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PAQUETE_CIRCUITO", payload: assignment });
-        return assignment;
+      assignCircuito: async (data: Omit<PaqueteCircuito, "id">) => {
+        const entity = await packageActions.assignCircuito(data as any);
+        dispatch({ type: "ADD_PAQUETE_CIRCUITO", payload: entity as any });
+        return entity as any;
       },
-      removeCircuito: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE_CIRCUITO", payload: id }),
-      updateCircuitoAssignment: (assignment: PaqueteCircuito) =>
-        dispatch({ type: "UPDATE_PAQUETE_CIRCUITO", payload: assignment }),
+      removeCircuito: async (id: string) => {
+        await packageActions.removeCircuito(id);
+        dispatch({ type: "DELETE_PAQUETE_CIRCUITO", payload: id });
+      },
+      updateCircuitoAssignment: async (assignment: PaqueteCircuito) => {
+        await packageActions.updateCircuitoAssignment(assignment.id, assignment as any);
+        dispatch({ type: "UPDATE_PAQUETE_CIRCUITO", payload: assignment });
+      },
 
       // -- Photo management --
-      addFoto: (data: Omit<PaqueteFoto, "id">): PaqueteFoto => {
-        const foto: PaqueteFoto = { ...data, id: crypto.randomUUID() };
-        dispatch({ type: "ADD_PAQUETE_FOTO", payload: foto });
-        return foto;
+      addFoto: async (data: Omit<PaqueteFoto, "id">) => {
+        const entity = await packageActions.addPaqueteFoto(data);
+        dispatch({ type: "ADD_PAQUETE_FOTO", payload: entity as any });
+        return entity as any;
       },
-      removeFoto: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE_FOTO", payload: id }),
-      updateFoto: (foto: PaqueteFoto) =>
-        dispatch({ type: "UPDATE_PAQUETE_FOTO", payload: foto }),
+      removeFoto: async (id: string) => {
+        await packageActions.removePaqueteFoto(id);
+        dispatch({ type: "DELETE_PAQUETE_FOTO", payload: id });
+      },
+      updateFoto: async (foto: PaqueteFoto) => {
+        await packageActions.updatePaqueteFoto(foto.id, foto);
+        dispatch({ type: "UPDATE_PAQUETE_FOTO", payload: foto });
+      },
 
       // -- Etiqueta assignment --
-      assignEtiqueta: (
-        data: Omit<PaqueteEtiqueta, "id">,
-      ): PaqueteEtiqueta => {
-        const assignment: PaqueteEtiqueta = {
-          ...data,
-          id: crypto.randomUUID(),
-        };
-        dispatch({ type: "ADD_PAQUETE_ETIQUETA", payload: assignment });
-        return assignment;
+      assignEtiqueta: async (data: Omit<PaqueteEtiqueta, "id">) => {
+        const entity = await packageActions.assignEtiqueta(data);
+        dispatch({ type: "ADD_PAQUETE_ETIQUETA", payload: entity as any });
+        return entity as any;
       },
-      removeEtiqueta: (id: string) =>
-        dispatch({ type: "DELETE_PAQUETE_ETIQUETA", payload: id }),
+      removeEtiqueta: async (id: string) => {
+        await packageActions.removeEtiqueta(id);
+        dispatch({ type: "DELETE_PAQUETE_ETIQUETA", payload: id });
+      },
 
       // -- OpcionHotelera CRUD --
-      createOpcionHotelera: (
-        data: Omit<OpcionHotelera, "id">,
-      ): OpcionHotelera => {
-        const opcion: OpcionHotelera = { ...data, id: crypto.randomUUID() };
-        dispatch({ type: "ADD_OPCION_HOTELERA", payload: opcion });
-        return opcion;
+      createOpcionHotelera: async (data: Omit<OpcionHotelera, "id">) => {
+        const entity = await packageActions.createOpcionHotelera(data);
+        dispatch({ type: "ADD_OPCION_HOTELERA", payload: entity as any });
+        return entity as any;
       },
-      updateOpcionHotelera: (opcion: OpcionHotelera) =>
-        dispatch({ type: "UPDATE_OPCION_HOTELERA", payload: opcion }),
-      deleteOpcionHotelera: (id: string) =>
-        dispatch({ type: "DELETE_OPCION_HOTELERA", payload: id }),
+      updateOpcionHotelera: async (opcion: OpcionHotelera) => {
+        await packageActions.updateOpcionHotelera(opcion.id, opcion);
+        dispatch({ type: "UPDATE_OPCION_HOTELERA", payload: opcion });
+      },
+      deleteOpcionHotelera: async (id: string) => {
+        await packageActions.deleteOpcionHotelera(id);
+        dispatch({ type: "DELETE_OPCION_HOTELERA", payload: id });
+      },
     }),
     [dispatch],
   );

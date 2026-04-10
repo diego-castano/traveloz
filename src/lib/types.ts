@@ -1,17 +1,20 @@
 // ---------------------------------------------------------------------------
 // TravelOz Domain Entity Types
-// All 22 TypeScript interfaces + enum types for the data layer.
-// Source: docs/modulos_backend.md Prisma schemas via Phase 3 research.
+// Interfaces match the Prisma schema but use string for DateTime fields
+// (server action serialization converts Date → string automatically).
+// Enums re-exported from @prisma/client for single source of truth.
 // ---------------------------------------------------------------------------
 
 export type { AuthUser as User } from './auth';
 
 // ---------------------------------------------------------------------------
-// Enums
+// Enums -- keep as string literal unions for backward compatibility.
+// These match the Prisma enum values exactly.
 // ---------------------------------------------------------------------------
 
 export type EstadoPaquete = 'BORRADOR' | 'ACTIVO' | 'INACTIVO';
 export type TipoTraslado = 'REGULAR' | 'PRIVADO';
+export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS';
 
 // ---------------------------------------------------------------------------
 // Primary Entities (14 interfaces)
@@ -116,8 +119,6 @@ export interface Circuito {
   updatedAt: string;
   deletedAt: string | null;
 }
-
-export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS';
 
 /** Service provider (for transfers, insurance, and circuits). */
 export interface Proveedor {

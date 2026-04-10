@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useReducer,
+  useEffect,
   useMemo,
   type Dispatch,
 } from "react";
@@ -16,21 +17,14 @@ import type {
   Regimen,
   Proveedor,
 } from "@/lib/types";
-import {
-  SEED_TEMPORADAS,
-  SEED_TIPOS_PAQUETE,
-  SEED_ETIQUETAS,
-  SEED_PAISES,
-  SEED_CIUDADES,
-  SEED_REGIMENES,
-  SEED_PROVEEDORES,
-} from "@/lib/data";
+import * as catalogActions from "@/actions/catalog.actions";
 import { useBrand } from "./BrandProvider";
 
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 interface CatalogState {
+  loading: boolean;
   temporadas: Temporada[];
   tiposPaquete: TipoPaquete[];
   etiquetas: Etiqueta[];
@@ -41,19 +35,21 @@ interface CatalogState {
 }
 
 const initialState: CatalogState = {
-  temporadas: SEED_TEMPORADAS,
-  tiposPaquete: SEED_TIPOS_PAQUETE,
-  etiquetas: SEED_ETIQUETAS,
-  paises: SEED_PAISES,
-  ciudades: SEED_CIUDADES,
-  regimenes: SEED_REGIMENES,
-  proveedores: SEED_PROVEEDORES,
+  loading: true,
+  temporadas: [],
+  tiposPaquete: [],
+  etiquetas: [],
+  paises: [],
+  ciudades: [],
+  regimenes: [],
+  proveedores: [],
 };
 
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
 // ---------------------------------------------------------------------------
 type CatalogAction =
+  | { type: "SET_ALL"; payload: CatalogState }
   | { type: "ADD_TEMPORADA"; payload: Temporada }
   | { type: "UPDATE_TEMPORADA"; payload: Temporada }
   | { type: "DELETE_TEMPORADA"; payload: string }
@@ -81,6 +77,9 @@ type CatalogAction =
 // ---------------------------------------------------------------------------
 function catalogReducer(state: CatalogState, action: CatalogAction): CatalogState {
   switch (action.type) {
+    case "SET_ALL":
+      return { ...action.payload, loading: false };
+
     // -- Temporada (hard delete) --
     case "ADD_TEMPORADA":
       return { ...state, temporadas: [...state.temporadas, action.payload] };
@@ -213,6 +212,36 @@ const CatalogDispatchContext = createContext<Dispatch<CatalogAction> | null>(nul
 // ---------------------------------------------------------------------------
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(catalogReducer, initialState);
+  const { activeBrandId } = useBrand();
+
+  useEffect(() => {
+    let cancelled = false;
+    dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
+
+    catalogActions
+      .getAllCatalogs(activeBrandId)
+      .then((data) => {
+        if (cancelled) return;
+        dispatch({
+          type: "SET_ALL",
+          payload: {
+            loading: false,
+            temporadas: data.temporadas as unknown as Temporada[],
+            tiposPaquete: data.tiposPaquete as unknown as TipoPaquete[],
+            etiquetas: data.etiquetas as unknown as Etiqueta[],
+            paises: data.paises.map(({ ciudades: _c, ...p }) => p) as unknown as Pais[],
+            ciudades: data.paises.flatMap((p) => p.ciudades ?? []) as unknown as Ciudad[],
+            regimenes: data.regimenes as unknown as Regimen[],
+            proveedores: data.proveedores as unknown as Proveedor[],
+          },
+        });
+      })
+      .catch(console.error);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBrandId]);
 
   return (
     <CatalogStateContext.Provider value={state}>
@@ -232,6 +261,10 @@ export function useCatalogState(): CatalogState {
     throw new Error("useCatalogState must be used within a <CatalogProvider>");
   }
   return ctx;
+}
+
+export function useCatalogLoading(): boolean {
+  return useCatalogState().loading;
 }
 
 export function useCatalogDispatch(): Dispatch<CatalogAction> {
@@ -318,159 +351,137 @@ export function useCatalogActions() {
   return useMemo(
     () => ({
       // -- Temporada --
-      createTemporada: (
+      createTemporada: async (
         data: Omit<Temporada, "id" | "createdAt" | "updatedAt">,
-      ): Temporada => {
-        const now = new Date().toISOString();
-        const entity: Temporada = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-        };
-        dispatch({ type: "ADD_TEMPORADA", payload: entity });
+      ) => {
+        const entity = await catalogActions.createTemporada(data);
+        dispatch({ type: "ADD_TEMPORADA", payload: entity as unknown as Temporada });
         return entity;
       },
-      updateTemporada: (entity: Temporada) =>
-        dispatch({
-          type: "UPDATE_TEMPORADA",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteTemporada: (id: string) =>
-        dispatch({ type: "DELETE_TEMPORADA", payload: id }),
+      updateTemporada: async (entity: Temporada) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updateTemporada(id, rest);
+        dispatch({ type: "UPDATE_TEMPORADA", payload: updated as unknown as Temporada });
+        return updated;
+      },
+      deleteTemporada: async (id: string) => {
+        await catalogActions.deleteTemporada(id);
+        dispatch({ type: "DELETE_TEMPORADA", payload: id });
+      },
 
       // -- TipoPaquete --
-      createTipoPaquete: (
+      createTipoPaquete: async (
         data: Omit<TipoPaquete, "id" | "createdAt" | "updatedAt">,
-      ): TipoPaquete => {
-        const now = new Date().toISOString();
-        const entity: TipoPaquete = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-        };
-        dispatch({ type: "ADD_TIPO_PAQUETE", payload: entity });
+      ) => {
+        const entity = await catalogActions.createTipoPaquete(data);
+        dispatch({ type: "ADD_TIPO_PAQUETE", payload: entity as unknown as TipoPaquete });
         return entity;
       },
-      updateTipoPaquete: (entity: TipoPaquete) =>
-        dispatch({
-          type: "UPDATE_TIPO_PAQUETE",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteTipoPaquete: (id: string) =>
-        dispatch({ type: "DELETE_TIPO_PAQUETE", payload: id }),
+      updateTipoPaquete: async (entity: TipoPaquete) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updateTipoPaquete(id, rest);
+        dispatch({ type: "UPDATE_TIPO_PAQUETE", payload: updated as unknown as TipoPaquete });
+        return updated;
+      },
+      deleteTipoPaquete: async (id: string) => {
+        await catalogActions.deleteTipoPaquete(id);
+        dispatch({ type: "DELETE_TIPO_PAQUETE", payload: id });
+      },
 
       // -- Etiqueta --
-      createEtiqueta: (
+      createEtiqueta: async (
         data: Omit<Etiqueta, "id" | "createdAt" | "updatedAt">,
-      ): Etiqueta => {
-        const now = new Date().toISOString();
-        const entity: Etiqueta = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-        };
-        dispatch({ type: "ADD_ETIQUETA", payload: entity });
+      ) => {
+        const entity = await catalogActions.createEtiqueta(data);
+        dispatch({ type: "ADD_ETIQUETA", payload: entity as unknown as Etiqueta });
         return entity;
       },
-      updateEtiqueta: (entity: Etiqueta) =>
-        dispatch({
-          type: "UPDATE_ETIQUETA",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteEtiqueta: (id: string) =>
-        dispatch({ type: "DELETE_ETIQUETA", payload: id }),
+      updateEtiqueta: async (entity: Etiqueta) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updateEtiqueta(id, rest);
+        dispatch({ type: "UPDATE_ETIQUETA", payload: updated as unknown as Etiqueta });
+        return updated;
+      },
+      deleteEtiqueta: async (id: string) => {
+        await catalogActions.deleteEtiqueta(id);
+        dispatch({ type: "DELETE_ETIQUETA", payload: id });
+      },
 
       // -- Pais --
-      createPais: (
+      createPais: async (
         data: Omit<Pais, "id" | "createdAt" | "updatedAt">,
-      ): Pais => {
-        const now = new Date().toISOString();
-        const entity: Pais = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-        };
-        dispatch({ type: "ADD_PAIS", payload: entity });
+      ) => {
+        const entity = await catalogActions.createPais(data);
+        dispatch({ type: "ADD_PAIS", payload: entity as unknown as Pais });
         return entity;
       },
-      updatePais: (entity: Pais) =>
-        dispatch({
-          type: "UPDATE_PAIS",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deletePais: (id: string) =>
-        dispatch({ type: "DELETE_PAIS", payload: id }),
+      updatePais: async (entity: Pais) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updatePais(id, rest);
+        dispatch({ type: "UPDATE_PAIS", payload: updated as unknown as Pais });
+        return updated;
+      },
+      deletePais: async (id: string) => {
+        await catalogActions.deletePais(id);
+        dispatch({ type: "DELETE_PAIS", payload: id });
+      },
 
       // -- Ciudad --
-      createCiudad: (
+      createCiudad: async (
         data: Omit<Ciudad, "id" | "createdAt" | "updatedAt">,
-      ): Ciudad => {
-        const now = new Date().toISOString();
-        const entity: Ciudad = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-        };
-        dispatch({ type: "ADD_CIUDAD", payload: entity });
+      ) => {
+        const entity = await catalogActions.createCiudad(data);
+        dispatch({ type: "ADD_CIUDAD", payload: entity as unknown as Ciudad });
         return entity;
       },
-      updateCiudad: (entity: Ciudad) =>
-        dispatch({
-          type: "UPDATE_CIUDAD",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteCiudad: (id: string) =>
-        dispatch({ type: "DELETE_CIUDAD", payload: id }),
+      updateCiudad: async (entity: Ciudad) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updateCiudad(id, rest);
+        dispatch({ type: "UPDATE_CIUDAD", payload: updated as unknown as Ciudad });
+        return updated;
+      },
+      deleteCiudad: async (id: string) => {
+        await catalogActions.deleteCiudad(id);
+        dispatch({ type: "DELETE_CIUDAD", payload: id });
+      },
 
       // -- Regimen --
-      createRegimen: (
+      createRegimen: async (
         data: Omit<Regimen, "id" | "createdAt" | "updatedAt">,
-      ): Regimen => {
-        const now = new Date().toISOString();
-        const entity: Regimen = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-        };
-        dispatch({ type: "ADD_REGIMEN", payload: entity });
+      ) => {
+        const entity = await catalogActions.createRegimen(data);
+        dispatch({ type: "ADD_REGIMEN", payload: entity as unknown as Regimen });
         return entity;
       },
-      updateRegimen: (entity: Regimen) =>
-        dispatch({
-          type: "UPDATE_REGIMEN",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteRegimen: (id: string) =>
-        dispatch({ type: "DELETE_REGIMEN", payload: id }),
+      updateRegimen: async (entity: Regimen) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updateRegimen(id, rest);
+        dispatch({ type: "UPDATE_REGIMEN", payload: updated as unknown as Regimen });
+        return updated;
+      },
+      deleteRegimen: async (id: string) => {
+        await catalogActions.deleteRegimen(id);
+        dispatch({ type: "DELETE_REGIMEN", payload: id });
+      },
 
       // -- Proveedor --
-      createProveedor: (
+      createProveedor: async (
         data: Omit<Proveedor, "id" | "createdAt" | "updatedAt" | "deletedAt">,
-      ): Proveedor => {
-        const now = new Date().toISOString();
-        const entity: Proveedor = {
-          ...data,
-          id: crypto.randomUUID(),
-          createdAt: now,
-          updatedAt: now,
-          deletedAt: null,
-        };
-        dispatch({ type: "ADD_PROVEEDOR", payload: entity });
+      ) => {
+        const entity = await catalogActions.createProveedor(data as any);
+        dispatch({ type: "ADD_PROVEEDOR", payload: entity as unknown as Proveedor });
         return entity;
       },
-      updateProveedor: (entity: Proveedor) =>
-        dispatch({
-          type: "UPDATE_PROVEEDOR",
-          payload: { ...entity, updatedAt: new Date().toISOString() },
-        }),
-      deleteProveedor: (id: string) =>
-        dispatch({ type: "DELETE_PROVEEDOR", payload: id }),
+      updateProveedor: async (entity: Proveedor) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updateProveedor(id, rest as any);
+        dispatch({ type: "UPDATE_PROVEEDOR", payload: updated as unknown as Proveedor });
+        return updated;
+      },
+      deleteProveedor: async (id: string) => {
+        await catalogActions.deleteProveedor(id);
+        dispatch({ type: "DELETE_PROVEEDOR", payload: id });
+      },
     }),
     [dispatch],
   );
