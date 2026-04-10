@@ -5,10 +5,10 @@
 Sos el desarrollador principal de Latitud Nómade construyendo un prototipo funcional del panel de administración de TravelOz, una agencia de viajes uruguaya. Este prototipo se va a mostrar al cliente (Gerónimo Cassoni y Santiago Rodríguez) en una videollamada para validar la UX, los flujos y la visual antes de conectar el backend real.
 
 **IMPORTANTE:** Lee COMPLETOS los 4 archivos adjuntos antes de escribir cualquier línea de código:
-- `design.json` — Design system v3 "Liquid Horizon" con tokens, colores, glass materials, animaciones, componentes
-- `modulos_backend.md` — Especificación exhaustiva de cada módulo (schemas, campos, reglas, endpoints, UI)
-- `flujo.md` — Flujo operativo completo de punta a punta
-- `explicacion.md` — Contexto del negocio y dolores actuales
+- `docs/design/design-system.json` — Design system v3 "Liquid Horizon" con tokens, colores, glass materials, animaciones, componentes
+- `docs/arquitectura/modulos-backend.md` — Especificación exhaustiva de cada módulo (schemas, campos, reglas, endpoints, UI)
+- `docs/negocio/flujo-administrador.md` — Flujo operativo completo de punta a punta
+- `docs/negocio/contexto-operativo.md` — Contexto del negocio y dolores actuales
 
 ---
 
