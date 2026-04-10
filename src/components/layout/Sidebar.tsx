@@ -104,7 +104,7 @@ const navGroups: NavGroup[] = [
       { id: "aereos", label: "Aereos", icon: Plane, href: "/aereos" },
       { id: "alojamientos", label: "Alojamientos", icon: Hotel, href: "/alojamientos" },
       { id: "traslados", label: "Traslados", icon: Bus, href: "/traslados" },
-      { id: "circuitos", label: "Circuitos y Cruceros", icon: Ship, href: "/circuitos" },
+      { id: "circuitos", label: "Circuitos", icon: Ship, href: "/circuitos" },
       { id: "seguros", label: "Seguros", icon: ShieldCheck, href: "/seguros" },
     ],
   },

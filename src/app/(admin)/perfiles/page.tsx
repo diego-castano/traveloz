@@ -90,11 +90,13 @@ export default function PerfilesPage() {
     email: string;
     role: Role;
     brandId: string;
+    password: string;
   }>({
     name: "",
     email: "",
     role: "VENDEDOR",
     brandId: activeBrandId,
+    password: "",
   });
 
   // List state
@@ -133,22 +135,22 @@ export default function PerfilesPage() {
 
   function handleOpenCreate() {
     setEditTarget(null);
-    setForm({ name: "", email: "", role: "VENDEDOR", brandId: activeBrandId });
+    setForm({ name: "", email: "", role: "VENDEDOR", brandId: activeBrandId, password: "" });
     setModalOpen(true);
   }
 
   function handleOpenEdit(u: AuthUser) {
     setEditTarget(u);
-    setForm({ name: u.name, email: u.email, role: u.role, brandId: u.brandId });
+    setForm({ name: u.name, email: u.email, role: u.role, brandId: u.brandId, password: "" });
     setModalOpen(true);
   }
 
   function handleSave() {
     if (editTarget) {
-      updateUser({ ...editTarget, ...form });
+      updateUser({ ...editTarget, name: form.name, email: form.email, role: form.role, brandId: form.brandId });
       toast("success", "Usuario actualizado", `"${form.name}" fue actualizado correctamente`);
     } else {
-      createUser({ name: form.name, email: form.email, role: form.role, brandId: form.brandId });
+      createUser({ name: form.name, email: form.email, role: form.role, brandId: form.brandId, password: form.password });
       toast("success", "Usuario creado", `"${form.name}" fue creado correctamente`);
     }
     setModalOpen(false);
@@ -312,6 +314,16 @@ export default function PerfilesPage() {
               onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               placeholder="email@empresa.com"
             />
+            {!editTarget && (
+              <Input
+                label="Password"
+                type="password"
+                required
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                placeholder="Ingrese password"
+              />
+            )}
             <Select
               label="Rol"
               value={form.role}
@@ -332,7 +344,7 @@ export default function PerfilesPage() {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!form.name.trim() || !form.email.trim()}
+            disabled={!form.name.trim() || !form.email.trim() || (!editTarget && !form.password.trim())}
           >
             {editTarget ? "Guardar" : "Crear"}
           </Button>

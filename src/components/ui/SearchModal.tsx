@@ -83,13 +83,13 @@ export function SearchModal() {
       if (
         a.ruta.toLowerCase().includes(q) ||
         a.destino.toLowerCase().includes(q) ||
-        a.aerolinea.toLowerCase().includes(q)
+        (a.aerolinea ?? '').toLowerCase().includes(q)
       ) {
         matches.push({
           id: a.id,
           type: 'aereo',
           title: a.ruta,
-          subtitle: `${a.aerolinea} · ${a.destino}`,
+          subtitle: `${a.aerolinea ?? ''} · ${a.destino}`,
           href: `/aereos/${a.id}`,
         });
       }
