@@ -32,60 +32,76 @@ import { DEMO_USERS } from '../src/lib/auth';
 
 const prisma = new PrismaClient();
 
+// ---------------------------------------------------------------------------
+// Helper: upsertMany — insert if not exists, skip if exists (non-destructive)
+// ---------------------------------------------------------------------------
+async function upsertById<T extends { id: string }>(
+  model: any,
+  records: T[],
+  mapFn: (r: T) => any,
+) {
+  let created = 0;
+  for (const r of records) {
+    const data = mapFn(r);
+    const existing = await model.findUnique({ where: { id: r.id } });
+    if (!existing) {
+      await model.create({ data: { id: r.id, ...data } });
+      created++;
+    }
+  }
+  return created;
+}
+
 async function main() {
-  console.log('Seeding database...');
-
-  // Clear all data first (in reverse dependency order)
-  await prisma.opcionHotelera.deleteMany();
-  await prisma.paqueteEtiqueta.deleteMany();
-  await prisma.paqueteFoto.deleteMany();
-  await prisma.paqueteCircuito.deleteMany();
-  await prisma.paqueteSeguro.deleteMany();
-  await prisma.paqueteTraslado.deleteMany();
-  await prisma.paqueteAlojamiento.deleteMany();
-  await prisma.paqueteAereo.deleteMany();
-  await prisma.paquete.deleteMany();
-  await prisma.precioCircuito.deleteMany();
-  await prisma.circuitoDia.deleteMany();
-  await prisma.circuito.deleteMany();
-  await prisma.seguro.deleteMany();
-  await prisma.traslado.deleteMany();
-  await prisma.alojamientoFoto.deleteMany();
-  await prisma.precioAlojamiento.deleteMany();
-  await prisma.alojamiento.deleteMany();
-  await prisma.precioAereo.deleteMany();
-  await prisma.aereo.deleteMany();
-  await prisma.proveedor.deleteMany();
-  await prisma.ciudad.deleteMany();
-  await prisma.pais.deleteMany();
-  await prisma.regimen.deleteMany();
-  await prisma.etiqueta.deleteMany();
-  await prisma.tipoPaquete.deleteMany();
-  await prisma.temporada.deleteMany();
-  await prisma.user.deleteMany();
+  console.log('Seeding database (non-destructive upsert mode)...');
 
   // ---------------------------------------------------------------------------
-  // Seed Users
+  // Seed default admin user: admin@admin.com / 123456
   // ---------------------------------------------------------------------------
-  const passwordHash = hashSync('admin', 10);
-  for (const u of DEMO_USERS) {
+  const defaultAdminHash = hashSync('123456', 10);
+  const existingAdmin = await prisma.user.findUnique({ where: { email: 'admin@admin.com' } });
+  if (!existingAdmin) {
     await prisma.user.create({
       data: {
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role as any,
-        brandId: u.brandId,
-        passwordHash,
+        id: 'user-admin-default',
+        email: 'admin@admin.com',
+        name: 'Admin TravelOz',
+        role: 'ADMIN' as any,
+        brandId: 'brand-1',
+        passwordHash: defaultAdminHash,
       },
     });
+    console.log('Created default admin: admin@admin.com / 123456');
+  } else {
+    console.log('Default admin already exists, skipping');
   }
-  console.log(`Seeded ${DEMO_USERS.length} users`);
+
+  // ---------------------------------------------------------------------------
+  // Seed demo users (non-destructive)
+  // ---------------------------------------------------------------------------
+  const demoHash = hashSync('admin', 10);
+  for (const u of DEMO_USERS) {
+    const existing = await prisma.user.findUnique({ where: { email: u.email } });
+    if (!existing) {
+      await prisma.user.create({
+        data: {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role as any,
+          brandId: u.brandId,
+          passwordHash: demoHash,
+        },
+      });
+    }
+  }
+  console.log(`Checked ${DEMO_USERS.length} demo users`);
 
   // ---------------------------------------------------------------------------
   // Seed Temporadas
   // ---------------------------------------------------------------------------
   await prisma.temporada.createMany({
+    skipDuplicates: true,
     data: SEED_TEMPORADAS.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -96,12 +112,13 @@ async function main() {
       updatedAt: new Date(t.updatedAt),
     })),
   });
-  console.log(`Seeded ${SEED_TEMPORADAS.length} temporadas`);
+  console.log(`Ensured ${SEED_TEMPORADAS.length} temporadas`);
 
   // ---------------------------------------------------------------------------
   // Seed TipoPaquete
   // ---------------------------------------------------------------------------
   await prisma.tipoPaquete.createMany({
+    skipDuplicates: true,
     data: SEED_TIPOS_PAQUETE.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -112,12 +129,13 @@ async function main() {
       updatedAt: new Date(t.updatedAt),
     })),
   });
-  console.log(`Seeded ${SEED_TIPOS_PAQUETE.length} tipos de paquete`);
+  console.log(`Ensured ${SEED_TIPOS_PAQUETE.length} tipos de paquete`);
 
   // ---------------------------------------------------------------------------
   // Seed Etiquetas
   // ---------------------------------------------------------------------------
   await prisma.etiqueta.createMany({
+    skipDuplicates: true,
     data: SEED_ETIQUETAS.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -128,12 +146,13 @@ async function main() {
       updatedAt: new Date(t.updatedAt),
     })),
   });
-  console.log(`Seeded ${SEED_ETIQUETAS.length} etiquetas`);
+  console.log(`Ensured ${SEED_ETIQUETAS.length} etiquetas`);
 
   // ---------------------------------------------------------------------------
   // Seed Regimenes
   // ---------------------------------------------------------------------------
   await prisma.regimen.createMany({
+    skipDuplicates: true,
     data: SEED_REGIMENES.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -143,12 +162,13 @@ async function main() {
       updatedAt: new Date(t.updatedAt),
     })),
   });
-  console.log(`Seeded ${SEED_REGIMENES.length} regimenes`);
+  console.log(`Ensured ${SEED_REGIMENES.length} regimenes`);
 
   // ---------------------------------------------------------------------------
   // Seed Paises
   // ---------------------------------------------------------------------------
   await prisma.pais.createMany({
+    skipDuplicates: true,
     data: SEED_PAISES.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -158,12 +178,13 @@ async function main() {
       updatedAt: new Date(t.updatedAt),
     })),
   });
-  console.log(`Seeded ${SEED_PAISES.length} paises`);
+  console.log(`Ensured ${SEED_PAISES.length} paises`);
 
   // ---------------------------------------------------------------------------
   // Seed Ciudades
   // ---------------------------------------------------------------------------
   await prisma.ciudad.createMany({
+    skipDuplicates: true,
     data: SEED_CIUDADES.map((t) => ({
       id: t.id,
       paisId: t.paisId,
@@ -172,12 +193,13 @@ async function main() {
       updatedAt: new Date(t.updatedAt),
     })),
   });
-  console.log(`Seeded ${SEED_CIUDADES.length} ciudades`);
+  console.log(`Ensured ${SEED_CIUDADES.length} ciudades`);
 
   // ---------------------------------------------------------------------------
   // Seed Proveedores
   // ---------------------------------------------------------------------------
   await prisma.proveedor.createMany({
+    skipDuplicates: true,
     data: SEED_PROVEEDORES.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -192,12 +214,13 @@ async function main() {
       deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
     })),
   });
-  console.log(`Seeded ${SEED_PROVEEDORES.length} proveedores`);
+  console.log(`Ensured ${SEED_PROVEEDORES.length} proveedores`);
 
   // ---------------------------------------------------------------------------
   // Seed Aereos
   // ---------------------------------------------------------------------------
   await prisma.aereo.createMany({
+    skipDuplicates: true,
     data: SEED_AEREOS.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -216,12 +239,13 @@ async function main() {
       deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
     })),
   });
-  console.log(`Seeded ${SEED_AEREOS.length} aereos`);
+  console.log(`Ensured ${SEED_AEREOS.length} aereos`);
 
   // ---------------------------------------------------------------------------
   // Seed PrecioAereo
   // ---------------------------------------------------------------------------
   await prisma.precioAereo.createMany({
+    skipDuplicates: true,
     data: SEED_PRECIOS_AEREO.map((t) => ({
       id: t.id,
       aereoId: t.aereoId,
@@ -230,12 +254,13 @@ async function main() {
       precioAdulto: t.precioAdulto,
     })),
   });
-  console.log(`Seeded ${SEED_PRECIOS_AEREO.length} precios aereo`);
+  console.log(`Ensured ${SEED_PRECIOS_AEREO.length} precios aereo`);
 
   // ---------------------------------------------------------------------------
   // Seed Alojamientos
   // ---------------------------------------------------------------------------
   await prisma.alojamiento.createMany({
+    skipDuplicates: true,
     data: SEED_ALOJAMIENTOS.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -249,12 +274,13 @@ async function main() {
       deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
     })),
   });
-  console.log(`Seeded ${SEED_ALOJAMIENTOS.length} alojamientos`);
+  console.log(`Ensured ${SEED_ALOJAMIENTOS.length} alojamientos`);
 
   // ---------------------------------------------------------------------------
   // Seed PrecioAlojamiento
   // ---------------------------------------------------------------------------
   await prisma.precioAlojamiento.createMany({
+    skipDuplicates: true,
     data: SEED_PRECIOS_ALOJAMIENTO.map((t) => ({
       id: t.id,
       alojamientoId: t.alojamientoId,
@@ -264,12 +290,13 @@ async function main() {
       regimenId: t.regimenId,
     })),
   });
-  console.log(`Seeded ${SEED_PRECIOS_ALOJAMIENTO.length} precios alojamiento`);
+  console.log(`Ensured ${SEED_PRECIOS_ALOJAMIENTO.length} precios alojamiento`);
 
   // ---------------------------------------------------------------------------
   // Seed AlojamientoFoto
   // ---------------------------------------------------------------------------
   await prisma.alojamientoFoto.createMany({
+    skipDuplicates: true,
     data: SEED_ALOJAMIENTO_FOTOS.map((t) => ({
       id: t.id,
       alojamientoId: t.alojamientoId,
@@ -278,12 +305,13 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_ALOJAMIENTO_FOTOS.length} alojamiento fotos`);
+  console.log(`Ensured ${SEED_ALOJAMIENTO_FOTOS.length} alojamiento fotos`);
 
   // ---------------------------------------------------------------------------
   // Seed Traslados
   // ---------------------------------------------------------------------------
   await prisma.traslado.createMany({
+    skipDuplicates: true,
     data: SEED_TRASLADOS.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -298,12 +326,13 @@ async function main() {
       deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
     })),
   });
-  console.log(`Seeded ${SEED_TRASLADOS.length} traslados`);
+  console.log(`Ensured ${SEED_TRASLADOS.length} traslados`);
 
   // ---------------------------------------------------------------------------
   // Seed Seguros
   // ---------------------------------------------------------------------------
   await prisma.seguro.createMany({
+    skipDuplicates: true,
     data: SEED_SEGUROS.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -316,12 +345,13 @@ async function main() {
       deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
     })),
   });
-  console.log(`Seeded ${SEED_SEGUROS.length} seguros`);
+  console.log(`Ensured ${SEED_SEGUROS.length} seguros`);
 
   // ---------------------------------------------------------------------------
   // Seed Circuitos
   // ---------------------------------------------------------------------------
   await prisma.circuito.createMany({
+    skipDuplicates: true,
     data: SEED_CIRCUITOS.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -333,12 +363,13 @@ async function main() {
       deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
     })),
   });
-  console.log(`Seeded ${SEED_CIRCUITOS.length} circuitos`);
+  console.log(`Ensured ${SEED_CIRCUITOS.length} circuitos`);
 
   // ---------------------------------------------------------------------------
   // Seed CircuitoDia
   // ---------------------------------------------------------------------------
   await prisma.circuitoDia.createMany({
+    skipDuplicates: true,
     data: SEED_CIRCUITO_DIAS.map((t) => ({
       id: t.id,
       circuitoId: t.circuitoId,
@@ -348,12 +379,13 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_CIRCUITO_DIAS.length} circuito dias`);
+  console.log(`Ensured ${SEED_CIRCUITO_DIAS.length} circuito dias`);
 
   // ---------------------------------------------------------------------------
   // Seed PrecioCircuito
   // ---------------------------------------------------------------------------
   await prisma.precioCircuito.createMany({
+    skipDuplicates: true,
     data: SEED_PRECIOS_CIRCUITO.map((t) => ({
       id: t.id,
       circuitoId: t.circuitoId,
@@ -362,12 +394,13 @@ async function main() {
       precio: t.precio,
     })),
   });
-  console.log(`Seeded ${SEED_PRECIOS_CIRCUITO.length} precios circuito`);
+  console.log(`Ensured ${SEED_PRECIOS_CIRCUITO.length} precios circuito`);
 
   // ---------------------------------------------------------------------------
   // Seed Paquetes
   // ---------------------------------------------------------------------------
   await prisma.paquete.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETES.map((t) => ({
       id: t.id,
       brandId: t.brandId,
@@ -393,12 +426,13 @@ async function main() {
       deletedAt: t.deletedAt ? new Date(t.deletedAt) : null,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETES.length} paquetes`);
+  console.log(`Ensured ${SEED_PAQUETES.length} paquetes`);
 
   // ---------------------------------------------------------------------------
   // Seed PaqueteAereo
   // ---------------------------------------------------------------------------
   await prisma.paqueteAereo.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETE_AEREOS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
@@ -407,12 +441,13 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETE_AEREOS.length} paquete aereos`);
+  console.log(`Ensured ${SEED_PAQUETE_AEREOS.length} paquete aereos`);
 
   // ---------------------------------------------------------------------------
   // Seed PaqueteAlojamiento
   // ---------------------------------------------------------------------------
   await prisma.paqueteAlojamiento.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETE_ALOJAMIENTOS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
@@ -422,12 +457,13 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETE_ALOJAMIENTOS.length} paquete alojamientos`);
+  console.log(`Ensured ${SEED_PAQUETE_ALOJAMIENTOS.length} paquete alojamientos`);
 
   // ---------------------------------------------------------------------------
   // Seed PaqueteTraslado
   // ---------------------------------------------------------------------------
   await prisma.paqueteTraslado.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETE_TRASLADOS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
@@ -436,12 +472,13 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETE_TRASLADOS.length} paquete traslados`);
+  console.log(`Ensured ${SEED_PAQUETE_TRASLADOS.length} paquete traslados`);
 
   // ---------------------------------------------------------------------------
   // Seed PaqueteSeguro
   // ---------------------------------------------------------------------------
   await prisma.paqueteSeguro.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETE_SEGUROS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
@@ -451,12 +488,13 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETE_SEGUROS.length} paquete seguros`);
+  console.log(`Ensured ${SEED_PAQUETE_SEGUROS.length} paquete seguros`);
 
   // ---------------------------------------------------------------------------
   // Seed PaqueteCircuito
   // ---------------------------------------------------------------------------
   await prisma.paqueteCircuito.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETE_CIRCUITOS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
@@ -465,12 +503,13 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETE_CIRCUITOS.length} paquete circuitos`);
+  console.log(`Ensured ${SEED_PAQUETE_CIRCUITOS.length} paquete circuitos`);
 
   // ---------------------------------------------------------------------------
   // Seed PaqueteFoto
   // ---------------------------------------------------------------------------
   await prisma.paqueteFoto.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETE_FOTOS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
@@ -479,24 +518,26 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETE_FOTOS.length} paquete fotos`);
+  console.log(`Ensured ${SEED_PAQUETE_FOTOS.length} paquete fotos`);
 
   // ---------------------------------------------------------------------------
   // Seed PaqueteEtiqueta
   // ---------------------------------------------------------------------------
   await prisma.paqueteEtiqueta.createMany({
+    skipDuplicates: true,
     data: SEED_PAQUETE_ETIQUETAS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
       etiquetaId: t.etiquetaId,
     })),
   });
-  console.log(`Seeded ${SEED_PAQUETE_ETIQUETAS.length} paquete etiquetas`);
+  console.log(`Ensured ${SEED_PAQUETE_ETIQUETAS.length} paquete etiquetas`);
 
   // ---------------------------------------------------------------------------
   // Seed OpcionHotelera
   // ---------------------------------------------------------------------------
   await prisma.opcionHotelera.createMany({
+    skipDuplicates: true,
     data: SEED_OPCIONES_HOTELERAS.map((t) => ({
       id: t.id,
       paqueteId: t.paqueteId,
@@ -507,7 +548,7 @@ async function main() {
       orden: t.orden,
     })),
   });
-  console.log(`Seeded ${SEED_OPCIONES_HOTELERAS.length} opciones hoteleras`);
+  console.log(`Ensured ${SEED_OPCIONES_HOTELERAS.length} opciones hoteleras`);
 }
 
 main()
