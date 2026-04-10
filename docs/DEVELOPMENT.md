@@ -1,181 +1,279 @@
-# TravelOz Backend — Registro de Desarrollo
+# TravelOz Admin Panel — Registro de Desarrollo
 
-> Documento generado: 2026-03-16 | Milestone v1.0 COMPLETO
+> Documento actualizado: 2026-04-10 | v2.0 — Produccion con persistencia completa
 
 ---
 
 ## 1. Resumen Ejecutivo
 
-**TravelOz Admin Panel** es un prototipo 100% funcional de panel administrativo para la agencia de viajes uruguaya TravelOz y su marca hermana DestinoIcono. Construido con Next.js 14 (App Router), datos hardcodeados en React Context, y un sistema de diseño glassmorphism premium ("Liquid Horizon v3.0").
+**TravelOz Admin Panel** es una aplicacion de gestion administrativa para la agencia de viajes uruguaya TravelOz y su marca hermana DestinoIcono. Construida con Next.js 14 (App Router), persistencia en PostgreSQL via Prisma ORM, autenticacion real con NextAuth v5, y un sistema de diseno glassmorphism premium ("Liquid Horizon v3.0").
 
-- **Objetivo:** Validar UX/UI en videollamada con el cliente antes de construir el backend productivo.
+- **URL de produccion:** [traveloz-production.up.railway.app](https://traveloz-production.up.railway.app)
+- **Repositorio:** [github.com/diego-castano/traveloz](https://github.com/diego-castano/traveloz)
 - **Cliente:** Geronimo Cassoni & Santiago Rodriguez (co-fundadores TravelOz).
-- **Estado:** 8 fases completadas, 28 planes ejecutados, 98 requerimientos cubiertos (100%).
-- **Próximo paso:** Demo con cliente → feedback → backend productivo con PostgreSQL + Prisma.
+- **Hosting:** Railway (standalone build, auto-deploy on push).
 
 ---
 
-## 2. Stack Técnico
+## 2. Stack Tecnico
 
-| Tecnología | Versión | Propósito |
+| Tecnologia | Version | Proposito |
 |---|---|---|
-| Next.js | 14.2.25 | Framework (App Router) |
-| React | 18.3.1 | UI Library |
+| Next.js | 14.2.35 | Framework (App Router, Server Actions) |
 | TypeScript | 5.8.2 | Type safety |
-| Tailwind CSS | 3.4.18 | Utility-first CSS (pinned, NO v4 por incompatibilidad) |
+| Tailwind CSS | 3.4.18 | Utility-first CSS (pinned, NO v4) |
+| Prisma | 6.5+ | ORM para PostgreSQL |
+| PostgreSQL | — | Base de datos relacional (Railway) |
+| NextAuth.js | v5 beta.25 | Autenticacion JWT + Credentials provider |
+| bcryptjs | — | Hashing de passwords |
 | Motion (Framer Motion) | 12.4.7 | Animaciones y transiciones |
 | Radix UI | 1.4.3 | Primitivos accesibles (Dialog, Select, Tabs, Tooltip) |
-| Lucide React | 0.469.0 | Iconografía |
-| CVA | 0.7.1 | Variantes de componentes |
-| Recharts | 2.15.1 | Gráficos para reportes |
-| date-fns | 4.1.0 | Formateo de fechas |
-| react-day-picker | 9.5.1 | Calendario |
-| tailwind-merge | 2.6.0 | Merge de clases Tailwind |
-| clsx | — | Utilidad de classnames |
+| Lucide React | 0.469.0 | Iconografia |
+| Recharts | 2.15.1 | Graficos para reportes |
 
 ---
 
-## 3. Arquitectura del Proyecto
+## 3. Evolucion de la Arquitectura
+
+| Version | Fecha | Descripcion |
+|---|---|---|
+| v1.0 | Marzo 2026 | Frontend con React Context + datos seed hardcodeados. Sin base de datos. |
+| v1.5 | Marzo 2026 | Feedback del cliente incorporado: 34 cambios implementados (opciones hoteleras, factor markup, busqueda, auto-save, etc.) |
+| **v2.0** | **Abril 2026** | **Migracion completa a base de datos con persistencia real** |
+
+### Cambios principales en v2.0:
+- Prisma schema con 27+ modelos, indexes multi-tenancy, soft delete
+- 5 archivos de Server Actions (~80+ funciones async) para todo el CRUD
+- 4 providers migrados de datos seed a estado respaldado por Server Actions (patron Provider-as-Cache)
+- NextAuth v5 con autenticacion JWT real, hashing de passwords con bcrypt
+- Pipeline de migracion no destructiva (`prisma migrate deploy` + seed idempotente en cada build)
+- Auto-deploy via Railway en cada `git push`
+
+---
+
+## 4. Estructura del Proyecto
 
 ```
 src/
+├── actions/                    # Server Actions (5 archivos, ~80+ funciones)
+│   ├── auth.actions.ts
+│   ├── catalog.actions.ts
+│   ├── package.actions.ts
+│   ├── service.actions.ts
+│   └── user.actions.ts
 ├── app/
-│   ├── layout.tsx                    # Root layout (fuentes, metadata)
-│   ├── page.tsx                      # Homepage / redirect
-│   ├── login/page.tsx                # Login con demo users
-│   └── (admin)/                      # Route group admin
-│       ├── layout.tsx                # Shell: Sidebar + Topbar + Background
-│       ├── dashboard/page.tsx        # Dashboard con stats animados
-│       ├── paquetes/
-│       │   ├── page.tsx              # Lista de paquetes
-│       │   ├── nuevo/page.tsx        # Crear paquete
-│       │   └── [slug]/
-│       │       ├── page.tsx          # Detalle con 5 tabs
-│       │       └── _components/      # DatosTab, ServiciosTab, PreciosTab, FotosTab, PublicacionTab, ServiceSelectorModal
-│       ├── aereos/                   # CRUD vuelos
-│       ├── alojamientos/             # CRUD alojamientos
-│       ├── traslados/                # CRUD traslados
-│       ├── circuitos/                # CRUD circuitos
-│       ├── seguros/                  # CRUD seguros
-│       ├── proveedores/              # CRUD proveedores
-│       ├── catalogos/                # 5 sub-catálogos tabulados
-│       ├── perfiles/                 # Gestión usuarios/roles
-│       ├── notificaciones/           # Wizard 4 pasos
-│       └── reportes/                 # Stats + gráficos + tablas
+│   ├── (admin)/               # 12 modulos admin
+│   ├── api/auth/[...nextauth]/ # NextAuth route handler
+│   ├── login/
+│   ├── layout.tsx
+│   └── page.tsx
 ├── components/
-│   ├── ui/                           # 21 componentes UI reutilizables
-│   ├── layout/                       # Sidebar, Topbar, PageHeader, AdminBackground, PageTransitionWrapper
-│   ├── providers/                    # 7 Context providers
-│   └── lib/                          # cn.ts, glass.ts, animations.ts
-└── lib/
-    ├── types.ts                      # 22 interfaces + 2 enums
-    ├── utils.ts                      # Pricing, formateo, slugify
-    ├── brands.ts                     # Tokens por marca
-    ├── auth.ts                       # Roles, permisos, demo users
-    └── data/                         # 9 archivos de datos seed
-        ├── catalogos.ts
-        ├── proveedores.ts
-        ├── aereos.ts
-        ├── alojamientos.ts
-        ├── traslados.ts
-        ├── seguros.ts
-        ├── circuitos.ts
-        ├── paquetes.ts
-        └── index.ts
+│   ├── layout/                # Sidebar, Topbar, AdminBackground
+│   ├── providers/             # 7 providers (Auth, Brand, Catalog, Service, Package, User, Toast)
+│   ├── ui/                    # Libreria de componentes UI
+│   └── lib/                   # animations, cn, glass
+├── hooks/
+│   └── useAutoSave.ts
+├── lib/
+│   ├── auth.ts                # Configuracion de roles, usuarios demo
+│   ├── auth.config.ts         # Configuracion NextAuth v5
+│   ├── brands.ts              # Tokens por marca (config visual)
+│   ├── db.ts                  # Singleton del cliente Prisma
+│   ├── types.ts               # Tipos de dominio (enums de Prisma)
+│   ├── utils.ts               # Calculos de pricing
+│   ├── validation.ts          # Validacion de paquetes
+│   └── data/                  # Arrays de datos seed (~2550 lineas)
+├── middleware.ts               # Middleware de autenticacion
+prisma/
+├── schema.prisma              # 27+ modelos
+├── seed.ts                    # Script de seed idempotente
+└── migrations/                # Historial de migraciones
+    ├── 0001_init/migration.sql
+    └── migration_lock.toml
 ```
 
 ---
 
-## 4. Módulos Implementados
+## 5. Modulos Implementados (12 modulos, todos con persistencia en DB)
 
-### 4.1 Login
-- Fondo mesh gradient + noise overlay + tarjeta glass animada
-- Botones de demo rápido (seleccionar usuario pre-configurado)
-- Autenticación simulada (password: "admin" para todos)
-- Redirección automática según rol
-
-### 4.2 Dashboard
-- 4 stat cards con animación de conteo (paquetes, vuelos, hoteles, traslados)
+### 5.1 Dashboard
+- 4 stat cards con animacion de conteo (datos reales desde DB)
 - Feed de actividad reciente
-- Quick links a todos los módulos
-- Saludo según hora del día
+- Quick links a todos los modulos
+- Saludo segun hora del dia
 
-### 4.3 Paquetes (módulo más complejo)
-- **Lista:** Tabla glass, búsqueda instantánea, filtros por temporada/estado/tipo, paginación
+### 5.2 Paquetes (modulo principal)
+- **Lista:** Tabla glass, busqueda instantanea, filtros por temporada/estado/tipo, paginacion
 - **Detalle — 5 tabs:**
-  - **Datos:** Nombre, slug, temporada, tipo, estado, fechas, noches, descripción
+  - **Datos:** Nombre, slug, temporada, tipo, estado, fechas, noches, descripcion
   - **Servicios:** Modal selector con tabs (vuelos, hoteles, traslados, seguros, circuitos)
-  - **Precios:** Cálculo en tiempo real: Neto → Markup % → Venta
-  - **Fotos:** Upload simulado con grid y reordenamiento
-  - **Publicación:** Toggle publicado/borrador con vista previa
-- **Acciones:** Crear, editar, clonar, eliminar (soft delete con confirmación shake)
-- **Vista vendedor:** Solo lectura, sin columnas neto/markup
+  - **Precios:** OpcionHotelera con seleccion de hotel por opcion, factor markup independiente, calculo en tiempo real
+  - **Fotos:** Upload con grid y reordenamiento
+  - **Publicacion:** Toggle publicado/borrador con checklist de validacion
+- **Acciones:** Crear, editar, clonar, eliminar (soft delete con confirmacion shake)
+- **Auto-save:** Hook `useAutoSave` con debounce
 
-### 4.4 Aéreos (Vuelos)
-- CRUD completo de rutas aéreas
-- Tabla de precios por período (adulto/menor)
-- Datos: origen, destino, aerolínea, escalas, equipaje, itinerario
-- 16 rutas seed desde MVD
+### 5.3 Aereos (Vuelos)
+- CRUD completo de rutas aereas
+- Tabla de precios por periodo (adulto/menor)
+- Dropdown de equipaje (3 opciones)
+- Datos: origen, destino, aerolinea, escalas, equipaje, itinerario
 
-### 4.5 Alojamientos
+### 5.4 Alojamientos
 - CRUD completo de hoteles/resorts
-- Tabla de precios por noche + régimen alimenticio
-- Galería de fotos con alt text
-- Categoría por estrellas, ciudad, proveedor
-- 10 alojamientos seed
+- Tabla de precios por periodo y regimen alimenticio
+- Gestion de fotos con alt text
+- Categoria por estrellas, ciudad, proveedor
 
-### 4.6 Traslados
-- Lista con edición inline de precios
+### 5.5 Traslados
+- Lista con edicion inline de precios
 - Tipos: REGULAR y PRIVADO
-- Precio fijo por transfer (no por período)
-- Origen → destino con proveedor
+- Precio fijo por transfer (no por periodo)
+- Origen a destino con proveedor
 
-### 4.7 Seguros
+### 5.6 Seguros
+- CRUD basado en modales
 - Planes con costo diario + monto cobertura
 - Proveedor asociado
-- Cálculo: días × costo diario
 
-### 4.8 Circuitos
-- Itinerarios multi-día con editor día-por-día
-- Precios por período
-- Drag-and-drop nativo para reordenar días
-- 6 circuitos seed
+### 5.7 Circuitos
+- CRUD con editor de itinerario dia-por-dia
+- Precios por periodo
+- Drag-and-drop nativo para reordenar dias
 
-### 4.9 Proveedores
-- Entidad normalizada para evitar duplicados
+### 5.8 Proveedores
+- CRUD con filtro por categoria de servicio (TRASLADOS/SEGUROS/CIRCUITOS)
 - Soft delete (campo deletedAt)
 - Referenciado por traslados, seguros, circuitos
 
-### 4.10 Catálogos
-- 5 sub-catálogos en tabs: Temporadas, Tipos de Paquete, Etiquetas, Países/Ciudades, Regímenes
-- CRUD completo por sub-catálogo
-- Datos compartidos entre marcas (países/ciudades duplicados por brand)
+### 5.9 Catalogos
+- 6 sub-catalogos en tabs: Temporadas, Tipos de Paquete, Etiquetas, Paises, Ciudades, Regimenes
+- CRUD completo por sub-catalogo
+- Datos compartidos entre marcas (filtrados por brandId)
 
-### 4.11 Perfiles
-- Gestión de usuarios con roles (ADMIN, VENDEDOR, MARKETING)
-- Asignación de marca
-- Tabla de permisos por rol
+### 5.10 Perfiles
+- Gestion de usuarios con asignacion de roles
+- Roles: ADMIN, VENDEDOR, MARKETING
+- Asignacion de marca
 
-### 4.12 Notificaciones
+### 5.11 Notificaciones
 - Wizard de 4 pasos:
-  1. Seleccionar etiqueta de campaña
+  1. Seleccionar etiqueta de campana
   2. Filtrar paquetes por etiqueta
   3. Seleccionar paquetes a incluir
-  4. Preview de email → envío simulado (toast)
+  4. Preview de email y envio
 
-### 4.13 Reportes
-- Stat cards: total paquetes, vuelos, hoteles, visitas web (simulado)
-- Gráfico de barras: paquetes por destino (Recharts)
-- Tabla: hoteles más utilizados
+### 5.12 Reportes
+- Stat cards con datos agregados
+- Grafico de barras: paquetes por destino (Recharts)
+- Tabla: hoteles mas utilizados
 
 ---
 
-## 5. Sistema de Diseño — "Liquid Horizon v3.0"
+## 6. Base de Datos
 
-### 5.1 Filosofía
-Interacciones Apple-like, glassmorphism premium, efectos liquid glass y claymorphism.
+### Infraestructura
+- PostgreSQL hospedado en Railway
+- 27+ modelos Prisma con enums, indexes, cascade deletes
+- Multi-tenancy: `brandId` en todas las entidades
 
-### 5.2 Marcas
+### Migraciones
+- `prisma migrate deploy` (no destructivo, se ejecuta en cada build)
+- Script de seed con `skipDuplicates: true` (idempotente, se ejecuta en cada build)
+
+### Modelo de Datos (entidad central: Paquete)
+```
+Paquete
+├── → N OpcionHotelera (cada una con hotel + factor + precioVenta)
+├── → N Aereo (vuelos asignados)
+├── → N Traslado (transfers asignados)
+├── → N Seguro (seguros asignados)
+├── → N Circuito (circuitos asignados)
+├── → N PaqueteFoto (fotos del paquete)
+└── → N Etiqueta (tags de campana)
+```
+
+### Jerarquias
+```
+Pais → Ciudad
+Proveedor → Traslados, Seguros, Circuitos
+Temporada / TipoPaquete → referenciados por Paquete
+Regimen → referenciado por PrecioAlojamiento
+```
+
+### Credenciales por defecto
+- Admin: `admin@admin.com` / `123456`
+
+---
+
+## 7. Modelo de Pricing
+
+El sistema usa un **factor divisor** (no porcentaje):
+
+```
+Precio Venta = Neto / Factor
+```
+
+### Costos por OpcionHotelera
+- **Costos fijos** (compartidos entre opciones): aereos + traslados + seguros + circuitos
+- **Costos variables** (por opcion): alojamientos
+- Cada OpcionHotelera tiene su propia combinacion de hotel + factor + precioVenta
+
+### Funcion de calculo
+```
+calcularVentaOpcion(netoFijos, netoAloj, factor) = (netoFijos + netoAloj) / factor
+```
+
+- Precios en USD (dolares americanos)
+- Factor tipico: 0.60 - 0.70
+
+---
+
+## 8. Gestion de Estado — Patron Provider-as-Cache
+
+Los providers cargan datos desde el servidor via Server Actions y mantienen cache local:
+
+| Provider | Responsabilidad | Fuente de datos |
+|---|---|---|
+| AuthProvider | Login/logout, sesion, roles, permisos | NextAuth v5 (JWT) |
+| BrandProvider | Marca activa, tokens visuales | Estado local |
+| CatalogProvider | Temporadas, tipos, regimenes, paises, ciudades, etiquetas | Server Actions → DB |
+| ServiceProvider | Vuelos, hoteles, traslados, circuitos, seguros + precios | Server Actions → DB |
+| PackageProvider | Paquetes + asignaciones de servicios + opciones hoteleras | Server Actions → DB |
+| UserProvider | Gestion de usuarios | Server Actions → DB |
+| ToastProvider | Cola de notificaciones toast | Estado local |
+
+### Composicion (Providers.tsx):
+```
+Auth > Brand > Catalog > Service > Package > User > Toast
+```
+
+---
+
+## 9. Autenticacion y Control de Acceso
+
+### Autenticacion
+- NextAuth v5 (beta.25) con Credentials provider
+- JWT almacenado en cookie segura
+- Passwords hasheados con bcryptjs
+- Middleware de proteccion de rutas (`middleware.ts`)
+
+### RBAC (Role-Based Access Control)
+
+| Permiso | ADMIN | VENDEDOR | MARKETING |
+|---|---|---|---|
+| Ver todos los modulos | Si | Solo Paquetes | Paquetes + Reportes |
+| Crear/Editar/Eliminar | Si | No | No |
+| Ver precio neto | Si | No | No |
+| Ver factor markup | Si | No | No |
+| Ver precio venta | Si | Si | Si |
+| Clonar paquetes | Si | No | No |
+
+---
+
+## 10. Sistema de Diseno — "Liquid Horizon v3.0"
+
+### Marcas
 
 | Propiedad | TravelOz | DestinoIcono |
 |---|---|---|
@@ -184,7 +282,7 @@ Interacciones Apple-like, glassmorphism premium, efectos liquid glass y claymorp
 | Glow effect | Violet pulse | Teal pulse |
 | Login background | Violet mesh gradients | Teal mesh gradients |
 
-### 5.3 Materiales Glass
+### Materiales Glass
 
 | Variante | Background | Blur | Uso |
 |---|---|---|---|
@@ -192,258 +290,101 @@ Interacciones Apple-like, glassmorphism premium, efectos liquid glass y claymorp
 | frostedSubtle | rgba(255,255,255,0.45) | 12px | Botones secundarios |
 | frostedDark | rgba(26,26,46,0.78) | 24px | Sidebar, top nav |
 | liquid | rgba(255,255,255,0.55) | 30px | Stat cards, highlights |
-| liquidModal | rgba(18,18,38,0.82) | 40px | Modales, diálogos |
+| liquidModal | rgba(18,18,38,0.82) | 40px | Modales, dialogos |
 
-### 5.4 Animaciones (Motion/Framer Motion)
+### Animaciones (Motion/Framer Motion)
 
 | Preset | Config | Uso |
 |---|---|---|
 | snappy | stiffness: 500, damping: 30 | Botones, dropdowns |
 | gentle | stiffness: 260, damping: 25 | Cards hover, modales |
 | bouncy | stiffness: 400, damping: 20 | Toast, checkboxes |
-| slow | stiffness: 150, damping: 25 | Página entrada |
+| slow | stiffness: 150, damping: 25 | Pagina entrada |
 | micro | stiffness: 600, damping: 35 | Iconos, micro-interacciones |
 
-### 5.5 Componentes UI (21 componentes)
-
-Button, Card, Modal, Input, Select, Checkbox, Toggle, Tabs, Badge, Tag, Table, Pagination, SearchFilter, Breadcrumb, Avatar, PriceDisplay, PriceImpactModal, DatePicker, ImageUploader, Skeleton, Toast
-
 ---
 
-## 6. Gestión de Estado
+## 11. Features Clave
 
-### Patrón: React Context + useReducer
-
-Cada dominio tiene su propio provider para evitar re-renders cruzados:
-
-| Provider | Responsabilidad | Patrón |
-|---|---|---|
-| AuthProvider | Login/logout, roles, permisos | useState |
-| BrandProvider | Marca activa, tokens visuales | useState |
-| CatalogProvider | Temporadas, tipos, regímenes, países, ciudades, etiquetas | useState |
-| ServiceProvider | Vuelos, hoteles, traslados, circuitos, seguros + precios | useReducer |
-| PackageProvider | Paquetes + asignaciones de servicios | useReducer |
-| UserProvider | Usuario logueado actual | useState |
-| ToastProvider | Cola de notificaciones toast | useState |
-
-### Composición (Providers.tsx):
-```
-Auth > Brand > Catalog > Service > Package > User > Toast
-```
-
----
-
-## 7. Control de Acceso (RBAC)
-
-| Permiso | ADMIN | VENDEDOR | MARKETING |
-|---|---|---|---|
-| Ver todos los módulos | Si | Solo Paquetes | Paquetes + Reportes |
-| Crear/Editar/Eliminar | Si | No | No |
-| Ver precio neto | Si | No | No |
-| Ver markup | Si | No | No |
-| Ver precio venta | Si | Si | Si |
-| Clonar paquetes | Si | No | No |
-
----
-
-## 8. Modelo de Datos
-
-### Entidad central: Paquete (Hub)
-```
-Paquete
-├── → N Aereo (vuelos asignados)
-├── → N Alojamiento (hoteles asignados)
-├── → N Traslado (transfers asignados)
-├── → N Seguro (seguros asignados)
-├── → N Circuito (circuitos asignados)
-├── → N PaqueteFoto (fotos del paquete)
-└── → N Etiqueta (tags de campaña)
-```
-
-### Jerarquías
-```
-Pais → Ciudad
-Proveedor → Traslados, Seguros, Circuitos
-Temporada / TipoPaquete → referenciados por Paquete
-Regimen → referenciado por PrecioAlojamiento
-```
-
-### Pricing
-```
-Neto = SUM(vuelo + hotel×noches + traslado + seguro×días + circuito)
-Venta = Neto × (1 + markup%)
-```
-
-### Datos Seed
-- 16 paquetes (10 TravelOz, 6 DestinoIcono)
-- 16 rutas aéreas desde MVD
-- 10 hoteles/resorts
-- 8+ traslados
-- 6+ seguros
-- 6 circuitos
-- 5 usuarios demo
-
----
-
-## 9. Fases de Desarrollo
-
-### Fase 1 — Foundation & Design System (8 planes)
-- Configuración proyecto Next.js 14 + TypeScript + Tailwind 3.4.18
-- Componentes base: Button (CVA), Card (glass), Modal (Radix), Input, Select
-- Utilidades: cn.ts, glass.ts (5 materiales), animations.ts (springs + interacciones)
-- Componentes adicionales: Badge, Tag, Table, Pagination, Toast, SearchFilter, Tabs
-- **Decisión clave:** Tailwind v3.4.18 fijado por incompatibilidad con v4
-
-### Fase 2 — Layout, Navigation, Auth & Multi-Brand (5 planes)
-- Sidebar con navegación filtrada por rol, grupos (General, Servicios, Sistema)
-- Topbar con breadcrumb, selector de marca, perfil de usuario
-- AdminBackground con orbes animados + SVG noise
-- PageTransitionWrapper con AnimatePresence
-- Login page con mesh gradient, cards animadas, demo users
-- AuthProvider con roles y permisos
-- BrandProvider con tokens por marca (TravelOz vs DestinoIcono)
-
-### Fase 3 — Data Layer & Types (5 planes)
-- 22 interfaces TypeScript + 2 enums (EstadoPaquete, TipoTraslado)
-- 9 archivos de datos seed con datos realistas uruguayos
-- utils.ts: formatCurrency, calcularNeto, calcularVenta, slugify
-- brands.ts: BrandTokens con gradientes, colores, logos por marca
-- auth.ts: RoleConfig con permisos granulares, 5 DEMO_USERS
-
-### Fase 4 — Paquetes Module (5 planes)
-- Lista con tabla glass, búsqueda, filtros, paginación
-- Página detalle con 5 tabs (URL-based state: `?tab=servicios`)
-- ServiceSelectorModal: modal con tabs para asignar servicios
-- Cálculo de precios en tiempo real (neto → markup → venta)
-- Acciones: crear, editar, clonar (deep copy), eliminar (soft delete)
-- Vista VENDEDOR: solo lectura, precios ocultos
-
-### Fase 5 — Aereos & Alojamientos (2 planes)
-- Aéreos: lista + crear + editar con tabla de precios por período
-- Alojamientos: lista + crear + editar con fotos y régimen
-- Precios con fechas desde/hasta, adulto/menor (aéreos), por noche (hoteles)
-
-### Fase 6 — Supporting Services (3 planes)
-- Traslados: lista con edición inline, tipos regular/privado
-- Seguros: CRUD con costo diario × días = total
-- Circuitos: editor día-por-día con drag-and-drop nativo
-- Proveedores: entidad normalizada con soft delete
-
-### Fase 7 — Catálogos & Perfiles (2 planes)
-- Catálogos: 5 sub-catálogos en tabs con CRUD completo
-- Perfiles: gestión de usuarios, roles, asignación de marca
-- Tabla de permisos visualizada
-
-### Fase 8 — Dashboard, Notificaciones & Reportes (3 planes)
-- Dashboard: 4 stat cards animados, actividad reciente, quick links
-- Notificaciones: wizard 4 pasos (etiqueta → filtrar → seleccionar → enviar)
-- Reportes: stat cards + gráfico barras (Recharts) + tabla hoteles
-- **Decisión:** Wizard de notificaciones colapsado de 5 a 4 pasos
-
----
-
-## 10. Decisiones Técnicas Clave
-
-| Decisión | Razón |
+| Feature | Descripcion |
 |---|---|
-| Tailwind v3.4.18 (no v4) | Incompatibilidad con tokens de diseño glass |
-| Radix UI paquete unificado | Simplifica gestión de 5+ paquetes individuales |
-| Glass materials como inline styles | `backdrop-filter` complejo necesita JS, no solo clases Tailwind |
-| WebkitBackdropFilter incluido | Compatibilidad Safari |
-| Context por entidad (no global) | Evitar re-renders cruzados entre módulos |
-| Soft delete para paquetes | Preservar integridad referencial en asignaciones |
-| HTML5 drag-and-drop nativo | Apropiado para scope de prototipo (no @dnd-kit) |
-| URL-based tab state | Permite browser back/forward correcto |
-| Destino derivado del primer aéreo | No almacenado en Paquete directamente |
-| Estado publicado = `estado === ACTIVO` | Sin boolean separado |
+| Multi-tenancy | `brandId` en todas las entidades, BrandProvider para cambio de marca |
+| Auto-save | Hook `useAutoSave` con debounce para guardar cambios automaticamente |
+| Busqueda global | Cmd+K abre SearchModal con busqueda en todos los modulos |
+| Checklist de validacion | Validacion de requisitos antes de activar un paquete |
+| Responsive/mobile | Soporte para dispositivos moviles |
+| Soft delete | Paquetes y proveedores usan `deletedAt`, no eliminacion fisica |
 
 ---
 
-## 11. Documentación del Proyecto
+## 12. Pipeline de Deploy
 
-| Archivo | Propósito |
-|---|---|
-| `docs/flujo.md` | Flujo completo del sistema, reglas de negocio, roles |
-| `docs/explicacion.md` | Contexto empresarial, diagnóstico operativo, dolores |
-| `docs/modulos_backend.md` | Especificación técnica exhaustiva por módulo |
-| `docs/design.json` | Sistema de diseño "Liquid Horizon" completo |
-| `docs/DEVELOPMENT.md` | Este documento — registro de todo lo desarrollado |
-| `PROMPT_CLAUDE_CODE.md` | Mega-prompt de desarrollo con todas las specs |
-| `.planning/PROJECT.md` | Definición del proyecto y propuesta de valor |
-| `.planning/ROADMAP.md` | 8 fases, 28 planes, dependencias, criterios de éxito |
-| `.planning/REQUIREMENTS.md` | 98 requerimientos v1 con trazabilidad |
-| `.planning/STATE.md` | Estado actual, métricas de velocidad, log de decisiones |
-| `.planning/research/` | Investigación de stack, arquitectura, features, pitfalls |
-| `.planning/phases/01-08/` | Planes, summaries y verificaciones por fase |
+```
+git push → Railway detecta → Nixpacks build:
+  1. npm install
+  2. prisma generate           (genera tipos del cliente)
+  3. prisma migrate deploy     (aplica migraciones nuevas, no destructivo)
+  4. tsx prisma/seed.ts        (seed idempotente con skipDuplicates)
+  5. next build                (output standalone)
+  6. next start -p $PORT
+```
 
 ---
 
-## 12. Reglas de Negocio Críticas
+## 13. Reglas de Negocio Criticas
 
-1. **Propagación automática de precios** — cuando cambia el costo de un servicio, TODOS los paquetes que lo usan recalculan automáticamente (v2 productivo)
-2. **Multi-marca** — un codebase, dos marcas independientes con datos filtrados por brandId
-3. **Precios en USD** — todo el sistema opera en dólares americanos
-4. **Markup sobre neto** — Venta = Neto × (1 + markup%), típicamente 30-40%
-5. **Vendedores solo ven precio venta** — neto y markup son información confidencial
-6. **Soft delete** — paquetes y proveedores usan deletedAt, no eliminación física
-7. **Paquetes por temporada** — cada paquete pertenece a una temporada específica
-8. **Servicios reutilizables** — un vuelo/hotel/transfer puede estar en múltiples paquetes
-9. **Etiquetas = campañas** — las etiquetas agrupan paquetes para notificaciones masivas
+1. **Multi-marca** — un codebase, dos marcas independientes con datos filtrados por `brandId`
+2. **Precios en USD** — todo el sistema opera en dolares americanos
+3. **Factor divisor** — Venta = Neto / Factor (no porcentaje sobre neto)
+4. **OpcionHotelera independiente** — cada opcion tiene su propia combinacion de hotel + factor + precioVenta
+5. **Vendedores solo ven precio venta** — neto y factor son informacion confidencial
+6. **Soft delete** — paquetes y proveedores usan `deletedAt`, no eliminacion fisica
+7. **Paquetes por temporada** — cada paquete pertenece a una temporada especifica
+8. **Servicios reutilizables** — un vuelo/hotel/transfer puede estar en multiples paquetes
+9. **Etiquetas = campanas** — las etiquetas agrupan paquetes para notificaciones masivas
 10. **Destino derivado** — el destino del paquete se extrae del primer vuelo asignado
 
 ---
 
-## 13. Limitaciones del Prototipo (Fuera de Scope v1)
+## 14. Decisiones Tecnicas Clave
 
-| Limitación | Razón |
+| Decision | Razon |
 |---|---|
-| Sin base de datos | Prototipo de validación UX, datos en React state |
-| Sin localStorage | Sin persistencia entre sesiones |
-| Sin envío real de emails | Notificaciones simuladas con toast |
-| Sin upload real de imágenes | URLs de Unsplash como placeholder |
-| Sin autenticación real | Login setea rol/marca en state |
-| Sin responsive mobile | Desktop-first para demo en videollamada |
-| Sin tests automatizados | Validación visual en llamada con cliente |
-| Sin rol MARKETING funcional | Solo ADMIN y VENDEDOR implementados |
-| Sin i18n | UI exclusivamente en español |
+| Tailwind v3.4.18 (no v4) | Incompatibilidad con tokens de diseno glass |
+| Server Actions (no API routes) | Simplicidad, type-safety end-to-end, menos boilerplate |
+| Provider-as-Cache | Providers cargan desde DB via Server Actions, mantienen cache local para UX fluida |
+| NextAuth v5 + Credentials | Control total sobre flujo de login, sin dependencia de OAuth providers |
+| Prisma migrate deploy (no dev) | Migraciones no destructivas en produccion, seguras para auto-deploy |
+| Seed idempotente (skipDuplicates) | Puede ejecutarse multiples veces sin duplicar datos |
+| Standalone build en Railway | Optimiza tamano de imagen y tiempos de cold start |
+| Glass materials como inline styles | `backdrop-filter` complejo necesita JS, no solo clases Tailwind |
+| Context por entidad (no global) | Evitar re-renders cruzados entre modulos |
+| URL-based tab state | Permite browser back/forward correcto |
 
 ---
 
-## 14. Métricas de Desarrollo
+## 15. Limitaciones Actuales
 
-| Métrica | Valor |
+| Limitacion | Estado |
 |---|---|
-| Total archivos TypeScript/TSX | ~80 |
-| Líneas de código estimadas | ~19,660 |
-| Fases completadas | 8/8 |
-| Planes ejecutados | 28/28 |
-| Requerimientos cubiertos | 98/98 (100%) |
-| Componentes UI | 21 |
-| Context providers | 7 |
-| Rutas admin | 15+ |
-| Datos seed | 16 paquetes, 16 vuelos, 10 hoteles, 8 traslados, 6 seguros, 6 circuitos |
-| Commits git | ~50+ |
+| Envio real de emails | Notificaciones simuladas con toast |
+| Upload real de imagenes | URLs de Unsplash como placeholder |
+| Tests automatizados | Sin tests E2E ni unitarios |
+| Propagacion automatica de precios | Al modificar un servicio, los paquetes no recalculan automaticamente |
+| i18n | UI exclusivamente en espanol |
 
 ---
 
-## 15. Roadmap v2 (Backend Productivo)
+## 16. Documentacion del Proyecto
 
-Funcionalidades diferidas para la versión productiva:
-
-- PostgreSQL + Prisma ORM como base de datos
-- API REST/tRPC para todas las operaciones
-- Autenticación real (NextAuth / Clerk)
-- Envío real de emails (Resend / SendGrid)
-- Upload real de imágenes (S3 / Cloudinary)
-- Propagación automática de precios al modificar servicios
-- Auto-desactivación de paquetes al vencer fecha de validez
-- Reportes año-vs-año con datos históricos
-- Integración con analytics web
-- Módulo de cruceros
-- Responsive mobile
-- Tests E2E con Playwright
-- CI/CD pipeline
+| Archivo | Proposito |
+|---|---|
+| `docs/flujo.md` | Flujo completo del sistema, reglas de negocio, roles |
+| `docs/explicacion.md` | Contexto empresarial, diagnostico operativo |
+| `docs/modulos_backend.md` | Especificacion tecnica por modulo |
+| `docs/design.json` | Sistema de diseno "Liquid Horizon" completo |
+| `docs/DEVELOPMENT.md` | Este documento — registro tecnico del proyecto |
 
 ---
 
-*Milestone v1.0 — Completado 2026-03-16*
+*v2.0 — Produccion con persistencia completa — Abril 2026*

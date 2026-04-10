@@ -1,12 +1,12 @@
 # TravelOz — Infraestructura, Arquitectura y Estado del Proyecto
 
-> Documento generado: 2026-04-10 | Auditoria completa del proyecto
+> Documento actualizado: 2026-04-10 | Proyecto en produccion
 
 ---
 
 ## 1. Resumen General
 
-**TravelOz Admin Panel** es un panel administrativo para la agencia de viajes TravelOz y su marca hermana DestinoIcono. Actualmente funciona como un prototipo 100% frontend desplegado en Railway, con una base de datos PostgreSQL provisionada pero sin integrar al codigo.
+**TravelOz Admin Panel** es un panel administrativo para la agencia de viajes TravelOz y su marca hermana DestinoIcono. El proyecto esta **completamente migrado a produccion**: base de datos PostgreSQL conectada e integrada via Prisma ORM, autenticacion real con NextAuth.js v5, y pipeline de deploy automatizado en Railway.
 
 ---
 
@@ -27,183 +27,86 @@ El proyecto tiene **2 servicios** activos:
 
 | Servicio | Tipo | Estado |
 |----------|------|--------|
-| **traveloz** | App Next.js | SUCCESS (deploy activo) |
-| **Postgres** | Base de datos PostgreSQL | SUCCESS (corriendo) |
+| **traveloz** | App Next.js (standalone) | SUCCESS (deploy activo) |
+| **Postgres** | Base de datos PostgreSQL | SUCCESS (corriendo, conectada y poblada) |
 
 ### 2.3 Base de datos PostgreSQL
 
 - **Motor:** PostgreSQL (imagen oficial de Railway)
-- **Base de datos:** `railway`
-- **Usuario:** `postgres`
-- **Almacenamiento:** Volumen persistente montado en `/var/lib/postgresql/data`
-- **Acceso interno:** Disponible via `postgres.railway.internal:5432` (entre servicios Railway)
-- **Acceso externo:** Disponible via proxy TCP publico de Railway (puerto asignado dinamicamente)
-- **Estado actual:** Base de datos **VACIA** — sin tablas, sin schema, sin datos
+- **ORM:** Prisma (conectado y operativo)
+- **Tablas:** 27+ tablas con datos reales
+- **Almacenamiento:** Volumen `postgres-volume` montado en `/var/lib/postgresql/data`
+- **Acceso interno:** `postgres.railway.internal:5432` (entre servicios Railway)
+- **Acceso externo:** Via proxy TCP publico de Railway (puerto asignado dinamicamente)
 
-### 2.4 Variables de entorno
-
-Las siguientes variables de entorno estan **inyectadas automaticamente** por Railway en el servicio de la app (`traveloz`):
+### 2.4 Variables de entorno (servicio traveloz)
 
 | Variable | Descripcion |
 |----------|-------------|
-| `DATABASE_URL` | Connection string interna (para uso entre servicios Railway) |
-| `DATABASE_PUBLIC_URL` | Connection string publica (para acceso externo) |
+| `DATABASE_URL` | Connection string interna (comunicacion entre servicios Railway) |
+| `DATABASE_PUBLIC_URL` | Connection string publica (acceso externo) |
 | `PGHOST` | Host interno de PostgreSQL |
 | `PGPORT` | Puerto de PostgreSQL (5432) |
 | `PGUSER` | Usuario de la base de datos |
-| `PGPASSWORD` | Contrasena de la base de datos |
-| `PGDATABASE` | Nombre de la base de datos (`railway`) |
-| `POSTGRES_DB` | Nombre de la base de datos |
-| `POSTGRES_USER` | Usuario de PostgreSQL |
-| `POSTGRES_PASSWORD` | Contrasena de PostgreSQL |
+| `PGPASSWORD` | Contrasena de la base de datos (`***`) |
+| `PGDATABASE` | Nombre de la base de datos |
+| `NEXTAUTH_SECRET` | Clave de firma JWT (`***`) |
+| `NEXTAUTH_URL` | `https://traveloz-production.up.railway.app` |
 | `RAILWAY_PUBLIC_DOMAIN` | Dominio publico de la app |
 | `RAILWAY_PRIVATE_DOMAIN` | Dominio interno de la app |
-| `RAILWAY_ENVIRONMENT` | `production` |
 
 > **Nota:** Las credenciales reales no se incluyen en este documento por seguridad. Consultar Railway Dashboard o usar `railway variables` para obtenerlas.
 
-### 2.5 Configuracion de deploy
+### 2.5 Pipeline de build y deploy
 
-| Aspecto | Configuracion |
-|---------|---------------|
-| **Build output** | `standalone` (optimizado para Railway/serverless) |
-| **Puerto** | `${PORT:-3000}` (Railway asigna `PORT` automaticamente) |
-| **Railway config file** | No existe `railway.toml` (usa deteccion automatica Nixpacks) |
-| **Procfile** | No existe (usa `npm start` por defecto) |
-| **Docker** | No existe Dockerfile (Nixpacks genera el build) |
+```
+git push → Railway auto-detects → Nixpacks:
+1. npm install
+2. npx prisma generate
+3. npx prisma migrate deploy (non-destructive)
+4. npx tsx prisma/seed.ts (idempotent con skipDuplicates)
+5. next build (standalone)
+6. next start -p $PORT
+```
+
+- **Build output:** `standalone` (optimizado para Railway)
+- **Puerto:** `$PORT` (Railway lo asigna automaticamente)
+- **Railway config file:** No existe `railway.toml` (usa deteccion automatica Nixpacks)
+- **Docker:** No existe Dockerfile (Nixpacks genera el build)
 
 ---
 
-## 3. Stack Tecnico
+## 3. Schema de Base de Datos (27+ modelos)
 
-| Tecnologia | Version | Proposito |
-|------------|---------|-----------|
-| Next.js | 14.2.35 | Framework (App Router) |
-| React | 18.3.1 | UI Library |
-| TypeScript | 5.8.2 | Type safety |
-| Tailwind CSS | 3.4.18 | Utility-first CSS |
-| Motion (Framer Motion) | 12.4.7 | Animaciones y transiciones |
-| Radix UI | 1.4.3 | Primitivos accesibles (Dialog, Select, Tabs, Tooltip) |
-| Lucide React | 0.469.0 | Iconografia |
-| CVA | 0.7.1 | Variantes de componentes |
-| Recharts | 2.15.1 | Graficos para reportes |
-| date-fns | 4.1.0 | Formateo de fechas |
-| react-day-picker | 9.5.1 | Calendario |
-| tailwind-merge | 2.6.0 | Merge de clases Tailwind |
-| clsx | 2.1.1 | Utilidad de classnames |
+### 3.1 Enums
 
-### Paquetes de base de datos instalados: NINGUNO
+| Enum | Valores |
+|------|---------|
+| `EstadoPaquete` | Estados del ciclo de vida de un paquete |
+| `TipoTraslado` | REGULAR, PRIVADO |
+| `CategoriaServicio` | Categorias de servicio |
+| `Role` | ADMIN, VENDEDOR, MARKETING |
 
-No hay ORM (Prisma, Drizzle, TypeORM, Sequelize), ni driver de PostgreSQL (`pg`, `postgres`), ni ninguna libreria de base de datos en `package.json`.
+### 3.2 Entidades principales (14)
 
----
+| Entidad | Descripcion |
+|---------|-------------|
+| `User` | Usuario del sistema (name, email, hashedPassword, role, brandId) |
+| `Paquete` | Paquete de viaje (entidad central) |
+| `Aereo` | Ruta de vuelo |
+| `Alojamiento` | Hotel/alojamiento |
+| `Traslado` | Transfer aeropuerto/ciudad |
+| `Seguro` | Seguro de viaje |
+| `Circuito` | Circuito guiado multi-dia |
+| `Proveedor` | Proveedor de servicios |
+| `Temporada` | Temporada de viaje |
+| `TipoPaquete` | Clasificacion de paquete |
+| `Etiqueta` | Tag/etiqueta para campanas |
+| `Pais` | Pais con codigo ISO |
+| `Ciudad` | Ciudad dentro de un pais |
+| `Regimen` | Regimen alimenticio hotel |
 
-## 4. Arquitectura del Codigo
-
-### 4.1 Estructura de directorios
-
-```
-src/
-├── app/
-│   ├── layout.tsx                    # Root layout (fuentes, metadata)
-│   ├── page.tsx                      # Redirect segun auth → /dashboard o /login
-│   ├── login/page.tsx                # Login con demo users
-│   └── (admin)/                      # Route group admin (requiere auth)
-│       ├── layout.tsx                # Shell: Sidebar + Topbar + Background
-│       ├── dashboard/page.tsx        # Dashboard con stats animados
-│       ├── paquetes/                 # CRUD paquetes de viaje
-│       ├── aereos/                   # CRUD vuelos
-│       ├── alojamientos/             # CRUD alojamientos
-│       ├── traslados/                # CRUD traslados
-│       ├── circuitos/                # CRUD circuitos guiados
-│       ├── seguros/                  # CRUD seguros de viaje
-│       ├── proveedores/              # CRUD proveedores
-│       ├── catalogos/                # CRUD catalogos (temporadas, tipos, etc.)
-│       ├── perfiles/                 # Gestion de usuarios
-│       ├── notificaciones/           # Centro de notificaciones
-│       └── reportes/                 # Reportes y graficos
-│
-├── components/
-│   ├── providers/                    # Context providers (estado en memoria)
-│   │   ├── Providers.tsx             # Wrapper que compone todos los providers
-│   │   ├── AuthProvider.tsx          # Autenticacion (demo)
-│   │   ├── BrandProvider.tsx         # Multi-marca (TravelOz / DestinoIcono)
-│   │   ├── PackageProvider.tsx       # Paquetes CRUD via useReducer
-│   │   ├── CatalogProvider.tsx       # Catalogos (temporadas, tipos, tags, paises)
-│   │   ├── ServiceProvider.tsx       # Servicios (vuelos, hoteles, traslados, etc.)
-│   │   └── UserProvider.tsx          # Gestion de usuarios
-│   └── ui/                           # Componentes de UI reutilizables
-│
-├── lib/
-│   ├── types.ts                      # 22 interfaces TypeScript del dominio
-│   ├── auth.ts                       # Tipos de auth, roles, permisos, demo users
-│   └── data/                         # Datos semilla (hardcoded)
-│       ├── index.ts                  # Re-exporta todo
-│       ├── paquetes.ts               # 16 paquetes de viaje
-│       ├── aereos.ts                 # 10 vuelos con periodos de precio
-│       ├── alojamientos.ts           # 10 hoteles con fotos y regimenes
-│       ├── catalogos.ts              # Temporadas, tipos, tags, paises, ciudades
-│       ├── circuitos.ts              # 5 circuitos con itinerarios diarios
-│       ├── traslados.ts              # 8 traslados (regulares y privados)
-│       ├── seguros.ts                # 4 planes de seguro
-│       └── proveedores.ts            # Proveedores de servicios
-│
-└── hooks/                            # Custom React hooks
-```
-
-### 4.2 Flujo de datos actual (sin base de datos)
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    BROWSER (Cliente)                      │
-│                                                          │
-│  ┌──────────────┐    ┌──────────────┐                    │
-│  │  Seed Data    │───▸│  React       │                    │
-│  │  (TS files)   │    │  Context +   │                    │
-│  │  ~2550 lineas │    │  useReducer  │                    │
-│  └──────────────┘    └──────┬───────┘                    │
-│                             │                            │
-│                     ┌───────▼───────┐                    │
-│                     │  Components   │                    │
-│                     │  (UI Layer)   │                    │
-│                     └───────────────┘                    │
-│                                                          │
-│  ⚠ Sin persistencia: datos se pierden al refrescar       │
-└─────────────────────────────────────────────────────────┘
-
-            ┌──────────────────────┐
-            │  PostgreSQL Railway   │
-            │  (VACIA - sin uso)   │
-            │  ❌ Sin conexion      │
-            └──────────────────────┘
-```
-
-**Problema:** No hay API routes, no hay ORM, no hay conexion a la base de datos. Todo el estado vive en memoria del navegador y se pierde al refrescar la pagina.
-
----
-
-## 5. Modelo de Datos
-
-### 5.1 Entidades principales (14)
-
-| Entidad | Descripcion | Campos clave |
-|---------|-------------|--------------|
-| `Paquete` | Paquete de viaje (entidad central) | titulo, destino, noches, markup, precioVenta, estado |
-| `Aereo` | Ruta de vuelo | ruta, aerolinea, equipaje, itinerario, escalas |
-| `Alojamiento` | Hotel/alojamiento | nombre, ciudadId, paisId, categoria (estrellas) |
-| `Traslado` | Transfer aeropuerto/ciudad | nombre, tipo (REGULAR/PRIVADO), precio |
-| `Seguro` | Seguro de viaje | plan, cobertura, costoPorDia |
-| `Circuito` | Circuito guiado multi-dia | nombre, noches, proveedorId |
-| `Proveedor` | Proveedor de servicios | nombre, contacto, email, servicio |
-| `Temporada` | Temporada de viaje | nombre, orden, activa |
-| `TipoPaquete` | Clasificacion de paquete | nombre, orden, activo |
-| `Etiqueta` | Tag/etiqueta para campanas | nombre, slug, color |
-| `Pais` | Pais con codigo ISO | nombre, codigo |
-| `Ciudad` | Ciudad dentro de un pais | nombre, paisId |
-| `Regimen` | Regimen alimenticio hotel | nombre, abrev |
-| `User` | Usuario del sistema | name, email, role, brandId |
-
-### 5.2 Sub-entidades y tablas de union (13)
+### 3.3 Sub-entidades (8)
 
 | Entidad | Relacion |
 |---------|----------|
@@ -215,139 +118,190 @@ src/
 | `PaqueteFoto` | Fotos de un paquete |
 | `PaqueteEtiqueta` | Relacion N:N paquete-etiqueta |
 | `OpcionHotelera` | Opciones de hotel para un paquete |
+
+### 3.4 Tablas de union (5)
+
+| Tabla | Relacion |
+|-------|----------|
 | `PaqueteAereo` | Vuelo asignado a un paquete |
 | `PaqueteAlojamiento` | Hotel asignado a un paquete |
 | `PaqueteTraslado` | Traslado asignado a un paquete |
 | `PaqueteSeguro` | Seguro asignado a un paquete |
 | `PaqueteCircuito` | Circuito asignado a un paquete |
 
-### 5.3 Multi-tenancy
+### 3.5 Indices clave
+
+- `brandId` indexado en todos los modelos con scope de marca (filtra por tenant)
+
+### 3.6 Soft delete
+
+Los siguientes modelos usan soft delete (campo `deletedAt`):
+- `Paquete`, `Aereo`, `Alojamiento`, `Traslado`, `Seguro`, `Circuito`, `Proveedor`
+
+### 3.7 Cascade delete
+
+Todas las tablas de union y sub-entidades usan `onDelete: Cascade` sobre la relacion con su entidad padre.
+
+---
+
+## 4. Multi-tenancy
 
 Todas las entidades principales tienen un campo `brandId` que identifica a que marca pertenecen:
-- `brand-1` = **TravelOz**
-- `brand-2` = **DestinoIcono**
 
-Ambas marcas comparten la misma aplicacion y base de datos, pero los datos son completamente independientes.
+| brandId | Marca |
+|---------|-------|
+| `brand-1` | **TravelOz** |
+| `brand-2` | **DestinoIcono** |
 
----
-
-## 6. Sistema de Autenticacion
-
-### 6.1 Estado actual (demo)
-
-La autenticacion es simulada. Todos los usuarios usan la misma contrasena de demo. No hay sesiones reales, tokens JWT, ni integracion con servicios de auth.
-
-### 6.2 Roles y permisos
-
-| Rol | Puede editar | Ve precio neto | Ve markup | Ve precio venta | Modulos visibles |
-|-----|-------------|----------------|-----------|-----------------|-----------------|
-| **ADMIN** | Si | Si | Si | Si | Todos (12 modulos) |
-| **VENDEDOR** | No | No | No | Si | Solo paquetes |
-| **MARKETING** | No | No | No | Si | Paquetes + Reportes |
-
-### 6.3 Usuarios demo
-
-Se proveen 6 usuarios demo distribuidos entre ambas marcas:
-- 2 admins TravelOz
-- 1 vendedor TravelOz
-- 1 marketing TravelOz
-- 1 admin DestinoIcono
-- 1 vendedor DestinoIcono
+- Ambas marcas comparten la misma aplicacion y base de datos
+- Todas las queries filtran por `brandId`
+- El cambio de marca en la UI dispara un re-fetch de datos
 
 ---
 
-## 7. Datos Semilla
+## 5. Sistema de Autenticacion
 
-Los datos hardcodeados en `/src/lib/data/` incluyen:
+### 5.1 Implementacion
 
-| Archivo | Contenido |
-|---------|-----------|
-| `paquetes.ts` (~723 lineas) | 16 paquetes de viaje con relaciones completas |
-| `aereos.ts` (~287 lineas) | 10 vuelos con periodos de precio |
-| `alojamientos.ts` (~318 lineas) | 10 hoteles con fotos y regimenes |
-| `catalogos.ts` (~534 lineas) | Temporadas, tipos, tags, paises, ciudades, regimenes |
-| `circuitos.ts` (~226 lineas) | 5 circuitos con itinerarios diarios y precios |
-| `traslados.ts` (~150 lineas) | 8 transfers (regulares y privados) |
-| `seguros.ts` (~109 lineas) | 4 planes de seguro |
-| `proveedores.ts` (~149 lineas) | Proveedores de servicios |
+| Aspecto | Detalle |
+|---------|---------|
+| **Libreria** | NextAuth.js v5 |
+| **Provider** | Credentials (email + password) |
+| **Estrategia de sesion** | JWT |
+| **Hash de passwords** | bcryptjs |
+| **Proteccion de rutas** | Middleware en todas las rutas admin |
 
-**Total:** ~2,550 lineas de datos realistas para destinos en Sudamerica.
+### 5.2 Usuario admin por defecto
+
+| Campo | Valor |
+|-------|-------|
+| Email | `admin@admin.com` |
+| Password | `***` |
+
+### 5.3 Roles y permisos
+
+| Rol | Descripcion |
+|-----|-------------|
+| **ADMIN** | Acceso total a todos los modulos, ve precios netos, markup y venta |
+| **VENDEDOR** | Solo ve paquetes con precio de venta |
+| **MARKETING** | Ve paquetes y reportes con precio de venta |
 
 ---
 
-## 8. Configuracion de Next.js
+## 6. Server Actions (Capa de API)
 
-```javascript
-// next.config.mjs
-{
-  output: "standalone",          // Build optimizado para Railway/serverless
-  rewrites: [
-    "/presentacion_traveloz" → "/presentacion_traveloz/index.html"  // Sitio HTML estatico
-  ]
-}
+El proyecto usa Server Actions de Next.js en lugar de API Routes:
+
+| Archivo | Funciones | Alcance |
+|---------|-----------|---------|
+| `src/actions/catalog.actions.ts` | 28 funciones | 7 entidades de catalogo (Temporada, TipoPaquete, Etiqueta, Pais, Ciudad, Regimen, Proveedor) |
+| `src/actions/service.actions.ts` | 34 funciones | 5 tipos de servicio (Aereo, Alojamiento, Traslado, Seguro, Circuito) + sub-entidades |
+| `src/actions/package.actions.ts` | 28 funciones | Paquetes + 9 tipos de junction/sub-entidad |
+| `src/actions/user.actions.ts` | 5 funciones | CRUD de usuarios |
+| `src/actions/auth.actions.ts` | 1 funcion | Autenticacion (login) |
+
+**Total:** 96 server actions cubriendo todo el CRUD del sistema.
+
+---
+
+## 7. State Management (Provider-as-Cache)
+
+El patron de gestion de estado funciona asi:
+
+1. **Mount:** Los providers hacen fetch desde la DB via server actions en `useEffect`
+2. **CRUD:** Se llama al server action primero (persistencia) y luego se hace dispatch al reducer local (actualizacion optimista de UI)
+3. **Cambio de marca:** Dispara re-fetch de todos los datos para el nuevo `brandId`
+4. **Loading states:** Soportados en todos los providers
+
+### Providers
+
+| Provider | Responsabilidad |
+|----------|----------------|
+| `AuthProvider` | Sesion de usuario via NextAuth |
+| `BrandProvider` | Marca activa (TravelOz / DestinoIcono) |
+| `PackageProvider` | Paquetes y relaciones |
+| `CatalogProvider` | Catalogos (temporadas, tipos, tags, paises, ciudades, regimenes) |
+| `ServiceProvider` | Servicios (aereos, alojamientos, traslados, seguros, circuitos) |
+| `UserProvider` | Gestion de usuarios |
+
+---
+
+## 8. Datos Semilla
+
+El seed es idempotente (usa `skipDuplicates`) y se ejecuta automaticamente en cada deploy.
+
+| Entidad | Cantidad |
+|---------|----------|
+| Paquetes | 16 |
+| Aereos | 12 |
+| Alojamientos | 14 |
+| Traslados | 10 |
+| Seguros | 8 |
+| Circuitos | 2 |
+| Proveedores | 10 |
+| Temporadas | 7 |
+| Tipos de paquete | 8 |
+| Etiquetas | 13 |
+| Paises | 12 |
+| Ciudades | 31 |
+| Regimenes | 10 |
+| Opciones hoteleras | 12 |
+| Precios aereo | 27 |
+| Precios alojamiento | 28 |
+
+Todos los datos usan informacion realista uruguaya: rutas desde MVD, hoteles reales, destinos reales.
+
+---
+
+## 9. Diagrama de Arquitectura (Produccion)
+
 ```
-
-- **Output standalone:** Genera un build autocontenido (sin necesidad de `node_modules` en produccion)
-- **Rewrite:** Sirve un sitio de presentacion estatico en `/presentacion_traveloz`
-
----
-
-## 9. Lo que falta para integrar la base de datos
-
-### 9.1 Pasos necesarios
-
-1. **Instalar ORM:** Agregar Prisma (o Drizzle) como dependencia
-2. **Crear schema:** Definir el schema de base de datos basado en las 27 entidades de `/src/lib/types.ts`
-3. **Ejecutar migraciones:** Crear las tablas en el PostgreSQL de Railway
-4. **Crear API Routes:** Endpoints en `/src/app/api/` para cada modulo (CRUD)
-5. **Seedear datos:** Migrar los datos de `/src/lib/data/` a la base de datos
-6. **Migrar providers:** Cambiar los Context providers para que consuman las API Routes en vez de datos en memoria
-7. **Autenticacion real:** Implementar auth con JWT o NextAuth
-
-### 9.2 Archivo `.env.local` necesario (desarrollo local)
-
-```env
-DATABASE_URL="postgresql://..."   # Obtener de Railway Dashboard
+Browser → Next.js App (Railway)
+  ├── /login → NextAuth Credentials → bcrypt verify → JWT
+  ├── /(admin)/* → Middleware auth check
+  │   ├── Client Components (providers)
+  │   │   ├── useEffect → Server Action (fetch)
+  │   │   └── CRUD → Server Action → Prisma → PostgreSQL
+  │   └── calcularVenta (client-side pricing)
+  └── PostgreSQL (Railway, internal network)
 ```
-
-> En Railway, `DATABASE_URL` ya esta inyectada automaticamente como variable de entorno. Solo se necesita `.env.local` para desarrollo local.
-
-### 9.3 Referencia de especificacion
-
-El archivo `docs/modulos_backend.md` contiene la especificacion exhaustiva de cada modulo incluyendo:
-- Schema Prisma completo
-- Validaciones por campo
-- Reglas de negocio
-- Endpoints API
-- Permisos por rol
-- Edge cases
-
----
-
-## 10. Historial de Deploys
-
-| Fecha | Estado | Notas |
-|-------|--------|-------|
-| 2026-04-10 | SUCCESS | Deploy activo actual |
-| 2026-03-31 | FAILED | Deploy fallido (posible error de build) |
-| 2026-03-31 | REMOVED | Deploy removido |
-
----
-
-## 11. Diagrama de Arquitectura Objetivo
 
 ```
 ┌─────────────┐     HTTPS      ┌──────────────────┐     Internal     ┌──────────────┐
 │   Browser    │ ◀────────────▸ │  Next.js App     │ ◀──────────────▸ │  PostgreSQL   │
 │   (Client)   │                │  (Railway)       │   DATABASE_URL   │  (Railway)    │
 └─────────────┘                │                  │                  │              │
-                               │  /app/api/*      │                  │  27 tablas   │
-                               │  (API Routes)    │                  │  (pendiente) │
+                               │  Server Actions  │                  │  27+ tablas  │
+                               │  (96 funciones)  │                  │  con datos   │
                                │                  │                  │              │
                                │  Prisma ORM      │                  │  Volumen     │
-                               │  (pendiente)     │                  │  persistente │
+                               │  (conectado)     │                  │  persistente │
                                └──────────────────┘                  └──────────────┘
                                        │
                                   Railway Network
                               (postgres.railway.internal)
 ```
+
+---
+
+## 10. Como agregar una nueva migracion
+
+1. Modificar `prisma/schema.prisma`
+2. Ejecutar: `npx prisma migrate dev --name descripcion_del_cambio`
+3. Commitear el nuevo archivo de migracion en `prisma/migrations/`
+4. Push a GitHub → Railway aplica automaticamente en el deploy
+
+---
+
+## 11. Desarrollo local
+
+### Variables de entorno necesarias (`.env.local`)
+
+```env
+DATABASE_URL="postgresql://***"          # Obtener de Railway Dashboard
+DATABASE_PUBLIC_URL="postgresql://***"   # Obtener de Railway Dashboard
+NEXTAUTH_SECRET="***"                    # Obtener de Railway Dashboard
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+> En Railway, todas las variables estan inyectadas automaticamente. Solo se necesita `.env.local` para desarrollo local.
