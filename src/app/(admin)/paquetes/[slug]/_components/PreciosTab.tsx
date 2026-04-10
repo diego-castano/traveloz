@@ -15,6 +15,8 @@ import {
   Star,
   DollarSign,
   TrendingUp,
+  X,
+  Check,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -108,6 +110,10 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   // -- New option form state --
   const [showNewForm, setShowNewForm] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newSelectedAlojIds, setNewSelectedAlojIds] = useState<string[]>([]);
+
+  // -- Edit hotel selection state (which option is being edited) --
+  const [editingHotelsOpcionId, setEditingHotelsOpcionId] = useState<string | null>(null);
 
   // -------------------------------------------------------------------------
   // Resolve services for fixed cost calculation
@@ -300,29 +306,6 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
     [deleteOpcionHotelera, toast],
   );
 
-  const handleAddOption = useCallback(() => {
-    if (!newName.trim()) return;
-    // Default: use all assigned alojamientos, factor 0.80
-    const allAlojIds = assignedAlojamientos.map((a) => a.alojamiento.id);
-    const netoAloj = calcularNetoAlojamientos(
-      allAlojIds,
-      assignedAlojamientos,
-      paquete.noches,
-    );
-    const venta = calcularVentaOpcion(netoFijos, netoAloj, 0.8);
-    createOpcionHotelera({
-      paqueteId: paquete.id,
-      nombre: newName.trim(),
-      alojamientoIds: allAlojIds,
-      factor: 0.8,
-      precioVenta: venta,
-      orden: opciones.length + 1,
-    });
-    setNewName("");
-    setShowNewForm(false);
-    toast("success", "Opcion hotelera creada");
-  }, [newName, assignedAlojamientos, netoFijos, paquete, opciones.length, createOpcionHotelera, toast]);
-
   const handleAutoSavePrices = useCallback(() => {
     const firstOpcion = opcionPricing[0];
     if (firstOpcion) {
@@ -347,6 +330,55 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
       markPricesDirty();
     },
     [handleFactorChange, markPricesDirty],
+  );
+
+  const handleAddOption = useCallback(() => {
+    if (!newName.trim()) return;
+    if (newSelectedAlojIds.length === 0) {
+      toast("warning", "Selecciona al menos un alojamiento");
+      return;
+    }
+    const netoAloj = calcularNetoAlojamientos(
+      newSelectedAlojIds,
+      assignedAlojamientos,
+      paquete.noches,
+    );
+    const venta = calcularVentaOpcion(netoFijos, netoAloj, 0.8);
+    createOpcionHotelera({
+      paqueteId: paquete.id,
+      nombre: newName.trim(),
+      alojamientoIds: newSelectedAlojIds,
+      factor: 0.8,
+      precioVenta: venta,
+      orden: opciones.length + 1,
+    });
+    setNewName("");
+    setNewSelectedAlojIds([]);
+    setShowNewForm(false);
+    toast("success", "Opcion hotelera creada");
+  }, [newName, newSelectedAlojIds, assignedAlojamientos, netoFijos, paquete, opciones.length, createOpcionHotelera, toast]);
+
+  // Toggle a hotel in/out of an existing option and recalculate prices
+  const handleToggleHotelInOption = useCallback(
+    (opcion: OpcionHotelera, hotelId: string) => {
+      const currentIds = opcion.alojamientoIds;
+      const newIds = currentIds.includes(hotelId)
+        ? currentIds.filter((id) => id !== hotelId)
+        : [...currentIds, hotelId];
+      if (newIds.length === 0) {
+        toast("warning", "La opcion debe tener al menos un alojamiento");
+        return;
+      }
+      const netoAloj = calcularNetoAlojamientos(newIds, assignedAlojamientos, paquete.noches);
+      const newVenta = calcularVentaOpcion(netoFijos, netoAloj, opcion.factor);
+      updateOpcionHotelera({
+        ...opcion,
+        alojamientoIds: newIds,
+        precioVenta: newVenta,
+      });
+      markPricesDirty();
+    },
+    [assignedAlojamientos, netoFijos, paquete.noches, updateOpcionHotelera, markPricesDirty],
   );
 
   const handleSave = useCallback(() => {
@@ -528,12 +560,86 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                           {hotel.nombre}
                         </span>
                       </div>
-                      <span className="text-sm font-mono text-neutral-500">
-                        {formatCurrency(hotel.precioPorNoche)}/noche x{" "}
-                        {hotel.noches}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-mono text-neutral-500">
+                          {formatCurrency(hotel.precioPorNoche)}/noche x{" "}
+                          {hotel.noches}
+                        </span>
+                        {canEdit && opcion.alojamientoIds.length > 1 && (
+                          <button
+                            onClick={() => handleToggleHotelInOption(opcion, hotel.id)}
+                            className="p-0.5 rounded hover:bg-red-50 text-neutral-300 hover:text-red-500 transition-colors"
+                            title="Quitar de esta opcion"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
+
+                  {/* Toggle hotel selector for this option */}
+                  {canEdit && (
+                    <>
+                      {editingHotelsOpcionId === opcion.id ? (
+                        <div className="mt-2 p-3 rounded-lg bg-white/50 border border-teal-200/50">
+                          <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                            Alojamientos disponibles
+                          </p>
+                          <div className="space-y-1.5">
+                            {assignedAlojamientos.map((a) => {
+                              const isSelected = opcion.alojamientoIds.includes(a.alojamiento.id);
+                              return (
+                                <button
+                                  key={a.alojamiento.id}
+                                  onClick={() => handleToggleHotelInOption(opcion, a.alojamiento.id)}
+                                  className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded-md text-sm transition-colors ${
+                                    isSelected
+                                      ? "bg-teal-50 border border-teal-200 text-teal-800"
+                                      : "bg-white/60 border border-neutral-200 text-neutral-600 hover:border-teal-300"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {isSelected ? (
+                                      <Check className="h-3.5 w-3.5 text-teal-600" />
+                                    ) : (
+                                      <Plus className="h-3.5 w-3.5 text-neutral-400" />
+                                    )}
+                                    <span>{a.alojamiento.nombre}</span>
+                                    <div className="flex items-center gap-0.5">
+                                      {Array.from({ length: a.alojamiento.categoria ?? 0 }).map((_, i) => (
+                                        <Star key={i} className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <span className="text-xs font-mono text-neutral-500">
+                                    {formatCurrency(a.precioAlojamiento?.precioPorNoche ?? 0)}/noche
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <div className="flex justify-end mt-2">
+                            <Button
+                              variant="ghost"
+                              size="xs"
+                              onClick={() => setEditingHotelsOpcionId(null)}
+                            >
+                              Cerrar
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setEditingHotelsOpcionId(opcion.id)}
+                          className="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 font-medium mt-1 px-1 transition-colors"
+                        >
+                          <Hotel className="h-3 w-3" />
+                          Editar alojamientos
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
 
                 {/* Subtotal alojamiento */}
@@ -629,29 +735,89 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                 transition={springs.snappy}
                 className="overflow-hidden"
               >
-                <div className="flex items-center gap-3 p-4 rounded-xl bg-white/40 border border-dashed border-neutral-300">
+                <div className="p-4 rounded-xl bg-white/40 border border-dashed border-neutral-300 space-y-3">
                   <input
                     type="text"
-                    placeholder="Nombre de la opcion..."
+                    placeholder="Nombre de la opcion (ej: Opcion Economica)..."
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
-                    className="flex-1 text-sm bg-transparent border-b border-neutral-300 focus:border-teal-500 focus:outline-none transition-colors px-1 py-1"
+                    className="w-full text-sm bg-transparent border-b border-neutral-300 focus:border-teal-500 focus:outline-none transition-colors px-1 py-1"
                     autoFocus
                   />
-                  <Button size="sm" onClick={handleAddOption}>
-                    Crear
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowNewForm(false);
-                      setNewName("");
-                    }}
-                  >
-                    Cancelar
-                  </Button>
+
+                  {/* Hotel selection checkboxes */}
+                  {assignedAlojamientos.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">
+                        Seleccionar alojamientos para esta opcion
+                      </p>
+                      <div className="space-y-1.5">
+                        {assignedAlojamientos.map((a) => {
+                          const isChecked = newSelectedAlojIds.includes(a.alojamiento.id);
+                          return (
+                            <button
+                              key={a.alojamiento.id}
+                              type="button"
+                              onClick={() =>
+                                setNewSelectedAlojIds((prev) =>
+                                  isChecked
+                                    ? prev.filter((id) => id !== a.alojamiento.id)
+                                    : [...prev, a.alojamiento.id],
+                                )
+                              }
+                              className={`w-full flex items-center justify-between py-1.5 px-2.5 rounded-md text-sm transition-colors ${
+                                isChecked
+                                  ? "bg-teal-50 border border-teal-200 text-teal-800"
+                                  : "bg-white/60 border border-neutral-200 text-neutral-600 hover:border-teal-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {isChecked ? (
+                                  <Check className="h-3.5 w-3.5 text-teal-600" />
+                                ) : (
+                                  <div className="h-3.5 w-3.5 rounded border border-neutral-300" />
+                                )}
+                                <span>{a.alojamiento.nombre}</span>
+                                <div className="flex items-center gap-0.5">
+                                  {Array.from({ length: a.alojamiento.categoria ?? 0 }).map((_, i) => (
+                                    <Star key={i} className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
+                                  ))}
+                                </div>
+                              </div>
+                              <span className="text-xs font-mono text-neutral-500">
+                                {formatCurrency(a.precioAlojamiento?.precioPorNoche ?? 0)}/noche
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-neutral-400 italic">
+                      No hay alojamientos asignados al paquete. Agrega alojamientos desde la tab Servicios.
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setShowNewForm(false);
+                        setNewName("");
+                        setNewSelectedAlojIds([]);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleAddOption}
+                      disabled={!newName.trim() || newSelectedAlojIds.length === 0}
+                    >
+                      Crear Opcion
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             ) : (
