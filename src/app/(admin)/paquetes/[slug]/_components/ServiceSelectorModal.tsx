@@ -258,7 +258,7 @@ export default function ServiceSelectorModal({
               <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
                 <div className="divide-y divide-white/15">
                   {availableAereos.map((aereo) => {
-                    const matches = !sq || aereo.ruta.toLowerCase().includes(sq) || aereo.destino.toLowerCase().includes(sq) || aereo.aerolinea.toLowerCase().includes(sq);
+                    const matches = !sq || aereo.ruta.toLowerCase().includes(sq) || aereo.destino.toLowerCase().includes(sq) || (aereo.aerolinea ?? '').toLowerCase().includes(sq);
                     return (
                       <div
                         key={aereo.id}
@@ -412,7 +412,7 @@ export default function ServiceSelectorModal({
                 <div className="divide-y divide-white/15">
                   {availableSeguros.map((seguro) => {
                     const provNombre = proveedorMap.get(seguro.proveedorId) ?? "";
-                    const matches = !sq || seguro.plan.toLowerCase().includes(sq) || seguro.cobertura.toLowerCase().includes(sq) || provNombre.toLowerCase().includes(sq);
+                    const matches = !sq || seguro.plan.toLowerCase().includes(sq) || (seguro.cobertura ?? '').toLowerCase().includes(sq) || provNombre.toLowerCase().includes(sq);
                     return (
                       <div
                         key={seguro.id}

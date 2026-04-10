@@ -186,7 +186,8 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* Demo credential quick-select */}
+        {/* Demo credential quick-select (dev only) */}
+        {process.env.NODE_ENV === 'development' && (
         <div className="mt-6 border-t border-neutral-300/60 pt-4">
           <p className="text-xs text-neutral-600 font-medium text-center mb-2">
             Acceso rapido demo
@@ -218,6 +219,7 @@ export default function LoginPage() {
             Password para todos: admin
           </p>
         </div>
+        )}
         </div>
       </motion.div>
     </div>

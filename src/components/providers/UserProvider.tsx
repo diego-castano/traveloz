@@ -109,8 +109,8 @@ export function useUserActions() {
 
   return useMemo(
     () => ({
-      createUser: async (data: Omit<AuthUser, "id">) => {
-        const entity = await userActions.createUser({ ...data, password: 'admin' });
+      createUser: async (data: Omit<AuthUser, "id"> & { password: string }) => {
+        const entity = await userActions.createUser({ ...data, password: data.password });
         dispatch({ type: "ADD_USER", payload: entity as any });
         return entity as any;
       },

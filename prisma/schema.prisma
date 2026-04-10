@@ -309,7 +309,8 @@ model Etiqueta {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  paquetes PaqueteEtiqueta[]
+  paquetes       PaqueteEtiqueta[]
+  notificaciones Notificacion[]
 
   @@index([brandId])
 }
@@ -456,4 +457,22 @@ model OpcionHotelera {
   orden          Int      @default(0)
 
   paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+}
+
+// ──────────────────────────────────────────────
+// Notification history
+// ──────────────────────────────────────────────
+
+model Notificacion {
+  id         String   @id @default(cuid())
+  brandId    String
+  etiquetaId String
+  paqueteIds String[]
+  mensaje    String?  @db.Text
+  enviadoAt  DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  etiqueta Etiqueta @relation(fields: [etiquetaId], references: [id])
+
+  @@index([brandId])
 }

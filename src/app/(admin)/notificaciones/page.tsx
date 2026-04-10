@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Check, ChevronRight, ChevronLeft, Send, Tag, Mail } from "lucide-react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { Check, ChevronRight, ChevronLeft, Send, Tag, Mail, Clock } from "lucide-react";
+import * as notificacionActions from "@/actions/notificacion.actions";
+import { useBrand } from "@/components/providers/BrandProvider";
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { usePaquetes, usePackageState } from "@/components/providers/PackageProvider";
 import { useAereos } from "@/components/providers/ServiceProvider";
@@ -46,12 +48,30 @@ export default function NotificacionesPage() {
   const [selectedPaqueteIds, setSelectedPaqueteIds] = useState<Set<string>>(new Set());
   const [isSending, setIsSending] = useState(false);
 
+  // --- Notification history ---
+  const [historial, setHistorial] = useState<
+    Awaited<ReturnType<typeof notificacionActions.getNotificaciones>>
+  >([]);
+
   // --- Data hooks ---
   const etiquetas = useEtiquetas();
   const paquetes = usePaquetes();
   const state = usePackageState();
   const aereos = useAereos();
   const { toast } = useToast();
+  const { activeBrandId } = useBrand();
+
+  // --- Load notification history ---
+  const loadHistorial = useCallback(() => {
+    notificacionActions
+      .getNotificaciones(activeBrandId)
+      .then(setHistorial)
+      .catch(console.error);
+  }, [activeBrandId]);
+
+  useEffect(() => {
+    loadHistorial();
+  }, [loadHistorial]);
 
   // --- Derived data ---
   const filteredPaquetes = useMemo(() => {
@@ -103,9 +123,15 @@ export default function NotificacionesPage() {
     if (step > 1) setStep((prev) => (prev - 1) as 1 | 2 | 3 | 4);
   }
 
-  function handleSend() {
+  async function handleSend() {
+    if (!selectedEtiquetaId) return;
     setIsSending(true);
-    setTimeout(() => {
+    try {
+      await notificacionActions.createNotificacion({
+        brandId: activeBrandId,
+        etiquetaId: selectedEtiquetaId,
+        paqueteIds: Array.from(selectedPaqueteIds),
+      });
       toast(
         "success",
         "Notificaciones enviadas",
@@ -114,8 +140,12 @@ export default function NotificacionesPage() {
       setStep(1);
       setSelectedEtiquetaId(null);
       setSelectedPaqueteIds(new Set());
+      loadHistorial();
+    } catch {
+      toast("error", "Error", "No se pudieron enviar las notificaciones.");
+    } finally {
       setIsSending(false);
-    }, 1500);
+    }
   }
 
   // --- Step 3: checkbox helpers ---
@@ -519,6 +549,60 @@ export default function NotificacionesPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Notification History */}
+      {historial.length > 0 && (
+        <Card variant="default" className="max-w-2xl mx-auto mt-6">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-neutral-400" />
+              <span className="text-sm font-semibold text-neutral-700">
+                Historial de envios
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 pb-4">
+            <div className="space-y-2">
+              {historial.map((n) => {
+                const et = n.etiqueta;
+                const fecha = new Date(n.enviadoAt).toLocaleDateString("es-UY", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                return (
+                  <div
+                    key={n.id}
+                    className="flex items-center justify-between px-4 py-3 rounded-lg"
+                    style={glassMaterials.frostedSubtle}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: et?.color ?? "#9CA3AF" }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-neutral-700 truncate">
+                          {et?.nombre ?? "Etiqueta eliminada"}
+                        </p>
+                        <p className="text-xs text-neutral-400">
+                          {n.paqueteIds.length} paquete
+                          {n.paqueteIds.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-neutral-400 shrink-0 ml-3">
+                      {fecha}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
