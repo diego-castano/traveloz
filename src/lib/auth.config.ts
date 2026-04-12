@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { authenticateUser } from "@/actions/auth.actions";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [
     Credentials({
       name: "credentials",
