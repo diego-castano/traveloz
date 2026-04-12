@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && npx prisma migrate deploy && npx tsx prisma/seed.ts && next build",
-    "start": "next start -p ${PORT:-3000}",
+    "build": "npx prisma generate && next build",
+    "start": "npx prisma migrate deploy && npx tsx prisma/seed.ts && next start -p ${PORT:-3000}",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
@@ -30,7 +30,9 @@
     "tailwind-merge": "^2.6.0",
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^2.4.3",
-    "next-auth": "5.0.0-beta.25"
+    "next-auth": "5.0.0-beta.25",
+    "prisma": "^6.5.0",
+    "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
@@ -42,8 +44,6 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.18",
     "typescript": "^5.8.2",
-    "prisma": "^6.5.0",
-    "@types/bcryptjs": "^2.4.6",
-    "tsx": "^4.19.0"
+    "@types/bcryptjs": "^2.4.6"
   }
 }
