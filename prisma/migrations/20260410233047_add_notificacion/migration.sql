@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "Notificacion" (
+CREATE TABLE IF NOT EXISTS "Notificacion" (
     "id" TEXT NOT NULL,
     "brandId" TEXT NOT NULL,
     "etiquetaId" TEXT NOT NULL,
@@ -12,7 +12,11 @@ CREATE TABLE "Notificacion" (
 );
 
 -- CreateIndex
-CREATE INDEX "Notificacion_brandId_idx" ON "Notificacion"("brandId");
+CREATE INDEX IF NOT EXISTS "Notificacion_brandId_idx" ON "Notificacion"("brandId");
 
--- AddForeignKey
-ALTER TABLE "Notificacion" ADD CONSTRAINT "Notificacion_etiquetaId_fkey" FOREIGN KEY ("etiquetaId") REFERENCES "Etiqueta"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+-- AddForeignKey (conditional: skip if already exists)
+DO $$ BEGIN
+    ALTER TABLE "Notificacion" ADD CONSTRAINT "Notificacion_etiquetaId_fkey" FOREIGN KEY ("etiquetaId") REFERENCES "Etiqueta"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
