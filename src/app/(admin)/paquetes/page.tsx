@@ -32,6 +32,8 @@ import {
 import { useAereos } from "@/components/providers/ServiceProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { usePackageLoading } from "@/components/providers/PackageProvider";
 import { formatCurrency } from "@/lib/utils";
 import type { Paquete } from "@/lib/types";
 
@@ -64,6 +66,7 @@ export default function PaquetesPage() {
   const tiposPaquete = useTiposPaquete();
   const aereos = useAereos();
   const allOpciones = useAllOpcionesHoteleras();
+  const loading = usePackageLoading();
 
   // Pre-compute opciones map per paquete
   const opcionesMap = useMemo(() => {
@@ -257,6 +260,8 @@ export default function PaquetesPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   return (
     <>

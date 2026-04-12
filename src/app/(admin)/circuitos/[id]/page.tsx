@@ -11,7 +11,9 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import {
   useServiceState,
   useServiceActions,
+  useServiceLoading,
 } from "@/components/providers/ServiceProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useProveedores } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -49,6 +51,7 @@ export default function CircuitoDetailPage() {
     deletePrecioCircuito,
   } = useServiceActions();
 
+  const loading = useServiceLoading();
   const allProveedores = useProveedores();
   const proveedoresCircuitos = useMemo(
     () => allProveedores.filter((p) => p.servicio === "CIRCUITOS" && !p.deletedAt),
@@ -230,8 +233,10 @@ export default function CircuitoDetailPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Guard: circuito not found
+  // Guard: loading / not found
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="detail" />;
 
   if (!circuito) {
     return (

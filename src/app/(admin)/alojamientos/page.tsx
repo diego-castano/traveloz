@@ -27,6 +27,8 @@ import { usePaises, useProveedores } from "@/components/providers/CatalogProvide
 import { useAuth } from "@/components/providers/AuthProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import type { Alojamiento } from "@/lib/types";
 
@@ -73,6 +75,7 @@ export default function AlojamientosPage() {
   const paises = usePaises();
   const proveedores = useProveedores();
   const packageState = usePackageState();
+  const loading = useServiceLoading();
 
   // Package usage count map
   const paqueteCountMap = useMemo(() => {
@@ -189,6 +192,8 @@ export default function AlojamientosPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   return (
     <>

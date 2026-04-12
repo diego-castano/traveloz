@@ -8,6 +8,9 @@ import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { usePaquetes, usePackageState } from "@/components/providers/PackageProvider";
 import { useAereos } from "@/components/providers/ServiceProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useCatalogLoading } from "@/components/providers/CatalogProvider";
+import { usePackageLoading } from "@/components/providers/PackageProvider";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -60,6 +63,7 @@ export default function NotificacionesPage() {
   const aereos = useAereos();
   const { toast } = useToast();
   const { activeBrandId } = useBrand();
+  const loading = useCatalogLoading() || usePackageLoading();
 
   // --- Load notification history ---
   const loadHistorial = useCallback(() => {
@@ -489,6 +493,8 @@ export default function NotificacionesPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   return (
     <div>

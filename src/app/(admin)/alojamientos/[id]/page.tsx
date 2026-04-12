@@ -16,7 +16,9 @@ import { PriceImpactModal } from "@/components/ui/PriceImpactModal";
 import {
   useServiceState,
   useServiceActions,
+  useServiceLoading,
 } from "@/components/providers/ServiceProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
 import { usePaises, useRegimenes, useProveedores } from "@/components/providers/CatalogProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -49,6 +51,7 @@ export default function AlojamientoDetailPage() {
   const regimenes = useRegimenes();
   const proveedores = useProveedores();
   const packageState = usePackageState();
+  const loading = useServiceLoading();
 
   // Look up alojamiento
   const alojamiento = serviceState.alojamientos.find(
@@ -238,8 +241,10 @@ export default function AlojamientoDetailPage() {
   );
 
   // ---------------------------------------------------------------------------
-  // Not found state
+  // Loading / Not found state
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="detail" />;
 
   if (!alojamiento) {
     return (

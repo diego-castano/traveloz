@@ -26,6 +26,8 @@ import { useBrand } from "@/components/providers/BrandProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import type { Aereo } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -48,6 +50,7 @@ export default function AereosPage() {
   const aereos = useAereos();
   const { createAereo, deleteAereo } = useServiceActions();
   const packageState = usePackageState();
+  const loading = useServiceLoading();
 
   // Package usage count map
   const paqueteCountMap = useMemo(() => {
@@ -137,6 +140,8 @@ export default function AereosPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   return (
     <>

@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { glassMaterials } from "@/components/lib/glass";
 import { useServiceActions } from "@/components/providers/ServiceProvider";
-import { usePaises, useProveedores } from "@/components/providers/CatalogProvider";
+import { usePaises, useProveedores, useCatalogLoading } from "@/components/providers/CatalogProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -24,6 +25,7 @@ export default function NuevoAlojamientoPage() {
   const { createAlojamiento } = useServiceActions();
   const paises = usePaises();
   const proveedores = useProveedores();
+  const catalogLoading = useCatalogLoading();
   const { toast } = useToast();
 
   // VENDEDOR guard — redirect if no edit permission
@@ -77,6 +79,8 @@ export default function NuevoAlojamientoPage() {
   }
 
   if (!canEdit) return null;
+
+  if (catalogLoading) return <PageSkeleton variant="detail" />;
 
   return (
     <>

@@ -104,6 +104,10 @@ export function useUsers(): AuthUser[] {
   return useUserState().users;
 }
 
+export function useUserLoading(): boolean {
+  return useUserState().loading;
+}
+
 export function useUserActions() {
   const dispatch = useUserDispatch();
 

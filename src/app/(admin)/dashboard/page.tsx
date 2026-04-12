@@ -26,6 +26,8 @@ import {
 } from "@/components/providers/ServiceProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { usePackageLoading } from "@/components/providers/PackageProvider";
 import { calcularVenta } from "@/lib/utils";
 import type { BadgeProps } from "@/components/ui/Badge";
 
@@ -343,6 +345,7 @@ export default function DashboardPage() {
   const traslados = useTraslados();
   const { user } = useAuth();
   const { activeBrandId } = useBrand();
+  const loading = usePackageLoading();
 
   // Paquete IDs for the current brand (non-deleted) -- used for cross-refs
   const brandPaqueteIds = useMemo(
@@ -506,6 +509,8 @@ export default function DashboardPage() {
         .toUpperCase() ?? "??",
     [user],
   );
+
+  if (loading) return <PageSkeleton variant="dashboard" />;
 
   return (
     <div>

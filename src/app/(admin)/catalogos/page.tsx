@@ -45,6 +45,8 @@ import {
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useCatalogLoading } from "@/components/providers/CatalogProvider";
 import { cn } from "@/components/lib/cn";
 import type { Temporada, TipoPaquete, Etiqueta, Pais, Ciudad, Regimen } from "@/lib/types";
 
@@ -1454,6 +1456,10 @@ function PaisesTab() {
 // ---------------------------------------------------------------------------
 
 export default function CatalogosPage() {
+  const loading = useCatalogLoading();
+
+  if (loading) return <PageSkeleton variant="table" />;
+
   return (
     <>
       <PageHeader

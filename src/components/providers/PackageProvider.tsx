@@ -398,6 +398,10 @@ export function usePackageDispatch(): Dispatch<PackageAction> {
   return ctx;
 }
 
+export function usePackageLoading(): boolean {
+  return usePackageState().loading;
+}
+
 // ---------------------------------------------------------------------------
 // Brand-filtered selector hooks
 // ---------------------------------------------------------------------------

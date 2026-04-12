@@ -37,6 +37,8 @@ import {
   useAlojamientos,
 } from "@/components/providers/ServiceProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { usePackageLoading } from "@/components/providers/PackageProvider";
 
 // ---------------------------------------------------------------------------
 // AnimatedCounter -- reusable inline component
@@ -91,6 +93,7 @@ export default function ReportesPage() {
   const aereos = useAereos();     // already brand-filtered, no deletedAt
   const alojamientos = useAlojamientos(); // already brand-filtered, no deletedAt
   const packageState = usePackageState();
+  const loading = usePackageLoading();
 
   // Brand-safe paquete IDs set (prevents cross-brand data leaks via junction tables)
   const paqueteIds = useMemo(
@@ -186,6 +189,8 @@ export default function ReportesPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="dashboard" />;
 
   return (
     <>

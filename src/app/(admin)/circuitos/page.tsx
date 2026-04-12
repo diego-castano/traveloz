@@ -28,6 +28,8 @@ import { useBrand } from "@/components/providers/BrandProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import type { Circuito } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -54,6 +56,7 @@ export default function CircuitosPage() {
     useServiceActions();
 
   const packageState = usePackageState();
+  const loading = useServiceLoading();
 
   // Component state
   const [search, setSearch] = useState("");
@@ -172,6 +175,8 @@ export default function CircuitosPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   return (
     <>

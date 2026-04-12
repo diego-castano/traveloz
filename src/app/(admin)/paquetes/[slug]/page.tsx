@@ -6,7 +6,8 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
-import { usePaqueteById } from "@/components/providers/PackageProvider";
+import { usePaqueteById, usePackageLoading } from "@/components/providers/PackageProvider";
+import { TabsSkeleton } from "@/components/ui/Skeletons";
 import { ArrowLeft } from "lucide-react";
 import DatosTab from "./_components/DatosTab";
 import ServiciosTab from "./_components/ServiciosTab";
@@ -49,12 +50,15 @@ export default function PaqueteDetailPage() {
 
   const slug = params.slug;
   const paquete = usePaqueteById(slug);
+  const loading = usePackageLoading();
 
   const activeTab = searchParams.get("tab") ?? "datos";
 
   const handleTabChange = (tab: string) => {
     router.replace(`/paquetes/${slug}?tab=${tab}`, { scroll: false });
   };
+
+  if (loading) return <TabsSkeleton />;
 
   // -- Not found state --
   if (!paquete) {

@@ -23,6 +23,8 @@ import { useBrand } from "@/components/providers/BrandProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import { formatCurrency } from "@/lib/utils";
 import type { Traslado, TipoTraslado } from "@/lib/types";
 
@@ -52,6 +54,7 @@ export default function TrasladosPage() {
   );
   const paises = usePaises();
   const { createTraslado, updateTraslado, deleteTraslado } = useServiceActions();
+  const loading = useServiceLoading();
 
   // ---------------------------------------------------------------------------
   // State
@@ -277,6 +280,8 @@ export default function TrasladosPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   return (
     <>

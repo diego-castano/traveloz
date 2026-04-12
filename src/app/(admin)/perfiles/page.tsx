@@ -24,6 +24,8 @@ import { useUsers, useUserActions } from "@/components/providers/UserProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useUserLoading } from "@/components/providers/UserProvider";
 import type { AuthUser, Role } from "@/lib/auth";
 
 // ---------------------------------------------------------------------------
@@ -62,6 +64,7 @@ export default function PerfilesPage() {
   // Data hooks
   const users = useUsers();
   const { createUser, updateUser, deleteUser } = useUserActions();
+  const loading = useUserLoading();
 
   // Brand name lookup map
   const brandMap = useMemo(() => {
@@ -171,6 +174,12 @@ export default function PerfilesPage() {
       setIsShaking(false);
     }, 400);
   }
+
+  // ---------------------------------------------------------------------------
+  // Loading guard
+  // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   // ---------------------------------------------------------------------------
   // ADMIN-only guard

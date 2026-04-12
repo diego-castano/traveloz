@@ -26,6 +26,8 @@ import {
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { PageSkeleton } from "@/components/ui/Skeletons";
+import { useCatalogLoading } from "@/components/providers/CatalogProvider";
 import { cn } from "@/components/lib/cn";
 import type { Proveedor } from "@/lib/types";
 
@@ -47,6 +49,7 @@ export default function ProveedoresPage() {
   // Data hooks
   const proveedores = useProveedores();
   const { createProveedor, updateProveedor, deleteProveedor } = useCatalogActions();
+  const loading = useCatalogLoading();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -167,6 +170,8 @@ export default function ProveedoresPage() {
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="table" />;
 
   return (
     <>

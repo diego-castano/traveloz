@@ -381,6 +381,10 @@ export function useServiceDispatch(): Dispatch<ServiceAction> {
   return ctx;
 }
 
+export function useServiceLoading(): boolean {
+  return useServiceState().loading;
+}
+
 // ---------------------------------------------------------------------------
 // Brand-filtered selector hooks (primary entities only)
 // ---------------------------------------------------------------------------

@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { useServiceActions } from "@/components/providers/ServiceProvider";
-import { useProveedores } from "@/components/providers/CatalogProvider";
+import { useProveedores, useCatalogLoading } from "@/components/providers/CatalogProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -25,6 +26,7 @@ export default function NuevoCircuitoPage() {
   const { canEdit } = useAuth();
   const { toast } = useToast();
   const allProveedores = useProveedores();
+  const catalogLoading = useCatalogLoading();
   const proveedoresCircuitos = useMemo(
     () => allProveedores.filter((p) => p.servicio === "CIRCUITOS" && !p.deletedAt),
     [allProveedores],
@@ -64,6 +66,8 @@ export default function NuevoCircuitoPage() {
   if (!canEdit) {
     return null;
   }
+
+  if (catalogLoading) return <PageSkeleton variant="detail" />;
 
   return (
     <div className="space-y-6">

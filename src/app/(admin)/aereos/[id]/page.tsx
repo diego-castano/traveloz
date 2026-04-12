@@ -13,7 +13,9 @@ import { PriceImpactModal } from "@/components/ui/PriceImpactModal";
 import {
   useServiceState,
   useServiceActions,
+  useServiceLoading,
 } from "@/components/providers/ServiceProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -48,6 +50,7 @@ export default function AereoDetailPage() {
   const { updateAereo, createPrecioAereo, updatePrecioAereo, deletePrecioAereo } =
     useServiceActions();
   const packageState = usePackageState();
+  const loading = useServiceLoading();
 
   // -- Find aereo --
   const aereo = serviceState.aereos.find((a) => a.id === id && !a.deletedAt);
@@ -85,8 +88,10 @@ export default function AereoDetailPage() {
   const [pendingSaveAction, setPendingSaveAction] = useState<(() => void) | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Guard: aereo not found
+  // Guard: loading / not found
   // ---------------------------------------------------------------------------
+
+  if (loading) return <PageSkeleton variant="detail" />;
 
   if (!aereo) {
     return (

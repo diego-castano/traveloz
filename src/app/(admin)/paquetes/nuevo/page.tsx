@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { usePackageActions } from "@/components/providers/PackageProvider";
-import { useTemporadas, useTiposPaquete } from "@/components/providers/CatalogProvider";
+import { useTemporadas, useTiposPaquete, useCatalogLoading } from "@/components/providers/CatalogProvider";
+import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -30,6 +31,7 @@ export default function NuevoPaquetePage() {
   const { createPaquete } = usePackageActions();
   const temporadas = useTemporadas();
   const tiposPaquete = useTiposPaquete();
+  const catalogLoading = useCatalogLoading();
   const { activeBrandId } = useBrand();
   const { canEdit } = useAuth();
   const { toast } = useToast();
@@ -89,6 +91,8 @@ export default function NuevoPaquetePage() {
   if (!canEdit) {
     return null;
   }
+
+  if (catalogLoading) return <PageSkeleton variant="detail" />;
 
   return (
     <div className="space-y-6">
