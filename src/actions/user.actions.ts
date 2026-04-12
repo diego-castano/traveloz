@@ -80,7 +80,7 @@ export async function updateUser(
 
     const schema = z.object({
       name: z.string().min(1).optional(),
-      email: z.string().email().optional(),
+      email: z.string().optional().or(z.literal("")),
       role: z.enum(["ADMIN", "VENDEDOR", "MARKETING"]).optional(),
       brandId: z.string().optional(),
       isActive: z.boolean().optional(),

@@ -20,6 +20,7 @@ import type {
   CircuitoDia,
   PrecioCircuito,
 } from "@/lib/types";
+import { useSession } from "next-auth/react";
 import * as serviceActions from "@/actions/service.actions";
 import { useBrand } from "./BrandProvider";
 
@@ -320,9 +321,23 @@ const ServiceDispatchContext = createContext<Dispatch<ServiceAction> | null>(nul
 export function ServiceProvider({ children }: { children: React.ReactNode }) {
   const { activeBrandId } = useBrand();
   const [state, dispatch] = useReducer(serviceReducer, initialState);
+  const { status: sessionStatus } = useSession();
 
   useEffect(() => {
     let cancelled = false;
+
+    // If not authenticated, clear loading and return empty state
+    if (sessionStatus !== "authenticated") {
+      // Only clear loading after session is determined (not during "loading")
+      if (sessionStatus === "unauthenticated") {
+        dispatch({
+          type: "SET_ALL",
+          payload: { ...initialState, loading: false },
+        });
+      }
+      return;
+    }
+
     dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
 
     serviceActions
@@ -346,12 +361,20 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
           },
         });
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error("Error fetching services:", err);
+        if (cancelled) return;
+        // IMPORTANT: Always clear loading on error so UI doesn't hang
+        dispatch({
+          type: "SET_ALL",
+          payload: { ...initialState, loading: false },
+        });
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [activeBrandId]);
+  }, [activeBrandId, sessionStatus]);
 
   return (
     <ServiceStateContext.Provider value={state}>

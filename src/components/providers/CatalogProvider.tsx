@@ -17,6 +17,7 @@ import type {
   Regimen,
   Proveedor,
 } from "@/lib/types";
+import { useSession } from "next-auth/react";
 import * as catalogActions from "@/actions/catalog.actions";
 import { useBrand } from "./BrandProvider";
 
@@ -213,9 +214,23 @@ const CatalogDispatchContext = createContext<Dispatch<CatalogAction> | null>(nul
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(catalogReducer, initialState);
   const { activeBrandId } = useBrand();
+  const { status: sessionStatus } = useSession();
 
   useEffect(() => {
     let cancelled = false;
+
+    // If not authenticated, clear loading and return empty state
+    if (sessionStatus !== "authenticated") {
+      // Only clear loading after session is determined (not during "loading")
+      if (sessionStatus === "unauthenticated") {
+        dispatch({
+          type: "SET_ALL",
+          payload: { ...initialState, loading: false },
+        });
+      }
+      return;
+    }
+
     dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
 
     catalogActions
@@ -236,12 +251,20 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
           },
         });
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error("Error fetching catalogs:", err);
+        if (cancelled) return;
+        // IMPORTANT: Always clear loading on error so UI doesn't hang
+        dispatch({
+          type: "SET_ALL",
+          payload: { ...initialState, loading: false },
+        });
+      });
 
     return () => {
       cancelled = true;
     };
-  }, [activeBrandId]);
+  }, [activeBrandId, sessionStatus]);
 
   return (
     <CatalogStateContext.Provider value={state}>

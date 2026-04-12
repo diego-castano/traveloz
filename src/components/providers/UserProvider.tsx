@@ -8,6 +8,7 @@ import {
   useMemo,
   type Dispatch,
 } from "react";
+import { useSession } from "next-auth/react";
 import type { AuthUser, Role } from "@/lib/auth";
 import * as userActions from '@/actions/user.actions';
 
@@ -54,15 +55,31 @@ const UserDispatchContext = createContext<Dispatch<UserAction> | null>(null);
 // ---------------------------------------------------------------------------
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(userReducer, { users: [], loading: true });
+  const { status: sessionStatus } = useSession();
 
   useEffect(() => {
     let cancelled = false;
+
+    // If not authenticated, clear loading and return empty state
+    if (sessionStatus !== "authenticated") {
+      // Only clear loading after session is determined (not during "loading")
+      if (sessionStatus === "unauthenticated") {
+        dispatch({ type: "SET_ALL", payload: [] });
+      }
+      return;
+    }
+
     userActions.getUsers().then((users) => {
       if (cancelled) return;
       dispatch({ type: "SET_ALL", payload: users });
-    }).catch(console.error);
+    }).catch((err) => {
+      console.error("Error fetching users:", err);
+      if (cancelled) return;
+      // IMPORTANT: Always clear loading on error so UI doesn't hang
+      dispatch({ type: "SET_ALL", payload: [] });
+    });
     return () => { cancelled = true; };
-  }, []);
+  }, [sessionStatus]);
 
   return (
     <UserStateContext.Provider value={state}>

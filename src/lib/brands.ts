@@ -26,8 +26,8 @@ export const brandTokens: Record<string, BrandTokens> = {
     name: "TravelOz",
     slug: "traveloz",
     tagline: "#ExperienciaOZ",
-    logo: "/assets/brands/traveloz-logo.webp",
-    logoWhite: "/assets/brands/traveloz-logo-white.webp",
+    logo: "/header-logo.webp",
+    logoWhite: "/header-logo.webp",
     sidebarGradient:
       "linear-gradient(180deg, rgba(8,6,18,0.99) 0%, rgba(40,15,90,0.98) 55%, rgba(108,43,217,0.95) 100%)",
     sidebarBlur: "24px",
@@ -45,8 +45,8 @@ export const brandTokens: Record<string, BrandTokens> = {
     name: "DestinoIcono",
     slug: "destinoicono",
     tagline: "Tu destino, tu icono",
-    logo: "/assets/brands/destinoicono-logo.webp",
-    logoWhite: "/assets/brands/destinoicono-logo-white.webp",
+    logo: "/header-logo.webp",
+    logoWhite: "/header-logo.webp",
     sidebarGradient:
       "linear-gradient(180deg, rgba(4,8,18,0.99) 0%, rgba(12,28,60,0.98) 55%, rgba(26,58,130,0.95) 100%)",
     sidebarBlur: "24px",

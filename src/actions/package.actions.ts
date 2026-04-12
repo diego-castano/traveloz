@@ -111,7 +111,7 @@ export async function createPaquete(data: {
 
     const schema = z.object({
       titulo: z.string().min(1),
-      destino: z.string().min(1),
+      destino: z.string(),
       noches: z.number().int().positive(),
     });
     schema.parse(data);

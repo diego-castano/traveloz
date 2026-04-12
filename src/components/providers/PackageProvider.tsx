@@ -19,6 +19,7 @@ import type {
   PaqueteEtiqueta,
   OpcionHotelera,
 } from "@/lib/types";
+import { useSession } from "next-auth/react";
 import * as packageActions from "@/actions/package.actions";
 import { useBrand } from "./BrandProvider";
 
@@ -343,9 +344,23 @@ const PackageDispatchContext = createContext<Dispatch<PackageAction> | null>(nul
 export function PackageProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(packageReducer, initialState);
   const { activeBrandId } = useBrand();
+  const { status: sessionStatus } = useSession();
 
   useEffect(() => {
     let cancelled = false;
+
+    // If not authenticated, clear loading and return empty state
+    if (sessionStatus !== "authenticated") {
+      // Only clear loading after session is determined (not during "loading")
+      if (sessionStatus === "unauthenticated") {
+        dispatch({
+          type: "SET_ALL",
+          payload: { ...initialState, loading: false },
+        });
+      }
+      return;
+    }
+
     dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
 
     packageActions.getAllPackageData(activeBrandId).then((data) => {
@@ -365,10 +380,18 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
           opcionesHoteleras: data.opcionesHoteleras as any,
         },
       });
-    }).catch(console.error);
+    }).catch((err) => {
+      console.error("Error fetching packages:", err);
+      if (cancelled) return;
+      // IMPORTANT: Always clear loading on error so UI doesn't hang
+      dispatch({
+        type: "SET_ALL",
+        payload: { ...initialState, loading: false },
+      });
+    });
 
     return () => { cancelled = true; };
-  }, [activeBrandId]);
+  }, [activeBrandId, sessionStatus]);
 
   return (
     <PackageStateContext.Provider value={state}>

@@ -10,7 +10,7 @@ import { requireAuth } from "@/lib/require-auth";
 
 const AereoSchema = z.object({
   ruta: z.string().min(1, "La ruta es requerida"),
-  destino: z.string().min(1, "El destino es requerido"),
+  destino: z.string(),
   aerolinea: z.string().nullable().optional(),
   equipaje: z.string().nullable().optional(),
   itinerario: z.string().nullable().optional(),
