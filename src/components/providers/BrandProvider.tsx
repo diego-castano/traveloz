@@ -28,12 +28,23 @@ const BrandContext = createContext<BrandContextValue | null>(null);
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
+function getInitialBrandId(): string {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("activeBrandId");
+    if (stored && brandTokens[stored]) return stored;
+  }
+  return "brand-1";
+}
+
 export function BrandProvider({ children }: { children: React.ReactNode }) {
-  const [activeBrandId, setActiveBrandId] = useState<string>("brand-1");
+  const [activeBrandId, setActiveBrandId] = useState<string>(getInitialBrandId);
 
   const switchBrand = useCallback((brandId: string) => {
     if (brandTokens[brandId]) {
       setActiveBrandId(brandId);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("activeBrandId", brandId);
+      }
     }
   }, []);
 

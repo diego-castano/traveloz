@@ -132,7 +132,6 @@ export default function NotificacionesPage() {
     setIsSending(true);
     try {
       await notificacionActions.createNotificacion({
-        brandId: activeBrandId,
         etiquetaId: selectedEtiquetaId,
         paqueteIds: Array.from(selectedPaqueteIds),
       });

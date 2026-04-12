@@ -1,14 +1,18 @@
 "use server";
 
+import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/require-auth";
 import type { EstadoPaquete } from "@prisma/client";
 
 // ──────────────────────────────────────────────
 // Paquete — Main entity (soft delete)
 // ──────────────────────────────────────────────
 
-export async function getAllPackageData(brandId: string) {
+export async function getAllPackageData(requestedBrandId?: string) {
   try {
+    const { brandId } = await requireAuth(requestedBrandId);
+
     const paquetes = await prisma.paquete.findMany({
       where: { brandId, deletedAt: null },
       orderBy: { createdAt: "desc" },
@@ -84,7 +88,6 @@ export async function getAllPackageData(brandId: string) {
 }
 
 export async function createPaquete(data: {
-  brandId: string;
   titulo: string;
   destino: string;
   descripcion?: string;
@@ -104,7 +107,16 @@ export async function createPaquete(data: {
   ordenServicios?: string[];
 }) {
   try {
-    return await prisma.paquete.create({ data });
+    const { brandId } = await requireAuth();
+
+    const schema = z.object({
+      titulo: z.string().min(1),
+      destino: z.string().min(1),
+      noches: z.number().int().positive(),
+    });
+    schema.parse(data);
+
+    return await prisma.paquete.create({ data: { ...data, brandId } });
   } catch (error) {
     console.error("Error creating paquete:", error);
     throw new Error("No se pudo crear el paquete.");
@@ -134,6 +146,7 @@ export async function updatePaquete(
   }
 ) {
   try {
+    await requireAuth();
     return await prisma.paquete.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating paquete:", error);
@@ -143,6 +156,7 @@ export async function updatePaquete(
 
 export async function deletePaquete(id: string) {
   try {
+    await requireAuth();
     return await prisma.paquete.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -155,6 +169,7 @@ export async function deletePaquete(id: string) {
 
 export async function clonePaquete(sourceId: string) {
   try {
+    await requireAuth();
     return await prisma.$transaction(async (tx) => {
       // 1. Read source paquete
       const source = await tx.paquete.findUniqueOrThrow({
@@ -347,6 +362,7 @@ export async function assignAereo(data: {
   orden?: number;
 }) {
   try {
+    await requireAuth();
     return await prisma.paqueteAereo.create({ data });
   } catch (error) {
     console.error("Error assigning aereo:", error);
@@ -356,6 +372,7 @@ export async function assignAereo(data: {
 
 export async function removeAereo(id: string) {
   try {
+    await requireAuth();
     return await prisma.paqueteAereo.delete({ where: { id } });
   } catch (error) {
     console.error("Error removing aereo:", error);
@@ -368,6 +385,7 @@ export async function updateAereoAssignment(
   data: { textoDisplay?: string; orden?: number }
 ) {
   try {
+    await requireAuth();
     return await prisma.paqueteAereo.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating aereo assignment:", error);
@@ -387,6 +405,7 @@ export async function assignAlojamiento(data: {
   orden?: number;
 }) {
   try {
+    await requireAuth();
     return await prisma.paqueteAlojamiento.create({ data });
   } catch (error) {
     console.error("Error assigning alojamiento:", error);
@@ -396,6 +415,7 @@ export async function assignAlojamiento(data: {
 
 export async function removeAlojamiento(id: string) {
   try {
+    await requireAuth();
     return await prisma.paqueteAlojamiento.delete({ where: { id } });
   } catch (error) {
     console.error("Error removing alojamiento:", error);
@@ -408,6 +428,7 @@ export async function updateAlojamientoAssignment(
   data: { nochesEnEste?: number; textoDisplay?: string; orden?: number }
 ) {
   try {
+    await requireAuth();
     return await prisma.paqueteAlojamiento.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating alojamiento assignment:", error);
@@ -426,6 +447,7 @@ export async function assignTraslado(data: {
   orden?: number;
 }) {
   try {
+    await requireAuth();
     return await prisma.paqueteTraslado.create({ data });
   } catch (error) {
     console.error("Error assigning traslado:", error);
@@ -435,6 +457,7 @@ export async function assignTraslado(data: {
 
 export async function removeTraslado(id: string) {
   try {
+    await requireAuth();
     return await prisma.paqueteTraslado.delete({ where: { id } });
   } catch (error) {
     console.error("Error removing traslado:", error);
@@ -447,6 +470,7 @@ export async function updateTrasladoAssignment(
   data: { textoDisplay?: string; orden?: number }
 ) {
   try {
+    await requireAuth();
     return await prisma.paqueteTraslado.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating traslado assignment:", error);
@@ -466,6 +490,7 @@ export async function assignSeguro(data: {
   orden?: number;
 }) {
   try {
+    await requireAuth();
     return await prisma.paqueteSeguro.create({ data });
   } catch (error) {
     console.error("Error assigning seguro:", error);
@@ -475,6 +500,7 @@ export async function assignSeguro(data: {
 
 export async function removeSeguro(id: string) {
   try {
+    await requireAuth();
     return await prisma.paqueteSeguro.delete({ where: { id } });
   } catch (error) {
     console.error("Error removing seguro:", error);
@@ -487,6 +513,7 @@ export async function updateSeguroAssignment(
   data: { diasCobertura?: number; textoDisplay?: string; orden?: number }
 ) {
   try {
+    await requireAuth();
     return await prisma.paqueteSeguro.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating seguro assignment:", error);
@@ -505,6 +532,7 @@ export async function assignCircuito(data: {
   orden?: number;
 }) {
   try {
+    await requireAuth();
     return await prisma.paqueteCircuito.create({ data });
   } catch (error) {
     console.error("Error assigning circuito:", error);
@@ -514,6 +542,7 @@ export async function assignCircuito(data: {
 
 export async function removeCircuito(id: string) {
   try {
+    await requireAuth();
     return await prisma.paqueteCircuito.delete({ where: { id } });
   } catch (error) {
     console.error("Error removing circuito:", error);
@@ -526,6 +555,7 @@ export async function updateCircuitoAssignment(
   data: { textoDisplay?: string; orden?: number }
 ) {
   try {
+    await requireAuth();
     return await prisma.paqueteCircuito.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating circuito assignment:", error);
@@ -544,6 +574,7 @@ export async function addPaqueteFoto(data: {
   orden?: number;
 }) {
   try {
+    await requireAuth();
     return await prisma.paqueteFoto.create({ data });
   } catch (error) {
     console.error("Error adding paquete foto:", error);
@@ -553,6 +584,7 @@ export async function addPaqueteFoto(data: {
 
 export async function removePaqueteFoto(id: string) {
   try {
+    await requireAuth();
     return await prisma.paqueteFoto.delete({ where: { id } });
   } catch (error) {
     console.error("Error removing paquete foto:", error);
@@ -565,6 +597,7 @@ export async function updatePaqueteFoto(
   data: { url?: string; alt?: string; orden?: number }
 ) {
   try {
+    await requireAuth();
     return await prisma.paqueteFoto.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating paquete foto:", error);
@@ -581,6 +614,7 @@ export async function assignEtiqueta(data: {
   etiquetaId: string;
 }) {
   try {
+    await requireAuth();
     return await prisma.paqueteEtiqueta.create({ data });
   } catch (error) {
     console.error("Error assigning etiqueta:", error);
@@ -590,6 +624,7 @@ export async function assignEtiqueta(data: {
 
 export async function removeEtiqueta(id: string) {
   try {
+    await requireAuth();
     return await prisma.paqueteEtiqueta.delete({ where: { id } });
   } catch (error) {
     console.error("Error removing etiqueta:", error);
@@ -610,6 +645,7 @@ export async function createOpcionHotelera(data: {
   orden?: number;
 }) {
   try {
+    await requireAuth();
     return await prisma.opcionHotelera.create({ data });
   } catch (error) {
     console.error("Error creating opcion hotelera:", error);
@@ -628,6 +664,7 @@ export async function updateOpcionHotelera(
   }
 ) {
   try {
+    await requireAuth();
     return await prisma.opcionHotelera.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating opcion hotelera:", error);
@@ -637,6 +674,7 @@ export async function updateOpcionHotelera(
 
 export async function deleteOpcionHotelera(id: string) {
   try {
+    await requireAuth();
     return await prisma.opcionHotelera.delete({ where: { id } });
   } catch (error) {
     console.error("Error deleting opcion hotelera:", error);

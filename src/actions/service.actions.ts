@@ -1,21 +1,112 @@
 "use server";
 
+import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/require-auth";
+
+// ──────────────────────────────────────────────
+// Zod schemas
+// ──────────────────────────────────────────────
+
+const AereoSchema = z.object({
+  ruta: z.string().min(1, "La ruta es requerida"),
+  destino: z.string().min(1, "El destino es requerido"),
+  aerolinea: z.string().nullable().optional(),
+  equipaje: z.string().nullable().optional(),
+  itinerario: z.string().nullable().optional(),
+  escalas: z.number().int().nonnegative().optional(),
+  codigoVueloIda: z.string().nullable().optional(),
+  codigoVueloVuelta: z.string().nullable().optional(),
+  duracionIda: z.string().nullable().optional(),
+  duracionVuelta: z.string().nullable().optional(),
+});
+
+const PrecioAereoSchema = z.object({
+  aereoId: z.string().min(1, "El aereoId es requerido"),
+  periodoDesde: z.string().min(1, "El período desde es requerido"),
+  periodoHasta: z.string().min(1, "El período hasta es requerido"),
+  precioAdulto: z.number().positive("El precio adulto debe ser un número positivo"),
+});
+
+const AlojamientoSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido"),
+  ciudadId: z.string().nullable().optional(),
+  paisId: z.string().nullable().optional(),
+  categoria: z.number().int().nullable().optional(),
+  sitioWeb: z.string().nullable().optional(),
+});
+
+const PrecioAlojamientoSchema = z.object({
+  alojamientoId: z.string().min(1, "El alojamientoId es requerido"),
+  periodoDesde: z.string().min(1, "El período desde es requerido"),
+  periodoHasta: z.string().min(1, "El período hasta es requerido"),
+  precioPorNoche: z.number().positive("El precio por noche debe ser un número positivo"),
+  regimenId: z.string().nullable().optional(),
+});
+
+const AlojamientoFotoSchema = z.object({
+  alojamientoId: z.string().min(1, "El alojamientoId es requerido"),
+  url: z.string().min(1, "La URL es requerida"),
+  alt: z.string().min(1, "El texto alternativo es requerido"),
+  orden: z.number().int().nonnegative().optional(),
+});
+
+const TrasladoSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido"),
+  tipo: z.enum(["REGULAR", "PRIVADO"]).optional(),
+  ciudadId: z.string().nullable().optional(),
+  paisId: z.string().nullable().optional(),
+  proveedorId: z.string().nullable().optional(),
+  precio: z.number().positive("El precio debe ser un número positivo"),
+});
+
+const SeguroSchema = z.object({
+  proveedorId: z.string().nullable().optional(),
+  plan: z.string().min(1, "El plan es requerido"),
+  cobertura: z.string().nullable().optional(),
+  costoPorDia: z.number().positive("El costo por día debe ser un número positivo"),
+});
+
+const CircuitoSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido"),
+  noches: z.number().int().nonnegative("Las noches deben ser un número no negativo"),
+  proveedorId: z.string().nullable().optional(),
+});
+
+const CircuitoDiaSchema = z.object({
+  circuitoId: z.string().min(1, "El circuitoId es requerido"),
+  numeroDia: z.number().int().positive("El número de día debe ser positivo"),
+  titulo: z.string().min(1, "El título es requerido"),
+  descripcion: z.string().nullable().optional(),
+  orden: z.number().int().nonnegative().optional(),
+});
+
+const PrecioCircuitoSchema = z.object({
+  circuitoId: z.string().min(1, "El circuitoId es requerido"),
+  periodoDesde: z.string().min(1, "El período desde es requerido"),
+  periodoHasta: z.string().min(1, "El período hasta es requerido"),
+  precio: z.number().positive("El precio debe ser un número positivo"),
+});
 
 // ──────────────────────────────────────────────
 // Aereo (soft delete)
 // ──────────────────────────────────────────────
 
-export async function getAereos(brandId: string) {
-  return prisma.aereo.findMany({
-    where: { brandId, deletedAt: null },
-    include: { precios: true },
-    orderBy: { createdAt: "desc" },
-  });
+export async function getAereos(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    return await prisma.aereo.findMany({
+      where: { brandId, deletedAt: null },
+      include: { precios: true },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching aereos:", error);
+    throw new Error("No se pudieron obtener los aéreos.");
+  }
 }
 
 export async function createAereo(data: {
-  brandId: string;
   ruta: string;
   destino: string;
   aerolinea?: string | null;
@@ -26,8 +117,15 @@ export async function createAereo(data: {
   codigoVueloVuelta?: string | null;
   duracionIda?: string | null;
   duracionVuelta?: string | null;
-}) {
-  return prisma.aereo.create({ data });
+}, requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const parsed = AereoSchema.parse(data);
+    return await prisma.aereo.create({ data: { ...parsed, brandId } });
+  } catch (error) {
+    console.error("Error creating aereo:", error);
+    throw new Error("No se pudo crear el aéreo.");
+  }
 }
 
 export async function updateAereo(
@@ -45,14 +143,26 @@ export async function updateAereo(
     duracionVuelta?: string | null;
   }
 ) {
-  return prisma.aereo.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.aereo.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating aereo:", error);
+    throw new Error("No se pudo actualizar el aéreo.");
+  }
 }
 
 export async function deleteAereo(id: string) {
-  return prisma.aereo.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
+  try {
+    await requireAuth();
+    return await prisma.aereo.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  } catch (error) {
+    console.error("Error deleting aereo:", error);
+    throw new Error("No se pudo eliminar el aéreo.");
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -65,7 +175,14 @@ export async function createPrecioAereo(data: {
   periodoHasta: string;
   precioAdulto: number;
 }) {
-  return prisma.precioAereo.create({ data });
+  try {
+    await requireAuth();
+    const parsed = PrecioAereoSchema.parse(data);
+    return await prisma.precioAereo.create({ data: parsed });
+  } catch (error) {
+    console.error("Error creating precio aereo:", error);
+    throw new Error("No se pudo crear el precio del aéreo.");
+  }
 }
 
 export async function updatePrecioAereo(
@@ -76,34 +193,58 @@ export async function updatePrecioAereo(
     precioAdulto?: number;
   }
 ) {
-  return prisma.precioAereo.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.precioAereo.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating precio aereo:", error);
+    throw new Error("No se pudo actualizar el precio del aéreo.");
+  }
 }
 
 export async function deletePrecioAereo(id: string) {
-  return prisma.precioAereo.delete({ where: { id } });
+  try {
+    await requireAuth();
+    return await prisma.precioAereo.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting precio aereo:", error);
+    throw new Error("No se pudo eliminar el precio del aéreo.");
+  }
 }
 
 // ──────────────────────────────────────────────
 // Alojamiento (soft delete)
 // ──────────────────────────────────────────────
 
-export async function getAlojamientos(brandId: string) {
-  return prisma.alojamiento.findMany({
-    where: { brandId, deletedAt: null },
-    include: { precios: true, fotos: true },
-    orderBy: { createdAt: "desc" },
-  });
+export async function getAlojamientos(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    return await prisma.alojamiento.findMany({
+      where: { brandId, deletedAt: null },
+      include: { precios: true, fotos: true },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching alojamientos:", error);
+    throw new Error("No se pudieron obtener los alojamientos.");
+  }
 }
 
 export async function createAlojamiento(data: {
-  brandId: string;
   nombre: string;
   ciudadId?: string | null;
   paisId?: string | null;
   categoria?: number | null;
   sitioWeb?: string | null;
-}) {
-  return prisma.alojamiento.create({ data });
+}, requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const parsed = AlojamientoSchema.parse(data);
+    return await prisma.alojamiento.create({ data: { ...parsed, brandId } });
+  } catch (error) {
+    console.error("Error creating alojamiento:", error);
+    throw new Error("No se pudo crear el alojamiento.");
+  }
 }
 
 export async function updateAlojamiento(
@@ -116,14 +257,26 @@ export async function updateAlojamiento(
     sitioWeb?: string | null;
   }
 ) {
-  return prisma.alojamiento.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.alojamiento.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating alojamiento:", error);
+    throw new Error("No se pudo actualizar el alojamiento.");
+  }
 }
 
 export async function deleteAlojamiento(id: string) {
-  return prisma.alojamiento.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
+  try {
+    await requireAuth();
+    return await prisma.alojamiento.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  } catch (error) {
+    console.error("Error deleting alojamiento:", error);
+    throw new Error("No se pudo eliminar el alojamiento.");
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -137,7 +290,14 @@ export async function createPrecioAlojamiento(data: {
   precioPorNoche: number;
   regimenId?: string | null;
 }) {
-  return prisma.precioAlojamiento.create({ data });
+  try {
+    await requireAuth();
+    const parsed = PrecioAlojamientoSchema.parse(data);
+    return await prisma.precioAlojamiento.create({ data: parsed });
+  } catch (error) {
+    console.error("Error creating precio alojamiento:", error);
+    throw new Error("No se pudo crear el precio del alojamiento.");
+  }
 }
 
 export async function updatePrecioAlojamiento(
@@ -149,11 +309,23 @@ export async function updatePrecioAlojamiento(
     regimenId?: string | null;
   }
 ) {
-  return prisma.precioAlojamiento.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.precioAlojamiento.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating precio alojamiento:", error);
+    throw new Error("No se pudo actualizar el precio del alojamiento.");
+  }
 }
 
 export async function deletePrecioAlojamiento(id: string) {
-  return prisma.precioAlojamiento.delete({ where: { id } });
+  try {
+    await requireAuth();
+    return await prisma.precioAlojamiento.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting precio alojamiento:", error);
+    throw new Error("No se pudo eliminar el precio del alojamiento.");
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -166,7 +338,14 @@ export async function createAlojamientoFoto(data: {
   alt: string;
   orden?: number;
 }) {
-  return prisma.alojamientoFoto.create({ data });
+  try {
+    await requireAuth();
+    const parsed = AlojamientoFotoSchema.parse(data);
+    return await prisma.alojamientoFoto.create({ data: parsed });
+  } catch (error) {
+    console.error("Error creating alojamiento foto:", error);
+    throw new Error("No se pudo crear la foto del alojamiento.");
+  }
 }
 
 export async function updateAlojamientoFoto(
@@ -177,34 +356,58 @@ export async function updateAlojamientoFoto(
     orden?: number;
   }
 ) {
-  return prisma.alojamientoFoto.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.alojamientoFoto.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating alojamiento foto:", error);
+    throw new Error("No se pudo actualizar la foto del alojamiento.");
+  }
 }
 
 export async function deleteAlojamientoFoto(id: string) {
-  return prisma.alojamientoFoto.delete({ where: { id } });
+  try {
+    await requireAuth();
+    return await prisma.alojamientoFoto.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting alojamiento foto:", error);
+    throw new Error("No se pudo eliminar la foto del alojamiento.");
+  }
 }
 
 // ──────────────────────────────────────────────
 // Traslado (soft delete)
 // ──────────────────────────────────────────────
 
-export async function getTraslados(brandId: string) {
-  return prisma.traslado.findMany({
-    where: { brandId, deletedAt: null },
-    orderBy: { createdAt: "desc" },
-  });
+export async function getTraslados(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    return await prisma.traslado.findMany({
+      where: { brandId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching traslados:", error);
+    throw new Error("No se pudieron obtener los traslados.");
+  }
 }
 
 export async function createTraslado(data: {
-  brandId: string;
   nombre: string;
   tipo?: "REGULAR" | "PRIVADO";
   ciudadId?: string | null;
   paisId?: string | null;
   proveedorId?: string | null;
   precio: number;
-}) {
-  return prisma.traslado.create({ data });
+}, requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const parsed = TrasladoSchema.parse(data);
+    return await prisma.traslado.create({ data: { ...parsed, brandId } });
+  } catch (error) {
+    console.error("Error creating traslado:", error);
+    throw new Error("No se pudo crear el traslado.");
+  }
 }
 
 export async function updateTraslado(
@@ -218,35 +421,59 @@ export async function updateTraslado(
     precio?: number;
   }
 ) {
-  return prisma.traslado.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.traslado.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating traslado:", error);
+    throw new Error("No se pudo actualizar el traslado.");
+  }
 }
 
 export async function deleteTraslado(id: string) {
-  return prisma.traslado.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
+  try {
+    await requireAuth();
+    return await prisma.traslado.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  } catch (error) {
+    console.error("Error deleting traslado:", error);
+    throw new Error("No se pudo eliminar el traslado.");
+  }
 }
 
 // ──────────────────────────────────────────────
 // Seguro (soft delete)
 // ──────────────────────────────────────────────
 
-export async function getSeguros(brandId: string) {
-  return prisma.seguro.findMany({
-    where: { brandId, deletedAt: null },
-    orderBy: { createdAt: "desc" },
-  });
+export async function getSeguros(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    return await prisma.seguro.findMany({
+      where: { brandId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching seguros:", error);
+    throw new Error("No se pudieron obtener los seguros.");
+  }
 }
 
 export async function createSeguro(data: {
-  brandId: string;
   proveedorId?: string | null;
   plan: string;
   cobertura?: string | null;
   costoPorDia: number;
-}) {
-  return prisma.seguro.create({ data });
+}, requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const parsed = SeguroSchema.parse(data);
+    return await prisma.seguro.create({ data: { ...parsed, brandId } });
+  } catch (error) {
+    console.error("Error creating seguro:", error);
+    throw new Error("No se pudo crear el seguro.");
+  }
 }
 
 export async function updateSeguro(
@@ -258,38 +485,62 @@ export async function updateSeguro(
     costoPorDia?: number;
   }
 ) {
-  return prisma.seguro.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.seguro.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating seguro:", error);
+    throw new Error("No se pudo actualizar el seguro.");
+  }
 }
 
 export async function deleteSeguro(id: string) {
-  return prisma.seguro.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
+  try {
+    await requireAuth();
+    return await prisma.seguro.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  } catch (error) {
+    console.error("Error deleting seguro:", error);
+    throw new Error("No se pudo eliminar el seguro.");
+  }
 }
 
 // ──────────────────────────────────────────────
 // Circuito (soft delete)
 // ──────────────────────────────────────────────
 
-export async function getCircuitos(brandId: string) {
-  return prisma.circuito.findMany({
-    where: { brandId, deletedAt: null },
-    include: {
-      itinerario: { orderBy: { orden: "asc" } },
-      precios: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+export async function getCircuitos(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    return await prisma.circuito.findMany({
+      where: { brandId, deletedAt: null },
+      include: {
+        itinerario: { orderBy: { orden: "asc" } },
+        precios: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    console.error("Error fetching circuitos:", error);
+    throw new Error("No se pudieron obtener los circuitos.");
+  }
 }
 
 export async function createCircuito(data: {
-  brandId: string;
   nombre: string;
   noches: number;
   proveedorId?: string | null;
-}) {
-  return prisma.circuito.create({ data });
+}, requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const parsed = CircuitoSchema.parse(data);
+    return await prisma.circuito.create({ data: { ...parsed, brandId } });
+  } catch (error) {
+    console.error("Error creating circuito:", error);
+    throw new Error("No se pudo crear el circuito.");
+  }
 }
 
 export async function updateCircuito(
@@ -300,14 +551,26 @@ export async function updateCircuito(
     proveedorId?: string | null;
   }
 ) {
-  return prisma.circuito.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.circuito.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating circuito:", error);
+    throw new Error("No se pudo actualizar el circuito.");
+  }
 }
 
 export async function deleteCircuito(id: string) {
-  return prisma.circuito.update({
-    where: { id },
-    data: { deletedAt: new Date() },
-  });
+  try {
+    await requireAuth();
+    return await prisma.circuito.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  } catch (error) {
+    console.error("Error deleting circuito:", error);
+    throw new Error("No se pudo eliminar el circuito.");
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -321,7 +584,14 @@ export async function createCircuitoDia(data: {
   descripcion?: string | null;
   orden?: number;
 }) {
-  return prisma.circuitoDia.create({ data });
+  try {
+    await requireAuth();
+    const parsed = CircuitoDiaSchema.parse(data);
+    return await prisma.circuitoDia.create({ data: parsed });
+  } catch (error) {
+    console.error("Error creating circuito dia:", error);
+    throw new Error("No se pudo crear el día del circuito.");
+  }
 }
 
 export async function updateCircuitoDia(
@@ -333,11 +603,23 @@ export async function updateCircuitoDia(
     orden?: number;
   }
 ) {
-  return prisma.circuitoDia.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.circuitoDia.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating circuito dia:", error);
+    throw new Error("No se pudo actualizar el día del circuito.");
+  }
 }
 
 export async function deleteCircuitoDia(id: string) {
-  return prisma.circuitoDia.delete({ where: { id } });
+  try {
+    await requireAuth();
+    return await prisma.circuitoDia.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting circuito dia:", error);
+    throw new Error("No se pudo eliminar el día del circuito.");
+  }
 }
 
 // ──────────────────────────────────────────────
@@ -350,7 +632,14 @@ export async function createPrecioCircuito(data: {
   periodoHasta: string;
   precio: number;
 }) {
-  return prisma.precioCircuito.create({ data });
+  try {
+    await requireAuth();
+    const parsed = PrecioCircuitoSchema.parse(data);
+    return await prisma.precioCircuito.create({ data: parsed });
+  } catch (error) {
+    console.error("Error creating precio circuito:", error);
+    throw new Error("No se pudo crear el precio del circuito.");
+  }
 }
 
 export async function updatePrecioCircuito(
@@ -361,65 +650,83 @@ export async function updatePrecioCircuito(
     precio?: number;
   }
 ) {
-  return prisma.precioCircuito.update({ where: { id }, data });
+  try {
+    await requireAuth();
+    return await prisma.precioCircuito.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating precio circuito:", error);
+    throw new Error("No se pudo actualizar el precio del circuito.");
+  }
 }
 
 export async function deletePrecioCircuito(id: string) {
-  return prisma.precioCircuito.delete({ where: { id } });
+  try {
+    await requireAuth();
+    return await prisma.precioCircuito.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting precio circuito:", error);
+    throw new Error("No se pudo eliminar el precio del circuito.");
+  }
 }
 
 // ──────────────────────────────────────────────
 // Combined fetch — all services in one call
 // ──────────────────────────────────────────────
 
-export async function getAllServices(brandId: string) {
-  const [aereos, alojamientos, traslados, seguros, circuitos] =
-    await Promise.all([
-      prisma.aereo.findMany({
-        where: { brandId, deletedAt: null },
-        include: { precios: true },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.alojamiento.findMany({
-        where: { brandId, deletedAt: null },
-        include: { precios: true, fotos: true },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.traslado.findMany({
-        where: { brandId, deletedAt: null },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.seguro.findMany({
-        where: { brandId, deletedAt: null },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.circuito.findMany({
-        where: { brandId, deletedAt: null },
-        include: {
-          itinerario: { orderBy: { orden: "asc" } },
-          precios: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-    ]);
+export async function getAllServices(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const [aereos, alojamientos, traslados, seguros, circuitos] =
+      await Promise.all([
+        prisma.aereo.findMany({
+          where: { brandId, deletedAt: null },
+          include: { precios: true },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.alojamiento.findMany({
+          where: { brandId, deletedAt: null },
+          include: { precios: true, fotos: true },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.traslado.findMany({
+          where: { brandId, deletedAt: null },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.seguro.findMany({
+          where: { brandId, deletedAt: null },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.circuito.findMany({
+          where: { brandId, deletedAt: null },
+          include: {
+            itinerario: { orderBy: { orden: "asc" } },
+            precios: true,
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+      ]);
 
-  // Flatten sub-entities from included relations
-  const preciosAereo = aereos.flatMap((a) => a.precios);
-  const preciosAlojamiento = alojamientos.flatMap((a) => a.precios);
-  const alojamientoFotos = alojamientos.flatMap((a) => a.fotos);
-  const circuitoDias = circuitos.flatMap((c) => c.itinerario);
-  const preciosCircuito = circuitos.flatMap((c) => c.precios);
+    // Flatten sub-entities from included relations
+    const preciosAereo = aereos.flatMap((a) => a.precios);
+    const preciosAlojamiento = alojamientos.flatMap((a) => a.precios);
+    const alojamientoFotos = alojamientos.flatMap((a) => a.fotos);
+    const circuitoDias = circuitos.flatMap((c) => c.itinerario);
+    const preciosCircuito = circuitos.flatMap((c) => c.precios);
 
-  return {
-    aereos,
-    preciosAereo,
-    alojamientos,
-    preciosAlojamiento,
-    alojamientoFotos,
-    traslados,
-    seguros,
-    circuitos,
-    circuitoDias,
-    preciosCircuito,
-  };
+    return {
+      aereos,
+      preciosAereo,
+      alojamientos,
+      preciosAlojamiento,
+      alojamientoFotos,
+      traslados,
+      seguros,
+      circuitos,
+      circuitoDias,
+      preciosCircuito,
+    };
+  } catch (error) {
+    console.error("Error fetching all services:", error);
+    throw new Error("No se pudieron obtener los datos de servicios.");
+  }
 }

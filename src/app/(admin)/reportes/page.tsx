@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { Package, Plane, Hotel, Eye } from "lucide-react";
+import { Package, Plane, Hotel } from "lucide-react";
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import {
@@ -126,9 +126,6 @@ export default function ReportesPage() {
   const aereosCount = aereos.length;
   const alojamientosCount = alojamientos.length;
 
-  // Simulated Visitas Web value by brand
-  const visitasWebCount = activeBrandId === "brand-2" ? 892 : 1247;
-
   // ---------------------------------------------------------------------------
   // Bar chart: Paquetes por Destino
   // ---------------------------------------------------------------------------
@@ -197,7 +194,7 @@ export default function ReportesPage() {
       <PageHeader title="Reportes" subtitle="Metricas y reportes del sistema" />
 
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <AnimatedCounter
           icon={<Package className="h-5 w-5" />}
           label="Paquetes Activos"
@@ -215,12 +212,6 @@ export default function ReportesPage() {
           label="Alojamientos"
           value={alojamientosCount}
           color="#E8913A"
-        />
-        <AnimatedCounter
-          icon={<Eye className="h-5 w-5" />}
-          label="Visitas Web"
-          value={visitasWebCount}
-          color="#2B8AFF"
         />
       </div>
 

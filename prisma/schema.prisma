@@ -91,6 +91,10 @@ model Paquete {
   opcionesHoteleras OpcionHotelera[]
 
   @@index([brandId])
+  @@index([estado])
+  @@index([deletedAt])
+  @@index([temporadaId])
+  @@index([tipoPaqueteId])
 }
 
 model Aereo {
@@ -284,6 +288,7 @@ model Temporada {
   paquetes Paquete[]
 
   @@index([brandId])
+  @@unique([brandId, nombre])
 }
 
 model TipoPaquete {
@@ -298,6 +303,7 @@ model TipoPaquete {
   paquetes Paquete[]
 
   @@index([brandId])
+  @@unique([brandId, nombre])
 }
 
 model Etiqueta {
@@ -313,6 +319,7 @@ model Etiqueta {
   notificaciones Notificacion[]
 
   @@index([brandId])
+  @@unique([brandId, slug])
 }
 
 model Pais {
@@ -353,6 +360,7 @@ model Regimen {
   precios PrecioAlojamiento[]
 
   @@index([brandId])
+  @@unique([brandId, nombre])
 }
 
 // ──────────────────────────────────────────────
@@ -434,6 +442,8 @@ model PaqueteFoto {
   orden     Int    @default(0)
 
   paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+
+  @@index([paqueteId])
 }
 
 model PaqueteEtiqueta {
@@ -457,6 +467,8 @@ model OpcionHotelera {
   orden          Int      @default(0)
 
   paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+
+  @@index([paqueteId])
 }
 
 // ──────────────────────────────────────────────

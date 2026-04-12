@@ -18,7 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           credentials.password as string,
         );
 
-        if (!user) return null;
+        if (!user || !user.isActive) return null;
 
         return {
           id: user.id,
@@ -26,6 +26,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name,
           role: user.role,
           brandId: user.brandId,
+          isActive: user.isActive,
         };
       },
     }),

@@ -118,13 +118,19 @@ export function useUserActions() {
         dispatch({ type: "ADD_USER", payload: entity as any });
         return entity as any;
       },
-      updateUser: async (user: AuthUser) => {
+      updateUser: async (user: AuthUser & { isActive?: boolean }) => {
         await userActions.updateUser(user.id, user);
         dispatch({ type: "UPDATE_USER", payload: user });
+      },
+      changePassword: async (userId: string, newPassword: string) => {
+        await userActions.updateUserPassword(userId, newPassword);
       },
       deleteUser: async (id: string) => {
         await userActions.deleteUser(id);
         dispatch({ type: "DELETE_USER", payload: id });
+      },
+      checkEmailAvailable: async (email: string) => {
+        return userActions.checkEmailAvailable(email);
       },
     }),
     [dispatch],
