@@ -1,5 +1,5 @@
 import { PageSkeleton } from "@/components/ui/Skeletons";
 
-export default function AdminLoading() {
+export default function Loading() {
   return <PageSkeleton variant="table" />;
 }

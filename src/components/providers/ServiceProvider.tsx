@@ -326,14 +326,12 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    // If not authenticated, clear loading and return empty state
+    // If not authenticated, reset state but keep loading: true so that when
+    // the user logs in, admin pages show skeleton until the authenticated
+    // fetch completes (prevents the empty-state flash during re-auth).
     if (sessionStatus !== "authenticated") {
-      // Only clear loading after session is determined (not during "loading")
       if (sessionStatus === "unauthenticated") {
-        dispatch({
-          type: "SET_ALL",
-          payload: { ...initialState, loading: false },
-        });
+        dispatch({ type: "SET_ALL", payload: initialState });
       }
       return;
     }
