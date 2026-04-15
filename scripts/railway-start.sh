@@ -9,8 +9,7 @@ npx prisma migrate resolve --rolled-back 20260410233047_add_notificacion 2>/dev/
 echo "[railway-start] Running prisma migrate deploy..."
 npx prisma migrate deploy
 
-echo "[railway-start] Running seed (idempotent with skipDuplicates)..."
-npx tsx prisma/seed.ts || echo "[railway-start] Seed failed but continuing (non-critical)"
+echo "[railway-start] Skipping demo seed — real Destinico data is loaded via seed-from-json.ts"
 
 echo "[railway-start] Starting Next.js..."
 exec next start -p ${PORT:-3000}
