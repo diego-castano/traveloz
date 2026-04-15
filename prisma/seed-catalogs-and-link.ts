@@ -80,6 +80,8 @@ const PAISES_CIUDADES: Record<string, string[]> = {
     'Mendoza',
     'Ushuaia',
     'Iguazú',
+    'El Calafate',
+    'Salta',
   ],
   Colombia: [
     'Cartagena',
@@ -104,6 +106,8 @@ const PAISES_CIUDADES: Record<string, string[]> = {
     'Santiago',
     'Viña del Mar',
     'Torres del Paine',
+    'Puerto Montt',
+    'Calama',
   ],
   Uruguay: [
     'Montevideo',
@@ -156,6 +160,41 @@ const PAISES_CIUDADES: Record<string, string[]> = {
   'Emiratos Árabes': [
     'Dubái',
     'Abu Dabi',
+  ],
+  Jamaica: [
+    'Montego Bay',
+    'Negril',
+    'Ocho Ríos',
+  ],
+  Curazao: [
+    'Willemstad',
+  ],
+  Aruba: [
+    'Oranjestad',
+    'Eagle Beach',
+  ],
+  Panamá: [
+    'Ciudad de Panamá',
+    'Playa Blanca',
+  ],
+  'Costa Rica': [
+    'San José',
+    'Guanacaste',
+  ],
+  Nepal: [
+    'Kathmandú',
+    'Pokhara',
+  ],
+  Filipinas: [
+    'Manila',
+    'El Nido',
+  ],
+  Camboya: [
+    'Siem Reap',
+    'Phnom Penh',
+  ],
+  India: [
+    'Hyderabad',
   ],
 };
 
@@ -243,6 +282,8 @@ const KEYWORD_MATCHES: Array<[string, Match]> = [
   ['copacabana', { pais: 'Brasil', ciudad: 'Río de Janeiro' }],
   ['ipanema', { pais: 'Brasil', ciudad: 'Río de Janeiro' }],
   ['leme', { pais: 'Brasil', ciudad: 'Río de Janeiro' }],
+  ['hotel windsor asturias', { pais: 'Brasil', ciudad: 'Río de Janeiro' }],
+  ['maraton de rio', { pais: 'Brasil', ciudad: 'Río de Janeiro' }],
 
   // México — multi-word first
   ['playa del carmen', { pais: 'México', ciudad: 'Playa del Carmen' }],
@@ -351,6 +392,11 @@ const KEYWORD_MATCHES: Array<[string, Match]> = [
   // Chile
   ['torres del paine', { pais: 'Chile', ciudad: 'Torres del Paine' }],
   ['vina del mar', { pais: 'Chile', ciudad: 'Viña del Mar' }],
+  ['san pedro de atacama', { pais: 'Chile', ciudad: 'Calama' }],
+  ['atacama', { pais: 'Chile', ciudad: 'Calama' }],
+  ['puerto montt', { pais: 'Chile', ciudad: 'Puerto Montt' }],
+  ['puerto varas', { pais: 'Chile', ciudad: 'Puerto Montt' }],
+  ['calama', { pais: 'Chile', ciudad: 'Calama' }],
   ['santiago', { pais: 'Chile', ciudad: 'Santiago' }],
 
   // Uruguay
@@ -359,11 +405,84 @@ const KEYWORD_MATCHES: Array<[string, Match]> = [
 
   // Argentina
   ['buenos aires', { pais: 'Argentina', ciudad: 'Buenos Aires' }],
+  ['el calafate', { pais: 'Argentina', ciudad: 'El Calafate' }],
+  ['perito moreno', { pais: 'Argentina', ciudad: 'El Calafate' }],
+  ['calafate', { pais: 'Argentina', ciudad: 'El Calafate' }],
   ['bariloche', { pais: 'Argentina', ciudad: 'Bariloche' }],
   ['ushuaia', { pais: 'Argentina', ciudad: 'Ushuaia' }],
   ['mendoza', { pais: 'Argentina', ciudad: 'Mendoza' }],
+  ['salta', { pais: 'Argentina', ciudad: 'Salta' }],
   ['iguazu argentina', { pais: 'Argentina', ciudad: 'Iguazú' }],
   // Note: generic "iguazu" → Foz de Iguazú (Brasil side is more common in packages)
+
+  // Jamaica
+  ['riu palace tropical bay', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+  ['tropical bay', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+  ['rose hall', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+  ['lady hamilton', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+  ['grand palladium jamaica', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+  ['riu negril', { pais: 'Jamaica', ciudad: 'Negril' }],
+  ['riu ocho rios', { pais: 'Jamaica', ciudad: 'Ocho Ríos' }],
+  ['ocho rios', { pais: 'Jamaica', ciudad: 'Ocho Ríos' }],
+  ['montego bay', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+  ['negril', { pais: 'Jamaica', ciudad: 'Negril' }],
+  ['zona palladium', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+  ['jamaica', { pais: 'Jamaica', ciudad: 'Montego Bay' }],
+
+  // Curazao
+  ['sunscape curacao', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['mangrove beach corendon', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['kunuku aqua', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['kunuku resort', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['kunuku', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['brion city', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['curacao', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['curazao', { pais: 'Curazao', ciudad: 'Willemstad' }],
+  ['willemstad', { pais: 'Curazao', ciudad: 'Willemstad' }],
+
+  // Aruba
+  ['tryp by wyndham aruba', { pais: 'Aruba', ciudad: 'Oranjestad' }],
+  ['eagle aruba', { pais: 'Aruba', ciudad: 'Eagle Beach' }],
+  ['mvc eagle', { pais: 'Aruba', ciudad: 'Eagle Beach' }],
+  ['eagle beach', { pais: 'Aruba', ciudad: 'Eagle Beach' }],
+  ['oranjestad', { pais: 'Aruba', ciudad: 'Oranjestad' }],
+  ['coconut inn', { pais: 'Aruba', ciudad: 'Oranjestad' }],
+  ['aruba', { pais: 'Aruba', ciudad: 'Oranjestad' }],
+
+  // Panamá
+  ['riu playa blanca', { pais: 'Panamá', ciudad: 'Playa Blanca' }],
+  ['playa blanca panama', { pais: 'Panamá', ciudad: 'Playa Blanca' }],
+  ['ciudad de panama', { pais: 'Panamá', ciudad: 'Ciudad de Panamá' }],
+  ['panama city', { pais: 'Panamá', ciudad: 'Ciudad de Panamá' }],
+  ['puerto colon', { pais: 'Panamá', ciudad: 'Ciudad de Panamá' }],
+  ['panama', { pais: 'Panamá', ciudad: 'Ciudad de Panamá' }],
+
+  // Costa Rica
+  ['san jose costa rica', { pais: 'Costa Rica', ciudad: 'San José' }],
+  ['guanacaste', { pais: 'Costa Rica', ciudad: 'Guanacaste' }],
+  ['costa rica', { pais: 'Costa Rica', ciudad: 'San José' }],
+
+  // Nepal
+  ['kathmandu', { pais: 'Nepal', ciudad: 'Kathmandú' }],
+  ['pokhara', { pais: 'Nepal', ciudad: 'Pokhara' }],
+  ['nepal', { pais: 'Nepal', ciudad: 'Kathmandú' }],
+
+  // Filipinas
+  ['el nido', { pais: 'Filipinas', ciudad: 'El Nido' }],
+  ['manila', { pais: 'Filipinas', ciudad: 'Manila' }],
+  ['filipinas', { pais: 'Filipinas', ciudad: 'Manila' }],
+  ['philippines', { pais: 'Filipinas', ciudad: 'Manila' }],
+
+  // Camboya
+  ['siem reap', { pais: 'Camboya', ciudad: 'Siem Reap' }],
+  ['phnom penh', { pais: 'Camboya', ciudad: 'Phnom Penh' }],
+  ['camboya', { pais: 'Camboya', ciudad: 'Siem Reap' }],
+  ['cambodia', { pais: 'Camboya', ciudad: 'Siem Reap' }],
+  ['angkor', { pais: 'Camboya', ciudad: 'Siem Reap' }],
+
+  // India
+  ['hyderabad', { pais: 'India', ciudad: 'Hyderabad' }],
+  ['india', { pais: 'India', ciudad: 'Hyderabad' }],
 
   // EEUU
   ['buena vista', { pais: 'Estados Unidos', ciudad: 'Orlando' }],
@@ -414,6 +533,7 @@ const KEYWORD_MATCHES: Array<[string, Match]> = [
   // Turquía
   ['capadocia', { pais: 'Turquía', ciudad: 'Capadocia' }],
   ['estambul', { pais: 'Turquía', ciudad: 'Estambul' }],
+  ['turquia', { pais: 'Turquía', ciudad: 'Estambul' }],
 
   // Francia
   ['paris', { pais: 'Francia', ciudad: 'París' }],
@@ -442,6 +562,24 @@ const KEYWORD_MATCHES: Array<[string, Match]> = [
   ['iguazu', { pais: 'Brasil', ciudad: 'Foz de Iguazú' }],
   ['jericoacoara', { pais: 'Brasil', ciudad: 'Natal' }],
   ['fortaleza', { pais: 'Brasil', ciudad: 'Natal' }],
+  ['pipa', { pais: 'Brasil', ciudad: 'Natal' }],
+
+  // More Cuba
+  ['cayo santa maria', { pais: 'Cuba', ciudad: 'Varadero' }],
+  ['cayo', { pais: 'Cuba', ciudad: 'Varadero' }],
+
+  // More RD
+  ['puerto plata', { pais: 'República Dominicana', ciudad: 'Santo Domingo' }],
+
+  // Panamá — generic "playa blanca" (Riu Playa Blanca is in Panamá)
+  ['playa blanca', { pais: 'Panamá', ciudad: 'Playa Blanca' }],
+
+  // Airport code hint pattern "en MIA" / "en GDL" for generic traslados
+  ['en mia', { pais: 'Estados Unidos', ciudad: 'Miami' }],
+  ['en gdl', { pais: 'México', ciudad: 'Ciudad de México' }],
+
+  // FIFA 2026 "PARTIDOS" packages — host city unknown from data; best guess CDMX
+  ['partidos', { pais: 'México', ciudad: 'Ciudad de México' }],
 ];
 
 // Sort by length descending so longer patterns match first
@@ -462,7 +600,12 @@ const IATA_TO_CITY: Record<string, Match> = {
   GRU: { pais: 'Brasil', ciudad: 'São Paulo' },
   CGH: { pais: 'Brasil', ciudad: 'São Paulo' },
   IGU: { pais: 'Brasil', ciudad: 'Foz de Iguazú' },
+  FOR: { pais: 'Brasil', ciudad: 'Natal' },
+  JPA: { pais: 'Brasil', ciudad: 'Natal' },
+  FOR: { pais: 'Brasil', ciudad: 'Natal' },
+  JPA: { pais: 'Brasil', ciudad: 'Natal' },
   TQO: { pais: 'México', ciudad: 'Tulum' },
+  GDL: { pais: 'México', ciudad: 'Ciudad de México' },
   LIM: { pais: 'Perú', ciudad: 'Lima' },
   CUZ: { pais: 'Perú', ciudad: 'Cusco' },
   BOG: { pais: 'Colombia', ciudad: 'Bogotá' },
@@ -510,8 +653,25 @@ const IATA_TO_CITY: Record<string, Match> = {
   USH: { pais: 'Argentina', ciudad: 'Ushuaia' },
   MDZ: { pais: 'Argentina', ciudad: 'Mendoza' },
   SCL: { pais: 'Chile', ciudad: 'Santiago' },
+  PMC: { pais: 'Chile', ciudad: 'Puerto Montt' },
+  CJC: { pais: 'Chile', ciudad: 'Calama' },
   MVD: { pais: 'Uruguay', ciudad: 'Montevideo' },
   PDP: { pais: 'Uruguay', ciudad: 'Punta del Este' },
+  FTE: { pais: 'Argentina', ciudad: 'El Calafate' },
+  SLA: { pais: 'Argentina', ciudad: 'Salta' },
+  MBJ: { pais: 'Jamaica', ciudad: 'Montego Bay' },
+  KIN: { pais: 'Jamaica', ciudad: 'Montego Bay' },
+  AUA: { pais: 'Aruba', ciudad: 'Oranjestad' },
+  CUR: { pais: 'Curazao', ciudad: 'Willemstad' },
+  PTY: { pais: 'Panamá', ciudad: 'Ciudad de Panamá' },
+  SJO: { pais: 'Costa Rica', ciudad: 'San José' },
+  LIR: { pais: 'Costa Rica', ciudad: 'Guanacaste' },
+  KTM: { pais: 'Nepal', ciudad: 'Kathmandú' },
+  MNL: { pais: 'Filipinas', ciudad: 'Manila' },
+  PPS: { pais: 'Filipinas', ciudad: 'El Nido' },
+  REP: { pais: 'Camboya', ciudad: 'Siem Reap' },
+  PNH: { pais: 'Camboya', ciudad: 'Phnom Penh' },
+  HYD: { pais: 'India', ciudad: 'Hyderabad' },
 };
 
 function findMatch(text: string): Match | null {
@@ -751,14 +911,19 @@ async function main() {
     return best?.match ?? null;
   }
 
-  // Alojamientos
+  // Alojamientos — only process those without paisId (safe for re-runs)
   const alojamientos = await prisma.alojamiento.findMany({
     select: { id: true, nombre: true, brandId: true, paisId: true, ciudadId: true },
   });
+  let aloAlreadyLinked = 0;
   let aloMatched = 0;
   let aloViaParent = 0;
   const aloUnmatched: Array<{ id: string; nombre: string }> = [];
   for (const a of alojamientos) {
+    if (a.paisId) {
+      aloAlreadyLinked++;
+      continue;
+    }
     let match = findMatch(a.nombre);
     let viaParent = false;
     if (!match) {
@@ -786,17 +951,22 @@ async function main() {
     if (viaParent) aloViaParent++;
   }
   console.log(
-    `  Alojamientos: ${aloMatched}/${alojamientos.length} matched (${aloViaParent} via parent paquete), ${aloUnmatched.length} unmatched`,
+    `  Alojamientos: ${aloAlreadyLinked} already linked, ${aloMatched} newly matched (${aloViaParent} via parent), ${aloUnmatched.length} unmatched — total ${alojamientos.length}`,
   );
 
-  // Traslados
+  // Traslados — only process those without paisId (safe for re-runs)
   const traslados = await prisma.traslado.findMany({
-    select: { id: true, nombre: true, brandId: true },
+    select: { id: true, nombre: true, brandId: true, paisId: true },
   });
+  let traAlreadyLinked = 0;
   let traMatched = 0;
   let traViaParent = 0;
   const traUnmatched: Array<{ id: string; nombre: string }> = [];
   for (const t of traslados) {
+    if (t.paisId) {
+      traAlreadyLinked++;
+      continue;
+    }
     let match = findMatch(t.nombre);
     let viaParent = false;
     if (!match) {
@@ -824,7 +994,7 @@ async function main() {
     if (viaParent) traViaParent++;
   }
   console.log(
-    `  Traslados: ${traMatched}/${traslados.length} matched (${traViaParent} via parent paquete), ${traUnmatched.length} unmatched`,
+    `  Traslados: ${traAlreadyLinked} already linked, ${traMatched} newly matched (${traViaParent} via parent), ${traUnmatched.length} unmatched — total ${traslados.length}`,
   );
 
   // Paquetes — set temporada (default Media) + tipo (inferred) + destino refinement
