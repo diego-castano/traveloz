@@ -2,12 +2,21 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Eye, Pencil, Copy, Trash2, Package } from "lucide-react";
-import { motion } from "motion/react";
+import {
+  Plus,
+  Eye,
+  Pencil,
+  Copy,
+  Trash2,
+  Package,
+  Search,
+  X,
+  MapPin,
+} from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { interactions } from "@/components/lib/animations";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { SearchFilter, type FilterChip } from "@/components/ui/SearchFilter";
 import {
   Table,
   TableHeader,
@@ -17,8 +26,20 @@ import {
   TableCell,
 } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
+import { MultiSelectFilter } from "@/components/ui/data/MultiSelectFilter";
+import { SegmentedControl } from "@/components/ui/data/SegmentedControl";
+import { ViewToggle, type ViewMode } from "@/components/ui/data/ViewToggle";
+import {
+  ColumnVisibilityMenu,
+  type ColumnDefinition,
+} from "@/components/ui/data/ColumnVisibilityMenu";
 import {
   usePaquetes,
   usePackageActions,
@@ -28,26 +49,114 @@ import {
 import {
   useTemporadas,
   useTiposPaquete,
+  usePaises,
 } from "@/components/providers/CatalogProvider";
-import { useAereos, useServiceState } from "@/components/providers/ServiceProvider";
+import {
+  useAlojamientos,
+  useServiceState,
+} from "@/components/providers/ServiceProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { usePackageLoading } from "@/components/providers/PackageProvider";
 import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
-import type { Paquete } from "@/lib/types";
+import type { Paquete, PaqueteFoto, Pais } from "@/lib/types";
+import { PaqueteGridCard } from "./_components/PaqueteGridCard";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const estadoBadge = {
-  ACTIVO: { variant: "active" as const, label: "Activo" },
-  BORRADOR: { variant: "draft" as const, label: "Borrador" },
-  INACTIVO: { variant: "inactive" as const, label: "Inactivo" },
+  ACTIVO: { variant: "active" as const, label: "Activo", color: "#3BBFAD" },
+  BORRADOR: { variant: "draft" as const, label: "Borrador", color: "#E8913A" },
+  INACTIVO: {
+    variant: "inactive" as const,
+    label: "Inactivo",
+    color: "#6B6F99",
+  },
 };
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE_TABLE = 12;
+const ITEMS_PER_PAGE_GRID = 18;
+
+type EstadoFilter = "all" | "ACTIVO" | "BORRADOR" | "INACTIVO";
+
+type ColKey =
+  | "destino"
+  | "temporada"
+  | "tipo"
+  | "noches"
+  | "estado"
+  | "precio";
+
+// ---------------------------------------------------------------------------
+// Helper: resolve paquete → dominant país via linked alojamientos.
+// Tiny local copy to avoid cross-route imports; dashboard has a similar one.
+// ---------------------------------------------------------------------------
+
+function usePaisResolver(
+  paqueteAlojamientos: Array<{ paqueteId: string; alojamientoId: string }>,
+  alojamientos: Array<{ id: string; paisId: string | null }>,
+  paises: Pais[],
+) {
+  return useMemo(() => {
+    const aloById = new Map<string, { paisId: string | null }>();
+    for (const a of alojamientos) aloById.set(a.id, a);
+    const paisNameById = new Map<string, string>();
+    for (const p of paises) paisNameById.set(p.id, p.nombre);
+
+    const cache = new Map<string, string | null>();
+
+    function paisIdFor(paqueteId: string): string | null {
+      if (cache.has(paqueteId)) return cache.get(paqueteId) ?? null;
+      const counts = new Map<string, number>();
+      for (const pa of paqueteAlojamientos) {
+        if (pa.paqueteId !== paqueteId) continue;
+        const alo = aloById.get(pa.alojamientoId);
+        if (!alo?.paisId) continue;
+        counts.set(alo.paisId, (counts.get(alo.paisId) ?? 0) + 1);
+      }
+      let best: string | null = null;
+      let bestCount = 0;
+      counts.forEach((count, pid) => {
+        if (count > bestCount) {
+          best = pid;
+          bestCount = count;
+        }
+      });
+      cache.set(paqueteId, best);
+      return best;
+    }
+
+    function paisNombreFor(paqueteId: string): string | null {
+      const pid = paisIdFor(paqueteId);
+      return pid ? (paisNameById.get(pid) ?? null) : null;
+    }
+
+    return { paisIdFor, paisNombreFor };
+  }, [paqueteAlojamientos, alojamientos, paises]);
+}
+
+// ---------------------------------------------------------------------------
+// Price formatting helper — produces { main, sub } for the fused column
+// ---------------------------------------------------------------------------
+
+function formatPaquetePrice(
+  pricing: ReturnType<typeof computePaquetePrecios>,
+  fallback: number,
+): { main: string; isRange: boolean } {
+  if (pricing.min === null) {
+    return { main: formatCurrency(fallback), isRange: false };
+  }
+  if (pricing.max !== null && pricing.min !== pricing.max) {
+    return {
+      main: `${formatCurrency(pricing.min)} — ${formatCurrency(pricing.max)}`,
+      isRange: true,
+    };
+  }
+  return { main: formatCurrency(pricing.min), isRange: false };
+}
 
 // ---------------------------------------------------------------------------
 // PaquetesPage
@@ -65,109 +174,149 @@ export default function PaquetesPage() {
   const serviceState = useServiceState();
   const temporadas = useTemporadas();
   const tiposPaquete = useTiposPaquete();
-  const aereos = useAereos();
+  const alojamientos = useAlojamientos();
+  const paises = usePaises();
   const allOpciones = useAllOpcionesHoteleras();
   const loading = usePackageLoading();
 
-  // Per-paquete price derivation: recomputes using current service prices with
-  // period matching so listing prices stay in sync when a service price changes
-  // (Fase 2 — no more stale OpcionHotelera.precioVenta reads).
+  const resolver = usePaisResolver(
+    packageState.paqueteAlojamientos,
+    alojamientos,
+    paises,
+  );
+
+  // Per-paquete price derivation
   const preciosMap = useMemo(() => {
     const map: Record<string, ReturnType<typeof computePaquetePrecios>> = {};
     for (const paq of paquetes) {
-      map[paq.id] = computePaquetePrecios(paq, allOpciones, packageState, serviceState);
+      map[paq.id] = computePaquetePrecios(
+        paq,
+        allOpciones,
+        packageState,
+        serviceState,
+      );
     }
     return map;
   }, [paquetes, allOpciones, packageState, serviceState]);
 
-  // Component state
+  // First-photo lookup per paquete (used by the grid view)
+  const fotoByPaquete = useMemo(() => {
+    const m = new Map<string, PaqueteFoto>();
+    const sorted = [...packageState.paqueteFotos].sort(
+      (a, b) => a.orden - b.orden,
+    );
+    for (const f of sorted) {
+      if (!m.has(f.paqueteId)) m.set(f.paqueteId, f);
+    }
+    return m;
+  }, [packageState.paqueteFotos]);
+
+  // ---- Component state ----
   const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("all");
+  const [temporadaFilter, setTemporadaFilter] = useState<string[]>([]);
+  const [tipoFilter, setTipoFilter] = useState<string[]>([]);
+  const [destinoFilter, setDestinoFilter] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Paquete | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
+  const [visibleColumns, setVisibleColumns] = useState<Record<ColKey, boolean>>(
+    {
+      destino: true,
+      temporada: true,
+      tipo: false,
+      noches: true,
+      estado: true,
+      precio: true,
+    },
+  );
 
-  // ---------------------------------------------------------------------------
-  // Derived lookup maps
-  // ---------------------------------------------------------------------------
-
-  const temporadaMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const t of temporadas) {
-      map[t.id] = t.nombre;
-    }
-    return map;
+  // ---- Catalog lookups (id → entity) ----
+  const temporadaById = useMemo(() => {
+    const m = new Map<string, (typeof temporadas)[number]>();
+    for (const t of temporadas) m.set(t.id, t);
+    return m;
   }, [temporadas]);
 
-  const aereoMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const a of aereos) {
-      map[a.id] = a.destino;
+  const tipoById = useMemo(() => {
+    const m = new Map<string, (typeof tiposPaquete)[number]>();
+    for (const t of tiposPaquete) m.set(t.id, t);
+    return m;
+  }, [tiposPaquete]);
+
+  // ---- Count helper for each filter option (shows next to each) ----
+  const estadoCounts = useMemo(() => {
+    const counts = { ACTIVO: 0, BORRADOR: 0, INACTIVO: 0 };
+    for (const p of paquetes) {
+      counts[p.estado as keyof typeof counts]++;
     }
-    return map;
-  }, [aereos]);
+    return counts;
+  }, [paquetes]);
 
-  // Pre-compute destino for each paquete by looking up the first assigned aereo
-  const destinoMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const paq of paquetes) {
-      const firstAereoAssignment = packageState.paqueteAereos.find(
-        (pa) => pa.paqueteId === paq.id,
-      );
-      if (firstAereoAssignment) {
-        const destino = aereoMap[firstAereoAssignment.aereoId];
-        if (destino) {
-          map[paq.id] = destino;
-        }
-      }
+  const temporadaCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of paquetes) {
+      if (!p.temporadaId) continue;
+      counts.set(p.temporadaId, (counts.get(p.temporadaId) ?? 0) + 1);
     }
-    return map;
-  }, [paquetes, packageState.paqueteAereos, aereoMap]);
+    return counts;
+  }, [paquetes]);
 
-  // ---------------------------------------------------------------------------
-  // Filter chips
-  // ---------------------------------------------------------------------------
+  const tipoCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of paquetes) {
+      if (!p.tipoPaqueteId) continue;
+      counts.set(p.tipoPaqueteId, (counts.get(p.tipoPaqueteId) ?? 0) + 1);
+    }
+    return counts;
+  }, [paquetes]);
 
-  const filters: FilterChip[] = useMemo(() => {
-    const chips: FilterChip[] = [];
+  const destinoCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of paquetes) {
+      const nombre = resolver.paisNombreFor(p.id);
+      if (!nombre) continue;
+      counts.set(nombre, (counts.get(nombre) ?? 0) + 1);
+    }
+    return counts;
+  }, [paquetes, resolver]);
 
-    // Temporada chips
-    for (const t of temporadas) {
-      chips.push({
+  // ---- Options for each filter ----
+  const temporadaOptions = useMemo(
+    () =>
+      temporadas.map((t) => ({
+        value: t.id,
+        label: t.nombre.replace(/\s*\(.*\)/, "").trim(),
+        count: temporadaCounts.get(t.id) ?? 0,
+      })),
+    [temporadas, temporadaCounts],
+  );
+
+  const tipoOptions = useMemo(
+    () =>
+      tiposPaquete.map((t) => ({
+        value: t.id,
         label: t.nombre,
-        value: `temporada:${t.id}`,
-        active: activeFilters.includes(`temporada:${t.id}`),
-      });
-    }
+        count: tipoCounts.get(t.id) ?? 0,
+      })),
+    [tiposPaquete, tipoCounts],
+  );
 
-    // Estado chips
-    const estados: Array<{ label: string; value: string }> = [
-      { label: "Activo", value: "estado:ACTIVO" },
-      { label: "Borrador", value: "estado:BORRADOR" },
-      { label: "Inactivo", value: "estado:INACTIVO" },
-    ];
-    for (const e of estados) {
-      chips.push({
-        label: e.label,
-        value: e.value,
-        active: activeFilters.includes(e.value),
-      });
-    }
-
-    // Tipo chips
-    for (const t of tiposPaquete) {
-      chips.push({
-        label: t.nombre,
-        value: `tipo:${t.id}`,
-        active: activeFilters.includes(`tipo:${t.id}`),
-      });
-    }
-
-    return chips;
-  }, [temporadas, tiposPaquete, activeFilters]);
+  const destinoOptions = useMemo(
+    () =>
+      Array.from(destinoCounts.entries())
+        .sort((a, b) => b[1] - a[1])
+        .map(([nombre, count]) => ({
+          value: nombre,
+          label: nombre,
+          count,
+        })),
+    [destinoCounts],
+  );
 
   // ---------------------------------------------------------------------------
-  // Filtered and paginated data
+  // Filtered + paginated data
   // ---------------------------------------------------------------------------
 
   const filteredPaquetes = useMemo(() => {
@@ -183,61 +332,83 @@ export default function PaquetesPage() {
       );
     }
 
-    // Temporada filters (OR within category)
-    const temporadaFilters = activeFilters
-      .filter((f) => f.startsWith("temporada:"))
-      .map((f) => f.replace("temporada:", ""));
-    if (temporadaFilters.length > 0) {
-      result = result.filter((p) => temporadaFilters.includes(p.temporadaId));
+    // Estado (segmented — exclusive)
+    if (estadoFilter !== "all") {
+      result = result.filter((p) => p.estado === estadoFilter);
     }
 
-    // Estado filters (OR within category)
-    const estadoFilters = activeFilters
-      .filter((f) => f.startsWith("estado:"))
-      .map((f) => f.replace("estado:", ""));
-    if (estadoFilters.length > 0) {
-      result = result.filter((p) => estadoFilters.includes(p.estado));
+    // Temporada (multi)
+    if (temporadaFilter.length > 0) {
+      result = result.filter((p) => temporadaFilter.includes(p.temporadaId));
     }
 
-    // Tipo filters (OR within category)
-    const tipoFilters = activeFilters
-      .filter((f) => f.startsWith("tipo:"))
-      .map((f) => f.replace("tipo:", ""));
-    if (tipoFilters.length > 0) {
-      result = result.filter((p) => tipoFilters.includes(p.tipoPaqueteId));
+    // Tipo (multi)
+    if (tipoFilter.length > 0) {
+      result = result.filter((p) => tipoFilter.includes(p.tipoPaqueteId));
+    }
+
+    // Destino (multi — país nombre)
+    if (destinoFilter.length > 0) {
+      result = result.filter((p) => {
+        const nombre = resolver.paisNombreFor(p.id);
+        return nombre ? destinoFilter.includes(nombre) : false;
+      });
     }
 
     return result;
-  }, [paquetes, search, activeFilters]);
+  }, [
+    paquetes,
+    search,
+    estadoFilter,
+    temporadaFilter,
+    tipoFilter,
+    destinoFilter,
+    resolver,
+  ]);
 
-  // Reset page when filters change
+  // Reset page when filters or view change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, activeFilters]);
+  }, [search, estadoFilter, temporadaFilter, tipoFilter, destinoFilter, viewMode]);
 
-  const totalPages = Math.ceil(filteredPaquetes.length / ITEMS_PER_PAGE);
+  const itemsPerPage =
+    viewMode === "grid" ? ITEMS_PER_PAGE_GRID : ITEMS_PER_PAGE_TABLE;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredPaquetes.length / itemsPerPage),
+  );
 
   const paginatedPaquetes = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredPaquetes.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredPaquetes, currentPage]);
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredPaquetes.slice(start, start + itemsPerPage);
+  }, [filteredPaquetes, currentPage, itemsPerPage]);
+
+  // ---------------------------------------------------------------------------
+  // Filter state helpers
+  // ---------------------------------------------------------------------------
+
+  const activeFilterCount =
+    (estadoFilter === "all" ? 0 : 1) +
+    temporadaFilter.length +
+    tipoFilter.length +
+    destinoFilter.length;
+
+  function clearAllFilters() {
+    setSearch("");
+    setEstadoFilter("all");
+    setTemporadaFilter([]);
+    setTipoFilter([]);
+    setDestinoFilter([]);
+  }
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
 
-  function handleFilterToggle(value: string) {
-    setActiveFilters((prev) =>
-      prev.includes(value)
-        ? prev.filter((f) => f !== value)
-        : [...prev, value],
-    );
-  }
-
   function handleClone(e: React.MouseEvent, id: string) {
     e.stopPropagation();
     clonePaquete(id);
-    toast("success", "Paquete clonado", "Se creo una copia en estado Borrador");
+    toast("success", "Paquete clonado", "Se creó una copia en estado Borrador");
   }
 
   function handleOpenDelete(e: React.MouseEvent, paquete: Paquete) {
@@ -250,11 +421,32 @@ export default function PaquetesPage() {
     setIsShaking(true);
     setTimeout(() => {
       deletePaquete(deleteTarget.id);
-      toast("success", "Paquete eliminado", `"${deleteTarget.titulo}" fue eliminado correctamente`);
+      toast(
+        "success",
+        "Paquete eliminado",
+        `"${deleteTarget.titulo}" fue eliminado correctamente`,
+      );
       setDeleteTarget(null);
       setIsShaking(false);
     }, 400);
   }
+
+  // ---------------------------------------------------------------------------
+  // Column definitions for visibility menu
+  // ---------------------------------------------------------------------------
+
+  const columnDefs: ColumnDefinition<ColKey>[] = [
+    { key: "destino", label: "Destino" },
+    { key: "temporada", label: "Temporada" },
+    { key: "tipo", label: "Tipo" },
+    { key: "noches", label: "Noches" },
+    { key: "estado", label: "Estado" },
+    {
+      key: "precio",
+      label: "Precio",
+      locked: canSeePricing.venta === false ? undefined : true,
+    },
+  ];
 
   // ---------------------------------------------------------------------------
   // Render
@@ -266,7 +458,7 @@ export default function PaquetesPage() {
     <>
       <PageHeader
         title="Paquetes"
-        subtitle="Gestion de paquetes de viaje"
+        subtitle={`${paquetes.length} paquetes en catálogo · ${filteredPaquetes.length} coinciden con los filtros`}
         action={
           canEdit ? (
             <Button
@@ -279,148 +471,395 @@ export default function PaquetesPage() {
         }
       />
 
-      <SearchFilter
-        searchValue={search}
-        onSearchChange={setSearch}
-        filters={filters}
-        onFilterToggle={handleFilterToggle}
-        placeholder="Buscar paquetes..."
-        className="mb-6"
-      />
+      {/* ===================== Filter Toolbar ===================== */}
+      <div className="mb-5 flex flex-col gap-3">
+        {/* Row 1: search + estado + view toggle + columns */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search input */}
+          <div
+            className="relative flex h-8 min-w-[200px] flex-1 items-center rounded-[8px] border border-hairline bg-white focus-within:border-[#8B5CF6]/40 focus-within:ring-2 focus-within:ring-[#8B5CF6]/15 lg:max-w-[280px]"
+          >
+            <Search
+              size={13}
+              className="absolute left-2.5 text-neutral-400"
+              strokeWidth={2}
+            />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por título o descripción..."
+              className="h-full w-full bg-transparent pl-8 pr-7 text-[12.5px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-1.5 flex h-4 w-4 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+                aria-label="Limpiar búsqueda"
+              >
+                <X size={10} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
 
-      {filteredPaquetes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <Package className="h-12 w-12 mb-3 opacity-40" />
-          <p className="text-sm">No se encontraron paquetes</p>
+          {/* Estado segmented */}
+          <SegmentedControl<EstadoFilter>
+            value={estadoFilter}
+            onChange={setEstadoFilter}
+            aria-label="Filtrar por estado"
+            options={[
+              {
+                value: "all",
+                label: "Todos",
+                count:
+                  estadoCounts.ACTIVO +
+                  estadoCounts.BORRADOR +
+                  estadoCounts.INACTIVO,
+              },
+              {
+                value: "ACTIVO",
+                label: "Activos",
+                count: estadoCounts.ACTIVO,
+                color: "#3BBFAD",
+              },
+              {
+                value: "BORRADOR",
+                label: "Borrador",
+                count: estadoCounts.BORRADOR,
+                color: "#E8913A",
+              },
+              ...(estadoCounts.INACTIVO > 0
+                ? [
+                    {
+                      value: "INACTIVO" as const,
+                      label: "Inactivos",
+                      count: estadoCounts.INACTIVO,
+                      color: "#6B6F99",
+                    },
+                  ]
+                : []),
+            ]}
+          />
+
+          {/* Spacer pushes view toggle / columns to the right on wide screens */}
+          <div className="ml-auto flex items-center gap-2.5">
+            {viewMode === "table" && (
+              <ColumnVisibilityMenu
+                columns={columnDefs}
+                visible={visibleColumns}
+                onChange={(next) => setVisibleColumns(next as Record<ColKey, boolean>)}
+              />
+            )}
+            <ViewToggle value={viewMode} onChange={setViewMode} />
+          </div>
         </div>
+
+        {/* Row 2: multi-select popovers */}
+        <div className="flex flex-wrap items-center gap-2">
+          <MultiSelectFilter
+            label="Temporada"
+            options={temporadaOptions}
+            selected={temporadaFilter}
+            onChange={setTemporadaFilter}
+          />
+          <MultiSelectFilter
+            label="Tipo"
+            options={tipoOptions}
+            selected={tipoFilter}
+            onChange={setTipoFilter}
+          />
+          <MultiSelectFilter
+            label="Destino"
+            options={destinoOptions}
+            selected={destinoFilter}
+            onChange={setDestinoFilter}
+          />
+
+          <AnimatePresence>
+            {activeFilterCount > 0 && (
+              <motion.button
+                key="clear"
+                type="button"
+                onClick={clearAllFilters}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="inline-flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12px] font-medium text-neutral-500 hover:text-neutral-900"
+              >
+                <X size={12} strokeWidth={2.5} />
+                Limpiar filtros
+                <span className="font-mono text-[10px] text-neutral-400 tabular-nums">
+                  ({activeFilterCount})
+                </span>
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ===================== Content (table or grid) ===================== */}
+      {filteredPaquetes.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-[14px] border border-dashed border-hairline bg-white py-20 text-neutral-400">
+          <Package className="mb-3 h-12 w-12 opacity-40" />
+          <p className="text-sm">No se encontraron paquetes</p>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="mt-3 text-xs font-medium text-[#8B5CF6] hover:underline"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+      ) : viewMode === "grid" ? (
+        /* -------------------- GRID VIEW -------------------- */
+        <motion.div
+          key="grid"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        >
+          {paginatedPaquetes.map((paquete, i) => (
+            <PaqueteGridCard
+              key={paquete.id}
+              paquete={paquete}
+              foto={fotoByPaquete.get(paquete.id)}
+              destino={
+                resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "—"
+              }
+              temporada={
+                paquete.temporadaId
+                  ? temporadaById.get(paquete.temporadaId)
+                  : undefined
+              }
+              tipo={
+                paquete.tipoPaqueteId
+                  ? tipoById.get(paquete.tipoPaqueteId)
+                  : undefined
+              }
+              pricing={preciosMap[paquete.id]}
+              canSeePricing={canSeePricing}
+              index={i}
+            />
+          ))}
+        </motion.div>
       ) : (
-        <>
-          <div className="relative">
+        /* -------------------- TABLE VIEW -------------------- */
+        <motion.div
+          key="table"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
+          className="relative"
+        >
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Titulo</TableHead>
-                <TableHead>Destino</TableHead>
-                <TableHead>Temporada</TableHead>
-                <TableHead>Noches</TableHead>
-                <TableHead>Estado</TableHead>
-                {canSeePricing.neto && <TableHead variant="price">Neto</TableHead>}
-                {canSeePricing.markup && <TableHead variant="markup">Markup</TableHead>}
-                <TableHead variant="price">Precio Venta</TableHead>
-                {canEdit && <TableHead>Acciones</TableHead>}
+                <TableHead>Paquete</TableHead>
+                {visibleColumns.destino && <TableHead>Destino</TableHead>}
+                {visibleColumns.temporada && <TableHead>Temporada</TableHead>}
+                {visibleColumns.tipo && <TableHead>Tipo</TableHead>}
+                {visibleColumns.noches && (
+                  <TableHead className="text-right">Noches</TableHead>
+                )}
+                {visibleColumns.estado && <TableHead>Estado</TableHead>}
+                {visibleColumns.precio &&
+                  canSeePricing.venta !== false && (
+                    <TableHead variant="price">Precio</TableHead>
+                  )}
+                {canEdit && (
+                  <TableHead className="w-[1%] whitespace-nowrap">
+                    Acciones
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedPaquetes.map((paquete) => (
-                <TableRow
-                  key={paquete.id}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/paquetes/${paquete.id}`)}
-                >
-                  <TableCell variant="id">{paquete.id.slice(-4)}</TableCell>
-                  <TableCell className="font-medium text-neutral-800">
-                    {paquete.titulo}
-                  </TableCell>
-                  <TableCell>{paquete.destino || destinoMap[paquete.id] || "--"}</TableCell>
-                  <TableCell>{temporadaMap[paquete.temporadaId] ?? "--"}</TableCell>
-                  <TableCell>{paquete.noches}</TableCell>
-                  <TableCell>
-                    <Badge variant={estadoBadge[paquete.estado].variant}>
-                      {estadoBadge[paquete.estado].label}
-                    </Badge>
-                  </TableCell>
-                  {canSeePricing.neto && (
-                    <TableCell variant="price">
-                      {formatCurrency(preciosMap[paquete.id]?.netoFijos ?? paquete.netoCalculado)}
-                    </TableCell>
-                  )}
-                  {canSeePricing.markup && (
-                    <TableCell variant="markup">
-                      {(() => {
-                        const pricing = preciosMap[paquete.id];
-                        if (pricing && pricing.opcionFactors.length > 1) {
-                          const minF = Math.min(...pricing.opcionFactors);
-                          const maxF = Math.max(...pricing.opcionFactors);
-                          return `${minF} — ${maxF}`;
-                        }
-                        return pricing?.opcionFactors[0] ?? paquete.markup;
-                      })()}
-                    </TableCell>
-                  )}
-                  <TableCell variant="price" className="font-semibold">
-                    {(() => {
-                      const pricing = preciosMap[paquete.id];
-                      if (!pricing || pricing.min === null) return formatCurrency(paquete.precioVenta);
-                      if (pricing.min !== pricing.max) {
-                        return `${formatCurrency(pricing.min)} — ${formatCurrency(pricing.max!)}`;
-                      }
-                      return formatCurrency(pricing.min);
-                    })()}
-                  </TableCell>
-                  {canEdit && (
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/paquetes/${paquete.id}`);
-                          }}
-                          aria-label="Ver detalle"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/paquetes/${paquete.id}?tab=datos`);
-                          }}
-                          aria-label="Editar"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={(e) => handleClone(e, paquete.id)}
-                          aria-label="Clonar"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={(e) => handleOpenDelete(e, paquete)}
-                          aria-label="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+              {paginatedPaquetes.map((paquete) => {
+                const pricing = preciosMap[paquete.id];
+                const destinoNombre =
+                  resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "—";
+                const temporada = paquete.temporadaId
+                  ? temporadaById.get(paquete.temporadaId)
+                  : undefined;
+                const tipo = paquete.tipoPaqueteId
+                  ? tipoById.get(paquete.tipoPaqueteId)
+                  : undefined;
+                const price = formatPaquetePrice(pricing, paquete.precioVenta);
+
+                // Factor display for the price sub-line
+                const factorSub = (() => {
+                  if (!canSeePricing.markup || !pricing || pricing.opcionFactors.length === 0)
+                    return null;
+                  const fs = pricing.opcionFactors;
+                  if (fs.length === 1) return fs[0].toFixed(2);
+                  const min = Math.min(...fs);
+                  const max = Math.max(...fs);
+                  return min === max
+                    ? min.toFixed(2)
+                    : `${min.toFixed(2)}–${max.toFixed(2)}`;
+                })();
+
+                return (
+                  <TableRow
+                    key={paquete.id}
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/paquetes/${paquete.id}`)}
+                  >
+                    {/* Título (with destino sublabel when that column is hidden) */}
+                    <TableCell className="max-w-[280px]">
+                      <div className="flex flex-col">
+                        <span className="truncate font-medium text-neutral-900">
+                          {paquete.titulo}
+                        </span>
+                        {!visibleColumns.destino && (
+                          <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-neutral-400">
+                            <MapPin size={10} strokeWidth={2} />
+                            {destinoNombre}
+                          </span>
+                        )}
                       </div>
                     </TableCell>
-                  )}
-                </TableRow>
-              ))}
+
+                    {visibleColumns.destino && (
+                      <TableCell>
+                        <span className="text-[12.5px] text-neutral-600">
+                          {destinoNombre}
+                        </span>
+                      </TableCell>
+                    )}
+
+                    {visibleColumns.temporada && (
+                      <TableCell>
+                        {temporada ? (
+                          <span className="text-[12px] text-neutral-600">
+                            {temporada.nombre.replace(/\s*\(.*\)/, "").trim()}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-neutral-300">—</span>
+                        )}
+                      </TableCell>
+                    )}
+
+                    {visibleColumns.tipo && (
+                      <TableCell>
+                        {tipo ? (
+                          <span className="text-[12px] text-neutral-600">
+                            {tipo.nombre}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-neutral-300">—</span>
+                        )}
+                      </TableCell>
+                    )}
+
+                    {visibleColumns.noches && (
+                      <TableCell className="text-right font-mono text-[12px] tabular-nums text-neutral-600">
+                        {paquete.noches > 0 ? paquete.noches : "—"}
+                      </TableCell>
+                    )}
+
+                    {visibleColumns.estado && (
+                      <TableCell>
+                        <Badge variant={estadoBadge[paquete.estado].variant}>
+                          {estadoBadge[paquete.estado].label}
+                        </Badge>
+                      </TableCell>
+                    )}
+
+                    {visibleColumns.precio && canSeePricing.venta !== false && (
+                      <TableCell variant="price">
+                        <div className="flex flex-col items-end">
+                          <span
+                            className={`font-mono font-semibold tabular-nums text-neutral-900 ${
+                              price.isRange ? "text-[12.5px]" : "text-[13.5px]"
+                            }`}
+                          >
+                            {price.main}
+                          </span>
+                          {(canSeePricing.neto || factorSub) && (
+                            <span className="mt-0.5 flex items-center gap-1 font-mono text-[10px] tabular-nums text-neutral-400">
+                              {canSeePricing.neto && pricing && (
+                                <>neto {formatCurrency(pricing.netoFijos)}</>
+                              )}
+                              {canSeePricing.neto && factorSub && <span>·</span>}
+                              {factorSub && <>×{factorSub}</>}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
+
+                    {canEdit && (
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button
+                            variant="icon"
+                            size="xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/paquetes/${paquete.id}`);
+                            }}
+                            aria-label="Ver detalle"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="icon"
+                            size="xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/paquetes/${paquete.id}?tab=datos`);
+                            }}
+                            aria-label="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="icon"
+                            size="xs"
+                            onClick={(e) => handleClone(e, paquete.id)}
+                            aria-label="Clonar"
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="icon"
+                            size="xs"
+                            onClick={(e) => handleOpenDelete(e, paquete)}
+                            aria-label="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
-          {/* Right fade scroll indicator (mobile) */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-white/80 to-transparent md:hidden" />
-          </div>
 
-          <div className="mt-4 flex justify-center">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
-        </>
+          {/* Fade indicator for horizontal scroll on mobile */}
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent md:hidden" />
+        </motion.div>
       )}
 
-      {/* Delete confirmation modal */}
+      {/* ===================== Pagination ===================== */}
+      {filteredPaquetes.length > itemsPerPage && (
+        <div className="mt-6 flex justify-center">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
+
+      {/* ===================== Delete modal ===================== */}
       <Modal
         open={!!deleteTarget}
         onOpenChange={(open) => {
@@ -439,13 +878,16 @@ export default function PaquetesPage() {
                 ? { x: [...interactions.deleteShake.animate.x] }
                 : {}
             }
-            transition={isShaking ? interactions.deleteShake.transition : undefined}
+            transition={
+              isShaking ? interactions.deleteShake.transition : undefined
+            }
           >
             <p className="text-neutral-700">
-              Esta seguro que desea eliminar &ldquo;{deleteTarget?.titulo}&rdquo;?
+              ¿Está seguro que desea eliminar &ldquo;{deleteTarget?.titulo}
+              &rdquo;?
             </p>
-            <p className="text-sm text-neutral-400 mt-2">
-              Esta accion no se puede deshacer.
+            <p className="mt-2 text-sm text-neutral-400">
+              Esta acción no se puede deshacer.
             </p>
           </motion.div>
         </ModalBody>
