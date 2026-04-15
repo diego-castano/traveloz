@@ -602,8 +602,6 @@ const IATA_TO_CITY: Record<string, Match> = {
   IGU: { pais: 'Brasil', ciudad: 'Foz de Iguazú' },
   FOR: { pais: 'Brasil', ciudad: 'Natal' },
   JPA: { pais: 'Brasil', ciudad: 'Natal' },
-  FOR: { pais: 'Brasil', ciudad: 'Natal' },
-  JPA: { pais: 'Brasil', ciudad: 'Natal' },
   TQO: { pais: 'México', ciudad: 'Tulum' },
   GDL: { pais: 'México', ciudad: 'Ciudad de México' },
   LIM: { pais: 'Perú', ciudad: 'Lima' },
@@ -905,10 +903,10 @@ async function main() {
       else counts.set(key, { match: m, count: 1 });
     }
     let best: { match: Match; count: number } | null = null;
-    for (const entry of counts.values()) {
+    counts.forEach((entry) => {
       if (!best || entry.count > best.count) best = entry;
-    }
-    return best?.match ?? null;
+    });
+    return best ? (best as { match: Match; count: number }).match : null;
   }
 
   // Alojamientos — only process those without paisId (safe for re-runs)
