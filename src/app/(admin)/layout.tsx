@@ -17,25 +17,27 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Sidebar, SidebarProvider } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { AdminBackground } from "@/components/layout/AdminBackground";
 import { PageTransitionWrapper } from "@/components/layout/PageTransitionWrapper";
-import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { status } = useSession();
   const router = useRouter();
 
-  // Redirect unauthenticated users to /login
+  // Only redirect once the session is definitively unauthenticated.
+  // During "loading" we must stay put, otherwise a hard reload races with
+  // hydration and punts the user to /login → / → /dashboard.
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (status === "unauthenticated") {
       router.push("/login");
     }
-  }, [isAuthenticated, router]);
+  }, [status, router]);
 
-  // Return null while not authenticated to prevent flash of admin content
-  if (!isAuthenticated) {
+  // Hold render until NextAuth has resolved the session one way or another
+  if (status !== "authenticated") {
     return null;
   }
 

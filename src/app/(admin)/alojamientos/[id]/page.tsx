@@ -1,17 +1,23 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import {
   ImageUploader,
   type ImageItem,
 } from "@/components/ui/ImageUploader";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
+import { FormSection, FormSections } from "@/components/ui/form/FormSection";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
+import { SelectCascade } from "@/components/ui/form/SelectCascade";
+import {
+  InlineEditTable,
+  type InlineEditColumn,
+} from "@/components/ui/form/InlineEditTable";
 import { PriceImpactModal } from "@/components/ui/PriceImpactModal";
 import {
   useServiceState,
@@ -19,11 +25,15 @@ import {
   useServiceLoading,
 } from "@/components/providers/ServiceProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
-import { usePaises, useRegimenes, useProveedores } from "@/components/providers/CatalogProvider";
+import {
+  usePaises,
+  useRegimenes,
+} from "@/components/providers/CatalogProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
-import type { PrecioAlojamiento, AlojamientoFoto } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils";
+import type { PrecioAlojamiento } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // AlojamientoDetailPage
@@ -49,7 +59,6 @@ export default function AlojamientoDetailPage() {
 
   const paises = usePaises();
   const regimenes = useRegimenes();
-  const proveedores = useProveedores();
   const packageState = usePackageState();
   const loading = useServiceLoading();
 
@@ -75,26 +84,10 @@ export default function AlojamientoDetailPage() {
   const [nombre, setNombre] = useState(alojamiento?.nombre ?? "");
   const [paisId, setPaisId] = useState(alojamiento?.paisId ?? "");
   const [ciudadId, setCiudadId] = useState(alojamiento?.ciudadId ?? "");
-  const [categoria, setCategoria] = useState(String(alojamiento?.categoria ?? 3));
-  const [sitioWeb, setSitioWeb] = useState(alojamiento?.sitioWeb ?? "");
-
-  // Cascading ciudades
-  const ciudadOptions = useMemo(
-    () =>
-      paises
-        .find((p) => p.id === paisId)
-        ?.ciudades.map((c) => ({ value: c.id, label: c.nombre })) ?? [],
-    [paises, paisId],
+  const [categoria, setCategoria] = useState(
+    String(alojamiento?.categoria ?? 3),
   );
-
-  // Reset ciudad when pais changes (only if paisId actually changed from user action)
-  const [prevPaisId, setPrevPaisId] = useState(paisId);
-  useEffect(() => {
-    if (paisId !== prevPaisId) {
-      setCiudadId("");
-      setPrevPaisId(paisId);
-    }
-  }, [paisId, prevPaisId]);
+  const [sitioWeb, setSitioWeb] = useState(alojamiento?.sitioWeb ?? "");
 
   function handleSaveHotel() {
     if (!alojamiento) return;
@@ -106,8 +99,18 @@ export default function AlojamientoDetailPage() {
       categoria: Number(categoria),
       sitioWeb: sitioWeb.trim() || null,
     });
-    toast("success", "Alojamiento actualizado", "Los cambios fueron guardados correctamente.");
+    toast(
+      "success",
+      "Alojamiento actualizado",
+      "Los cambios fueron guardados correctamente.",
+    );
   }
+
+  // -- Price impact modal state --
+  const [impactModalOpen, setImpactModalOpen] = useState(false);
+  const [pendingSaveAction, setPendingSaveAction] = useState<
+    (() => void) | null
+  >(null);
 
   // ---------------------------------------------------------------------------
   // Card 2: Inline price table
@@ -117,81 +120,137 @@ export default function AlojamientoDetailPage() {
     (p) => p.alojamientoId === params.id,
   );
 
-  // 4-state inline edit pattern
-  const [editingRowId, setEditingRowId] = useState<string | null>(null);
-  const [draftRow, setDraftRow] = useState<Partial<PrecioAlojamiento>>({});
-  const [addingRow, setAddingRow] = useState(false);
-  const [newRow, setNewRow] = useState<Partial<PrecioAlojamiento>>({
-    periodoDesde: "",
-    periodoHasta: "",
-    precioPorNoche: 0,
-    regimenId: "",
-  });
+  async function handleSavePrecio(row: PrecioAlojamiento) {
+    const doSave = () => {
+      try {
+        if (row.id) {
+          updatePrecioAlojamiento(row);
+          toast(
+            "success",
+            "Precio actualizado",
+            "El periodo fue actualizado correctamente.",
+          );
+        } else {
+          createPrecioAlojamiento({
+            alojamientoId: alojamiento!.id,
+            periodoDesde: row.periodoDesde ?? "",
+            periodoHasta: row.periodoHasta ?? "",
+            precioPorNoche: Number(row.precioPorNoche ?? 0),
+            regimenId: row.regimenId ?? "",
+          });
+          toast(
+            "success",
+            "Periodo agregado",
+            "El periodo de precio fue agregado correctamente.",
+          );
+        }
+      } catch (err) {
+        toast(
+          "error",
+          "Error al guardar",
+          err instanceof Error ? err.message : "Intenta nuevamente",
+        );
+      }
+    };
 
-  // -- Price impact modal state --
-  const [impactModalOpen, setImpactModalOpen] = useState(false);
-  const [pendingSaveAction, setPendingSaveAction] = useState<(() => void) | null>(null);
-
-  function handleEditRow(precio: PrecioAlojamiento) {
-    setEditingRowId(precio.id);
-    setDraftRow({ ...precio });
-  }
-
-  function doSaveEdit() {
-    if (!editingRowId) return;
-    updatePrecioAlojamiento(draftRow as PrecioAlojamiento);
-    // Critical: reset BOTH states to prevent edit state desync
-    setEditingRowId(null);
-    setDraftRow({});
-    toast("success", "Precio actualizado", "El periodo fue actualizado correctamente.");
-  }
-
-  function handleSaveEdit() {
     if (affectedPackageCount > 0) {
-      setPendingSaveAction(() => doSaveEdit);
+      setPendingSaveAction(() => doSave);
       setImpactModalOpen(true);
     } else {
-      doSaveEdit();
+      doSave();
     }
   }
 
-  function handleCancelEdit() {
-    setEditingRowId(null);
-    setDraftRow({});
-  }
-
-  function doSaveNewRow() {
-    if (!alojamiento) return;
-    createPrecioAlojamiento({
-      alojamientoId: alojamiento.id,
-      periodoDesde: newRow.periodoDesde ?? "",
-      periodoHasta: newRow.periodoHasta ?? "",
-      precioPorNoche: Number(newRow.precioPorNoche ?? 0),
-      regimenId: newRow.regimenId ?? "",
-    });
-    setAddingRow(false);
-    setNewRow({ periodoDesde: "", periodoHasta: "", precioPorNoche: 0, regimenId: "" });
-    toast("success", "Periodo agregado", "El periodo de precio fue agregado correctamente.");
-  }
-
-  function handleSaveNewRow() {
-    if (affectedPackageCount > 0) {
-      setPendingSaveAction(() => doSaveNewRow);
-      setImpactModalOpen(true);
-    } else {
-      doSaveNewRow();
+  function handleDeletePrecio(row: PrecioAlojamiento) {
+    try {
+      deletePrecioAlojamiento(row.id);
+      toast(
+        "success",
+        "Periodo eliminado",
+        "El periodo fue eliminado correctamente.",
+      );
+    } catch (err) {
+      toast(
+        "error",
+        "Error al eliminar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
     }
   }
 
-  function handleCancelNewRow() {
-    setAddingRow(false);
-    setNewRow({ periodoDesde: "", periodoHasta: "", precioPorNoche: 0, regimenId: "" });
-  }
+  const regimenOptions = useMemo(
+    () => regimenes.map((r) => ({ value: r.id, label: r.nombre })),
+    [regimenes],
+  );
 
-  function handleDeleteRow(id: string) {
-    deletePrecioAlojamiento(id);
-    toast("success", "Periodo eliminado", "El periodo fue eliminado correctamente.");
-  }
+  const regimenMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const r of regimenes) m[r.id] = r.nombre;
+    return m;
+  }, [regimenes]);
+
+  const precioColumns: InlineEditColumn<PrecioAlojamiento>[] = [
+    {
+      key: "periodoDesde",
+      label: "Periodo Desde",
+      width: "170px",
+      render: (r) => r.periodoDesde,
+      editor: (r, update) => (
+        <Input
+          type="date"
+          value={r.periodoDesde ?? ""}
+          onChange={(e) => update("periodoDesde", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "periodoHasta",
+      label: "Periodo Hasta",
+      width: "170px",
+      render: (r) => r.periodoHasta,
+      editor: (r, update) => (
+        <Input
+          type="date"
+          value={r.periodoHasta ?? ""}
+          onChange={(e) => update("periodoHasta", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "precioPorNoche",
+      label: "USD / noche",
+      align: "right",
+      width: "150px",
+      render: (r) => (
+        <span className="font-mono text-[13px] font-semibold text-neutral-900">
+          {formatCurrency(r.precioPorNoche)}
+        </span>
+      ),
+      editor: (r, update) => (
+        <Input
+          type="number"
+          value={String(r.precioPorNoche ?? 0)}
+          onChange={(e) =>
+            update("precioPorNoche", parseFloat(e.target.value) || 0)
+          }
+          className="text-right"
+        />
+      ),
+    },
+    {
+      key: "regimenId",
+      label: "Regimen",
+      render: (r) => regimenMap[r.regimenId] ?? "—",
+      editor: (r, update) => (
+        <Select
+          value={r.regimenId ?? ""}
+          onValueChange={(v) => update("regimenId", v)}
+          options={regimenOptions}
+          placeholder="Seleccionar regimen..."
+        />
+      ),
+    },
+  ];
 
   // ---------------------------------------------------------------------------
   // Card 3: Photo grid
@@ -249,17 +308,19 @@ export default function AlojamientoDetailPage() {
   if (!alojamiento) {
     return (
       <>
-        <PageHeader title="Alojamiento no encontrado" />
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <p className="text-sm mb-4">El alojamiento solicitado no existe o fue eliminado.</p>
-          <Button
-            variant="ghost"
-            leftIcon={<ArrowLeft className="h-4 w-4" />}
-            onClick={() => router.push("/alojamientos")}
-          >
-            Volver a Alojamientos
-          </Button>
-        </div>
+        <DataTablePageHeader
+          title="Alojamiento no encontrado"
+          subtitle="El alojamiento solicitado no existe o fue eliminado."
+          action={
+            <Button
+              variant="ghost"
+              leftIcon={<ArrowLeft className="h-4 w-4" />}
+              onClick={() => router.push("/alojamientos")}
+            >
+              Volver
+            </Button>
+          }
+        />
       </>
     );
   }
@@ -272,7 +333,7 @@ export default function AlojamientoDetailPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title={alojamiento.nombre}
         subtitle="Detalle del alojamiento"
         action={
@@ -286,50 +347,52 @@ export default function AlojamientoDetailPage() {
         }
       />
 
-      <div className="space-y-6">
+      <FormSections>
         {/* ------------------------------------------------------------------ */}
-        {/* Card 1 — Hotel data form                                           */}
+        {/* Datos del hotel                                                    */}
         {/* ------------------------------------------------------------------ */}
-        <Card className="p-0" static>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-              Datos del Hotel
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nombre -- full width */}
-              <div className="col-span-1 md:col-span-2">
-                <Input
-                  label="Nombre del Hotel"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Nombre del hotel"
-                  readOnly={isReadOnly}
-                />
-              </div>
+        <FormSection
+          title="Datos del hotel"
+          description="Nombre, categoria y ubicacion del hotel."
+        >
+          <FieldGroup columns={2}>
+            <Field span={2}>
+              <FieldLabel required>Nombre del hotel</FieldLabel>
+              <Input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Nombre del hotel"
+                readOnly={isReadOnly}
+              />
+            </Field>
 
-              {/* Pais */}
-              <Select
-                label="Pais"
-                value={paisId}
-                onValueChange={setPaisId}
-                placeholder="Seleccionar pais..."
-                options={paises.map((p) => ({ value: p.id, label: p.nombre }))}
+            <Field span={2}>
+              <SelectCascade
+                parentLabel="Pais"
+                parentValue={paisId}
+                onParentChange={setPaisId}
+                parentOptions={paises.map((p) => ({
+                  value: p.id,
+                  label: p.nombre,
+                }))}
+                childLabel="Ciudad"
+                childValue={ciudadId}
+                onChildChange={setCiudadId}
+                childOptions={(selectedPaisId) =>
+                  paises
+                    .find((p) => p.id === selectedPaisId)
+                    ?.ciudades.map((c) => ({
+                      value: c.id,
+                      label: c.nombre,
+                    })) ?? []
+                }
                 disabled={isReadOnly}
               />
+            </Field>
 
-              {/* Ciudad (cascading) */}
+            <Field>
+              <FieldLabel>Categoria (estrellas)</FieldLabel>
               <Select
-                label="Ciudad"
-                value={ciudadId}
-                onValueChange={setCiudadId}
-                placeholder={paisId ? "Seleccionar ciudad..." : "Primero seleccione un pais"}
-                options={ciudadOptions}
-                disabled={isReadOnly || !paisId || ciudadOptions.length === 0}
-              />
-
-              {/* Categoria */}
-              <Select
-                label="Categoria (estrellas)"
                 value={categoria}
                 onValueChange={setCategoria}
                 options={[
@@ -341,260 +404,63 @@ export default function AlojamientoDetailPage() {
                 ]}
                 disabled={isReadOnly}
               />
+            </Field>
 
-              {/* Sitio Web */}
+            <Field>
+              <FieldLabel>Sitio web (opcional)</FieldLabel>
               <Input
-                label="Sitio Web (opcional)"
                 value={sitioWeb}
                 onChange={(e) => setSitioWeb(e.target.value)}
                 placeholder="https://..."
                 type="url"
                 readOnly={isReadOnly}
               />
+            </Field>
+          </FieldGroup>
 
-              {/* Save button */}
-              {canEdit && (
-                <div className="col-span-1 md:col-span-2 flex justify-end pt-2">
-                  <Button onClick={handleSaveHotel}>Guardar Cambios</Button>
-                </div>
-              )}
+          {canEdit && (
+            <div className="mt-4 flex justify-end">
+              <Button onClick={handleSaveHotel}>Guardar Cambios</Button>
             </div>
-          </div>
-        </Card>
+          )}
+        </FormSection>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Card 2 — Inline price-per-period table                             */}
+        {/* Precios por periodo                                                */}
         {/* ------------------------------------------------------------------ */}
-        <Card className="p-0" static>
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-neutral-800">
-                Precios por Periodo
-              </h3>
-              {canEdit && !addingRow && (
-                <Button
-                  size="sm"
-                  leftIcon={<Plus className="h-4 w-4" />}
-                  onClick={() => setAddingRow(true)}
-                >
-                  Agregar periodo
-                </Button>
-              )}
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-200/60">
-                    <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                      Periodo Desde
-                    </th>
-                    <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                      Periodo Hasta
-                    </th>
-                    <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                      USD / noche / persona
-                    </th>
-                    <th className="text-left py-2 pr-4 text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                      Regimen
-                    </th>
-                    {canEdit && (
-                      <th className="text-left py-2 text-xs font-medium text-neutral-500 uppercase tracking-wide">
-                        Acciones
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-100">
-                  {precios.map((precio) =>
-                    editingRowId === precio.id ? (
-                      // -- Edit mode row --
-                      <tr key={precio.id} className="py-2">
-                        <td className="py-2 pr-3">
-                          <input
-                            type="date"
-                            value={draftRow.periodoDesde ?? ""}
-                            onChange={(e) =>
-                              setDraftRow((d) => ({ ...d, periodoDesde: e.target.value }))
-                            }
-                            className="w-full rounded border border-neutral-200 bg-white/80 px-2 py-1.5 text-sm text-neutral-700 outline-none focus:border-brand-teal-500"
-                          />
-                        </td>
-                        <td className="py-2 pr-3">
-                          <input
-                            type="date"
-                            value={draftRow.periodoHasta ?? ""}
-                            onChange={(e) =>
-                              setDraftRow((d) => ({ ...d, periodoHasta: e.target.value }))
-                            }
-                            className="w-full rounded border border-neutral-200 bg-white/80 px-2 py-1.5 text-sm text-neutral-700 outline-none focus:border-brand-teal-500"
-                          />
-                        </td>
-                        <td className="py-2 pr-3">
-                          <input
-                            type="number"
-                            value={draftRow.precioPorNoche ?? 0}
-                            onChange={(e) =>
-                              setDraftRow((d) => ({
-                                ...d,
-                                precioPorNoche: Number(e.target.value),
-                              }))
-                            }
-                            className="w-32 rounded border border-neutral-200 bg-white/80 px-2 py-1.5 text-sm text-neutral-700 outline-none focus:border-brand-teal-500"
-                          />
-                        </td>
-                        <td className="py-2 pr-3">
-                          <Select
-                            value={draftRow.regimenId ?? ""}
-                            onValueChange={(v) =>
-                              setDraftRow((d) => ({ ...d, regimenId: v }))
-                            }
-                            options={regimenes.map((r) => ({
-                              value: r.id,
-                              label: r.nombre,
-                            }))}
-                            placeholder="Seleccionar regimen..."
-                          />
-                        </td>
-                        <td className="py-2">
-                          <div className="flex items-center gap-1">
-                            <Button size="xs" onClick={handleSaveEdit}>
-                              Guardar
-                            </Button>
-                            <Button size="xs" variant="ghost" onClick={handleCancelEdit}>
-                              Cancelar
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      // -- View mode row --
-                      <tr key={precio.id} className="py-2">
-                        <td className="py-3 pr-4 text-neutral-700">
-                          {precio.periodoDesde}
-                        </td>
-                        <td className="py-3 pr-4 text-neutral-700">
-                          {precio.periodoHasta}
-                        </td>
-                        <td className="py-3 pr-4 text-neutral-700">
-                          USD {precio.precioPorNoche}
-                        </td>
-                        <td className="py-3 pr-4 text-neutral-700">
-                          {regimenes.find((r) => r.id === precio.regimenId)?.nombre ?? "--"}
-                        </td>
-                        {canEdit && (
-                          <td className="py-3">
-                            <div className="flex items-center gap-1">
-                              <Button
-                                variant="icon"
-                                size="xs"
-                                onClick={() => handleEditRow(precio)}
-                                aria-label="Editar periodo"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="icon"
-                                size="xs"
-                                onClick={() => handleDeleteRow(precio.id)}
-                                aria-label="Eliminar periodo"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ),
-                  )}
-
-                  {/* Add row */}
-                  {addingRow && (
-                    <tr>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="date"
-                          value={newRow.periodoDesde ?? ""}
-                          onChange={(e) =>
-                            setNewRow((r) => ({ ...r, periodoDesde: e.target.value }))
-                          }
-                          className="w-full rounded border border-neutral-200 bg-white/80 px-2 py-1.5 text-sm text-neutral-700 outline-none focus:border-brand-teal-500"
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="date"
-                          value={newRow.periodoHasta ?? ""}
-                          onChange={(e) =>
-                            setNewRow((r) => ({ ...r, periodoHasta: e.target.value }))
-                          }
-                          className="w-full rounded border border-neutral-200 bg-white/80 px-2 py-1.5 text-sm text-neutral-700 outline-none focus:border-brand-teal-500"
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="number"
-                          value={newRow.precioPorNoche ?? 0}
-                          onChange={(e) =>
-                            setNewRow((r) => ({
-                              ...r,
-                              precioPorNoche: Number(e.target.value),
-                            }))
-                          }
-                          className="w-32 rounded border border-neutral-200 bg-white/80 px-2 py-1.5 text-sm text-neutral-700 outline-none focus:border-brand-teal-500"
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Select
-                          value={newRow.regimenId ?? ""}
-                          onValueChange={(v) =>
-                            setNewRow((r) => ({ ...r, regimenId: v }))
-                          }
-                          options={regimenes.map((r) => ({
-                            value: r.id,
-                            label: r.nombre,
-                          }))}
-                          placeholder="Seleccionar regimen..."
-                        />
-                      </td>
-                      <td className="py-2">
-                        <div className="flex items-center gap-1">
-                          <Button size="xs" onClick={handleSaveNewRow}>
-                            Guardar
-                          </Button>
-                          <Button size="xs" variant="ghost" onClick={handleCancelNewRow}>
-                            Cancelar
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* Empty state */}
-                  {precios.length === 0 && !addingRow && (
-                    <tr>
-                      <td
-                        colSpan={canEdit ? 5 : 4}
-                        className="py-8 text-center text-sm text-neutral-400"
-                      >
-                        No hay periodos de precio registrados
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </Card>
+        <FormSection
+          title="Precios por periodo"
+          description="Tarifas por noche y regimen segun la temporada."
+        >
+          <InlineEditTable<PrecioAlojamiento>
+            columns={precioColumns}
+            rows={precios}
+            getRowId={(r) => r.id}
+            onSave={handleSavePrecio}
+            onDelete={canEdit ? handleDeletePrecio : undefined}
+            onAdd={
+              canEdit
+                ? () =>
+                    ({
+                      periodoDesde: "",
+                      periodoHasta: "",
+                      precioPorNoche: 0,
+                      regimenId: "",
+                    }) as Partial<PrecioAlojamiento>
+                : undefined
+            }
+            addLabel="Agregar periodo"
+            emptyMessage="No hay periodos de precio registrados"
+          />
+        </FormSection>
 
         {/* ------------------------------------------------------------------ */}
-        {/* Card 3 — Photo grid                                                */}
+        {/* Fotos                                                              */}
         {/* ------------------------------------------------------------------ */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-            Fotos del Hotel
-          </h3>
-
+        <FormSection
+          title="Fotos"
+          description="Arrastra o sube las fotos del hotel."
+        >
           <ImageUploader
             images={images}
             onAdd={canEdit ? handleAdd : undefined}
@@ -604,12 +470,12 @@ export default function AlojamientoDetailPage() {
           />
 
           {images.length === 0 && !canEdit && (
-            <p className="text-sm text-neutral-400 text-center mt-4">
+            <p className="mt-4 text-center text-sm text-neutral-400">
               No hay fotos para este alojamiento
             </p>
           )}
-        </Card>
-      </div>
+        </FormSection>
+      </FormSections>
 
       {/* Price impact confirmation modal */}
       <PriceImpactModal

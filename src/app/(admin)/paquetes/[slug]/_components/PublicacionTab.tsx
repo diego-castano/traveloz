@@ -5,7 +5,15 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Select } from "@/components/ui/Select";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Tag, type TagColor } from "@/components/ui/Tag";
-import { Card, CardContent, CardHeader } from "@/components/ui/Card";
+import {
+  FormSection,
+  FormSections,
+} from "@/components/ui/form/FormSection";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/form/Field";
 import {
   usePackageActions,
   usePaqueteServices,
@@ -50,23 +58,6 @@ const hexToTagColor: Record<string, TagColor> = {
 
 function getTagColor(hex: string): TagColor {
   return hexToTagColor[hex.toLowerCase()] ?? "teal";
-}
-
-// ---------------------------------------------------------------------------
-// Section divider
-// ---------------------------------------------------------------------------
-
-function SectionDivider() {
-  return (
-    <div
-      className="my-6"
-      style={{
-        height: 1,
-        background:
-          "linear-gradient(90deg, transparent 0%, rgba(228,230,242,0.6) 20%, rgba(228,230,242,0.6) 80%, transparent 100%)",
-      }}
-    />
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -163,124 +154,114 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <h3 className="text-lg font-semibold text-neutral-800">
-          Publicacion
-        </h3>
-      </CardHeader>
-
-      <CardContent className="space-y-0">
-        {/* ---------------------------------------------------------------
-         * Section 1: Estado de Publicacion
-         * --------------------------------------------------------------- */}
-        <div>
-          <h4 className="text-sm font-semibold text-neutral-700 mb-4">
-            Estado de Publicacion
-          </h4>
-
-          {/* Toggles row */}
-          <div className="flex items-center gap-8 mb-4">
+    <FormSections>
+      {/* ------------------------------------------------------------------ */}
+      {/* Estado de publicacion                                              */}
+      {/* ------------------------------------------------------------------ */}
+      <FormSection
+        title="Estado de publicacion"
+        description="Controla si el paquete es visible en el frontend publico y si aparece como destacado en la home."
+      >
+        <div className="flex flex-col gap-4">
+          <Field orientation="horizontal">
             <Toggle
               checked={isPublicado}
               onCheckedChange={handlePublicadoToggle}
               disabled={!canEdit}
               label="Publicado"
             />
+          </Field>
+          <Field orientation="horizontal">
             <Toggle
               checked={paquete.destacado}
               onCheckedChange={handleDestacadoToggle}
               disabled={!canEdit}
               label="Destacado"
             />
-          </div>
+          </Field>
 
-          {/* Estado selector */}
-          <div className="max-w-xs">
-            <Select
-              value={paquete.estado}
-              onValueChange={handleEstadoChange}
-              options={ESTADO_OPTIONS}
-              label="Estado"
-              disabled={!canEdit}
-            />
-          </div>
+          <FieldGroup columns={2}>
+            <Field>
+              <FieldLabel>Estado</FieldLabel>
+              <Select
+                value={paquete.estado}
+                onValueChange={handleEstadoChange}
+                options={ESTADO_OPTIONS}
+                disabled={!canEdit}
+              />
+            </Field>
+          </FieldGroup>
         </div>
+      </FormSection>
 
-        <SectionDivider />
-
-        {/* ---------------------------------------------------------------
-         * Section 2: Periodo de Validez
-         * --------------------------------------------------------------- */}
-        <div>
-          <h4 className="text-sm font-semibold text-neutral-700 mb-4">
-            Periodo de Validez
-          </h4>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* ------------------------------------------------------------------ */}
+      {/* Periodo de validez                                                 */}
+      {/* ------------------------------------------------------------------ */}
+      <FormSection
+        title="Periodo de validez"
+        description="El paquete se auto-desactiva al llegar a la fecha de validez hasta."
+      >
+        <FieldGroup columns={2}>
+          <Field>
+            <FieldLabel>Valido desde</FieldLabel>
             <DatePicker
               value={new Date(paquete.validezDesde)}
               onChange={handleValidezDesdeChange}
-              label="Valido Desde"
               disabled={!canEdit}
             />
+          </Field>
+          <Field>
+            <FieldLabel>Valido hasta</FieldLabel>
             <DatePicker
               value={new Date(paquete.validezHasta)}
               onChange={handleValidezHastaChange}
-              label="Valido Hasta"
               disabled={!canEdit}
             />
-          </div>
-        </div>
+          </Field>
+        </FieldGroup>
+      </FormSection>
 
-        <SectionDivider />
-
-        {/* ---------------------------------------------------------------
-         * Section 3: Etiquetas
-         * --------------------------------------------------------------- */}
-        <div>
-          <h4 className="text-sm font-semibold text-neutral-700 mb-4">
-            Etiquetas
-          </h4>
-
-          {/* Assigned etiquetas as removable Tag pills */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {assignedPaqueteEtiquetas.length === 0 ? (
-              <p className="text-sm text-neutral-400 italic">
-                Sin etiquetas asignadas
-              </p>
-            ) : (
-              assignedPaqueteEtiquetas.map((pe) => {
-                const etiqueta = etiquetaMap.get(pe.etiquetaId);
-                if (!etiqueta) return null;
-                return (
-                  <Tag
-                    key={pe.id}
-                    color={getTagColor(etiqueta.color)}
-                    removable={canEdit}
-                    onRemove={() => handleRemoveEtiqueta(pe.id)}
-                  >
-                    {etiqueta.nombre}
-                  </Tag>
-                );
-              })
-            )}
-          </div>
-
-          {/* Add etiqueta dropdown (only shown for editors) */}
-          {canEdit && availableEtiquetas.length > 0 && (
-            <div className="max-w-xs">
-              <Select
-                value=""
-                onValueChange={handleAddEtiqueta}
-                options={etiquetaSelectOptions}
-                placeholder="Agregar Etiqueta"
-                label="Agregar Etiqueta"
-              />
-            </div>
+      {/* ------------------------------------------------------------------ */}
+      {/* Etiquetas                                                          */}
+      {/* ------------------------------------------------------------------ */}
+      <FormSection
+        title="Etiquetas"
+        description="Campanas, promociones y filtros que aplican a este paquete."
+      >
+        <div className="flex flex-wrap gap-2 mb-4 min-h-[32px]">
+          {assignedPaqueteEtiquetas.length === 0 ? (
+            <p className="text-[13px] text-neutral-400 italic">
+              Sin etiquetas asignadas
+            </p>
+          ) : (
+            assignedPaqueteEtiquetas.map((pe) => {
+              const etiqueta = etiquetaMap.get(pe.etiquetaId);
+              if (!etiqueta) return null;
+              return (
+                <Tag
+                  key={pe.id}
+                  color={getTagColor(etiqueta.color)}
+                  removable={canEdit}
+                  onRemove={() => handleRemoveEtiqueta(pe.id)}
+                >
+                  {etiqueta.nombre}
+                </Tag>
+              );
+            })
           )}
         </div>
-      </CardContent>
-    </Card>
+
+        {canEdit && availableEtiquetas.length > 0 && (
+          <div className="max-w-xs">
+            <Select
+              value=""
+              onValueChange={handleAddEtiqueta}
+              options={etiquetaSelectOptions}
+              placeholder="Agregar etiqueta..."
+            />
+          </div>
+        )}
+      </FormSection>
+    </FormSections>
   );
 }

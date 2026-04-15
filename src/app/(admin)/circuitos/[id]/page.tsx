@@ -2,12 +2,25 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, GripVertical, Pencil, Trash2, Check, X, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  GripVertical,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  Plus,
+} from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
+import { FormSection, FormSections } from "@/components/ui/form/FormSection";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
+import {
+  InlineEditTable,
+  type InlineEditColumn,
+} from "@/components/ui/form/InlineEditTable";
 import {
   useServiceState,
   useServiceActions,
@@ -20,13 +33,6 @@ import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/components/lib/cn";
 import type { CircuitoDia, PrecioCircuito } from "@/lib/types";
-
-// ---------------------------------------------------------------------------
-// Inline input styling consistent with glass pattern
-// ---------------------------------------------------------------------------
-
-const inlineInputClassName =
-  "w-full rounded-[6px] border border-neutral-150/50 bg-white/70 px-2 py-1 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#3BBFAD] focus:shadow-[0_0_0_2px_rgba(255,255,255,0.8),0_0_0_4px_rgba(59,191,173,0.4)] focus:bg-white/85 transition-all backdrop-blur-sm";
 
 // ---------------------------------------------------------------------------
 // CircuitoDetailPage
@@ -54,12 +60,17 @@ export default function CircuitoDetailPage() {
   const loading = useServiceLoading();
   const allProveedores = useProveedores();
   const proveedoresCircuitos = useMemo(
-    () => allProveedores.filter((p) => p.servicio === "CIRCUITOS" && !p.deletedAt),
+    () =>
+      allProveedores.filter(
+        (p) => p.servicio === "CIRCUITOS" && !p.deletedAt,
+      ),
     [allProveedores],
   );
 
   // -- Derive data --
-  const circuito = serviceState.circuitos.find((c) => c.id === id && !c.deletedAt);
+  const circuito = serviceState.circuitos.find(
+    (c) => c.id === id && !c.deletedAt,
+  );
 
   const dias = useMemo(
     () =>
@@ -69,7 +80,9 @@ export default function CircuitoDetailPage() {
     [serviceState.circuitoDias, id],
   );
 
-  const precios = serviceState.preciosCircuito.filter((p) => p.circuitoId === id);
+  const precios = serviceState.preciosCircuito.filter(
+    (p) => p.circuitoId === id,
+  );
 
   // ---------------------------------------------------------------------------
   // Section 1 — Header form state
@@ -84,20 +97,24 @@ export default function CircuitoDetailPage() {
   function handleSaveHeader() {
     if (!circuito) return;
     updateCircuito({ ...circuito, ...headerForm });
-    toast("success", "Circuito actualizado", "Los datos del circuito fueron guardados.");
+    toast(
+      "success",
+      "Circuito actualizado",
+      "Los datos del circuito fueron guardados.",
+    );
   }
 
   // ---------------------------------------------------------------------------
-  // Section 2 — Itinerary editor state
+  // Section 2 — Itinerary editor state (kept custom due to drag-and-drop)
   // ---------------------------------------------------------------------------
 
   const [editingDiaId, setEditingDiaId] = useState<string | null>(null);
   const [draftDia, setDraftDia] = useState<Partial<CircuitoDia>>({});
   const [addingDia, setAddingDia] = useState(false);
-  const [newDia, setNewDia] = useState<Partial<Omit<CircuitoDia, "id" | "circuitoId">>>({});
+  const [newDia, setNewDia] = useState<
+    Partial<Omit<CircuitoDia, "id" | "circuitoId">>
+  >({});
   const [dragOverId, setDragOverId] = useState<string | null>(null);
-
-  // Itinerary handlers
 
   function handleStartEditDia(dia: CircuitoDia) {
     setEditingDiaId(dia.id);
@@ -179,58 +196,100 @@ export default function CircuitoDetailPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Section 3 — Price table state (4-state inline edit)
+  // Section 3 — Price table (through InlineEditTable)
   // ---------------------------------------------------------------------------
 
-  const [editingPrecioId, setEditingPrecioId] = useState<string | null>(null);
-  const [draftPrecio, setDraftPrecio] = useState<Partial<PrecioCircuito>>({});
-  const [addingPrecio, setAddingPrecio] = useState(false);
-  const [newPrecio, setNewPrecio] = useState<
-    Partial<Omit<PrecioCircuito, "id" | "circuitoId">>
-  >({});
-
-  // Price handlers
-
-  function handleEditPrecio(precio: PrecioCircuito) {
-    setEditingPrecioId(precio.id);
-    setDraftPrecio({ ...precio });
+  async function handleSavePrecio(row: PrecioCircuito) {
+    try {
+      if (row.id) {
+        updatePrecioCircuito(row);
+        toast(
+          "success",
+          "Precio actualizado",
+          "El periodo fue guardado correctamente.",
+        );
+      } else {
+        createPrecioCircuito({
+          circuitoId: id,
+          periodoDesde: row.periodoDesde,
+          periodoHasta: row.periodoHasta,
+          precio: row.precio,
+        });
+        toast(
+          "success",
+          "Precio agregado",
+          "El nuevo periodo fue creado correctamente.",
+        );
+      }
+    } catch (err) {
+      toast(
+        "error",
+        "Error al guardar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
+    }
   }
 
-  function handleCancelEditPrecio() {
-    setEditingPrecioId(null);
-    setDraftPrecio({});
+  function handleDeletePrecio(row: PrecioCircuito) {
+    try {
+      deletePrecioCircuito(row.id);
+      toast("success", "Precio eliminado", "El periodo fue eliminado.");
+    } catch (err) {
+      toast(
+        "error",
+        "Error al eliminar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
+    }
   }
 
-  function handleSavePrecio() {
-    if (!editingPrecioId) return;
-    updatePrecioCircuito(draftPrecio as PrecioCircuito);
-    // Reset both states atomically to prevent desync
-    setEditingPrecioId(null);
-    setDraftPrecio({});
-    toast("success", "Precio actualizado", "El periodo fue guardado correctamente.");
-  }
-
-  function handleDeletePrecio(precioId: string) {
-    deletePrecioCircuito(precioId);
-    toast("success", "Precio eliminado", "El periodo fue eliminado.");
-  }
-
-  function handleSaveAddPrecio() {
-    createPrecioCircuito({
-      circuitoId: id,
-      periodoDesde: newPrecio.periodoDesde!,
-      periodoHasta: newPrecio.periodoHasta!,
-      precio: newPrecio.precio!,
-    });
-    toast("success", "Precio agregado", "El nuevo periodo fue creado correctamente.");
-    setAddingPrecio(false);
-    setNewPrecio({});
-  }
-
-  function handleCancelAddPrecio() {
-    setAddingPrecio(false);
-    setNewPrecio({});
-  }
+  const precioColumns: InlineEditColumn<PrecioCircuito>[] = [
+    {
+      key: "periodoDesde",
+      label: "Periodo Desde",
+      width: "180px",
+      render: (r) => r.periodoDesde,
+      editor: (r, update) => (
+        <Input
+          type="date"
+          value={r.periodoDesde ?? ""}
+          onChange={(e) => update("periodoDesde", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "periodoHasta",
+      label: "Periodo Hasta",
+      width: "180px",
+      render: (r) => r.periodoHasta,
+      editor: (r, update) => (
+        <Input
+          type="date"
+          value={r.periodoHasta ?? ""}
+          onChange={(e) => update("periodoHasta", e.target.value)}
+        />
+      ),
+    },
+    {
+      key: "precio",
+      label: "Precio USD",
+      align: "right",
+      width: "160px",
+      render: (r) => (
+        <span className="font-mono text-[13px] font-semibold text-neutral-900">
+          {formatCurrency(r.precio)}
+        </span>
+      ),
+      editor: (r, update) => (
+        <Input
+          type="number"
+          value={String(r.precio ?? 0)}
+          onChange={(e) => update("precio", parseFloat(e.target.value) || 0)}
+          className="text-right"
+        />
+      ),
+    },
+  ];
 
   // ---------------------------------------------------------------------------
   // Guard: loading / not found
@@ -240,21 +299,19 @@ export default function CircuitoDetailPage() {
 
   if (!circuito) {
     return (
-      <div className="space-y-6">
-        <PageHeader
-          title="Circuito no encontrado"
-          subtitle="El circuito solicitado no existe o fue eliminado"
-          action={
-            <Button
-              variant="ghost"
-              onClick={() => router.push("/circuitos")}
-              leftIcon={<ArrowLeft className="h-4 w-4" />}
-            >
-              Volver a Circuitos
-            </Button>
-          }
-        />
-      </div>
+      <DataTablePageHeader
+        title="Circuito no encontrado"
+        subtitle="El circuito solicitado no existe o fue eliminado"
+        action={
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/circuitos")}
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
+          >
+            Volver a Circuitos
+          </Button>
+        }
+      />
     );
   }
 
@@ -263,8 +320,8 @@ export default function CircuitoDetailPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <>
+      <DataTablePageHeader
         title={`Circuito: ${circuito.nombre}`}
         subtitle="Detalle del circuito"
         action={
@@ -278,19 +335,18 @@ export default function CircuitoDetailPage() {
         }
       />
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Section 1 — Header form                                            */}
-      {/* ------------------------------------------------------------------ */}
-      <Card className="p-0" static>
-        <div className="p-6">
-          <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-            Datos del Circuito
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Nombre -- full width */}
-            <div className="col-span-1 md:col-span-2">
+      <FormSections>
+        {/* ------------------------------------------------------------------ */}
+        {/* Datos del circuito                                                 */}
+        {/* ------------------------------------------------------------------ */}
+        <FormSection
+          title="Datos del circuito"
+          description="Nombre, duracion y proveedor principal."
+        >
+          <FieldGroup columns={2}>
+            <Field span={2}>
+              <FieldLabel required>Nombre</FieldLabel>
               <Input
-                label="Nombre"
                 value={headerForm.nombre}
                 onChange={(e) =>
                   setHeaderForm((f) => ({ ...f, nombre: e.target.value }))
@@ -298,144 +354,158 @@ export default function CircuitoDetailPage() {
                 placeholder="ej. Europa Clasica 10 dias"
                 readOnly={!canEdit}
               />
+            </Field>
+            <Field>
+              <FieldLabel>Noches</FieldLabel>
+              <Input
+                type="number"
+                value={String(headerForm.noches)}
+                onChange={(e) =>
+                  setHeaderForm((f) => ({
+                    ...f,
+                    noches: Number(e.target.value),
+                  }))
+                }
+                placeholder="7"
+                readOnly={!canEdit}
+              />
+            </Field>
+            <Field>
+              <FieldLabel>Proveedor</FieldLabel>
+              <Select
+                value={headerForm.proveedorId}
+                onValueChange={(v) =>
+                  setHeaderForm((f) => ({ ...f, proveedorId: v }))
+                }
+                placeholder="Seleccionar proveedor..."
+                options={proveedoresCircuitos.map((p) => ({
+                  value: p.id,
+                  label: p.nombre,
+                }))}
+                disabled={!canEdit}
+              />
+            </Field>
+          </FieldGroup>
+
+          {canEdit && (
+            <div className="mt-4 flex justify-end">
+              <Button onClick={handleSaveHeader}>Guardar Cambios</Button>
             </div>
+          )}
+        </FormSection>
 
-            {/* Noches */}
-            <Input
-              label="Noches"
-              type="number"
-              value={String(headerForm.noches)}
-              onChange={(e) =>
-                setHeaderForm((f) => ({ ...f, noches: Number(e.target.value) }))
-              }
-              placeholder="7"
-              readOnly={!canEdit}
-            />
-
-            {/* Proveedor */}
-            <Select
-              label="Proveedor"
-              value={headerForm.proveedorId}
-              onValueChange={(v) =>
-                setHeaderForm((f) => ({ ...f, proveedorId: v }))
-              }
-              placeholder="Seleccionar proveedor..."
-              options={proveedoresCircuitos.map((p) => ({ value: p.id, label: p.nombre }))}
-              disabled={!canEdit}
-            />
-
-            {/* Save button */}
-            {canEdit && (
-              <div className="col-span-1 md:col-span-2 flex justify-end pt-2">
-                <Button onClick={handleSaveHeader}>Guardar Cambios</Button>
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Section 2 — Day-by-day itinerary editor                            */}
-      {/* ------------------------------------------------------------------ */}
-      <Card className="p-0" static>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-neutral-800">
-              Itinerario por Dia
-            </h3>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-neutral-150/50">
+        {/* ------------------------------------------------------------------ */}
+        {/* Itinerario dia a dia                                               */}
+        {/* ------------------------------------------------------------------ */}
+        <FormSection
+          title="Itinerario dia a dia"
+          description="Arrastra las filas para reordenar los dias del itinerario."
+        >
+          <div className="border-y border-hairline overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead
+                style={{
+                  borderBottom: "1px solid rgba(17,17,36,0.07)",
+                  background: "rgba(17,17,36,0.02)",
+                }}
+              >
+                <tr className="h-9">
                   {canEdit && (
-                    <th className="w-8 py-2 pr-2" aria-label="Reordenar" />
+                    <th className="w-8 px-2 py-2" aria-label="Reordenar" />
                   )}
-                  <th className="text-left py-2 pr-3 text-[12px] font-medium text-neutral-500 w-16">
+                  <th className="w-16 px-4 py-2 text-left text-label font-medium text-neutral-500">
                     Dia
                   </th>
-                  <th className="text-left py-2 pr-3 text-[12px] font-medium text-neutral-500 w-40">
+                  <th className="w-48 px-4 py-2 text-left text-label font-medium text-neutral-500">
                     Titulo
                   </th>
-                  <th className="text-left py-2 pr-3 text-[12px] font-medium text-neutral-500">
+                  <th className="px-4 py-2 text-left text-label font-medium text-neutral-500">
                     Descripcion
                   </th>
-                  {canEdit && (
-                    <th className="text-right py-2 text-[12px] font-medium text-neutral-500">
-                      Acciones
-                    </th>
-                  )}
+                  <th className="w-[90px] px-4 py-2 text-right text-label font-medium text-neutral-500" />
                 </tr>
               </thead>
               <tbody>
+                {dias.length === 0 && !addingDia && (
+                  <tr>
+                    <td
+                      colSpan={canEdit ? 5 : 4}
+                      className="px-4 py-10 text-center text-[13px] text-neutral-400"
+                    >
+                      No hay dias en el itinerario
+                    </td>
+                  </tr>
+                )}
+
                 {dias.map((dia) =>
                   editingDiaId === dia.id ? (
-                    // Edit mode row
                     <tr
                       key={dia.id}
-                      className="border-b border-neutral-100/50"
+                      className="h-row border-b border-hairline"
                       draggable={false}
                     >
                       {canEdit && (
-                        <td className="px-2 py-3 w-8">
+                        <td className="px-2 py-2">
                           <GripVertical className="h-4 w-4 text-neutral-300" />
                         </td>
                       )}
-                      <td className="py-3 pr-3">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-teal-100 text-xs font-bold text-brand-teal-700">
+                      <td className="px-4 py-2">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-teal-100 text-xs font-bold text-brand-teal-700">
                           {dia.numeroDia}
                         </span>
                       </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="text"
-                          className={inlineInputClassName}
+                      <td className="px-4 py-2">
+                        <Input
                           value={draftDia.titulo ?? ""}
                           onChange={(e) =>
-                            setDraftDia((d) => ({ ...d, titulo: e.target.value }))
+                            setDraftDia((d) => ({
+                              ...d,
+                              titulo: e.target.value,
+                            }))
                           }
                           placeholder="Titulo del dia"
                         />
                       </td>
-                      <td className="py-2 pr-3">
+                      <td className="px-4 py-2">
                         <textarea
-                          className={inlineInputClassName}
                           rows={2}
                           value={draftDia.descripcion ?? ""}
                           onChange={(e) =>
-                            setDraftDia((d) => ({ ...d, descripcion: e.target.value }))
+                            setDraftDia((d) => ({
+                              ...d,
+                              descripcion: e.target.value,
+                            }))
                           }
                           placeholder="Descripcion del dia"
+                          className="w-full resize-none rounded-[8px] border border-hairline bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-[#3BBFAD] focus:outline-none"
                         />
                       </td>
-                      <td className="py-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="icon"
-                            size="xs"
+                      <td className="px-4 py-2">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <button
+                            type="button"
                             onClick={handleSaveDia}
                             aria-label="Guardar"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#2A9E8E] hover:bg-[rgba(59,191,173,0.12)]"
                           >
-                            <Check className="h-4 w-4 text-green-600" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
+                            <Check className="h-[15px] w-[15px]" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={handleCancelEditDia}
                             aria-label="Cancelar"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100"
                           >
-                            <X className="h-4 w-4 text-neutral-400" />
-                          </Button>
+                            <X className="h-[15px] w-[15px]" />
+                          </button>
                         </div>
                       </td>
                     </tr>
                   ) : (
-                    // View mode row
                     <tr
                       key={dia.id}
                       className={cn(
-                        "border-b border-neutral-100/50 transition-colors",
+                        "h-row border-b border-hairline transition-colors hover:bg-rail",
                         dragOverId === dia.id && "bg-brand-teal-50/40",
                       )}
                       draggable={canEdit}
@@ -448,66 +518,69 @@ export default function CircuitoDetailPage() {
                       onDragLeave={() => setDragOverId(null)}
                     >
                       {canEdit && (
-                        <td className="px-2 py-3 w-8 cursor-grab">
+                        <td className="w-8 cursor-grab px-2 py-3">
                           <GripVertical className="h-4 w-4 text-neutral-300" />
                         </td>
                       )}
-                      <td className="py-3 pr-3">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-teal-100 text-xs font-bold text-brand-teal-700">
+                      <td className="px-4 py-3">
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-teal-100 text-xs font-bold text-brand-teal-700">
                           {dia.numeroDia}
                         </span>
                       </td>
-                      <td className="py-3 pr-3 text-neutral-800 font-medium">
+                      <td className="px-4 py-3 font-medium text-neutral-800">
                         {dia.titulo}
                       </td>
-                      <td className="py-3 pr-3 text-neutral-600">
+                      <td className="px-4 py-3 text-neutral-600">
                         {dia.descripcion.length > 60
                           ? dia.descripcion.slice(0, 60) + "..."
                           : dia.descripcion}
                       </td>
-                      {canEdit && (
-                        <td className="py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="icon"
-                              size="xs"
-                              onClick={() => handleStartEditDia(dia)}
-                              aria-label="Editar dia"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="icon"
-                              size="xs"
-                              onClick={() => handleDeleteDia(dia.id)}
-                              aria-label="Eliminar dia"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      )}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-0.5">
+                          {canEdit && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEditDia(dia)}
+                                aria-label="Editar dia"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
+                              >
+                                <Pencil className="h-[14px] w-[14px]" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDia(dia.id)}
+                                aria-label="Eliminar dia"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-brand-red-50 hover:text-[#CC2030]"
+                              >
+                                <Trash2 className="h-[14px] w-[14px]" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ),
                 )}
 
                 {/* Add day row */}
                 {addingDia && (
-                  <tr className="border-b border-neutral-100/50">
+                  <tr
+                    className="h-row border-b border-hairline"
+                    style={{ background: "rgba(59,191,173,0.04)" }}
+                  >
                     {canEdit && (
-                      <td className="px-2 py-3 w-8">
+                      <td className="px-2 py-2">
                         <GripVertical className="h-4 w-4 text-neutral-200" />
                       </td>
                     )}
-                    <td className="py-3 pr-3">
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-brand-teal-100 text-xs font-bold text-brand-teal-700">
+                    <td className="px-4 py-2">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-teal-100 text-xs font-bold text-brand-teal-700">
                         {dias.length + 1}
                       </span>
                     </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        type="text"
-                        className={inlineInputClassName}
+                    <td className="px-4 py-2">
+                      <Input
                         value={newDia.titulo ?? ""}
                         onChange={(e) =>
                           setNewDia((d) => ({ ...d, titulo: e.target.value }))
@@ -516,308 +589,89 @@ export default function CircuitoDetailPage() {
                         autoFocus
                       />
                     </td>
-                    <td className="py-2 pr-3">
+                    <td className="px-4 py-2">
                       <textarea
-                        className={inlineInputClassName}
                         rows={2}
                         value={newDia.descripcion ?? ""}
                         onChange={(e) =>
-                          setNewDia((d) => ({ ...d, descripcion: e.target.value }))
+                          setNewDia((d) => ({
+                            ...d,
+                            descripcion: e.target.value,
+                          }))
                         }
                         placeholder="Descripcion del dia"
+                        className="w-full resize-none rounded-[8px] border border-hairline bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-[#3BBFAD] focus:outline-none"
                       />
                     </td>
-                    <td className="py-2">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="icon"
-                          size="xs"
+                    <td className="px-4 py-2">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <button
+                          type="button"
                           onClick={handleSaveAddDia}
                           aria-label="Guardar nuevo dia"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#2A9E8E] hover:bg-[rgba(59,191,173,0.12)]"
                         >
-                          <Check className="h-4 w-4 text-green-600" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="xs"
+                          <Check className="h-[15px] w-[15px]" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={handleCancelAddDia}
                           aria-label="Cancelar"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100"
                         >
-                          <X className="h-4 w-4 text-neutral-400" />
-                        </Button>
+                          <X className="h-[15px] w-[15px]" />
+                        </button>
                       </div>
-                    </td>
-                  </tr>
-                )}
-
-                {/* Empty state */}
-                {dias.length === 0 && !addingDia && (
-                  <tr>
-                    <td
-                      colSpan={canEdit ? 5 : 4}
-                      className="py-8 text-center text-sm text-neutral-400"
-                    >
-                      No hay dias en el itinerario
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
 
-          {/* Agregar Dia button */}
-          {canEdit && !addingDia && (
-            <div className="mt-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<Plus className="h-4 w-4" />}
+            {canEdit && !addingDia && (
+              <button
+                type="button"
                 onClick={() => {
                   setAddingDia(true);
                   setNewDia({ titulo: "", descripcion: "" });
                 }}
+                className="flex w-full items-center justify-center gap-1.5 border-t border-hairline bg-transparent px-4 py-2.5 text-[12.5px] font-medium text-neutral-500 transition-colors hover:bg-rail hover:text-neutral-800"
               >
+                <Plus className="h-3.5 w-3.5" />
                 Agregar Dia
-              </Button>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Section 3 — Price-per-period table                                 */}
-      {/* ------------------------------------------------------------------ */}
-      <Card className="p-0" static>
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-neutral-800">
-              Precios por Periodo
-            </h3>
-            {canEdit && !addingPrecio && (
-              <Button
-                size="sm"
-                leftIcon={<Plus className="h-4 w-4" />}
-                onClick={() => {
-                  setAddingPrecio(true);
-                  setNewPrecio({});
-                }}
-              >
-                Agregar Precio
-              </Button>
+              </button>
             )}
           </div>
+        </FormSection>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-neutral-150/50">
-                  <th className="text-left py-2 pr-3 text-[12px] font-medium text-neutral-500">
-                    Periodo Desde
-                  </th>
-                  <th className="text-left py-2 pr-3 text-[12px] font-medium text-neutral-500">
-                    Periodo Hasta
-                  </th>
-                  <th className="text-right py-2 pr-3 text-[12px] font-medium text-neutral-500">
-                    Precio (USD)
-                  </th>
-                  {canEdit && (
-                    <th className="text-right py-2 text-[12px] font-medium text-neutral-500">
-                      Acciones
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {precios.map((precio) =>
-                  editingPrecioId === precio.id ? (
-                    // Edit mode row
-                    <tr
-                      key={precio.id}
-                      className="border-b border-neutral-100/50"
-                    >
-                      <td className="py-2 pr-3">
-                        <input
-                          type="date"
-                          className={inlineInputClassName}
-                          value={draftPrecio.periodoDesde ?? ""}
-                          onChange={(e) =>
-                            setDraftPrecio((d) => ({
-                              ...d,
-                              periodoDesde: e.target.value,
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="date"
-                          className={inlineInputClassName}
-                          value={draftPrecio.periodoHasta ?? ""}
-                          onChange={(e) =>
-                            setDraftPrecio((d) => ({
-                              ...d,
-                              periodoHasta: e.target.value,
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <input
-                          type="number"
-                          className={inlineInputClassName + " text-right"}
-                          value={draftPrecio.precio ?? ""}
-                          onChange={(e) =>
-                            setDraftPrecio((d) => ({
-                              ...d,
-                              precio: Number(e.target.value),
-                            }))
-                          }
-                        />
-                      </td>
-                      <td className="py-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={handleSavePrecio}
-                            aria-label="Guardar"
-                          >
-                            <Check className="h-4 w-4 text-green-600" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={handleCancelEditPrecio}
-                            aria-label="Cancelar"
-                          >
-                            <X className="h-4 w-4 text-neutral-400" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    // View mode row
-                    <tr
-                      key={precio.id}
-                      className="border-b border-neutral-100/50"
-                    >
-                      <td className="py-2.5 pr-3 text-neutral-700">
-                        {precio.periodoDesde}
-                      </td>
-                      <td className="py-2.5 pr-3 text-neutral-700">
-                        {precio.periodoHasta}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right font-medium text-neutral-800">
-                        {formatCurrency(precio.precio)}
-                      </td>
-                      {canEdit && (
-                        <td className="py-2.5">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="icon"
-                              size="xs"
-                              onClick={() => handleEditPrecio(precio)}
-                              aria-label="Editar precio"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="icon"
-                              size="xs"
-                              onClick={() => handleDeletePrecio(precio.id)}
-                              aria-label="Eliminar precio"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ),
-                )}
-
-                {/* Add row */}
-                {addingPrecio && (
-                  <tr className="border-b border-neutral-100/50">
-                    <td className="py-2 pr-3">
-                      <input
-                        type="date"
-                        className={inlineInputClassName}
-                        value={newPrecio.periodoDesde ?? ""}
-                        onChange={(e) =>
-                          setNewPrecio((r) => ({
-                            ...r,
-                            periodoDesde: e.target.value,
-                          }))
-                        }
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        type="date"
-                        className={inlineInputClassName}
-                        value={newPrecio.periodoHasta ?? ""}
-                        onChange={(e) =>
-                          setNewPrecio((r) => ({
-                            ...r,
-                            periodoHasta: e.target.value,
-                          }))
-                        }
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        type="number"
-                        className={inlineInputClassName + " text-right"}
-                        value={newPrecio.precio ?? ""}
-                        placeholder="0"
-                        onChange={(e) =>
-                          setNewPrecio((r) => ({
-                            ...r,
-                            precio: Number(e.target.value),
-                          }))
-                        }
-                      />
-                    </td>
-                    <td className="py-2">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={handleSaveAddPrecio}
-                          aria-label="Guardar nuevo precio"
-                        >
-                          <Check className="h-4 w-4 text-green-600" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={handleCancelAddPrecio}
-                          aria-label="Cancelar"
-                        >
-                          <X className="h-4 w-4 text-neutral-400" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-
-                {/* Empty state */}
-                {precios.length === 0 && !addingPrecio && (
-                  <tr>
-                    <td
-                      colSpan={canEdit ? 4 : 3}
-                      className="py-8 text-center text-sm text-neutral-400"
-                    >
-                      No hay periodos de precio definidos
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </Card>
-    </div>
+        {/* ------------------------------------------------------------------ */}
+        {/* Precios por periodo                                                */}
+        {/* ------------------------------------------------------------------ */}
+        <FormSection
+          title="Precios por periodo"
+          description="Tarifas totales del circuito segun el periodo de viaje."
+        >
+          <InlineEditTable<PrecioCircuito>
+            columns={precioColumns}
+            rows={precios}
+            getRowId={(r) => r.id}
+            onSave={handleSavePrecio}
+            onDelete={canEdit ? handleDeletePrecio : undefined}
+            onAdd={
+              canEdit
+                ? () =>
+                    ({
+                      periodoDesde: "",
+                      periodoHasta: "",
+                      precio: 0,
+                    }) as Partial<PrecioCircuito>
+                : undefined
+            }
+            addLabel="Agregar precio"
+            emptyMessage="No hay periodos de precio definidos"
+          />
+        </FormSection>
+      </FormSections>
+    </>
   );
 }

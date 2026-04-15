@@ -2,13 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { glassMaterials } from "@/components/lib/glass";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
+import { FormSection, FormSections } from "@/components/ui/form/FormSection";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
+import { SelectCascade } from "@/components/ui/form/SelectCascade";
 import { useServiceActions } from "@/components/providers/ServiceProvider";
-import { usePaises, useProveedores, useCatalogLoading } from "@/components/providers/CatalogProvider";
+import {
+  usePaises,
+  useCatalogLoading,
+} from "@/components/providers/CatalogProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
@@ -24,7 +30,6 @@ export default function NuevoAlojamientoPage() {
   const { activeBrandId } = useBrand();
   const { createAlojamiento } = useServiceActions();
   const paises = usePaises();
-  const proveedores = useProveedores();
   const catalogLoading = useCatalogLoading();
   const { toast } = useToast();
 
@@ -42,18 +47,9 @@ export default function NuevoAlojamientoPage() {
   const [categoria, setCategoria] = useState("3");
   const [sitioWeb, setSitioWeb] = useState("");
 
-  // Cascading ciudades based on selected paisId
-  const ciudadOptions = paises
-    .find((p) => p.id === paisId)
-    ?.ciudades.map((c) => ({ value: c.id, label: c.nombre })) ?? [];
-
-  // Reset ciudad when pais changes
-  useEffect(() => {
-    setCiudadId("");
-  }, [paisId]);
-
   // Save handler
-  function handleSave() {
+  function handleSave(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!nombre.trim()) {
       toast("error", "Nombre requerido", "Ingrese el nombre del alojamiento");
       return;
@@ -74,7 +70,11 @@ export default function NuevoAlojamientoPage() {
       categoria: Number(categoria),
       sitioWeb: sitioWeb.trim() || null,
     });
-    toast("success", "Alojamiento creado", `"${nombre}" fue creado correctamente`);
+    toast(
+      "success",
+      "Alojamiento creado",
+      `"${nombre}" fue creado correctamente`,
+    );
     router.push("/alojamientos");
   }
 
@@ -84,79 +84,99 @@ export default function NuevoAlojamientoPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title="Nuevo Alojamiento"
         subtitle="Agregar hotel o alojamiento"
+        action={
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/alojamientos")}
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
+          >
+            Volver
+          </Button>
+        }
       />
 
-      <div
-        className="rounded-glass-lg p-6 max-w-2xl"
-        style={glassMaterials.frosted}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Nombre -- full width */}
-          <div className="col-span-1 md:col-span-2">
-            <Input
-              label="Nombre del Hotel"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: Hotel Intercontinental"
-            />
-          </div>
+      <form onSubmit={handleSave}>
+        <FormSections>
+          <FormSection
+            title="Datos del hotel"
+            description="Nombre, categoria y ubicacion principal del alojamiento."
+          >
+            <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel required>Nombre del hotel</FieldLabel>
+                <Input
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Ej: Hotel Intercontinental"
+                  autoFocus
+                />
+              </Field>
 
-          {/* Pais */}
-          <Select
-            label="Pais"
-            value={paisId}
-            onValueChange={setPaisId}
-            placeholder="Seleccionar pais..."
-            options={paises.map((p) => ({ value: p.id, label: p.nombre }))}
-          />
+              <Field span={2}>
+                <SelectCascade
+                  parentLabel="Pais"
+                  parentValue={paisId}
+                  onParentChange={setPaisId}
+                  parentOptions={paises.map((p) => ({
+                    value: p.id,
+                    label: p.nombre,
+                  }))}
+                  childLabel="Ciudad"
+                  childValue={ciudadId}
+                  onChildChange={setCiudadId}
+                  childOptions={(selectedPaisId) =>
+                    paises
+                      .find((p) => p.id === selectedPaisId)
+                      ?.ciudades.map((c) => ({
+                        value: c.id,
+                        label: c.nombre,
+                      })) ?? []
+                  }
+                />
+              </Field>
 
-          {/* Ciudad (cascading) */}
-          <Select
-            label="Ciudad"
-            value={ciudadId}
-            onValueChange={setCiudadId}
-            placeholder={paisId ? "Seleccionar ciudad..." : "Primero seleccione un pais"}
-            options={ciudadOptions}
-            disabled={!paisId || ciudadOptions.length === 0}
-          />
+              <Field>
+                <FieldLabel>Categoria</FieldLabel>
+                <Select
+                  value={categoria}
+                  onValueChange={setCategoria}
+                  options={[
+                    { value: "1", label: "1 estrella" },
+                    { value: "2", label: "2 estrellas" },
+                    { value: "3", label: "3 estrellas" },
+                    { value: "4", label: "4 estrellas" },
+                    { value: "5", label: "5 estrellas" },
+                  ]}
+                />
+              </Field>
 
-          {/* Categoria */}
-          <Select
-            label="Categoria (estrellas)"
-            value={categoria}
-            onValueChange={setCategoria}
-            options={[
-              { value: "1", label: "1 estrella" },
-              { value: "2", label: "2 estrellas" },
-              { value: "3", label: "3 estrellas" },
-              { value: "4", label: "4 estrellas" },
-              { value: "5", label: "5 estrellas" },
-            ]}
-          />
+              <Field>
+                <FieldLabel>Sitio web</FieldLabel>
+                <Input
+                  value={sitioWeb}
+                  onChange={(e) => setSitioWeb(e.target.value)}
+                  placeholder="https://..."
+                  type="url"
+                />
+              </Field>
+            </FieldGroup>
+          </FormSection>
+        </FormSections>
 
-          {/* Sitio Web */}
-          <Input
-            label="Sitio Web (opcional)"
-            value={sitioWeb}
-            onChange={(e) => setSitioWeb(e.target.value)}
-            placeholder="https://..."
-            type="url"
-          />
-
-          {/* Action buttons */}
-          <div className="col-span-1 md:col-span-2 flex items-center justify-end gap-3 pt-2">
-            <Button variant="ghost" onClick={() => router.push("/alojamientos")}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave}>
-              Crear Alojamiento
-            </Button>
-          </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.push("/alojamientos")}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit">Crear Alojamiento</Button>
         </div>
-      </div>
+      </form>
     </>
   );
 }

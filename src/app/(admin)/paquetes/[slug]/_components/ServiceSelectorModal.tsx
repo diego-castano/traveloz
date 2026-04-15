@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import {
   usePaqueteServices,
@@ -198,27 +197,27 @@ export default function ServiceSelectorModal({
 
   // -- Empty state per tab --
   const emptyMessage = (tipo: string) => (
-    <div className="flex items-center justify-center py-8 text-white/40 text-sm">
+    <div className="flex items-center justify-center py-8 text-neutral-400 text-sm">
       Todos los {tipo} estan asignados
     </div>
   );
 
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="lg">
-      <ModalHeader title="Agregar Servicio">{null}</ModalHeader>
+      <ModalHeader
+        title="Agregar Servicio"
+        description="Elegi un servicio existente para asignarlo al paquete"
+        icon={<Plus className="h-5 w-5" strokeWidth={2.4} />}
+      >
+        {null}
+      </ModalHeader>
       <ModalBody>
-        <Tabs defaultValue="aereos" layoutId="serviceSelectorTabs" variant="dark" onValueChange={() => setSearchQuery("")}>
+        <Tabs defaultValue="aereos" layoutId="serviceSelectorTabs" onValueChange={() => setSearchQuery("")}>
           <TabsList>
             <TabsTrigger value="aereos">
               <span className="flex items-center gap-1.5">
                 <Plane className="h-3.5 w-3.5" />
                 Aereos
-              </span>
-            </TabsTrigger>
-            <TabsTrigger value="alojamientos">
-              <span className="flex items-center gap-1.5">
-                <Hotel className="h-3.5 w-3.5" />
-                Alojamientos
               </span>
             </TabsTrigger>
             <TabsTrigger value="traslados">
@@ -255,8 +254,8 @@ export default function ServiceSelectorModal({
             {availableAereos.length === 0 ? (
               emptyMessage("aereos")
             ) : (
-              <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div className="divide-y divide-white/15">
+              <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
+                <div className="divide-y divide-hairline">
                   {availableAereos.map((aereo) => {
                     const matches = !sq || aereo.ruta.toLowerCase().includes(sq) || aereo.destino.toLowerCase().includes(sq) || (aereo.aerolinea ?? '').toLowerCase().includes(sq);
                     return (
@@ -268,10 +267,10 @@ export default function ServiceSelectorModal({
                         )}
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-semibold text-neutral-800">
                             {aereo.ruta}
                           </span>
-                          <span className="text-xs text-white/50">
+                          <span className="text-xs text-neutral-500">
                             {aereo.destino} &middot; {aereo.aerolinea}
                           </span>
                         </div>
@@ -287,62 +286,12 @@ export default function ServiceSelectorModal({
                     );
                   })}
                 </div>
-              </Card>
+              </div>
             )}
           </TabsContent>
 
-          {/* Alojamientos Tab */}
-          <TabsContent value="alojamientos">
-            <div className="px-1 pt-1 pb-3">
-              <Input
-                placeholder="Buscar alojamientos..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                leftIcon={<Search className="w-4 h-4" />}
-                size="sm"
-              />
-            </div>
-            {availableAlojamientos.length === 0 ? (
-              emptyMessage("alojamientos")
-            ) : (
-              <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div className="divide-y divide-white/15">
-                  {availableAlojamientos.map((aloj) => {
-                    const ciudadNombre = ciudadMap.get(aloj.ciudadId) ?? "";
-                    const stars = "\u2605".repeat(aloj.categoria);
-                    const matches = !sq || aloj.nombre.toLowerCase().includes(sq) || ciudadNombre.toLowerCase().includes(sq);
-                    return (
-                      <div
-                        key={aloj.id}
-                        className={cn(
-                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
-                          matches ? "opacity-100" : "opacity-30"
-                        )}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">
-                            {aloj.nombre}
-                          </span>
-                          <span className="text-xs text-white/50">
-                            <span className="text-amber-500">{stars}</span>
-                            {ciudadNombre && <> &middot; {ciudadNombre}</>}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          leftIcon={<Plus className="h-3 w-3" />}
-                          onClick={() => handleAssignAlojamiento(aloj)}
-                        >
-                          Agregar
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            )}
-          </TabsContent>
+          {/* Alojamientos tab fue removido — los hoteles se gestionan desde el
+              tab Alojamientos del detalle de paquete (AlojamientosTab.tsx). */}
 
           {/* Traslados Tab */}
           <TabsContent value="traslados">
@@ -358,8 +307,8 @@ export default function ServiceSelectorModal({
             {availableTraslados.length === 0 ? (
               emptyMessage("traslados")
             ) : (
-              <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div className="divide-y divide-white/15">
+              <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
+                <div className="divide-y divide-hairline">
                   {availableTraslados.map((traslado) => {
                     const matches = !sq || traslado.nombre.toLowerCase().includes(sq) || traslado.tipo.toLowerCase().includes(sq);
                     return (
@@ -371,10 +320,10 @@ export default function ServiceSelectorModal({
                         )}
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-semibold text-neutral-800">
                             {traslado.nombre}
                           </span>
-                          <span className="text-xs text-white/50">
+                          <span className="text-xs text-neutral-500">
                             {traslado.tipo} &middot; USD {traslado.precio}
                           </span>
                         </div>
@@ -390,7 +339,7 @@ export default function ServiceSelectorModal({
                     );
                   })}
                 </div>
-              </Card>
+              </div>
             )}
           </TabsContent>
 
@@ -408,8 +357,8 @@ export default function ServiceSelectorModal({
             {availableSeguros.length === 0 ? (
               emptyMessage("seguros")
             ) : (
-              <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div className="divide-y divide-white/15">
+              <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
+                <div className="divide-y divide-hairline">
                   {availableSeguros.map((seguro) => {
                     const provNombre = proveedorMap.get(seguro.proveedorId) ?? "";
                     const matches = !sq || seguro.plan.toLowerCase().includes(sq) || (seguro.cobertura ?? '').toLowerCase().includes(sq) || provNombre.toLowerCase().includes(sq);
@@ -422,10 +371,10 @@ export default function ServiceSelectorModal({
                         )}
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-semibold text-neutral-800">
                             {seguro.plan}
                           </span>
-                          <span className="text-xs text-white/50">
+                          <span className="text-xs text-neutral-500">
                             {provNombre && <>{provNombre} &middot; </>}
                             {seguro.cobertura} &middot; USD {seguro.costoPorDia}/dia
                           </span>
@@ -442,7 +391,7 @@ export default function ServiceSelectorModal({
                     );
                   })}
                 </div>
-              </Card>
+              </div>
             )}
           </TabsContent>
 
@@ -460,8 +409,8 @@ export default function ServiceSelectorModal({
             {availableCircuitos.length === 0 ? (
               emptyMessage("circuitos")
             ) : (
-              <Card className="p-0" static style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <div className="divide-y divide-white/15">
+              <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
+                <div className="divide-y divide-hairline">
                   {availableCircuitos.map((circuito) => {
                     const matches = !sq || circuito.nombre.toLowerCase().includes(sq);
                     return (
@@ -473,10 +422,10 @@ export default function ServiceSelectorModal({
                         )}
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-semibold text-neutral-800">
                             {circuito.nombre}
                           </span>
-                          <span className="text-xs text-white/50">
+                          <span className="text-xs text-neutral-500">
                             {circuito.noches} noches
                           </span>
                         </div>
@@ -492,7 +441,7 @@ export default function ServiceSelectorModal({
                     );
                   })}
                 </div>
-              </Card>
+              </div>
             )}
           </TabsContent>
         </Tabs>

@@ -1,22 +1,27 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Eye, Pencil, Copy, Trash2, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, Copy, Trash2, ShieldCheck } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { SearchFilter } from "@/components/ui/SearchFilter";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/Table";
+  DataTable,
+  DataTableHeader,
+  DataTableBody,
+  DataTableRow,
+  DataTableHead,
+  DataTableCell,
+} from "@/components/ui/data/DataTable";
+import {
+  DataTableToolbar,
+  DataTablePageHeader,
+} from "@/components/ui/data/DataTableToolbar";
+import { RowActions } from "@/components/ui/data/RowActions";
+import { EmptyState } from "@/components/ui/data/EmptyState";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
 import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
@@ -161,8 +166,7 @@ export default function SegurosPage() {
     setModalOpen(false);
   }
 
-  function handleClone(e: React.MouseEvent, s: Seguro) {
-    e.stopPropagation();
+  function handleClone(s: Seguro) {
     createSeguro({
       brandId: s.brandId,
       proveedorId: s.proveedorId,
@@ -173,8 +177,7 @@ export default function SegurosPage() {
     toast("success", "Seguro clonado", `Se creo una copia de "${s.plan}"`);
   }
 
-  function handleOpenDelete(e: React.MouseEvent, s: Seguro) {
-    e.stopPropagation();
+  function handleOpenDelete(s: Seguro) {
     setDeleteTarget(s);
   }
 
@@ -197,7 +200,7 @@ export default function SegurosPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title="Seguros"
         subtitle="Gestion de seguros de viaje"
         action={
@@ -212,92 +215,97 @@ export default function SegurosPage() {
         }
       />
 
-      <SearchFilter
-        searchValue={search}
-        onSearchChange={setSearch}
-        filters={[]}
-        onFilterToggle={() => undefined}
-        placeholder="Buscar por plan, cobertura o proveedor..."
-        className="mb-6"
+      <DataTableToolbar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por plan, cobertura o proveedor...",
+        }}
+        className="mb-4"
       />
 
       {filteredSeguros.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <ShieldCheck className="h-12 w-12 mb-3 opacity-40" />
-          <p className="text-sm">No hay seguros registrados</p>
-        </div>
+        <EmptyState
+          icon={ShieldCheck}
+          title="No hay seguros registrados"
+          description="Registra un plan de seguro de viaje para poder asignarlo a paquetes."
+          action={
+            canEdit ? (
+              <Button
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={handleOpenCreate}
+              >
+                Nuevo Seguro
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Proveedor</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Cobertura</TableHead>
-                <TableHead>Costo/Dia (USD)</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow header>
+                <DataTableHead>Proveedor</DataTableHead>
+                <DataTableHead>Plan</DataTableHead>
+                <DataTableHead>Cobertura</DataTableHead>
+                <DataTableHead align="right">Costo/Dia (USD)</DataTableHead>
+                <DataTableHead align="right">Acciones</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {paginatedSeguros.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>{proveedorMap[s.proveedorId] ?? "—"}</TableCell>
-                  <TableCell className="font-medium text-neutral-800">
-                    {s.plan}
+                <DataTableRow
+                  key={s.id}
+                  onClick={() => handleOpenEdit(s)}
+                  interactive
+                >
+                  <DataTableCell variant="muted">
+                    {proveedorMap[s.proveedorId] ?? "—"}
+                  </DataTableCell>
+                  <DataTableCell variant="muted">{s.plan}</DataTableCell>
+                  <DataTableCell variant="primary">
+                    {s.cobertura}
                     {(paqueteCountMap[s.id] ?? 0) > 0 && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-brand-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-teal-400">
+                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
                         {paqueteCountMap[s.id]} paq.
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell>{s.cobertura}</TableCell>
-                  <TableCell>{formatCurrency(s.costoPorDia)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="icon"
-                        size="xs"
-                        onClick={() => handleOpenEdit(s)}
-                        aria-label="Ver / Editar"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={() => handleOpenEdit(s)}
-                            aria-label="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleClone(e, s)}
-                            aria-label="Clonar"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleOpenDelete(e, s)}
-                            aria-label="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </DataTableCell>
+                  <DataTableCell variant="price" align="right">
+                    {formatCurrency(s.costoPorDia)}
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      primary={{
+                        icon: Pencil,
+                        label: "Editar",
+                        onClick: () => handleOpenEdit(s),
+                      }}
+                      items={
+                        canEdit
+                          ? [
+                              {
+                                icon: Copy,
+                                label: "Clonar",
+                                onClick: () => handleClone(s),
+                              },
+                              {
+                                icon: Trash2,
+                                label: "Eliminar",
+                                onClick: () => handleOpenDelete(s),
+                                destructive: true,
+                              },
+                            ]
+                          : []
+                      }
+                    />
+                  </DataTableCell>
+                </DataTableRow>
               ))}
-            </TableBody>
-          </Table>
+            </DataTableBody>
+          </DataTable>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-5 flex justify-center">
             <Pagination
               currentPage={page}
               totalPages={totalPages}
@@ -313,39 +321,47 @@ export default function SegurosPage() {
           {null}
         </ModalHeader>
         <ModalBody>
-          <div className="flex flex-col gap-4">
-            <Select
-              label="Proveedor"
-              options={proveedoresSeguros.map((p) => ({ value: p.id, label: p.nombre }))}
-              value={form.proveedorId}
-              onValueChange={(v) => setForm((f) => ({ ...f, proveedorId: v }))}
-              placeholder="Seleccionar proveedor..."
-            />
-            <Input
-              label="Plan"
-              value={form.plan}
-              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
-              placeholder="ej. Plan Clasico"
-            />
-            <Input
-              label="Cobertura"
-              value={form.cobertura}
-              onChange={(e) => setForm((f) => ({ ...f, cobertura: e.target.value }))}
-              placeholder="ej. USD 40.000"
-            />
-            <Input
-              label="Costo/Dia (USD)"
-              type="number"
-              value={form.costoPorDia === 0 ? "" : String(form.costoPorDia)}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  costoPorDia: e.target.value === "" ? 0 : Number(e.target.value),
-                }))
-              }
-              placeholder="0"
-            />
-          </div>
+          <FieldGroup columns={2}>
+            <Field span={2}>
+              <FieldLabel>Proveedor</FieldLabel>
+              <Select
+                options={proveedoresSeguros.map((p) => ({ value: p.id, label: p.nombre }))}
+                value={form.proveedorId}
+                onValueChange={(v) => setForm((f) => ({ ...f, proveedorId: v }))}
+                placeholder="Seleccionar proveedor..."
+              />
+            </Field>
+            <Field>
+              <FieldLabel>Plan</FieldLabel>
+              <Input
+                value={form.plan}
+                onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
+                placeholder="ej. Plan Clasico"
+              />
+            </Field>
+            <Field>
+              <FieldLabel>Cobertura</FieldLabel>
+              <Input
+                value={form.cobertura}
+                onChange={(e) => setForm((f) => ({ ...f, cobertura: e.target.value }))}
+                placeholder="ej. USD 40.000"
+              />
+            </Field>
+            <Field span={2}>
+              <FieldLabel>Costo/Dia (USD)</FieldLabel>
+              <Input
+                type="number"
+                value={form.costoPorDia === 0 ? "" : String(form.costoPorDia)}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    costoPorDia: e.target.value === "" ? 0 : Number(e.target.value),
+                  }))
+                }
+                placeholder="0"
+              />
+            </Field>
+          </FieldGroup>
         </ModalBody>
         <ModalFooter>
           <Button variant="ghost" onClick={() => setModalOpen(false)}>

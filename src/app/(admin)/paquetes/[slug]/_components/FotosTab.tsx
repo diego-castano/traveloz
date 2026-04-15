@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback } from "react";
-import { Card } from "@/components/ui/Card";
 import {
   ImageUploader,
   type ImageItem,
 } from "@/components/ui/ImageUploader";
+import {
+  FormSection,
+  FormSections,
+} from "@/components/ui/form/FormSection";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -87,28 +90,26 @@ export default function FotosTab({ paquete }: FotosTabProps) {
   );
 
   return (
-    <Card className="p-6">
-      {/* Section title */}
-      <h3 className="text-lg font-semibold text-neutral-800 mb-4">
-        Fotos del Paquete
-      </h3>
+    <FormSections>
+      <FormSection
+        title="Fotos del paquete"
+        description="Arrastra o sube las fotos que se mostraran en el frontend publico. La primera foto es la principal."
+      >
+        <ImageUploader
+          images={images}
+          onAdd={canEdit ? handleAdd : undefined}
+          onRemove={canEdit ? handleRemove : undefined}
+          onReorder={canEdit ? handleReorder : undefined}
+          onSetPrincipal={canEdit ? handleSetPrincipal : undefined}
+          maxImages={10}
+        />
 
-      {/* Photo grid with upload, reorder, and remove */}
-      <ImageUploader
-        images={images}
-        onAdd={canEdit ? handleAdd : undefined}
-        onRemove={canEdit ? handleRemove : undefined}
-        onReorder={canEdit ? handleReorder : undefined}
-        onSetPrincipal={canEdit ? handleSetPrincipal : undefined}
-        maxImages={10}
-      />
-
-      {/* Empty state for VENDEDOR */}
-      {images.length === 0 && !canEdit && (
-        <p className="text-sm text-neutral-400 text-center mt-4">
-          No hay fotos para este paquete
-        </p>
-      )}
-    </Card>
+        {images.length === 0 && !canEdit && (
+          <p className="mt-4 text-center text-[13px] text-neutral-400">
+            No hay fotos para este paquete
+          </p>
+        )}
+      </FormSection>
+    </FormSections>
   );
 }

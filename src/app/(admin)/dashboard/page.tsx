@@ -18,7 +18,11 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, StatIcon } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
-import { usePaquetes, usePackageState } from "@/components/providers/PackageProvider";
+import {
+  usePaquetes,
+  usePackageState,
+  useAllOpcionesHoteleras,
+} from "@/components/providers/PackageProvider";
 import {
   useAereos,
   useAlojamientos,
@@ -28,7 +32,6 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { usePackageLoading } from "@/components/providers/PackageProvider";
-import { calcularVenta } from "@/lib/utils";
 import type { BadgeProps } from "@/components/ui/Badge";
 
 // ---------------------------------------------------------------------------
@@ -153,7 +156,7 @@ function AlertCard({
   return (
     <Link href={href}>
       <motion.div
-        className="relative rounded-glass-lg overflow-hidden cursor-pointer h-full"
+        className="relative rounded-[16px] overflow-hidden cursor-pointer h-full"
         style={{
           background: bg,
           backdropFilter: "blur(12px)",
@@ -167,7 +170,7 @@ function AlertCard({
         <div className="p-4">
           <div className="flex items-start gap-3">
             <div
-              className="flex-shrink-0 w-8 h-8 rounded-glass-sm flex items-center justify-center"
+              className="flex-shrink-0 w-8 h-8 rounded-[8px] flex items-center justify-center"
               style={{ background: `${accent}15`, color: accent }}
             >
               <Icon size={16} strokeWidth={2} />
@@ -322,7 +325,7 @@ function QuickAction({ icon: Icon, label, href, color }: QuickActionProps) {
         whileTap={{ scale: 0.98 }}
       >
         <div
-          className="w-7 h-7 rounded-glass-sm flex items-center justify-center flex-shrink-0"
+          className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
           style={{ background: `${color}15`, color }}
         >
           <Icon size={14} strokeWidth={2} />
@@ -340,6 +343,7 @@ function QuickAction({ icon: Icon, label, href, color }: QuickActionProps) {
 export default function DashboardPage() {
   const paquetes = usePaquetes();
   const packageState = usePackageState();
+  const allOpciones = useAllOpcionesHoteleras();
   const aereos = useAereos();
   const alojamientos = useAlojamientos();
   const traslados = useTraslados();
@@ -370,15 +374,14 @@ export default function DashboardPage() {
     });
   }, [paquetes]);
 
-  // ---- Stat 3: Paquetes con precio manual ----
-  const precioCustom = useMemo(
-    () =>
-      paquetes.filter((p) => {
-        const expected = calcularVenta(p.netoCalculado, p.markup);
-        return p.precioVenta !== expected;
-      }),
-    [paquetes],
-  );
+  // ---- Stat 3: Paquetes sin opcion hotelera (incompletos) ----
+  // Replaces the legacy "precio manual" stat: after Fase 2 pricing is recomputed
+  // from service prices, so comparing persisted vs expected is meaningless. The
+  // useful signal is "incomplete work" — paquetes that haven't been configured.
+  const paquetesSinOpcion = useMemo(() => {
+    const withOpciones = new Set(allOpciones.map((o) => o.paqueteId));
+    return paquetes.filter((p) => !withOpciones.has(p.id));
+  }, [paquetes, allOpciones]);
 
   // ---- Stat 4: Servicios sin asignar a ningun paquete ----
   const unassignedServices = useMemo(() => {
@@ -450,18 +453,18 @@ export default function DashboardPage() {
       });
     }
 
-    if (precioCustom.length > 0) {
+    if (paquetesSinOpcion.length > 0) {
       items.push({
         severity: "warning",
         icon: DollarSign,
-        count: precioCustom.length,
+        count: paquetesSinOpcion.length,
         title:
-          precioCustom.length === 1
-            ? "paquete con precio manual"
-            : "paquetes con precio manual",
-        description: "Precio de venta sobreescrito manualmente",
+          paquetesSinOpcion.length === 1
+            ? "paquete sin opcion hotelera"
+            : "paquetes sin opcion hotelera",
+        description: "Faltan opciones hoteleras para completar el paquete",
         href: "/paquetes",
-        actionLabel: "Revisar precios",
+        actionLabel: "Completar",
       });
     }
 
@@ -495,7 +498,7 @@ export default function DashboardPage() {
     }
 
     return items;
-  }, [porVencer, precioCustom, unassignedServices]);
+  }, [porVencer, paquetesSinOpcion, unassignedServices]);
 
   // ---- User info for greeting ----
   const firstName = user?.name.split(" ")[0] ?? "";
@@ -579,8 +582,8 @@ export default function DashboardPage() {
         />
         <StatCard
           icon={DollarSign}
-          label="Precio Custom"
-          value={precioCustom.length}
+          label="Sin Opcion"
+          value={paquetesSinOpcion.length}
           color="#8B5CF6"
         />
         <StatCard

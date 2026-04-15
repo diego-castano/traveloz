@@ -191,16 +191,19 @@ export function SearchModal() {
           <Dialog.Portal forceMount>
             <Dialog.Overlay forceMount asChild>
               <motion.div
-                className="fixed inset-0 z-50"
-                style={{ background: 'rgba(10,10,30,0.5)', backdropFilter: 'blur(8px)' }}
+                className="fixed inset-0 z-[300]"
+                style={{ background: 'rgba(10,10,30,0.6)', backdropFilter: 'blur(10px)' }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               />
             </Dialog.Overlay>
+            {/* Centering wrapper — flex-based so Motion's transform animation
+                doesn't conflict with Tailwind's translate classes. */}
+            <div className="fixed inset-0 z-[310] flex items-start justify-center px-4 pt-[15vh] pointer-events-none">
             <Dialog.Content forceMount asChild>
               <motion.div
-                className="fixed left-1/2 top-[15%] z-50 w-full max-w-[580px] -translate-x-1/2 rounded-glass-lg overflow-hidden"
+                className="pointer-events-auto w-full max-w-[580px] rounded-glass-lg overflow-hidden"
                 style={{
                   ...glassMaterials.liquidModal,
                   border: '1px solid rgba(139,92,246,0.2)',
@@ -307,6 +310,7 @@ export function SearchModal() {
                 </div>
               </motion.div>
             </Dialog.Content>
+            </div>
           </Dialog.Portal>
         )}
       </AnimatePresence>

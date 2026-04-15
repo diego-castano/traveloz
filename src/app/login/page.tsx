@@ -116,6 +116,7 @@ export default function LoginPage() {
             width={180}
             height={54}
             className="object-contain drop-shadow-lg"
+            unoptimized
           />
         </div>
 
@@ -198,21 +199,21 @@ export default function LoginPage() {
               onClick={() => fillDemoUser("geronimo@traveloz.com.uy")}
               className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
             >
-              geronimo@traveloz.com.uy - Admin TravelOz
+              geronimo@traveloz.com.uy - Admin
             </button>
             <button
               type="button"
               onClick={() => fillDemoUser("ventas@traveloz.com.uy")}
               className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
             >
-              ventas@traveloz.com.uy - Vendedor TravelOz
+              ventas@traveloz.com.uy - Vendedor
             </button>
             <button
               type="button"
-              onClick={() => fillDemoUser("admin@destinoicono.com")}
+              onClick={() => fillDemoUser("marketing@traveloz.com.uy")}
               className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
             >
-              admin@destinoicono.com - Admin DestinoIcono
+              marketing@traveloz.com.uy - Marketing
             </button>
           </div>
           <p className="text-[10px] text-white/40 text-center mt-2">

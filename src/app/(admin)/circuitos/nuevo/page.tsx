@@ -6,10 +6,14 @@ import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
+import { FormSection, FormSections } from "@/components/ui/form/FormSection";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
 import { useServiceActions } from "@/components/providers/ServiceProvider";
-import { useProveedores, useCatalogLoading } from "@/components/providers/CatalogProvider";
+import {
+  useProveedores,
+  useCatalogLoading,
+} from "@/components/providers/CatalogProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -28,7 +32,10 @@ export default function NuevoCircuitoPage() {
   const allProveedores = useProveedores();
   const catalogLoading = useCatalogLoading();
   const proveedoresCircuitos = useMemo(
-    () => allProveedores.filter((p) => p.servicio === "CIRCUITOS" && !p.deletedAt),
+    () =>
+      allProveedores.filter(
+        (p) => p.servicio === "CIRCUITOS" && !p.deletedAt,
+      ),
     [allProveedores],
   );
 
@@ -45,7 +52,8 @@ export default function NuevoCircuitoPage() {
   const [proveedorId, setProveedorId] = useState("");
 
   // -- Create handler --
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!nombre.trim()) {
       toast("warning", "Nombre requerido", "Ingresa un nombre para el circuito.");
       return;
@@ -58,7 +66,11 @@ export default function NuevoCircuitoPage() {
       proveedorId: proveedorId,
     });
 
-    toast("success", "Circuito creado", `"${nombre.trim()}" fue creado correctamente.`);
+    toast(
+      "success",
+      "Circuito creado",
+      `"${nombre.trim()}" fue creado correctamente.`,
+    );
     router.push(`/circuitos/${newCircuito.id}`);
   };
 
@@ -70,8 +82,8 @@ export default function NuevoCircuitoPage() {
   if (catalogLoading) return <PageSkeleton variant="detail" />;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <>
+      <DataTablePageHeader
         title="Nuevo Circuito"
         subtitle="Crear un nuevo circuito o itinerario"
         action={
@@ -85,42 +97,60 @@ export default function NuevoCircuitoPage() {
         }
       />
 
-      <Card className="p-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-          {/* Nombre -- full width */}
-          <div className="col-span-1 md:col-span-2">
-            <Input
-              label="Nombre del circuito"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="ej. Europa Clasica 10 dias"
-            />
-          </div>
+      <form onSubmit={handleCreate}>
+        <FormSections>
+          <FormSection
+            title="Datos del circuito"
+            description="Nombre, duracion en noches y proveedor principal."
+          >
+            <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel required>Nombre del circuito</FieldLabel>
+                <Input
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="ej. Europa Clasica 10 dias"
+                  autoFocus
+                />
+              </Field>
 
-          {/* Noches */}
-          <Input
-            label="Noches"
-            type="number"
-            value={noches}
-            onChange={(e) => setNoches(e.target.value)}
-            placeholder="7"
-          />
+              <Field>
+                <FieldLabel>Noches</FieldLabel>
+                <Input
+                  type="number"
+                  value={noches}
+                  onChange={(e) => setNoches(e.target.value)}
+                  placeholder="7"
+                />
+              </Field>
 
-          {/* Proveedor */}
-          <Select
-            label="Proveedor"
-            value={proveedorId}
-            onValueChange={setProveedorId}
-            placeholder="Seleccionar proveedor..."
-            options={proveedoresCircuitos.map((p) => ({ value: p.id, label: p.nombre }))}
-          />
+              <Field>
+                <FieldLabel>Proveedor</FieldLabel>
+                <Select
+                  value={proveedorId}
+                  onValueChange={setProveedorId}
+                  placeholder="Seleccionar proveedor..."
+                  options={proveedoresCircuitos.map((p) => ({
+                    value: p.id,
+                    label: p.nombre,
+                  }))}
+                />
+              </Field>
+            </FieldGroup>
+          </FormSection>
+        </FormSections>
 
-          {/* Create button */}
-          <div className="col-span-1 md:col-span-2 flex justify-end pt-2">
-            <Button onClick={handleCreate}>Crear Circuito</Button>
-          </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.push("/circuitos")}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit">Crear Circuito</Button>
         </div>
-      </Card>
-    </div>
+      </form>
+    </>
   );
 }

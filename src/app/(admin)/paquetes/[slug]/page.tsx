@@ -2,15 +2,16 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Card, CardContent } from "@/components/ui/Card";
 import { usePaqueteById, usePackageLoading } from "@/components/providers/PackageProvider";
-import { TabsSkeleton } from "@/components/ui/Skeletons";
-import { ArrowLeft } from "lucide-react";
+import { DetailPageSkeleton } from "@/components/ui/Skeletons";
+import { EmptyState } from "@/components/ui/data/EmptyState";
+import { ArrowLeft, PackageOpen } from "lucide-react";
 import DatosTab from "./_components/DatosTab";
 import ServiciosTab from "./_components/ServiciosTab";
+import AlojamientosTab from "./_components/AlojamientosTab";
 import PreciosTab from "./_components/PreciosTab";
 import FotosTab from "./_components/FotosTab";
 import { PublicacionTab } from "./_components/PublicacionTab";
@@ -19,11 +20,19 @@ import { PublicacionTab } from "./_components/PublicacionTab";
 // Tab constants
 // ---------------------------------------------------------------------------
 
-const TABS = ["datos", "servicios", "precios", "fotos", "publicacion"] as const;
+const TABS = [
+  "datos",
+  "servicios",
+  "alojamientos",
+  "precios",
+  "fotos",
+  "publicacion",
+] as const;
 
 const TAB_LABELS: Record<(typeof TABS)[number], string> = {
   datos: "Datos",
   servicios: "Servicios",
+  alojamientos: "Alojamientos",
   precios: "Precios",
   fotos: "Fotos",
   publicacion: "Publicacion",
@@ -58,37 +67,32 @@ export default function PaqueteDetailPage() {
     router.replace(`/paquetes/${slug}?tab=${tab}`, { scroll: false });
   };
 
-  if (loading) return <TabsSkeleton />;
+  if (loading || !paquete) {
+    if (loading) return <DetailPageSkeleton />;
 
-  // -- Not found state --
-  if (!paquete) {
+    // -- Not found state --
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-6">
-        <Card className="max-w-md w-full">
-          <CardContent className="flex flex-col items-center gap-4 py-12">
-            <p className="text-lg font-semibold text-neutral-700">
-              Paquete no encontrado
-            </p>
-            <p className="text-sm text-neutral-400 text-center">
-              El paquete que buscas no existe o fue eliminado.
-            </p>
-            <Button
-              variant="secondary"
-              onClick={() => router.push("/paquetes")}
-              leftIcon={<ArrowLeft className="h-4 w-4" />}
-            >
-              Volver a Paquetes
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <EmptyState
+        icon={PackageOpen}
+        title="Paquete no encontrado"
+        description="El paquete que buscas no existe o fue eliminado."
+        action={
+          <Button
+            variant="secondary"
+            onClick={() => router.push("/paquetes")}
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
+          >
+            Volver a Paquetes
+          </Button>
+        }
+      />
     );
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <PageHeader
+      <DataTablePageHeader
         title={paquete.titulo}
         subtitle={paquete.estado}
         action={
@@ -123,6 +127,10 @@ export default function PaqueteDetailPage() {
 
         <TabsContent value="servicios">
           <ServiciosTab paquete={paquete} />
+        </TabsContent>
+
+        <TabsContent value="alojamientos">
+          <AlojamientosTab paquete={paquete} />
         </TabsContent>
 
         <TabsContent value="precios">

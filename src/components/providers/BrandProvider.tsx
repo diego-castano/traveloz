@@ -4,8 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
-  useState,
 } from "react";
 import type { BrandTokens } from "@/lib/brands";
 import { brandTokens, BRAND_LIST } from "@/lib/brands";
@@ -27,31 +27,30 @@ const BrandContext = createContext<BrandContextValue | null>(null);
 
 // ---------------------------------------------------------------------------
 // Provider
+//
+// Multi-brand switching is disabled for now. The app is fixed to TravelOz
+// (brand-1). Any stale "activeBrandId" value left in localStorage from a
+// previous session is cleared on mount so catalog queries filter correctly.
 // ---------------------------------------------------------------------------
-function getInitialBrandId(): string {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("activeBrandId");
-    if (stored && brandTokens[stored]) return stored;
-  }
-  return "brand-1";
-}
+const FIXED_BRAND_ID = "brand-1";
 
 export function BrandProvider({ children }: { children: React.ReactNode }) {
-  const [activeBrandId, setActiveBrandId] = useState<string>(getInitialBrandId);
+  const activeBrandId = FIXED_BRAND_ID;
 
-  const switchBrand = useCallback((brandId: string) => {
-    if (brandTokens[brandId]) {
-      setActiveBrandId(brandId);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("activeBrandId", brandId);
-      }
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("activeBrandId");
     }
+  }, []);
+
+  const switchBrand = useCallback((_brandId: string) => {
+    // no-op while multi-brand is disabled
   }, []);
 
   const value = useMemo<BrandContextValue>(
     () => ({
       activeBrandId,
-      activeBrand: brandTokens[activeBrandId] ?? brandTokens["brand-1"],
+      activeBrand: brandTokens[activeBrandId] ?? brandTokens[FIXED_BRAND_ID],
       brands: BRAND_LIST,
       switchBrand,
     }),

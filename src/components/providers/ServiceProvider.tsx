@@ -473,6 +473,37 @@ export function useCircuitos(): Circuito[] {
 }
 
 // ---------------------------------------------------------------------------
+// Helper — strip fields that Prisma rejects in update payloads
+// (id, brand/relation keys, timestamps, and any loaded sub-relations).
+// The server action's `data` parameter expects ONLY writable column fields.
+// ---------------------------------------------------------------------------
+const STRIP_KEYS = new Set([
+  "id",
+  "brandId",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  // Loaded relations that may accidentally hang off the entity
+  "precios",
+  "paquetes",
+  "fotos",
+  "itinerario",
+  "dias",
+  "pais",
+  "ciudad",
+  "proveedor",
+  "regimen",
+]);
+
+function stripForUpdate<T extends Record<string, any>>(entity: T): Partial<T> {
+  const out: Record<string, any> = {};
+  for (const key of Object.keys(entity)) {
+    if (!STRIP_KEYS.has(key)) out[key] = entity[key];
+  }
+  return out as Partial<T>;
+}
+
+// ---------------------------------------------------------------------------
 // CRUD action hook
 // ---------------------------------------------------------------------------
 export function useServiceActions() {
@@ -489,7 +520,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updateAereo: async (entity: Aereo) => {
-        await serviceActions.updateAereo(entity.id, entity);
+        await serviceActions.updateAereo(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_AEREO", payload: entity });
       },
       deleteAereo: async (id: string) => {
@@ -504,7 +535,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updatePrecioAereo: async (entity: PrecioAereo) => {
-        await serviceActions.updatePrecioAereo(entity.id, entity);
+        await serviceActions.updatePrecioAereo(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_PRECIO_AEREO", payload: entity });
       },
       deletePrecioAereo: async (id: string) => {
@@ -521,7 +552,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updateAlojamiento: async (entity: Alojamiento) => {
-        await serviceActions.updateAlojamiento(entity.id, entity);
+        await serviceActions.updateAlojamiento(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_ALOJAMIENTO", payload: entity });
       },
       deleteAlojamiento: async (id: string) => {
@@ -538,7 +569,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updatePrecioAlojamiento: async (entity: PrecioAlojamiento) => {
-        await serviceActions.updatePrecioAlojamiento(entity.id, entity);
+        await serviceActions.updatePrecioAlojamiento(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_PRECIO_ALOJAMIENTO", payload: entity });
       },
       deletePrecioAlojamiento: async (id: string) => {
@@ -555,7 +586,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updateAlojamientoFoto: async (entity: AlojamientoFoto) => {
-        await serviceActions.updateAlojamientoFoto(entity.id, entity);
+        await serviceActions.updateAlojamientoFoto(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_ALOJAMIENTO_FOTO", payload: entity });
       },
       deleteAlojamientoFoto: async (id: string) => {
@@ -572,7 +603,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updateTraslado: async (entity: Traslado) => {
-        await serviceActions.updateTraslado(entity.id, entity);
+        await serviceActions.updateTraslado(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_TRASLADO", payload: entity });
       },
       deleteTraslado: async (id: string) => {
@@ -589,7 +620,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updateSeguro: async (entity: Seguro) => {
-        await serviceActions.updateSeguro(entity.id, entity);
+        await serviceActions.updateSeguro(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_SEGURO", payload: entity });
       },
       deleteSeguro: async (id: string) => {
@@ -606,7 +637,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updateCircuito: async (entity: Circuito) => {
-        await serviceActions.updateCircuito(entity.id, entity);
+        await serviceActions.updateCircuito(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_CIRCUITO", payload: entity });
       },
       deleteCircuito: async (id: string) => {
@@ -621,7 +652,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updateCircuitoDia: async (entity: CircuitoDia) => {
-        await serviceActions.updateCircuitoDia(entity.id, entity);
+        await serviceActions.updateCircuitoDia(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_CIRCUITO_DIA", payload: entity });
       },
       deleteCircuitoDia: async (id: string) => {
@@ -638,7 +669,7 @@ export function useServiceActions() {
         return entity as any;
       },
       updatePrecioCircuito: async (entity: PrecioCircuito) => {
-        await serviceActions.updatePrecioCircuito(entity.id, entity);
+        await serviceActions.updatePrecioCircuito(entity.id, stripForUpdate(entity));
         dispatch({ type: "UPDATE_PRECIO_CIRCUITO", payload: entity });
       },
       deletePrecioCircuito: async (id: string) => {

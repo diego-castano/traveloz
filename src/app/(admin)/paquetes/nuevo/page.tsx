@@ -5,10 +5,15 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
+import { FormSection, FormSections } from "@/components/ui/form/FormSection";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
 import { usePackageActions } from "@/components/providers/PackageProvider";
-import { useTemporadas, useTiposPaquete, useCatalogLoading } from "@/components/providers/CatalogProvider";
+import {
+  useTemporadas,
+  useTiposPaquete,
+  useCatalogLoading,
+} from "@/components/providers/CatalogProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -16,14 +21,7 @@ import { useToast } from "@/components/ui/Toast";
 import { ArrowLeft } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// Textarea glass styling (consistent with Input glass pattern)
-// ---------------------------------------------------------------------------
-
-const textareaClassName =
-  "w-full rounded-clay border border-neutral-150/50 bg-white/70 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#3BBFAD] focus:shadow-[0_0_0_2px_rgba(255,255,255,0.8),0_0_0_4px_rgba(59,191,173,0.4)] focus:bg-white/85 transition-all backdrop-blur-sm";
-
-// ---------------------------------------------------------------------------
-// Component
+// NuevoPaquetePage
 // ---------------------------------------------------------------------------
 
 export default function NuevoPaquetePage() {
@@ -53,14 +51,17 @@ export default function NuevoPaquetePage() {
   const [tipoPaqueteId, setTipoPaqueteId] = useState(tiposPaquete[0]?.id ?? "");
 
   // -- Create handler --
-  const handleCreate = async () => {
+  const handleCreate = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!titulo.trim()) {
       toast("warning", "Titulo requerido", "Ingresa un nombre para el paquete.");
       return;
     }
 
     const now = new Date().toISOString();
-    const oneYearLater = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const oneYearLater = new Date(
+      Date.now() + 365 * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     const newPaquete = await createPaquete({
       brandId: activeBrandId,
@@ -75,7 +76,7 @@ export default function NuevoPaquetePage() {
       estado: "BORRADOR",
       destacado: false,
       netoCalculado: 0,
-      markup: 30,
+      markup: 0.8,
       precioVenta: 0,
       moneda: "USD",
       validezDesde: now,
@@ -83,7 +84,11 @@ export default function NuevoPaquetePage() {
       ordenServicios: [],
     });
 
-    toast("success", "Paquete creado", `"${newPaquete.titulo}" fue creado en estado Borrador.`);
+    toast(
+      "success",
+      "Paquete creado",
+      `"${newPaquete.titulo}" fue creado en estado Borrador.`,
+    );
     router.push(`/paquetes/${newPaquete.id}?tab=datos`);
   };
 
@@ -95,8 +100,8 @@ export default function NuevoPaquetePage() {
   if (catalogLoading) return <PageSkeleton variant="detail" />;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <>
+      <DataTablePageHeader
         title="Nuevo Paquete"
         subtitle="Crear un nuevo paquete de viaje"
         action={
@@ -110,101 +115,108 @@ export default function NuevoPaquetePage() {
         }
       />
 
-      <Card className="p-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
-          {/* Row 1: Titulo -- full width */}
-          <div className="col-span-1 md:col-span-2">
-            <Input
-              label="Titulo"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Nombre del paquete"
-            />
-          </div>
+      <form onSubmit={handleCreate}>
+        <FormSections>
+          <FormSection
+            title="Identificacion"
+            description="Nombre del paquete y clasificacion inicial."
+          >
+            <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel required>Titulo</FieldLabel>
+                <Input
+                  value={titulo}
+                  onChange={(e) => setTitulo(e.target.value)}
+                  placeholder="Nombre del paquete"
+                  autoFocus
+                />
+              </Field>
 
-          {/* Row 2: Noches + Salidas */}
-          <Input
-            label="Noches"
-            type="number"
-            value={noches}
-            onChange={(e) => setNoches(Number(e.target.value))}
-            placeholder="7"
-          />
-          <Input
-            label="Salidas"
-            value={salidas}
-            onChange={(e) => setSalidas(e.target.value)}
-            placeholder="Consultar"
-          />
+              <Field>
+                <FieldLabel>Noches</FieldLabel>
+                <Input
+                  type="number"
+                  value={String(noches)}
+                  onChange={(e) => setNoches(Number(e.target.value))}
+                  placeholder="7"
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Salidas</FieldLabel>
+                <Input
+                  value={salidas}
+                  onChange={(e) => setSalidas(e.target.value)}
+                  placeholder="Consultar"
+                />
+              </Field>
 
-          {/* Row 3: Temporada + Tipo de Paquete */}
-          <Select
-            label="Temporada"
-            value={temporadaId}
-            onValueChange={setTemporadaId}
-            options={temporadas.map((t) => ({ value: t.id, label: t.nombre }))}
-            placeholder="Seleccionar temporada..."
-          />
-          <Select
-            label="Tipo de Paquete"
-            value={tipoPaqueteId}
-            onValueChange={setTipoPaqueteId}
-            options={tiposPaquete.map((t) => ({ value: t.id, label: t.nombre }))}
-            placeholder="Seleccionar tipo..."
-          />
+              <Field>
+                <FieldLabel>Temporada</FieldLabel>
+                <Select
+                  value={temporadaId}
+                  onValueChange={setTemporadaId}
+                  options={temporadas.map((t) => ({
+                    value: t.id,
+                    label: t.nombre,
+                  }))}
+                  placeholder="Seleccionar temporada..."
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Tipo de paquete</FieldLabel>
+                <Select
+                  value={tipoPaqueteId}
+                  onValueChange={setTipoPaqueteId}
+                  options={tiposPaquete.map((t) => ({
+                    value: t.id,
+                    label: t.nombre,
+                  }))}
+                  placeholder="Seleccionar tipo..."
+                />
+              </Field>
+            </FieldGroup>
+          </FormSection>
 
-          {/* Row 4: Descripcion -- full width textarea */}
-          <div className="col-span-1 md:col-span-2 flex flex-col">
-            <label
-              htmlFor="descripcion-nuevo"
-              className="mb-1.5 text-[12.5px] font-medium"
-              style={{ color: "#2D2F4D" }}
-            >
-              Descripcion
-            </label>
-            <textarea
-              id="descripcion-nuevo"
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Descripcion detallada del paquete..."
-              rows={3}
-              className={textareaClassName}
-              style={{
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-              }}
-            />
-          </div>
+          <FormSection
+            title="Descripcion"
+            description="Texto narrativo y texto visual para la ficha."
+          >
+            <FieldGroup>
+              <Field>
+                <FieldLabel>Descripcion</FieldLabel>
+                <textarea
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  placeholder="Descripcion detallada del paquete..."
+                  rows={3}
+                  className="w-full resize-none rounded-[8px] border border-hairline bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-[#3BBFAD] focus:outline-none"
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Texto visual</FieldLabel>
+                <textarea
+                  value={textoVisual}
+                  onChange={(e) => setTextoVisual(e.target.value)}
+                  placeholder="Texto destacado para la ficha visual..."
+                  rows={2}
+                  className="w-full resize-none rounded-[8px] border border-hairline bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-[#3BBFAD] focus:outline-none"
+                />
+              </Field>
+            </FieldGroup>
+          </FormSection>
+        </FormSections>
 
-          {/* Row 5: Texto Visual -- full width textarea */}
-          <div className="col-span-1 md:col-span-2 flex flex-col">
-            <label
-              htmlFor="texto-visual-nuevo"
-              className="mb-1.5 text-[12.5px] font-medium"
-              style={{ color: "#2D2F4D" }}
-            >
-              Texto Visual
-            </label>
-            <textarea
-              id="texto-visual-nuevo"
-              value={textoVisual}
-              onChange={(e) => setTextoVisual(e.target.value)}
-              placeholder="Texto destacado para la ficha visual..."
-              rows={2}
-              className={textareaClassName}
-              style={{
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-              }}
-            />
-          </div>
-
-          {/* Create button */}
-          <div className="col-span-1 md:col-span-2 flex justify-end pt-2">
-            <Button onClick={handleCreate}>Crear Paquete</Button>
-          </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.push("/paquetes")}
+          >
+            Cancelar
+          </Button>
+          <Button type="submit">Crear Paquete</Button>
         </div>
-      </Card>
-    </div>
+      </form>
+    </>
   );
 }

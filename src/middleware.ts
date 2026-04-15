@@ -8,6 +8,9 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!api/auth|login|_next/static|_next/image|favicon.ico|assets|presentacion_traveloz).*)",
+    // Exclude API auth, login, Next internals, favicon, public asset dirs,
+    // and any file with an extension (images, fonts, manifests, etc.) so the
+    // auth redirect doesn't intercept /header-logo.webp and similar assets.
+    "/((?!api/auth|login|_next/static|_next/image|favicon.ico|assets|presentacion_traveloz|.*\\..*).*)",
   ],
 };

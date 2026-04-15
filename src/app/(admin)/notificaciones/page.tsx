@@ -1,23 +1,43 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Check, ChevronRight, ChevronLeft, Send, Tag, Mail, Clock } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  ChevronLeft,
+  Send,
+  Tag,
+  Mail,
+  Clock,
+} from "lucide-react";
 import * as notificacionActions from "@/actions/notificacion.actions";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
-import { usePaquetes, usePackageState } from "@/components/providers/PackageProvider";
-import { useAereos } from "@/components/providers/ServiceProvider";
+import {
+  usePaquetes,
+  usePackageState,
+  useAllOpcionesHoteleras,
+} from "@/components/providers/PackageProvider";
+import { useAereos, useServiceState } from "@/components/providers/ServiceProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useCatalogLoading } from "@/components/providers/CatalogProvider";
 import { usePackageLoading } from "@/components/providers/PackageProvider";
-import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
-import { PageHeader } from "@/components/layout/PageHeader";
-import { formatCurrency } from "@/lib/utils";
-import { glassMaterials } from "@/components/lib/glass";
+import { Input } from "@/components/ui/Input";
+import {
+  DataTable,
+  DataTableHeader,
+  DataTableBody,
+  DataTableRow,
+  DataTableHead,
+  DataTableCell,
+} from "@/components/ui/data/DataTable";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
+import { StatusDot } from "@/components/ui/data/StatusDot";
+import { Field, FieldLabel } from "@/components/ui/form/Field";
+import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Step labels
@@ -31,10 +51,10 @@ const STEP_LABELS: Record<number, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Estado -> Badge variant mapping
+// Estado -> StatusDot variant mapping
 // ---------------------------------------------------------------------------
 
-function estadoBadgeVariant(estado: string): "active" | "pending" | "draft" {
+function estadoDotVariant(estado: string): "active" | "pending" | "draft" {
   if (estado === "ACTIVO") return "active";
   if (estado === "INACTIVO") return "pending";
   return "draft";
@@ -47,9 +67,21 @@ function estadoBadgeVariant(estado: string): "active" | "pending" | "draft" {
 export default function NotificacionesPage() {
   // --- Wizard state ---
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [selectedEtiquetaId, setSelectedEtiquetaId] = useState<string | null>(null);
-  const [selectedPaqueteIds, setSelectedPaqueteIds] = useState<Set<string>>(new Set());
+  const [selectedEtiquetaId, setSelectedEtiquetaId] = useState<string | null>(
+    null,
+  );
+  const [selectedPaqueteIds, setSelectedPaqueteIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [isSending, setIsSending] = useState(false);
+
+  // --- Email subject + body state ---
+  const [emailSubject, setEmailSubject] = useState(
+    "Nuevos paquetes disponibles",
+  );
+  const [emailBody, setEmailBody] = useState(
+    "Descubrí las ultimas ofertas de tu marca favorita.",
+  );
 
   // --- Notification history ---
   const [historial, setHistorial] = useState<
@@ -60,10 +92,29 @@ export default function NotificacionesPage() {
   const etiquetas = useEtiquetas();
   const paquetes = usePaquetes();
   const state = usePackageState();
+  const allOpciones = useAllOpcionesHoteleras();
   const aereos = useAereos();
+  const serviceState = useServiceState();
   const { toast } = useToast();
   const { activeBrandId } = useBrand();
   const loading = useCatalogLoading() || usePackageLoading();
+
+  // Per-paquete price derivation (Fase 2): computes "desde" price live from
+  // current service prices + factor per opción, so notificaciones stay in sync
+  // after service edits without requiring a paquete save.
+  const preciosMap = useMemo(() => {
+    const map: Record<string, ReturnType<typeof computePaquetePrecios>> = {};
+    for (const paq of paquetes) {
+      map[paq.id] = computePaquetePrecios(paq, allOpciones, state, serviceState);
+    }
+    return map;
+  }, [paquetes, allOpciones, state, serviceState]);
+
+  function getPrecioDesde(paqueteId: string, fallback: number): number {
+    const pricing = preciosMap[paqueteId];
+    if (!pricing || pricing.min === null) return fallback;
+    return pricing.min;
+  }
 
   // --- Load notification history ---
   const loadHistorial = useCallback(() => {
@@ -182,45 +233,50 @@ export default function NotificacionesPage() {
   );
 
   // ---------------------------------------------------------------------------
-  // Step Indicator
+  // Step Indicator — clean horizontal line stepper
   // ---------------------------------------------------------------------------
 
   function StepIndicator() {
     return (
-      <div className="flex items-center justify-center px-4 py-5 overflow-x-auto">
-        {[1, 2, 3, 4].map((n) => {
+      <div className="flex items-center justify-between px-2 py-6">
+        {[1, 2, 3, 4].map((n, idx) => {
           const isCompleted = n < step;
           const isActive = n === step;
+          const reached = isCompleted || isActive;
           return (
-            <div key={n} className="flex items-center">
-              {/* Circle */}
-              <div className="flex flex-col items-center gap-1.5">
+            <div key={n} className="flex flex-1 items-center last:flex-none">
+              {/* Dot + label */}
+              <div className="flex flex-col items-center gap-2 shrink-0">
                 <div
-                  className="w-9 h-9 rounded-full flex items-center justify-center font-semibold text-sm transition-colors"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold transition-colors"
                   style={{
-                    background: isCompleted || isActive ? "#3BBFAD" : "#E5E7EB",
-                    color: isCompleted || isActive ? "#FFFFFF" : "#9CA3AF",
+                    background: reached ? "#3BBFAD" : "#FFFFFF",
+                    color: reached ? "#FFFFFF" : "#9CA3AF",
+                    border: reached
+                      ? "1px solid #3BBFAD"
+                      : "1px solid rgba(17,17,36,0.12)",
                   }}
                 >
-                  {isCompleted ? <Check size={16} /> : n}
+                  {isCompleted ? <Check size={13} strokeWidth={2.5} /> : n}
                 </div>
                 <span
-                  className="text-[10px] font-medium whitespace-nowrap"
+                  className="text-[10.5px] font-medium uppercase tracking-[0.06em] whitespace-nowrap"
                   style={{
-                    color: isCompleted || isActive ? "#1F7D70" : "#9CA3AF",
+                    color: reached ? "#1F7D70" : "#9CA3AF",
                   }}
                 >
                   {STEP_LABELS[n]}
                 </span>
               </div>
 
-              {/* Connector line (between circles, not after last) */}
-              {n < 4 && (
+              {/* Connector line */}
+              {idx < 3 && (
                 <div
-                  className="w-10 sm:w-16 h-[2px] mb-5 mx-1"
+                  className="mx-2 h-[1px] flex-1"
                   style={{
-                    background: n < step ? "#3BBFAD" : "#E5E7EB",
+                    background: n < step ? "#3BBFAD" : "rgba(17,17,36,0.10)",
                     transition: "background 0.3s",
+                    marginBottom: "22px",
                   }}
                 />
               )}
@@ -243,24 +299,29 @@ export default function NotificacionesPage() {
           Selecciona una etiqueta
         </p>
         {etiquetas.length === 0 ? (
-          <p className="text-sm text-neutral-400">No hay etiquetas disponibles para esta marca.</p>
+          <p className="text-sm text-neutral-400">
+            No hay etiquetas disponibles para esta marca.
+          </p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {etiquetas.map((et) => {
               const isSelected = selectedEtiquetaId === et.id;
               const count = paqueteCountForEtiqueta(et.id);
               return (
-                <div
+                <button
+                  type="button"
                   key={et.id}
                   onClick={() =>
                     setSelectedEtiquetaId(isSelected ? null : et.id)
                   }
-                  className="cursor-pointer rounded-lg p-3 border-2 transition-all"
+                  className="cursor-pointer rounded-[12px] border bg-white p-3 text-left transition-all hover:border-neutral-300"
                   style={{
-                    borderColor: isSelected ? "#3BBFAD" : "#E5E7EB",
+                    borderColor: isSelected
+                      ? "#3BBFAD"
+                      : "rgba(17,17,36,0.10)",
                     background: isSelected
-                      ? "rgba(59,191,173,0.06)"
-                      : "rgba(255,255,255,0.5)",
+                      ? "rgba(59,191,173,0.04)"
+                      : "#FFFFFF",
                   }}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
@@ -275,7 +336,7 @@ export default function NotificacionesPage() {
                   <span className="text-xs text-neutral-400">
                     {count} paquete{count !== 1 ? "s" : ""}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -303,14 +364,15 @@ export default function NotificacionesPage() {
           )}
         </p>
         {filteredPaquetes.length === 0 ? (
-          <p className="text-sm text-neutral-400">No hay paquetes con esta etiqueta.</p>
+          <p className="text-sm text-neutral-400">
+            No hay paquetes con esta etiqueta.
+          </p>
         ) : (
           <div className="space-y-2">
             {filteredPaquetes.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between px-4 py-3 rounded-lg"
-                style={glassMaterials.frostedSubtle}
+                className="flex items-center justify-between px-4 py-3 rounded-[12px] border border-hairline bg-white"
               >
                 <div className="flex-1 min-w-0 mr-4">
                   <p className="text-sm font-medium text-neutral-800 truncate">
@@ -321,14 +383,11 @@ export default function NotificacionesPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <Badge
-                    variant={estadoBadgeVariant(p.estado)}
-                    size="sm"
-                  >
+                  <StatusDot variant={estadoDotVariant(p.estado)}>
                     {p.estado}
-                  </Badge>
+                  </StatusDot>
                   <span className="text-sm font-semibold text-neutral-700">
-                    {formatCurrency(p.precioVenta)}
+                    {formatCurrency(getPrecioDesde(p.id, p.precioVenta))}
                   </span>
                 </div>
               </div>
@@ -359,14 +418,8 @@ export default function NotificacionesPage() {
         </div>
 
         {/* Select all row */}
-        <div
-          className="flex items-center gap-3 px-4 py-3 rounded-lg mb-2 border-b border-neutral-100"
-          style={glassMaterials.frostedSubtle}
-        >
-          <Checkbox
-            checked={allSelected}
-            onCheckedChange={toggleAll}
-          />
+        <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] border border-hairline bg-white mb-2">
+          <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
           <span className="text-sm font-medium text-neutral-600">
             Seleccionar todos
           </span>
@@ -378,35 +431,40 @@ export default function NotificacionesPage() {
           </p>
         ) : (
           <div className="space-y-2">
-            {filteredPaquetes.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer"
-                style={{
-                  ...glassMaterials.frostedSubtle,
-                  outline: selectedPaqueteIds.has(p.id)
-                    ? "1.5px solid rgba(59,191,173,0.4)"
-                    : "none",
-                }}
-                onClick={() => togglePaquete(p.id)}
-              >
-                <Checkbox
-                  checked={selectedPaqueteIds.has(p.id)}
-                  onCheckedChange={() => togglePaquete(p.id)}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-neutral-800 truncate">
-                    {p.titulo}
-                  </p>
-                  <p className="text-xs text-neutral-400 mt-0.5">
-                    {getDestinoForPaquete(p.id)}
-                  </p>
+            {filteredPaquetes.map((p) => {
+              const isSel = selectedPaqueteIds.has(p.id);
+              return (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 px-4 py-3 rounded-[12px] border bg-white cursor-pointer transition-colors"
+                  style={{
+                    borderColor: isSel
+                      ? "rgba(59,191,173,0.55)"
+                      : "rgba(17,17,36,0.08)",
+                    background: isSel
+                      ? "rgba(59,191,173,0.04)"
+                      : "#FFFFFF",
+                  }}
+                  onClick={() => togglePaquete(p.id)}
+                >
+                  <Checkbox
+                    checked={isSel}
+                    onCheckedChange={() => togglePaquete(p.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-800 truncate">
+                      {p.titulo}
+                    </p>
+                    <p className="text-xs text-neutral-400 mt-0.5">
+                      {getDestinoForPaquete(p.id)}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-neutral-700 shrink-0">
+                    {formatCurrency(getPrecioDesde(p.id, p.precioVenta))}
+                  </span>
                 </div>
-                <span className="text-sm font-semibold text-neutral-700 shrink-0">
-                  {formatCurrency(p.precioVenta)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -425,11 +483,35 @@ export default function NotificacionesPage() {
           Vista previa del email
         </p>
 
+        <div className="flex flex-col gap-4 mb-5">
+          <Field>
+            <FieldLabel>Asunto</FieldLabel>
+            <Input
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder="Asunto del email"
+            />
+          </Field>
+          <Field>
+            <FieldLabel>Mensaje</FieldLabel>
+            <textarea
+              value={emailBody}
+              onChange={(e) => setEmailBody(e.target.value)}
+              rows={3}
+              placeholder="Mensaje introductorio del email"
+              className="w-full resize-y px-3 py-2 text-[13.5px] text-neutral-900 outline-none transition-all placeholder:text-neutral-400 focus:border-brand-teal-400"
+              style={{
+                background: "#FFFFFF",
+                border: "1px solid rgba(17,17,36,0.10)",
+                borderRadius: "8px",
+                boxShadow: "inset 0 1px 0 rgba(17,17,36,0.02)",
+              }}
+            />
+          </Field>
+        </div>
+
         {/* Simulated email card */}
-        <div
-          className="rounded-xl overflow-hidden"
-          style={glassMaterials.frostedSubtle}
-        >
+        <div className="rounded-[12px] overflow-hidden border border-hairline bg-white">
           {/* Email header bar */}
           <div
             className="h-2"
@@ -442,18 +524,16 @@ export default function NotificacionesPage() {
           <div className="p-5">
             {/* Email heading */}
             <h3 className="text-base font-bold text-neutral-800 mb-1">
-              Nuevos paquetes disponibles
+              {emailSubject}
             </h3>
-            <p className="text-xs text-neutral-400 mb-4">
-              Descubrí las ultimas ofertas de tu marca favorita.
-            </p>
+            <p className="text-xs text-neutral-400 mb-4">{emailBody}</p>
 
             {/* Package list */}
             <div className="space-y-3">
               {selectedPaquetesList.map((p) => (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-white/70 border border-neutral-100"
+                  className="flex items-center justify-between p-3 rounded-[10px] bg-white border border-hairline"
                 >
                   <div className="flex-1 min-w-0 mr-3">
                     <p className="text-sm font-bold text-neutral-800 truncate">
@@ -463,7 +543,7 @@ export default function NotificacionesPage() {
                       {getDestinoForPaquete(p.id)}
                     </p>
                     <p className="text-sm font-semibold text-teal-600 mt-1">
-                      {formatCurrency(p.precioVenta)}
+                      {formatCurrency(getPrecioDesde(p.id, p.precioVenta))}
                     </p>
                   </div>
                   <span
@@ -480,8 +560,9 @@ export default function NotificacionesPage() {
             </div>
 
             {/* Footer */}
-            <p className="text-[11px] text-neutral-400 mt-5 pt-4 border-t border-neutral-100">
-              Este email sera enviado a los vendedores asociados a la marca activa.
+            <p className="text-[11px] text-neutral-400 mt-5 pt-4 border-t border-hairline">
+              Este email sera enviado a los vendedores asociados a la marca
+              activa.
             </p>
           </div>
         </div>
@@ -497,17 +578,17 @@ export default function NotificacionesPage() {
 
   return (
     <div>
-      <PageHeader
+      <DataTablePageHeader
         title="Notificaciones"
         subtitle="Envio de notificaciones a vendedores"
       />
 
-      <Card variant="default" className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto rounded-[12px] border border-hairline bg-white">
         {/* Step indicator */}
         <StepIndicator />
 
         {/* Step content */}
-        <CardContent className="pt-0 pb-5">
+        <div className="px-5 pb-5">
           <div className="min-h-[200px]">
             {step === 1 && <Step1Content />}
             {step === 2 && <Step2Content />}
@@ -516,7 +597,7 @@ export default function NotificacionesPage() {
           </div>
 
           {/* Navigation buttons */}
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-neutral-100">
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-hairline">
             {/* Back button */}
             <Button
               variant="secondary"
@@ -552,61 +633,65 @@ export default function NotificacionesPage() {
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Notification History */}
       {historial.length > 0 && (
-        <Card variant="default" className="max-w-2xl mx-auto mt-6">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Clock size={16} className="text-neutral-400" />
-              <span className="text-sm font-semibold text-neutral-700">
-                Historial de envios
-              </span>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0 pb-4">
-            <div className="space-y-2">
+        <div className="max-w-2xl mx-auto mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Clock size={16} className="text-neutral-400" />
+            <span className="text-sm font-semibold text-neutral-700">
+              Historial de envios
+            </span>
+          </div>
+
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow header>
+                <DataTableHead>Etiqueta</DataTableHead>
+                <DataTableHead align="right">Paquetes</DataTableHead>
+                <DataTableHead align="right">Enviado</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {historial.map((n) => {
                 const et = n.etiqueta;
-                const fecha = new Date(n.enviadoAt).toLocaleDateString("es-UY", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
+                const fecha = new Date(n.enviadoAt).toLocaleDateString(
+                  "es-UY",
+                  {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                );
                 return (
-                  <div
-                    key={n.id}
-                    className="flex items-center justify-between px-4 py-3 rounded-lg"
-                    style={glassMaterials.frostedSubtle}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: et?.color ?? "#9CA3AF" }}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-neutral-700 truncate">
-                          {et?.nombre ?? "Etiqueta eliminada"}
-                        </p>
-                        <p className="text-xs text-neutral-400">
-                          {n.paqueteIds.length} paquete
-                          {n.paqueteIds.length !== 1 ? "s" : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-neutral-400 shrink-0 ml-3">
+                  <DataTableRow key={n.id} interactive={false}>
+                    <DataTableCell variant="primary">
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{
+                            backgroundColor: et?.color ?? "#9CA3AF",
+                          }}
+                        />
+                        {et?.nombre ?? "Etiqueta eliminada"}
+                      </span>
+                    </DataTableCell>
+                    <DataTableCell variant="mono" align="right">
+                      {n.paqueteIds.length}
+                    </DataTableCell>
+                    <DataTableCell variant="muted" align="right">
                       {fecha}
-                    </span>
-                  </div>
+                    </DataTableCell>
+                  </DataTableRow>
                 );
               })}
-            </div>
-          </CardContent>
-        </Card>
+            </DataTableBody>
+          </DataTable>
+        </div>
       )}
     </div>
   );

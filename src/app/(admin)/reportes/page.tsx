@@ -3,21 +3,15 @@
 import { useEffect, useMemo } from "react";
 import { Package, Plane, Hotel } from "lucide-react";
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
-import { PageHeader } from "@/components/layout/PageHeader";
 import {
-  Card,
-  CardHeader,
-  CardContent,
-  StatIcon,
-} from "@/components/ui/Card";
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/Table";
+  DataTable,
+  DataTableHeader,
+  DataTableBody,
+  DataTableRow,
+  DataTableHead,
+  DataTableCell,
+} from "@/components/ui/data/DataTable";
+import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import {
   BarChart,
   Bar,
@@ -27,7 +21,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { glassMaterials } from "@/components/lib/glass";
 import {
   usePaquetes,
   usePackageState,
@@ -61,23 +54,26 @@ function AnimatedCounter({ icon, label, value, color }: AnimatedCounterProps) {
   }, [count, value]);
 
   return (
-    <Card variant="stat">
-      <CardContent className="pt-5">
-        <div className="flex items-start gap-3">
-          <StatIcon style={{ background: `linear-gradient(135deg, ${color}26, ${color}0d)` }}>
-            <span style={{ color }}>{icon}</span>
-          </StatIcon>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide mb-1">
-              {label}
-            </p>
-            <motion.span className="text-3xl font-bold font-mono text-neutral-900">
-              {rounded}
-            </motion.span>
-          </div>
+    <div className="rounded-[12px] border border-hairline bg-white p-5">
+      <div className="flex items-start gap-3">
+        <div
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]"
+          style={{
+            background: `linear-gradient(135deg, ${color}26, ${color}0d)`,
+          }}
+        >
+          <span style={{ color }}>{icon}</span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-neutral-400 font-medium uppercase tracking-wide mb-1">
+            {label}
+          </p>
+          <motion.span className="text-3xl font-bold font-mono text-neutral-900">
+            {rounded}
+          </motion.span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -191,7 +187,10 @@ export default function ReportesPage() {
 
   return (
     <>
-      <PageHeader title="Reportes" subtitle="Metricas y reportes del sistema" />
+      <DataTablePageHeader
+        title="Reportes"
+        subtitle="Metricas y reportes del sistema"
+      />
 
       {/* Stat Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -219,96 +218,93 @@ export default function ReportesPage() {
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Bar Chart: Paquetes por Destino (2/3 width on lg) */}
         <div className="flex-1 lg:basis-2/3">
-          <Card variant="default">
-            <CardHeader>
-              <p className="text-base font-semibold text-neutral-800">
-                Paquetes por Destino
-              </p>
-            </CardHeader>
-            <CardContent>
-              {destinoChartData.length === 0 ? (
-                <div className="flex items-center justify-center h-[280px] text-sm text-neutral-400">
-                  Sin datos para grafico
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart
-                    data={destinoChartData}
-                    margin={{ top: 8, right: 16, left: -8, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="rgba(26,26,46,0.06)"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="destino"
-                      tick={{ fill: "rgba(26,26,46,0.5)", fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      tick={{ fill: "rgba(26,26,46,0.4)", fontSize: 11 }}
-                      axisLine={false}
-                      tickLine={false}
-                      allowDecimals={false}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        ...glassMaterials.frosted,
-                        border: "none",
-                        borderRadius: 10,
-                        padding: "8px 12px",
-                        fontSize: 12,
-                        color: "rgba(26,26,46,0.8)",
-                      }}
-                      cursor={{ fill: "rgba(59,191,173,0.06)" }}
-                    />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="rgba(59,191,173,0.75)" />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+          <div className="rounded-[12px] border border-hairline bg-white p-5">
+            <p className="text-base font-semibold text-neutral-800 mb-3">
+              Paquetes por Destino
+            </p>
+            {destinoChartData.length === 0 ? (
+              <div className="flex items-center justify-center h-[280px] text-sm text-neutral-400">
+                Sin datos para grafico
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart
+                  data={destinoChartData}
+                  margin={{ top: 8, right: 16, left: -8, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(26,26,46,0.06)"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="destino"
+                    tick={{ fill: "rgba(26,26,46,0.5)", fontSize: 12 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: "rgba(26,26,46,0.4)", fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "rgba(255,255,255,0.98)",
+                      border: "1px solid rgba(17,17,36,0.07)",
+                      borderRadius: 10,
+                      padding: "8px 12px",
+                      fontSize: 12,
+                      color: "rgba(26,26,46,0.8)",
+                    }}
+                    cursor={{ fill: "rgba(59,191,173,0.06)" }}
+                  />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} fill="rgba(59,191,173,0.75)" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
 
         {/* Hoteles Mas Usados Table (1/3 width on lg) */}
         <div className="lg:basis-1/3">
-          <Card variant="default">
-            <CardHeader>
+          <div className="rounded-[12px] border border-hairline bg-white">
+            <div className="px-5 pt-5 pb-3">
               <p className="text-base font-semibold text-neutral-800">
                 Hoteles Mas Usados
               </p>
-            </CardHeader>
-            <CardContent className="px-0 pb-0">
-              {hotelesData.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-sm text-neutral-400 px-5 pb-5">
-                  Sin datos de hoteles
-                </div>
-              ) : (
-                <Table className="rounded-none shadow-none border-0 animate-none">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Hotel</TableHead>
-                      <TableHead>Paquetes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {hotelesData.map((hotel, idx) => (
-                      <TableRow key={`${hotel.nombre}-${idx}`}>
-                        <TableCell className="font-medium text-neutral-800">
-                          {hotel.nombre}
-                        </TableCell>
-                        <TableCell variant="id" className="font-mono font-semibold text-neutral-700">
-                          {hotel.count}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+            {hotelesData.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-sm text-neutral-400 px-5 pb-5">
+                Sin datos de hoteles
+              </div>
+            ) : (
+              <DataTable>
+                <DataTableHeader sticky={false}>
+                  <DataTableRow header>
+                    <DataTableHead>Hotel</DataTableHead>
+                    <DataTableHead align="right">Paquetes</DataTableHead>
+                  </DataTableRow>
+                </DataTableHeader>
+                <DataTableBody>
+                  {hotelesData.map((hotel, idx) => (
+                    <DataTableRow
+                      key={`${hotel.nombre}-${idx}`}
+                      interactive={false}
+                    >
+                      <DataTableCell variant="primary">
+                        {hotel.nombre}
+                      </DataTableCell>
+                      <DataTableCell variant="mono" align="right">
+                        {hotel.count}
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
+            )}
+          </div>
         </div>
       </div>
     </>

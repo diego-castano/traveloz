@@ -29,6 +29,7 @@ enum CategoriaServicio {
   TRASLADOS
   SEGUROS
   CIRCUITOS
+  HOTELES
 }
 
 enum Role {
@@ -56,28 +57,31 @@ model User {
 }
 
 model Paquete {
-  id             String        @id @default(cuid())
-  brandId        String
-  titulo         String
-  destino        String
-  descripcion    String?       @db.Text
-  textoVisual    String?       @db.Text
-  noches         Int
-  salidas        String?
-  temporadaId    String?
-  tipoPaqueteId  String?
-  validezDesde   String?
-  validezHasta   String?
-  estado         EstadoPaquete @default(BORRADOR)
-  destacado      Boolean       @default(false)
-  netoCalculado  Float         @default(0)
-  markup         Float         @default(0)
-  precioVenta    Float         @default(0)
-  moneda         String        @default("USD")
-  ordenServicios String[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  deletedAt      DateTime?
+  id                String        @id @default(cuid())
+  brandId           String
+  titulo            String
+  destino           String
+  descripcion       String?       @db.Text
+  textoVisual       String?       @db.Text
+  noches            Int
+  salidas           String?
+  temporadaId       String?
+  tipoPaqueteId     String?
+  validezDesde      String?
+  validezHasta      String?
+  estado            EstadoPaquete @default(BORRADOR)
+  destacado         Boolean       @default(false)
+  netoCalculado     Float         @default(0)
+  markup            Float         @default(0)
+  precioVenta       Float         @default(0)
+  moneda            String        @default("USD")
+  ordenServicios    String[]
+  webId             String?
+  itinerarioAmadeus String?       @db.Text
+  campana           String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  deletedAt         DateTime?
 
   temporada         Temporada?           @relation(fields: [temporadaId], references: [id])
   tipoPaquete       TipoPaquete?         @relation(fields: [tipoPaqueteId], references: [id])
@@ -263,15 +267,18 @@ model Proveedor {
   contacto  String?
   email     String?
   telefono  String?
+  ejecutivo String?
+  whatsapp  String?
   notas     String?           @db.Text
   servicio  CategoriaServicio
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   deletedAt DateTime?
 
-  traslados Traslado[]
-  seguros   Seguro[]
-  circuitos Circuito[]
+  traslados         Traslado[]
+  seguros           Seguro[]
+  circuitos         Circuito[]
+  opcionesHoteleras OpcionHotelera[]
 
   @@index([brandId])
 }
@@ -465,8 +472,10 @@ model OpcionHotelera {
   factor         Float
   precioVenta    Float
   orden          Int      @default(0)
+  proveedorId    String?
 
-  paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  paquete   Paquete    @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  proveedor Proveedor? @relation(fields: [proveedorId], references: [id])
 
   @@index([paqueteId])
 }

@@ -1,302 +1,362 @@
 "use client";
 
 import React from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/components/lib/cn";
 import { Skeleton } from "@/components/ui/Skeleton";
 
+/**
+ * Skeletons v2 — modern, opaque, boneyard-inspired loading states.
+ *
+ * Principles (from /plans/ticklish-foraging-sun.md):
+ * - Match the new DataTable/Field surfaces (no glass wrappers, hairline
+ *   borders, 44px row height, label micro-type).
+ * - `prefers-reduced-motion` via `useReducedMotion()` → pulse instead of shimmer.
+ * - Accessible: every skeleton container is `role="status"`, `aria-busy="true"`,
+ *   `aria-live="polite"` with an offscreen "Cargando..." label so screen readers
+ *   announce loading state.
+ * - No per-row stagger. One container fade-in only. Linear/Vercel style.
+ *
+ * Exports:
+ *   - `DataTableSkeleton` — replaces TableSkeleton, matches new DataTable
+ *   - `FormSkeleton` — Field-aware form placeholder
+ *   - `DetailPageSkeleton` — for `/paquetes/[slug]` and similar detail routes
+ *   - `ModalFormSkeleton` — used while edit data is being fetched
+ *   - `StatCardsSkeleton`, `CardGridSkeleton`, `TabsSkeleton` — ported from v1
+ *   - `PageSkeleton` — variant-driven top-level skeleton (legacy-compatible)
+ *   - `InlineTableSkeleton` — compact row list
+ *   - `TableSkeleton` — legacy-compatible alias of `DataTableSkeleton`
+ */
+
 // ---------------------------------------------------------------------------
-// Shared glass container style (mirrors glassMaterials.frosted)
+// Motion helpers
 // ---------------------------------------------------------------------------
 
-const glassContainer: React.CSSProperties = {
-  background: "rgba(255,255,255,0.65)",
-  backdropFilter: "blur(16px) saturate(180%)",
-  WebkitBackdropFilter: "blur(16px) saturate(180%)",
-  border: "1px solid rgba(255,255,255,0.25)",
-  boxShadow:
-    "0 8px 32px rgba(26,26,46,0.06), 0 1px 3px rgba(26,26,46,0.04), inset 0 1px 0 rgba(255,255,255,0.5)",
-  borderRadius: "16px",
+const containerFadeIn = {
+  initial: { opacity: 0, y: 4 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
 };
 
-// ---------------------------------------------------------------------------
-// Stagger animation helpers
-// ---------------------------------------------------------------------------
+// Deterministic pseudo-random widths (avoids hydration mismatch)
+const WIDTHS = ["90%", "68%", "55%", "78%"] as const;
+const cellWidth = (row: number, col: number) =>
+  WIDTHS[(row * 3 + col * 7) % WIDTHS.length];
 
-const fadeIn = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-};
-
-const staggerContainer = {
-  animate: {
-    transition: { staggerChildren: 0.05 },
-  },
-};
-
-// Deterministic pseudo-random width from an index (avoids Math.random for SSR)
-const widthVariants = ["100%", "80%", "60%", "40%"] as const;
-function cellWidth(row: number, col: number): string {
-  return widthVariants[(row * 3 + col * 7) % widthVariants.length];
+// Shared a11y wrapper props
+function a11y(label: string) {
+  return {
+    role: "status" as const,
+    "aria-busy": true,
+    "aria-live": "polite" as const,
+    "aria-label": label,
+  };
 }
 
-// ---------------------------------------------------------------------------
-// 1. TableSkeleton
-// ---------------------------------------------------------------------------
-
-interface TableSkeletonProps {
-  columns?: number;
-  rows?: number;
-}
-
-export function TableSkeleton({ columns = 5, rows = 6 }: TableSkeletonProps) {
+// Screen-reader-only label for context
+function SrOnly({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div
-      {...fadeIn}
-      style={{ ...glassContainer, overflow: "hidden" }}
-    >
-      {/* Header row */}
-      <div
-        className="flex gap-4 px-5 py-3"
-        style={{
-          borderBottom: "1px solid rgba(236,237,245,0.5)",
-          background: "rgba(236,237,245,0.35)",
-        }}
-      >
-        {Array.from({ length: columns }).map((_, c) => (
-          <div key={c} className="flex-1">
-            <Skeleton width="70%" height={14} rounded="sm" />
-          </div>
-        ))}
-      </div>
-
-      {/* Body rows */}
-      <motion.div variants={staggerContainer} initial="initial" animate="animate">
-        {Array.from({ length: rows }).map((_, r) => (
-          <motion.div
-            key={r}
-            variants={fadeIn}
-            className="flex gap-4 px-5 py-3"
-            style={{
-              borderBottom:
-                r < rows - 1 ? "1px solid rgba(236,237,245,0.3)" : undefined,
-            }}
-          >
-            {Array.from({ length: columns }).map((_, c) => (
-              <div key={c} className="flex-1">
-                <Skeleton width={cellWidth(r, c)} height={12} rounded="sm" />
-              </div>
-            ))}
-          </motion.div>
-        ))}
-      </motion.div>
-    </motion.div>
+    <span className="sr-only absolute h-px w-px overflow-hidden">
+      {children}
+    </span>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 2. StatCardsSkeleton
+// DataTableSkeleton — edge-to-edge, hairline, 44px rows, no glass
+// ---------------------------------------------------------------------------
+
+interface DataTableSkeletonProps {
+  columns?: number;
+  rows?: number;
+  /** A11y label announced to screen readers. */
+  label?: string;
+}
+
+export function DataTableSkeleton({
+  columns = 5,
+  rows = 8,
+  label = "Cargando tabla",
+}: DataTableSkeletonProps) {
+  return (
+    <motion.div
+      {...containerFadeIn}
+      {...a11y(label)}
+      className="w-full border-y border-hairline"
+    >
+      <SrOnly>{label}</SrOnly>
+      <table className="w-full border-collapse">
+        <thead
+          style={{
+            borderBottom: "1px solid rgba(17,17,36,0.07)",
+            background: "rgba(255,255,255,0.95)",
+          }}
+        >
+          <tr className="h-9">
+            {Array.from({ length: columns }).map((_, c) => (
+              <th key={c} className="px-4 py-2 text-left">
+                <Skeleton width="60%" height={10} rounded="sm" />
+              </th>
+            ))}
+            <th className="w-[70px] px-4 py-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: rows }).map((_, r) => (
+            <tr
+              key={r}
+              className="h-row border-b border-hairline last:border-b-0"
+            >
+              {Array.from({ length: columns }).map((_, c) => (
+                <td key={c} className="px-4 py-2.5">
+                  <Skeleton
+                    width={cellWidth(r, c)}
+                    height={12}
+                    rounded="sm"
+                  />
+                </td>
+              ))}
+              <td className="px-4 py-2.5">
+                <div className="flex items-center justify-end gap-1">
+                  <Skeleton width={20} height={20} rounded="md" />
+                  <Skeleton width={20} height={20} rounded="md" />
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </motion.div>
+  );
+}
+
+// Legacy alias — existing callers import `TableSkeleton`
+export const TableSkeleton = DataTableSkeleton;
+
+// ---------------------------------------------------------------------------
+// FormSkeleton — Field-aware with column support
+// ---------------------------------------------------------------------------
+
+interface FormSkeletonProps {
+  fields?: number;
+  columns?: 1 | 2;
+  label?: string;
+}
+
+export function FormSkeleton({
+  fields = 6,
+  columns = 1,
+  label = "Cargando formulario",
+}: FormSkeletonProps) {
+  return (
+    <motion.div {...containerFadeIn} {...a11y(label)}>
+      <SrOnly>{label}</SrOnly>
+      <div
+        className={cn(
+          "grid gap-x-5 gap-y-4",
+          columns === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+        )}
+      >
+        {Array.from({ length: fields }).map((_, f) => (
+          <div key={f} className="flex flex-col gap-1.5">
+            <Skeleton width={Math.floor(40 + (f % 3) * 15) + "%"} height={10} rounded="sm" />
+            <Skeleton width="100%" height={36} rounded="md" />
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// Legacy alias
+export const DetailFormSkeleton = FormSkeleton;
+
+// ---------------------------------------------------------------------------
+// ModalFormSkeleton — compact form skeleton for inside modals
+// ---------------------------------------------------------------------------
+
+export function ModalFormSkeleton() {
+  return <FormSkeleton fields={5} columns={1} label="Cargando datos" />;
+}
+
+// ---------------------------------------------------------------------------
+// StatCardsSkeleton — 4 stats grid, matches new opaque card style
 // ---------------------------------------------------------------------------
 
 export function StatCardsSkeleton() {
   return (
     <motion.div
-      className="grid grid-cols-2 md:grid-cols-4 gap-4"
-      variants={staggerContainer}
-      initial="initial"
-      animate="animate"
+      {...containerFadeIn}
+      {...a11y("Cargando estadisticas")}
+      className="grid grid-cols-2 gap-4 md:grid-cols-4"
     >
+      <SrOnly>Cargando estadisticas</SrOnly>
       {Array.from({ length: 4 }).map((_, i) => (
-        <motion.div
+        <div
           key={i}
-          variants={fadeIn}
-          className="flex flex-col gap-3 p-5 rounded-glass-lg"
-          style={glassContainer}
+          className="flex flex-col gap-3 rounded-[12px] border border-hairline bg-white p-5"
         >
-          <Skeleton width={40} height={40} rounded="full" />
-          <Skeleton width="60%" height={12} rounded="sm" />
-          <Skeleton width="40%" height={28} rounded="md" />
-        </motion.div>
+          <Skeleton width={36} height={36} rounded="lg" />
+          <Skeleton width="55%" height={10} rounded="sm" />
+          <Skeleton width="40%" height={24} rounded="md" />
+        </div>
       ))}
     </motion.div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 3. DetailFormSkeleton
-// ---------------------------------------------------------------------------
-
-interface DetailFormSkeletonProps {
-  sections?: number;
-  fieldsPerSection?: number;
-}
-
-export function DetailFormSkeleton({
-  sections = 2,
-  fieldsPerSection = 4,
-}: DetailFormSkeletonProps) {
-  return (
-    <motion.div
-      className="flex flex-col gap-8"
-      variants={staggerContainer}
-      initial="initial"
-      animate="animate"
-    >
-      {Array.from({ length: sections }).map((_, s) => (
-        <motion.div
-          key={s}
-          variants={fadeIn}
-          className="flex flex-col gap-5 p-6 rounded-glass-lg"
-          style={glassContainer}
-        >
-          {/* Section title */}
-          <Skeleton width="30%" height={20} rounded="sm" />
-
-          {/* Fields in 2-column grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            {Array.from({ length: fieldsPerSection }).map((_, f) => (
-              <div key={f} className="flex flex-col gap-2">
-                <Skeleton width="40%" height={14} rounded="sm" />
-                <Skeleton width="100%" height={40} rounded="md" />
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      ))}
-    </motion.div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 4. TabsSkeleton
+// TabsSkeleton — tab bar + content
 // ---------------------------------------------------------------------------
 
 export function TabsSkeleton() {
   return (
     <motion.div
+      {...containerFadeIn}
+      {...a11y("Cargando tabs")}
       className="flex flex-col gap-6"
-      {...fadeIn}
     >
-      {/* Tab bar */}
-      <div
-        className="flex gap-2 px-2 py-2 rounded-glass-lg"
-        style={{
-          background: "rgba(236,237,245,0.35)",
-          border: "1px solid rgba(255,255,255,0.2)",
-          borderRadius: "12px",
-        }}
-      >
+      <SrOnly>Cargando tabs</SrOnly>
+      <div className="flex gap-1 border-b border-hairline pb-0.5">
         {Array.from({ length: 5 }).map((_, t) => (
-          <Skeleton key={t} width={60} height={36} rounded="sm" />
+          <Skeleton key={t} width={80} height={32} rounded="md" />
         ))}
       </div>
-
-      {/* Content area: renders a form skeleton below */}
-      <DetailFormSkeleton sections={1} fieldsPerSection={4} />
+      <FormSkeleton fields={6} columns={2} />
     </motion.div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 5. CardGridSkeleton
+// CardGridSkeleton — photo grid style
 // ---------------------------------------------------------------------------
 
 interface CardGridSkeletonProps {
   cards?: number;
-  columns?: number;
+  columns?: 2 | 3 | 4;
 }
 
 export function CardGridSkeleton({
   cards = 6,
   columns = 3,
 }: CardGridSkeletonProps) {
-  const gridClass = cn(
-    "grid gap-4",
-    columns === 2 && "grid-cols-1 md:grid-cols-2",
-    columns === 3 && "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-    columns === 4 && "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
-    ![2, 3, 4].includes(columns) && "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
-  );
-
   return (
     <motion.div
-      className={gridClass}
-      variants={staggerContainer}
-      initial="initial"
-      animate="animate"
+      {...containerFadeIn}
+      {...a11y("Cargando tarjetas")}
+      className={cn(
+        "grid gap-4",
+        columns === 2 && "grid-cols-1 md:grid-cols-2",
+        columns === 3 && "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+        columns === 4 && "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+      )}
     >
+      <SrOnly>Cargando tarjetas</SrOnly>
       {Array.from({ length: cards }).map((_, i) => (
-        <motion.div
+        <div
           key={i}
-          variants={fadeIn}
-          className="flex flex-col overflow-hidden rounded-glass-lg"
-          style={glassContainer}
+          className="flex flex-col overflow-hidden rounded-[12px] border border-hairline bg-white"
         >
-          {/* Image area */}
-          <Skeleton width="100%" height={160} rounded="sm" className="rounded-b-none" />
-
-          {/* Content area */}
+          <Skeleton width="100%" height={140} rounded="sm" className="!rounded-b-none" />
           <div className="flex flex-col gap-2 p-4">
-            <Skeleton width="80%" height={16} rounded="sm" />
-            <Skeleton width="60%" height={14} rounded="sm" />
-            <Skeleton width="40%" height={20} rounded="md" className="mt-2" />
+            <Skeleton width="80%" height={14} rounded="sm" />
+            <Skeleton width="55%" height={11} rounded="sm" />
+            <Skeleton width="35%" height={18} rounded="md" className="mt-2" />
           </div>
-        </motion.div>
+        </div>
       ))}
     </motion.div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 6. PageSkeleton
+// Page header block — shared between all PageSkeleton variants
 // ---------------------------------------------------------------------------
-
-interface PageSkeletonProps {
-  variant: "table" | "detail" | "dashboard" | "cards";
-}
 
 function PageHeaderSkeleton() {
   return (
-    <motion.div className="flex flex-col gap-3 mb-6" {...fadeIn}>
+    <motion.div className="mb-5 flex flex-col gap-3" {...containerFadeIn}>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
-        <Skeleton width={60} height={12} rounded="sm" />
-        <Skeleton width={8} height={12} rounded="sm" />
-        <Skeleton width={80} height={12} rounded="sm" />
+        <Skeleton width={60} height={10} rounded="sm" />
+        <Skeleton width={8} height={10} rounded="sm" />
+        <Skeleton width={80} height={10} rounded="sm" />
       </div>
-
-      {/* Title row with action buttons */}
+      {/* Title + actions row */}
       <div className="flex items-center justify-between">
-        <Skeleton width={220} height={28} rounded="md" />
-        <div className="flex gap-2">
-          <Skeleton width={100} height={36} rounded="md" />
-          <Skeleton width={100} height={36} rounded="md" />
+        <div className="flex flex-col gap-2">
+          <Skeleton width={220} height={28} rounded="md" />
+          <Skeleton width={300} height={12} rounded="sm" />
         </div>
+        <Skeleton width={140} height={36} rounded="md" />
       </div>
     </motion.div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// PageSkeleton — variant-driven top-level skeleton
+// ---------------------------------------------------------------------------
+
+type PageSkeletonVariant = "table" | "detail" | "dashboard" | "cards";
+
+interface PageSkeletonProps {
+  variant: PageSkeletonVariant;
 }
 
 export function PageSkeleton({ variant }: PageSkeletonProps) {
   return (
-    <motion.div {...fadeIn}>
+    <div role="status" aria-busy aria-live="polite">
+      <SrOnly>Cargando pagina</SrOnly>
       <PageHeaderSkeleton />
 
-      {variant === "table" && <TableSkeleton />}
-      {variant === "detail" && <DetailFormSkeleton />}
+      {variant === "table" && (
+        <>
+          {/* Toolbar skeleton */}
+          <motion.div
+            {...containerFadeIn}
+            className="mb-4 flex items-center gap-3 border-b border-hairline pb-3"
+          >
+            <Skeleton width={240} height={32} rounded="sm" />
+            <div className="ml-auto flex gap-2">
+              <Skeleton width={80} height={30} rounded="md" />
+              <Skeleton width={80} height={30} rounded="md" />
+            </div>
+          </motion.div>
+          <DataTableSkeleton />
+        </>
+      )}
+
+      {variant === "detail" && <FormSkeleton fields={8} columns={2} />}
+
       {variant === "dashboard" && (
         <div className="flex flex-col gap-6">
           <StatCardsSkeleton />
-          <TableSkeleton rows={4} columns={4} />
+          <DataTableSkeleton rows={5} columns={4} />
         </div>
       )}
+
       {variant === "cards" && <CardGridSkeleton />}
-    </motion.div>
+    </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// 7. InlineTableSkeleton
+// DetailPageSkeleton — for /paquetes/[slug] and similar detail routes
+// ---------------------------------------------------------------------------
+
+export function DetailPageSkeleton() {
+  return (
+    <div role="status" aria-busy aria-live="polite">
+      <SrOnly>Cargando detalle</SrOnly>
+      <PageHeaderSkeleton />
+      <TabsSkeleton />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// InlineTableSkeleton — compact row list for modals / inline panels
 // ---------------------------------------------------------------------------
 
 interface InlineTableSkeletonProps {
@@ -306,26 +366,21 @@ interface InlineTableSkeletonProps {
 export function InlineTableSkeleton({ rows = 5 }: InlineTableSkeletonProps) {
   return (
     <motion.div
-      style={{ ...glassContainer, overflow: "hidden" }}
-      variants={staggerContainer}
-      initial="initial"
-      animate="animate"
+      {...containerFadeIn}
+      {...a11y("Cargando lista")}
+      className="border-y border-hairline"
     >
+      <SrOnly>Cargando lista</SrOnly>
       {Array.from({ length: rows }).map((_, r) => (
-        <motion.div
+        <div
           key={r}
-          variants={fadeIn}
-          className="flex items-center gap-4 px-5 py-3"
-          style={{
-            borderBottom:
-              r < rows - 1 ? "1px solid rgba(236,237,245,0.3)" : undefined,
-          }}
+          className="flex items-center gap-4 border-b border-hairline px-4 py-2.5 last:border-b-0"
         >
-          <Skeleton width={24} height={24} rounded="full" />
+          <Skeleton width={24} height={24} rounded="md" />
           <Skeleton width={cellWidth(r, 0)} height={12} rounded="sm" className="flex-1" />
-          <Skeleton width={80} height={12} rounded="sm" />
-          <Skeleton width={60} height={28} rounded="md" />
-        </motion.div>
+          <Skeleton width={70} height={12} rounded="sm" />
+          <Skeleton width={50} height={24} rounded="md" />
+        </div>
       ))}
     </motion.div>
   );

@@ -29,12 +29,12 @@ import {
   useTemporadas,
   useTiposPaquete,
 } from "@/components/providers/CatalogProvider";
-import { useAereos } from "@/components/providers/ServiceProvider";
+import { useAereos, useServiceState } from "@/components/providers/ServiceProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { usePackageLoading } from "@/components/providers/PackageProvider";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
 import type { Paquete } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -62,24 +62,23 @@ export default function PaquetesPage() {
   const paquetes = usePaquetes();
   const { clonePaquete, deletePaquete } = usePackageActions();
   const packageState = usePackageState();
+  const serviceState = useServiceState();
   const temporadas = useTemporadas();
   const tiposPaquete = useTiposPaquete();
   const aereos = useAereos();
   const allOpciones = useAllOpcionesHoteleras();
   const loading = usePackageLoading();
 
-  // Pre-compute opciones map per paquete
-  const opcionesMap = useMemo(() => {
-    const map: Record<string, { precios: number[]; factors: number[] }> = {};
-    for (const op of allOpciones) {
-      if (!map[op.paqueteId]) {
-        map[op.paqueteId] = { precios: [], factors: [] };
-      }
-      map[op.paqueteId].precios.push(op.precioVenta);
-      map[op.paqueteId].factors.push(op.factor);
+  // Per-paquete price derivation: recomputes using current service prices with
+  // period matching so listing prices stay in sync when a service price changes
+  // (Fase 2 — no more stale OpcionHotelera.precioVenta reads).
+  const preciosMap = useMemo(() => {
+    const map: Record<string, ReturnType<typeof computePaquetePrecios>> = {};
+    for (const paq of paquetes) {
+      map[paq.id] = computePaquetePrecios(paq, allOpciones, packageState, serviceState);
     }
     return map;
-  }, [allOpciones]);
+  }, [paquetes, allOpciones, packageState, serviceState]);
 
   // Component state
   const [search, setSearch] = useState("");
@@ -333,31 +332,30 @@ export default function PaquetesPage() {
                   </TableCell>
                   {canSeePricing.neto && (
                     <TableCell variant="price">
-                      {formatCurrency(paquete.netoCalculado)}
+                      {formatCurrency(preciosMap[paquete.id]?.netoFijos ?? paquete.netoCalculado)}
                     </TableCell>
                   )}
                   {canSeePricing.markup && (
                     <TableCell variant="markup">
                       {(() => {
-                        const ops = opcionesMap[paquete.id];
-                        if (ops && ops.factors.length > 1) {
-                          const minF = Math.min(...ops.factors);
-                          const maxF = Math.max(...ops.factors);
+                        const pricing = preciosMap[paquete.id];
+                        if (pricing && pricing.opcionFactors.length > 1) {
+                          const minF = Math.min(...pricing.opcionFactors);
+                          const maxF = Math.max(...pricing.opcionFactors);
                           return `${minF} — ${maxF}`;
                         }
-                        return ops?.factors[0] ?? paquete.markup;
+                        return pricing?.opcionFactors[0] ?? paquete.markup;
                       })()}
                     </TableCell>
                   )}
                   <TableCell variant="price" className="font-semibold">
                     {(() => {
-                      const ops = opcionesMap[paquete.id];
-                      if (ops && ops.precios.length > 1) {
-                        const minP = Math.min(...ops.precios);
-                        const maxP = Math.max(...ops.precios);
-                        return `${formatCurrency(minP)} — ${formatCurrency(maxP)}`;
+                      const pricing = preciosMap[paquete.id];
+                      if (!pricing || pricing.min === null) return formatCurrency(paquete.precioVenta);
+                      if (pricing.min !== pricing.max) {
+                        return `${formatCurrency(pricing.min)} — ${formatCurrency(pricing.max!)}`;
                       }
-                      return formatCurrency(ops?.precios[0] ?? paquete.precioVenta);
+                      return formatCurrency(pricing.min);
                     })()}
                   </TableCell>
                   {canEdit && (

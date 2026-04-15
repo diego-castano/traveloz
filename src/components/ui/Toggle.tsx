@@ -56,13 +56,9 @@ export function Toggle({
       >
         <motion.div
           className="absolute h-[18px] w-[18px] rounded-full bg-white shadow-elevation-4"
-          layout
+          animate={{ x: checked ? 20 : 0 }}
           transition={springs.bouncy}
-          style={{
-            left: checked ? 23 : 3,
-            top: "50%",
-            translateY: "-50%",
-          }}
+          style={{ left: 3, top: 3 }}
         />
       </button>
 

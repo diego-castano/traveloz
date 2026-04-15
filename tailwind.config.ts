@@ -68,6 +68,20 @@ const config: Config = {
           page: "#F5F6FA",
           card: "#FFFFFF",
         },
+        // Hairline + rail tokens used by DataTable, Field, FormSection
+        hairline: "rgba(17,17,36,0.07)",
+        rail: "rgba(17,17,36,0.025)",
+      },
+      spacing: {
+        row: "44px",
+      },
+      fontSize: {
+        // Uppercase micro-label used across headers + field labels
+        label: ["10.5px", { letterSpacing: "0.08em", lineHeight: "1" }],
+        // Compact body for dense tables
+        row: ["13.5px", { lineHeight: "20px" }],
+        // Monospace metadata
+        meta: ["12px", { lineHeight: "16px" }],
       },
       fontFamily: {
         display: ["Playfair Display", "Georgia", "serif"],

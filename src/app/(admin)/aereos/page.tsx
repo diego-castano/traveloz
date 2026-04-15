@@ -2,20 +2,24 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Eye, Pencil, Copy, Trash2, Plane } from "lucide-react";
+import { Plus, Pencil, Copy, Trash2, Plane } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { SearchFilter } from "@/components/ui/SearchFilter";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/Table";
+  DataTable,
+  DataTableHeader,
+  DataTableBody,
+  DataTableRow,
+  DataTableHead,
+  DataTableCell,
+} from "@/components/ui/data/DataTable";
+import {
+  DataTableToolbar,
+  DataTablePageHeader,
+} from "@/components/ui/data/DataTableToolbar";
+import { RowActions } from "@/components/ui/data/RowActions";
+import { EmptyState } from "@/components/ui/data/EmptyState";
 import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
@@ -103,8 +107,7 @@ export default function AereosPage() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  function handleClone(e: React.MouseEvent, aereo: Aereo) {
-    e.stopPropagation();
+  function handleClone(aereo: Aereo) {
     createAereo({
       brandId: activeBrandId,
       ruta: `Copia de ${aereo.ruta}`,
@@ -121,8 +124,7 @@ export default function AereosPage() {
     toast("success", "Aereo clonado", `Se creo una copia de "${aereo.ruta}"`);
   }
 
-  function handleOpenDelete(e: React.MouseEvent, aereo: Aereo) {
-    e.stopPropagation();
+  function handleOpenDelete(aereo: Aereo) {
     setDeleteTarget(aereo);
   }
 
@@ -145,7 +147,7 @@ export default function AereosPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title="Aereos"
         subtitle="Gestion de vuelos y tarifas"
         action={
@@ -160,106 +162,93 @@ export default function AereosPage() {
         }
       />
 
-      <SearchFilter
-        searchValue={search}
-        onSearchChange={setSearch}
-        filters={[]}
-        onFilterToggle={() => undefined}
-        placeholder="Buscar por ruta, destino o aerolinea..."
-        className="mb-6"
+      <DataTableToolbar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por ruta, destino o aerolinea...",
+        }}
+        className="mb-4"
       />
 
       {filteredAereos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <Plane className="h-12 w-12 mb-3 opacity-40" />
-          <p className="text-sm">No hay vuelos registrados</p>
-        </div>
+        <EmptyState
+          icon={Plane}
+          title="No hay vuelos registrados"
+          description="Registra un vuelo para poder asignarlo a paquetes y cotizaciones."
+          action={
+            canEdit ? (
+              <Button
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => router.push("/aereos/nuevo")}
+              >
+                Nuevo Aereo
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <>
-          <div className="relative">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Ruta</TableHead>
-                <TableHead>Destino</TableHead>
-                <TableHead>Aerolinea</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow header>
+                <DataTableHead>ID</DataTableHead>
+                <DataTableHead>Ruta</DataTableHead>
+                <DataTableHead>Destino</DataTableHead>
+                <DataTableHead>Aerolinea</DataTableHead>
+                <DataTableHead align="right">Acciones</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {paginatedAereos.map((aereo) => (
-                <TableRow
+                <DataTableRow
                   key={aereo.id}
-                  className="cursor-pointer"
                   onClick={() => router.push(`/aereos/${aereo.id}`)}
+                  interactive
                 >
-                  <TableCell variant="id">{aereo.id.slice(-4)}</TableCell>
-                  <TableCell className="font-medium text-neutral-800">
+                  <DataTableCell variant="id">{aereo.id.slice(-4)}</DataTableCell>
+                  <DataTableCell variant="primary">
                     {aereo.ruta}
                     {(paqueteCountMap[aereo.id] ?? 0) > 0 && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-brand-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-teal-400">
+                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
                         {paqueteCountMap[aereo.id]} paq.
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell>{aereo.destino}</TableCell>
-                  <TableCell>{aereo.aerolinea}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="icon"
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/aereos/${aereo.id}`);
-                        }}
-                        aria-label="Ver detalle"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="icon"
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/aereos/${aereo.id}`);
-                        }}
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleClone(e, aereo)}
-                            aria-label="Clonar"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleOpenDelete(e, aereo)}
-                            aria-label="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </DataTableCell>
+                  <DataTableCell variant="muted">{aereo.destino}</DataTableCell>
+                  <DataTableCell variant="muted">{aereo.aerolinea}</DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      primary={{
+                        icon: Pencil,
+                        label: "Editar",
+                        onClick: () => router.push(`/aereos/${aereo.id}`),
+                      }}
+                      items={
+                        canEdit
+                          ? [
+                              {
+                                icon: Copy,
+                                label: "Clonar",
+                                onClick: () => handleClone(aereo),
+                              },
+                              {
+                                icon: Trash2,
+                                label: "Eliminar",
+                                onClick: () => handleOpenDelete(aereo),
+                                destructive: true,
+                              },
+                            ]
+                          : []
+                      }
+                    />
+                  </DataTableCell>
+                </DataTableRow>
               ))}
-            </TableBody>
-          </Table>
-          {/* Right fade scroll indicator (mobile) */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none bg-gradient-to-l from-white/80 to-transparent md:hidden" />
-          </div>
+            </DataTableBody>
+          </DataTable>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-5 flex justify-center">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

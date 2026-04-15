@@ -685,7 +685,11 @@ export async function getAllServices(requestedBrandId?: string) {
         }),
         prisma.alojamiento.findMany({
           where: { brandId, deletedAt: null },
-          include: { precios: true, fotos: true },
+          include: {
+            precios: true,
+            fotos: true,
+            ciudad: { select: { id: true, nombre: true, paisId: true } },
+          },
           orderBy: { createdAt: "desc" },
         }),
         prisma.traslado.findMany({

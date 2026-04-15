@@ -78,6 +78,8 @@ export interface Alojamiento {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  /** Eager-loaded city relation when fetched via getAllServices (optional for back-compat). */
+  ciudad?: { id: string; nombre: string; paisId: string } | null;
 }
 
 /** Airport or intercity transfer service, either regular (shared) or private. */

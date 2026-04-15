@@ -4,13 +4,12 @@ import { usePathname } from "next/navigation";
 import { DropdownMenu } from "radix-ui";
 import { AnimatePresence, motion } from "motion/react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { useBrand } from "@/components/providers/BrandProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { glassMaterials } from "@/components/lib/glass";
 import { interactions } from "@/components/lib/animations";
-import { ChevronDown, LogOut, User, Building2, Check, Search, Menu } from "lucide-react";
+import { ChevronDown, LogOut, User, Search, Menu } from "lucide-react";
 import { useSidebar } from "@/components/layout/Sidebar";
 import { SearchModal } from "@/components/ui/SearchModal";
 import { useState } from "react";
@@ -65,11 +64,9 @@ function generateBreadcrumbs(pathname: string) {
 export function Topbar() {
   const pathname = usePathname();
   const { user, isVendedor, logout } = useAuth();
-  const { activeBrand, activeBrandId, brands, switchBrand } = useBrand();
   const breadcrumbItems = generateBreadcrumbs(pathname);
 
   const { isMobile, setMobileOpen } = useSidebar();
-  const [brandOpen, setBrandOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
 
   return (
@@ -119,67 +116,6 @@ export function Topbar() {
             ⌘K
           </kbd>
         </button>
-
-        {/* ----------------------------------------------------------------- */}
-        {/* Brand selector dropdown (Radix DropdownMenu)                       */}
-        {/* ----------------------------------------------------------------- */}
-        <DropdownMenu.Root open={brandOpen} onOpenChange={setBrandOpen}>
-          <DropdownMenu.Trigger asChild>
-            <button
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-neutral-700 outline-none transition-colors hover:bg-white/30"
-              style={{
-                background: "rgba(255,255,255,0.5)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-              }}
-            >
-              <Building2 size={14} className="text-neutral-500" />
-              {activeBrand.name}
-              <ChevronDown
-                size={12}
-                className="text-neutral-400 transition-transform data-[state=open]:rotate-180"
-              />
-            </button>
-          </DropdownMenu.Trigger>
-
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              forceMount
-              sideOffset={8}
-              align="end"
-              asChild
-            >
-              <AnimatePresence>
-                {brandOpen && (
-                  <motion.div
-                    {...interactions.dropdownOpen}
-                    className="min-w-[180px] rounded-xl p-1.5 shadow-elevation-16"
-                    style={{
-                      ...glassMaterials.frosted,
-                      backdropFilter: "blur(24px) saturate(180%)",
-                      WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                    }}
-                  >
-                    {brands.map((brand) => (
-                      <DropdownMenu.Item
-                        key={brand.id}
-                        onSelect={() => switchBrand(brand.id)}
-                        className="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm outline-none transition-colors hover:bg-[rgba(59,191,173,0.06)]"
-                      >
-                        <span className="flex-1 text-neutral-700">
-                          {brand.name}
-                        </span>
-                        {brand.id === activeBrandId && (
-                          <Check size={14} className="text-brand-teal-500" />
-                        )}
-                      </DropdownMenu.Item>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
 
         {/* ----------------------------------------------------------------- */}
         {/* "Solo lectura" badge for VENDEDOR role -- AUTH-06 requirement       */}

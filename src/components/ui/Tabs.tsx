@@ -94,7 +94,7 @@ function TabsList({ className, children }: TabsListProps) {
   return (
     <RadixTabs.List
       className={cn(
-        'relative flex border-b',
+        'relative flex border-b overflow-x-auto scrollbar-none',
         variant === 'dark' ? 'border-white/10' : 'border-neutral-200',
         className
       )}

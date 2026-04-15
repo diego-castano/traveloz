@@ -210,6 +210,7 @@ export function Sidebar() {
                 width={36}
                 height={36}
                 className="object-contain"
+                unoptimized
               />
             </div>
           ) : (
@@ -220,6 +221,7 @@ export function Sidebar() {
               width={140}
               height={36}
               className="object-contain"
+              unoptimized
             />
           )}
 

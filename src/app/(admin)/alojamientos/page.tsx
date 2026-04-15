@@ -2,21 +2,25 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Eye, Pencil, Copy, Trash2, Hotel } from "lucide-react";
+import { Plus, Pencil, Copy, Trash2, Hotel } from "lucide-react";
 import { Star } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { SearchFilter } from "@/components/ui/SearchFilter";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/Table";
+  DataTable,
+  DataTableHeader,
+  DataTableBody,
+  DataTableRow,
+  DataTableHead,
+  DataTableCell,
+} from "@/components/ui/data/DataTable";
+import {
+  DataTableToolbar,
+  DataTablePageHeader,
+} from "@/components/ui/data/DataTableToolbar";
+import { RowActions } from "@/components/ui/data/RowActions";
+import { EmptyState } from "@/components/ui/data/EmptyState";
 import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
@@ -160,8 +164,7 @@ export default function AlojamientosPage() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  function handleClone(e: React.MouseEvent, alojamiento: Alojamiento) {
-    e.stopPropagation();
+  function handleClone(alojamiento: Alojamiento) {
     createAlojamiento({
       brandId: activeBrandId,
       nombre: `Copia de ${alojamiento.nombre}`,
@@ -173,8 +176,7 @@ export default function AlojamientosPage() {
     toast("success", "Alojamiento clonado", `Se creo una copia de "${alojamiento.nombre}"`);
   }
 
-  function handleOpenDelete(e: React.MouseEvent, alojamiento: Alojamiento) {
-    e.stopPropagation();
+  function handleOpenDelete(alojamiento: Alojamiento) {
     setDeleteTarget(alojamiento);
   }
 
@@ -197,7 +199,7 @@ export default function AlojamientosPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title="Alojamientos"
         subtitle="Gestion de hoteles y alojamientos"
         action={
@@ -212,106 +214,97 @@ export default function AlojamientosPage() {
         }
       />
 
-      <SearchFilter
-        searchValue={search}
-        onSearchChange={setSearch}
-        filters={[]}
-        onFilterToggle={() => {}}
-        placeholder="Buscar por hotel, ciudad o pais..."
-        className="mb-6"
+      <DataTableToolbar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por hotel, ciudad o pais...",
+        }}
+        className="mb-4"
       />
 
       {filteredAlojamientos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <Hotel className="h-12 w-12 mb-3 opacity-40" />
-          <p className="text-sm">No hay alojamientos registrados</p>
-        </div>
+        <EmptyState
+          icon={Hotel}
+          title="No hay alojamientos registrados"
+          description="Registra un hotel o alojamiento para poder asignarlo a paquetes."
+          action={
+            canEdit ? (
+              <Button
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => router.push("/alojamientos/nuevo")}
+              >
+                Nuevo Alojamiento
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Hotel</TableHead>
-                <TableHead>Ciudad</TableHead>
-                <TableHead>Pais</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow header>
+                <DataTableHead>ID</DataTableHead>
+                <DataTableHead>Hotel</DataTableHead>
+                <DataTableHead>Ciudad</DataTableHead>
+                <DataTableHead>Pais</DataTableHead>
+                <DataTableHead>Categoria</DataTableHead>
+                <DataTableHead align="right">Acciones</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {paginatedAlojamientos.map((alojamiento) => (
-                <TableRow
+                <DataTableRow
                   key={alojamiento.id}
-                  className="cursor-pointer"
                   onClick={() => router.push(`/alojamientos/${alojamiento.id}`)}
+                  interactive
                 >
-                  <TableCell variant="id">{alojamiento.id.slice(-4)}</TableCell>
-                  <TableCell className="font-medium text-neutral-800">
+                  <DataTableCell variant="id">{alojamiento.id.slice(-4)}</DataTableCell>
+                  <DataTableCell variant="primary">
                     {alojamiento.nombre}
                     {(paqueteCountMap[alojamiento.id] ?? 0) > 0 && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-brand-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-teal-400">
+                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
                         {paqueteCountMap[alojamiento.id]} paq.
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell>{ciudadMap[alojamiento.ciudadId] ?? "--"}</TableCell>
-                  <TableCell>{paisMap[alojamiento.paisId] ?? "--"}</TableCell>
-                  <TableCell>
+                  </DataTableCell>
+                  <DataTableCell variant="muted">{ciudadMap[alojamiento.ciudadId] ?? "--"}</DataTableCell>
+                  <DataTableCell variant="muted">{paisMap[alojamiento.paisId] ?? "--"}</DataTableCell>
+                  <DataTableCell>
                     <StarRating categoria={alojamiento.categoria} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="icon"
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/alojamientos/${alojamiento.id}`);
-                        }}
-                        aria-label="Ver detalle"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/alojamientos/${alojamiento.id}`);
-                            }}
-                            aria-label="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleClone(e, alojamiento)}
-                            aria-label="Clonar"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleOpenDelete(e, alojamiento)}
-                            aria-label="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      primary={{
+                        icon: Pencil,
+                        label: "Editar",
+                        onClick: () => router.push(`/alojamientos/${alojamiento.id}`),
+                      }}
+                      items={
+                        canEdit
+                          ? [
+                              {
+                                icon: Copy,
+                                label: "Clonar",
+                                onClick: () => handleClone(alojamiento),
+                              },
+                              {
+                                icon: Trash2,
+                                label: "Eliminar",
+                                onClick: () => handleOpenDelete(alojamiento),
+                                destructive: true,
+                              },
+                            ]
+                          : []
+                      }
+                    />
+                  </DataTableCell>
+                </DataTableRow>
               ))}
-            </TableBody>
-          </Table>
+            </DataTableBody>
+          </DataTable>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-5 flex justify-center">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

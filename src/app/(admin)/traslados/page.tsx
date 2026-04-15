@@ -1,16 +1,24 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Plus, Pencil, Copy, Trash2, Check, X, Bus } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Plus, Bus } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
-import { glassMaterials } from "@/components/lib/glass";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { SearchFilter } from "@/components/ui/SearchFilter";
-import { Card } from "@/components/ui/Card";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import {
+  DataTableToolbar,
+  DataTablePageHeader,
+} from "@/components/ui/data/DataTableToolbar";
+import { EmptyState } from "@/components/ui/data/EmptyState";
+import { StatusDot } from "@/components/ui/data/StatusDot";
+import {
+  InlineEditTable,
+  type InlineEditColumn,
+} from "@/components/ui/form/InlineEditTable";
+import { Pagination } from "@/components/ui/Pagination";
 import {
   useTraslados,
   useServiceActions,
@@ -29,11 +37,15 @@ import { formatCurrency } from "@/lib/utils";
 import type { Traslado, TipoTraslado } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
-// Inline input styling — copied from aereo detail page per RESEARCH.md
+// Constants
 // ---------------------------------------------------------------------------
 
-const inlineInputClassName =
-  "w-full rounded-[6px] border border-neutral-150/50 bg-white/70 px-2 py-1 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#3BBFAD] focus:shadow-[0_0_0_2px_rgba(255,255,255,0.8),0_0_0_4px_rgba(59,191,173,0.4)] focus:bg-white/85 transition-all backdrop-blur-sm";
+const PAGE_SIZE = 10;
+
+const TIPO_FILTERS = [
+  { key: "REGULAR", label: "Regular" },
+  { key: "PRIVADO", label: "Privado" },
+];
 
 // ---------------------------------------------------------------------------
 // TrasladosPage
@@ -60,15 +72,11 @@ export default function TrasladosPage() {
   // State
   // ---------------------------------------------------------------------------
 
-  const [editingRowId, setEditingRowId] = useState<string | null>(null);
-  const [draftRow, setDraftRow] = useState<Partial<Traslado>>({});
-  const [addingRow, setAddingRow] = useState(false);
-  const [newRow, setNewRow] = useState<
-    Partial<Omit<Traslado, "id" | "brandId" | "createdAt" | "updatedAt" | "deletedAt">>
-  >({});
   const [deleteTarget, setDeleteTarget] = useState<Traslado | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [search, setSearch] = useState("");
+  const [tipoFilter, setTipoFilter] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   // ---------------------------------------------------------------------------
   // Display maps (useMemo)
@@ -114,26 +122,6 @@ export default function TrasladosPage() {
   }, [paises]);
 
   // ---------------------------------------------------------------------------
-  // Cascading ciudad options
-  // ---------------------------------------------------------------------------
-
-  const draftCiudadOptions = useMemo(
-    () =>
-      paises
-        .find((p) => p.id === draftRow.paisId)
-        ?.ciudades.map((c) => ({ value: c.id, label: c.nombre })) ?? [],
-    [paises, draftRow.paisId],
-  );
-
-  const newCiudadOptions = useMemo(
-    () =>
-      paises
-        .find((p) => p.id === newRow.paisId)
-        ?.ciudades.map((c) => ({ value: c.id, label: c.nombre })) ?? [],
-    [paises, newRow.paisId],
-  );
-
-  // ---------------------------------------------------------------------------
   // Select options (computed once)
   // ---------------------------------------------------------------------------
 
@@ -152,130 +140,220 @@ export default function TrasladosPage() {
     [proveedoresTraslados],
   );
 
+  function ciudadOptionsFor(paisId: string | undefined) {
+    return (
+      paises
+        .find((p) => p.id === paisId)
+        ?.ciudades.map((c) => ({ value: c.id, label: c.nombre })) ?? []
+    );
+  }
+
   // ---------------------------------------------------------------------------
-  // Filtered rows
+  // Filtered rows + pagination
   // ---------------------------------------------------------------------------
 
   const filteredTraslados = useMemo(() => {
-    if (!search.trim()) return traslados;
-    const q = search.toLowerCase();
-    return traslados.filter(
-      (t) =>
-        t.nombre.toLowerCase().includes(q) ||
-        (paisMap[t.paisId] ?? "").toLowerCase().includes(q) ||
-        (ciudadMap[t.ciudadId] ?? "").toLowerCase().includes(q),
-    );
-  }, [traslados, search, paisMap, ciudadMap]);
+    let rows = traslados;
+    if (tipoFilter) {
+      rows = rows.filter((t) => t.tipo === tipoFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      rows = rows.filter(
+        (t) =>
+          t.nombre.toLowerCase().includes(q) ||
+          (paisMap[t.paisId] ?? "").toLowerCase().includes(q) ||
+          (ciudadMap[t.ciudadId] ?? "").toLowerCase().includes(q),
+      );
+    }
+    return rows;
+  }, [traslados, search, tipoFilter, paisMap, ciudadMap]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, tipoFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTraslados.length / PAGE_SIZE));
+
+  const paginatedTraslados = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredTraslados.slice(start, start + PAGE_SIZE);
+  }, [filteredTraslados, page]);
 
   // ---------------------------------------------------------------------------
-  // Handlers — edit mode
+  // Handlers — InlineEditTable async callbacks
   // ---------------------------------------------------------------------------
 
-  function handleStartEdit(t: Traslado) {
-    setAddingRow(false);
-    setNewRow({});
-    setEditingRowId(t.id);
-    setDraftRow({
-      nombre: t.nombre,
-      tipo: t.tipo,
-      paisId: t.paisId,
-      ciudadId: t.ciudadId,
-      proveedorId: t.proveedorId,
-      precio: t.precio,
-    });
+  async function handleSaveRow(row: Traslado) {
+    try {
+      if (row.id) {
+        await updateTraslado(row);
+        toast(
+          "success",
+          "Traslado actualizado",
+          `"${row.nombre}" guardado correctamente`,
+        );
+      } else {
+        await createTraslado({
+          brandId: activeBrandId,
+          nombre: row.nombre,
+          tipo: row.tipo,
+          paisId: row.paisId,
+          ciudadId: row.ciudadId,
+          proveedorId: row.proveedorId,
+          precio: row.precio,
+        });
+        toast(
+          "success",
+          "Traslado creado",
+          `"${row.nombre}" fue creado correctamente`,
+        );
+      }
+    } catch (err) {
+      toast(
+        "error",
+        "Error al guardar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
+    }
   }
 
-  function handleCancelEdit() {
-    setEditingRowId(null);
-    setDraftRow({});
+  function handleDeleteRow(row: Traslado) {
+    setDeleteTarget(row);
   }
 
-  function handleSaveEdit() {
-    const existing = traslados.find((t) => t.id === editingRowId);
-    if (!existing) return;
-    updateTraslado({ ...existing, ...draftRow } as Traslado);
-    toast("success", "Traslado actualizado", `"${draftRow.nombre ?? existing.nombre}" guardado correctamente`);
-    setEditingRowId(null);
-    setDraftRow({});
-  }
-
-  // ---------------------------------------------------------------------------
-  // Handlers — add mode
-  // ---------------------------------------------------------------------------
-
-  function handleStartAdd() {
-    setEditingRowId(null);
-    setDraftRow({});
-    setAddingRow(true);
-    setNewRow({ nombre: "", tipo: "REGULAR", paisId: "", ciudadId: "", proveedorId: "", precio: 0 });
-  }
-
-  function handleCancelAdd() {
-    setAddingRow(false);
-    setNewRow({});
-  }
-
-  function handleSaveAdd() {
-    createTraslado({
-      brandId: activeBrandId,
-      nombre: newRow.nombre!,
-      tipo: newRow.tipo!,
-      paisId: newRow.paisId!,
-      ciudadId: newRow.ciudadId!,
-      proveedorId: newRow.proveedorId!,
-      precio: newRow.precio!,
-    });
-    toast("success", "Traslado creado", `"${newRow.nombre}" fue creado correctamente`);
-    setAddingRow(false);
-    setNewRow({});
-  }
-
-  // ---------------------------------------------------------------------------
-  // Handlers — clone & delete
-  // ---------------------------------------------------------------------------
-
-  function handleClone(t: Traslado) {
-    createTraslado({
-      brandId: t.brandId,
-      nombre: `Copia de ${t.nombre}`,
-      tipo: t.tipo,
-      paisId: t.paisId,
-      ciudadId: t.ciudadId,
-      proveedorId: t.proveedorId,
-      precio: t.precio,
-    });
-    toast("success", "Traslado clonado", `Se creo una copia de "${t.nombre}"`);
-  }
-
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setIsShaking(true);
-    setTimeout(() => {
-      deleteTraslado(deleteTarget.id);
-      toast("success", "Traslado eliminado", `"${deleteTarget.nombre}" fue eliminado correctamente`);
+    setTimeout(async () => {
+      try {
+        await deleteTraslado(deleteTarget.id);
+        toast(
+          "success",
+          "Traslado eliminado",
+          `"${deleteTarget.nombre}" fue eliminado correctamente`,
+        );
+      } catch (err) {
+        toast(
+          "error",
+          "Error al eliminar",
+          err instanceof Error ? err.message : "Intenta nuevamente",
+        );
+      }
       setDeleteTarget(null);
       setIsShaking(false);
     }, 400);
   }
 
   // ---------------------------------------------------------------------------
-  // Tipo badge
+  // Columns for InlineEditTable
   // ---------------------------------------------------------------------------
 
-  function TipoBadge({ tipo }: { tipo: TipoTraslado }) {
-    return (
-      <span
-        className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-        style={
-          tipo === "REGULAR"
-            ? { background: "rgba(59,191,173,0.12)", color: "#1A9E8B" }
-            : { background: "rgba(108,43,217,0.10)", color: "#6C2BD9" }
-        }
-      >
-        {tipo === "REGULAR" ? "Regular" : "Privado"}
-      </span>
-    );
-  }
+  const columns: InlineEditColumn<Traslado>[] = [
+    {
+      key: "nombre",
+      label: "Nombre",
+      render: (r) => (
+        <span className="font-medium text-neutral-900">
+          {r.nombre}
+          {(paqueteCountMap[r.id] ?? 0) > 0 && (
+            <span className="ml-2 inline-flex items-center rounded-full bg-brand-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-teal-400">
+              {paqueteCountMap[r.id]} paq.
+            </span>
+          )}
+        </span>
+      ),
+      editor: (r, update) => (
+        <Input
+          value={r.nombre ?? ""}
+          onChange={(e) => update("nombre", e.target.value)}
+          placeholder="Nombre del traslado"
+        />
+      ),
+    },
+    {
+      key: "tipo",
+      label: "Tipo",
+      width: "130px",
+      render: (r) => (
+        <StatusDot variant={r.tipo === "REGULAR" ? "active" : "draft"}>
+          {r.tipo === "REGULAR" ? "Regular" : "Privado"}
+        </StatusDot>
+      ),
+      editor: (r, update) => (
+        <Select
+          value={r.tipo}
+          onValueChange={(v) => update("tipo", v as TipoTraslado)}
+          options={tipoOptions}
+        />
+      ),
+    },
+    {
+      key: "paisId",
+      label: "Pais",
+      width: "160px",
+      render: (r) => paisMap[r.paisId] ?? "—",
+      editor: (r, update) => (
+        <Select
+          value={r.paisId}
+          onValueChange={(v) => {
+            update("paisId", v);
+            update("ciudadId", "");
+          }}
+          options={paisOptions}
+          placeholder="Pais..."
+        />
+      ),
+    },
+    {
+      key: "ciudadId",
+      label: "Ciudad",
+      width: "160px",
+      render: (r) => ciudadMap[r.ciudadId] ?? "—",
+      editor: (r, update) => (
+        <Select
+          value={r.ciudadId}
+          onValueChange={(v) => update("ciudadId", v)}
+          options={ciudadOptionsFor(r.paisId)}
+          placeholder="Ciudad..."
+          disabled={!r.paisId}
+        />
+      ),
+    },
+    {
+      key: "proveedorId",
+      label: "Proveedor",
+      width: "180px",
+      render: (r) => proveedorMap[r.proveedorId] ?? "—",
+      editor: (r, update) => (
+        <Select
+          value={r.proveedorId}
+          onValueChange={(v) => update("proveedorId", v)}
+          options={proveedorOptions}
+          placeholder="Proveedor..."
+        />
+      ),
+    },
+    {
+      key: "precio",
+      label: "Precio USD",
+      align: "right",
+      width: "130px",
+      render: (r) => (
+        <span className="font-mono text-[13px] font-semibold text-neutral-900">
+          {formatCurrency(r.precio)}
+        </span>
+      ),
+      editor: (r, update) => (
+        <Input
+          type="number"
+          value={String(r.precio ?? 0)}
+          onChange={(e) => update("precio", parseFloat(e.target.value) || 0)}
+          className="text-right"
+        />
+      ),
+    },
+  ];
 
   // ---------------------------------------------------------------------------
   // Render
@@ -285,341 +363,71 @@ export default function TrasladosPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title="Traslados"
         subtitle="Gestion de transfers y traslados"
-        action={
-          canEdit ? (
-            <Button
-              leftIcon={<Plus className="h-4 w-4" />}
-              onClick={handleStartAdd}
-            >
-              Nuevo Traslado
-            </Button>
-          ) : undefined
-        }
       />
 
-      <SearchFilter
-        searchValue={search}
-        onSearchChange={setSearch}
-        filters={[]}
-        onFilterToggle={() => undefined}
-        placeholder="Buscar por nombre, pais o ciudad..."
-        className="mb-6"
+      <DataTableToolbar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por nombre, pais o ciudad...",
+        }}
+        filters={TIPO_FILTERS}
+        activeFilter={tipoFilter}
+        onFilterChange={setTipoFilter}
+        className="mb-4"
       />
 
-      {filteredTraslados.length === 0 && !addingRow ? (
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <Bus className="h-12 w-12 mb-3 opacity-40" />
-          <p className="text-sm">No hay traslados registrados</p>
-        </div>
+      {filteredTraslados.length === 0 ? (
+        <EmptyState
+          icon={Bus}
+          title="No hay traslados registrados"
+          description="Agrega un traslado para poder asignarlo a paquetes."
+          action={
+            canEdit ? (
+              <Button leftIcon={<Plus className="h-4 w-4" />}>
+                Nuevo Traslado
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
-        <Card static>
-          <div
-            className="overflow-x-auto rounded-[inherit]"
-            style={glassMaterials.frosted}
-          >
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-neutral-200/60">
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 w-16">
-                    ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                    Nombre
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 w-28">
-                    Tipo
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 w-36">
-                    Pais
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 w-36">
-                    Ciudad
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500 w-40">
-                    Proveedor
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-neutral-500 w-28">
-                    Precio (USD)
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-neutral-500 w-28">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTraslados.map((t) =>
-                  editingRowId === t.id ? (
-                    // Edit mode row
-                    <tr
-                      key={t.id}
-                      className="border-b border-neutral-100/80 bg-[rgba(59,191,173,0.03)]"
-                    >
-                      <td className="px-4 py-2">
-                        <span className="text-xs text-neutral-400 font-mono">
-                          {t.id.slice(-4)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="text"
-                          className={inlineInputClassName}
-                          value={draftRow.nombre ?? ""}
-                          onChange={(e) =>
-                            setDraftRow((d) => ({ ...d, nombre: e.target.value }))
-                          }
-                          placeholder="Nombre del traslado"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <Select
-                          options={tipoOptions}
-                          value={draftRow.tipo}
-                          onValueChange={(v) =>
-                            setDraftRow((d) => ({ ...d, tipo: v as TipoTraslado }))
-                          }
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <Select
-                          options={paisOptions}
-                          value={draftRow.paisId}
-                          onValueChange={(v) =>
-                            setDraftRow((d) => ({ ...d, paisId: v, ciudadId: "" }))
-                          }
-                          placeholder="Pais..."
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <Select
-                          options={draftCiudadOptions}
-                          value={draftRow.ciudadId}
-                          onValueChange={(v) =>
-                            setDraftRow((d) => ({ ...d, ciudadId: v }))
-                          }
-                          placeholder="Ciudad..."
-                          disabled={!draftRow.paisId}
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <Select
-                          options={proveedorOptions}
-                          value={draftRow.proveedorId}
-                          onValueChange={(v) =>
-                            setDraftRow((d) => ({ ...d, proveedorId: v }))
-                          }
-                          placeholder="Proveedor..."
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="number"
-                          className={`${inlineInputClassName} text-right`}
-                          value={draftRow.precio ?? 0}
-                          onChange={(e) =>
-                            setDraftRow((d) => ({
-                              ...d,
-                              precio: parseFloat(e.target.value) || 0,
-                            }))
-                          }
-                          min={0}
-                          step={0.01}
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={handleSaveEdit}
-                            aria-label="Guardar"
-                            className="text-emerald-600 hover:text-emerald-700"
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={handleCancelEdit}
-                            aria-label="Cancelar"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    // View mode row
-                    <tr
-                      key={t.id}
-                      className="border-b border-neutral-100/80 hover:bg-white/40 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <span className="text-xs text-neutral-400 font-mono">
-                          {t.id.slice(-4)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-neutral-800">
-                        {t.nombre}
-                        {(paqueteCountMap[t.id] ?? 0) > 0 && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-brand-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-teal-400">
-                            {paqueteCountMap[t.id]} paq.
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <TipoBadge tipo={t.tipo} />
-                      </td>
-                      <td className="px-4 py-3 text-neutral-600">
-                        {paisMap[t.paisId] ?? "--"}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-600">
-                        {ciudadMap[t.ciudadId] ?? "--"}
-                      </td>
-                      <td className="px-4 py-3 text-neutral-600">
-                        {proveedorMap[t.proveedorId] ?? "--"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-neutral-700 font-medium">
-                        {formatCurrency(t.precio)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          {canEdit && (
-                            <>
-                              <Button
-                                variant="icon"
-                                size="xs"
-                                onClick={() => handleStartEdit(t)}
-                                aria-label="Editar"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="icon"
-                                size="xs"
-                                onClick={() => handleClone(t)}
-                                aria-label="Clonar"
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="icon"
-                                size="xs"
-                                onClick={() => setDeleteTarget(t)}
-                                aria-label="Eliminar"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ),
-                )}
+        <>
+          <InlineEditTable<Traslado>
+            columns={columns}
+            rows={paginatedTraslados}
+            getRowId={(r) => r.id}
+            onSave={handleSaveRow}
+            onDelete={canEdit ? handleDeleteRow : undefined}
+            onAdd={
+              canEdit
+                ? () =>
+                    ({
+                      nombre: "",
+                      tipo: "REGULAR" as TipoTraslado,
+                      paisId: "",
+                      ciudadId: "",
+                      proveedorId: "",
+                      precio: 0,
+                    }) as Partial<Traslado>
+                : undefined
+            }
+            addLabel="Agregar traslado"
+            emptyMessage="No hay traslados cargados"
+          />
 
-                {/* Add row */}
-                {addingRow && (
-                  <tr className="border-b border-neutral-100/80 bg-[rgba(59,191,173,0.04)]">
-                    <td className="px-4 py-2">
-                      <span className="text-xs text-neutral-300">nuevo</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        className={inlineInputClassName}
-                        value={newRow.nombre ?? ""}
-                        onChange={(e) =>
-                          setNewRow((r) => ({ ...r, nombre: e.target.value }))
-                        }
-                        placeholder="Nombre del traslado"
-                        autoFocus
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <Select
-                        options={tipoOptions}
-                        value={newRow.tipo}
-                        onValueChange={(v) =>
-                          setNewRow((r) => ({ ...r, tipo: v as TipoTraslado }))
-                        }
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <Select
-                        options={paisOptions}
-                        value={newRow.paisId}
-                        onValueChange={(v) =>
-                          setNewRow((r) => ({ ...r, paisId: v, ciudadId: "" }))
-                        }
-                        placeholder="Pais..."
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <Select
-                        options={newCiudadOptions}
-                        value={newRow.ciudadId}
-                        onValueChange={(v) =>
-                          setNewRow((r) => ({ ...r, ciudadId: v }))
-                        }
-                        placeholder="Ciudad..."
-                        disabled={!newRow.paisId}
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <Select
-                        options={proveedorOptions}
-                        value={newRow.proveedorId}
-                        onValueChange={(v) =>
-                          setNewRow((r) => ({ ...r, proveedorId: v }))
-                        }
-                        placeholder="Proveedor..."
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="number"
-                        className={`${inlineInputClassName} text-right`}
-                        value={newRow.precio ?? 0}
-                        onChange={(e) =>
-                          setNewRow((r) => ({
-                            ...r,
-                            precio: parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                        min={0}
-                        step={0.01}
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={handleSaveAdd}
-                          aria-label="Guardar nuevo"
-                          className="text-emerald-600 hover:text-emerald-700"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={handleCancelAdd}
-                          aria-label="Cancelar"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+          {totalPages > 1 && (
+            <div className="mt-5 flex justify-center">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* Delete confirmation modal */}

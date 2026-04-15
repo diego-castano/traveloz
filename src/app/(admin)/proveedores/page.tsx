@@ -1,41 +1,77 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { Plus, Eye, Pencil, Copy, Trash2, Building2, Bus, ShieldCheck, Map } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Copy,
+  Trash2,
+  Building2,
+  Bus,
+  ShieldCheck,
+  Map,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { SearchFilter } from "@/components/ui/SearchFilter";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/Table";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+  DataTable,
+  DataTableHeader,
+  DataTableBody,
+  DataTableRow,
+  DataTableHead,
+  DataTableCell,
+} from "@/components/ui/data/DataTable";
+import {
+  DataTableToolbar,
+  DataTablePageHeader,
+} from "@/components/ui/data/DataTableToolbar";
+import { RowActions } from "@/components/ui/data/RowActions";
+import { StatusDot } from "@/components/ui/data/StatusDot";
+import { EmptyState } from "@/components/ui/data/EmptyState";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldError,
+} from "@/components/ui/form/Field";
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
   useProveedores,
   useCatalogActions,
+  useCatalogLoading,
 } from "@/components/providers/CatalogProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
-import { useCatalogLoading } from "@/components/providers/CatalogProvider";
-import { cn } from "@/components/lib/cn";
-import type { Proveedor } from "@/lib/types";
+import type { Proveedor, CategoriaServicio } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 10;
+
+const SERVICE_FILTERS = [
+  { key: "TRASLADOS", label: "Traslados", icon: Bus },
+  { key: "SEGUROS", label: "Seguros", icon: ShieldCheck },
+  { key: "CIRCUITOS", label: "Circuitos", icon: Map },
+];
+
+const SERVICE_LABEL: Record<CategoriaServicio, string> = {
+  TRASLADOS: "Traslados",
+  SEGUROS: "Seguros",
+  CIRCUITOS: "Circuitos",
+};
 
 // ---------------------------------------------------------------------------
 // ProveedoresPage
@@ -48,7 +84,8 @@ export default function ProveedoresPage() {
 
   // Data hooks
   const proveedores = useProveedores();
-  const { createProveedor, updateProveedor, deleteProveedor } = useCatalogActions();
+  const { createProveedor, updateProveedor, deleteProveedor } =
+    useCatalogActions();
   const loading = useCatalogLoading();
 
   // Modal state
@@ -64,7 +101,7 @@ export default function ProveedoresPage() {
     email: "",
     telefono: "",
     notas: "",
-    servicio: "SEGUROS" as import("@/lib/types").CategoriaServicio,
+    servicio: "SEGUROS" as CategoriaServicio,
   });
 
   // List state
@@ -73,7 +110,7 @@ export default function ProveedoresPage() {
   const [filtroServicio, setFiltroServicio] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
-  // Filtered and paginated data
+  // Filtering
   // ---------------------------------------------------------------------------
 
   const filteredProveedores = useMemo(() => {
@@ -83,7 +120,8 @@ export default function ProveedoresPage() {
         const q = search.toLowerCase();
         if (
           !p.nombre.toLowerCase().includes(q) &&
-          !(p.email ?? "").toLowerCase().includes(q)
+          !(p.email ?? "").toLowerCase().includes(q) &&
+          !(p.contacto ?? "").toLowerCase().includes(q)
         )
           return false;
       }
@@ -91,7 +129,6 @@ export default function ProveedoresPage() {
     });
   }, [proveedores, search, filtroServicio]);
 
-  // Reset page when search or filter changes
   useEffect(() => {
     setPage(1);
   }, [search, filtroServicio]);
@@ -109,7 +146,14 @@ export default function ProveedoresPage() {
 
   function handleOpenCreate() {
     setEditTarget(null);
-    setForm({ nombre: "", contacto: "", email: "", telefono: "", notas: "", servicio: "SEGUROS" });
+    setForm({
+      nombre: "",
+      contacto: "",
+      email: "",
+      telefono: "",
+      notas: "",
+      servicio: "SEGUROS",
+    });
     setModalOpen(true);
   }
 
@@ -126,20 +170,29 @@ export default function ProveedoresPage() {
     setModalOpen(true);
   }
 
-  function handleSave() {
+  async function handleSave(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!form.nombre.trim()) return;
     if (editTarget) {
-      updateProveedor({ ...editTarget, ...form });
-      toast("success", "Proveedor actualizado", `"${form.nombre}" fue actualizado correctamente`);
+      await updateProveedor({ ...editTarget, ...form });
+      toast(
+        "success",
+        "Proveedor actualizado",
+        `"${form.nombre}" fue actualizado correctamente`,
+      );
     } else {
-      createProveedor({ brandId: activeBrandId, ...form });
-      toast("success", "Proveedor creado", `"${form.nombre}" fue creado correctamente`);
+      await createProveedor({ brandId: activeBrandId, ...form });
+      toast(
+        "success",
+        "Proveedor creado",
+        `"${form.nombre}" fue creado correctamente`,
+      );
     }
     setModalOpen(false);
   }
 
-  function handleClone(e: React.MouseEvent, p: Proveedor) {
-    e.stopPropagation();
-    createProveedor({
+  async function handleClone(p: Proveedor) {
+    await createProveedor({
       brandId: p.brandId,
       nombre: `Copia de ${p.nombre}`,
       contacto: p.contacto ?? "",
@@ -151,17 +204,20 @@ export default function ProveedoresPage() {
     toast("success", "Proveedor clonado", `Se creo una copia de "${p.nombre}"`);
   }
 
-  function handleOpenDelete(e: React.MouseEvent, p: Proveedor) {
-    e.stopPropagation();
+  function handleOpenDelete(p: Proveedor) {
     setDeleteTarget(p);
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setIsShaking(true);
-    setTimeout(() => {
-      deleteProveedor(deleteTarget.id);
-      toast("success", "Proveedor eliminado", `"${deleteTarget.nombre}" fue eliminado correctamente`);
+    setTimeout(async () => {
+      await deleteProveedor(deleteTarget.id);
+      toast(
+        "success",
+        "Proveedor eliminado",
+        `"${deleteTarget.nombre}" fue eliminado correctamente`,
+      );
       setDeleteTarget(null);
       setIsShaking(false);
     }, 400);
@@ -175,9 +231,9 @@ export default function ProveedoresPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title="Proveedores"
-        subtitle="Gestion de proveedores de servicios"
+        subtitle="Proveedores de traslados, seguros y circuitos"
         action={
           canEdit ? (
             <Button
@@ -190,107 +246,105 @@ export default function ProveedoresPage() {
         }
       />
 
-      <SearchFilter
-        searchValue={search}
-        onSearchChange={setSearch}
-        filters={[]}
-        onFilterToggle={() => undefined}
-        placeholder="Buscar por nombre o email..."
+      <DataTableToolbar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por nombre, contacto o email...",
+        }}
+        filters={SERVICE_FILTERS}
+        activeFilter={filtroServicio}
+        onFilterChange={setFiltroServicio}
         className="mb-4"
       />
 
-      {/* Filter chips by servicio */}
-      <div className="flex gap-2 mb-6 flex-wrap">
-        {(["TRASLADOS", "SEGUROS", "CIRCUITOS"] as const).map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setFiltroServicio((prev) => (prev === cat ? null : cat))}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-              filtroServicio === cat
-                ? "bg-brand-teal-400 text-white shadow-glow-teal"
-                : "bg-white/60 text-neutral-500 hover:bg-white/80 border border-neutral-150/50",
-            )}
-            style={filtroServicio === cat ? {} : { backdropFilter: "blur(8px)" }}
-          >
-            {cat === "TRASLADOS" && <Bus className="w-3.5 h-3.5" />}
-            {cat === "SEGUROS" && <ShieldCheck className="w-3.5 h-3.5" />}
-            {cat === "CIRCUITOS" && <Map className="w-3.5 h-3.5" />}
-            {cat.charAt(0) + cat.slice(1).toLowerCase()}
-          </button>
-        ))}
-      </div>
-
       {filteredProveedores.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <Building2 className="h-12 w-12 mb-3 opacity-40" />
-          <p className="text-sm">No hay proveedores registrados</p>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="No hay proveedores registrados"
+          description="Registra un proveedor para poder asignarlo a traslados, seguros o circuitos."
+          action={
+            canEdit ? (
+              <Button
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={handleOpenCreate}
+              >
+                Nuevo Proveedor
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Contacto</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow header>
+                <DataTableHead>Nombre</DataTableHead>
+                <DataTableHead>Servicio</DataTableHead>
+                <DataTableHead>Contacto</DataTableHead>
+                <DataTableHead>Email</DataTableHead>
+                <DataTableHead align="right">Acciones</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {paginatedProveedores.map((p) => (
-                <TableRow key={p.id}>
-                  <TableCell className="font-medium text-neutral-800">
-                    {p.nombre}
-                  </TableCell>
-                  <TableCell>{p.contacto ?? "—"}</TableCell>
-                  <TableCell>{p.email ?? "—"}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="icon"
-                        size="xs"
-                        onClick={() => handleOpenEdit(p)}
-                        aria-label="Ver / Editar"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={() => handleOpenEdit(p)}
-                            aria-label="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleClone(e, p)}
-                            aria-label="Clonar"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleOpenDelete(e, p)}
-                            aria-label="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <DataTableRow
+                  key={p.id}
+                  onClick={() => handleOpenEdit(p)}
+                  interactive
+                >
+                  <DataTableCell variant="primary">{p.nombre}</DataTableCell>
+                  <DataTableCell>
+                    <StatusDot
+                      variant={
+                        p.servicio === "TRASLADOS"
+                          ? "active"
+                          : p.servicio === "SEGUROS"
+                            ? "draft"
+                            : "pending"
+                      }
+                    >
+                      {SERVICE_LABEL[p.servicio]}
+                    </StatusDot>
+                  </DataTableCell>
+                  <DataTableCell variant="muted">
+                    {p.contacto ?? "—"}
+                  </DataTableCell>
+                  <DataTableCell variant="muted">
+                    {p.email ?? "—"}
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      primary={{
+                        icon: Pencil,
+                        label: "Editar",
+                        onClick: () => handleOpenEdit(p),
+                      }}
+                      items={
+                        canEdit
+                          ? [
+                              {
+                                icon: Copy,
+                                label: "Clonar",
+                                onClick: () => handleClone(p),
+                              },
+                              {
+                                icon: Trash2,
+                                label: "Eliminar",
+                                onClick: () => handleOpenDelete(p),
+                                destructive: true,
+                              },
+                            ]
+                          : []
+                      }
+                    />
+                  </DataTableCell>
+                </DataTableRow>
               ))}
-            </TableBody>
-          </Table>
+            </DataTableBody>
+          </DataTable>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-5 flex justify-center">
             <Pagination
               currentPage={page}
               totalPages={totalPages}
@@ -302,63 +356,102 @@ export default function ProveedoresPage() {
 
       {/* Create / Edit modal */}
       <Modal open={modalOpen} onOpenChange={setModalOpen} size="md">
-        <ModalHeader title={editTarget ? "Editar Proveedor" : "Nuevo Proveedor"}>
-          {null}
-        </ModalHeader>
-        <ModalBody>
-          <div className="flex flex-col gap-4">
-            <Input
-              label="Nombre"
-              required
-              value={form.nombre}
-              onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
-              placeholder="Nombre del proveedor"
-            />
-            <Input
-              label="Contacto"
-              value={form.contacto}
-              onChange={(e) => setForm((f) => ({ ...f, contacto: e.target.value }))}
-              placeholder="Nombre del contacto"
-            />
-            <Input
-              label="Email"
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-              placeholder="email@proveedor.com"
-            />
-            <Input
-              label="Telefono"
-              value={form.telefono}
-              onChange={(e) => setForm((f) => ({ ...f, telefono: e.target.value }))}
-              placeholder="+54 11 1234-5678"
-            />
-            <Input
-              label="Notas"
-              value={form.notas}
-              onChange={(e) => setForm((f) => ({ ...f, notas: e.target.value }))}
-              placeholder="Notas adicionales..."
-            />
-            <Select
-              label="Servicio"
-              value={form.servicio}
-              onValueChange={(v) => setForm((f) => ({ ...f, servicio: v as import("@/lib/types").CategoriaServicio }))}
-              options={[
-                { value: "SEGUROS", label: "Seguros" },
-                { value: "TRASLADOS", label: "Traslados" },
-                { value: "CIRCUITOS", label: "Circuitos" },
-              ]}
-            />
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="ghost" onClick={() => setModalOpen(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={!form.nombre.trim()}>
-            {editTarget ? "Guardar" : "Crear"}
-          </Button>
-        </ModalFooter>
+        <ModalHeader
+          title={editTarget ? "Editar Proveedor" : "Nuevo Proveedor"}
+          description={
+            editTarget
+              ? "Actualiza los datos del proveedor. Los servicios vinculados mantendran la relacion."
+              : "Registra un proveedor que puedas asignar a traslados, seguros o circuitos."
+          }
+          icon={<Plus className="h-5 w-5" strokeWidth={2.4} />}
+        />
+        <form onSubmit={handleSave}>
+          <ModalBody>
+            <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel required>Nombre</FieldLabel>
+                <Input
+                  value={form.nombre}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, nombre: e.target.value }))
+                  }
+                  placeholder="Nombre del proveedor"
+                  autoFocus
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Servicio</FieldLabel>
+                <Select
+                  value={form.servicio}
+                  onValueChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      servicio: v as CategoriaServicio,
+                    }))
+                  }
+                  options={[
+                    { value: "TRASLADOS", label: "Traslados" },
+                    { value: "SEGUROS", label: "Seguros" },
+                    { value: "CIRCUITOS", label: "Circuitos" },
+                  ]}
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Contacto</FieldLabel>
+                <Input
+                  value={form.contacto}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, contacto: e.target.value }))
+                  }
+                  placeholder="Nombre del contacto"
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Email</FieldLabel>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  placeholder="contacto@proveedor.com"
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Telefono</FieldLabel>
+                <Input
+                  value={form.telefono}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, telefono: e.target.value }))
+                  }
+                  placeholder="+598 9 123 4567"
+                />
+              </Field>
+              <Field span={2}>
+                <FieldLabel>Notas</FieldLabel>
+                <Input
+                  value={form.notas}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, notas: e.target.value }))
+                  }
+                  placeholder="Notas internas sobre el proveedor"
+                />
+              </Field>
+            </FieldGroup>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!form.nombre.trim()}>
+              {editTarget ? "Guardar cambios" : "Crear proveedor"}
+            </Button>
+          </ModalFooter>
+        </form>
       </Modal>
 
       {/* Delete confirmation modal */}
@@ -372,21 +465,32 @@ export default function ProveedoresPage() {
         }}
         size="sm"
       >
-        <ModalHeader title="Eliminar Proveedor">{null}</ModalHeader>
+        <ModalHeader
+          title="Eliminar Proveedor"
+          description="Esta accion no se puede deshacer."
+          icon={<Trash2 className="h-5 w-5" strokeWidth={2.2} />}
+          variant="destructive"
+        />
         <ModalBody>
           <motion.div
             animate={
-              isShaking
-                ? { x: [...interactions.deleteShake.animate.x] }
-                : {}
+              isShaking ? { x: [...interactions.deleteShake.animate.x] } : {}
             }
-            transition={isShaking ? interactions.deleteShake.transition : undefined}
+            transition={
+              isShaking ? interactions.deleteShake.transition : undefined
+            }
           >
-            <p className="text-neutral-700">
-              Esta seguro que desea eliminar &ldquo;{deleteTarget?.nombre}&rdquo;?
+            <p className="text-[14px] text-neutral-700">
+              Vas a eliminar{" "}
+              <span className="font-semibold text-neutral-900">
+                {deleteTarget?.nombre}
+              </span>
+              .
             </p>
-            <p className="text-sm text-neutral-400 mt-2">
-              Esta accion no se puede deshacer.
+            <p className="mt-2 text-[12.5px] text-neutral-500">
+              Los traslados, seguros o circuitos que lo tengan vinculado
+              mantendran la referencia historica pero no podras asignarlo a
+              nuevos servicios.
             </p>
           </motion.div>
         </ModalBody>
@@ -395,7 +499,7 @@ export default function ProveedoresPage() {
             Cancelar
           </Button>
           <Button variant="danger" onClick={handleConfirmDelete}>
-            Eliminar
+            Eliminar definitivamente
           </Button>
         </ModalFooter>
       </Modal>

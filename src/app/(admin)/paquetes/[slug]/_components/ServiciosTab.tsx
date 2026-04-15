@@ -1,32 +1,27 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo } from "react";
-import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
+import { EmptyState } from "@/components/ui/data/EmptyState";
 import {
   usePaqueteServices,
   usePackageActions,
 } from "@/components/providers/PackageProvider";
 import {
   useAereos,
-  useAlojamientos,
   useTraslados,
   useSeguros,
   useCircuitos,
 } from "@/components/providers/ServiceProvider";
-import {
-  usePaises,
-  useProveedores,
-} from "@/components/providers/CatalogProvider";
+import { useProveedores } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import {
   Plus,
   X,
   GripVertical,
   Plane,
-  Hotel,
   Bus,
   Shield,
   MapIcon,
@@ -46,9 +41,10 @@ interface ServiciosTabProps {
 // Service type config
 // ---------------------------------------------------------------------------
 
+// Alojamientos se gestiona en su propio tab (AlojamientosTab). Este tab solo
+// lista los servicios "fijos" compartidos por todas las opciones hoteleras.
 const SERVICE_TYPES = [
   { key: "aereos" as const, label: "Aereos", icon: Plane },
-  { key: "alojamientos" as const, label: "Alojamientos", icon: Hotel },
   { key: "traslados" as const, label: "Traslados", icon: Bus },
   { key: "seguros" as const, label: "Seguros", icon: Shield },
   { key: "circuitos" as const, label: "Circuitos", icon: MapIcon },
@@ -62,7 +58,6 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   const services = usePaqueteServices(paquete.id);
   const {
     removeAereo,
-    removeAlojamiento,
     removeTraslado,
     removeSeguro,
     removeCircuito,
@@ -73,23 +68,10 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
 
   // Lookup maps for service details
   const aereos = useAereos();
-  const alojamientos = useAlojamientos();
   const traslados = useTraslados();
   const seguros = useSeguros();
   const circuitos = useCircuitos();
-  const paises = usePaises();
   const proveedores = useProveedores();
-
-  // Build ciudades lookup map from paises (which include ciudades)
-  const ciudadMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const pais of paises) {
-      for (const ciudad of pais.ciudades) {
-        map.set(ciudad.id, ciudad.nombre);
-      }
-    }
-    return map;
-  }, [paises]);
 
   // Build proveedor lookup map
   const proveedorMap = useMemo(() => {
@@ -102,7 +84,6 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
 
   // Build lookup maps for each service entity
   const aereoMap = useMemo(() => new Map(aereos.map((a) => [a.id, a] as const)), [aereos]);
-  const alojamientoMap = useMemo(() => new Map(alojamientos.map((a) => [a.id, a] as const)), [alojamientos]);
   const trasladoMap = useMemo(() => new Map(traslados.map((t) => [t.id, t] as const)), [traslados]);
   const seguroMap = useMemo(() => new Map(seguros.map((s) => [s.id, s] as const)), [seguros]);
   const circuitoMap = useMemo(() => new Map(circuitos.map((c) => [c.id, c] as const)), [circuitos]);
@@ -110,7 +91,6 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   // -- Remove handlers --
   const removeHandlers: Record<string, (id: string) => void> = {
     aereos: removeAereo,
-    alojamientos: removeAlojamiento,
     traslados: removeTraslado,
     seguros: removeSeguro,
     circuitos: removeCircuito,
@@ -167,24 +147,9 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         if (!aereo) return <span className="text-neutral-400">Aereo no encontrado</span>;
         return (
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-neutral-800">{aereo.ruta}</span>
-            <span className="text-xs text-neutral-500">
+            <span className="text-[13.5px] font-medium text-neutral-800">{aereo.ruta}</span>
+            <span className="text-[12px] text-neutral-500">
               {aereo.destino} &middot; {aereo.aerolinea}
-            </span>
-          </div>
-        );
-      }
-      case "alojamientos": {
-        const aloj = alojamientoMap.get(assignment.alojamientoId as string);
-        if (!aloj) return <span className="text-neutral-400">Alojamiento no encontrado</span>;
-        const ciudadNombre = ciudadMap.get(aloj.ciudadId) ?? "";
-        const stars = "\u2605".repeat(aloj.categoria);
-        return (
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-neutral-800">{aloj.nombre}</span>
-            <span className="text-xs text-neutral-500">
-              <span className="text-amber-500">{stars}</span>
-              {ciudadNombre && <> &middot; {ciudadNombre}</>}
             </span>
           </div>
         );
@@ -194,8 +159,8 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         if (!traslado) return <span className="text-neutral-400">Traslado no encontrado</span>;
         return (
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-neutral-800">{traslado.nombre}</span>
-            <span className="text-xs text-neutral-500">{traslado.tipo}</span>
+            <span className="text-[13.5px] font-medium text-neutral-800">{traslado.nombre}</span>
+            <span className="text-[12px] text-neutral-500">{traslado.tipo}</span>
           </div>
         );
       }
@@ -205,8 +170,8 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         const provNombre = proveedorMap.get(seguro.proveedorId) ?? "";
         return (
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-neutral-800">{seguro.plan}</span>
-            <span className="text-xs text-neutral-500">
+            <span className="text-[13.5px] font-medium text-neutral-800">{seguro.plan}</span>
+            <span className="text-[12px] text-neutral-500">
               {provNombre && <>{provNombre} &middot; </>}
               {seguro.cobertura}
             </span>
@@ -218,8 +183,8 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         if (!circuito) return <span className="text-neutral-400">Circuito no encontrado</span>;
         return (
           <div className="flex flex-col">
-            <span className="text-sm font-medium text-neutral-800">{circuito.nombre}</span>
-            <span className="text-xs text-neutral-500">{circuito.noches} noches</span>
+            <span className="text-[13.5px] font-medium text-neutral-800">{circuito.nombre}</span>
+            <span className="text-[12px] text-neutral-500">{circuito.noches} noches</span>
           </div>
         );
       }
@@ -228,10 +193,9 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     }
   };
 
-  // -- Total count of all assigned services --
+  // -- Total count of all assigned services (excluye alojamientos, gestionados en su propio tab) --
   const totalCount =
     services.aereos.length +
-    services.alojamientos.length +
     services.traslados.length +
     services.seguros.length +
     services.circuitos.length;
@@ -247,31 +211,30 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   // -- Empty state --
   if (totalCount === 0) {
     return (
-      <Card className="p-0" static>
-        <div className="flex flex-col items-center justify-center py-16 gap-4">
-          <div className="flex items-center gap-2 text-neutral-400">
-            <Plane className="h-5 w-5" />
-            <Hotel className="h-5 w-5" />
-            <Bus className="h-5 w-5" />
-          </div>
-          <p className="text-neutral-500 text-sm">No hay servicios asignados</p>
-          {canEdit && (
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Plus className="h-4 w-4" />}
-              onClick={() => setModalOpen(true)}
-            >
-              Agregar Servicio
-            </Button>
-          )}
-        </div>
+      <>
+        <EmptyState
+          icon={Plane}
+          title="No hay servicios asignados"
+          description="Agrega aereos, traslados, seguros o circuitos. Los alojamientos se gestionan en su propio tab."
+          action={
+            canEdit ? (
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => setModalOpen(true)}
+              >
+                Agregar Servicio
+              </Button>
+            ) : undefined
+          }
+        />
         <ServiceSelectorModal
           paqueteId={paquete.id}
           open={modalOpen}
           onOpenChange={setModalOpen}
         />
-      </Card>
+      </>
     );
   }
 
@@ -280,7 +243,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
       {/* Header with add button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h3 className="text-base font-semibold text-neutral-800">
+          <h3 className="text-[15px] font-semibold text-neutral-800">
             Servicios Asignados
           </h3>
           <AutoSaveIndicator status="saved" />
@@ -307,15 +270,15 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
             {/* Section header */}
             <div className="flex items-center gap-2">
               {iconForType(key)}
-              <span className="text-sm font-semibold text-neutral-700">{label}</span>
+              <span className="text-[13px] font-semibold text-neutral-700">{label}</span>
               <Badge variant="draft" size="sm">
                 {items.length}
               </Badge>
             </div>
 
             {/* Items */}
-            <Card className="p-0" static>
-              <div className="divide-y divide-neutral-100/60">
+            <div className="rounded-[12px] border border-hairline bg-white">
+              <div className="divide-y divide-hairline">
                 {items.map((assignment, index) => (
                   <div
                     key={assignment.id}
@@ -327,7 +290,13 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
                   >
                     {/* Drag handle */}
                     {canEdit && (
-                      <GripVertical className="h-4 w-4 text-neutral-300 cursor-grab shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <button
+                        type="button"
+                        aria-label="Reordenar"
+                        className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 hover:bg-neutral-100 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </button>
                     )}
 
                     {/* Service details */}
@@ -338,7 +307,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
                     {/* Remove button */}
                     {canEdit && (
                       <button
-                        className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-glass-sm text-neutral-300 hover:text-brand-red-500 hover:bg-brand-red-50/50 transition-colors opacity-0 group-hover:opacity-100"
+                        className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md text-neutral-400 hover:text-[#CC2030] hover:bg-brand-red-50 transition-colors opacity-0 group-hover:opacity-100"
                         onClick={() => removeHandlers[key](assignment.id)}
                         aria-label="Eliminar servicio"
                       >
@@ -348,7 +317,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
                   </div>
                 ))}
               </div>
-            </Card>
+            </div>
           </div>
         );
       })}

@@ -2,9 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Select dropdown CSS animations using data-state attributes */
-/* Radix Select does not support forceMount on Content (position="popper"), */
-/* so we use CSS data-state animations instead of Motion AnimatePresence */
+/* ---------------------------------------------------------------------- */
+/*  Typography — mono fonts get tabular numbers globally                  */
+/* ---------------------------------------------------------------------- */
+.font-mono,
+code,
+kbd,
+pre,
+samp {
+  font-feature-settings: "tnum" 1, "cv11" 1;
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Reduced motion — kill all shimmer / staggered animations              */
+/*  Motion/Framer Motion components use `useReducedMotion()` per-component */
+/*  but this CSS layer catches any CSS-only animations (Skeleton, keyframes)*/
+/* ---------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-shimmer {
+    animation: none !important;
+    background: #D6D8E3 !important;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/*  Select dropdown CSS animations (Radix Select does not support        */
+/*  forceMount on popper Content, so we use data-state CSS animations)    */
+/* ---------------------------------------------------------------------- */
 .SelectContent[data-state="open"] {
   animation: dropdownIn 200ms ease-out;
 }

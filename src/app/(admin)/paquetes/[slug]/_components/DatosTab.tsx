@@ -5,11 +5,19 @@ import { motion } from "motion/react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { Toggle } from "@/components/ui/Toggle";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Tag } from "@/components/ui/Tag";
 import type { TagColor } from "@/components/ui/Tag";
+import {
+  FormSection,
+  FormSections,
+} from "@/components/ui/form/FormSection";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/form/Field";
 import {
   usePackageActions,
   usePaqueteServices,
@@ -25,16 +33,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
 import { validateForActivation } from "@/lib/validation";
-import {
-  MapPin,
-  Settings,
-  Tags,
-  Calendar,
-  Star,
-  Info,
-  Check,
-  Circle,
-} from "lucide-react";
+import { MapPin, Star, Check, Circle } from "lucide-react";
 import { springs } from "@/components/lib/animations";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
 
@@ -47,43 +46,11 @@ interface DatosTabProps {
 }
 
 // ---------------------------------------------------------------------------
-// Textarea glass styling (consistent with Input glass pattern)
+// Textarea styling — flat, hairline, no glass
 // ---------------------------------------------------------------------------
 
 const textareaClassName =
-  "w-full rounded-clay border border-neutral-150/50 bg-white/70 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-[#3BBFAD] focus:shadow-[0_0_0_2px_rgba(255,255,255,0.8),0_0_0_4px_rgba(59,191,173,0.4)] focus:bg-white/85 transition-all backdrop-blur-sm disabled:bg-neutral-100/50 disabled:text-neutral-400 disabled:cursor-not-allowed";
-
-// ---------------------------------------------------------------------------
-// Section Header
-// ---------------------------------------------------------------------------
-
-function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
-  return (
-    <div className="flex items-center gap-2 mb-4 mt-6 first:mt-0">
-      <div
-        className="flex items-center justify-center w-7 h-7 rounded-lg"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(59,191,173,0.15), rgba(139,92,246,0.1))",
-        }}
-      >
-        <Icon className="w-3.5 h-3.5 text-brand-teal-500" />
-      </div>
-      <span
-        className="text-[13px] font-semibold tracking-wide uppercase"
-        style={{ color: "#2D2F4D" }}
-      >
-        {title}
-      </span>
-      <div
-        className="flex-1 h-px"
-        style={{
-          background: "linear-gradient(90deg, rgba(59,191,173,0.3), transparent)",
-        }}
-      />
-    </div>
-  );
-}
+  "w-full rounded-[8px] border border-[rgba(17,17,36,0.14)] bg-white px-3 py-2 text-[13.5px] text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-[#3BBFAD] focus:shadow-[0_0_0_3px_rgba(59,191,173,0.18)] transition-colors disabled:bg-neutral-50 disabled:text-neutral-400 disabled:cursor-not-allowed";
 
 // ---------------------------------------------------------------------------
 // Estado options
@@ -258,264 +225,131 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setValidezHastaDateDirty = (v: Date | undefined) => { setValidezHastaDate(v); markDirty(); };
 
   return (
-    <Card className="p-0 relative">
+    <div className="relative">
       {/* Auto-save indicator */}
       {canEdit && (
-        <div className="absolute top-3 right-3 z-10">
+        <div className="absolute -top-1 right-0 z-10">
           <AutoSaveIndicator status={autoSaveStatus} />
         </div>
       )}
-      <div className="p-6 space-y-2">
-        {/* ============================================================= */}
-        {/* INFORMACION GENERAL                                           */}
-        {/* ============================================================= */}
-        <SectionHeader icon={Info} title="Informacion General" />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Titulo -- full width */}
-          <div className="col-span-1 md:col-span-2">
-            <Input
-              label="Titulo"
-              value={titulo}
-              onChange={(e) => setTituloDirty(e.target.value)}
-              placeholder="Nombre del paquete"
-              readOnly={isReadOnly}
-            />
-          </div>
+      <FormSections>
+        {/* ================================================================ */}
+        {/* Identificacion                                                   */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Identificacion"
+          description="Datos principales que identifican al paquete en el listado y en el frontend publico."
+        >
+          <FieldGroup columns={2}>
+            <Field span={2}>
+              <FieldLabel required>Titulo</FieldLabel>
+              <Input
+                value={titulo}
+                onChange={(e) => setTituloDirty(e.target.value)}
+                placeholder="Nombre del paquete"
+                readOnly={isReadOnly}
+                autoFocus
+              />
+            </Field>
 
-          {/* Destino + Noches */}
-          <Input
-            label="Destino"
-            value={destino}
-            onChange={(e) => setDestinoDirty(e.target.value)}
-            placeholder="Ciudad o region de destino"
-            readOnly={isReadOnly}
-            leftIcon={<MapPin className="w-4 h-4" />}
-          />
-          <Input
-            label="Noches"
-            type="number"
-            value={noches}
-            onChange={(e) => setNochesDirty(Number(e.target.value))}
-            placeholder="7"
-            readOnly={isReadOnly}
-          />
+            <Field>
+              <FieldLabel>Destino</FieldLabel>
+              <Input
+                value={destino}
+                onChange={(e) => setDestinoDirty(e.target.value)}
+                placeholder="Ciudad o region de destino"
+                readOnly={isReadOnly}
+                leftIcon={<MapPin className="w-4 h-4" />}
+              />
+            </Field>
 
-          {/* Salidas -- full width */}
-          <div className="col-span-1 md:col-span-2">
-            <Input
-              label="Salidas"
-              value={salidas}
-              onChange={(e) => setSalidasDirty(e.target.value)}
-              placeholder="Consultar"
-              readOnly={isReadOnly}
-            />
-          </div>
+            <Field>
+              <FieldLabel>Moneda</FieldLabel>
+              <Select
+                value={moneda}
+                onValueChange={setMonedaDirty}
+                disabled={isReadOnly}
+                options={monedaOptions}
+                placeholder="Seleccionar moneda..."
+              />
+            </Field>
+          </FieldGroup>
+        </FormSection>
 
-          {/* Descripcion -- full width textarea */}
-          <div className="col-span-1 md:col-span-2 flex flex-col">
-            <label
-              htmlFor="descripcion"
-              className="mb-1.5 text-[12.5px] font-medium"
-              style={{ color: "#2D2F4D" }}
-            >
-              Descripcion
-            </label>
-            <textarea
-              id="descripcion"
-              value={descripcion}
-              onChange={(e) => setDescripcionDirty(e.target.value)}
-              placeholder="Descripcion detallada del paquete..."
-              rows={3}
-              readOnly={isReadOnly}
-              className={textareaClassName}
-              style={{
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-              }}
-            />
-          </div>
+        {/* ================================================================ */}
+        {/* Clasificacion                                                    */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Clasificacion"
+          description="Temporada, tipo y etiquetas usadas para filtros y campanas."
+        >
+          <FieldGroup columns={2}>
+            <Field>
+              <FieldLabel>Temporada</FieldLabel>
+              <Select
+                value={temporadaId}
+                onValueChange={setTemporadaIdDirty}
+                disabled={isReadOnly}
+                options={temporadas.map((t) => ({ value: t.id, label: t.nombre }))}
+                placeholder="Seleccionar temporada..."
+              />
+            </Field>
+            <Field>
+              <FieldLabel>Tipo de paquete</FieldLabel>
+              <Select
+                value={tipoPaqueteId}
+                onValueChange={setTipoPaqueteIdDirty}
+                disabled={isReadOnly}
+                options={tiposPaquete.map((t) => ({
+                  value: t.id,
+                  label: t.nombre,
+                }))}
+                placeholder="Seleccionar tipo..."
+              />
+            </Field>
 
-          {/* Texto Visual -- full width textarea */}
-          <div className="col-span-1 md:col-span-2 flex flex-col">
-            <label
-              htmlFor="texto-visual"
-              className="mb-1.5 text-[12.5px] font-medium"
-              style={{ color: "#2D2F4D" }}
-            >
-              Texto Visual
-            </label>
-            <textarea
-              id="texto-visual"
-              value={textoVisual}
-              onChange={(e) => setTextoVisualDirty(e.target.value)}
-              placeholder="Texto destacado para la ficha visual..."
-              rows={2}
-              readOnly={isReadOnly}
-              className={textareaClassName}
-              style={{
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* ============================================================= */}
-        {/* CONFIGURACION                                                 */}
-        {/* ============================================================= */}
-        <SectionHeader icon={Settings} title="Configuracion" />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Select
-            label="Temporada"
-            value={temporadaId}
-            onValueChange={setTemporadaIdDirty}
-            disabled={isReadOnly}
-            options={temporadas.map((t) => ({ value: t.id, label: t.nombre }))}
-            placeholder="Seleccionar temporada..."
-          />
-          <Select
-            label="Tipo de Paquete"
-            value={tipoPaqueteId}
-            onValueChange={setTipoPaqueteIdDirty}
-            disabled={isReadOnly}
-            options={tiposPaquete.map((t) => ({
-              value: t.id,
-              label: t.nombre,
-            }))}
-            placeholder="Seleccionar tipo..."
-          />
-          <Select
-            label="Moneda"
-            value={moneda}
-            onValueChange={setMonedaDirty}
-            disabled={isReadOnly}
-            options={monedaOptions}
-            placeholder="Seleccionar moneda..."
-          />
-          <Select
-            label="Estado"
-            value={estado}
-            onValueChange={setEstadoDirty}
-            disabled={isReadOnly}
-            options={estadoOptions}
-            placeholder="Seleccionar estado..."
-          />
-
-          {/* Validation checklist (shown when BORRADOR and incomplete) */}
-          {estado === "BORRADOR" && !validation.valid && (
-            <div className="col-span-1 md:col-span-2">
-              <div
-                className="rounded-xl p-3"
-                style={{
-                  background: "rgba(232,168,56,0.08)",
-                  border: "1px solid rgba(232,168,56,0.2)",
-                }}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="text-xs font-medium text-amber-700">
-                    Completitud para activar: {validation.completionPercent}%
-                  </div>
-                  <div className="flex-1 h-1.5 rounded-full bg-amber-100 overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-amber-400"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${validation.completionPercent}%` }}
-                      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  {validation.missing.map((item) => (
-                    <div key={item.key} className="flex items-center gap-2 text-xs">
-                      {item.completed ? (
-                        <Check className="w-3.5 h-3.5 text-green-500" />
-                      ) : (
-                        <Circle className="w-3.5 h-3.5 text-amber-400" />
-                      )}
-                      <span
-                        className={
-                          item.completed
-                            ? "text-neutral-400 line-through"
-                            : "text-amber-700"
-                        }
-                      >
-                        {item.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+            <Field span={2}>
+              <FieldLabel>Etiquetas</FieldLabel>
+              <div className="flex flex-wrap gap-2 min-h-[32px]">
+                {assignedEtiquetasFull.length === 0 && (
+                  <span className="text-[13px] text-neutral-400 italic">
+                    Sin etiquetas asignadas
+                  </span>
+                )}
+                {assignedEtiquetasFull.map((etq) => (
+                  <Tag
+                    key={etq.assignmentId}
+                    color={resolveTagColor(etq.color)}
+                    removable={!isReadOnly}
+                    onRemove={() => handleRemoveEtiqueta(etq.assignmentId)}
+                  >
+                    {etq.nombre}
+                  </Tag>
+                ))}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* ============================================================= */}
-        {/* CLASIFICACION                                                 */}
-        {/* ============================================================= */}
-        <SectionHeader icon={Tags} title="Clasificacion" />
-
-        <div className="space-y-4">
-          {/* Etiquetas chips + add dropdown */}
-          <div className="flex flex-col gap-2">
-            <label
-              className="text-[12.5px] font-medium"
-              style={{ color: "#2D2F4D" }}
-            >
-              Etiquetas
-            </label>
-
-            {/* Assigned tags */}
-            <div className="flex flex-wrap gap-2 min-h-[32px]">
-              {assignedEtiquetasFull.length === 0 && (
-                <span className="text-sm text-neutral-400 italic">
-                  Sin etiquetas asignadas
-                </span>
+              {!isReadOnly && availableEtiquetas.length > 0 && (
+                <div className="mt-2 max-w-xs">
+                  <Select
+                    value=""
+                    onValueChange={handleAddEtiqueta}
+                    options={availableEtiquetas.map((e) => ({
+                      value: e.id,
+                      label: e.nombre,
+                    }))}
+                    placeholder="Agregar etiqueta..."
+                  />
+                </div>
               )}
-              {assignedEtiquetasFull.map((etq) => (
-                <Tag
-                  key={etq.assignmentId}
-                  color={resolveTagColor(etq.color)}
-                  removable={!isReadOnly}
-                  onRemove={() => handleRemoveEtiqueta(etq.assignmentId)}
-                >
-                  {etq.nombre}
-                </Tag>
-              ))}
-            </div>
+            </Field>
 
-            {/* Add dropdown */}
-            {!isReadOnly && availableEtiquetas.length > 0 && (
-              <div className="max-w-xs">
-                <Select
-                  value=""
-                  onValueChange={handleAddEtiqueta}
-                  options={availableEtiquetas.map((e) => ({
-                    value: e.id,
-                    label: e.nombre,
-                  }))}
-                  placeholder="Agregar etiqueta..."
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Destacado toggle */}
-          <div className="flex flex-col gap-2">
-            <label
-              className="text-[12.5px] font-medium"
-              style={{ color: "#2D2F4D" }}
-            >
-              Destacado
-            </label>
-            <div className="flex items-center gap-3">
+            <Field span={2} orientation="horizontal">
               <Toggle
                 checked={destacado}
                 onCheckedChange={setDestacadoDirty}
                 disabled={isReadOnly}
               />
-              <span className="text-sm text-neutral-600">
+              <span className="text-[13px] text-neutral-600">
                 Paquete destacado
               </span>
               {destacado && (
@@ -527,48 +361,184 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                   <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
                 </motion.div>
               )}
+            </Field>
+          </FieldGroup>
+        </FormSection>
+
+        {/* ================================================================ */}
+        {/* Duracion y salidas                                               */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Duracion y salidas"
+          description="Cantidad de noches y periodo de salidas del paquete."
+        >
+          <FieldGroup columns={2}>
+            <Field>
+              <FieldLabel>Noches</FieldLabel>
+              <Input
+                type="number"
+                value={noches}
+                onChange={(e) => setNochesDirty(Number(e.target.value))}
+                placeholder="7"
+                readOnly={isReadOnly}
+              />
+            </Field>
+            <Field>
+              <FieldLabel>Salidas</FieldLabel>
+              <Input
+                value={salidas}
+                onChange={(e) => setSalidasDirty(e.target.value)}
+                placeholder="Septiembre a noviembre"
+                readOnly={isReadOnly}
+              />
+            </Field>
+          </FieldGroup>
+        </FormSection>
+
+        {/* ================================================================ */}
+        {/* Validez                                                          */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Validez"
+          description="El paquete se auto-desactiva al llegar a la fecha de validez hasta."
+        >
+          <FieldGroup columns={2}>
+            <Field>
+              <FieldLabel>Valido desde</FieldLabel>
+              <DatePicker
+                value={validezDesdeDate}
+                onChange={setValidezDesdeDateDirty}
+                placeholder="Seleccionar fecha..."
+                disabled={isReadOnly}
+              />
+            </Field>
+            <Field>
+              <FieldLabel>Valido hasta</FieldLabel>
+              <DatePicker
+                value={validezHastaDate}
+                onChange={setValidezHastaDateDirty}
+                placeholder="Seleccionar fecha..."
+                disabled={isReadOnly}
+                error={
+                  hastaExpired
+                    ? "Vigencia vencida"
+                    : hastaWarning
+                      ? "Vence en menos de 30 dias"
+                      : undefined
+                }
+              />
+            </Field>
+          </FieldGroup>
+        </FormSection>
+
+        {/* ================================================================ */}
+        {/* Contenido visual                                                 */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Contenido visual"
+          description="Lo que ve el cliente en el frontend publico."
+        >
+          <FieldGroup columns={1}>
+            <Field>
+              <FieldLabel>Descripcion</FieldLabel>
+              <textarea
+                value={descripcion}
+                onChange={(e) => setDescripcionDirty(e.target.value)}
+                placeholder="Descripcion detallada del paquete..."
+                rows={3}
+                readOnly={isReadOnly}
+                className={textareaClassName}
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel>Texto visual</FieldLabel>
+              <textarea
+                value={textoVisual}
+                onChange={(e) => setTextoVisualDirty(e.target.value)}
+                placeholder="Texto destacado para la ficha visual..."
+                rows={2}
+                readOnly={isReadOnly}
+                className={textareaClassName}
+              />
+            </Field>
+          </FieldGroup>
+        </FormSection>
+
+        {/* ================================================================ */}
+        {/* Estado y completitud                                             */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Estado"
+          description="Controla la visibilidad del paquete en el frontend publico. El checklist muestra los datos pendientes para activar."
+        >
+          <FieldGroup columns={2}>
+            <Field>
+              <FieldLabel>Estado</FieldLabel>
+              <Select
+                value={estado}
+                onValueChange={setEstadoDirty}
+                disabled={isReadOnly}
+                options={estadoOptions}
+                placeholder="Seleccionar estado..."
+              />
+            </Field>
+          </FieldGroup>
+
+          {/* Validation checklist (shown when BORRADOR and incomplete) */}
+          {estado === "BORRADOR" && !validation.valid && (
+            <div
+              className="mt-4 rounded-[12px] border border-hairline bg-white p-4"
+              style={{
+                background: "rgba(232,168,56,0.05)",
+                borderColor: "rgba(232,168,56,0.25)",
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="text-[12px] font-medium text-amber-700">
+                  Completitud para activar: {validation.completionPercent}%
+                </div>
+                <div className="flex-1 h-1.5 rounded-full bg-amber-100 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-amber-400"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${validation.completionPercent}%` }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                {validation.missing.map((item) => (
+                  <div key={item.key} className="flex items-center gap-2 text-[12px]">
+                    {item.completed ? (
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                    ) : (
+                      <Circle className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <span
+                      className={
+                        item.completed
+                          ? "text-neutral-400 line-through"
+                          : "text-amber-700"
+                      }
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* ============================================================= */}
-        {/* VIGENCIA                                                      */}
-        {/* ============================================================= */}
-        <SectionHeader icon={Calendar} title="Vigencia" />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <DatePicker
-            label="Validez Desde"
-            value={validezDesdeDate}
-            onChange={setValidezDesdeDateDirty}
-            placeholder="Seleccionar fecha..."
-            disabled={isReadOnly}
-          />
-          <DatePicker
-            label="Validez Hasta"
-            value={validezHastaDate}
-            onChange={setValidezHastaDateDirty}
-            placeholder="Seleccionar fecha..."
-            disabled={isReadOnly}
-            error={
-              hastaExpired
-                ? "Vigencia vencida"
-                : hastaWarning
-                  ? "Vence en menos de 30 dias"
-                  : undefined
-            }
-          />
-        </div>
-
-        {/* ============================================================= */}
-        {/* Save button                                                   */}
-        {/* ============================================================= */}
-        {canEdit && (
-          <div className="flex justify-end pt-4">
-            <Button variant="secondary" onClick={handleSave}>Guardar Cambios</Button>
-          </div>
-        )}
-      </div>
-    </Card>
+          {canEdit && (
+            <div className="mt-6 flex justify-end">
+              <Button variant="secondary" onClick={handleSave}>
+                Guardar Cambios
+              </Button>
+            </div>
+          )}
+        </FormSection>
+      </FormSections>
+    </div>
   );
 }

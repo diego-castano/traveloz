@@ -2,20 +2,24 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Eye, Copy, Trash2, Map } from "lucide-react";
+import { Plus, Pencil, Copy, Trash2, Map } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
-import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
-import { SearchFilter } from "@/components/ui/SearchFilter";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/Table";
+  DataTable,
+  DataTableHeader,
+  DataTableBody,
+  DataTableRow,
+  DataTableHead,
+  DataTableCell,
+} from "@/components/ui/data/DataTable";
+import {
+  DataTableToolbar,
+  DataTablePageHeader,
+} from "@/components/ui/data/DataTableToolbar";
+import { RowActions } from "@/components/ui/data/RowActions";
+import { EmptyState } from "@/components/ui/data/EmptyState";
 import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
@@ -24,7 +28,6 @@ import {
   useServiceActions,
 } from "@/components/providers/ServiceProvider";
 import { useProveedores } from "@/components/providers/CatalogProvider";
-import { useBrand } from "@/components/providers/BrandProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -46,7 +49,6 @@ export default function CircuitosPage() {
   const router = useRouter();
   const { canEdit } = useAuth();
   const { toast } = useToast();
-  const { activeBrandId } = useBrand();
 
   // Data hooks
   const circuitos = useCircuitos();
@@ -119,41 +121,45 @@ export default function CircuitosPage() {
   // Handlers
   // ---------------------------------------------------------------------------
 
-  async function handleClone(e: React.MouseEvent, c: Circuito) {
-    e.stopPropagation();
+  async function handleClone(c: Circuito) {
     // Deep clone: Circuito + all CircuitoDia + all PrecioCircuito
-    const newC = await createCircuito({
-      brandId: c.brandId,
-      nombre: "Copia de " + c.nombre,
-      noches: c.noches,
-      proveedorId: c.proveedorId,
-    });
-    // Clone all CircuitoDia records referencing the original
-    const dias = serviceState.circuitoDias.filter((d) => d.circuitoId === c.id);
-    dias.forEach((d) =>
-      createCircuitoDia({
-        circuitoId: newC.id,
-        numeroDia: d.numeroDia,
-        titulo: d.titulo,
-        descripcion: d.descripcion,
-        orden: d.orden,
-      }),
-    );
-    // Clone all PrecioCircuito records referencing the original
-    const precios = serviceState.preciosCircuito.filter((p) => p.circuitoId === c.id);
-    precios.forEach((p) =>
-      createPrecioCircuito({
-        circuitoId: newC.id,
-        periodoDesde: p.periodoDesde,
-        periodoHasta: p.periodoHasta,
-        precio: p.precio,
-      }),
-    );
-    toast("success", "Circuito clonado", "Se copio el circuito con todos sus dias y precios");
+    try {
+      const newC = await createCircuito({
+        brandId: c.brandId,
+        nombre: "Copia de " + c.nombre,
+        noches: c.noches,
+        proveedorId: c.proveedorId,
+      });
+      // Await all sub-entity creates so the user doesn't navigate away before
+      // the deep clone finishes — otherwise orphans.
+      const dias = serviceState.circuitoDias.filter((d) => d.circuitoId === c.id);
+      const precios = serviceState.preciosCircuito.filter((p) => p.circuitoId === c.id);
+      await Promise.all([
+        ...dias.map((d) =>
+          createCircuitoDia({
+            circuitoId: newC.id,
+            numeroDia: d.numeroDia,
+            titulo: d.titulo,
+            descripcion: d.descripcion,
+            orden: d.orden,
+          }),
+        ),
+        ...precios.map((p) =>
+          createPrecioCircuito({
+            circuitoId: newC.id,
+            periodoDesde: p.periodoDesde,
+            periodoHasta: p.periodoHasta,
+            precio: p.precio,
+          }),
+        ),
+      ]);
+      toast("success", "Circuito clonado", "Se copio el circuito con todos sus dias y precios");
+    } catch (err: any) {
+      toast("error", "Error al clonar", err?.message ?? "No se pudo clonar el circuito");
+    }
   }
 
-  function handleOpenDelete(e: React.MouseEvent, c: Circuito) {
-    e.stopPropagation();
+  function handleOpenDelete(c: Circuito) {
     setDeleteTarget(c);
   }
 
@@ -180,7 +186,7 @@ export default function CircuitosPage() {
 
   return (
     <>
-      <PageHeader
+      <DataTablePageHeader
         title="Circuitos"
         subtitle="Gestion de circuitos y itinerarios"
         action={
@@ -195,91 +201,95 @@ export default function CircuitosPage() {
         }
       />
 
-      <SearchFilter
-        searchValue={search}
-        onSearchChange={setSearch}
-        filters={[]}
-        onFilterToggle={() => undefined}
-        placeholder="Buscar por nombre..."
-        className="mb-6"
+      <DataTableToolbar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Buscar por nombre...",
+        }}
+        className="mb-4"
       />
 
       {filteredCircuitos.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-neutral-400">
-          <Map className="h-12 w-12 mb-3 opacity-40" />
-          <p className="text-sm">No hay circuitos registrados</p>
-        </div>
+        <EmptyState
+          icon={Map}
+          title="No hay circuitos registrados"
+          description="Crea un circuito con su itinerario y precios para poder asignarlo a paquetes."
+          action={
+            canEdit ? (
+              <Button
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => router.push("/circuitos/nuevo")}
+              >
+                Nuevo Circuito
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Noches</TableHead>
-                <TableHead>Proveedor</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow header>
+                <DataTableHead>Nombre</DataTableHead>
+                <DataTableHead align="right">Noches</DataTableHead>
+                <DataTableHead>Proveedor</DataTableHead>
+                <DataTableHead align="right">Acciones</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {paginatedCircuitos.map((circuito) => (
-                <TableRow
+                <DataTableRow
                   key={circuito.id}
-                  className="cursor-pointer"
                   onClick={() => router.push(`/circuitos/${circuito.id}`)}
+                  interactive
                 >
-                  <TableCell className="font-medium text-neutral-800">
+                  <DataTableCell variant="primary">
                     {circuito.nombre}
                     {(paqueteCountMap[circuito.id] ?? 0) > 0 && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-brand-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-teal-400">
+                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
                         {paqueteCountMap[circuito.id]} paq.
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell>{circuito.noches}</TableCell>
-                  <TableCell>
+                  </DataTableCell>
+                  <DataTableCell variant="mono" align="right">
+                    {circuito.noches}
+                  </DataTableCell>
+                  <DataTableCell variant="muted">
                     {proveedorMap[circuito.proveedorId] ?? "--"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="icon"
-                        size="xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          router.push(`/circuitos/${circuito.id}`);
-                        }}
-                        aria-label="Ver detalle"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {canEdit && (
-                        <>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleClone(e, circuito)}
-                            aria-label="Clonar"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleOpenDelete(e, circuito)}
-                            aria-label="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    <RowActions
+                      primary={{
+                        icon: Pencil,
+                        label: "Editar",
+                        onClick: () => router.push(`/circuitos/${circuito.id}`),
+                      }}
+                      items={
+                        canEdit
+                          ? [
+                              {
+                                icon: Copy,
+                                label: "Clonar",
+                                onClick: () => handleClone(circuito),
+                              },
+                              {
+                                icon: Trash2,
+                                label: "Eliminar",
+                                onClick: () => handleOpenDelete(circuito),
+                                destructive: true,
+                              },
+                            ]
+                          : []
+                      }
+                    />
+                  </DataTableCell>
+                </DataTableRow>
               ))}
-            </TableBody>
-          </Table>
+            </DataTableBody>
+          </DataTable>
 
-          <div className="mt-4 flex justify-center">
+          <div className="mt-5 flex justify-center">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
