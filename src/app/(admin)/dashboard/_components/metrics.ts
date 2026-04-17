@@ -18,6 +18,7 @@ import type {
   Temporada,
   TipoPaquete,
   Pais,
+  Region,
 } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -33,6 +34,8 @@ export interface PaisResolver {
   paisNombreFor: (paqueteId: string) => string | null;
   /** Returns the regionNombre for a paquete (null if pais has no region). */
   regionNombreFor: (paqueteId: string) => string | null;
+  /** Returns the regionId for a paquete's dominant pais, or null. */
+  regionIdFor: (paqueteId: string) => string | null;
 }
 
 export function buildPaisResolver(
@@ -88,7 +91,13 @@ export function buildPaisResolver(
     return rid ? regionNameById.get(rid) ?? null : null;
   }
 
-  return { paisIdFor, paisNombreFor, regionNombreFor };
+  function regionIdFor(paqueteId: string): string | null {
+    const pid = paisIdFor(paqueteId);
+    if (!pid) return null;
+    return paisById.get(pid)?.regionId ?? null;
+  }
+
+  return { paisIdFor, paisNombreFor, regionNombreFor, regionIdFor };
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +160,58 @@ export function groupPaquetesByTipo(
   return Array.from(counts.entries())
     .map(([label, count]) => ({ key: label, label, count }))
     .sort((a, b) => b.count - a.count);
+}
+
+export interface RegionBucket extends GroupBucket {
+  /** Region ID, or null for "Sin región" fallback. */
+  regionId: string | null;
+  /** Display order from the catalog. Null goes last. */
+  orden: number;
+}
+
+/**
+ * Groups paquetes by Region via their linked alojamientos' pais → region chain.
+ * Paquetes whose dominant pais has no region fall into "Sin región".
+ * Sort order: by catalog `orden` ascending, then by count descending as tiebreaker.
+ */
+export function groupPaquetesByRegion(
+  paquetes: Paquete[],
+  resolver: PaisResolver,
+  regiones: Region[],
+): RegionBucket[] {
+  const regionById = new Map<string, Region>();
+  for (const r of regiones) regionById.set(r.id, r);
+
+  const counts = new Map<string, number>();
+  for (const p of paquetes) {
+    const rid = resolver.regionIdFor(p.id);
+    const key = rid ?? "__sin_region__";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const buckets: RegionBucket[] = [];
+  counts.forEach((count, key) => {
+    if (key === "__sin_region__") {
+      buckets.push({
+        key: "sin-region",
+        label: "Sin región",
+        count,
+        regionId: null,
+        orden: 9999,
+      });
+    } else {
+      const r = regionById.get(key);
+      buckets.push({
+        key: r?.id ?? key,
+        label: r?.nombre ?? "Sin región",
+        count,
+        regionId: r?.id ?? null,
+        orden: r?.orden ?? 9999,
+      });
+    }
+  });
+
+  return buckets.sort((a, b) => a.orden - b.orden || b.count - a.count);
 }
 
 // ---------------------------------------------------------------------------

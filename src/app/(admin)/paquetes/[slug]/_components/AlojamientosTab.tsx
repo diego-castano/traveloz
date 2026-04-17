@@ -99,10 +99,6 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   const { toast } = useToast();
 
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerCiudadFilter, setPickerCiudadFilter] = useState<string | null>(
-    null,
-  );
-  const [pickerSearch, setPickerSearch] = useState("");
   const [quickEditHotelId, setQuickEditHotelId] = useState<string | null>(null);
 
   // -------------------------------------------------------------------------
@@ -271,37 +267,11 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
     return allAlojamientos.filter((a) => !assignedIds.has(a.id));
   }, [allAlojamientos, pool]);
 
-  const availableCities = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const a of availableHotels) {
-      if (a.ciudad?.id && a.ciudad?.nombre) {
-        map.set(a.ciudad.id, a.ciudad.nombre);
-      }
-    }
-    return Array.from(map.entries()).map(([id, nombre]) => ({ id, nombre }));
-  }, [availableHotels]);
-
-  const filteredPickerHotels = useMemo(() => {
-    const q = pickerSearch.trim().toLowerCase();
-    return availableHotels.filter((a) => {
-      if (pickerCiudadFilter && a.ciudad?.id !== pickerCiudadFilter) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        a.nombre.toLowerCase().includes(q) ||
-        (a.ciudad?.nombre ?? "").toLowerCase().includes(q)
-      );
-    });
-  }, [availableHotels, pickerCiudadFilter, pickerSearch]);
-
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
 
-  const handleOpenPicker = useCallback((ciudadId?: string | null) => {
-    setPickerCiudadFilter(ciudadId ?? null);
-    setPickerSearch("");
+  const handleOpenPicker = useCallback(() => {
     setPickerOpen(true);
   }, []);
 
@@ -478,7 +448,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
               </span>
             </div>
             {canEdit && (
-              <Button size="sm" onClick={() => handleOpenPicker(null)} leftIcon={<Plus className="h-3.5 w-3.5" />}>
+              <Button size="sm" onClick={() => handleOpenPicker()} leftIcon={<Plus className="h-3.5 w-3.5" />}>
                 Agregar hotel
               </Button>
             )}
@@ -657,7 +627,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
                 onDelete={handleDeleteOpcion}
                 onAddHotelToOpcion={handleAddHotelToOpcion}
                 onRemoveHotelFromOpcion={handleRemoveHotelFromOpcion}
-                onAddHotelForCity={handleOpenPicker}
+                onAddHotelForCity={() => handleOpenPicker()}
                 onUpdateFactor={handleUpdateOpcionFactor}
                 onUpdateNochesForHotelInOpcion={handleUpdateNochesForHotelInOpcion}
                 getNochesForHotel={getNochesForHotelInOpcion}
@@ -671,12 +641,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
       <HotelPickerModal
         open={pickerOpen}
         onOpenChange={setPickerOpen}
-        hotels={filteredPickerHotels}
-        citiesFilter={availableCities}
-        activeCityFilter={pickerCiudadFilter}
-        onCityFilterChange={setPickerCiudadFilter}
-        search={pickerSearch}
-        onSearchChange={setPickerSearch}
+        hotels={availableHotels}
         onPick={handleAddHotelToPool}
       />
 
@@ -1254,18 +1219,14 @@ function CitySlot({
 }
 
 // ---------------------------------------------------------------------------
-// HotelPickerModal — modal to add a hotel to the paquete pool from catalog
+// HotelPickerModal — Select2-style combobox: single search box + lean result
+//   list. No tabs, no city chips, no cards. Keyboard navigation (↑/↓/Enter).
 // ---------------------------------------------------------------------------
 
 interface HotelPickerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   hotels: Alojamiento[];
-  citiesFilter: Array<{ id: string; nombre: string }>;
-  activeCityFilter: string | null;
-  onCityFilterChange: (id: string | null) => void;
-  search: string;
-  onSearchChange: (value: string) => void;
   onPick: (hotel: Alojamiento) => void;
 }
 
@@ -1273,96 +1234,146 @@ function HotelPickerModal({
   open,
   onOpenChange,
   hotels,
-  citiesFilter,
-  activeCityFilter,
-  onCityFilterChange,
-  search,
-  onSearchChange,
   onPick,
 }: HotelPickerModalProps) {
+  const [search, setSearch] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Reset state each time the modal reopens.
+  useEffect(() => {
+    if (open) {
+      setSearch("");
+      setActiveIndex(0);
+    }
+  }, [open]);
+
+  // Live filter: match by nombre / ciudad / país, case-insensitive, no accents-sensitive.
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return hotels;
+    return hotels.filter((h) => {
+      const haystack = [
+        h.nombre,
+        h.ciudad?.nombre ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [hotels, search]);
+
+  // Keep active index inside bounds when the list shrinks.
+  useEffect(() => {
+    if (activeIndex >= filtered.length) setActiveIndex(0);
+  }, [filtered.length, activeIndex]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (filtered.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % filtered.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + filtered.length) % filtered.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const target = filtered[activeIndex];
+      if (target) onPick(target);
+    }
+  };
+
   return (
-    <Modal open={open} onOpenChange={onOpenChange} size="md">
+    <Modal open={open} onOpenChange={onOpenChange} size="sm">
       <ModalHeader
-        title="Agregar hotel al paquete"
-        description="Selecciona un hotel del catalogo para agregarlo al pool."
+        title="Agregar hotel"
+        description="Buscá por nombre, ciudad o país."
       />
       <ModalBody>
-        <div className="space-y-3">
+        <div className="space-y-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
             <Input
+              autoFocus
               value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Buscar por nombre o ciudad..."
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Escribí para buscar…"
               className="pl-9"
             />
-          </div>
-
-          {citiesFilter.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                onClick={() => onCityFilterChange(null)}
-                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                  activeCityFilter === null
-                    ? "bg-teal-500 text-white border-teal-500"
-                    : "bg-white border-neutral-200 text-neutral-600 hover:border-teal-300"
-                }`}
-              >
-                Todas
-              </button>
-              {citiesFilter.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => onCityFilterChange(c.id)}
-                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                    activeCityFilter === c.id
-                      ? "bg-teal-500 text-white border-teal-500"
-                      : "bg-white border-neutral-200 text-neutral-600 hover:border-teal-300"
-                  }`}
-                >
-                  {c.nombre}
-                </button>
-              ))}
-            </div>
-          )}
-
-          <div className="max-h-[360px] overflow-y-auto space-y-1.5 -mx-1 px-1">
-            {hotels.length === 0 ? (
-              <div className="text-sm text-neutral-400 text-center py-8 italic">
-                No hay hoteles disponibles con esos filtros.
-              </div>
-            ) : (
-              hotels.map((h) => (
-                <button
-                  key={h.id}
-                  onClick={() => onPick(h)}
-                  className="w-full flex items-center justify-between py-2 px-3 rounded-lg bg-white border border-neutral-200 hover:border-teal-300 hover:bg-teal-50/40 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      {Array.from({ length: h.categoria ?? 0 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className="h-3 w-3 fill-amber-400 text-amber-400"
-                        />
-                      ))}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-neutral-800 truncate">
-                        {h.nombre}
-                      </div>
-                      {h.ciudad?.nombre && (
-                        <div className="text-xs text-neutral-500">
-                          {h.ciudad.nombre}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <Plus className="h-4 w-4 text-teal-500 flex-shrink-0" />
-                </button>
-              ))
+            {filtered.length > 0 && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-neutral-400 font-mono">
+                {filtered.length}
+              </span>
             )}
           </div>
+
+          <div className="max-h-[380px] overflow-y-auto -mx-1 px-1 rounded-lg">
+            {filtered.length === 0 ? (
+              <div className="text-sm text-neutral-400 text-center py-8 italic">
+                {search.trim()
+                  ? "Sin resultados."
+                  : "No hay hoteles disponibles."}
+              </div>
+            ) : (
+              <ul className="divide-y divide-neutral-100">
+                {filtered.map((h, i) => {
+                  const active = i === activeIndex;
+                  return (
+                    <li key={h.id}>
+                      <button
+                        onClick={() => onPick(h)}
+                        onMouseEnter={() => setActiveIndex(i)}
+                        className={`w-full flex items-center gap-3 py-2 px-2.5 text-left transition-colors ${
+                          active
+                            ? "bg-teal-50/80"
+                            : "hover:bg-neutral-50"
+                        }`}
+                      >
+                        {/* Star badge */}
+                        <div className="flex items-center gap-0.5 flex-shrink-0 w-[52px]">
+                          {h.categoria && h.categoria > 0 ? (
+                            <>
+                              <span className="text-[11px] font-mono font-semibold text-amber-600">
+                                {h.categoria}
+                              </span>
+                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            </>
+                          ) : (
+                            <span className="text-[11px] text-neutral-300">
+                              —
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Name + location */}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-medium text-neutral-800 truncate">
+                            {h.nombre}
+                          </div>
+                          {h.ciudad?.nombre && (
+                            <div className="text-[11px] text-neutral-500 truncate">
+                              {h.ciudad.nombre}
+                            </div>
+                          )}
+                        </div>
+
+                        <Plus
+                          className={`h-4 w-4 flex-shrink-0 transition-colors ${
+                            active
+                              ? "text-teal-600"
+                              : "text-neutral-300"
+                          }`}
+                        />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <p className="text-[11px] text-neutral-400 text-center pt-1">
+            ↑/↓ para navegar · Enter para agregar · Esc para cerrar
+          </p>
         </div>
       </ModalBody>
     </Modal>
