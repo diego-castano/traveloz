@@ -343,19 +343,57 @@ async function main() {
 
   // ---------------------------------------------------------------------------
   // Seed PrecioAlojamiento
+  // Resolve regimenId FK against the live DB because Regimen has a unique
+  // constraint on (brandId, nombre). If Regimen records were seeded with
+  // different IDs on a previous run (e.g. cuids from an older import), the
+  // createMany above skipped our fixed IDs — so we remap by (brandId, nombre)
+  // to whatever is actually in DB.
   // ---------------------------------------------------------------------------
+  const seedRegimenById = new Map(SEED_REGIMENES.map((r) => [r.id, r]));
+  const dbRegimenes = await prisma.regimen.findMany({
+    select: { id: true, brandId: true, nombre: true },
+  });
+  const dbRegimenByBrandNombre = new Map<string, string>();
+  for (const r of dbRegimenes) dbRegimenByBrandNombre.set(`${r.brandId}:${r.nombre}`, r.id);
+
+  function resolveRegimenId(seedRegimenId: string | null | undefined): string | null {
+    if (!seedRegimenId) return null;
+    // If the seed's ID is already in DB (exact match), use it as-is.
+    if (dbRegimenes.some((r) => r.id === seedRegimenId)) return seedRegimenId;
+    // Otherwise remap via (brandId, nombre) — handles pre-existing Regimen rows
+    // loaded with different IDs.
+    const seedReg = seedRegimenById.get(seedRegimenId);
+    if (!seedReg) return null;
+    return dbRegimenByBrandNombre.get(`${seedReg.brandId}:${seedReg.nombre}`) ?? null;
+  }
+
+  const preciosAlojamientoData = SEED_PRECIOS_ALOJAMIENTO
+    .map((t) => {
+      const regimenId = resolveRegimenId(t.regimenId);
+      if (t.regimenId && !regimenId) return null; // skip orphans rather than fail
+      return {
+        id: t.id,
+        alojamientoId: t.alojamientoId,
+        periodoDesde: t.periodoDesde,
+        periodoHasta: t.periodoHasta,
+        precioPorNoche: t.precioPorNoche,
+        regimenId,
+      };
+    })
+    .filter(Boolean) as Array<{
+      id: string;
+      alojamientoId: string;
+      periodoDesde: string;
+      periodoHasta: string;
+      precioPorNoche: number;
+      regimenId: string | null;
+    }>;
+
   await prisma.precioAlojamiento.createMany({
     skipDuplicates: true,
-    data: SEED_PRECIOS_ALOJAMIENTO.map((t) => ({
-      id: t.id,
-      alojamientoId: t.alojamientoId,
-      periodoDesde: t.periodoDesde,
-      periodoHasta: t.periodoHasta,
-      precioPorNoche: t.precioPorNoche,
-      regimenId: t.regimenId,
-    })),
+    data: preciosAlojamientoData,
   });
-  console.log(`Ensured ${SEED_PRECIOS_ALOJAMIENTO.length} precios alojamiento`);
+  console.log(`Ensured ${preciosAlojamientoData.length} precios alojamiento`);
 
   // ---------------------------------------------------------------------------
   // Seed AlojamientoFoto
