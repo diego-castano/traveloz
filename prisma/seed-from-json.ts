@@ -13,8 +13,13 @@
 import { PrismaClient } from '@prisma/client';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { generateSequentialId, type IdEntity } from '../src/lib/sequential-id';
 
 const prisma = new PrismaClient();
+
+async function nextId(entity: IdEntity) {
+  return generateSequentialId(prisma, entity);
+}
 
 // ---------------------------------------------------------------------------
 // JSON shape
@@ -257,6 +262,7 @@ async function main() {
     const operadorId = t.operador ? fuzzyMatchProveedor(t.operador) : null;
     await prisma.traslado.create({
       data: {
+        id: await nextId('traslado'),
         brandId: BRAND_ID,
         nombre: `${t.aeropuerto} → ${t.destino}`,
         tipo: 'REGULAR',
@@ -276,6 +282,7 @@ async function main() {
     if (alojamientoByName.has(key)) continue; // dedupe
     const created = await prisma.alojamiento.create({
       data: {
+        id: await nextId('alojamiento'),
         brandId: BRAND_ID,
         nombre: h.nombre,
         // ciudadId, paisId, categoria stay null — admin will fill in later
@@ -325,6 +332,7 @@ async function main() {
     // -- Create Paquete --
     const paquete = await prisma.paquete.create({
       data: {
+        id: await nextId('paquete'),
         brandId: BRAND_ID,
         titulo: p.nombre,
         destino: deriveDestino(p.nombre),
@@ -367,6 +375,7 @@ async function main() {
         case 'aereo': {
           const aereo = await prisma.aereo.create({
             data: {
+              id: await nextId('aereo'),
               brandId: BRAND_ID,
               ruta: `MVD → ${deriveDestino(p.nombre)}`,
               destino: deriveDestino(p.nombre),
@@ -395,6 +404,7 @@ async function main() {
         case 'traslado': {
           const traslado = await prisma.traslado.create({
             data: {
+              id: await nextId('traslado'),
               brandId: BRAND_ID,
               nombre: display,
               tipo: 'REGULAR',
@@ -415,6 +425,7 @@ async function main() {
         case 'seguro': {
           const seguro = await prisma.seguro.create({
             data: {
+              id: await nextId('seguro'),
               brandId: BRAND_ID,
               plan: display,
               cobertura: s.observaciones ?? null,
@@ -436,6 +447,7 @@ async function main() {
         case 'circuito': {
           const circuito = await prisma.circuito.create({
             data: {
+              id: await nextId('circuito'),
               brandId: BRAND_ID,
               nombre: display,
               noches: noches > 0 ? noches : 1,

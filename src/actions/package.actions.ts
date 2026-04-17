@@ -1,38 +1,42 @@
 "use server";
 
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
+import { generateSequentialId } from "@/lib/sequential-id";
 import type { EstadoPaquete } from "@prisma/client";
 
 // ──────────────────────────────────────────────
 // Paquete — Main entity (soft delete)
 // ──────────────────────────────────────────────
 
-export async function getAllPackageData(requestedBrandId?: string) {
+// ---------------------------------------------------------------------------
+// Two-wave loading for paquetes.
+// Wave 1 — getBasePackages: only the Paquete rows. Fast; lifts the skeleton.
+// Wave 2 — getPackageSubEntities: all paquete-X join rows. Background fill.
+// ---------------------------------------------------------------------------
+
+export async function getBasePackages(requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-
     const paquetes = await prisma.paquete.findMany({
       where: { brandId, deletedAt: null },
       orderBy: { createdAt: "desc" },
     });
+    return { paquetes };
+  } catch (error) {
+    console.error("Error fetching base packages:", error);
+    throw new Error("No se pudieron obtener los paquetes.");
+  }
+}
 
-    const paqueteIds = paquetes.map((p) => p.id);
+export async function getPackageSubEntities(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
 
-    if (paqueteIds.length === 0) {
-      return {
-        paquetes,
-        paqueteAereos: [],
-        paqueteAlojamientos: [],
-        paqueteTraslados: [],
-        paqueteSeguros: [],
-        paqueteCircuitos: [],
-        paqueteFotos: [],
-        paqueteEtiquetas: [],
-        opcionesHoteleras: [],
-      };
-    }
+    // Filter sub-entities by brand via their parent Paquete.
+    const paqueteFilter = { paquete: { brandId, deletedAt: null } };
 
     const [
       paqueteAereos,
@@ -44,34 +48,17 @@ export async function getAllPackageData(requestedBrandId?: string) {
       paqueteEtiquetas,
       opcionesHoteleras,
     ] = await Promise.all([
-      prisma.paqueteAereo.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
-      prisma.paqueteAlojamiento.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
-      prisma.paqueteTraslado.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
-      prisma.paqueteSeguro.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
-      prisma.paqueteCircuito.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
-      prisma.paqueteFoto.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
-      prisma.paqueteEtiqueta.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
-      prisma.opcionHotelera.findMany({
-        where: { paqueteId: { in: paqueteIds } },
-      }),
+      prisma.paqueteAereo.findMany({ where: paqueteFilter }),
+      prisma.paqueteAlojamiento.findMany({ where: paqueteFilter }),
+      prisma.paqueteTraslado.findMany({ where: paqueteFilter }),
+      prisma.paqueteSeguro.findMany({ where: paqueteFilter }),
+      prisma.paqueteCircuito.findMany({ where: paqueteFilter }),
+      prisma.paqueteFoto.findMany({ where: paqueteFilter }),
+      prisma.paqueteEtiqueta.findMany({ where: paqueteFilter }),
+      prisma.opcionHotelera.findMany({ where: paqueteFilter }),
     ]);
 
     return {
-      paquetes,
       paqueteAereos,
       paqueteAlojamientos,
       paqueteTraslados,
@@ -82,9 +69,18 @@ export async function getAllPackageData(requestedBrandId?: string) {
       opcionesHoteleras,
     };
   } catch (error) {
-    console.error("Error fetching all package data:", error);
-    throw new Error("No se pudieron obtener los datos de paquetes.");
+    console.error("Error fetching package sub-entities:", error);
+    throw new Error("No se pudieron obtener los datos relacionales de paquetes.");
   }
+}
+
+// Compat wrapper — still used by legacy callers that want everything at once.
+export async function getAllPackageData(requestedBrandId?: string) {
+  const [base, sub] = await Promise.all([
+    getBasePackages(requestedBrandId),
+    getPackageSubEntities(requestedBrandId),
+  ]);
+  return { ...base, ...sub };
 }
 
 export async function createPaquete(data: {
@@ -116,7 +112,10 @@ export async function createPaquete(data: {
     });
     schema.parse(data);
 
-    return await prisma.paquete.create({ data: { ...data, brandId } });
+    return await prisma.$transaction(async (tx) => {
+      const id = await generateSequentialId(tx, "paquete");
+      return await tx.paquete.create({ data: { ...data, id, brandId } });
+    });
   } catch (error) {
     console.error("Error creating paquete:", error);
     throw new Error("No se pudo crear el paquete.");
@@ -176,9 +175,11 @@ export async function clonePaquete(sourceId: string) {
         where: { id: sourceId },
       });
 
-      // 2. Create new paquete (let Prisma auto-generate the id)
+      // 2. Create new paquete with a sequential id
+      const newId = await generateSequentialId(tx, "paquete");
       const newPaquete = await tx.paquete.create({
         data: {
+          id: newId,
           brandId: source.brandId,
           titulo: `Copia de ${source.titulo}`,
           destino: source.destino,
@@ -640,13 +641,19 @@ export async function createOpcionHotelera(data: {
   paqueteId: string;
   nombre: string;
   alojamientoIds: string[];
+  nochesPorAlojamiento?: Record<string, number> | null;
   factor: number;
   precioVenta: number;
   orden?: number;
 }) {
   try {
     await requireAuth();
-    return await prisma.opcionHotelera.create({ data });
+    return await prisma.opcionHotelera.create({
+      data: {
+        ...data,
+        nochesPorAlojamiento: data.nochesPorAlojamiento ?? Prisma.JsonNull,
+      },
+    });
   } catch (error) {
     console.error("Error creating opcion hotelera:", error);
     throw new Error("No se pudo crear la opción hotelera.");
@@ -658,6 +665,7 @@ export async function updateOpcionHotelera(
   data: {
     nombre?: string;
     alojamientoIds?: string[];
+    nochesPorAlojamiento?: Record<string, number> | null;
     factor?: number;
     precioVenta?: number;
     orden?: number;
@@ -665,7 +673,18 @@ export async function updateOpcionHotelera(
 ) {
   try {
     await requireAuth();
-    return await prisma.opcionHotelera.update({ where: { id }, data });
+    return await prisma.opcionHotelera.update({
+      where: { id },
+      data: {
+        ...data,
+        nochesPorAlojamiento:
+          data.nochesPorAlojamiento === undefined
+            ? undefined
+            : data.nochesPorAlojamiento === null
+              ? Prisma.DbNull
+              : data.nochesPorAlojamiento,
+      },
+    });
   } catch (error) {
     console.error("Error updating opcion hotelera:", error);
     throw new Error("No se pudo actualizar la opción hotelera.");

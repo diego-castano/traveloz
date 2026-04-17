@@ -31,18 +31,24 @@ export interface PaisResolver {
   paisIdFor: (paqueteId: string) => string | null;
   /** Returns the paisNombre for a paquete (null if unresolved). */
   paisNombreFor: (paqueteId: string) => string | null;
+  /** Returns the regionNombre for a paquete (null if pais has no region). */
+  regionNombreFor: (paqueteId: string) => string | null;
 }
 
 export function buildPaisResolver(
   paqueteAlojamientos: PaqueteAlojamiento[],
   alojamientos: Alojamiento[],
   paises: Pais[],
+  regiones: Array<{ id: string; nombre: string }> = [],
 ): PaisResolver {
   const aloById = new Map<string, Alojamiento>();
   for (const a of alojamientos) aloById.set(a.id, a);
 
-  const paisNameById = new Map<string, string>();
-  for (const p of paises) paisNameById.set(p.id, p.nombre);
+  const paisById = new Map<string, Pais>();
+  for (const p of paises) paisById.set(p.id, p);
+
+  const regionNameById = new Map<string, string>();
+  for (const r of regiones) regionNameById.set(r.id, r.nombre);
 
   const cache = new Map<string, string | null>();
 
@@ -72,10 +78,17 @@ export function buildPaisResolver(
   function paisNombreFor(paqueteId: string): string | null {
     const pid = paisIdFor(paqueteId);
     if (!pid) return null;
-    return paisNameById.get(pid) ?? null;
+    return paisById.get(pid)?.nombre ?? null;
   }
 
-  return { paisIdFor, paisNombreFor };
+  function regionNombreFor(paqueteId: string): string | null {
+    const pid = paisIdFor(paqueteId);
+    if (!pid) return null;
+    const rid = paisById.get(pid)?.regionId;
+    return rid ? regionNameById.get(rid) ?? null : null;
+  }
+
+  return { paisIdFor, paisNombreFor, regionNombreFor };
 }
 
 // ---------------------------------------------------------------------------

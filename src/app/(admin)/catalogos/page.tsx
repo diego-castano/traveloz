@@ -18,6 +18,7 @@ import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
 import {
   DataTable,
   DataTableHeader,
@@ -51,7 +52,7 @@ import {
   useTemporadas,
   useTiposPaquete,
   useEtiquetas,
-  usePaises,
+  useRegiones,
   useRegimenes,
   useCatalogActions,
   useCatalogLoading,
@@ -65,6 +66,7 @@ import type {
   Temporada,
   TipoPaquete,
   Etiqueta,
+  Region,
   Pais,
   Ciudad,
   Regimen,
@@ -510,15 +512,27 @@ function EtiquetasTab() {
 }
 
 // ---------------------------------------------------------------------------
-// PaisesTab — hand-rolled (nested Pais -> Ciudad cascade)
+// RegionesPaisesTab — Region -> Pais -> Ciudad cascade (3 levels)
 // ---------------------------------------------------------------------------
 
-function PaisesTab() {
+function slugifyRegion(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+function RegionesPaisesTab() {
   const { canEdit } = useAuth();
   const { activeBrandId } = useBrand();
   const { toast } = useToast();
-  const paises = usePaises();
+  const regiones = useRegiones();
   const {
+    createRegion,
+    updateRegion,
+    deleteRegion,
     createPais,
     updatePais,
     deletePais,
@@ -527,19 +541,31 @@ function PaisesTab() {
     deleteCiudad,
   } = useCatalogActions();
 
+  // ---- Region modal state ----
+  const [regionModalOpen, setRegionModalOpen] = useState(false);
+  const [editRegion, setEditRegion] = useState<Region | null>(null);
+  const [regionForm, setRegionForm] = useState({ nombre: "", slug: "", orden: 0 });
+  const [deleteRegionTarget, setDeleteRegionTarget] = useState<Region | null>(null);
+
   // ---- Pais modal state ----
   const [paisModalOpen, setPaisModalOpen] = useState(false);
   const [editPais, setEditPais] = useState<Pais | null>(null);
+  const [createPaisInRegionId, setCreatePaisInRegionId] = useState<string | null>(null);
   const [deletePaisTarget, setDeletePaisTarget] = useState<
     (Pais & { ciudades: Ciudad[] }) | null
   >(null);
+  const [paisForm, setPaisForm] = useState({
+    nombre: "",
+    codigo: "",
+    regionId: "" as string,
+  });
+
   const [isShaking, setIsShaking] = useState(false);
-  const [paisForm, setPaisForm] = useState({ nombre: "", codigo: "" });
 
   // ---- List state ----
   const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [expandedPaisId, setExpandedPaisId] = useState<string | null>(null);
+  const [expandedRegionIds, setExpandedRegionIds] = useState<Set<string>>(new Set());
+  const [expandedPaisIds, setExpandedPaisIds] = useState<Set<string>>(new Set());
 
   // ---- Ciudad inline state ----
   const [addingCiudad, setAddingCiudad] = useState<string | null>(null);
@@ -547,81 +573,159 @@ function PaisesTab() {
   const [editingCiudadId, setEditingCiudadId] = useState<string | null>(null);
   const [ciudadDraft, setCiudadDraft] = useState("");
 
-  const filteredPaises = useMemo(() => {
-    if (!search.trim()) return paises;
-    const q = search.toLowerCase();
-    return paises.filter(
-      (p) =>
-        p.nombre.toLowerCase().includes(q) ||
-        p.codigo.toLowerCase().includes(q),
-    );
-  }, [paises, search]);
+  // Flat options for the Region <Select> inside the Pais modal
+  const regionOptions = useMemo(
+    () => regiones.map((r) => ({ value: r.id, label: r.nombre })),
+    [regiones],
+  );
 
-  useEffect(() => {
-    setPage(1);
-  }, [search]);
+  // Filter by search — matches any level (region / pais / ciudad). Keep parents
+  // visible when a child matches so the user sees the breadcrumb context.
+  const filteredRegiones = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return regiones;
+    return regiones
+      .map((r) => {
+        const regionHit = r.nombre.toLowerCase().includes(q);
+        const paisesFiltered = r.paises
+          .map((p) => {
+            const paisHit =
+              p.nombre.toLowerCase().includes(q) ||
+              (p.codigo ?? "").toLowerCase().includes(q);
+            const ciudadesFiltered = p.ciudades.filter((c) =>
+              c.nombre.toLowerCase().includes(q),
+            );
+            if (regionHit || paisHit || ciudadesFiltered.length > 0) {
+              return {
+                ...p,
+                ciudades:
+                  regionHit || paisHit ? p.ciudades : ciudadesFiltered,
+              };
+            }
+            return null;
+          })
+          .filter(Boolean) as typeof r.paises;
+        if (regionHit || paisesFiltered.length > 0) {
+          return { ...r, paises: regionHit ? r.paises : paisesFiltered };
+        }
+        return null;
+      })
+      .filter(Boolean) as typeof regiones;
+  }, [regiones, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredPaises.length / PAGE_SIZE));
-  const paginatedPaises = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filteredPaises.slice(start, start + PAGE_SIZE);
-  }, [filteredPaises, page]);
+  // ---- Region handlers ----
+
+  function handleOpenCreateRegion() {
+    setEditRegion(null);
+    setRegionForm({ nombre: "", slug: "", orden: regiones.length + 1 });
+    setRegionModalOpen(true);
+  }
+
+  function handleOpenEditRegion(r: Region) {
+    setEditRegion(r);
+    setRegionForm({ nombre: r.nombre, slug: r.slug, orden: r.orden });
+    setRegionModalOpen(true);
+  }
+
+  async function handleSaveRegion(e?: React.FormEvent) {
+    e?.preventDefault();
+    const nombre = regionForm.nombre.trim();
+    if (!nombre) return;
+    const slug = regionForm.slug.trim() || slugifyRegion(nombre);
+    if (editRegion) {
+      await updateRegion({ ...editRegion, nombre, slug, orden: regionForm.orden });
+      toast("success", "Region actualizada", `"${nombre}" fue actualizada correctamente`);
+    } else {
+      await createRegion({
+        brandId: activeBrandId,
+        nombre,
+        slug,
+        orden: regionForm.orden,
+      });
+      toast("success", "Region creada", `"${nombre}" fue creada correctamente`);
+    }
+    setRegionModalOpen(false);
+  }
+
+  async function handleConfirmDeleteRegion() {
+    if (!deleteRegionTarget) return;
+    const target = deleteRegionTarget;
+    setIsShaking(true);
+    setTimeout(async () => {
+      try {
+        await deleteRegion(target.id);
+        toast("success", "Region eliminada", `"${target.nombre}" fue eliminada correctamente`);
+        setDeleteRegionTarget(null);
+      } catch (err) {
+        toast(
+          "error",
+          "No se pudo eliminar",
+          err instanceof Error ? err.message : "Intenta nuevamente",
+        );
+      } finally {
+        setIsShaking(false);
+      }
+    }, 400);
+  }
 
   // ---- Pais handlers ----
 
-  function handleOpenCreatePais() {
+  function handleOpenCreatePais(regionId: string) {
     setEditPais(null);
-    setPaisForm({ nombre: "", codigo: "" });
+    setCreatePaisInRegionId(regionId);
+    setPaisForm({ nombre: "", codigo: "", regionId });
     setPaisModalOpen(true);
   }
 
   function handleOpenEditPais(p: Pais) {
     setEditPais(p);
-    setPaisForm({ nombre: p.nombre, codigo: p.codigo });
+    setCreatePaisInRegionId(null);
+    setPaisForm({
+      nombre: p.nombre,
+      codigo: p.codigo ?? "",
+      regionId: p.regionId ?? "",
+    });
     setPaisModalOpen(true);
   }
 
   async function handleSavePais(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!paisForm.nombre.trim()) return;
+    if (!paisForm.nombre.trim() || !paisForm.regionId) return;
     if (editPais) {
-      await updatePais({ ...editPais, ...paisForm });
-      toast(
-        "success",
-        "Pais actualizado",
-        `"${paisForm.nombre}" fue actualizado correctamente`,
-      );
+      await updatePais({
+        ...editPais,
+        nombre: paisForm.nombre,
+        codigo: paisForm.codigo,
+        regionId: paisForm.regionId,
+      });
+      toast("success", "Pais actualizado", `"${paisForm.nombre}" fue actualizado correctamente`);
     } else {
-      await createPais({ brandId: activeBrandId, ...paisForm });
-      toast(
-        "success",
-        "Pais creado",
-        `"${paisForm.nombre}" fue creado correctamente`,
-      );
+      await createPais({
+        brandId: activeBrandId,
+        nombre: paisForm.nombre,
+        codigo: paisForm.codigo,
+        regionId: paisForm.regionId,
+      });
+      toast("success", "Pais creado", `"${paisForm.nombre}" fue creado correctamente`);
     }
     setPaisModalOpen(false);
   }
 
-  function handleOpenDeletePais(p: Pais & { ciudades: Ciudad[] }) {
-    setDeletePaisTarget(p);
-  }
-
   async function handleConfirmDeletePais() {
     if (!deletePaisTarget) return;
-    setIsShaking(true);
     const target = deletePaisTarget;
+    setIsShaking(true);
     setTimeout(async () => {
-      // Cascade delete ciudades first
       await Promise.all(target.ciudades.map((c) => deleteCiudad(c.id)));
       await deletePais(target.id);
-      toast(
-        "success",
-        "Pais eliminado",
-        `"${target.nombre}" fue eliminado correctamente`,
-      );
+      toast("success", "Pais eliminado", `"${target.nombre}" fue eliminado correctamente`);
       setDeletePaisTarget(null);
       setIsShaking(false);
-      if (expandedPaisId === target.id) setExpandedPaisId(null);
+      setExpandedPaisIds((prev) => {
+        const next = new Set(prev);
+        next.delete(target.id);
+        return next;
+      });
     }, 400);
   }
 
@@ -630,11 +734,7 @@ function PaisesTab() {
   async function handleSaveCiudad(paisId: string) {
     if (!newCiudadNombre.trim()) return;
     await createCiudad({ paisId, nombre: newCiudadNombre.trim() });
-    toast(
-      "success",
-      "Ciudad agregada",
-      `"${newCiudadNombre.trim()}" fue agregada correctamente`,
-    );
+    toast("success", "Ciudad agregada", `"${newCiudadNombre.trim()}" fue agregada correctamente`);
     setAddingCiudad(null);
     setNewCiudadNombre("");
   }
@@ -642,30 +742,36 @@ function PaisesTab() {
   async function handleSaveEditCiudad(ciudad: Ciudad) {
     if (!ciudadDraft.trim()) return;
     await updateCiudad({ ...ciudad, nombre: ciudadDraft.trim() });
-    toast(
-      "success",
-      "Ciudad actualizada",
-      `"${ciudadDraft.trim()}" fue actualizada correctamente`,
-    );
+    toast("success", "Ciudad actualizada", `"${ciudadDraft.trim()}" fue actualizada correctamente`);
     setEditingCiudadId(null);
     setCiudadDraft("");
   }
 
   async function handleDeleteCiudad(ciudad: Ciudad) {
     await deleteCiudad(ciudad.id);
-    toast(
-      "success",
-      "Ciudad eliminada",
-      `"${ciudad.nombre}" fue eliminada correctamente`,
-    );
+    toast("success", "Ciudad eliminada", `"${ciudad.nombre}" fue eliminada correctamente`);
   }
 
-  const newPaisButton = canEdit ? (
-    <Button
-      leftIcon={<Plus className="h-4 w-4" />}
-      onClick={handleOpenCreatePais}
-    >
-      Nuevo Pais
+  // ---- Expansion helpers ----
+  const toggleRegion = (id: string) =>
+    setExpandedRegionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const togglePais = (id: string) =>
+    setExpandedPaisIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const newRegionButton = canEdit ? (
+    <Button leftIcon={<Plus className="h-4 w-4" />} onClick={handleOpenCreateRegion}>
+      Nueva Region
     </Button>
   ) : undefined;
 
@@ -675,86 +781,433 @@ function PaisesTab() {
         search={{
           value: search,
           onChange: setSearch,
-          placeholder: "Buscar pais o codigo...",
+          placeholder: "Buscar region, pais o ciudad...",
         }}
-        action={newPaisButton}
+        action={newRegionButton}
         className="mb-4"
       />
 
-      {filteredPaises.length === 0 ? (
+      {filteredRegiones.length === 0 ? (
         <EmptyState
           icon={Globe}
-          title="No hay paises registrados"
-          description="Agrega un pais para organizar ciudades y destinos."
-          action={newPaisButton}
+          title={search ? "Sin resultados" : "No hay regiones registradas"}
+          description={
+            search
+              ? `No encontramos regiones, paises o ciudades para "${search}".`
+              : "Agrega una region para organizar paises, ciudades y destinos."
+          }
+          action={search ? undefined : newRegionButton}
         />
       ) : (
-        <>
-          <DataTable>
-            <DataTableHeader>
-              <DataTableRow header>
-                <DataTableHead className="w-8"></DataTableHead>
-                <DataTableHead>Nombre</DataTableHead>
-                <DataTableHead>Codigo</DataTableHead>
-                <DataTableHead>Ciudades</DataTableHead>
-                <DataTableHead align="right">Acciones</DataTableHead>
-              </DataTableRow>
-            </DataTableHeader>
-            <DataTableBody>
-              {paginatedPaises.map((p) => (
-                <PaisRow
-                  key={p.id}
-                  pais={p}
-                  canEdit={canEdit}
-                  expanded={expandedPaisId === p.id}
-                  onToggleExpand={() =>
-                    setExpandedPaisId(expandedPaisId === p.id ? null : p.id)
-                  }
-                  onEdit={() => handleOpenEditPais(p)}
-                  onDelete={() => handleOpenDeletePais(p)}
-                  addingCiudad={addingCiudad}
-                  newCiudadNombre={newCiudadNombre}
-                  setNewCiudadNombre={setNewCiudadNombre}
-                  onStartAddCiudad={() => {
-                    setAddingCiudad(p.id);
-                    setNewCiudadNombre("");
-                    setEditingCiudadId(null);
+        <div className="overflow-hidden rounded-[12px] border border-hairline bg-white">
+          {filteredRegiones.map((region, idx) => {
+            const regionExpanded = expandedRegionIds.has(region.id);
+            return (
+              <div
+                key={region.id}
+                className={cn(
+                  "transition-colors",
+                  idx > 0 && "border-t border-hairline",
+                )}
+              >
+                {/* Region row */}
+                <div
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-50/60"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleRegion(region.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleRegion(region.id);
+                    }
                   }}
-                  onCancelAddCiudad={() => {
-                    setAddingCiudad(null);
-                    setNewCiudadNombre("");
-                  }}
-                  onSaveNewCiudad={() => handleSaveCiudad(p.id)}
-                  editingCiudadId={editingCiudadId}
-                  ciudadDraft={ciudadDraft}
-                  setCiudadDraft={setCiudadDraft}
-                  onStartEditCiudad={(c) => {
-                    setEditingCiudadId(c.id);
-                    setCiudadDraft(c.nombre);
-                    setAddingCiudad(null);
-                  }}
-                  onCancelEditCiudad={() => {
-                    setEditingCiudadId(null);
-                    setCiudadDraft("");
-                  }}
-                  onSaveEditCiudad={handleSaveEditCiudad}
-                  onDeleteCiudad={handleDeleteCiudad}
-                />
-              ))}
-            </DataTableBody>
-          </DataTable>
+                >
+                  <ChevronRight
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-neutral-400 transition-transform",
+                      regionExpanded && "rotate-90",
+                    )}
+                  />
+                  <Globe className="h-4 w-4 shrink-0 text-neutral-400" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[14px] font-semibold text-neutral-900">
+                      {region.nombre}
+                    </div>
+                    <div className="text-[12px] text-neutral-500">
+                      {region.paises.length} pais
+                      {region.paises.length === 1 ? "" : "es"} ·{" "}
+                      {region.paises.reduce((acc, p) => acc + p.ciudades.length, 0)} ciudades
+                    </div>
+                  </div>
+                  {canEdit && (
+                    <div
+                      className="flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        leftIcon={<Plus className="h-3 w-3" />}
+                        onClick={() => handleOpenCreatePais(region.id)}
+                      >
+                        Pais
+                      </Button>
+                      <RowActions
+                        primary={{
+                          icon: Pencil,
+                          label: "Editar region",
+                          onClick: () => handleOpenEditRegion(region),
+                        }}
+                        items={[
+                          {
+                            icon: Trash2,
+                            label: "Eliminar region",
+                            onClick: () => setDeleteRegionTarget(region),
+                            destructive: true,
+                          },
+                        ]}
+                      />
+                    </div>
+                  )}
+                </div>
 
-          {totalPages > 1 && (
-            <div className="mt-5 flex justify-center">
-              <Pagination
-                currentPage={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
-            </div>
-          )}
-        </>
+                {/* Paises inside region */}
+                {regionExpanded && (
+                  <div className="border-t border-hairline bg-neutral-50/30">
+                    {region.paises.length === 0 ? (
+                      <p className="px-8 py-3 text-[12.5px] text-neutral-400">
+                        Sin paises asignados a esta region.
+                      </p>
+                    ) : (
+                      region.paises.map((p) => {
+                        const paisExpanded = expandedPaisIds.has(p.id);
+                        return (
+                          <div
+                            key={p.id}
+                            className="border-b border-hairline/60 last:border-b-0"
+                          >
+                            {/* Pais row */}
+                            <div
+                              className="flex items-center gap-3 px-8 py-2.5 hover:bg-neutral-100/60"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => togglePais(p.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  togglePais(p.id);
+                                }
+                              }}
+                            >
+                              <ChevronRight
+                                className={cn(
+                                  "h-3.5 w-3.5 shrink-0 text-neutral-400 transition-transform",
+                                  paisExpanded && "rotate-90",
+                                )}
+                              />
+                              <span className="text-[13.5px] font-medium text-neutral-800 flex-1 min-w-0">
+                                {p.nombre}
+                                {p.codigo && (
+                                  <span className="ml-2 font-mono text-[11.5px] text-neutral-400">
+                                    {p.codigo}
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-[12px] text-neutral-400 shrink-0">
+                                {p.ciudades.length} ciudad
+                                {p.ciudades.length === 1 ? "" : "es"}
+                              </span>
+                              {canEdit && (
+                                <div
+                                  className="flex items-center gap-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <RowActions
+                                    primary={{
+                                      icon: Pencil,
+                                      label: "Editar pais",
+                                      onClick: () => handleOpenEditPais(p),
+                                    }}
+                                    items={[
+                                      {
+                                        icon: Trash2,
+                                        label: "Eliminar pais",
+                                        onClick: () => setDeletePaisTarget(p),
+                                        destructive: true,
+                                      },
+                                    ]}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Ciudades inside pais */}
+                            {paisExpanded && (
+                              <div className="bg-white px-12 py-2">
+                                {p.ciudades.length === 0 && addingCiudad !== p.id && (
+                                  <p className="py-1.5 text-[12.5px] text-neutral-400">
+                                    Sin ciudades registradas
+                                  </p>
+                                )}
+                                {p.ciudades.map((c) => (
+                                  <div
+                                    key={c.id}
+                                    className="flex items-center justify-between rounded px-2 py-1.5 transition-colors hover:bg-neutral-100/60"
+                                  >
+                                    {editingCiudadId === c.id ? (
+                                      <div className="flex flex-1 items-center gap-2">
+                                        <Input
+                                          size="sm"
+                                          value={ciudadDraft}
+                                          onChange={(e) => setCiudadDraft(e.target.value)}
+                                          autoFocus
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleSaveEditCiudad(c);
+                                            if (e.key === "Escape") {
+                                              setEditingCiudadId(null);
+                                              setCiudadDraft("");
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          variant="icon"
+                                          size="xs"
+                                          onClick={() => handleSaveEditCiudad(c)}
+                                          aria-label="Guardar"
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="icon"
+                                          size="xs"
+                                          onClick={() => {
+                                            setEditingCiudadId(null);
+                                            setCiudadDraft("");
+                                          }}
+                                          aria-label="Cancelar"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <span className="text-[13px] text-neutral-700">
+                                          {c.nombre}
+                                        </span>
+                                        {canEdit && (
+                                          <div className="flex items-center gap-1">
+                                            <Button
+                                              variant="icon"
+                                              size="xs"
+                                              onClick={() => {
+                                                setEditingCiudadId(c.id);
+                                                setCiudadDraft(c.nombre);
+                                                setAddingCiudad(null);
+                                              }}
+                                              aria-label="Editar ciudad"
+                                            >
+                                              <Pencil className="h-3 w-3" />
+                                            </Button>
+                                            <Button
+                                              variant="icon"
+                                              size="xs"
+                                              onClick={() => handleDeleteCiudad(c)}
+                                              aria-label="Eliminar ciudad"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                ))}
+
+                                {canEdit && (
+                                  <>
+                                    {addingCiudad === p.id ? (
+                                      <div className="mt-2 flex items-center gap-2 px-2">
+                                        <Input
+                                          size="sm"
+                                          value={newCiudadNombre}
+                                          onChange={(e) => setNewCiudadNombre(e.target.value)}
+                                          placeholder="Nombre de la ciudad"
+                                          autoFocus
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleSaveCiudad(p.id);
+                                            if (e.key === "Escape") {
+                                              setAddingCiudad(null);
+                                              setNewCiudadNombre("");
+                                            }
+                                          }}
+                                        />
+                                        <Button
+                                          variant="icon"
+                                          size="xs"
+                                          onClick={() => handleSaveCiudad(p.id)}
+                                          aria-label="Guardar ciudad"
+                                        >
+                                          <Check className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="icon"
+                                          size="xs"
+                                          onClick={() => {
+                                            setAddingCiudad(null);
+                                            setNewCiudadNombre("");
+                                          }}
+                                          aria-label="Cancelar"
+                                        >
+                                          <X className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="mt-1"
+                                        onClick={() => {
+                                          setAddingCiudad(p.id);
+                                          setNewCiudadNombre("");
+                                          setEditingCiudadId(null);
+                                        }}
+                                      >
+                                        <Plus className="mr-1 h-3 w-3" />
+                                        Agregar ciudad
+                                      </Button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      {/* Region Create / Edit modal */}
+      <Modal open={regionModalOpen} onOpenChange={setRegionModalOpen} size="md">
+        <ModalHeader
+          title={editRegion ? "Editar Region" : "Nueva Region"}
+          description={
+            editRegion
+              ? "Actualiza los datos de la region. Los paises asignados se mantendran."
+              : "Agrupa paises bajo una region geografica (Europa, Caribe, etc)."
+          }
+          icon={
+            editRegion ? (
+              <Pencil className="h-5 w-5" strokeWidth={2.2} />
+            ) : (
+              <Plus className="h-5 w-5" strokeWidth={2.4} />
+            )
+          }
+        />
+        <form onSubmit={handleSaveRegion}>
+          <ModalBody>
+            <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel required>Nombre</FieldLabel>
+                <Input
+                  value={regionForm.nombre}
+                  onChange={(e) =>
+                    setRegionForm((f) => ({
+                      ...f,
+                      nombre: e.target.value,
+                      slug: slugifyRegion(e.target.value),
+                    }))
+                  }
+                  placeholder="ej. Caribe, Europa, Sudamerica"
+                  autoFocus
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Slug</FieldLabel>
+                <Input
+                  value={regionForm.slug}
+                  onChange={(e) =>
+                    setRegionForm((f) => ({ ...f, slug: e.target.value }))
+                  }
+                  placeholder="ej. caribe"
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Orden</FieldLabel>
+                <Input
+                  type="number"
+                  value={regionForm.orden}
+                  onChange={(e) =>
+                    setRegionForm((f) => ({
+                      ...f,
+                      orden: Number(e.target.value),
+                    }))
+                  }
+                  placeholder="1"
+                />
+              </Field>
+            </FieldGroup>
+          </ModalBody>
+          <ModalFooter>
+            <Button type="button" variant="ghost" onClick={() => setRegionModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!regionForm.nombre.trim()}>
+              {editRegion ? "Guardar cambios" : "Crear region"}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
+
+      {/* Region Delete confirmation */}
+      <Modal
+        open={!!deleteRegionTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteRegionTarget(null);
+            setIsShaking(false);
+          }
+        }}
+        size="sm"
+      >
+        <ModalHeader
+          title="Eliminar Region"
+          description="Esta accion no se puede deshacer."
+          icon={<Trash2 className="h-5 w-5" strokeWidth={2.2} />}
+          variant="destructive"
+        />
+        <ModalBody>
+          <motion.div
+            animate={isShaking ? { x: [...interactions.deleteShake.animate.x] } : {}}
+            transition={isShaking ? interactions.deleteShake.transition : undefined}
+          >
+            <p className="text-[14px] text-neutral-700">
+              Vas a eliminar{" "}
+              <span className="font-semibold text-neutral-900">
+                {deleteRegionTarget?.nombre}
+              </span>
+              .
+            </p>
+            <p className="mt-2 text-[12.5px] text-neutral-500">
+              Solo se puede eliminar una region que no tenga paises asignados.
+            </p>
+          </motion.div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={() => setDeleteRegionTarget(null)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleConfirmDeleteRegion}>
+            Eliminar definitivamente
+          </Button>
+        </ModalFooter>
+      </Modal>
 
       {/* Pais Create / Edit modal */}
       <Modal open={paisModalOpen} onOpenChange={setPaisModalOpen} size="md">
@@ -763,7 +1216,7 @@ function PaisesTab() {
           description={
             editPais
               ? "Actualiza los datos del pais. Las ciudades asociadas se mantendran."
-              : "Registra un pais que puedas usar para organizar destinos y ciudades."
+              : "Registra un pais dentro de una region."
           }
           icon={
             editPais ? (
@@ -776,6 +1229,18 @@ function PaisesTab() {
         <form onSubmit={handleSavePais}>
           <ModalBody>
             <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel required>Region</FieldLabel>
+                <Select
+                  value={paisForm.regionId}
+                  onValueChange={(v) =>
+                    setPaisForm((f) => ({ ...f, regionId: v }))
+                  }
+                  options={regionOptions}
+                  placeholder="Seleccionar region..."
+                  disabled={!!createPaisInRegionId && !editPais}
+                />
+              </Field>
               <Field span={2}>
                 <FieldLabel required>Nombre</FieldLabel>
                 <Input
@@ -800,14 +1265,13 @@ function PaisesTab() {
             </FieldGroup>
           </ModalBody>
           <ModalFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setPaisModalOpen(false)}
-            >
+            <Button type="button" variant="ghost" onClick={() => setPaisModalOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={!paisForm.nombre.trim()}>
+            <Button
+              type="submit"
+              disabled={!paisForm.nombre.trim() || !paisForm.regionId}
+            >
               {editPais ? "Guardar cambios" : "Crear pais"}
             </Button>
           </ModalFooter>
@@ -833,12 +1297,8 @@ function PaisesTab() {
         />
         <ModalBody>
           <motion.div
-            animate={
-              isShaking ? { x: [...interactions.deleteShake.animate.x] } : {}
-            }
-            transition={
-              isShaking ? interactions.deleteShake.transition : undefined
-            }
+            animate={isShaking ? { x: [...interactions.deleteShake.animate.x] } : {}}
+            transition={isShaking ? interactions.deleteShake.transition : undefined}
           >
             <p className="text-[14px] text-neutral-700">
               Vas a eliminar{" "}
@@ -849,8 +1309,7 @@ function PaisesTab() {
             </p>
             {deletePaisTarget && deletePaisTarget.ciudades.length > 0 && (
               <p className="mt-2 text-[12.5px] text-amber-600">
-                Se eliminaran {deletePaisTarget.ciudades.length} ciudades
-                asociadas.
+                Se eliminaran {deletePaisTarget.ciudades.length} ciudades asociadas.
               </p>
             )}
             <p className="mt-2 text-[12.5px] text-neutral-500">
@@ -872,231 +1331,6 @@ function PaisesTab() {
 }
 
 // ---------------------------------------------------------------------------
-// PaisRow — isolated subcomponent (table row + expandable ciudades panel)
-// ---------------------------------------------------------------------------
-
-interface PaisRowProps {
-  pais: Pais & { ciudades: Ciudad[] };
-  canEdit: boolean;
-  expanded: boolean;
-  onToggleExpand: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-
-  addingCiudad: string | null;
-  newCiudadNombre: string;
-  setNewCiudadNombre: (v: string) => void;
-  onStartAddCiudad: () => void;
-  onCancelAddCiudad: () => void;
-  onSaveNewCiudad: () => void;
-
-  editingCiudadId: string | null;
-  ciudadDraft: string;
-  setCiudadDraft: (v: string) => void;
-  onStartEditCiudad: (c: Ciudad) => void;
-  onCancelEditCiudad: () => void;
-  onSaveEditCiudad: (c: Ciudad) => void;
-  onDeleteCiudad: (c: Ciudad) => void;
-}
-
-function PaisRow({
-  pais: p,
-  canEdit,
-  expanded,
-  onToggleExpand,
-  onEdit,
-  onDelete,
-  addingCiudad,
-  newCiudadNombre,
-  setNewCiudadNombre,
-  onStartAddCiudad,
-  onCancelAddCiudad,
-  onSaveNewCiudad,
-  editingCiudadId,
-  ciudadDraft,
-  setCiudadDraft,
-  onStartEditCiudad,
-  onCancelEditCiudad,
-  onSaveEditCiudad,
-  onDeleteCiudad,
-}: PaisRowProps) {
-  return (
-    <>
-      <DataTableRow onClick={onEdit} interactive>
-        <DataTableCell className="w-8">
-          <button
-            type="button"
-            className="flex items-center text-neutral-400 transition-colors hover:text-neutral-600"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand();
-            }}
-            aria-label={expanded ? "Colapsar ciudades" : "Expandir ciudades"}
-          >
-            <ChevronRight
-              className={cn(
-                "h-4 w-4 transition-transform",
-                expanded && "rotate-90",
-              )}
-            />
-          </button>
-        </DataTableCell>
-        <DataTableCell variant="primary">{p.nombre}</DataTableCell>
-        <DataTableCell variant="mono">{p.codigo}</DataTableCell>
-        <DataTableCell variant="muted">
-          {p.ciudades.length} ciudades
-        </DataTableCell>
-        <DataTableCell align="right">
-          <RowActions
-            primary={{
-              icon: Pencil,
-              label: "Editar",
-              onClick: () => onEdit(),
-            }}
-            items={
-              canEdit
-                ? [
-                    {
-                      icon: Trash2,
-                      label: "Eliminar",
-                      onClick: () => onDelete(),
-                      destructive: true,
-                    },
-                  ]
-                : []
-            }
-          />
-        </DataTableCell>
-      </DataTableRow>
-
-      {expanded && (
-        <tr>
-          <td
-            colSpan={5}
-            className="border-b border-hairline bg-neutral-50/40 px-8 py-3"
-          >
-            {p.ciudades.length === 0 && addingCiudad !== p.id && (
-              <p className="py-2 text-[12.5px] text-neutral-400">
-                Sin ciudades registradas
-              </p>
-            )}
-            {p.ciudades.map((c) => (
-              <div
-                key={c.id}
-                className="flex items-center justify-between rounded px-2 py-1.5 transition-colors hover:bg-neutral-100/60"
-              >
-                {editingCiudadId === c.id ? (
-                  <div className="flex flex-1 items-center gap-2">
-                    <Input
-                      size="sm"
-                      value={ciudadDraft}
-                      onChange={(e) => setCiudadDraft(e.target.value)}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") onSaveEditCiudad(c);
-                        if (e.key === "Escape") onCancelEditCiudad();
-                      }}
-                    />
-                    <Button
-                      variant="icon"
-                      size="xs"
-                      onClick={() => onSaveEditCiudad(c)}
-                      aria-label="Guardar"
-                    >
-                      <Check className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="icon"
-                      size="xs"
-                      onClick={onCancelEditCiudad}
-                      aria-label="Cancelar"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <span className="text-[13px] text-neutral-700">
-                      {c.nombre}
-                    </span>
-                    {canEdit && (
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={() => onStartEditCiudad(c)}
-                          aria-label="Editar ciudad"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="icon"
-                          size="xs"
-                          onClick={() => onDeleteCiudad(c)}
-                          aria-label="Eliminar ciudad"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-
-            {canEdit && (
-              <>
-                {addingCiudad === p.id ? (
-                  <div className="mt-2 flex items-center gap-2 px-2">
-                    <Input
-                      size="sm"
-                      value={newCiudadNombre}
-                      onChange={(e) => setNewCiudadNombre(e.target.value)}
-                      placeholder="Nombre de la ciudad"
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") onSaveNewCiudad();
-                        if (e.key === "Escape") onCancelAddCiudad();
-                      }}
-                    />
-                    <Button
-                      variant="icon"
-                      size="xs"
-                      onClick={onSaveNewCiudad}
-                      aria-label="Guardar ciudad"
-                    >
-                      <Check className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="icon"
-                      size="xs"
-                      onClick={onCancelAddCiudad}
-                      aria-label="Cancelar"
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2"
-                    onClick={onStartAddCiudad}
-                  >
-                    <Plus className="mr-1 h-3 w-3" />
-                    Agregar ciudad
-                  </Button>
-                )}
-              </>
-            )}
-          </td>
-        </tr>
-      )}
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // CatalogosPage (default export)
 // ---------------------------------------------------------------------------
 
@@ -1109,14 +1343,14 @@ export default function CatalogosPage() {
     <>
       <DataTablePageHeader
         title="Catalogos"
-        subtitle="Temporadas, tipos de paquete, etiquetas, paises y regimenes"
+        subtitle="Temporadas, tipos de paquete, etiquetas, regiones y regimenes"
       />
       <Tabs defaultValue="temporadas" layoutId="catalogos-tabs">
         <TabsList className="mb-0">
           <TabsTrigger value="temporadas">Temporadas</TabsTrigger>
           <TabsTrigger value="tipos">Tipos de Paquete</TabsTrigger>
           <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
-          <TabsTrigger value="paises">Paises y Ciudades</TabsTrigger>
+          <TabsTrigger value="regiones">Regiones y Paises</TabsTrigger>
           <TabsTrigger value="regimenes">Regimenes</TabsTrigger>
         </TabsList>
         <TabsContent value="temporadas">
@@ -1128,8 +1362,8 @@ export default function CatalogosPage() {
         <TabsContent value="etiquetas">
           <EtiquetasTab />
         </TabsContent>
-        <TabsContent value="paises">
-          <PaisesTab />
+        <TabsContent value="regiones">
+          <RegionesPaisesTab />
         </TabsContent>
         <TabsContent value="regimenes">
           <RegimenesTab />

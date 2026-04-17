@@ -17,7 +17,7 @@ const SEED_DATE = '2026-01-15T00:00:00.000Z';
 export const SEED_SEGUROS: Seguro[] = [
   // brand-1 (TravelOz)
   {
-    id: 'seguro-1',
+    id: '001',
     brandId: 'brand-1',
     proveedorId: 'proveedor-1', // Universal Assistance
     plan: 'Plan Basico',
@@ -28,7 +28,7 @@ export const SEED_SEGUROS: Seguro[] = [
     deletedAt: null,
   },
   {
-    id: 'seguro-2',
+    id: '002',
     brandId: 'brand-1',
     proveedorId: 'proveedor-1', // Universal Assistance
     plan: 'Plan Premium',
@@ -39,7 +39,7 @@ export const SEED_SEGUROS: Seguro[] = [
     deletedAt: null,
   },
   {
-    id: 'seguro-3',
+    id: '003',
     brandId: 'brand-1',
     proveedorId: 'proveedor-2', // Assist Card
     plan: 'AC 60',
@@ -50,7 +50,7 @@ export const SEED_SEGUROS: Seguro[] = [
     deletedAt: null,
   },
   {
-    id: 'seguro-4',
+    id: '004',
     brandId: 'brand-1',
     proveedorId: 'proveedor-2', // Assist Card
     plan: 'AC 150',
@@ -61,7 +61,7 @@ export const SEED_SEGUROS: Seguro[] = [
     deletedAt: null,
   },
   {
-    id: 'seguro-5',
+    id: '005',
     brandId: 'brand-1',
     proveedorId: 'proveedor-3', // Tarjetas Celeste
     plan: 'Plan Celeste',
@@ -73,7 +73,7 @@ export const SEED_SEGUROS: Seguro[] = [
   },
   // brand-1 -- CX (no dedicated proveedor, uses generic brand-1 entry)
   {
-    id: 'seguro-6',
+    id: '006',
     brandId: 'brand-1',
     proveedorId: 'proveedor-1', // Universal Assistance (acts as CX distributor)
     plan: 'CX Max',
@@ -85,7 +85,7 @@ export const SEED_SEGUROS: Seguro[] = [
   },
   // brand-2 (DestinoIcono)
   {
-    id: 'seguro-7',
+    id: '007',
     brandId: 'brand-2',
     proveedorId: 'proveedor-7', // Universal Assistance (brand-2)
     plan: 'Plan Basico',
@@ -96,7 +96,7 @@ export const SEED_SEGUROS: Seguro[] = [
     deletedAt: null,
   },
   {
-    id: 'seguro-8',
+    id: '008',
     brandId: 'brand-2',
     proveedorId: 'proveedor-8', // Assist Card (brand-2)
     plan: 'AC 60',

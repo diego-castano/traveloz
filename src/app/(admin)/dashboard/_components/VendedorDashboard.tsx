@@ -20,6 +20,7 @@ import { useAlojamientos } from "@/components/providers/ServiceProvider";
 import {
   useTemporadas,
   usePaises,
+  useRegiones,
 } from "@/components/providers/CatalogProvider";
 import { DestinoBarChart } from "./DestinoBarChart";
 import {
@@ -112,6 +113,7 @@ interface PaqueteCardProps {
   paquete: Paquete;
   foto?: PaqueteFoto;
   destino: string;
+  regionNombre?: string;
   temporada?: Temporada;
   index: number;
 }
@@ -120,6 +122,7 @@ function PaqueteCard({
   paquete,
   foto,
   destino,
+  regionNombre,
   temporada,
   index,
 }: PaqueteCardProps) {
@@ -180,7 +183,15 @@ function PaqueteCard({
 
             <div className="absolute inset-x-3 bottom-2 flex items-center gap-1.5 text-[11px] font-medium text-white">
               <MapPin size={11} strokeWidth={2.25} />
-              <span className="truncate">{destino}</span>
+              <span className="truncate">
+                {regionNombre && regionNombre !== destino && (
+                  <>
+                    <span className="text-white/70">{regionNombre}</span>
+                    <span className="mx-1 text-white/50">{"\u203A"}</span>
+                  </>
+                )}
+                {destino}
+              </span>
             </div>
           </div>
 
@@ -220,6 +231,7 @@ export default function VendedorDashboard() {
   const packageState = usePackageState();
   const alojamientos = useAlojamientos();
   const paises = usePaises();
+  const regiones = useRegiones();
   const temporadas = useTemporadas();
 
   const paquetesActivos = useMemo(
@@ -234,8 +246,9 @@ export default function VendedorDashboard() {
         packageState.paqueteAlojamientos,
         alojamientos,
         paises,
+        regiones,
       ),
-    [packageState.paqueteAlojamientos, alojamientos, paises],
+    [packageState.paqueteAlojamientos, alojamientos, paises, regiones],
   );
 
   // ---- Stats ----
@@ -402,6 +415,7 @@ export default function VendedorDashboard() {
                   p.destino ??
                   "—"
                 }
+                regionNombre={paisResolver.regionNombreFor(p.id) ?? undefined}
                 temporada={
                   p.temporadaId ? temporadaById.get(p.temporadaId) : undefined
                 }

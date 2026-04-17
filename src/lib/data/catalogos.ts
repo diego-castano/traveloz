@@ -7,6 +7,7 @@ import type {
   Temporada,
   TipoPaquete,
   Regimen,
+  Region,
   Pais,
   Ciudad,
   Etiqueta,
@@ -257,7 +258,38 @@ export const SEED_REGIMENES: Regimen[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Paises -- 6 countries, duplicated per brand
+// Regiones -- 7 regions per brand
+// ---------------------------------------------------------------------------
+
+const REGIONES_BASE: Array<{ slug: string; nombre: string; orden: number }> = [
+  { slug: 'europa', nombre: 'Europa', orden: 1 },
+  { slug: 'estados-unidos', nombre: 'Estados Unidos', orden: 2 },
+  { slug: 'asia', nombre: 'Asia', orden: 3 },
+  { slug: 'oceania', nombre: 'Oceania', orden: 4 },
+  { slug: 'caribe', nombre: 'Caribe', orden: 5 },
+  { slug: 'sudamerica', nombre: 'Sudamerica', orden: 6 },
+  { slug: 'brasil', nombre: 'Brasil', orden: 7 },
+];
+
+export const SEED_REGIONES: Region[] = (['brand-1', 'brand-2'] as const).flatMap(
+  (brandId, brandIdx) =>
+    REGIONES_BASE.map((r, i) => ({
+      id: `region-${brandIdx * REGIONES_BASE.length + i + 1}`,
+      brandId,
+      nombre: r.nombre,
+      slug: r.slug,
+      orden: r.orden,
+      createdAt: SEED_DATE,
+      updatedAt: SEED_DATE,
+    })),
+);
+
+// Lookup helper: regionId por (brandId, slug)
+const regionIdFor = (brandId: string, slug: string): string =>
+  SEED_REGIONES.find((r) => r.brandId === brandId && r.slug === slug)!.id;
+
+// ---------------------------------------------------------------------------
+// Paises -- 6 countries, duplicated per brand. Each mapped to its region.
 // ---------------------------------------------------------------------------
 
 export const SEED_PAISES: Pais[] = [
@@ -267,6 +299,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-1',
     nombre: 'Brasil',
     codigo: 'BR',
+    regionId: regionIdFor('brand-1', 'brasil'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -275,6 +308,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-1',
     nombre: 'Mexico',
     codigo: 'MX',
+    regionId: regionIdFor('brand-1', 'caribe'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -283,6 +317,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-1',
     nombre: 'Republica Dominicana',
     codigo: 'DO',
+    regionId: regionIdFor('brand-1', 'caribe'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -291,6 +326,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-1',
     nombre: 'Argentina',
     codigo: 'AR',
+    regionId: regionIdFor('brand-1', 'sudamerica'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -299,6 +335,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-1',
     nombre: 'Estados Unidos',
     codigo: 'US',
+    regionId: regionIdFor('brand-1', 'estados-unidos'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -307,6 +344,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-1',
     nombre: 'Espana',
     codigo: 'ES',
+    regionId: regionIdFor('brand-1', 'europa'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -316,6 +354,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-2',
     nombre: 'Brasil',
     codigo: 'BR',
+    regionId: regionIdFor('brand-2', 'brasil'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -324,6 +363,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-2',
     nombre: 'Mexico',
     codigo: 'MX',
+    regionId: regionIdFor('brand-2', 'caribe'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -332,6 +372,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-2',
     nombre: 'Republica Dominicana',
     codigo: 'DO',
+    regionId: regionIdFor('brand-2', 'caribe'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -340,6 +381,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-2',
     nombre: 'Argentina',
     codigo: 'AR',
+    regionId: regionIdFor('brand-2', 'sudamerica'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -348,6 +390,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-2',
     nombre: 'Estados Unidos',
     codigo: 'US',
+    regionId: regionIdFor('brand-2', 'estados-unidos'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },
@@ -356,6 +399,7 @@ export const SEED_PAISES: Pais[] = [
     brandId: 'brand-2',
     nombre: 'Espana',
     codigo: 'ES',
+    regionId: regionIdFor('brand-2', 'europa'),
     createdAt: SEED_DATE,
     updatedAt: SEED_DATE,
   },

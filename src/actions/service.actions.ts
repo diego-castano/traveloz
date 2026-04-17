@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
+import { generateSequentialId } from "@/lib/sequential-id";
 
 // ──────────────────────────────────────────────
 // Zod schemas
@@ -14,6 +15,7 @@ const AereoSchema = z.object({
   aerolinea: z.string().nullable().optional(),
   equipaje: z.string().nullable().optional(),
   itinerario: z.string().nullable().optional(),
+  itinerarioImagenes: z.array(z.string()).optional(),
   escalas: z.number().int().nonnegative().optional(),
   codigoVueloIda: z.string().nullable().optional(),
   codigoVueloVuelta: z.string().nullable().optional(),
@@ -112,6 +114,7 @@ export async function createAereo(data: {
   aerolinea?: string | null;
   equipaje?: string | null;
   itinerario?: string | null;
+  itinerarioImagenes?: string[];
   escalas?: number;
   codigoVueloIda?: string | null;
   codigoVueloVuelta?: string | null;
@@ -121,7 +124,10 @@ export async function createAereo(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = AereoSchema.parse(data);
-    return await prisma.aereo.create({ data: { ...parsed, brandId } });
+    return await prisma.$transaction(async (tx) => {
+      const id = await generateSequentialId(tx, "aereo");
+      return await tx.aereo.create({ data: { ...parsed, id, brandId } });
+    });
   } catch (error) {
     console.error("Error creating aereo:", error);
     throw new Error("No se pudo crear el aéreo.");
@@ -136,6 +142,7 @@ export async function updateAereo(
     aerolinea?: string | null;
     equipaje?: string | null;
     itinerario?: string | null;
+    itinerarioImagenes?: string[];
     escalas?: number;
     codigoVueloIda?: string | null;
     codigoVueloVuelta?: string | null;
@@ -240,7 +247,10 @@ export async function createAlojamiento(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = AlojamientoSchema.parse(data);
-    return await prisma.alojamiento.create({ data: { ...parsed, brandId } });
+    return await prisma.$transaction(async (tx) => {
+      const id = await generateSequentialId(tx, "alojamiento");
+      return await tx.alojamiento.create({ data: { ...parsed, id, brandId } });
+    });
   } catch (error) {
     console.error("Error creating alojamiento:", error);
     throw new Error("No se pudo crear el alojamiento.");
@@ -403,7 +413,10 @@ export async function createTraslado(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = TrasladoSchema.parse(data);
-    return await prisma.traslado.create({ data: { ...parsed, brandId } });
+    return await prisma.$transaction(async (tx) => {
+      const id = await generateSequentialId(tx, "traslado");
+      return await tx.traslado.create({ data: { ...parsed, id, brandId } });
+    });
   } catch (error) {
     console.error("Error creating traslado:", error);
     throw new Error("No se pudo crear el traslado.");
@@ -469,7 +482,10 @@ export async function createSeguro(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = SeguroSchema.parse(data);
-    return await prisma.seguro.create({ data: { ...parsed, brandId } });
+    return await prisma.$transaction(async (tx) => {
+      const id = await generateSequentialId(tx, "seguro");
+      return await tx.seguro.create({ data: { ...parsed, id, brandId } });
+    });
   } catch (error) {
     console.error("Error creating seguro:", error);
     throw new Error("No se pudo crear el seguro.");
@@ -536,7 +552,10 @@ export async function createCircuito(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = CircuitoSchema.parse(data);
-    return await prisma.circuito.create({ data: { ...parsed, brandId } });
+    return await prisma.$transaction(async (tx) => {
+      const id = await generateSequentialId(tx, "circuito");
+      return await tx.circuito.create({ data: { ...parsed, id, brandId } });
+    });
   } catch (error) {
     console.error("Error creating circuito:", error);
     throw new Error("No se pudo crear el circuito.");
@@ -669,27 +688,29 @@ export async function deletePrecioCircuito(id: string) {
   }
 }
 
-// ──────────────────────────────────────────────
-// Combined fetch — all services in one call
-// ──────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Two-wave loading — unblocks the UI fast then fills in sub-entities.
+//
+// Wave 1 — getBaseServices: only main rows, no sub-entity joins.
+//   Typically resolves in <1 s even against a remote DB.
+//   ServiceProvider dispatches this first so list pages show data immediately.
+//
+// Wave 2 — getServiceSubEntities: precios, fotos, circuit days.
+//   Heavier but non-blocking — UI is already usable from wave 1.
+// ---------------------------------------------------------------------------
 
-export async function getAllServices(requestedBrandId?: string) {
+export async function getBaseServices(requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
+
     const [aereos, alojamientos, traslados, seguros, circuitos] =
       await Promise.all([
         prisma.aereo.findMany({
           where: { brandId, deletedAt: null },
-          include: { precios: true },
           orderBy: { createdAt: "desc" },
         }),
         prisma.alojamiento.findMany({
           where: { brandId, deletedAt: null },
-          include: {
-            precios: true,
-            fotos: true,
-            ciudad: { select: { id: true, nombre: true, paisId: true } },
-          },
           orderBy: { createdAt: "desc" },
         }),
         prisma.traslado.findMany({
@@ -702,35 +723,64 @@ export async function getAllServices(requestedBrandId?: string) {
         }),
         prisma.circuito.findMany({
           where: { brandId, deletedAt: null },
-          include: {
-            itinerario: { orderBy: { orden: "asc" } },
-            precios: true,
-          },
           orderBy: { createdAt: "desc" },
         }),
       ]);
 
-    // Flatten sub-entities from included relations
-    const preciosAereo = aereos.flatMap((a) => a.precios);
-    const preciosAlojamiento = alojamientos.flatMap((a) => a.precios);
-    const alojamientoFotos = alojamientos.flatMap((a) => a.fotos);
-    const circuitoDias = circuitos.flatMap((c) => c.itinerario);
-    const preciosCircuito = circuitos.flatMap((c) => c.precios);
+    return { aereos, alojamientos, traslados, seguros, circuitos };
+  } catch (error) {
+    console.error("Error fetching base services:", error);
+    throw new Error("No se pudieron obtener los servicios base.");
+  }
+}
 
-    return {
-      aereos,
+export async function getServiceSubEntities(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+
+    const [
       preciosAereo,
-      alojamientos,
       preciosAlojamiento,
       alojamientoFotos,
-      traslados,
-      seguros,
-      circuitos,
+      circuitoDias,
+      preciosCircuito,
+    ] = await Promise.all([
+      prisma.precioAereo.findMany({
+        where: { aereo: { brandId, deletedAt: null } },
+      }),
+      prisma.precioAlojamiento.findMany({
+        where: { alojamiento: { brandId, deletedAt: null } },
+      }),
+      prisma.alojamientoFoto.findMany({
+        where: { alojamiento: { brandId, deletedAt: null } },
+      }),
+      prisma.circuitoDia.findMany({
+        where: { circuito: { brandId, deletedAt: null } },
+        orderBy: { orden: "asc" },
+      }),
+      prisma.precioCircuito.findMany({
+        where: { circuito: { brandId, deletedAt: null } },
+      }),
+    ]);
+
+    return {
+      preciosAereo,
+      preciosAlojamiento,
+      alojamientoFotos,
       circuitoDias,
       preciosCircuito,
     };
   } catch (error) {
-    console.error("Error fetching all services:", error);
-    throw new Error("No se pudieron obtener los datos de servicios.");
+    console.error("Error fetching service sub-entities:", error);
+    throw new Error("No se pudieron obtener los sub-datos de servicios.");
   }
+}
+
+// Compat wrapper — still used by some direct callers.
+export async function getAllServices(requestedBrandId?: string) {
+  const [base, sub] = await Promise.all([
+    getBaseServices(requestedBrandId),
+    getServiceSubEntities(requestedBrandId),
+  ]);
+  return { ...base, ...sub };
 }

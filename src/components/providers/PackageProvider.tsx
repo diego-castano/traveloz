@@ -55,8 +55,20 @@ const initialState: PackageState = {
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
 // ---------------------------------------------------------------------------
+type PackageSubPayload = {
+  paqueteAereos: PaqueteAereo[];
+  paqueteAlojamientos: PaqueteAlojamiento[];
+  paqueteTraslados: PaqueteTraslado[];
+  paqueteSeguros: PaqueteSeguro[];
+  paqueteCircuitos: PaqueteCircuito[];
+  paqueteFotos: PaqueteFoto[];
+  paqueteEtiquetas: PaqueteEtiqueta[];
+  opcionesHoteleras: OpcionHotelera[];
+};
+
 type PackageAction =
   | { type: "SET_ALL"; payload: PackageState }
+  | { type: "MERGE_SUB_ENTITIES"; payload: PackageSubPayload }
   // Paquete (soft delete)
   | { type: "ADD_PAQUETE"; payload: Paquete }
   | { type: "UPDATE_PAQUETE"; payload: Paquete }
@@ -100,7 +112,9 @@ type PackageAction =
 function packageReducer(state: PackageState, action: PackageAction): PackageState {
   switch (action.type) {
     case "SET_ALL":
-      return { ...action.payload, loading: false };
+      return action.payload;
+    case "MERGE_SUB_ENTITIES":
+      return { ...state, ...action.payload };
 
     // -- Paquete (soft delete) --
     case "ADD_PAQUETE":
@@ -361,32 +375,49 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
 
     dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
 
-    packageActions.getAllPackageData(activeBrandId).then((data) => {
-      if (cancelled) return;
-      dispatch({
-        type: "SET_ALL",
-        payload: {
-          loading: false,
-          paquetes: data.paquetes as any,
-          paqueteAereos: data.paqueteAereos as any,
-          paqueteAlojamientos: data.paqueteAlojamientos as any,
-          paqueteTraslados: data.paqueteTraslados as any,
-          paqueteSeguros: data.paqueteSeguros as any,
-          paqueteCircuitos: data.paqueteCircuitos as any,
-          paqueteFotos: data.paqueteFotos as any,
-          paqueteEtiquetas: data.paqueteEtiquetas as any,
-          opcionesHoteleras: data.opcionesHoteleras as any,
-        },
+    // Wave 1 — only Paquete rows. Fast (<1 s). Lifts skeleton & shows list.
+    packageActions
+      .getBasePackages(activeBrandId)
+      .then((base) => {
+        if (cancelled) return;
+        dispatch({
+          type: "SET_ALL",
+          payload: {
+            ...initialState,
+            loading: false,
+            paquetes: base.paquetes as any,
+          },
+        });
+      })
+      .catch((err) => {
+        console.error("Error fetching base packages:", err);
+        if (cancelled) return;
+        dispatch({ type: "SET_ALL", payload: { ...initialState, loading: false } });
       });
-    }).catch((err) => {
-      console.error("Error fetching packages:", err);
-      if (cancelled) return;
-      // IMPORTANT: Always clear loading on error so UI doesn't hang
-      dispatch({
-        type: "SET_ALL",
-        payload: { ...initialState, loading: false },
+
+    // Wave 2 — all paquete-X join tables. Heavier but non-blocking.
+    packageActions
+      .getPackageSubEntities(activeBrandId)
+      .then((sub) => {
+        if (cancelled) return;
+        dispatch({
+          type: "MERGE_SUB_ENTITIES",
+          payload: {
+            paqueteAereos: sub.paqueteAereos as any,
+            paqueteAlojamientos: sub.paqueteAlojamientos as any,
+            paqueteTraslados: sub.paqueteTraslados as any,
+            paqueteSeguros: sub.paqueteSeguros as any,
+            paqueteCircuitos: sub.paqueteCircuitos as any,
+            paqueteFotos: sub.paqueteFotos as any,
+            paqueteEtiquetas: sub.paqueteEtiquetas as any,
+            opcionesHoteleras: sub.opcionesHoteleras as any,
+          },
+        });
+      })
+      .catch((err) => {
+        console.error("Error fetching package sub-entities:", err);
+        // Non-fatal: base paquetes list from wave 1 is already visible.
       });
-    });
 
     return () => { cancelled = true; };
   }, [activeBrandId, sessionStatus]);

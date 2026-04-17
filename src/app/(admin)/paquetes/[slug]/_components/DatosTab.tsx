@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { DestinoAutocomplete } from "@/components/ui/form/DestinoAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -33,7 +34,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
 import { validateForActivation } from "@/lib/validation";
-import { MapPin, Star, Check, Circle } from "lucide-react";
+import { Star, Check, Circle } from "lucide-react";
 import { springs } from "@/components/lib/animations";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
 
@@ -255,12 +256,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
             <Field>
               <FieldLabel>Destino</FieldLabel>
-              <Input
+              <DestinoAutocomplete
                 value={destino}
-                onChange={(e) => setDestinoDirty(e.target.value)}
-                placeholder="Ciudad o region de destino"
+                onChange={setDestinoDirty}
+                placeholder="Buscar region, pais o ciudad..."
                 readOnly={isReadOnly}
-                leftIcon={<MapPin className="w-4 h-4" />}
               />
             </Field>
 

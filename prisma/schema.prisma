@@ -57,7 +57,7 @@ model User {
 }
 
 model Paquete {
-  id                String        @id @default(cuid())
+  id                String        @id
   brandId           String
   titulo            String
   destino           String
@@ -102,21 +102,22 @@ model Paquete {
 }
 
 model Aereo {
-  id                String    @id @default(cuid())
-  brandId           String
-  ruta              String
-  destino           String
-  aerolinea         String?
-  equipaje          String?
-  itinerario        String?
-  escalas           Int       @default(0)
-  codigoVueloIda    String?
-  codigoVueloVuelta String?
-  duracionIda       String?
-  duracionVuelta    String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime?
+  id                 String    @id
+  brandId            String
+  ruta               String
+  destino            String
+  aerolinea          String?
+  equipaje           String?
+  itinerario         String?
+  itinerarioImagenes String[]  @default([])
+  escalas            Int       @default(0)
+  codigoVueloIda     String?
+  codigoVueloVuelta  String?
+  duracionIda        String?
+  duracionVuelta     String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
 
   precios  PrecioAereo[]
   paquetes PaqueteAereo[]
@@ -137,7 +138,7 @@ model PrecioAereo {
 }
 
 model Alojamiento {
-  id        String    @id @default(cuid())
+  id        String    @id
   brandId   String
   nombre    String
   ciudadId  String?
@@ -182,7 +183,7 @@ model AlojamientoFoto {
 }
 
 model Traslado {
-  id          String       @id @default(cuid())
+  id          String       @id
   brandId     String
   nombre      String
   tipo        TipoTraslado @default(REGULAR)
@@ -203,7 +204,7 @@ model Traslado {
 }
 
 model Seguro {
-  id          String    @id @default(cuid())
+  id          String    @id
   brandId     String
   proveedorId String?
   plan        String
@@ -220,7 +221,7 @@ model Seguro {
 }
 
 model Circuito {
-  id          String    @id @default(cuid())
+  id          String    @id
   brandId     String
   nombre      String
   noches      Int
@@ -329,19 +330,37 @@ model Etiqueta {
   @@unique([brandId, slug])
 }
 
+model Region {
+  id        String   @id @default(cuid())
+  brandId   String
+  nombre    String
+  slug      String
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paises Pais[]
+
+  @@index([brandId])
+  @@unique([brandId, slug])
+}
+
 model Pais {
   id        String   @id @default(cuid())
   brandId   String
   nombre    String
   codigo    String?
+  regionId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  region       Region?       @relation(fields: [regionId], references: [id])
   ciudades     Ciudad[]
   alojamientos Alojamiento[]
   traslados    Traslado[]
 
   @@index([brandId])
+  @@index([regionId])
 }
 
 model Ciudad {
@@ -465,14 +484,15 @@ model PaqueteEtiqueta {
 }
 
 model OpcionHotelera {
-  id             String   @id @default(cuid())
-  paqueteId      String
-  nombre         String
-  alojamientoIds String[]
-  factor         Float
-  precioVenta    Float
-  orden          Int      @default(0)
-  proveedorId    String?
+  id                    String   @id @default(cuid())
+  paqueteId             String
+  nombre                String
+  alojamientoIds        String[]
+  nochesPorAlojamiento  Json?    // Record<alojamientoId, noches> — per-opcion nights override
+  factor                Float
+  precioVenta           Float
+  orden                 Int      @default(0)
+  proveedorId           String?
 
   paquete   Paquete    @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
   proveedor Proveedor? @relation(fields: [proveedorId], references: [id])
@@ -496,4 +516,14 @@ model Notificacion {
   etiqueta Etiqueta @relation(fields: [etiquetaId], references: [id])
 
   @@index([brandId])
+}
+
+// ──────────────────────────────────────────────
+// Sequential ID counters
+// ──────────────────────────────────────────────
+
+model IdCounter {
+  entity    String   @id
+  lastValue Int      @default(0)
+  updatedAt DateTime @updatedAt
 }

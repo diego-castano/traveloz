@@ -17,7 +17,7 @@ const SEED_DATE = '2026-01-15T00:00:00.000Z';
 export const SEED_TRASLADOS: Traslado[] = [
   // brand-1 (TravelOz)
   {
-    id: 'traslado-1',
+    id: '001',
     brandId: 'brand-1',
     nombre: 'Transfer Aeropuerto Galeao - Zona Sur Rio',
     tipo: 'REGULAR',
@@ -30,7 +30,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-2',
+    id: '002',
     brandId: 'brand-1',
     nombre: 'Transfer Aeropuerto Cancun - Zona Hotelera',
     tipo: 'REGULAR',
@@ -43,7 +43,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-3',
+    id: '003',
     brandId: 'brand-1',
     nombre: 'Transfer Privado Aeropuerto Cancun',
     tipo: 'PRIVADO',
@@ -56,7 +56,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-4',
+    id: '004',
     brandId: 'brand-1',
     nombre: 'Transfer Aeropuerto Punta Cana - Hotel',
     tipo: 'REGULAR',
@@ -69,7 +69,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-5',
+    id: '005',
     brandId: 'brand-1',
     nombre: 'Transfer Aeropuerto Miami - South Beach',
     tipo: 'REGULAR',
@@ -82,7 +82,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-6',
+    id: '006',
     brandId: 'brand-1',
     nombre: 'Transfer Aeropuerto Barajas - Centro Madrid',
     tipo: 'REGULAR',
@@ -96,7 +96,7 @@ export const SEED_TRASLADOS: Traslado[] = [
   },
   // brand-2 (DestinoIcono)
   {
-    id: 'traslado-7',
+    id: '007',
     brandId: 'brand-2',
     nombre: 'Transfer Aeropuerto Galeao - Zona Sur Rio',
     tipo: 'REGULAR',
@@ -109,7 +109,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-8',
+    id: '008',
     brandId: 'brand-2',
     nombre: 'Transfer Aeropuerto Cancun - Zona Hotelera',
     tipo: 'REGULAR',
@@ -122,7 +122,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-9',
+    id: '009',
     brandId: 'brand-2',
     nombre: 'Transfer Privado Aeropuerto Barajas - Centro Madrid',
     tipo: 'PRIVADO',
@@ -135,7 +135,7 @@ export const SEED_TRASLADOS: Traslado[] = [
     deletedAt: null,
   },
   {
-    id: 'traslado-10',
+    id: '010',
     brandId: 'brand-2',
     nombre: 'Transfer Aeropuerto Ezeiza - Centro Buenos Aires',
     tipo: 'REGULAR',

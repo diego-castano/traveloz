@@ -22,7 +22,7 @@ const VACACIONES_HASTA = '2026-07-31';
 export const SEED_AEREOS: Aereo[] = [
   // brand-1 (TravelOz)
   {
-    id: 'aereo-1',
+    id: '001',
     brandId: 'brand-1',
     ruta: 'MVD - GIG - MVD',
     destino: 'Rio de Janeiro',
@@ -39,7 +39,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-2',
+    id: '002',
     brandId: 'brand-1',
     ruta: 'MVD - CUN - MVD',
     destino: 'Cancun',
@@ -56,7 +56,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-3',
+    id: '003',
     brandId: 'brand-1',
     ruta: 'MVD - PUJ - MVD',
     destino: 'Punta Cana',
@@ -73,7 +73,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-4',
+    id: '004',
     brandId: 'brand-1',
     ruta: 'MVD - MIA - MVD',
     destino: 'Miami',
@@ -90,7 +90,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-5',
+    id: '005',
     brandId: 'brand-1',
     ruta: 'MVD - FLN - MVD',
     destino: 'Florianopolis',
@@ -107,7 +107,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-6',
+    id: '006',
     brandId: 'brand-1',
     ruta: 'MVD - SSA - MVD',
     destino: 'Salvador de Bahia',
@@ -124,7 +124,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-7',
+    id: '007',
     brandId: 'brand-1',
     ruta: 'MVD - MAD - MVD',
     destino: 'Madrid',
@@ -142,7 +142,7 @@ export const SEED_AEREOS: Aereo[] = [
   },
   // brand-2 (DestinoIcono)
   {
-    id: 'aereo-8',
+    id: '008',
     brandId: 'brand-2',
     ruta: 'MVD - GIG - MVD',
     destino: 'Rio de Janeiro',
@@ -159,7 +159,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-9',
+    id: '009',
     brandId: 'brand-2',
     ruta: 'MVD - EZE - MVD',
     destino: 'Buenos Aires',
@@ -176,7 +176,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-10',
+    id: '010',
     brandId: 'brand-2',
     ruta: 'MVD - MCO - MVD',
     destino: 'Orlando',
@@ -193,7 +193,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-11',
+    id: '011',
     brandId: 'brand-2',
     ruta: 'MVD - CUN - MVD',
     destino: 'Cancun',
@@ -210,7 +210,7 @@ export const SEED_AEREOS: Aereo[] = [
     deletedAt: null,
   },
   {
-    id: 'aereo-12',
+    id: '012',
     brandId: 'brand-2',
     ruta: 'MVD - PUJ - MVD',
     destino: 'Punta Cana',
@@ -235,53 +235,53 @@ export const SEED_AEREOS: Aereo[] = [
 
 export const SEED_PRECIOS_AEREO: PrecioAereo[] = [
   // aereo-1: MVD-GIG (Azul) brand-1
-  { id: 'precio-aereo-1', aereoId: 'aereo-1', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 420 },
-  { id: 'precio-aereo-2', aereoId: 'aereo-1', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 580 },
+  { id: 'precio-aereo-1', aereoId: '001', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 420 },
+  { id: 'precio-aereo-2', aereoId: '001', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 580 },
 
   // aereo-2: MVD-CUN (Copa) brand-1
-  { id: 'precio-aereo-3', aereoId: 'aereo-2', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 680 },
-  { id: 'precio-aereo-4', aereoId: 'aereo-2', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 890 },
-  { id: 'precio-aereo-5', aereoId: 'aereo-2', periodoDesde: VACACIONES_DESDE, periodoHasta: VACACIONES_HASTA, precioAdulto: 950 },
+  { id: 'precio-aereo-3', aereoId: '002', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 680 },
+  { id: 'precio-aereo-4', aereoId: '002', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 890 },
+  { id: 'precio-aereo-5', aereoId: '002', periodoDesde: VACACIONES_DESDE, periodoHasta: VACACIONES_HASTA, precioAdulto: 950 },
 
   // aereo-3: MVD-PUJ (Aerolineas Argentinas) brand-1
-  { id: 'precio-aereo-6', aereoId: 'aereo-3', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 620 },
-  { id: 'precio-aereo-7', aereoId: 'aereo-3', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 820 },
+  { id: 'precio-aereo-6', aereoId: '003', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 620 },
+  { id: 'precio-aereo-7', aereoId: '003', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 820 },
 
   // aereo-4: MVD-MIA (American Airlines) brand-1
-  { id: 'precio-aereo-8', aereoId: 'aereo-4', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 750 },
-  { id: 'precio-aereo-9', aereoId: 'aereo-4', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 980 },
-  { id: 'precio-aereo-10', aereoId: 'aereo-4', periodoDesde: VACACIONES_DESDE, periodoHasta: VACACIONES_HASTA, precioAdulto: 1050 },
+  { id: 'precio-aereo-8', aereoId: '004', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 750 },
+  { id: 'precio-aereo-9', aereoId: '004', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 980 },
+  { id: 'precio-aereo-10', aereoId: '004', periodoDesde: VACACIONES_DESDE, periodoHasta: VACACIONES_HASTA, precioAdulto: 1050 },
 
   // aereo-5: MVD-FLN (Azul) brand-1
-  { id: 'precio-aereo-11', aereoId: 'aereo-5', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 350 },
-  { id: 'precio-aereo-12', aereoId: 'aereo-5', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 490 },
+  { id: 'precio-aereo-11', aereoId: '005', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 350 },
+  { id: 'precio-aereo-12', aereoId: '005', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 490 },
 
   // aereo-6: MVD-SSA (LATAM) brand-1
-  { id: 'precio-aereo-13', aereoId: 'aereo-6', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 480 },
-  { id: 'precio-aereo-14', aereoId: 'aereo-6', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 650 },
+  { id: 'precio-aereo-13', aereoId: '006', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 480 },
+  { id: 'precio-aereo-14', aereoId: '006', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 650 },
 
   // aereo-7: MVD-MAD (Iberia) brand-1
-  { id: 'precio-aereo-15', aereoId: 'aereo-7', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 890 },
-  { id: 'precio-aereo-16', aereoId: 'aereo-7', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 1180 },
+  { id: 'precio-aereo-15', aereoId: '007', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 890 },
+  { id: 'precio-aereo-16', aereoId: '007', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 1180 },
 
   // aereo-8: MVD-GIG (LATAM) brand-2
-  { id: 'precio-aereo-17', aereoId: 'aereo-8', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 440 },
-  { id: 'precio-aereo-18', aereoId: 'aereo-8', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 610 },
+  { id: 'precio-aereo-17', aereoId: '008', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 440 },
+  { id: 'precio-aereo-18', aereoId: '008', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 610 },
 
   // aereo-9: MVD-EZE (Aerolineas Argentinas) brand-2
-  { id: 'precio-aereo-19', aereoId: 'aereo-9', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 180 },
-  { id: 'precio-aereo-20', aereoId: 'aereo-9', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 260 },
+  { id: 'precio-aereo-19', aereoId: '009', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 180 },
+  { id: 'precio-aereo-20', aereoId: '009', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 260 },
 
   // aereo-10: MVD-MCO (Copa) brand-2
-  { id: 'precio-aereo-21', aereoId: 'aereo-10', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 780 },
-  { id: 'precio-aereo-22', aereoId: 'aereo-10', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 1020 },
-  { id: 'precio-aereo-23', aereoId: 'aereo-10', periodoDesde: VACACIONES_DESDE, periodoHasta: VACACIONES_HASTA, precioAdulto: 1100 },
+  { id: 'precio-aereo-21', aereoId: '010', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 780 },
+  { id: 'precio-aereo-22', aereoId: '010', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 1020 },
+  { id: 'precio-aereo-23', aereoId: '010', periodoDesde: VACACIONES_DESDE, periodoHasta: VACACIONES_HASTA, precioAdulto: 1100 },
 
   // aereo-11: MVD-CUN (Copa) brand-2
-  { id: 'precio-aereo-24', aereoId: 'aereo-11', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 700 },
-  { id: 'precio-aereo-25', aereoId: 'aereo-11', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 920 },
+  { id: 'precio-aereo-24', aereoId: '011', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 700 },
+  { id: 'precio-aereo-25', aereoId: '011', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 920 },
 
   // aereo-12: MVD-PUJ (LATAM) brand-2
-  { id: 'precio-aereo-26', aereoId: 'aereo-12', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 640 },
-  { id: 'precio-aereo-27', aereoId: 'aereo-12', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 850 },
+  { id: 'precio-aereo-26', aereoId: '012', periodoDesde: BAJA_DESDE, periodoHasta: BAJA_HASTA, precioAdulto: 640 },
+  { id: 'precio-aereo-27', aereoId: '012', periodoDesde: ALTA_DESDE, periodoHasta: ALTA_HASTA, precioAdulto: 850 },
 ];

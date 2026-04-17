@@ -56,6 +56,7 @@ export interface Aereo {
   aerolinea: string;
   equipaje: string;
   itinerario: string;
+  itinerarioImagenes?: string[];
   escalas: number;
   codigoVueloIda: string;
   codigoVueloVuelta: string;
@@ -170,12 +171,24 @@ export interface Etiqueta {
   updatedAt: string;
 }
 
-/** Country with ISO code. Contains cities as children. */
+/** Geographic region grouping multiple countries (e.g. "Caribe", "Europa"). */
+export interface Region {
+  id: string;
+  brandId: string;
+  nombre: string;
+  slug: string;
+  orden: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Country with ISO code. Contains cities as children. Belongs to a Region. */
 export interface Pais {
   id: string;
   brandId: string;
   nombre: string;
   codigo: string;
+  regionId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -272,6 +285,8 @@ export interface OpcionHotelera {
   paqueteId: string;
   nombre: string;
   alojamientoIds: string[];
+  /** Per-opcion nights override: { [alojamientoId]: noches }. Falls back to PaqueteAlojamiento.nochesEnEste when missing. */
+  nochesPorAlojamiento?: Record<string, number> | null;
   factor: number;
   precioVenta: number;
   orden: number;

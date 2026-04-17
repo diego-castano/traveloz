@@ -34,6 +34,7 @@ interface PaqueteGridCardProps {
   paquete: Paquete;
   foto?: PaqueteFoto;
   destino: string;
+  regionNombre?: string;
   temporada?: Temporada;
   tipo?: TipoPaquete;
   pricing: Pricing;
@@ -63,6 +64,7 @@ export function PaqueteGridCard({
   paquete,
   foto,
   destino,
+  regionNombre,
   temporada,
   tipo,
   pricing,
@@ -147,10 +149,18 @@ export function PaqueteGridCard({
               </div>
             )}
 
-            {/* Destino — bottom */}
+            {/* Destino (breadcrumb Region \u203A Pais) — bottom */}
             <div className="absolute inset-x-3 bottom-2 flex items-center gap-1.5 text-[11px] font-medium text-white">
               <MapPin size={11} strokeWidth={2.25} />
-              <span className="truncate">{destino}</span>
+              <span className="truncate">
+                {regionNombre && regionNombre !== destino && (
+                  <>
+                    <span className="text-white/70">{regionNombre}</span>
+                    <span className="mx-1 text-white/50">{"\u203A"}</span>
+                  </>
+                )}
+                {destino}
+              </span>
             </div>
           </div>
 

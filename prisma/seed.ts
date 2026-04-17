@@ -4,6 +4,7 @@ import {
   SEED_TEMPORADAS,
   SEED_TIPOS_PAQUETE,
   SEED_REGIMENES,
+  SEED_REGIONES,
   SEED_PAISES,
   SEED_CIUDADES,
   SEED_ETIQUETAS,
@@ -165,6 +166,23 @@ async function main() {
   console.log(`Ensured ${SEED_REGIMENES.length} regimenes`);
 
   // ---------------------------------------------------------------------------
+  // Seed Regiones (must run BEFORE Paises — Pais.regionId references Region.id)
+  // ---------------------------------------------------------------------------
+  await prisma.region.createMany({
+    skipDuplicates: true,
+    data: SEED_REGIONES.map((r) => ({
+      id: r.id,
+      brandId: r.brandId,
+      nombre: r.nombre,
+      slug: r.slug,
+      orden: r.orden,
+      createdAt: new Date(r.createdAt),
+      updatedAt: new Date(r.updatedAt),
+    })),
+  });
+  console.log(`Ensured ${SEED_REGIONES.length} regiones`);
+
+  // ---------------------------------------------------------------------------
   // Seed Paises
   // ---------------------------------------------------------------------------
   await prisma.pais.createMany({
@@ -174,11 +192,58 @@ async function main() {
       brandId: t.brandId,
       nombre: t.nombre,
       codigo: t.codigo,
+      regionId: t.regionId,
       createdAt: new Date(t.createdAt),
       updatedAt: new Date(t.updatedAt),
     })),
   });
   console.log(`Ensured ${SEED_PAISES.length} paises`);
+
+  // ---------------------------------------------------------------------------
+  // Backfill: assign regionId to existing Paises that don't have one yet.
+  // Uses an explicit country->region slug mapping that covers both the base
+  // SEED_PAISES and the extended catalog added in later seeds (Jamaica, Aruba,
+  // Panamá, Tailandia, etc). Idempotent: only updates rows where regionId IS NULL.
+  // ---------------------------------------------------------------------------
+  const countryToRegionSlug: Record<string, string> = {
+    // Europa
+    España: "europa", Francia: "europa", Italia: "europa", Portugal: "europa",
+    Grecia: "europa", Turquía: "europa", Espana: "europa",
+    // Estados Unidos
+    "Estados Unidos": "estados-unidos",
+    // Asia (incl. Middle East and Africa buckets until dedicated regions exist)
+    Tailandia: "asia", India: "asia", Nepal: "asia", Camboya: "asia",
+    Filipinas: "asia", "Emiratos Árabes": "asia", Egipto: "asia", Sudáfrica: "asia",
+    // Caribe
+    México: "caribe", Mexico: "caribe", "República Dominicana": "caribe",
+    "Republica Dominicana": "caribe", Cuba: "caribe", Jamaica: "caribe",
+    Aruba: "caribe", Curazao: "caribe", "Costa Rica": "caribe", Panamá: "caribe",
+    // Sudamérica
+    Argentina: "sudamerica", Chile: "sudamerica", Perú: "sudamerica",
+    Colombia: "sudamerica", Uruguay: "sudamerica",
+    // Brasil
+    Brasil: "brasil",
+  };
+
+  const regionIdByBrandSlug = new Map<string, string>();
+  for (const r of SEED_REGIONES) regionIdByBrandSlug.set(`${r.brandId}:${r.slug}`, r.id);
+  // Also include regions already in DB that weren't in SEED_REGIONES (just in case)
+  const dbRegiones = await prisma.region.findMany();
+  for (const r of dbRegiones) regionIdByBrandSlug.set(`${r.brandId}:${r.slug}`, r.id);
+
+  const paisesSinRegion = await prisma.pais.findMany({
+    where: { regionId: null },
+  });
+  let backfilled = 0;
+  for (const pais of paisesSinRegion) {
+    const slug = countryToRegionSlug[pais.nombre];
+    if (!slug) continue;
+    const regionId = regionIdByBrandSlug.get(`${pais.brandId}:${slug}`);
+    if (!regionId) continue;
+    await prisma.pais.update({ where: { id: pais.id }, data: { regionId } });
+    backfilled++;
+  }
+  if (backfilled > 0) console.log(`Backfilled regionId on ${backfilled} existing paises`);
 
   // ---------------------------------------------------------------------------
   // Seed Ciudades
@@ -549,6 +614,32 @@ async function main() {
     })),
   });
   console.log(`Ensured ${SEED_OPCIONES_HOTELERAS.length} opciones hoteleras`);
+
+  // ---------------------------------------------------------------------------
+  // Sync IdCounter with the highest numeric id currently present
+  // ---------------------------------------------------------------------------
+  const countedEntities = [
+    { entity: 'paquete', model: prisma.paquete },
+    { entity: 'aereo', model: prisma.aereo },
+    { entity: 'alojamiento', model: prisma.alojamiento },
+    { entity: 'traslado', model: prisma.traslado },
+    { entity: 'seguro', model: prisma.seguro },
+    { entity: 'circuito', model: prisma.circuito },
+  ] as const;
+
+  for (const { entity, model } of countedEntities) {
+    const rows = await (model as any).findMany({ select: { id: true } });
+    const maxValue = rows.reduce((max: number, r: { id: string }) => {
+      const n = /^\d+$/.test(r.id) ? parseInt(r.id, 10) : 0;
+      return n > max ? n : max;
+    }, 0);
+    await prisma.idCounter.upsert({
+      where: { entity },
+      create: { entity, lastValue: maxValue },
+      update: { lastValue: maxValue },
+    });
+    console.log(`IdCounter[${entity}] = ${maxValue}`);
+  }
 }
 
 main()

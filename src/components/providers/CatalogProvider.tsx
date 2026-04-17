@@ -12,6 +12,7 @@ import type {
   Temporada,
   TipoPaquete,
   Etiqueta,
+  Region,
   Pais,
   Ciudad,
   Regimen,
@@ -29,6 +30,7 @@ interface CatalogState {
   temporadas: Temporada[];
   tiposPaquete: TipoPaquete[];
   etiquetas: Etiqueta[];
+  regiones: Region[];
   paises: Pais[];
   ciudades: Ciudad[];
   regimenes: Regimen[];
@@ -40,6 +42,7 @@ const initialState: CatalogState = {
   temporadas: [],
   tiposPaquete: [],
   etiquetas: [],
+  regiones: [],
   paises: [],
   ciudades: [],
   regimenes: [],
@@ -60,6 +63,9 @@ type CatalogAction =
   | { type: "ADD_ETIQUETA"; payload: Etiqueta }
   | { type: "UPDATE_ETIQUETA"; payload: Etiqueta }
   | { type: "DELETE_ETIQUETA"; payload: string }
+  | { type: "ADD_REGION"; payload: Region }
+  | { type: "UPDATE_REGION"; payload: Region }
+  | { type: "DELETE_REGION"; payload: string }
   | { type: "ADD_PAIS"; payload: Pais }
   | { type: "UPDATE_PAIS"; payload: Pais }
   | { type: "DELETE_PAIS"; payload: string }
@@ -127,6 +133,22 @@ function catalogReducer(state: CatalogState, action: CatalogAction): CatalogStat
       return {
         ...state,
         etiquetas: state.etiquetas.filter((e) => e.id !== action.payload),
+      };
+
+    // -- Region (hard delete) --
+    case "ADD_REGION":
+      return { ...state, regiones: [...state.regiones, action.payload] };
+    case "UPDATE_REGION":
+      return {
+        ...state,
+        regiones: state.regiones.map((e) =>
+          e.id === action.payload.id ? action.payload : e,
+        ),
+      };
+    case "DELETE_REGION":
+      return {
+        ...state,
+        regiones: state.regiones.filter((e) => e.id !== action.payload),
       };
 
     // -- Pais (hard delete) --
@@ -242,6 +264,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
             temporadas: data.temporadas as unknown as Temporada[],
             tiposPaquete: data.tiposPaquete as unknown as TipoPaquete[],
             etiquetas: data.etiquetas as unknown as Etiqueta[],
+            regiones: (data.regiones ?? []) as unknown as Region[],
             paises: data.paises.map(({ ciudades: _c, ...p }) => p) as unknown as Pais[],
             ciudades: data.paises.flatMap((p) => p.ciudades ?? []) as unknown as Ciudad[],
             regimenes: data.regimenes as unknown as Regimen[],
@@ -324,6 +347,28 @@ export function useEtiquetas(): Etiqueta[] {
   return useMemo(
     () => state.etiquetas.filter((e) => e.brandId === activeBrandId),
     [state.etiquetas, activeBrandId],
+  );
+}
+
+export function useRegiones(): (Region & {
+  paises: (Pais & { ciudades: Ciudad[] })[];
+})[] {
+  const { activeBrandId } = useBrand();
+  const state = useCatalogState();
+  return useMemo(
+    () =>
+      state.regiones
+        .filter((r) => r.brandId === activeBrandId)
+        .map((r) => ({
+          ...r,
+          paises: state.paises
+            .filter((p) => p.brandId === activeBrandId && p.regionId === r.id)
+            .map((p) => ({
+              ...p,
+              ciudades: state.ciudades.filter((c) => c.paisId === p.id),
+            })),
+        })),
+    [state.regiones, state.paises, state.ciudades, activeBrandId],
   );
 }
 
@@ -426,6 +471,25 @@ export function useCatalogActions() {
       deleteEtiqueta: async (id: string) => {
         await catalogActions.deleteEtiqueta(id);
         dispatch({ type: "DELETE_ETIQUETA", payload: id });
+      },
+
+      // -- Region --
+      createRegion: async (
+        data: Omit<Region, "id" | "createdAt" | "updatedAt">,
+      ) => {
+        const entity = await catalogActions.createRegion(data);
+        dispatch({ type: "ADD_REGION", payload: entity as unknown as Region });
+        return entity;
+      },
+      updateRegion: async (entity: Region) => {
+        const { id, ...rest } = entity;
+        const updated = await catalogActions.updateRegion(id, rest);
+        dispatch({ type: "UPDATE_REGION", payload: updated as unknown as Region });
+        return updated;
+      },
+      deleteRegion: async (id: string) => {
+        await catalogActions.deleteRegion(id);
+        dispatch({ type: "DELETE_REGION", payload: id });
       },
 
       // -- Pais --

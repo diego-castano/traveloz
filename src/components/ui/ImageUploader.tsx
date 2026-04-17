@@ -2,10 +2,11 @@
 
 import React, { useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Upload, X, Star } from "lucide-react";
+import { Loader2, Upload, X, Star } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
+import { uploadFile } from "@/components/lib/upload";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +26,7 @@ export interface ImageUploaderProps {
   onSetPrincipal?: (id: string) => void;
   maxImages?: number;
   className?: string;
+  folder?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,35 +41,46 @@ export function ImageUploader({
   onSetPrincipal,
   maxImages = 10,
   className,
+  folder = "uploads",
 }: ImageUploaderProps) {
   const [dragActive, setDragActive] = useState(false);
   const [dragItemIndex, setDragItemIndex] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canAddMore = images.length < maxImages;
+  const canAddMore = images.length + uploading < maxImages;
 
   // -----------------------------------------------------------------------
-  // File handling (simulated -- prototype)
+  // File handling -- uploads to Railway Bucket via /api/upload
   // -----------------------------------------------------------------------
 
   const handleFiles = useCallback(
-    (files: FileList | null) => {
+    async (files: FileList | null) => {
       if (!files || !onAdd) return;
+      const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      const remaining = maxImages - images.length - uploading;
+      const selected = list.slice(0, Math.max(0, remaining));
+      if (selected.length === 0) return;
+
+      setUploadError(null);
+      setUploading((n) => n + selected.length);
+
       const urls: string[] = [];
-      const remaining = maxImages - images.length;
-      const count = Math.min(files.length, remaining);
-
-      for (let i = 0; i < count; i++) {
-        // Simulated upload: create object URL from the dropped/selected file
-        urls.push(URL.createObjectURL(files[i]));
+      for (const f of selected) {
+        try {
+          const { url } = await uploadFile(f, folder);
+          urls.push(url);
+        } catch (err) {
+          setUploadError(err instanceof Error ? err.message : "Error al subir");
+        } finally {
+          setUploading((n) => n - 1);
+        }
       }
-
-      if (urls.length > 0) {
-        onAdd(urls);
-      }
+      if (urls.length > 0) onAdd(urls);
     },
-    [onAdd, images.length, maxImages],
+    [onAdd, images.length, maxImages, uploading, folder],
   );
 
   const handleClick = () => {
@@ -177,23 +190,32 @@ export function ImageUploader({
             : glassMaterials.frostedSubtle.background,
         }}
       >
-        <Upload
-          className={cn(
-            "h-6 w-6 transition-colors",
-            dragActive ? "text-brand-teal-400" : "text-neutral-400",
-          )}
-        />
+        {uploading > 0 ? (
+          <Loader2 className="h-6 w-6 animate-spin text-brand-teal-400" />
+        ) : (
+          <Upload
+            className={cn(
+              "h-6 w-6 transition-colors",
+              dragActive ? "text-brand-teal-400" : "text-neutral-400",
+            )}
+          />
+        )}
         <p
           className={cn(
             "text-sm text-center px-4 transition-colors",
             dragActive ? "text-brand-teal-500" : "text-neutral-400",
           )}
         >
-          {isEmpty
-            ? "Arrastra imagenes o haz clic para subir"
-            : `Arrastra o haz clic para agregar (${images.length}/${maxImages})`}
+          {uploading > 0
+            ? `Subiendo ${uploading} imagen${uploading === 1 ? "" : "es"}...`
+            : isEmpty
+              ? "Arrastra imagenes o haz clic para subir"
+              : `Arrastra o haz clic para agregar (${images.length}/${maxImages})`}
         </p>
       </motion.div>
+      {uploadError && (
+        <p className="mt-2 text-[12px] text-[#CC2030]">{uploadError}</p>
+      )}
 
       {/* Thumbnail grid */}
       {images.length > 0 && (

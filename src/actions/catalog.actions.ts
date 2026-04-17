@@ -32,9 +32,16 @@ const RegimenSchema = z.object({
   abrev: z.string().min(1, "La abreviatura es requerida"),
 });
 
+const RegionSchema = z.object({
+  nombre: z.string().min(1, "El nombre es requerido"),
+  slug: z.string().min(1, "El slug es requerido"),
+  orden: z.number().int().optional(),
+});
+
 const PaisSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   codigo: z.string().optional(),
+  regionId: z.string().nullable().optional(),
 });
 
 const CiudadSchema = z.object({
@@ -295,6 +302,69 @@ export async function deleteRegimen(id: string) {
 }
 
 // ──────────────────────────────────────────────
+// Region
+// ──────────────────────────────────────────────
+
+export async function getRegiones(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    return await prisma.region.findMany({
+      where: { brandId },
+      orderBy: [{ orden: "asc" }, { nombre: "asc" }],
+    });
+  } catch (error) {
+    console.error("Error fetching regiones:", error);
+    throw new Error("No se pudieron obtener las regiones.");
+  }
+}
+
+export async function createRegion(data: {
+  nombre: string;
+  slug: string;
+  orden?: number;
+}, requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const parsed = RegionSchema.parse(data);
+    return await prisma.region.create({ data: { ...parsed, brandId } });
+  } catch (error) {
+    console.error("Error creating region:", error);
+    throw new Error("No se pudo crear la región.");
+  }
+}
+
+export async function updateRegion(
+  id: string,
+  data: { nombre?: string; slug?: string; orden?: number }
+) {
+  try {
+    await requireAuth();
+    return await prisma.region.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating region:", error);
+    throw new Error("No se pudo actualizar la región.");
+  }
+}
+
+export async function deleteRegion(id: string) {
+  try {
+    await requireAuth();
+    const count = await prisma.pais.count({ where: { regionId: id } });
+    if (count > 0) {
+      throw new Error(
+        `No se puede eliminar: hay ${count} país${count === 1 ? "" : "es"} asignado${count === 1 ? "" : "s"} a esta región.`
+      );
+    }
+    return await prisma.region.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting region:", error);
+    throw error instanceof Error
+      ? error
+      : new Error("No se pudo eliminar la región.");
+  }
+}
+
+// ──────────────────────────────────────────────
 // Pais
 // ──────────────────────────────────────────────
 
@@ -315,6 +385,7 @@ export async function getPaises(requestedBrandId?: string) {
 export async function createPais(data: {
   nombre: string;
   codigo?: string;
+  regionId?: string | null;
 }, requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
@@ -328,7 +399,7 @@ export async function createPais(data: {
 
 export async function updatePais(
   id: string,
-  data: { nombre?: string; codigo?: string }
+  data: { nombre?: string; codigo?: string; regionId?: string | null }
 ) {
   try {
     await requireAuth();
@@ -482,6 +553,7 @@ export async function getAllCatalogs(requestedBrandId?: string) {
       tiposPaquete,
       etiquetas,
       regimenes,
+      regiones,
       paises,
       proveedores,
     ] = await Promise.all([
@@ -501,6 +573,10 @@ export async function getAllCatalogs(requestedBrandId?: string) {
         where: { brandId },
         orderBy: { nombre: "asc" },
       }),
+      prisma.region.findMany({
+        where: { brandId },
+        orderBy: [{ orden: "asc" }, { nombre: "asc" }],
+      }),
       prisma.pais.findMany({
         where: { brandId },
         include: { ciudades: true },
@@ -517,6 +593,7 @@ export async function getAllCatalogs(requestedBrandId?: string) {
       tiposPaquete,
       etiquetas,
       regimenes,
+      regiones,
       paises,
       proveedores,
     };

@@ -58,8 +58,17 @@ const initialState: ServiceState = {
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
 // ---------------------------------------------------------------------------
+type SubEntityPayload = {
+  preciosAereo: PrecioAereo[];
+  preciosAlojamiento: PrecioAlojamiento[];
+  alojamientoFotos: AlojamientoFoto[];
+  circuitoDias: CircuitoDia[];
+  preciosCircuito: PrecioCircuito[];
+};
+
 type ServiceAction =
   | { type: "SET_ALL"; payload: ServiceState }
+  | { type: "MERGE_SUB_ENTITIES"; payload: SubEntityPayload }
   // Aereo (soft delete)
   | { type: "ADD_AEREO"; payload: Aereo }
   | { type: "UPDATE_AEREO"; payload: Aereo }
@@ -108,6 +117,8 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
   switch (action.type) {
     case "SET_ALL":
       return action.payload;
+    case "MERGE_SUB_ENTITIES":
+      return { ...state, ...action.payload };
 
     // -- Aereo (soft delete) --
     case "ADD_AEREO":
@@ -326,9 +337,6 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    // If not authenticated, reset state but keep loading: true so that when
-    // the user logs in, admin pages show skeleton until the authenticated
-    // fetch completes (prevents the empty-state flash during re-auth).
     if (sessionStatus !== "authenticated") {
       if (sessionStatus === "unauthenticated") {
         dispatch({ type: "SET_ALL", payload: initialState });
@@ -338,41 +346,57 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
 
     dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
 
+    // Wave 1 — base records only (fast, ~300-800 ms against Railway).
+    // Clears the skeleton as soon as the main rows arrive.
     serviceActions
-      .getAllServices(activeBrandId)
-      .then((data) => {
+      .getBaseServices(activeBrandId)
+      .then((base) => {
         if (cancelled) return;
         dispatch({
           type: "SET_ALL",
           payload: {
+            ...initialState,
             loading: false,
-            aereos: data.aereos as any,
-            preciosAereo: data.preciosAereo as any,
-            alojamientos: data.alojamientos as any,
-            preciosAlojamiento: data.preciosAlojamiento as any,
-            alojamientoFotos: data.alojamientoFotos as any,
-            traslados: data.traslados as any,
-            seguros: data.seguros as any,
-            circuitos: data.circuitos as any,
-            circuitoDias: data.circuitoDias as any,
-            preciosCircuito: data.preciosCircuito as any,
+            aereos: base.aereos as any,
+            alojamientos: base.alojamientos as any,
+            traslados: base.traslados as any,
+            seguros: base.seguros as any,
+            circuitos: base.circuitos as any,
           },
         });
       })
       .catch((err) => {
-        console.error("Error fetching services:", err);
+        console.error("Error fetching base services:", err);
         if (cancelled) return;
-        // IMPORTANT: Always clear loading on error so UI doesn't hang
+        dispatch({ type: "SET_ALL", payload: { ...initialState, loading: false } });
+      });
+
+    // Wave 2 — sub-entities (precios, fotos, días). Non-blocking.
+    // Uses MERGE_SUB_ENTITIES so it never clobbers base records from wave 1.
+    serviceActions
+      .getServiceSubEntities(activeBrandId)
+      .then((sub) => {
+        if (cancelled) return;
         dispatch({
-          type: "SET_ALL",
-          payload: { ...initialState, loading: false },
+          type: "MERGE_SUB_ENTITIES",
+          payload: {
+            preciosAereo: sub.preciosAereo as any,
+            preciosAlojamiento: sub.preciosAlojamiento as any,
+            alojamientoFotos: sub.alojamientoFotos as any,
+            circuitoDias: sub.circuitoDias as any,
+            preciosCircuito: sub.preciosCircuito as any,
+          },
         });
+      })
+      .catch((err) => {
+        console.error("Error fetching service sub-entities:", err);
+        // Non-fatal: base records from wave 1 are already visible.
       });
 
     return () => {
       cancelled = true;
     };
-  }, [activeBrandId, sessionStatus]);
+  }, [activeBrandId, sessionStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <ServiceStateContext.Provider value={state}>

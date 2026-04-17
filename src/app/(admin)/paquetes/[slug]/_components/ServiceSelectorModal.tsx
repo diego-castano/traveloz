@@ -22,7 +22,6 @@ import {
 } from "@/components/providers/CatalogProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Plus, Plane, Hotel, Bus, Shield, MapIcon, Search } from "lucide-react";
-import { cn } from "@/components/lib/cn";
 import type {
   Aereo,
   Alojamiento,
@@ -112,26 +111,60 @@ export default function ServiceSelectorModal({
     [services.circuitos],
   );
 
-  // Available (unassigned) services
+  // -- Search match helper --
+  const sq = searchQuery.toLowerCase().trim();
+
+  // Available (unassigned) services, filtered by search query
   const availableAereos = useMemo(
-    () => aereos.filter((a) => !assignedAereoIds.has(a.id)),
-    [aereos, assignedAereoIds],
+    () =>
+      aereos
+        .filter((a) => !assignedAereoIds.has(a.id))
+        .filter(
+          (a) =>
+            !sq ||
+            a.ruta.toLowerCase().includes(sq) ||
+            a.destino.toLowerCase().includes(sq) ||
+            (a.aerolinea ?? "").toLowerCase().includes(sq),
+        ),
+    [aereos, assignedAereoIds, sq],
   );
   const availableAlojamientos = useMemo(
     () => alojamientos.filter((a) => !assignedAlojamientoIds.has(a.id)),
     [alojamientos, assignedAlojamientoIds],
   );
   const availableTraslados = useMemo(
-    () => traslados.filter((t) => !assignedTrasladoIds.has(t.id)),
-    [traslados, assignedTrasladoIds],
+    () =>
+      traslados
+        .filter((t) => !assignedTrasladoIds.has(t.id))
+        .filter(
+          (t) =>
+            !sq ||
+            t.nombre.toLowerCase().includes(sq) ||
+            t.tipo.toLowerCase().includes(sq),
+        ),
+    [traslados, assignedTrasladoIds, sq],
   );
   const availableSeguros = useMemo(
-    () => seguros.filter((s) => !assignedSeguroIds.has(s.id)),
-    [seguros, assignedSeguroIds],
+    () =>
+      seguros
+        .filter((s) => !assignedSeguroIds.has(s.id))
+        .filter((s) => {
+          if (!sq) return true;
+          const provNombre = proveedorMap.get(s.proveedorId) ?? "";
+          return (
+            s.plan.toLowerCase().includes(sq) ||
+            (s.cobertura ?? "").toLowerCase().includes(sq) ||
+            provNombre.toLowerCase().includes(sq)
+          );
+        }),
+    [seguros, assignedSeguroIds, sq, proveedorMap],
   );
   const availableCircuitos = useMemo(
-    () => circuitos.filter((c) => !assignedCircuitoIds.has(c.id)),
-    [circuitos, assignedCircuitoIds],
+    () =>
+      circuitos
+        .filter((c) => !assignedCircuitoIds.has(c.id))
+        .filter((c) => !sq || c.nombre.toLowerCase().includes(sq)),
+    [circuitos, assignedCircuitoIds, sq],
   );
 
   // -- Assign handlers --
@@ -192,13 +225,12 @@ export default function ServiceSelectorModal({
     toast("success", "Circuito agregado", `${circuito.nombre} asignado al paquete.`);
   };
 
-  // -- Search match helper --
-  const sq = searchQuery.toLowerCase().trim();
-
   // -- Empty state per tab --
   const emptyMessage = (tipo: string) => (
     <div className="flex items-center justify-center py-8 text-neutral-400 text-sm">
-      Todos los {tipo} estan asignados
+      {sq
+        ? `No se encontraron ${tipo} para "${searchQuery}"`
+        : `Todos los ${tipo} estan asignados`}
     </div>
   );
 
@@ -256,35 +288,29 @@ export default function ServiceSelectorModal({
             ) : (
               <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
                 <div className="divide-y divide-hairline">
-                  {availableAereos.map((aereo) => {
-                    const matches = !sq || aereo.ruta.toLowerCase().includes(sq) || aereo.destino.toLowerCase().includes(sq) || (aereo.aerolinea ?? '').toLowerCase().includes(sq);
-                    return (
-                      <div
-                        key={aereo.id}
-                        className={cn(
-                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
-                          matches ? "opacity-100" : "opacity-30"
-                        )}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-800">
-                            {aereo.ruta}
-                          </span>
-                          <span className="text-xs text-neutral-500">
-                            {aereo.destino} &middot; {aereo.aerolinea}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          leftIcon={<Plus className="h-3 w-3" />}
-                          onClick={() => handleAssignAereo(aereo)}
-                        >
-                          Agregar
-                        </Button>
+                  {availableAereos.map((aereo) => (
+                    <div
+                      key={aereo.id}
+                      className="flex items-center justify-between px-4 py-3"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-neutral-800">
+                          {aereo.ruta}
+                        </span>
+                        <span className="text-xs text-neutral-500">
+                          {aereo.destino} &middot; {aereo.aerolinea}
+                        </span>
                       </div>
-                    );
-                  })}
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        leftIcon={<Plus className="h-3 w-3" />}
+                        onClick={() => handleAssignAereo(aereo)}
+                      >
+                        Agregar
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -309,35 +335,29 @@ export default function ServiceSelectorModal({
             ) : (
               <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
                 <div className="divide-y divide-hairline">
-                  {availableTraslados.map((traslado) => {
-                    const matches = !sq || traslado.nombre.toLowerCase().includes(sq) || traslado.tipo.toLowerCase().includes(sq);
-                    return (
-                      <div
-                        key={traslado.id}
-                        className={cn(
-                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
-                          matches ? "opacity-100" : "opacity-30"
-                        )}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-800">
-                            {traslado.nombre}
-                          </span>
-                          <span className="text-xs text-neutral-500">
-                            {traslado.tipo} &middot; USD {traslado.precio}
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          leftIcon={<Plus className="h-3 w-3" />}
-                          onClick={() => handleAssignTraslado(traslado)}
-                        >
-                          Agregar
-                        </Button>
+                  {availableTraslados.map((traslado) => (
+                    <div
+                      key={traslado.id}
+                      className="flex items-center justify-between px-4 py-3"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-neutral-800">
+                          {traslado.nombre}
+                        </span>
+                        <span className="text-xs text-neutral-500">
+                          {traslado.tipo} &middot; USD {traslado.precio}
+                        </span>
                       </div>
-                    );
-                  })}
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        leftIcon={<Plus className="h-3 w-3" />}
+                        onClick={() => handleAssignTraslado(traslado)}
+                      >
+                        Agregar
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -361,14 +381,10 @@ export default function ServiceSelectorModal({
                 <div className="divide-y divide-hairline">
                   {availableSeguros.map((seguro) => {
                     const provNombre = proveedorMap.get(seguro.proveedorId) ?? "";
-                    const matches = !sq || seguro.plan.toLowerCase().includes(sq) || (seguro.cobertura ?? '').toLowerCase().includes(sq) || provNombre.toLowerCase().includes(sq);
                     return (
                       <div
                         key={seguro.id}
-                        className={cn(
-                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
-                          matches ? "opacity-100" : "opacity-30"
-                        )}
+                        className="flex items-center justify-between px-4 py-3"
                       >
                         <div className="flex flex-col">
                           <span className="text-sm font-semibold text-neutral-800">
@@ -411,35 +427,29 @@ export default function ServiceSelectorModal({
             ) : (
               <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
                 <div className="divide-y divide-hairline">
-                  {availableCircuitos.map((circuito) => {
-                    const matches = !sq || circuito.nombre.toLowerCase().includes(sq);
-                    return (
-                      <div
-                        key={circuito.id}
-                        className={cn(
-                          "flex items-center justify-between px-4 py-3 transition-opacity duration-200",
-                          matches ? "opacity-100" : "opacity-30"
-                        )}
-                      >
-                        <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-800">
-                            {circuito.nombre}
-                          </span>
-                          <span className="text-xs text-neutral-500">
-                            {circuito.noches} noches
-                          </span>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          leftIcon={<Plus className="h-3 w-3" />}
-                          onClick={() => handleAssignCircuito(circuito)}
-                        >
-                          Agregar
-                        </Button>
+                  {availableCircuitos.map((circuito) => (
+                    <div
+                      key={circuito.id}
+                      className="flex items-center justify-between px-4 py-3"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-neutral-800">
+                          {circuito.nombre}
+                        </span>
+                        <span className="text-xs text-neutral-500">
+                          {circuito.noches} noches
+                        </span>
                       </div>
-                    );
-                  })}
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        leftIcon={<Plus className="h-3 w-3" />}
+                        onClick={() => handleAssignCircuito(circuito)}
+                      >
+                        Agregar
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

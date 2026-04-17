@@ -50,6 +50,7 @@ import {
   useTemporadas,
   useTiposPaquete,
   usePaises,
+  useRegiones,
 } from "@/components/providers/CatalogProvider";
 import {
   useAlojamientos,
@@ -99,12 +100,15 @@ function usePaisResolver(
   paqueteAlojamientos: Array<{ paqueteId: string; alojamientoId: string }>,
   alojamientos: Array<{ id: string; paisId: string | null }>,
   paises: Pais[],
+  regiones: Array<{ id: string; nombre: string }>,
 ) {
   return useMemo(() => {
     const aloById = new Map<string, { paisId: string | null }>();
     for (const a of alojamientos) aloById.set(a.id, a);
-    const paisNameById = new Map<string, string>();
-    for (const p of paises) paisNameById.set(p.id, p.nombre);
+    const paisById = new Map<string, Pais>();
+    for (const p of paises) paisById.set(p.id, p);
+    const regionNameById = new Map<string, string>();
+    for (const r of regiones) regionNameById.set(r.id, r.nombre);
 
     const cache = new Map<string, string | null>();
 
@@ -131,11 +135,18 @@ function usePaisResolver(
 
     function paisNombreFor(paqueteId: string): string | null {
       const pid = paisIdFor(paqueteId);
-      return pid ? (paisNameById.get(pid) ?? null) : null;
+      return pid ? (paisById.get(pid)?.nombre ?? null) : null;
     }
 
-    return { paisIdFor, paisNombreFor };
-  }, [paqueteAlojamientos, alojamientos, paises]);
+    function regionNombreFor(paqueteId: string): string | null {
+      const pid = paisIdFor(paqueteId);
+      if (!pid) return null;
+      const rid = paisById.get(pid)?.regionId;
+      return rid ? (regionNameById.get(rid) ?? null) : null;
+    }
+
+    return { paisIdFor, paisNombreFor, regionNombreFor };
+  }, [paqueteAlojamientos, alojamientos, paises, regiones]);
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +187,7 @@ export default function PaquetesPage() {
   const tiposPaquete = useTiposPaquete();
   const alojamientos = useAlojamientos();
   const paises = usePaises();
+  const regiones = useRegiones();
   const allOpciones = useAllOpcionesHoteleras();
   const loading = usePackageLoading();
 
@@ -183,6 +195,7 @@ export default function PaquetesPage() {
     packageState.paqueteAlojamientos,
     alojamientos,
     paises,
+    regiones,
   );
 
   // Per-paquete price derivation
@@ -630,6 +643,7 @@ export default function PaquetesPage() {
               destino={
                 resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "—"
               }
+              regionNombre={resolver.regionNombreFor(paquete.id) ?? undefined}
               temporada={
                 paquete.temporadaId
                   ? temporadaById.get(paquete.temporadaId)
@@ -682,6 +696,7 @@ export default function PaquetesPage() {
                 const pricing = preciosMap[paquete.id];
                 const destinoNombre =
                   resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "—";
+                const regionNombre = resolver.regionNombreFor(paquete.id);
                 const temporada = paquete.temporadaId
                   ? temporadaById.get(paquete.temporadaId)
                   : undefined;
@@ -726,9 +741,16 @@ export default function PaquetesPage() {
 
                     {visibleColumns.destino && (
                       <TableCell>
-                        <span className="text-[12.5px] text-neutral-600">
-                          {destinoNombre}
-                        </span>
+                        <div className="flex flex-col">
+                          {regionNombre && (
+                            <span className="text-[10.5px] font-medium uppercase tracking-wider text-neutral-400">
+                              {regionNombre}
+                            </span>
+                          )}
+                          <span className="text-[12.5px] text-neutral-600">
+                            {destinoNombre}
+                          </span>
+                        </div>
                       </TableCell>
                     )}
 
