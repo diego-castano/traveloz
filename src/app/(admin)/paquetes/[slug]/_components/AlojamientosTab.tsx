@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type KeyboardEvent,
 } from "react";
@@ -27,6 +28,7 @@ import {
   ArrowUp,
   ArrowDown,
   Route,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
@@ -43,6 +45,10 @@ import {
   useServiceState,
   useServiceActions,
 } from "@/components/providers/ServiceProvider";
+import {
+  useRegiones,
+  useCatalogActions,
+} from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import {
@@ -891,7 +897,16 @@ function DestinoRow({
 
 // ---------------------------------------------------------------------------
 // AddDestinoRow — form to append a new destino
+//   Uses a Select2-style combobox grouped by Region > País; supports creating
+//   a brand-new Ciudad in-place for any País without leaving the tab.
 // ---------------------------------------------------------------------------
+
+function normalizeSearch(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
 
 function AddDestinoRow({
   onAdd,
@@ -900,29 +915,9 @@ function AddDestinoRow({
   onAdd: (ciudadId: string, noches: number) => Promise<void>;
   existingCiudadIds: string[];
 }) {
-  const serviceState = useServiceState();
-  // Build a de-duplicated list of ciudades from the catalog that aren't
-  // already destinos in this paquete.
-  const ciudades = useMemo(() => {
-    const byId = new Map<
-      string,
-      { id: string; nombre: string; paisNombre: string }
-    >();
-    for (const aloj of serviceState.alojamientos) {
-      if (!aloj.ciudad?.id) continue;
-      if (byId.has(aloj.ciudad.id)) continue;
-      byId.set(aloj.ciudad.id, {
-        id: aloj.ciudad.id,
-        nombre: aloj.ciudad.nombre,
-        paisNombre: (aloj as any).pais?.nombre ?? "",
-      });
-    }
-    return Array.from(byId.values())
-      .filter((c) => !existingCiudadIds.includes(c.id))
-      .sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [serviceState.alojamientos, existingCiudadIds]);
-
+  const { toast } = useToast();
   const [ciudadId, setCiudadId] = useState<string>("");
+  const [ciudadLabel, setCiudadLabel] = useState<string>("");
   const [noches, setNoches] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
@@ -934,6 +929,7 @@ function AddDestinoRow({
     try {
       await onAdd(ciudadId, n);
       setCiudadId("");
+      setCiudadLabel("");
       setNoches("");
     } finally {
       setSaving(false);
@@ -943,19 +939,26 @@ function AddDestinoRow({
   return (
     <div className="flex items-center gap-2 bg-white/40 rounded-lg border border-dashed border-neutral-300 px-2.5 py-2">
       <Plus className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
-      <select
-        value={ciudadId}
-        onChange={(e) => setCiudadId(e.target.value)}
-        className="flex-1 text-sm bg-white/80 rounded-md border border-neutral-200 px-2 py-1 focus:border-teal-500 focus:outline-none"
-      >
-        <option value="">— Elegir ciudad —</option>
-        {ciudades.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.nombre}
-            {c.paisNombre ? ` · ${c.paisNombre}` : ""}
-          </option>
-        ))}
-      </select>
+      <div className="flex-1">
+        <CiudadPicker
+          selectedId={ciudadId}
+          selectedLabel={ciudadLabel}
+          excludeCiudadIds={existingCiudadIds}
+          onSelect={(id, label) => {
+            setCiudadId(id);
+            setCiudadLabel(label);
+          }}
+          onCreated={(ciudad, paisNombre) => {
+            setCiudadId(ciudad.id);
+            setCiudadLabel(`${ciudad.nombre} · ${paisNombre}`);
+            toast(
+              "success",
+              "Ciudad creada",
+              `${ciudad.nombre} agregada a ${paisNombre}`,
+            );
+          }}
+        />
+      </div>
       <input
         type="number"
         min={0}
@@ -979,6 +982,263 @@ function AddDestinoRow({
       >
         Agregar
       </Button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CiudadPicker — Select2-style combobox grouped by Region > País.
+//   Typing filters across ciudad/pais/region.
+//   Empty matches in an exact-text match: offers "Crear '<text>' en <país>"
+//   pickers (one per país whose name appears in the state).
+// ---------------------------------------------------------------------------
+
+function CiudadPicker({
+  selectedId,
+  selectedLabel,
+  excludeCiudadIds,
+  onSelect,
+  onCreated,
+}: {
+  selectedId: string;
+  selectedLabel: string;
+  excludeCiudadIds: string[];
+  onSelect: (id: string, label: string) => void;
+  onCreated: (ciudad: { id: string; nombre: string; paisId: string }, paisNombre: string) => void;
+}) {
+  const regiones = useRegiones();
+  const { createCiudad } = useCatalogActions();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [creatingInPaisId, setCreatingInPaisId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click.
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const excludeSet = useMemo(
+    () => new Set(excludeCiudadIds),
+    [excludeCiudadIds],
+  );
+
+  // Build grouped structure respecting region.orden and filtering by search.
+  // Each group shows matching ciudades under Region · País.
+  const groupedResults = useMemo(() => {
+    const q = normalizeSearch(search.trim());
+    type Row = {
+      regionNombre: string;
+      paisId: string;
+      paisNombre: string;
+      regionOrden: number;
+      ciudades: Array<{ id: string; nombre: string }>;
+    };
+    const rows: Row[] = [];
+    for (const r of regiones) {
+      for (const p of r.paises) {
+        const visibleCiudades = p.ciudades
+          .filter((c) => !excludeSet.has(c.id))
+          .filter((c) => {
+            if (!q) return true;
+            const paisMatch = normalizeSearch(p.nombre).includes(q);
+            const regionMatch = normalizeSearch(r.nombre).includes(q);
+            const ciudadMatch = normalizeSearch(c.nombre).includes(q);
+            // When user is searching, include all ciudades of matching país
+            // (so "arg" shows all Argentine cities) OR ciudades with direct
+            // name match in other países.
+            return paisMatch || regionMatch || ciudadMatch;
+          })
+          .sort((a, b) => a.nombre.localeCompare(b.nombre));
+        if (visibleCiudades.length > 0) {
+          rows.push({
+            regionNombre: r.nombre,
+            regionOrden: r.orden,
+            paisId: p.id,
+            paisNombre: p.nombre,
+            ciudades: visibleCiudades,
+          });
+        }
+      }
+    }
+    rows.sort(
+      (a, b) =>
+        a.regionOrden - b.regionOrden ||
+        a.regionNombre.localeCompare(b.regionNombre) ||
+        a.paisNombre.localeCompare(b.paisNombre),
+    );
+    return rows;
+  }, [regiones, search, excludeSet]);
+
+  // All países — used for "Create '<text>' in <país>" options when search
+  // has no direct ciudad match.
+  const paisesPlanos = useMemo(() => {
+    const out: Array<{ id: string; nombre: string; regionNombre: string }> = [];
+    for (const r of regiones) {
+      for (const p of r.paises) {
+        out.push({ id: p.id, nombre: p.nombre, regionNombre: r.nombre });
+      }
+    }
+    return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [regiones]);
+
+  // If user typed something and there are zero ciudad matches, offer to
+  // create it in one of the países whose name matches (or any país if only
+  // the ciudad-name part is novel).
+  const createTargets = useMemo(() => {
+    const q = search.trim();
+    if (!q) return [];
+    const lowered = normalizeSearch(q);
+    // If any row already matches by ciudad exactly, don't offer create.
+    const exact = groupedResults.some((row) =>
+      row.ciudades.some((c) => normalizeSearch(c.nombre) === lowered),
+    );
+    if (exact) return [];
+    // Prefer países whose name matches the search; fall back to all países
+    // sorted by relevance (name-match first).
+    const matchingPaises = paisesPlanos.filter((p) =>
+      normalizeSearch(p.nombre).includes(lowered),
+    );
+    return (matchingPaises.length > 0 ? matchingPaises : paisesPlanos).slice(
+      0,
+      matchingPaises.length > 0 ? matchingPaises.length : 6,
+    );
+  }, [search, groupedResults, paisesPlanos]);
+
+  const handleCreate = async (paisId: string, paisNombre: string) => {
+    const nombre = search.trim();
+    if (!nombre) return;
+    setCreatingInPaisId(paisId);
+    try {
+      const created = (await createCiudad({ paisId, nombre })) as unknown as {
+        id: string;
+        nombre: string;
+        paisId: string;
+      };
+      onCreated(created, paisNombre);
+      setOpen(false);
+      setSearch("");
+    } catch {
+      // Toast handled upstream via package actions; we keep silent here.
+    } finally {
+      setCreatingInPaisId(null);
+    }
+  };
+
+  const hasAnyResult = groupedResults.length > 0 || createTargets.length > 0;
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 text-sm bg-white/80 rounded-md border border-neutral-200 px-2 py-1 focus:border-teal-500 focus:outline-none hover:border-teal-300 transition-colors text-left"
+      >
+        <MapPin className="h-3.5 w-3.5 text-neutral-400 flex-shrink-0" />
+        <span
+          className={`flex-1 truncate ${
+            selectedId ? "text-neutral-800" : "text-neutral-400"
+          }`}
+        >
+          {selectedId ? selectedLabel : "Elegí una ciudad…"}
+        </span>
+        <Search className="h-3 w-3 text-neutral-300 flex-shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 bg-white shadow-xl overflow-hidden">
+          <div className="relative border-b border-neutral-100">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar ciudad, país o región…"
+              className="w-full text-sm pl-8 pr-3 py-2 focus:outline-none"
+            />
+          </div>
+
+          <div className="max-h-[320px] overflow-y-auto">
+            {!hasAnyResult ? (
+              <div className="px-3 py-6 text-center text-xs text-neutral-400 italic">
+                Sin resultados.
+              </div>
+            ) : (
+              <>
+                {groupedResults.map((row) => (
+                  <div key={row.paisId} className="py-1">
+                    <div className="flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase tracking-wide text-neutral-400 font-semibold bg-neutral-50/70">
+                      <span className="text-teal-600">{row.regionNombre}</span>
+                      <ChevronRight className="h-2.5 w-2.5 text-neutral-300" />
+                      <span>{row.paisNombre}</span>
+                    </div>
+                    {row.ciudades.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          onSelect(c.id, `${c.nombre} · ${row.paisNombre}`);
+                          setOpen(false);
+                          setSearch("");
+                        }}
+                        className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-sm hover:bg-teal-50/60 transition-colors"
+                      >
+                        <MapPin className="h-3 w-3 text-neutral-400 flex-shrink-0" />
+                        <span className="truncate text-neutral-800">
+                          {c.nombre}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+
+                {createTargets.length > 0 && search.trim() && (
+                  <div className="border-t border-neutral-100 py-1 bg-amber-50/30">
+                    <div className="px-2.5 py-1 text-[10px] uppercase tracking-wide text-amber-700 font-semibold">
+                      Crear “{search.trim()}” en…
+                    </div>
+                    {createTargets.map((p) => {
+                      const busy = creatingInPaisId === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleCreate(p.id, p.nombre)}
+                          className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-sm hover:bg-amber-50 transition-colors disabled:opacity-50"
+                        >
+                          {busy ? (
+                            <Loader2 className="h-3 w-3 text-amber-600 animate-spin flex-shrink-0" />
+                          ) : (
+                            <Plus className="h-3 w-3 text-amber-600 flex-shrink-0" />
+                          )}
+                          <span className="truncate text-neutral-800">
+                            {p.nombre}
+                          </span>
+                          <span className="ml-auto text-[11px] text-neutral-400">
+                            {p.regionNombre}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
