@@ -8,6 +8,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Hotel,
@@ -1012,15 +1013,45 @@ function CiudadPicker({
   const [search, setSearch] = useState("");
   const [creatingInPaisId, setCreatingInPaisId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [anchorRect, setAnchorRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
 
-  // Close on outside click.
+  // Compute dropdown position from the trigger each time we open or the
+  // viewport scrolls/resizes. We use fixed positioning + portal so we escape
+  // every parent stacking context created by backdrop-filter / transform.
+  useEffect(() => {
+    if (!open) {
+      setAnchorRect(null);
+      return;
+    }
+    function update() {
+      if (!containerRef.current) return;
+      const r = containerRef.current.getBoundingClientRect();
+      setAnchorRect({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  // Close on outside click (ignore clicks inside the portal dropdown too).
   useEffect(() => {
     if (!open) return;
     function handleClickOutside(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      const insideTrigger =
+        containerRef.current && containerRef.current.contains(target);
+      const insideDropdown =
+        dropdownRef.current && dropdownRef.current.contains(target);
+      if (!insideTrigger && !insideDropdown) {
         setOpen(false);
       }
     }
@@ -1155,90 +1186,108 @@ function CiudadPicker({
         <Search className="h-3 w-3 text-neutral-300 flex-shrink-0" />
       </button>
 
-      {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-neutral-200 bg-white shadow-xl overflow-hidden">
-          <div className="relative border-b border-neutral-100">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
-            <input
-              autoFocus
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar ciudad, país o región…"
-              className="w-full text-sm pl-8 pr-3 py-2 focus:outline-none"
-            />
-          </div>
-
-          <div className="max-h-[320px] overflow-y-auto">
-            {!hasAnyResult ? (
-              <div className="px-3 py-6 text-center text-xs text-neutral-400 italic">
-                Sin resultados.
+      {open && anchorRect
+        ? createPortal(
+            <div
+              ref={dropdownRef}
+              style={{
+                position: "fixed",
+                top: anchorRect.top,
+                left: anchorRect.left,
+                width: anchorRect.width,
+                zIndex: 1000,
+              }}
+              className="rounded-lg border border-neutral-200 bg-white shadow-xl overflow-hidden"
+            >
+              <div className="relative border-b border-neutral-100">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 pointer-events-none" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar ciudad, país o región…"
+                  className="w-full text-sm pl-8 pr-3 py-2 focus:outline-none"
+                />
               </div>
-            ) : (
-              <>
-                {groupedResults.map((row) => (
-                  <div key={row.paisId} className="py-1">
-                    <div className="flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase tracking-wide text-neutral-400 font-semibold bg-neutral-50/70">
-                      <span className="text-teal-600">{row.regionNombre}</span>
-                      <ChevronRight className="h-2.5 w-2.5 text-neutral-300" />
-                      <span>{row.paisNombre}</span>
-                    </div>
-                    {row.ciudades.map((c) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          onSelect(c.id, `${c.nombre} · ${row.paisNombre}`);
-                          setOpen(false);
-                          setSearch("");
-                        }}
-                        className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-sm hover:bg-teal-50/60 transition-colors"
-                      >
-                        <MapPin className="h-3 w-3 text-neutral-400 flex-shrink-0" />
-                        <span className="truncate text-neutral-800">
-                          {c.nombre}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                ))}
 
-                {createTargets.length > 0 && search.trim() && (
-                  <div className="border-t border-neutral-100 py-1 bg-amber-50/30">
-                    <div className="px-2.5 py-1 text-[10px] uppercase tracking-wide text-amber-700 font-semibold">
-                      Crear “{search.trim()}” en…
-                    </div>
-                    {createTargets.map((p) => {
-                      const busy = creatingInPaisId === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          disabled={busy}
-                          onClick={() => handleCreate(p.id, p.nombre)}
-                          className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-sm hover:bg-amber-50 transition-colors disabled:opacity-50"
-                        >
-                          {busy ? (
-                            <Loader2 className="h-3 w-3 text-amber-600 animate-spin flex-shrink-0" />
-                          ) : (
-                            <Plus className="h-3 w-3 text-amber-600 flex-shrink-0" />
-                          )}
-                          <span className="truncate text-neutral-800">
-                            {p.nombre}
-                          </span>
-                          <span className="ml-auto text-[11px] text-neutral-400">
-                            {p.regionNombre}
-                          </span>
-                        </button>
-                      );
-                    })}
+              <div className="max-h-[320px] overflow-y-auto">
+                {!hasAnyResult ? (
+                  <div className="px-3 py-6 text-center text-xs text-neutral-400 italic">
+                    Sin resultados.
                   </div>
+                ) : (
+                  <>
+                    {groupedResults.map((row) => (
+                      <div key={row.paisId} className="py-1">
+                        <div className="flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase tracking-wide text-neutral-400 font-semibold bg-neutral-50/70">
+                          <span className="text-teal-600">
+                            {row.regionNombre}
+                          </span>
+                          <ChevronRight className="h-2.5 w-2.5 text-neutral-300" />
+                          <span>{row.paisNombre}</span>
+                        </div>
+                        {row.ciudades.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              onSelect(
+                                c.id,
+                                `${c.nombre} · ${row.paisNombre}`,
+                              );
+                              setOpen(false);
+                              setSearch("");
+                            }}
+                            className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-sm hover:bg-teal-50/60 transition-colors"
+                          >
+                            <MapPin className="h-3 w-3 text-neutral-400 flex-shrink-0" />
+                            <span className="truncate text-neutral-800">
+                              {c.nombre}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+
+                    {createTargets.length > 0 && search.trim() && (
+                      <div className="border-t border-neutral-100 py-1 bg-amber-50/30">
+                        <div className="px-2.5 py-1 text-[10px] uppercase tracking-wide text-amber-700 font-semibold">
+                          Crear “{search.trim()}” en…
+                        </div>
+                        {createTargets.map((p) => {
+                          const busy = creatingInPaisId === p.id;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => handleCreate(p.id, p.nombre)}
+                              className="w-full flex items-center gap-2 px-4 py-1.5 text-left text-sm hover:bg-amber-50 transition-colors disabled:opacity-50"
+                            >
+                              {busy ? (
+                                <Loader2 className="h-3 w-3 text-amber-600 animate-spin flex-shrink-0" />
+                              ) : (
+                                <Plus className="h-3 w-3 text-amber-600 flex-shrink-0" />
+                              )}
+                              <span className="truncate text-neutral-800">
+                                {p.nombre}
+                              </span>
+                              <span className="ml-auto text-[11px] text-neutral-400">
+                                {p.regionNombre}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </div>
-        </div>
-      )}
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
