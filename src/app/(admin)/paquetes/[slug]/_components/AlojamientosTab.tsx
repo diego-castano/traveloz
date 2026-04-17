@@ -47,6 +47,7 @@ import {
   useServiceActions,
 } from "@/components/providers/ServiceProvider";
 import {
+  usePaises,
   useRegiones,
   useCatalogActions,
 } from "@/components/providers/CatalogProvider";
@@ -1007,8 +1008,18 @@ function CiudadPicker({
   onSelect: (id: string, label: string) => void;
   onCreated: (ciudad: { id: string; nombre: string; paisId: string }, paisNombre: string) => void;
 }) {
+  const paises = usePaises();
   const regiones = useRegiones();
   const { createCiudad } = useCatalogActions();
+
+  // Region metadata by id (nombre + orden) so we can look up region info for
+  // any país without relying on the region→país nesting in useRegiones (which
+  // silently drops países whose regionId is null or points nowhere).
+  const regionMetaById = useMemo(() => {
+    const m = new Map<string, { nombre: string; orden: number }>();
+    for (const r of regiones) m.set(r.id, { nombre: r.nombre, orden: r.orden });
+    return m;
+  }, [regiones]);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [creatingInPaisId, setCreatingInPaisId] = useState<string | null>(null);
@@ -1064,10 +1075,11 @@ function CiudadPicker({
     [excludeCiudadIds],
   );
 
-  // Build grouped structure respecting region.orden and filtering by search.
-  // Each group shows matching ciudades under Region · País.
+  // Build grouped structure iterating países (not regiones) so países whose
+  // regionId is null still appear — under a "Sin región" group at the end.
   const groupedResults = useMemo(() => {
     const q = normalizeSearch(search.trim());
+    const SIN_REGION = "Sin región";
     type Row = {
       regionNombre: string;
       paisId: string;
@@ -1076,30 +1088,28 @@ function CiudadPicker({
       ciudades: Array<{ id: string; nombre: string }>;
     };
     const rows: Row[] = [];
-    for (const r of regiones) {
-      for (const p of r.paises) {
-        const visibleCiudades = p.ciudades
-          .filter((c) => !excludeSet.has(c.id))
-          .filter((c) => {
-            if (!q) return true;
-            const paisMatch = normalizeSearch(p.nombre).includes(q);
-            const regionMatch = normalizeSearch(r.nombre).includes(q);
-            const ciudadMatch = normalizeSearch(c.nombre).includes(q);
-            // When user is searching, include all ciudades of matching país
-            // (so "arg" shows all Argentine cities) OR ciudades with direct
-            // name match in other países.
-            return paisMatch || regionMatch || ciudadMatch;
-          })
-          .sort((a, b) => a.nombre.localeCompare(b.nombre));
-        if (visibleCiudades.length > 0) {
-          rows.push({
-            regionNombre: r.nombre,
-            regionOrden: r.orden,
-            paisId: p.id,
-            paisNombre: p.nombre,
-            ciudades: visibleCiudades,
-          });
-        }
+    for (const p of paises) {
+      const meta = p.regionId ? regionMetaById.get(p.regionId) : null;
+      const regionNombre = meta?.nombre ?? SIN_REGION;
+      const regionOrden = meta?.orden ?? Number.MAX_SAFE_INTEGER;
+      const visibleCiudades = p.ciudades
+        .filter((c) => !excludeSet.has(c.id))
+        .filter((c) => {
+          if (!q) return true;
+          const paisMatch = normalizeSearch(p.nombre).includes(q);
+          const regionMatch = normalizeSearch(regionNombre).includes(q);
+          const ciudadMatch = normalizeSearch(c.nombre).includes(q);
+          return paisMatch || regionMatch || ciudadMatch;
+        })
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
+      if (visibleCiudades.length > 0) {
+        rows.push({
+          regionNombre,
+          regionOrden,
+          paisId: p.id,
+          paisNombre: p.nombre,
+          ciudades: visibleCiudades,
+        });
       }
     }
     rows.sort(
@@ -1109,19 +1119,19 @@ function CiudadPicker({
         a.paisNombre.localeCompare(b.paisNombre),
     );
     return rows;
-  }, [regiones, search, excludeSet]);
+  }, [paises, regionMetaById, search, excludeSet]);
 
   // All países — used for "Create '<text>' in <país>" options when search
   // has no direct ciudad match.
   const paisesPlanos = useMemo(() => {
-    const out: Array<{ id: string; nombre: string; regionNombre: string }> = [];
-    for (const r of regiones) {
-      for (const p of r.paises) {
-        out.push({ id: p.id, nombre: p.nombre, regionNombre: r.nombre });
-      }
-    }
-    return out.sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [regiones]);
+    return paises
+      .map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        regionNombre: (p.regionId && regionMetaById.get(p.regionId)?.nombre) || "Sin región",
+      }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [paises, regionMetaById]);
 
   // If user typed something and there are zero ciudad matches, offer to
   // create it in one of the países whose name matches (or any país if only
