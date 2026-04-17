@@ -23,6 +23,8 @@ import {
   usePackageActions,
   usePaqueteServices,
   useOpcionesHoteleras,
+  useNochesTotales,
+  useDestinos,
 } from "@/components/providers/PackageProvider";
 import {
   useTemporadas,
@@ -103,7 +105,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [destino, setDestino] = useState(paquete.destino ?? "");
   const [descripcion, setDescripcion] = useState(paquete.descripcion);
   const [textoVisual, setTextoVisual] = useState(paquete.textoVisual ?? "");
-  const [noches, setNoches] = useState(paquete.noches);
+  // `noches` is now derived from PaqueteDestino (sum of nights). The input
+  // below is readonly. Until PR 3 drops the column, we keep paquete.noches
+  // as the persisted value for backfill compat but don't edit it from here.
+  const nochesTotales = useNochesTotales(paquete.id);
+  const destinos = useDestinos(paquete.id);
   const [salidas, setSalidas] = useState(paquete.salidas);
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);
   const [tipoPaqueteId, setTipoPaqueteId] = useState(paquete.tipoPaqueteId);
@@ -163,7 +169,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       destino,
       descripcion,
       textoVisual: textoVisual || null,
-      noches,
       salidas,
       temporadaId,
       tipoPaqueteId,
@@ -179,7 +184,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       updatedAt: new Date().toISOString(),
     });
   }, [
-    paquete, titulo, destino, descripcion, textoVisual, noches, salidas,
+    paquete, titulo, destino, descripcion, textoVisual, nochesTotales, salidas,
     temporadaId, tipoPaqueteId, estado, destacado, moneda,
     validezDesdeDate, validezHastaDate, updatePaquete,
   ]);
@@ -215,7 +220,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setDestinoDirty = (v: string) => { setDestino(v); markDirty(); };
   const setDescripcionDirty = (v: string) => { setDescripcion(v); markDirty(); };
   const setTextoVisualDirty = (v: string) => { setTextoVisual(v); markDirty(); };
-  const setNochesDirty = (v: number) => { setNoches(v); markDirty(); };
+  // (noches is derived from destinos — no dirty setter needed)
   const setSalidasDirty = (v: string) => { setSalidas(v); markDirty(); };
   const setTemporadaIdDirty = (v: string) => { setTemporadaId(v); markDirty(); };
   const setTipoPaqueteIdDirty = (v: string) => { setTipoPaqueteId(v); markDirty(); };
@@ -375,13 +380,16 @@ export default function DatosTab({ paquete }: DatosTabProps) {
           <FieldGroup columns={2}>
             <Field>
               <FieldLabel>Noches</FieldLabel>
-              <Input
-                type="number"
-                value={noches}
-                onChange={(e) => setNochesDirty(Number(e.target.value))}
-                placeholder="7"
-                readOnly={isReadOnly}
-              />
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-mono font-bold text-neutral-800">
+                  {nochesTotales}
+                </span>
+                <span className="text-xs text-neutral-400">
+                  {destinos.length === 0
+                    ? "Agregá destinos en la pestaña Alojamientos"
+                    : `Total de ${destinos.length} destino${destinos.length === 1 ? "" : "s"} — editable desde Alojamientos`}
+                </span>
+              </div>
             </Field>
             <Field>
               <FieldLabel>Salidas</FieldLabel>

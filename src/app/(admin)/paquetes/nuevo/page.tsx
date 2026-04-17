@@ -45,7 +45,7 @@ export default function NuevoPaquetePage() {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [textoVisual, setTextoVisual] = useState("");
-  const [noches, setNoches] = useState(7);
+  // (noches removed — use destinos/itinerario after creation)
   const [salidas, setSalidas] = useState("Consultar");
   const [temporadaId, setTemporadaId] = useState(temporadas[0]?.id ?? "");
   const [tipoPaqueteId, setTipoPaqueteId] = useState(tiposPaquete[0]?.id ?? "");
@@ -69,7 +69,6 @@ export default function NuevoPaquetePage() {
       destino: "",
       descripcion,
       textoVisual: textoVisual || null,
-      noches,
       salidas,
       temporadaId,
       tipoPaqueteId,
@@ -132,15 +131,6 @@ export default function NuevoPaquetePage() {
                 />
               </Field>
 
-              <Field>
-                <FieldLabel>Noches</FieldLabel>
-                <Input
-                  type="number"
-                  value={String(noches)}
-                  onChange={(e) => setNoches(Number(e.target.value))}
-                  placeholder="7"
-                />
-              </Field>
               <Field>
                 <FieldLabel>Salidas</FieldLabel>
                 <Input

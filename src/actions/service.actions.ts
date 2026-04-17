@@ -711,6 +711,9 @@ export async function getBaseServices(requestedBrandId?: string) {
         }),
         prisma.alojamiento.findMany({
           where: { brandId, deletedAt: null },
+          include: {
+            ciudad: { select: { id: true, nombre: true, paisId: true } },
+          },
           orderBy: { createdAt: "desc" },
         }),
         prisma.traslado.findMany({

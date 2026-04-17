@@ -18,7 +18,10 @@ import type {
   PaqueteFoto,
   PaqueteEtiqueta,
   OpcionHotelera,
+  PaqueteDestino,
+  OpcionHotel,
 } from "@/lib/types";
+import { computeNochesTotales } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import * as packageActions from "@/actions/package.actions";
 import { useBrand } from "./BrandProvider";
@@ -37,6 +40,8 @@ interface PackageState {
   paqueteFotos: PaqueteFoto[];
   paqueteEtiquetas: PaqueteEtiqueta[];
   opcionesHoteleras: OpcionHotelera[];
+  destinos: PaqueteDestino[];
+  opcionHoteles: OpcionHotel[];
 }
 
 const initialState: PackageState = {
@@ -50,6 +55,8 @@ const initialState: PackageState = {
   paqueteFotos: [],
   paqueteEtiquetas: [],
   opcionesHoteleras: [],
+  destinos: [],
+  opcionHoteles: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -64,6 +71,8 @@ type PackageSubPayload = {
   paqueteFotos: PaqueteFoto[];
   paqueteEtiquetas: PaqueteEtiqueta[];
   opcionesHoteleras: OpcionHotelera[];
+  destinos: PaqueteDestino[];
+  opcionHoteles: OpcionHotel[];
 };
 
 type PackageAction =
@@ -104,7 +113,16 @@ type PackageAction =
   // OpcionHotelera (hard delete)
   | { type: "ADD_OPCION_HOTELERA"; payload: OpcionHotelera }
   | { type: "UPDATE_OPCION_HOTELERA"; payload: OpcionHotelera }
-  | { type: "DELETE_OPCION_HOTELERA"; payload: string };
+  | { type: "DELETE_OPCION_HOTELERA"; payload: string }
+  // PaqueteDestino (hard delete)
+  | { type: "ADD_DESTINO"; payload: PaqueteDestino }
+  | { type: "UPDATE_DESTINO"; payload: PaqueteDestino }
+  | { type: "DELETE_DESTINO"; payload: string }
+  | { type: "REORDER_DESTINOS"; payload: { paqueteId: string; orderedIds: string[] } }
+  // OpcionHotel (hard delete)
+  | { type: "ADD_OPCION_HOTEL"; payload: OpcionHotel }
+  | { type: "UPDATE_OPCION_HOTEL"; payload: OpcionHotel }
+  | { type: "DELETE_OPCION_HOTEL"; payload: string };
 
 // ---------------------------------------------------------------------------
 // Reducer
@@ -341,6 +359,70 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
         ),
       };
 
+    // -- PaqueteDestino --
+    case "ADD_DESTINO":
+      return { ...state, destinos: [...state.destinos, action.payload] };
+    case "UPDATE_DESTINO":
+      return {
+        ...state,
+        destinos: state.destinos.map((d) =>
+          d.id === action.payload.id ? action.payload : d,
+        ),
+      };
+    case "DELETE_DESTINO":
+      return {
+        ...state,
+        destinos: state.destinos.filter((d) => d.id !== action.payload),
+        // Also drop any OpcionHotel that referenced this destino —
+        // the DB cascade takes care of the row, this mirrors it in state.
+        opcionHoteles: state.opcionHoteles.filter(
+          (oh) => oh.destinoId !== action.payload,
+        ),
+      };
+    case "REORDER_DESTINOS": {
+      const { paqueteId, orderedIds } = action.payload;
+      const orderMap = new Map(orderedIds.map((id, idx) => [id, idx]));
+      return {
+        ...state,
+        destinos: state.destinos.map((d) =>
+          d.paqueteId === paqueteId && orderMap.has(d.id)
+            ? { ...d, orden: orderMap.get(d.id)! }
+            : d,
+        ),
+      };
+    }
+
+    // -- OpcionHotel --
+    case "ADD_OPCION_HOTEL": {
+      // Upsert semantics: replace if id already exists (happens when the
+      // server action returns an update of an existing row).
+      const exists = state.opcionHoteles.some(
+        (oh) => oh.id === action.payload.id,
+      );
+      return {
+        ...state,
+        opcionHoteles: exists
+          ? state.opcionHoteles.map((oh) =>
+              oh.id === action.payload.id ? action.payload : oh,
+            )
+          : [...state.opcionHoteles, action.payload],
+      };
+    }
+    case "UPDATE_OPCION_HOTEL":
+      return {
+        ...state,
+        opcionHoteles: state.opcionHoteles.map((oh) =>
+          oh.id === action.payload.id ? action.payload : oh,
+        ),
+      };
+    case "DELETE_OPCION_HOTEL":
+      return {
+        ...state,
+        opcionHoteles: state.opcionHoteles.filter(
+          (oh) => oh.id !== action.payload,
+        ),
+      };
+
     default:
       return state;
   }
@@ -411,6 +493,8 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
             paqueteFotos: sub.paqueteFotos as any,
             paqueteEtiquetas: sub.paqueteEtiquetas as any,
             opcionesHoteleras: sub.opcionesHoteleras as any,
+            destinos: (sub.destinos ?? []) as any,
+            opcionHoteles: (sub.opcionHoteles ?? []) as any,
           },
         });
       })
@@ -513,6 +597,8 @@ export function usePackageActions() {
         for (const r of result.paqueteFotos) dispatch({ type: "ADD_PAQUETE_FOTO", payload: r as any });
         for (const r of result.paqueteEtiquetas) dispatch({ type: "ADD_PAQUETE_ETIQUETA", payload: r as any });
         for (const r of result.opcionesHoteleras) dispatch({ type: "ADD_OPCION_HOTELERA", payload: r as any });
+        for (const r of (result.destinos ?? [])) dispatch({ type: "ADD_DESTINO", payload: r as any });
+        for (const r of (result.opcionHoteles ?? [])) dispatch({ type: "ADD_OPCION_HOTEL", payload: r as any });
       },
 
       // -- Aereo assignment --
@@ -630,6 +716,69 @@ export function usePackageActions() {
         await packageActions.deleteOpcionHotelera(id);
         dispatch({ type: "DELETE_OPCION_HOTELERA", payload: id });
       },
+
+      // -- PaqueteDestino CRUD --
+      createDestino: async (data: Omit<PaqueteDestino, "id">) => {
+        const entity = await packageActions.createPaqueteDestino(data);
+        dispatch({ type: "ADD_DESTINO", payload: entity as any });
+        return entity as any as PaqueteDestino;
+      },
+      updateDestino: async (destino: PaqueteDestino) => {
+        const { id, paqueteId: _paqueteId, ...rest } = destino;
+        await packageActions.updatePaqueteDestino(id, rest);
+        dispatch({ type: "UPDATE_DESTINO", payload: destino });
+      },
+      deleteDestino: async (id: string) => {
+        await packageActions.deletePaqueteDestino(id);
+        dispatch({ type: "DELETE_DESTINO", payload: id });
+      },
+      reorderDestinos: async (paqueteId: string, orderedIds: string[]) => {
+        await packageActions.reorderPaqueteDestinos(paqueteId, orderedIds);
+        dispatch({
+          type: "REORDER_DESTINOS",
+          payload: { paqueteId, orderedIds },
+        });
+      },
+
+      // -- OpcionHotel CRUD --
+      createOpcionHotel: async (data: Omit<OpcionHotel, "id">) => {
+        const entity = await packageActions.createOpcionHotel(data);
+        dispatch({ type: "ADD_OPCION_HOTEL", payload: entity as any });
+        return entity as any as OpcionHotel;
+      },
+      updateOpcionHotel: async (oh: OpcionHotel) => {
+        const { id, opcionHoteleraId: _op, destinoId: _d, ...rest } = oh;
+        await packageActions.updateOpcionHotel(id, rest);
+        dispatch({ type: "UPDATE_OPCION_HOTEL", payload: oh });
+      },
+      deleteOpcionHotel: async (id: string) => {
+        await packageActions.deleteOpcionHotel(id);
+        dispatch({ type: "DELETE_OPCION_HOTEL", payload: id });
+      },
+      /**
+       * Assigns (or updates) the hotel for a given (opcion, destino) pair.
+       * One-shot handler used by the UI dropdown.
+       */
+      upsertOpcionHotelPrincipal: async (
+        opcionHoteleraId: string,
+        destinoId: string,
+        alojamientoId: string,
+      ) => {
+        const entity = await packageActions.upsertOpcionHotelPrincipal(
+          opcionHoteleraId,
+          destinoId,
+          alojamientoId,
+        );
+        // Reducer handles both create and update cleanly: we dispatch an
+        // UPDATE_OPCION_HOTEL, and if the row isn't in state yet, follow
+        // with ADD_OPCION_HOTEL as fallback via a state check.
+        // Simpler: just call ADD if not present, else UPDATE.
+        dispatch({
+          type: "ADD_OPCION_HOTEL",
+          payload: entity as any,
+        });
+        return entity as any as OpcionHotel;
+      },
     }),
     [dispatch],
   );
@@ -655,6 +804,54 @@ export function useOpcionesHoteleras(paqueteId: string): OpcionHotelera[] {
 export function useAllOpcionesHoteleras(): OpcionHotelera[] {
   const state = usePackageState();
   return state.opcionesHoteleras;
+}
+
+// ---------------------------------------------------------------------------
+// Destinos hooks (itinerario)
+// ---------------------------------------------------------------------------
+
+/** Destinos of a single paquete, sorted by orden. */
+export function useDestinos(paqueteId: string): PaqueteDestino[] {
+  const state = usePackageState();
+  return useMemo(
+    () =>
+      state.destinos
+        .filter((d) => d.paqueteId === paqueteId)
+        .sort((a, b) => a.orden - b.orden),
+    [state.destinos, paqueteId],
+  );
+}
+
+/** All destinos across all paquetes — used by listing pages to compute total nights. */
+export function useAllDestinos(): PaqueteDestino[] {
+  return usePackageState().destinos;
+}
+
+/** Total nights for a paquete, computed from its destinos. */
+export function useNochesTotales(paqueteId: string): number {
+  const destinos = useDestinos(paqueteId);
+  return useMemo(() => computeNochesTotales(destinos), [destinos]);
+}
+
+// ---------------------------------------------------------------------------
+// OpcionHotel hooks
+// ---------------------------------------------------------------------------
+
+/** OpcionHotel rows for a single opcion, sorted by orden. */
+export function useOpcionHoteles(opcionHoteleraId: string): OpcionHotel[] {
+  const state = usePackageState();
+  return useMemo(
+    () =>
+      state.opcionHoteles
+        .filter((oh) => oh.opcionHoteleraId === opcionHoteleraId)
+        .sort((a, b) => a.orden - b.orden),
+    [state.opcionHoteles, opcionHoteleraId],
+  );
+}
+
+/** All OpcionHotel rows across all opciones — bulk access for computed totals. */
+export function useAllOpcionHoteles(): OpcionHotel[] {
+  return usePackageState().opcionHoteles;
 }
 
 // ---------------------------------------------------------------------------

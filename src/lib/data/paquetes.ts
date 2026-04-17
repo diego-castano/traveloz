@@ -33,7 +33,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Buzios',
     descripcion: 'Escapate a las playas paradisiacas de Buzios con 7 noches en un hotel boutique de primera categoria. Disfruta del sol, la arena blanca y la gastronomia brasilena en un entorno unico.',
     textoVisual: 'Relax total en Buzios',
-    noches: 7,
     salidas: 'Salidas diarias desde Montevideo',
     temporadaId: 'temporada-1', // Baja 2026
     tipoPaqueteId: 'tipo-1',    // Lunas de miel
@@ -58,7 +57,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Cancun',
     descripcion: 'Vivi la experiencia all inclusive en Cancun con 7 noches en un resort 5 estrellas frente al mar Caribe. Incluye vuelos, traslados y seguro de viaje completo.',
     textoVisual: 'Todo incluido en el Caribe',
-    noches: 7,
     salidas: 'Salidas martes y sabados',
     temporadaId: 'temporada-2', // Alta 2026
     tipoPaqueteId: 'tipo-2',    // Salidas grupales
@@ -83,7 +81,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Punta Cana',
     descripcion: 'Descubri el paraiso en Punta Cana con 7 noches all inclusive en el Barcelo Bavaro Palace. Playas de arena blanca, aguas cristalinas y entretenimiento para toda la familia.',
     textoVisual: null,
-    noches: 7,
     salidas: 'Salidas semanales',
     temporadaId: 'temporada-1', // Baja 2026
     tipoPaqueteId: 'tipo-2',    // Salidas grupales
@@ -108,7 +105,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Miami',
     descripcion: 'Cinco noches en Miami con hotel en South Beach y traslados incluidos. Aprovecha para recorrer los outlets, disfrutar de la gastronomia y la vida nocturna de la Magic City.',
     textoVisual: 'Shopping & Beach en Miami',
-    noches: 5,
     salidas: 'Salidas diarias',
     temporadaId: 'temporada-2', // Alta 2026
     tipoPaqueteId: 'tipo-4',    // Eventos
@@ -133,7 +129,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Portugal',
     descripcion: 'Recorre Portugal de punta a punta con este circuito guiado de 8 noches. Desde Lisboa hasta Porto, pasando por Sintra, Coimbra y el Valle del Duero. Incluye vuelos, circuito completo y seguro.',
     textoVisual: 'Circuito completo por Portugal',
-    noches: 8,
     salidas: 'Salidas quincenales',
     temporadaId: 'temporada-2', // Alta 2026
     tipoPaqueteId: 'tipo-2',    // Salidas grupales
@@ -158,7 +153,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Rio de Janeiro + Buzios',
     descripcion: 'Combina lo mejor de Rio de Janeiro y Buzios en un paquete multi-destino de 10 noches. Cinco noches en la ciudad maravillosa y cinco en la peninsula mas exclusiva de Brasil.',
     textoVisual: 'Dos destinos, un viaje',
-    noches: 10,
     salidas: 'Salidas lunes y viernes',
     temporadaId: 'temporada-1', // Baja 2026
     tipoPaqueteId: 'tipo-1',    // Lunas de miel
@@ -183,7 +177,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Buenos Aires',
     descripcion: 'Cuatro noches en la capital del tango. Recorre San Telmo, La Boca, Recoleta y Puerto Madero. Gastronomia de primer nivel y espectaculos de tango incluidos.',
     textoVisual: null,
-    noches: 4,
     salidas: 'Salidas diarias',
     temporadaId: 'temporada-1', // Baja 2026
     tipoPaqueteId: 'tipo-4',    // Eventos
@@ -209,7 +202,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Orlando',
     descripcion: 'Siete noches en Orlando con acceso a los mejores parques tematicos del mundo. Disney, Universal y SeaWorld te esperan. Incluye vuelos, hotel y seguro de viaje.',
     textoVisual: 'Parques y diversion en familia',
-    noches: 7,
     salidas: 'Salidas en julio',
     temporadaId: 'temporada-4', // Vacaciones Julio 2026
     tipoPaqueteId: 'tipo-4',    // Eventos
@@ -234,7 +226,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Salvador de Bahia',
     descripcion: 'Siete noches en Salvador de Bahia, cuna del axe y la cultura afrobrasilena. Playas tropicales, Pelourinho historico y la mejor gastronomia bahiana.',
     textoVisual: null,
-    noches: 7,
     salidas: 'Salidas semanales',
     temporadaId: 'temporada-1', // Baja 2026
     tipoPaqueteId: 'tipo-2',    // Salidas grupales
@@ -259,7 +250,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Madrid',
     descripcion: 'Seis noches en la capital espanola. Visita el Museo del Prado, el Palacio Real, el Parque del Retiro y disfruta de las tapas en los bares del centro historico.',
     textoVisual: 'Arte, cultura y tapas',
-    noches: 6,
     salidas: 'Salidas semanales',
     temporadaId: 'temporada-2', // Alta 2026
     tipoPaqueteId: 'tipo-2',    // Salidas grupales
@@ -286,7 +276,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Cancun',
     descripcion: 'Siete noches en Cancun en el espectacular Hyatt Ziva con regimen all inclusive. Playas de ensueno, snorkel en arrecifes de coral y excursiones a Chichen Itza.',
     textoVisual: 'El Caribe que sonaste',
-    noches: 7,
     salidas: 'Salidas miercoles y domingos',
     temporadaId: 'temporada-6', // Alta 2026 (brand-2)
     tipoPaqueteId: 'tipo-7',    // Salidas grupales (brand-2)
@@ -311,7 +300,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Punta Cana',
     descripcion: 'Siete noches en el Hard Rock Hotel Punta Cana con todo incluido. Piscinas, spa, entretenimiento en vivo y playas paradisiacas en la Republica Dominicana.',
     textoVisual: null,
-    noches: 7,
     salidas: 'Salidas semanales',
     temporadaId: 'temporada-5', // Baja 2026 (brand-2)
     tipoPaqueteId: 'tipo-6',    // Lunas de miel (brand-2)
@@ -336,7 +324,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Rio de Janeiro',
     descripcion: 'Cinco noches en Rio de Janeiro para quienes quieren conocer la ciudad maravillosa en poco tiempo. Cristo Redentor, Pan de Azucar, Copacabana e Ipanema.',
     textoVisual: 'Rio en 5 dias',
-    noches: 5,
     salidas: 'Salidas diarias',
     temporadaId: 'temporada-5', // Baja 2026 (brand-2)
     tipoPaqueteId: 'tipo-7',    // Salidas grupales (brand-2)
@@ -361,7 +348,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Turquia',
     descripcion: 'Diez noches recorriendo Turquia desde Estambul hasta Capadocia. Circuito guiado completo con vuelos, traslados, hoteles cueva en Goreme y visitas a Efeso y Pamukkale.',
     textoVisual: 'Oriente y Occidente en un viaje',
-    noches: 10,
     salidas: 'Salidas quincenales',
     temporadaId: 'temporada-6', // Alta 2026 (brand-2)
     tipoPaqueteId: 'tipo-7',    // Salidas grupales (brand-2)
@@ -386,7 +372,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Florianopolis',
     descripcion: 'Siete noches en Florianopolis, la isla de la magia. Playas de aguas cristalinas, dunas de Joaquina, laguna de la Conceicao y la mejor vida nocturna del sur de Brasil.',
     textoVisual: null,
-    noches: 7,
     salidas: 'Salidas diarias',
     temporadaId: 'temporada-5', // Baja 2026 (brand-2)
     tipoPaqueteId: 'tipo-6',    // Lunas de miel (brand-2)
@@ -411,7 +396,6 @@ export const SEED_PAQUETES: Paquete[] = [
     destino: 'Costa Rica',
     descripcion: 'Ocho noches de aventura en Costa Rica. Volcanes, selvas tropicales, rafting, tirolesas y playas del Pacifico. Un destino para los amantes de la naturaleza y la adrenalina.',
     textoVisual: 'Aventura pura en Centroamerica',
-    noches: 8,
     salidas: 'Salidas mensuales',
     temporadaId: 'temporada-6', // Alta 2026 (brand-2)
     tipoPaqueteId: 'tipo-8',    // Eventos (brand-2)
@@ -465,24 +449,24 @@ export const SEED_PAQUETE_AEREOS: PaqueteAereo[] = [
 
 export const SEED_PAQUETE_ALOJAMIENTOS: PaqueteAlojamiento[] = [
   // brand-1
-  { id: 'paloj-1',  paqueteId: '001',  alojamientoId: '001',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // Casas Brancas (Buzios)
-  { id: 'paloj-2',  paqueteId: '002',  alojamientoId: '003',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // Iberostar (Cancun)
-  { id: 'paloj-3',  paqueteId: '003',  alojamientoId: '005',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // Barcelo Bavaro (Punta Cana)
-  { id: 'paloj-4',  paqueteId: '004',  alojamientoId: '007',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // Fontainebleau (Miami)
-  { id: 'paloj-5',  paqueteId: '005',  alojamientoId: '008',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // VP Plaza Espana (Madrid) -- circuito includes lodging, hotel for Madrid nights
+  { id: 'paloj-1',  paqueteId: '001',  alojamientoId: '001', textoDisplay: null, orden: 1 }, // Casas Brancas (Buzios)
+  { id: 'paloj-2',  paqueteId: '002',  alojamientoId: '003', textoDisplay: null, orden: 1 }, // Iberostar (Cancun)
+  { id: 'paloj-3',  paqueteId: '003',  alojamientoId: '005', textoDisplay: null, orden: 1 }, // Barcelo Bavaro (Punta Cana)
+  { id: 'paloj-4',  paqueteId: '004',  alojamientoId: '007', textoDisplay: null, orden: 1 }, // Fontainebleau (Miami)
+  { id: 'paloj-5',  paqueteId: '005',  alojamientoId: '008', textoDisplay: null, orden: 1 }, // VP Plaza Espana (Madrid) -- circuito includes lodging, hotel for Madrid nights
   // paquete-6: multi-destino with 2 hotels
-  { id: 'paloj-6',  paqueteId: '006',  alojamientoId: '006',  nochesEnEste: 5,    textoDisplay: 'Rio de Janeiro - 5 noches', orden: 1 }, // Copacabana Palace (Rio)
-  { id: 'paloj-7',  paqueteId: '006',  alojamientoId: '001',  nochesEnEste: 5,    textoDisplay: 'Buzios - 5 noches',          orden: 2 }, // Casas Brancas (Buzios)
-  { id: 'paloj-8',  paqueteId: '008',  alojamientoId: '007',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // Fontainebleau (Orlando uses Miami hotel as reference)
-  { id: 'paloj-9',  paqueteId: '009',  alojamientoId: '002',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // Insolia Buzios (Salvador -- placeholder hotel)
-  { id: 'paloj-10', paqueteId: '010', alojamientoId: '008',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // VP Plaza Espana (Madrid)
+  { id: 'paloj-6',  paqueteId: '006',  alojamientoId: '006',    textoDisplay: 'Rio de Janeiro - 5 noches', orden: 1 }, // Copacabana Palace (Rio)
+  { id: 'paloj-7',  paqueteId: '006',  alojamientoId: '001',    textoDisplay: 'Buzios - 5 noches',          orden: 2 }, // Casas Brancas (Buzios)
+  { id: 'paloj-8',  paqueteId: '008',  alojamientoId: '007', textoDisplay: null, orden: 1 }, // Fontainebleau (Orlando uses Miami hotel as reference)
+  { id: 'paloj-9',  paqueteId: '009',  alojamientoId: '002', textoDisplay: null, orden: 1 }, // Insolia Buzios (Salvador -- placeholder hotel)
+  { id: 'paloj-10', paqueteId: '010', alojamientoId: '008', textoDisplay: null, orden: 1 }, // VP Plaza Espana (Madrid)
   // brand-2
-  { id: 'paloj-11', paqueteId: '011', alojamientoId: '009',  nochesEnEste: null, textoDisplay: null, orden: 1 }, // Hyatt Ziva (Cancun b2)
-  { id: 'paloj-12', paqueteId: '012', alojamientoId: '010', nochesEnEste: null, textoDisplay: null, orden: 1 }, // Hard Rock (Punta Cana b2)
-  { id: 'paloj-13', paqueteId: '013', alojamientoId: '011', nochesEnEste: null, textoDisplay: null, orden: 1 }, // Windsor Atlantica (Rio b2)
-  { id: 'paloj-14', paqueteId: '014', alojamientoId: '013', nochesEnEste: null, textoDisplay: null, orden: 1 }, // Catalonia Gran Via (Madrid b2 -- Turquia via Madrid)
-  { id: 'paloj-15', paqueteId: '015', alojamientoId: '014', nochesEnEste: null, textoDisplay: null, orden: 1 }, // Insolia Buzios (Floripa placeholder)
-  { id: 'paloj-16', paqueteId: '016', alojamientoId: '012', nochesEnEste: null, textoDisplay: null, orden: 1 }, // Hilton Miami (Costa Rica placeholder)
+  { id: 'paloj-11', paqueteId: '011', alojamientoId: '009', textoDisplay: null, orden: 1 }, // Hyatt Ziva (Cancun b2)
+  { id: 'paloj-12', paqueteId: '012', alojamientoId: '010', textoDisplay: null, orden: 1 }, // Hard Rock (Punta Cana b2)
+  { id: 'paloj-13', paqueteId: '013', alojamientoId: '011', textoDisplay: null, orden: 1 }, // Windsor Atlantica (Rio b2)
+  { id: 'paloj-14', paqueteId: '014', alojamientoId: '013', textoDisplay: null, orden: 1 }, // Catalonia Gran Via (Madrid b2 -- Turquia via Madrid)
+  { id: 'paloj-15', paqueteId: '015', alojamientoId: '014', textoDisplay: null, orden: 1 }, // Insolia Buzios (Floripa placeholder)
+  { id: 'paloj-16', paqueteId: '016', alojamientoId: '012', textoDisplay: null, orden: 1 }, // Hilton Miami (Costa Rica placeholder)
 ];
 
 // ---------------------------------------------------------------------------
@@ -692,32 +676,32 @@ export const SEED_PAQUETE_ETIQUETAS: PaqueteEtiqueta[] = [
 
 export const SEED_OPCIONES_HOTELERAS: OpcionHotelera[] = [
   // paquete-1: Buzios Relax (brand-1) - 2 options
-  { id: 'opcion-1', paqueteId: '001', nombre: 'Opcion Boutique', alojamientoIds: ['001'], factor: 0.77, precioVenta: 2346, orden: 1 },
-  { id: 'opcion-2', paqueteId: '001', nombre: 'Opcion Economica', alojamientoIds: ['002'], factor: 0.80, precioVenta: 1883, orden: 2 },
+  { id: 'opcion-1', paqueteId: '001', nombre: 'Opcion Boutique', factor: 0.77, precioVenta: 2346, orden: 1 },
+  { id: 'opcion-2', paqueteId: '001', nombre: 'Opcion Economica', factor: 0.80, precioVenta: 1883, orden: 2 },
 
   // paquete-2: Cancun All Inclusive (brand-1) - 2 options
-  { id: 'opcion-3', paqueteId: '002', nombre: 'Iberostar 5*', alojamientoIds: ['003'], factor: 0.78, precioVenta: 4346, orden: 1 },
-  { id: 'opcion-4', paqueteId: '002', nombre: 'Grand Oasis 4*', alojamientoIds: ['004'], factor: 0.80, precioVenta: 3388, orden: 2 },
+  { id: 'opcion-3', paqueteId: '002', nombre: 'Iberostar 5*', factor: 0.78, precioVenta: 4346, orden: 1 },
+  { id: 'opcion-4', paqueteId: '002', nombre: 'Grand Oasis 4*', factor: 0.80, precioVenta: 3388, orden: 2 },
 
   // paquete-3: Punta Cana Paradise (brand-1)
-  { id: 'opcion-5', paqueteId: '003', nombre: 'Barcelo Bavaro 5*', alojamientoIds: ['005'], factor: 0.76, precioVenta: 2811, orden: 1 },
+  { id: 'opcion-5', paqueteId: '003', nombre: 'Barcelo Bavaro 5*', factor: 0.76, precioVenta: 2811, orden: 1 },
 
   // paquete-4: Miami Shopping (brand-1)
-  { id: 'opcion-6', paqueteId: '004', nombre: 'Fontainebleau 5*', alojamientoIds: ['007'], factor: 0.73, precioVenta: 3945, orden: 1 },
+  { id: 'opcion-6', paqueteId: '004', nombre: 'Fontainebleau 5*', factor: 0.73, precioVenta: 3945, orden: 1 },
 
   // paquete-6: Rio + Buzios (brand-1) - 3 options (multi-hotel)
-  { id: 'opcion-7', paqueteId: '006', nombre: 'Premium', alojamientoIds: ['006', '001'], factor: 0.75, precioVenta: 3907, orden: 1 },
-  { id: 'opcion-8', paqueteId: '006', nombre: 'Estandar', alojamientoIds: ['006', '002'], factor: 0.78, precioVenta: 3474, orden: 2 },
+  { id: 'opcion-7', paqueteId: '006', nombre: 'Premium', factor: 0.75, precioVenta: 3907, orden: 1 },
+  { id: 'opcion-8', paqueteId: '006', nombre: 'Estandar', factor: 0.78, precioVenta: 3474, orden: 2 },
 
   // paquete-8: Orlando Magic (brand-1)
-  { id: 'opcion-9', paqueteId: '008', nombre: 'Fontainebleau 5*', alojamientoIds: ['007'], factor: 0.78, precioVenta: 4679, orden: 1 },
+  { id: 'opcion-9', paqueteId: '008', nombre: 'Fontainebleau 5*', factor: 0.78, precioVenta: 4679, orden: 1 },
 
   // paquete-11: Caribe Sonado (brand-2)
-  { id: 'opcion-10', paqueteId: '011', nombre: 'Hyatt Ziva 5*', alojamientoIds: ['009'], factor: 0.77, precioVenta: 4514, orden: 1 },
+  { id: 'opcion-10', paqueteId: '011', nombre: 'Hyatt Ziva 5*', factor: 0.77, precioVenta: 4514, orden: 1 },
 
   // paquete-12: Punta Cana Deluxe (brand-2)
-  { id: 'opcion-11', paqueteId: '012', nombre: 'Hard Rock 5*', alojamientoIds: ['010'], factor: 0.76, precioVenta: 2947, orden: 1 },
+  { id: 'opcion-11', paqueteId: '012', nombre: 'Hard Rock 5*', factor: 0.76, precioVenta: 2947, orden: 1 },
 
   // paquete-13: Brasil Express (brand-2) - 1 option
-  { id: 'opcion-12', paqueteId: '013', nombre: 'Windsor Atlantica 4*', alojamientoIds: ['011'], factor: 0.74, precioVenta: 1622, orden: 1 },
+  { id: 'opcion-12', paqueteId: '013', nombre: 'Windsor Atlantica 4*', factor: 0.74, precioVenta: 1622, orden: 1 },
 ];

@@ -1,7 +1,6 @@
 "use server";
 
 import { z } from "zod";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
@@ -47,6 +46,8 @@ export async function getPackageSubEntities(requestedBrandId?: string) {
       paqueteFotos,
       paqueteEtiquetas,
       opcionesHoteleras,
+      destinos,
+      opcionHoteles,
     ] = await Promise.all([
       prisma.paqueteAereo.findMany({ where: paqueteFilter }),
       prisma.paqueteAlojamiento.findMany({ where: paqueteFilter }),
@@ -56,6 +57,10 @@ export async function getPackageSubEntities(requestedBrandId?: string) {
       prisma.paqueteFoto.findMany({ where: paqueteFilter }),
       prisma.paqueteEtiqueta.findMany({ where: paqueteFilter }),
       prisma.opcionHotelera.findMany({ where: paqueteFilter }),
+      prisma.paqueteDestino.findMany({ where: paqueteFilter }),
+      prisma.opcionHotel.findMany({
+        where: { opcion: { paquete: { brandId, deletedAt: null } } },
+      }),
     ]);
 
     return {
@@ -67,6 +72,8 @@ export async function getPackageSubEntities(requestedBrandId?: string) {
       paqueteFotos,
       paqueteEtiquetas,
       opcionesHoteleras,
+      destinos,
+      opcionHoteles,
     };
   } catch (error) {
     console.error("Error fetching package sub-entities:", error);
@@ -185,7 +192,6 @@ export async function clonePaquete(sourceId: string) {
           destino: source.destino,
           descripcion: source.descripcion,
           textoVisual: source.textoVisual,
-          noches: source.noches,
           salidas: source.salidas,
           temporadaId: source.temporadaId,
           tipoPaqueteId: source.tipoPaqueteId,
@@ -211,6 +217,8 @@ export async function clonePaquete(sourceId: string) {
         sourceFotos,
         sourceEtiquetas,
         sourceOpciones,
+        sourceDestinos,
+        sourceOpcionHoteles,
       ] = await Promise.all([
         tx.paqueteAereo.findMany({ where: { paqueteId: sourceId } }),
         tx.paqueteAlojamiento.findMany({ where: { paqueteId: sourceId } }),
@@ -220,6 +228,10 @@ export async function clonePaquete(sourceId: string) {
         tx.paqueteFoto.findMany({ where: { paqueteId: sourceId } }),
         tx.paqueteEtiqueta.findMany({ where: { paqueteId: sourceId } }),
         tx.opcionHotelera.findMany({ where: { paqueteId: sourceId } }),
+        tx.paqueteDestino.findMany({ where: { paqueteId: sourceId } }),
+        tx.opcionHotel.findMany({
+          where: { opcion: { paqueteId: sourceId } },
+        }),
       ]);
 
       // 4. Clone all junction tables using createMany, then re-fetch
@@ -239,7 +251,6 @@ export async function clonePaquete(sourceId: string) {
           data: sourceAlojamientos.map((a) => ({
             paqueteId: newPaquete.id,
             alojamientoId: a.alojamientoId,
-            nochesEnEste: a.nochesEnEste,
             textoDisplay: a.textoDisplay,
             orden: a.orden,
           })),
@@ -300,16 +311,54 @@ export async function clonePaquete(sourceId: string) {
         });
       }
 
-      if (sourceOpciones.length > 0) {
-        await tx.opcionHotelera.createMany({
-          data: sourceOpciones.map((o) => ({
+      // Clone opciones one by one so we can map oldId → newId for OpcionHotel.
+      const opcionIdMap = new Map<string, string>();
+      for (const o of sourceOpciones) {
+        const created = await tx.opcionHotelera.create({
+          data: {
             paqueteId: newPaquete.id,
             nombre: o.nombre,
-            alojamientoIds: o.alojamientoIds,
             factor: o.factor,
             precioVenta: o.precioVenta,
             orden: o.orden,
-          })),
+            proveedorId: o.proveedorId,
+          },
+        });
+        opcionIdMap.set(o.id, created.id);
+      }
+
+      // Clone destinos — keep oldId → newId map for OpcionHotel link-through.
+      const destinoIdMap = new Map<string, string>();
+      for (const d of sourceDestinos) {
+        const created = await tx.paqueteDestino.create({
+          data: {
+            paqueteId: newPaquete.id,
+            ciudadId: d.ciudadId,
+            noches: d.noches,
+            orden: d.orden,
+          },
+        });
+        destinoIdMap.set(d.id, created.id);
+      }
+
+      // Clone OpcionHotel rows using the two maps above.
+      if (sourceOpcionHoteles.length > 0) {
+        await tx.opcionHotel.createMany({
+          data: sourceOpcionHoteles
+            .map((oh) => {
+              const newOpcionId = opcionIdMap.get(oh.opcionHoteleraId);
+              const newDestinoId = destinoIdMap.get(oh.destinoId);
+              if (!newOpcionId || !newDestinoId) return null;
+              return {
+                opcionHoteleraId: newOpcionId,
+                destinoId: newDestinoId,
+                alojamientoId: oh.alojamientoId,
+                orden: oh.orden,
+              };
+            })
+            .filter(
+              (x): x is NonNullable<typeof x> => x !== null,
+            ),
         });
       }
 
@@ -323,6 +372,8 @@ export async function clonePaquete(sourceId: string) {
         newFotos,
         newEtiquetas,
         newOpciones,
+        newDestinos,
+        newOpcionHoteles,
       ] = await Promise.all([
         tx.paqueteAereo.findMany({ where: { paqueteId: newPaquete.id } }),
         tx.paqueteAlojamiento.findMany({ where: { paqueteId: newPaquete.id } }),
@@ -332,6 +383,10 @@ export async function clonePaquete(sourceId: string) {
         tx.paqueteFoto.findMany({ where: { paqueteId: newPaquete.id } }),
         tx.paqueteEtiqueta.findMany({ where: { paqueteId: newPaquete.id } }),
         tx.opcionHotelera.findMany({ where: { paqueteId: newPaquete.id } }),
+        tx.paqueteDestino.findMany({ where: { paqueteId: newPaquete.id } }),
+        tx.opcionHotel.findMany({
+          where: { opcion: { paqueteId: newPaquete.id } },
+        }),
       ]);
 
       return {
@@ -344,6 +399,8 @@ export async function clonePaquete(sourceId: string) {
         paqueteFotos: newFotos,
         paqueteEtiquetas: newEtiquetas,
         opcionesHoteleras: newOpciones,
+        destinos: newDestinos,
+        opcionHoteles: newOpcionHoteles,
       };
     });
   } catch (error) {
@@ -640,20 +697,14 @@ export async function removeEtiqueta(id: string) {
 export async function createOpcionHotelera(data: {
   paqueteId: string;
   nombre: string;
-  alojamientoIds: string[];
-  nochesPorAlojamiento?: Record<string, number> | null;
   factor: number;
   precioVenta: number;
   orden?: number;
+  proveedorId?: string | null;
 }) {
   try {
     await requireAuth();
-    return await prisma.opcionHotelera.create({
-      data: {
-        ...data,
-        nochesPorAlojamiento: data.nochesPorAlojamiento ?? Prisma.JsonNull,
-      },
-    });
+    return await prisma.opcionHotelera.create({ data });
   } catch (error) {
     console.error("Error creating opcion hotelera:", error);
     throw new Error("No se pudo crear la opción hotelera.");
@@ -664,27 +715,15 @@ export async function updateOpcionHotelera(
   id: string,
   data: {
     nombre?: string;
-    alojamientoIds?: string[];
-    nochesPorAlojamiento?: Record<string, number> | null;
     factor?: number;
     precioVenta?: number;
     orden?: number;
-  }
+    proveedorId?: string | null;
+  },
 ) {
   try {
     await requireAuth();
-    return await prisma.opcionHotelera.update({
-      where: { id },
-      data: {
-        ...data,
-        nochesPorAlojamiento:
-          data.nochesPorAlojamiento === undefined
-            ? undefined
-            : data.nochesPorAlojamiento === null
-              ? Prisma.DbNull
-              : data.nochesPorAlojamiento,
-      },
-    });
+    return await prisma.opcionHotelera.update({ where: { id }, data });
   } catch (error) {
     console.error("Error updating opcion hotelera:", error);
     throw new Error("No se pudo actualizar la opción hotelera.");
@@ -698,5 +737,146 @@ export async function deleteOpcionHotelera(id: string) {
   } catch (error) {
     console.error("Error deleting opcion hotelera:", error);
     throw new Error("No se pudo eliminar la opción hotelera.");
+  }
+}
+
+// ──────────────────────────────────────────────
+// PaqueteDestino — itinerary row CRUD
+// ──────────────────────────────────────────────
+
+export async function createPaqueteDestino(data: {
+  paqueteId: string;
+  ciudadId: string;
+  noches: number;
+  orden?: number;
+}) {
+  try {
+    await requireAuth();
+    const schema = z.object({
+      paqueteId: z.string().min(1),
+      ciudadId: z.string().min(1),
+      noches: z.number().int().min(0).max(365),
+      orden: z.number().int().nonnegative().optional(),
+    });
+    const parsed = schema.parse(data);
+    return await prisma.paqueteDestino.create({ data: parsed });
+  } catch (error) {
+    console.error("Error creating paquete destino:", error);
+    throw new Error("No se pudo crear el destino del paquete.");
+  }
+}
+
+export async function updatePaqueteDestino(
+  id: string,
+  data: { ciudadId?: string; noches?: number; orden?: number },
+) {
+  try {
+    await requireAuth();
+    return await prisma.paqueteDestino.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating paquete destino:", error);
+    throw new Error("No se pudo actualizar el destino del paquete.");
+  }
+}
+
+export async function deletePaqueteDestino(id: string) {
+  try {
+    await requireAuth();
+    return await prisma.paqueteDestino.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting paquete destino:", error);
+    throw new Error("No se pudo eliminar el destino del paquete.");
+  }
+}
+
+/**
+ * Reorder all destinos of a paquete at once. `orderedIds` is the full list of
+ * destino ids in the new order. Missing ids are not touched. Runs in a single
+ * transaction to avoid inconsistent partial states.
+ */
+export async function reorderPaqueteDestinos(
+  paqueteId: string,
+  orderedIds: string[],
+) {
+  try {
+    await requireAuth();
+    await prisma.$transaction(
+      orderedIds.map((id, idx) =>
+        prisma.paqueteDestino.update({
+          where: { id },
+          data: { orden: idx },
+        }),
+      ),
+    );
+  } catch (error) {
+    console.error("Error reordering paquete destinos:", error);
+    throw new Error("No se pudo reordenar los destinos.");
+  }
+}
+
+// ──────────────────────────────────────────────
+// OpcionHotel — per-destino hotel assignment CRUD
+// ──────────────────────────────────────────────
+
+export async function createOpcionHotel(data: {
+  opcionHoteleraId: string;
+  destinoId: string;
+  alojamientoId: string;
+  orden?: number;
+}) {
+  try {
+    await requireAuth();
+    return await prisma.opcionHotel.create({ data });
+  } catch (error) {
+    console.error("Error creating opcion hotel:", error);
+    throw new Error("No se pudo asignar el hotel al destino.");
+  }
+}
+
+export async function updateOpcionHotel(
+  id: string,
+  data: { alojamientoId?: string; orden?: number },
+) {
+  try {
+    await requireAuth();
+    return await prisma.opcionHotel.update({ where: { id }, data });
+  } catch (error) {
+    console.error("Error updating opcion hotel:", error);
+    throw new Error("No se pudo actualizar la asignación del hotel.");
+  }
+}
+
+export async function deleteOpcionHotel(id: string) {
+  try {
+    await requireAuth();
+    return await prisma.opcionHotel.delete({ where: { id } });
+  } catch (error) {
+    console.error("Error deleting opcion hotel:", error);
+    throw new Error("No se pudo eliminar la asignación del hotel.");
+  }
+}
+
+/**
+ * Upsert the hotel assigned to a (opcion, destino) pair. If no OpcionHotel
+ * exists for that pair yet, it's created; otherwise the alojamientoId is
+ * updated in place. This is the "single-click" handler used by the UI dropdown.
+ */
+export async function upsertOpcionHotelPrincipal(
+  opcionHoteleraId: string,
+  destinoId: string,
+  alojamientoId: string,
+) {
+  try {
+    await requireAuth();
+    return await prisma.opcionHotel.upsert({
+      where: {
+        opcionHoteleraId_destinoId: { opcionHoteleraId, destinoId },
+      },
+      create: { opcionHoteleraId, destinoId, alojamientoId, orden: 0 },
+      update: { alojamientoId },
+    });
+  } catch (error) {
+    console.error("Error upserting opcion hotel:", error);
+    throw new Error("No se pudo asignar el hotel.");
   }
 }

@@ -18,13 +18,15 @@ import {
   usePaqueteServices,
   usePackageActions,
   useOpcionesHoteleras,
+  useNochesTotales,
+  useDestinos,
+  useAllOpcionHoteles,
 } from "@/components/providers/PackageProvider";
 import { useServiceState } from "@/components/providers/ServiceProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import {
   calcularNetoFijos,
-  calcularNetoAlojamientos,
   calcularVentaOpcion,
   formatCurrency,
   resolvePrecioAereo,
@@ -86,6 +88,9 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   const { canSeePricing, canEdit } = useAuth();
   const { toast } = useToast();
   const opciones = useOpcionesHoteleras(paquete.id);
+  const nochesTotales = useNochesTotales(paquete.id);
+  const destinos = useDestinos(paquete.id);
+  const allOpcionHoteles = useAllOpcionHoteles();
 
   // -------------------------------------------------------------------------
   // Resolve assigned services with period-aware pricing
@@ -117,7 +122,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
               pa.alojamientoId,
               fecha,
             ),
-            nochesEnEste: pa.nochesEnEste ?? undefined,
+            nochesEnEste: undefined, // legacy field removed; per-destino nights live in OpcionHotel
           };
         })
         .filter((x): x is NonNullable<typeof x> => x !== null);
@@ -169,7 +174,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
     );
     const trasladosTotal = assignedTraslados.reduce((sum, t) => sum + t.precio, 0);
     const segurosTotal = assignedSeguros.reduce((sum, s) => {
-      const dias = s.diasCobertura ?? paquete.noches;
+      const dias = s.diasCobertura ?? nochesTotales;
       return sum + s.seguro.costoPorDia * dias;
     }, 0);
     const circuitosTotal = assignedCircuitos.reduce(
@@ -182,7 +187,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
       assignedTraslados,
       assignedSeguros,
       assignedCircuitos,
-      paquete.noches,
+      nochesTotales,
     );
 
     return {
@@ -194,7 +199,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         circuitos: circuitosTotal,
       },
     };
-  }, [assignedAereos, assignedTraslados, assignedSeguros, assignedCircuitos, paquete.noches]);
+  }, [assignedAereos, assignedTraslados, assignedSeguros, assignedCircuitos, nochesTotales]);
 
   // -------------------------------------------------------------------------
   // Per-option pricing (live recompute from current service prices)
@@ -202,26 +207,24 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
 
   const opcionPricing = useMemo(() => {
     return opciones.map((opcion) => {
-      const netoAloj = calcularNetoAlojamientos(
-        opcion.alojamientoIds,
-        assignedAlojamientos,
-        paquete.noches,
+      // New model: iterate OpcionHotel rows for this opcion, each mapped to a destino.
+      const hotelesDeOpcion = allOpcionHoteles.filter(
+        (oh) => oh.opcionHoteleraId === opcion.id,
       );
-      const netoTotal = netoFijos + netoAloj;
-      const ventaCalc = calcularVentaOpcion(netoFijos, netoAloj, opcion.factor);
-      const margin = Math.round((1 - opcion.factor) * 100);
 
-      const hotels = opcion.alojamientoIds.map((id) => {
-        const found = assignedAlojamientos.find((a) => a.alojamiento.id === id);
-        const aloj =
-          found?.alojamiento ??
-          serviceState.alojamientos.find((a) => a.id === id);
-        const precio =
-          found?.precioAlojamiento ??
-          resolvePrecioAlojamiento(serviceState.preciosAlojamiento, id, paquete.validezDesde);
-        const noches = found?.nochesEnEste ?? paquete.noches;
+      const hotels = hotelesDeOpcion.map((oh) => {
+        const destino = destinos.find((d) => d.id === oh.destinoId);
+        const noches = destino?.noches ?? 0;
+        const aloj = serviceState.alojamientos.find(
+          (a) => a.id === oh.alojamientoId,
+        );
+        const precio = resolvePrecioAlojamiento(
+          serviceState.preciosAlojamiento,
+          oh.alojamientoId,
+          paquete.validezDesde,
+        );
         return {
-          id,
+          id: oh.alojamientoId,
           nombre: aloj?.nombre ?? "Hotel desconocido",
           categoria: aloj?.categoria ?? 0,
           ciudad: aloj?.ciudad?.nombre ?? null,
@@ -231,9 +234,22 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         };
       });
 
+      const netoAloj = hotels.reduce((sum, h) => sum + h.subtotal, 0);
+      const netoTotal = netoFijos + netoAloj;
+      const ventaCalc = calcularVentaOpcion(netoFijos, netoAloj, opcion.factor);
+      const margin = Math.round((1 - opcion.factor) * 100);
+
       return { opcion, netoAloj, netoTotal, ventaCalc, margin, hotels };
     });
-  }, [opciones, assignedAlojamientos, netoFijos, paquete.noches, serviceState.alojamientos, serviceState.preciosAlojamiento, paquete.validezDesde]);
+  }, [
+    opciones,
+    allOpcionHoteles,
+    destinos,
+    netoFijos,
+    serviceState.alojamientos,
+    serviceState.preciosAlojamiento,
+    paquete.validezDesde,
+  ]);
 
   // -------------------------------------------------------------------------
   // Price range for header
@@ -249,29 +265,29 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   // Handlers: factor and venta editing (strategic pricing)
   // -------------------------------------------------------------------------
 
+  const netoAlojPorOpcion = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const op of opcionPricing) {
+      map.set(op.opcion.id, op.netoAloj);
+    }
+    return map;
+  }, [opcionPricing]);
+
   const handleFactorChange = useCallback(
     (opcion: OpcionHotelera, newFactor: number) => {
       const clamped = Math.max(0.01, Math.min(1, newFactor));
-      const netoAloj = calcularNetoAlojamientos(
-        opcion.alojamientoIds,
-        assignedAlojamientos,
-        paquete.noches,
-      );
+      const netoAloj = netoAlojPorOpcion.get(opcion.id) ?? 0;
       const newVenta = calcularVentaOpcion(netoFijos, netoAloj, clamped);
       updateOpcionHotelera({ ...opcion, factor: clamped, precioVenta: newVenta });
     },
-    [assignedAlojamientos, netoFijos, paquete.noches, updateOpcionHotelera],
+    [netoAlojPorOpcion, netoFijos, updateOpcionHotelera],
   );
 
   // Edit precio venta directly — back-calculates factor inversely so the user
   // can set a round sale price and the system figures out the matching factor.
   const handleVentaChange = useCallback(
     (opcion: OpcionHotelera, newVenta: number) => {
-      const netoAloj = calcularNetoAlojamientos(
-        opcion.alojamientoIds,
-        assignedAlojamientos,
-        paquete.noches,
-      );
+      const netoAloj = netoAlojPorOpcion.get(opcion.id) ?? 0;
       const netoTotal = netoFijos + netoAloj;
       if (newVenta <= 0 || netoTotal <= 0) {
         toast("warning", "Precio invalido", "Revisa los netos antes de cambiar el precio");
@@ -280,7 +296,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
       const newFactor = Math.max(0.01, Math.min(1, Number((netoTotal / newVenta).toFixed(3))));
       updateOpcionHotelera({ ...opcion, factor: newFactor, precioVenta: Math.round(newVenta) });
     },
-    [assignedAlojamientos, netoFijos, paquete.noches, updateOpcionHotelera, toast],
+    [netoAlojPorOpcion, netoFijos, updateOpcionHotelera, toast],
   );
 
   const handleNameChange = useCallback(

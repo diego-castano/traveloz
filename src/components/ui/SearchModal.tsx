@@ -72,7 +72,7 @@ export function SearchModal() {
           id: p.id,
           type: 'paquete',
           title: p.titulo,
-          subtitle: `${p.destino} · ${p.noches} noches · ${p.estado}`,
+          subtitle: `${p.destino} · ${p.estado}`,
           href: `/paquetes/${p.id}`,
         });
       }

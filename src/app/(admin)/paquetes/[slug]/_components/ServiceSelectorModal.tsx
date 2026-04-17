@@ -184,7 +184,6 @@ export default function ServiceSelectorModal({
     assignAlojamiento({
       paqueteId,
       alojamientoId: aloj.id,
-      nochesEnEste: null,
       textoDisplay: null,
       orden: nextOrden,
     });

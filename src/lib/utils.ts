@@ -19,6 +19,8 @@ import type {
   PaqueteTraslado,
   PaqueteSeguro,
   PaqueteCircuito,
+  PaqueteDestino,
+  OpcionHotel,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -39,60 +41,6 @@ const usdFormatter = new Intl.NumberFormat('en-US', {
  */
 export function formatCurrency(amount: number): string {
   return usdFormatter.format(Math.round(amount));
-}
-
-// ---------------------------------------------------------------------------
-// calcularNeto -- sum all service costs for a package
-// ---------------------------------------------------------------------------
-
-/**
- * Calculate the net cost of a package by summing all assigned service costs.
- *
- * Formula from modulos_backend.md section 1.5:
- * netoCalculado = SUM(costoAereos + costoAlojamientos + costoTraslados + costoSeguros + costoCircuitos)
- */
-export function calcularNeto(
-  paquete: Paquete,
-  assignedAereos: { aereo: Aereo; precioAereo?: PrecioAereo }[],
-  assignedAlojamientos: {
-    alojamiento: Alojamiento;
-    precioAlojamiento?: PrecioAlojamiento;
-    nochesEnEste?: number;
-  }[],
-  assignedTraslados: Traslado[],
-  assignedSeguros: { seguro: Seguro; diasCobertura?: number }[],
-  assignedCircuitos: { circuito: Circuito; precioCircuito?: PrecioCircuito }[],
-): number {
-  let neto = 0;
-
-  // Aereos: sum precioAdulto for each assigned flight
-  neto += assignedAereos.reduce(
-    (sum, a) => sum + (a.precioAereo?.precioAdulto ?? 0),
-    0,
-  );
-
-  // Alojamientos: precioPorNoche * noches (use nochesEnEste or package noches as fallback)
-  neto += assignedAlojamientos.reduce((sum, a) => {
-    const noches = a.nochesEnEste ?? paquete.noches;
-    return sum + (a.precioAlojamiento?.precioPorNoche ?? 0) * noches;
-  }, 0);
-
-  // Traslados: flat price per transfer
-  neto += assignedTraslados.reduce((sum, t) => sum + t.precio, 0);
-
-  // Seguros: costoPorDia * dias (use diasCobertura or package noches as fallback)
-  neto += assignedSeguros.reduce((sum, s) => {
-    const dias = s.diasCobertura ?? paquete.noches;
-    return sum + s.seguro.costoPorDia * dias;
-  }, 0);
-
-  // Circuitos: period price
-  neto += assignedCircuitos.reduce(
-    (sum, c) => sum + (c.precioCircuito?.precio ?? 0),
-    0,
-  );
-
-  return neto;
 }
 
 // ---------------------------------------------------------------------------
@@ -218,30 +166,6 @@ export function calcularNetoFijos(
 }
 
 // ---------------------------------------------------------------------------
-// calcularNetoAlojamientos -- accommodation cost for a specific hotel option
-// ---------------------------------------------------------------------------
-
-/**
- * Calculate accommodation cost for a specific hotel option.
- */
-export function calcularNetoAlojamientos(
-  alojamientoIds: string[],
-  allAssignedAlojamientos: {
-    alojamiento: Alojamiento;
-    precioAlojamiento?: PrecioAlojamiento;
-    nochesEnEste?: number;
-  }[],
-  defaultNoches: number,
-): number {
-  return alojamientoIds.reduce((sum, id) => {
-    const found = allAssignedAlojamientos.find(a => a.alojamiento.id === id);
-    if (!found) return sum;
-    const noches = found.nochesEnEste ?? defaultNoches;
-    return sum + (found.precioAlojamiento?.precioPorNoche ?? 0) * noches;
-  }, 0);
-}
-
-// ---------------------------------------------------------------------------
 // calcularVentaOpcion -- sale price for a hotel option
 // ---------------------------------------------------------------------------
 
@@ -264,6 +188,8 @@ export interface PackageStateSlice {
   paqueteTraslados: PaqueteTraslado[];
   paqueteSeguros: PaqueteSeguro[];
   paqueteCircuitos: PaqueteCircuito[];
+  destinos: PaqueteDestino[];
+  opcionHoteles: OpcionHotel[];
 }
 
 /** Narrow slice of ServiceProvider state used by computePaquetePrecios. */
@@ -327,10 +253,9 @@ export function computePaquetePrecios(
       return {
         alojamiento,
         precioAlojamiento: resolvePrecioAlojamiento(serviceState.preciosAlojamiento, pa.alojamientoId, fecha),
-        nochesEnEste: pa.nochesEnEste ?? undefined,
       };
     })
-    .filter((x): x is { alojamiento: Alojamiento; precioAlojamiento: PrecioAlojamiento | undefined; nochesEnEste: number | undefined } => x !== null);
+    .filter((x): x is { alojamiento: Alojamiento; precioAlojamiento: PrecioAlojamiento | undefined } => x !== null);
 
   const assignedTraslados = paqueteTraslados
     .map((pt) => serviceState.traslados.find((t) => t.id === pt.trasladoId))
@@ -355,12 +280,19 @@ export function computePaquetePrecios(
     })
     .filter((x): x is { circuito: Circuito; precioCircuito: PrecioCircuito | undefined } => x !== null);
 
+  // Noches totales: sum of destinos.noches. Used by calcularNetoFijos for
+  // seguros (días × precio/día) and as the historical fallback for empty paquetes.
+  const paqueteDestinos = packageState.destinos.filter(
+    (d) => d.paqueteId === paquete.id,
+  );
+  const nochesTotales = computeNochesTotales(paqueteDestinos);
+
   const netoFijos = calcularNetoFijos(
     assignedAereos,
     assignedTraslados,
     assignedSeguros,
     assignedCircuitos,
-    paquete.noches,
+    nochesTotales,
   );
 
   const paqueteOpciones = opciones.filter((o) => o.paqueteId === paquete.id);
@@ -380,7 +312,13 @@ export function computePaquetePrecios(
   const opcionPrecios: number[] = [];
   const opcionFactors: number[] = [];
   for (const op of paqueteOpciones) {
-    const netoAloj = calcularNetoAlojamientos(op.alojamientoIds, assignedAlojamientos, paquete.noches);
+    const netoAloj = calcularNetoAlojamientosPorOpcion(
+      op.id,
+      packageState.opcionHoteles,
+      paqueteDestinos,
+      serviceState.preciosAlojamiento,
+      fecha,
+    );
     opcionPrecios.push(calcularVentaOpcion(netoFijos, netoAloj, op.factor));
     opcionFactors.push(op.factor);
   }
@@ -412,4 +350,56 @@ export function slugify(text: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+// ---------------------------------------------------------------------------
+// Itinerario helpers — new model (PR 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Total nights in a package = sum of its PaqueteDestino nights.
+ * Returns 0 when the package has no destinos configured yet.
+ */
+export function computeNochesTotales(destinos: PaqueteDestino[]): number {
+  return destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
+}
+
+/**
+ * Effective nights for a hotel assignment within an opcion — equals the
+ * destino nights since splits are no longer supported in the new model.
+ */
+export function nochesDeOpcionHotel(
+  _opcionHotel: OpcionHotel,
+  destino: PaqueteDestino,
+): number {
+  return destino.noches;
+}
+
+/**
+ * Net accommodation cost for an opcion under the new model.
+ * Sums (precioPorNoche × destino.noches) for each OpcionHotel of the opcion.
+ */
+export function calcularNetoAlojamientosPorOpcion(
+  opcionId: string,
+  opcionHoteles: OpcionHotel[],
+  destinos: PaqueteDestino[],
+  preciosAlojamiento: PrecioAlojamiento[],
+  fechaReferencia?: string | null,
+): number {
+  const hotelesDeOpcion = opcionHoteles.filter(
+    (oh) => oh.opcionHoteleraId === opcionId,
+  );
+  let total = 0;
+  for (const oh of hotelesDeOpcion) {
+    const destino = destinos.find((d) => d.id === oh.destinoId);
+    if (!destino) continue;
+    const precio = resolvePrecioAlojamiento(
+      preciosAlojamiento,
+      oh.alojamientoId,
+      fechaReferencia,
+    );
+    if (!precio) continue;
+    total += precio.precioPorNoche * destino.noches;
+  }
+  return total;
 }

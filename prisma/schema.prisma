@@ -63,7 +63,6 @@ model Paquete {
   destino           String
   descripcion       String?       @db.Text
   textoVisual       String?       @db.Text
-  noches            Int
   salidas           String?
   temporadaId       String?
   tipoPaqueteId     String?
@@ -93,6 +92,7 @@ model Paquete {
   seguros           PaqueteSeguro[]
   circuitos         PaqueteCircuito[]
   opcionesHoteleras OpcionHotelera[]
+  destinos          PaqueteDestino[]
 
   @@index([brandId])
   @@index([estado])
@@ -149,11 +149,12 @@ model Alojamiento {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  precios  PrecioAlojamiento[]
-  fotos    AlojamientoFoto[]
-  ciudad   Ciudad?              @relation(fields: [ciudadId], references: [id])
-  pais     Pais?                @relation(fields: [paisId], references: [id])
-  paquetes PaqueteAlojamiento[]
+  precios       PrecioAlojamiento[]
+  fotos         AlojamientoFoto[]
+  ciudad        Ciudad?              @relation(fields: [ciudadId], references: [id])
+  pais          Pais?                @relation(fields: [paisId], references: [id])
+  paquetes      PaqueteAlojamiento[]
+  opcionHoteles OpcionHotel[]
 
   @@index([brandId])
 }
@@ -370,9 +371,10 @@ model Ciudad {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pais         Pais          @relation(fields: [paisId], references: [id])
-  alojamientos Alojamiento[]
-  traslados    Traslado[]
+  pais            Pais             @relation(fields: [paisId], references: [id])
+  alojamientos    Alojamiento[]
+  traslados       Traslado[]
+  paqueteDestinos PaqueteDestino[]
 }
 
 model Regimen {
@@ -410,7 +412,6 @@ model PaqueteAlojamiento {
   id            String  @id @default(cuid())
   paqueteId     String
   alojamientoId String
-  nochesEnEste  Int?
   textoDisplay  String?
   orden         Int     @default(0)
 
@@ -484,20 +485,54 @@ model PaqueteEtiqueta {
 }
 
 model OpcionHotelera {
-  id                    String   @id @default(cuid())
-  paqueteId             String
-  nombre                String
-  alojamientoIds        String[]
-  nochesPorAlojamiento  Json?    // Record<alojamientoId, noches> — per-opcion nights override
-  factor                Float
-  precioVenta           Float
-  orden                 Int      @default(0)
-  proveedorId           String?
+  id          String  @id @default(cuid())
+  paqueteId   String
+  nombre      String
+  factor      Float
+  precioVenta Float
+  orden       Int     @default(0)
+  proveedorId String?
 
-  paquete   Paquete    @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
-  proveedor Proveedor? @relation(fields: [proveedorId], references: [id])
+  paquete   Paquete       @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  proveedor Proveedor?    @relation(fields: [proveedorId], references: [id])
+  hoteles   OpcionHotel[]
 
   @@index([paqueteId])
+}
+
+// ──────────────────────────────────────────────
+// Itinerary & per-destino hotel selection (new model, PR 1)
+// ──────────────────────────────────────────────
+
+model PaqueteDestino {
+  id        String @id @default(cuid())
+  paqueteId String
+  ciudadId  String
+  noches    Int
+  orden     Int    @default(0)
+
+  paquete       Paquete       @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  ciudad        Ciudad        @relation(fields: [ciudadId], references: [id])
+  opcionHoteles OpcionHotel[]
+
+  @@unique([paqueteId, ciudadId, orden])
+  @@index([paqueteId])
+}
+
+model OpcionHotel {
+  id               String @id @default(cuid())
+  opcionHoteleraId String
+  destinoId        String
+  alojamientoId    String
+  orden            Int    @default(0)
+
+  opcion      OpcionHotelera @relation(fields: [opcionHoteleraId], references: [id], onDelete: Cascade)
+  destino     PaqueteDestino @relation(fields: [destinoId], references: [id], onDelete: Cascade)
+  alojamiento Alojamiento    @relation(fields: [alojamientoId], references: [id])
+
+  @@unique([opcionHoteleraId, destinoId])
+  @@index([opcionHoteleraId])
+  @@index([destinoId])
 }
 
 // ──────────────────────────────────────────────

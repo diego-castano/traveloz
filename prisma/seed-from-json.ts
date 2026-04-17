@@ -340,7 +340,6 @@ async function main() {
         webId: p.web_id ?? null,
         itinerarioAmadeus: p.itinerario?.join('\n') ?? null,
         campana: p.campana ?? null,
-        noches,
         estado: 'ACTIVO',
         validezDesde: VALIDEZ_DESDE,
         validezHasta: VALIDEZ_HASTA,
@@ -494,7 +493,6 @@ async function main() {
           data: {
             paqueteId: paquete.id,
             alojamientoId: alojId,
-            nochesEnEste: noches > 0 ? noches : null,
             orden: paqueteAlojIds.size,
           },
         });
@@ -529,7 +527,6 @@ async function main() {
         data: {
           paqueteId: paquete.id,
           nombre: `Opción ${opcionIdx + 1} · ${opcion.hotel}`,
-          alojamientoIds: [alojId],
           factor,
           precioVenta,
           orden: opcionIdx,

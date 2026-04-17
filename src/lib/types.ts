@@ -28,7 +28,6 @@ export interface Paquete {
   destino: string;
   descripcion: string;
   textoVisual: string | null;
-  noches: number;
   salidas: string;
   temporadaId: string;
   tipoPaqueteId: string;
@@ -284,11 +283,27 @@ export interface OpcionHotelera {
   id: string;
   paqueteId: string;
   nombre: string;
-  alojamientoIds: string[];
-  /** Per-opcion nights override: { [alojamientoId]: noches }. Falls back to PaqueteAlojamiento.nochesEnEste when missing. */
-  nochesPorAlojamiento?: Record<string, number> | null;
   factor: number;
   precioVenta: number;
+  orden: number;
+  proveedorId?: string | null;
+}
+
+/** Ordered destination within a package itinerary — one row per city. Package total nights = sum of destinos.noches. */
+export interface PaqueteDestino {
+  id: string;
+  paqueteId: string;
+  ciudadId: string;
+  noches: number;
+  orden: number;
+}
+
+/** Hotel assigned to a destino inside an opcion. One row per (opcion, destino). */
+export interface OpcionHotel {
+  id: string;
+  opcionHoteleraId: string;
+  destinoId: string;
+  alojamientoId: string;
   orden: number;
 }
 
@@ -310,7 +325,6 @@ export interface PaqueteAlojamiento {
   id: string;
   paqueteId: string;
   alojamientoId: string;
-  nochesEnEste: number | null;
   textoDisplay: string | null;
   orden: number;
 }

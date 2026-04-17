@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus,
   Eye,
@@ -45,6 +45,7 @@ import {
   usePackageActions,
   usePackageState,
   useAllOpcionesHoteleras,
+  useAllDestinos,
 } from "@/components/providers/PackageProvider";
 import {
   useTemporadas,
@@ -175,6 +176,8 @@ function formatPaquetePrice(
 
 export default function PaquetesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const regionParam = searchParams.get("region");
   const { canEdit, canSeePricing } = useAuth();
   const { toast } = useToast();
 
@@ -189,7 +192,17 @@ export default function PaquetesPage() {
   const paises = usePaises();
   const regiones = useRegiones();
   const allOpciones = useAllOpcionesHoteleras();
+  const allDestinos = useAllDestinos();
   const loading = usePackageLoading();
+
+  // Map paqueteId → total nights (sum of its destinos.noches)
+  const nochesPorPaquete = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const d of allDestinos) {
+      map.set(d.paqueteId, (map.get(d.paqueteId) ?? 0) + (d.noches || 0));
+    }
+    return map;
+  }, [allDestinos]);
 
   const resolver = usePaisResolver(
     packageState.paqueteAlojamientos,
@@ -197,6 +210,18 @@ export default function PaquetesPage() {
     paises,
     regiones,
   );
+
+  // Map paisId → regionId for filtering (dashboard region pill navigates here)
+  const regionIdByPais = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const p of paises) m.set(p.id, p.regionId ?? null);
+    return m;
+  }, [paises]);
+
+  const activeRegion = useMemo(() => {
+    if (!regionParam) return null;
+    return regiones.find((r) => r.id === regionParam) ?? null;
+  }, [regionParam, regiones]);
 
   // Per-paquete price derivation
   const preciosMap = useMemo(() => {
@@ -368,6 +393,15 @@ export default function PaquetesPage() {
       });
     }
 
+    // Region (from URL query ?region=<regionId>)
+    if (regionParam) {
+      result = result.filter((p) => {
+        const paisId = resolver.paisIdFor(p.id);
+        if (!paisId) return false;
+        return regionIdByPais.get(paisId) === regionParam;
+      });
+    }
+
     return result;
   }, [
     paquetes,
@@ -377,12 +411,22 @@ export default function PaquetesPage() {
     tipoFilter,
     destinoFilter,
     resolver,
+    regionParam,
+    regionIdByPais,
   ]);
 
   // Reset page when filters or view change
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, estadoFilter, temporadaFilter, tipoFilter, destinoFilter, viewMode]);
+  }, [
+    search,
+    estadoFilter,
+    temporadaFilter,
+    tipoFilter,
+    destinoFilter,
+    regionParam,
+    viewMode,
+  ]);
 
   const itemsPerPage =
     viewMode === "grid" ? ITEMS_PER_PAGE_GRID : ITEMS_PER_PAGE_TABLE;
@@ -404,7 +448,8 @@ export default function PaquetesPage() {
     (estadoFilter === "all" ? 0 : 1) +
     temporadaFilter.length +
     tipoFilter.length +
-    destinoFilter.length;
+    destinoFilter.length +
+    (regionParam ? 1 : 0);
 
   function clearAllFilters() {
     setSearch("");
@@ -412,6 +457,11 @@ export default function PaquetesPage() {
     setTemporadaFilter([]);
     setTipoFilter([]);
     setDestinoFilter([]);
+    if (regionParam) router.replace("/paquetes");
+  }
+
+  function clearRegionFilter() {
+    router.replace("/paquetes");
   }
 
   // ---------------------------------------------------------------------------
@@ -589,6 +639,20 @@ export default function PaquetesPage() {
             onChange={setDestinoFilter}
           />
 
+          {activeRegion && (
+            <motion.button
+              type="button"
+              onClick={clearRegionFilter}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-[#8B5CF6]/30 bg-[#8B5CF6]/8 px-2.5 text-[12px] font-medium text-[#8B5CF6] hover:bg-[#8B5CF6]/15"
+              aria-label={`Quitar filtro de región ${activeRegion.nombre}`}
+            >
+              <span>Región: {activeRegion.nombre}</span>
+              <X size={12} strokeWidth={2.5} />
+            </motion.button>
+          )}
+
           <AnimatePresence>
             {activeFilterCount > 0 && (
               <motion.button
@@ -657,6 +721,7 @@ export default function PaquetesPage() {
               pricing={preciosMap[paquete.id]}
               canSeePricing={canSeePricing}
               index={i}
+              nochesTotales={nochesPorPaquete.get(paquete.id)}
             />
           ))}
         </motion.div>
@@ -780,7 +845,10 @@ export default function PaquetesPage() {
 
                     {visibleColumns.noches && (
                       <TableCell className="text-right font-mono text-[12px] tabular-nums text-neutral-600">
-                        {paquete.noches > 0 ? paquete.noches : "—"}
+                        {(() => {
+                          const n = nochesPorPaquete.get(paquete.id) ?? 0;
+                          return n > 0 ? n : "—";
+                        })()}
                       </TableCell>
                     )}
 

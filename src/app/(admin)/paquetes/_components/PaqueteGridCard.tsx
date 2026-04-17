@@ -40,6 +40,8 @@ interface PaqueteGridCardProps {
   pricing: Pricing;
   canSeePricing: { neto: boolean; markup: boolean; venta: boolean };
   index: number;
+  /** Total nights computed from PaqueteDestino. Falls back to paquete.noches if missing. */
+  nochesTotales?: number;
 }
 
 const estadoStyles = {
@@ -70,9 +72,11 @@ export function PaqueteGridCard({
   pricing,
   canSeePricing,
   index,
+  nochesTotales,
 }: PaqueteGridCardProps) {
   const cover = foto?.url;
   const estadoStyle = estadoStyles[paquete.estado] ?? estadoStyles.ACTIVO;
+  const noches = nochesTotales ?? 0;
 
   // Format the main price: range when multiple opciones, single when one
   const priceDisplay =
@@ -176,11 +180,10 @@ export function PaqueteGridCard({
                     {tipo.nombre}
                   </span>
                 )}
-                {tipo && paquete.noches > 0 && <span>·</span>}
-                {paquete.noches > 0 && (
+                {tipo && noches > 0 && <span>·</span>}
+                {noches > 0 && (
                   <span>
-                    {paquete.noches}{" "}
-                    {paquete.noches === 1 ? "noche" : "noches"}
+                    {noches} {noches === 1 ? "noche" : "noches"}
                   </span>
                 )}
               </div>
