@@ -122,7 +122,17 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   const { canEdit } = useAuth();
   const { toast } = useToast();
 
+  // Picker state. `pickerContext` is set only when the picker was opened from
+  // a specific destino slot ("Traer del catálogo"). When set, the picker
+  // (a) pre-filters hotels by ciudadId and (b) auto-assigns the pick to the
+  // opcion's destino (plus adding it to the pool if it wasn't already).
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerContext, setPickerContext] = useState<{
+    opcionId: string;
+    destinoId: string;
+    ciudadId: string;
+    ciudadNombre: string;
+  } | null>(null);
   const [quickEditHotelId, setQuickEditHotelId] = useState<string | null>(null);
 
   const nochesTotales = useMemo(
@@ -266,18 +276,48 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   // -------------------------------------------------------------------------
 
   const handleAddHotelToPool = useCallback(
-    (aloj: Alojamiento) => {
-      const nextOrden = pool.length;
-      assignAlojamiento({
-        paqueteId: paquete.id,
-        alojamientoId: aloj.id,
-        textoDisplay: null,
-        orden: nextOrden,
-      });
-      toast("success", "Hotel agregado al paquete", aloj.nombre);
+    async (aloj: Alojamiento) => {
+      const alreadyInPool = pool.some(
+        (p) => p.alojamiento.id === aloj.id,
+      );
+      if (!alreadyInPool) {
+        await assignAlojamiento({
+          paqueteId: paquete.id,
+          alojamientoId: aloj.id,
+          textoDisplay: null,
+          orden: pool.length,
+        });
+      }
+
+      // If the picker was opened from a destino slot, auto-assign the hotel
+      // to that destino in that opcion. User gets one-click "traer del
+      // catálogo y asignar" instead of picker → go back → choose again.
+      if (pickerContext) {
+        await upsertOpcionHotelPrincipal(
+          pickerContext.opcionId,
+          pickerContext.destinoId,
+          aloj.id,
+        );
+        toast(
+          "success",
+          "Hotel asignado",
+          `${aloj.nombre} agregado y asignado a ${pickerContext.ciudadNombre}`,
+        );
+      } else if (!alreadyInPool) {
+        toast("success", "Hotel agregado al paquete", aloj.nombre);
+      }
+
       setPickerOpen(false);
+      setPickerContext(null);
     },
-    [assignAlojamiento, paquete.id, pool.length, toast],
+    [
+      assignAlojamiento,
+      paquete.id,
+      pool,
+      pickerContext,
+      upsertOpcionHotelPrincipal,
+      toast,
+    ],
   );
 
   const handleRemoveHotelFromPool = useCallback(
@@ -599,7 +639,11 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
                 onUpdateFactor={handleUpdateOpcionFactor}
                 onUpsertHotel={upsertOpcionHotelPrincipal}
                 onDeleteHotel={deleteOpcionHotel}
-                onOpenCatalogPicker={() => setPickerOpen(true)}
+                onOpenCatalogPicker={(ctx) => {
+                  if (ctx) setPickerContext(ctx);
+                  else setPickerContext(null);
+                  setPickerOpen(true);
+                }}
               />
             ))}
           </AnimatePresence>
@@ -609,9 +653,14 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
       {/* ── Modal: Agregar hotel al pool ── */}
       <HotelPickerModal
         open={pickerOpen}
-        onOpenChange={setPickerOpen}
+        onOpenChange={(open) => {
+          setPickerOpen(open);
+          if (!open) setPickerContext(null);
+        }}
         hotels={availableHotels}
         onPick={handleAddHotelToPool}
+        filterCiudadId={pickerContext?.ciudadId}
+        filterCiudadNombre={pickerContext?.ciudadNombre}
       />
 
       {/* ── Modal: Edicion rapida ── */}
@@ -946,6 +995,13 @@ interface PoolEntry {
   ciudadNombre: string | null;
 }
 
+interface PickerContext {
+  opcionId: string;
+  destinoId: string;
+  ciudadId: string;
+  ciudadNombre: string;
+}
+
 interface OpcionCardProps {
   opcion: OpcionHotelera;
   destinos: PaqueteDestino[];
@@ -962,7 +1018,9 @@ interface OpcionCardProps {
     alojamientoId: string,
   ) => Promise<OpcionHotel>;
   onDeleteHotel: (id: string) => Promise<void>;
-  onOpenCatalogPicker: () => void;
+  /** Open the catalog picker. If ctx is provided, the picker pre-filters by
+   *  ciudadId and auto-assigns the picked hotel to the opcion/destino. */
+  onOpenCatalogPicker: (ctx: PickerContext | null) => void;
 }
 
 function OpcionCard({
@@ -1212,7 +1270,7 @@ function DestinoSlot({
     alojamientoId: string,
   ) => Promise<OpcionHotel>;
   onDeleteHotel: (id: string) => Promise<void>;
-  onOpenCatalogPicker: () => void;
+  onOpenCatalogPicker: (ctx: PickerContext | null) => void;
 }) {
   const serviceState = useServiceState();
   const ciudadNombre = useMemo(() => {
@@ -1276,7 +1334,14 @@ function DestinoSlot({
           <span>Sin hoteles en el pool para esta ciudad.</span>
           {canEdit && (
             <button
-              onClick={onOpenCatalogPicker}
+              onClick={() =>
+                onOpenCatalogPicker({
+                  opcionId,
+                  destinoId: destino.id,
+                  ciudadId: destino.ciudadId,
+                  ciudadNombre,
+                })
+              }
               className="flex items-center gap-1 text-teal-600 hover:text-teal-700 font-medium px-2 py-1 rounded hover:bg-teal-50 transition-colors whitespace-nowrap not-italic"
             >
               <Plus className="h-3 w-3" />
@@ -1330,6 +1395,10 @@ interface HotelPickerModalProps {
   onOpenChange: (open: boolean) => void;
   hotels: Alojamiento[];
   onPick: (hotel: Alojamiento) => void;
+  /** When set, the picker restricts the list to hotels whose ciudad.id matches. */
+  filterCiudadId?: string;
+  /** Human-readable name to show in the "filtering by ..." banner. */
+  filterCiudadNombre?: string;
 }
 
 function HotelPickerModal({
@@ -1337,6 +1406,8 @@ function HotelPickerModal({
   onOpenChange,
   hotels,
   onPick,
+  filterCiudadId,
+  filterCiudadNombre,
 }: HotelPickerModalProps) {
   const [search, setSearch] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -1348,16 +1419,26 @@ function HotelPickerModal({
     }
   }, [open]);
 
+  // Base pool: pre-filter by ciudadId when context is set. Search then
+  // narrows further by text.
+  const cityFiltered = useMemo(
+    () =>
+      filterCiudadId
+        ? hotels.filter((h) => h.ciudad?.id === filterCiudadId)
+        : hotels,
+    [hotels, filterCiudadId],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return hotels;
-    return hotels.filter((h) => {
+    if (!q) return cityFiltered;
+    return cityFiltered.filter((h) => {
       const haystack = [h.nombre, h.ciudad?.nombre ?? ""]
         .join(" ")
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [hotels, search]);
+  }, [cityFiltered, search]);
 
   useEffect(() => {
     if (activeIndex >= filtered.length) setActiveIndex(0);
@@ -1381,11 +1462,30 @@ function HotelPickerModal({
   return (
     <Modal open={open} onOpenChange={onOpenChange} size="sm">
       <ModalHeader
-        title="Agregar hotel"
-        description="Buscá por nombre o ciudad."
+        title={
+          filterCiudadNombre
+            ? `Agregar hotel — ${filterCiudadNombre}`
+            : "Agregar hotel"
+        }
+        description={
+          filterCiudadNombre
+            ? `Hoteles disponibles en ${filterCiudadNombre}. El elegido queda asignado al destino.`
+            : "Buscá por nombre o ciudad."
+        }
       />
       <ModalBody>
         <div className="space-y-2">
+          {filterCiudadNombre && (
+            <div className="flex items-center justify-between gap-2 text-[11px] bg-teal-50 border border-teal-200/60 rounded-md px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 text-teal-700 font-medium">
+                <MapPin className="h-3 w-3" />
+                <span>Filtrando por {filterCiudadNombre}</span>
+              </div>
+              <span className="font-mono text-teal-700">
+                {cityFiltered.length} hotel{cityFiltered.length === 1 ? "" : "es"}
+              </span>
+            </div>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
             <Input
@@ -1393,7 +1493,11 @@ function HotelPickerModal({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Escribí para buscar…"
+              placeholder={
+                filterCiudadNombre
+                  ? `Buscar en ${filterCiudadNombre}…`
+                  : "Escribí para buscar…"
+              }
               className="pl-9"
             />
             {filtered.length > 0 && (
@@ -1406,7 +1510,11 @@ function HotelPickerModal({
           <div className="max-h-[380px] overflow-y-auto -mx-1 px-1 rounded-lg">
             {filtered.length === 0 ? (
               <div className="text-sm text-neutral-400 text-center py-8 italic">
-                {search.trim() ? "Sin resultados." : "No hay hoteles disponibles."}
+                {search.trim()
+                  ? "Sin resultados."
+                  : filterCiudadNombre
+                    ? `No hay hoteles en ${filterCiudadNombre}. Creá uno desde el módulo de Alojamientos.`
+                    : "No hay hoteles disponibles."}
               </div>
             ) : (
               <ul className="divide-y divide-neutral-100">
