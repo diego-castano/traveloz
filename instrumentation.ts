@@ -10,19 +10,10 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
-
-  try {
-    const { prisma } = await import("@/lib/db");
-    await prisma.$queryRaw`SELECT 1`;
-    // eslint-disable-next-line no-console
-    console.log("[instrumentation] Prisma connection warmed");
-  } catch (err) {
-    // Warm-up is best-effort. If the DB is unreachable we don't want to stop
-    // the server — let the request-time error surface normally.
-    // eslint-disable-next-line no-console
-    console.warn(
-      "[instrumentation] Prisma warm-up failed (non-fatal):",
-      err instanceof Error ? err.message : err,
-    );
-  }
+  // Importing the Prisma singleton kicks off the self-warming query defined
+  // in src/lib/db.ts. We don't need to await anything here — it's
+  // fire-and-forget.
+  // eslint-disable-next-line no-console
+  console.log("[instrumentation] loading Prisma singleton…");
+  await import("@/lib/db");
 }
