@@ -469,7 +469,7 @@ async function printReport(plan: ImportPlan): Promise<void> {
   });
   const dbPaisByName = new Map(dbPaises.map((p) => [p.nombre, p.id]));
   const paisesMissing: string[] = [];
-  const sheetPaises = new Set(plan.hotels.map((h) => h.pais));
+  const sheetPaises = Array.from(new Set(plan.hotels.map((h) => h.pais)));
   for (const p of sheetPaises) {
     if (!dbPaisByName.has(p)) paisesMissing.push(p);
   }
@@ -550,7 +550,7 @@ async function persist(plan: ImportPlan): Promise<void> {
   const paisIdByName = new Map(paises.map((p) => [p.nombre, p.id]));
 
   // Create missing países
-  const sheetPaises = new Set(plan.hotels.map((h) => h.pais));
+  const sheetPaises = Array.from(new Set(plan.hotels.map((h) => h.pais)));
   let createdPaises = 0;
   for (const p of sheetPaises) {
     if (paisIdByName.has(p)) continue;
@@ -577,13 +577,10 @@ async function persist(plan: ImportPlan): Promise<void> {
     ciudadByKey.set(`${c.pais.nombre}|${normalizeForMatch(c.nombre)}`, c.id);
   }
 
-  // Create missing ciudades
+  // Create missing ciudades (dedup via ciudadByKey; once we create, later iterations skip).
   let createdCiudades = 0;
-  const uniqueCities = new Set<string>();
   for (const h of plan.hotels) {
     const key = `${h.pais}|${normalizeForMatch(h.ciudadNombre)}`;
-    if (uniqueCities.has(key)) continue;
-    uniqueCities.add(key);
     if (ciudadByKey.has(key)) continue;
 
     const paisId = paisIdByName.get(h.pais);
