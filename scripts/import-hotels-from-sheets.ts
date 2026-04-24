@@ -463,8 +463,9 @@ async function printReport(plan: ImportPlan): Promise<void> {
   }
   console.log();
 
-  // Check: países and cities from Sheet that don't exist in DB
+  // Check: países and cities from Sheet that don't exist in DB (brand-scoped)
   const dbPaises = await prisma.pais.findMany({
+    where: { brandId: BRAND_ID },
     select: { id: true, nombre: true },
   });
   const dbPaisByName = new Map(dbPaises.map((p) => [p.nombre, p.id]));
@@ -475,6 +476,7 @@ async function printReport(plan: ImportPlan): Promise<void> {
   }
 
   const dbCiudades = await prisma.ciudad.findMany({
+    where: { pais: { brandId: BRAND_ID } },
     select: { id: true, nombre: true, paisId: true, pais: { select: { nombre: true } } },
   });
   const dbByKey = new Map<string, string>();
@@ -541,12 +543,20 @@ const COUNTRY_TO_REGION: Record<string, string> = {
 async function persist(plan: ImportPlan): Promise<void> {
   console.log('🔄 Persisting to DB…');
 
-  // Load regions
+  // Load regions (brand-scoped via Region→Pais relationship would still need brand filter,
+  // but regions are shared across brands in this schema — no filter needed here).
   const regions = await prisma.region.findMany({ select: { id: true, nombre: true } });
   const regionIdByName = new Map(regions.map((r) => [r.nombre, r.id]));
 
-  // Load paises by name
-  let paises = await prisma.pais.findMany({ select: { id: true, nombre: true } });
+  // Load paises by name — SCOPED TO BRAND_ID.
+  // The multi-tenant schema allows duplicate país names across brands. Without this
+  // filter the Map would pick up the last brand-N country by name, causing hotels
+  // to be wired to the wrong brand's país. Fixed via fix-hotels-brand.ts for the
+  // initial run.
+  let paises = await prisma.pais.findMany({
+    where: { brandId: BRAND_ID },
+    select: { id: true, nombre: true },
+  });
   const paisIdByName = new Map(paises.map((p) => [p.nombre, p.id]));
 
   // Create missing países
@@ -569,6 +579,7 @@ async function persist(plan: ImportPlan): Promise<void> {
 
   // Load existing ciudades
   const dbCiudades = await prisma.ciudad.findMany({
+    where: { pais: { brandId: BRAND_ID } },
     select: { id: true, nombre: true, paisId: true, pais: { select: { nombre: true } } },
   });
   const ciudadByKey = new Map<string, string>();
