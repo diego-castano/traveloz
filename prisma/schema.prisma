@@ -140,16 +140,20 @@ model PrecioAereo {
 }
 
 model Alojamiento {
-  id        String    @id
-  brandId   String
-  nombre    String
-  ciudadId  String?
-  paisId    String?
-  categoria Int?
-  sitioWeb  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id             String    @id
+  brandId        String
+  nombre         String
+  ciudadId       String?
+  paisId         String?
+  categoria      Int?
+  categoriaTexto String?
+  sitioWeb       String?
+  comentarios    String?
+  ubicacion      String?
+  aclaracion     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
   precios       PrecioAlojamiento[]
   fotos         AlojamientoFoto[]
