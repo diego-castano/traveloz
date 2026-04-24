@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import {
   ImageUploader,
   type ImageItem,
@@ -21,7 +22,6 @@ import {
   InlineEditTable,
   type InlineEditColumn,
 } from "@/components/ui/form/InlineEditTable";
-import { PriceImpactModal } from "@/components/ui/PriceImpactModal";
 import {
   useServiceState,
   useServiceActions,
@@ -32,7 +32,6 @@ import {
   usePaises,
   useRegimenes,
 } from "@/components/providers/CatalogProvider";
-import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
@@ -78,23 +77,12 @@ export default function AlojamientoDetailPage() {
 
   const paises = usePaises();
   const regimenes = useRegimenes();
-  const packageState = usePackageState();
   const loading = useServiceLoading();
 
   // Look up alojamiento
   const alojamiento = serviceState.alojamientos.find(
     (a) => a.id === params.id && !a.deletedAt,
   );
-
-  // -- Count affected packages --
-  const affectedPackageCount = useMemo(() => {
-    const paqueteIds = new Set(
-      packageState.paqueteAlojamientos
-        .filter((pa) => pa.alojamientoId === params.id)
-        .map((pa) => pa.paqueteId),
-    );
-    return paqueteIds.size;
-  }, [packageState.paqueteAlojamientos, params.id]);
 
   // ---------------------------------------------------------------------------
   // Card 1: Hotel form state
@@ -124,12 +112,6 @@ export default function AlojamientoDetailPage() {
       "Los cambios fueron guardados correctamente.",
     );
   }
-
-  // -- Price impact modal state --
-  const [impactModalOpen, setImpactModalOpen] = useState(false);
-  const [pendingSaveAction, setPendingSaveAction] = useState<
-    (() => void) | null
-  >(null);
 
   // ---------------------------------------------------------------------------
   // Card 2: Inline price table
@@ -195,12 +177,7 @@ export default function AlojamientoDetailPage() {
       }
     };
 
-    if (affectedPackageCount > 0) {
-      setPendingSaveAction(() => doSave);
-      setImpactModalOpen(true);
-    } else {
-      doSave();
-    }
+    doSave();
   }
 
   function handleDeletePrecio(row: PrecioAlojamiento) {
@@ -234,13 +211,13 @@ export default function AlojamientoDetailPage() {
   const precioColumns: InlineEditColumn<PrecioAlojamiento>[] = [
     {
       key: "periodoDesde",
-      label: "Periodo Desde",
-      width: "250px",
+      label: "Período",
+      width: "340px",
       render: (r) => (
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-neutral-900">
-              {formatPeriodLabel(r.periodoDesde)}
+              {formatPeriodLabel(r.periodoDesde)} – {formatPeriodLabel(r.periodoHasta)}
             </span>
             {isCurrentPeriod(r.periodoDesde, r.periodoHasta) && (
               <Badge variant="active" size="sm">
@@ -248,40 +225,18 @@ export default function AlojamientoDetailPage() {
               </Badge>
             )}
           </div>
-          <span className="text-[11px] text-neutral-400">
-            Inicio de vigencia
-          </span>
+          <span className="text-[11px] text-neutral-400">Vigencia del precio</span>
         </div>
       ),
       editor: (r, update) => (
-        <DatePicker
-          value={parseStoredDate(r.periodoDesde)}
-          onChange={(date) =>
-            update("periodoDesde", formatStoredDate(date) ?? "")
-          }
-          placeholder="Seleccionar fecha..."
-        />
-      ),
-    },
-    {
-      key: "periodoHasta",
-      label: "Periodo Hasta",
-      width: "250px",
-      render: (r) => (
-        <div className="flex flex-col gap-1">
-          <span className="font-medium text-neutral-900">
-            {formatPeriodLabel(r.periodoHasta)}
-          </span>
-          <span className="text-[11px] text-neutral-400">Fin de vigencia</span>
-        </div>
-      ),
-      editor: (r, update) => (
-        <DatePicker
-          value={parseStoredDate(r.periodoHasta)}
-          onChange={(date) =>
-            update("periodoHasta", formatStoredDate(date) ?? "")
-          }
-          placeholder="Seleccionar fecha..."
+        <PeriodPicker
+          valueFrom={r.periodoDesde}
+          valueTo={r.periodoHasta}
+          onChange={(desde, hasta) => {
+            update("periodoDesde", desde);
+            update("periodoHasta", hasta);
+          }}
+          placeholder="Seleccionar período..."
         />
       ),
     },
@@ -553,20 +508,6 @@ export default function AlojamientoDetailPage() {
         </FormSection>
       </FormSections>
 
-      {/* Price impact confirmation modal */}
-      <PriceImpactModal
-        open={impactModalOpen}
-        onOpenChange={(open) => {
-          setImpactModalOpen(open);
-          if (!open) setPendingSaveAction(null);
-        }}
-        affectedCount={affectedPackageCount}
-        serviceName={alojamiento.nombre}
-        onConfirm={() => {
-          pendingSaveAction?.();
-          setPendingSaveAction(null);
-        }}
-      />
     </>
   );
 }
