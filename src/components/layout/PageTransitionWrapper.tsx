@@ -1,62 +1,19 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// PageTransitionWrapper -- AnimatePresence + FrozenRouter for page transitions
+// PageTransitionWrapper -- lightweight page enter animation
 // Source: design.json animations.interactions.pageTransition
 //
-// CRITICAL: LayoutRouterContext is imported from an internal Next.js module.
-// This is a non-public API that is stable across Next.js 14.x. It is the
-// standard community pattern for AnimatePresence page transitions in the
-// App Router. If Next.js changes the internal path in a future major version,
-// only this file needs updating.
+// We intentionally avoid exit-animation router freezing here. In practice, the
+// frozen-router pattern can leave invisible pages participating in layout while
+// switching between heavy modules, which shows up as large blank gaps above the
+// new page. A simple enter-only animation keeps the transition pleasant without
+// risking that ghost layout.
 // ---------------------------------------------------------------------------
 
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { useSelectedLayoutSegment } from "next/navigation";
-import { LayoutRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
-import { useContext, useEffect, useRef, type ReactNode } from "react";
-
-// ---------------------------------------------------------------------------
-// usePreviousValue -- captures the previous render's value via ref
-// ---------------------------------------------------------------------------
-
-function usePreviousValue<T>(value: T): T | undefined {
-  const prevValue = useRef<T>();
-
-  useEffect(() => {
-    prevValue.current = value;
-    return () => {
-      prevValue.current = undefined;
-    };
-  });
-
-  return prevValue.current;
-}
-
-// ---------------------------------------------------------------------------
-// FrozenRouter -- freezes the router context during exit animations
-// This prevents Next.js from unmounting children before AnimatePresence
-// can play the exit animation.
-// ---------------------------------------------------------------------------
-
-function FrozenRouter({ children }: { children: ReactNode }) {
-  const context = useContext(LayoutRouterContext);
-  const prevContext = usePreviousValue(context) || null;
-
-  const segment = useSelectedLayoutSegment();
-  const prevSegment = usePreviousValue(segment);
-
-  const changed =
-    segment !== prevSegment &&
-    segment !== undefined &&
-    prevSegment !== undefined;
-
-  return (
-    <LayoutRouterContext.Provider value={changed ? prevContext : context}>
-      {children}
-    </LayoutRouterContext.Provider>
-  );
-}
+import type { ReactNode } from "react";
 
 // ---------------------------------------------------------------------------
 // PageTransitionWrapper -- exported component
@@ -72,16 +29,13 @@ export function PageTransitionWrapper({ children }: { children: ReactNode }) {
   const segment = useSelectedLayoutSegment();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={segment}
-        initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.3 }}
-      >
-        <FrozenRouter>{children}</FrozenRouter>
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      key={segment}
+      initial={{ opacity: 0, y: 6, filter: "blur(2px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.14, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {children}
+    </motion.div>
   );
 }

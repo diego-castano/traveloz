@@ -341,6 +341,7 @@ async function main() {
         itinerarioAmadeus: p.itinerario?.join('\n') ?? null,
         campana: p.campana ?? null,
         estado: 'ACTIVO',
+        noches: noches > 0 ? noches : 0,
         validezDesde: VALIDEZ_DESDE,
         validezHasta: VALIDEZ_HASTA,
         markup: DEFAULT_FACTOR,

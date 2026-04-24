@@ -20,6 +20,7 @@ import type {
   Pais,
   Region,
 } from "@/lib/types";
+import { parseStoredDate } from "@/lib/date";
 
 // ---------------------------------------------------------------------------
 // Paquete → País resolution
@@ -292,7 +293,8 @@ export function paquetesProximosAVencer(paquetes: Paquete[]): Paquete[] {
   return paquetes.filter((p) => {
     if (p.estado !== "ACTIVO") return false;
     if (!p.validezHasta) return false;
-    const hasta = new Date(p.validezHasta);
+    const hasta = parseStoredDate(p.validezHasta);
+    if (!hasta) return false;
     return hasta >= now && hasta <= in14;
   });
 }

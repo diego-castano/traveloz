@@ -93,6 +93,7 @@ export default function ProveedoresPage() {
   const [editTarget, setEditTarget] = useState<Proveedor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Proveedor | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -152,7 +153,7 @@ export default function ProveedoresPage() {
       email: "",
       telefono: "",
       notas: "",
-      servicio: "SEGUROS",
+      servicio: (filtroServicio ?? "SEGUROS") as CategoriaServicio,
     });
     setModalOpen(true);
   }
@@ -173,22 +174,46 @@ export default function ProveedoresPage() {
   async function handleSave(e?: React.FormEvent) {
     e?.preventDefault();
     if (!form.nombre.trim()) return;
-    if (editTarget) {
-      await updateProveedor({ ...editTarget, ...form });
+
+    setSaving(true);
+    try {
+      const payload = {
+        ...form,
+        nombre: form.nombre.trim(),
+        contacto: form.contacto.trim(),
+        email: form.email.trim(),
+        telefono: form.telefono.trim(),
+        notas: form.notas.trim(),
+      };
+
+      if (editTarget) {
+        await updateProveedor({ ...editTarget, ...payload });
+        toast(
+          "success",
+          "Proveedor actualizado",
+          `"${payload.nombre}" fue actualizado correctamente`,
+        );
+      } else {
+        await createProveedor({ brandId: activeBrandId, ...payload });
+        setSearch("");
+        setPage(1);
+        setFiltroServicio(payload.servicio);
+        toast(
+          "success",
+          "Proveedor creado",
+          `"${payload.nombre}" fue creado correctamente`,
+        );
+      }
+      setModalOpen(false);
+    } catch (err) {
       toast(
-        "success",
-        "Proveedor actualizado",
-        `"${form.nombre}" fue actualizado correctamente`,
+        "error",
+        "Error al guardar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
       );
-    } else {
-      await createProveedor({ brandId: activeBrandId, ...form });
-      toast(
-        "success",
-        "Proveedor creado",
-        `"${form.nombre}" fue creado correctamente`,
-      );
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
   }
 
   async function handleClone(p: Proveedor) {
@@ -447,8 +472,12 @@ export default function ProveedoresPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={!form.nombre.trim()}>
-              {editTarget ? "Guardar cambios" : "Crear proveedor"}
+            <Button type="submit" disabled={saving || !form.nombre.trim()}>
+              {saving
+                ? "Guardando..."
+                : editTarget
+                  ? "Guardar cambios"
+                  : "Crear proveedor"}
             </Button>
           </ModalFooter>
         </form>

@@ -2,7 +2,15 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Pencil, Copy, Trash2, Map } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Copy,
+  Trash2,
+  Map,
+  Eye,
+  ChevronDown,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
 import { Button } from "@/components/ui/Button";
@@ -65,6 +73,7 @@ export default function CircuitosPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<Circuito | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+  const [expandedCircuitoId, setExpandedCircuitoId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
   // Package usage count map
@@ -116,6 +125,24 @@ export default function CircuitosPage() {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredCircuitos.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredCircuitos, currentPage]);
+
+  const circuitoDiasMap = useMemo(() => {
+    const map: Record<string, typeof serviceState.circuitoDias> = {};
+    for (const dia of serviceState.circuitoDias) {
+      if (!map[dia.circuitoId]) {
+        map[dia.circuitoId] = [];
+      }
+      map[dia.circuitoId].push(dia);
+    }
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => a.orden - b.orden);
+    }
+    return map;
+  }, [serviceState.circuitoDias]);
+
+  useEffect(() => {
+    setExpandedCircuitoId(null);
+  }, [search, currentPage]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -232,60 +259,154 @@ export default function CircuitosPage() {
             <DataTableHeader>
               <DataTableRow header>
                 <DataTableHead>Nombre</DataTableHead>
-                <DataTableHead align="right">Noches</DataTableHead>
-                <DataTableHead>Proveedor</DataTableHead>
+                <DataTableHead align="center">Noches</DataTableHead>
+                <DataTableHead align="center">Proveedor</DataTableHead>
                 <DataTableHead align="right">Acciones</DataTableHead>
               </DataTableRow>
             </DataTableHeader>
             <DataTableBody>
-              {paginatedCircuitos.map((circuito) => (
-                <DataTableRow
-                  key={circuito.id}
-                  onClick={() => router.push(`/circuitos/${circuito.id}`)}
-                  interactive
-                >
-                  <DataTableCell variant="primary">
-                    {circuito.nombre}
-                    {(paqueteCountMap[circuito.id] ?? 0) > 0 && (
-                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
-                        {paqueteCountMap[circuito.id]} paq.
-                      </span>
-                    )}
-                  </DataTableCell>
-                  <DataTableCell variant="mono" align="right">
-                    {circuito.noches}
-                  </DataTableCell>
-                  <DataTableCell variant="muted">
-                    {proveedorMap[circuito.proveedorId] ?? "--"}
-                  </DataTableCell>
-                  <DataTableCell align="right">
-                    <RowActions
-                      primary={{
-                        icon: Pencil,
-                        label: "Editar",
-                        onClick: () => router.push(`/circuitos/${circuito.id}`),
-                      }}
-                      items={
-                        canEdit
-                          ? [
-                              {
-                                icon: Copy,
-                                label: "Clonar",
-                                onClick: () => handleClone(circuito),
-                              },
-                              {
-                                icon: Trash2,
-                                label: "Eliminar",
-                                onClick: () => handleOpenDelete(circuito),
-                                destructive: true,
-                              },
-                            ]
-                          : []
-                      }
-                    />
-                  </DataTableCell>
-                </DataTableRow>
-              ))}
+              {paginatedCircuitos.flatMap((circuito) => {
+                const expanded = expandedCircuitoId === circuito.id;
+                const dias = circuito.itinerario ?? circuitoDiasMap[circuito.id] ?? [];
+
+                return [
+                  <DataTableRow
+                    key={circuito.id}
+                    onClick={() => router.push(`/circuitos/${circuito.id}`)}
+                    interactive
+                    selected={expanded}
+                  >
+                    <DataTableCell variant="primary">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedCircuitoId(expanded ? null : circuito.id);
+                          }}
+                          aria-label={expanded ? "Ocultar itinerario" : "Mostrar itinerario"}
+                          title={expanded ? "Ocultar itinerario" : "Mostrar itinerario"}
+                          className="inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md border border-hairline bg-white text-neutral-500 transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                        >
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        <div className="min-w-0">
+                          <div className="truncate">
+                            {circuito.nombre}
+                            {(paqueteCountMap[circuito.id] ?? 0) > 0 && (
+                              <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
+                                {paqueteCountMap[circuito.id]} paq.
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 text-[11px] font-normal text-neutral-400">
+                            Toca para ver el itinerario debajo
+                          </div>
+                        </div>
+                      </div>
+                    </DataTableCell>
+                    <DataTableCell variant="mono" align="center">
+                      {circuito.noches}
+                    </DataTableCell>
+                    <DataTableCell variant="muted" align="center">
+                      {proveedorMap[circuito.proveedorId] ?? "--"}
+                    </DataTableCell>
+                    <DataTableCell align="right">
+                      <RowActions
+                        primary={{
+                          icon: Eye,
+                          label: "Ver",
+                          onClick: () => router.push(`/circuitos/${circuito.id}`),
+                        }}
+                        items={
+                          canEdit
+                            ? [
+                                {
+                                  icon: Pencil,
+                                  label: "Editar",
+                                  onClick: () => router.push(`/circuitos/${circuito.id}`),
+                                },
+                                {
+                                  icon: Copy,
+                                  label: "Clonar",
+                                  onClick: () => handleClone(circuito),
+                                },
+                                {
+                                  icon: Trash2,
+                                  label: "Eliminar",
+                                  onClick: () => handleOpenDelete(circuito),
+                                  destructive: true,
+                                },
+                              ]
+                            : []
+                        }
+                      />
+                    </DataTableCell>
+                  </DataTableRow>,
+                  expanded ? (
+                    <tr
+                      key={`${circuito.id}-itinerario`}
+                      className="border-b border-hairline bg-neutral-50/60"
+                    >
+                      <td colSpan={4} className="px-4 py-4">
+                        <div className="rounded-[14px] border border-hairline bg-white px-4 py-3 shadow-[0_1px_2px_rgba(17,17,36,0.03)]">
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400">
+                                Itinerario
+                              </p>
+                              <p className="text-[12.5px] text-neutral-500">
+                                {dias.length > 0
+                                  ? `${dias.length} día${dias.length === 1 ? "" : "s"} cargado${dias.length === 1 ? "" : "s"}`
+                                  : "Aún no hay días cargados"}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/circuitos/${circuito.id}`)}
+                            >
+                              Abrir detalle
+                            </Button>
+                          </div>
+
+                          {dias.length === 0 ? (
+                            <p className="text-[13px] text-neutral-400">
+                              Este circuito todavía no tiene itinerario cargado.
+                            </p>
+                          ) : (
+                            <div className="grid gap-2 md:grid-cols-2">
+                              {dias.map((dia) => (
+                                <div
+                                  key={dia.id}
+                                  className="flex gap-3 rounded-[12px] border border-neutral-100 bg-neutral-50 px-3 py-2.5"
+                                >
+                                  <span className="mt-0.5 inline-flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand-teal-100 text-[11px] font-bold text-brand-teal-700">
+                                    {dia.numeroDia}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="text-[13px] font-semibold text-neutral-800">
+                                      {dia.titulo}
+                                    </p>
+                                    {dia.descripcion && (
+                                      <p className="mt-1 max-h-10 overflow-hidden text-[12px] leading-5 text-neutral-500">
+                                        {dia.descripcion}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null,
+                ];
+              })}
             </DataTableBody>
           </DataTable>
 

@@ -31,6 +31,8 @@ import { useBrand } from "./BrandProvider";
 // ---------------------------------------------------------------------------
 interface PackageState {
   loading: boolean;
+  hydratingPaquetes: boolean;
+  totalPaquetes: number;
   paquetes: Paquete[];
   paqueteAereos: PaqueteAereo[];
   paqueteAlojamientos: PaqueteAlojamiento[];
@@ -46,6 +48,8 @@ interface PackageState {
 
 const initialState: PackageState = {
   loading: true,
+  hydratingPaquetes: false,
+  totalPaquetes: 0,
   paquetes: [],
   paqueteAereos: [],
   paqueteAlojamientos: [],
@@ -58,6 +62,14 @@ const initialState: PackageState = {
   destinos: [],
   opcionHoteles: [],
 };
+
+function sortPaquetesByCreatedAtDesc(paquetes: Paquete[]): Paquete[] {
+  return [...paquetes].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
@@ -78,6 +90,10 @@ type PackageSubPayload = {
 type PackageAction =
   | { type: "SET_ALL"; payload: PackageState }
   | { type: "MERGE_SUB_ENTITIES"; payload: PackageSubPayload }
+  | {
+      type: "APPEND_PAQUETES";
+      payload: { paquetes: Paquete[]; totalPaquetes: number };
+    }
   // Paquete (soft delete)
   | { type: "ADD_PAQUETE"; payload: Paquete }
   | { type: "UPDATE_PAQUETE"; payload: Paquete }
@@ -133,10 +149,29 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
       return action.payload;
     case "MERGE_SUB_ENTITIES":
       return { ...state, ...action.payload };
+    case "APPEND_PAQUETES": {
+      const merged = new Map(state.paquetes.map((item) => [item.id, item]));
+      for (const paquete of action.payload.paquetes) {
+        merged.set(paquete.id, paquete);
+      }
+      return {
+        ...state,
+        hydratingPaquetes: false,
+        totalPaquetes: action.payload.totalPaquetes,
+        paquetes: sortPaquetesByCreatedAtDesc(Array.from(merged.values())),
+      };
+    }
 
     // -- Paquete (soft delete) --
     case "ADD_PAQUETE":
-      return { ...state, paquetes: [...state.paquetes, action.payload] };
+      return {
+        ...state,
+        totalPaquetes: state.totalPaquetes + 1,
+        paquetes: sortPaquetesByCreatedAtDesc([
+          action.payload,
+          ...state.paquetes,
+        ]),
+      };
     case "UPDATE_PAQUETE":
       return {
         ...state,
@@ -147,6 +182,7 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
     case "DELETE_PAQUETE":
       return {
         ...state,
+        totalPaquetes: Math.max(0, state.totalPaquetes - 1),
         paquetes: state.paquetes.map((p) =>
           p.id === action.payload
             ? { ...p, deletedAt: new Date().toISOString() }
@@ -196,7 +232,8 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
         .map((o) => ({ ...o, id: crypto.randomUUID(), paqueteId: newId }));
       return {
         ...state,
-        paquetes: [...state.paquetes, cloned],
+        totalPaquetes: state.totalPaquetes + 1,
+        paquetes: sortPaquetesByCreatedAtDesc([cloned, ...state.paquetes]),
         paqueteAereos: [...state.paqueteAereos, ...clonedAereos],
         paqueteAlojamientos: [...state.paqueteAlojamientos, ...clonedAlojamientos],
         paqueteTraslados: [...state.paqueteTraslados, ...clonedTraslados],
@@ -441,6 +478,7 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(packageReducer, initialState);
   const { activeBrandId } = useBrand();
   const { status: sessionStatus } = useSession();
+  const INITIAL_PAQUETES_CHUNK = 18;
 
   useEffect(() => {
     let cancelled = false;
@@ -459,7 +497,7 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
 
     // Wave 1 — only Paquete rows. Fast (<1 s). Lifts skeleton & shows list.
     packageActions
-      .getBasePackages(activeBrandId)
+      .getBasePackages(activeBrandId, { take: INITIAL_PAQUETES_CHUNK })
       .then((base) => {
         if (cancelled) return;
         dispatch({
@@ -467,9 +505,42 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
           payload: {
             ...initialState,
             loading: false,
+            hydratingPaquetes:
+              (base.total ?? base.paquetes.length) > base.paquetes.length,
+            totalPaquetes: base.total ?? base.paquetes.length,
             paquetes: base.paquetes as any,
           },
         });
+
+        const shouldHydrateMore = (base.total ?? 0) > base.paquetes.length;
+
+        if (!shouldHydrateMore) return;
+
+        packageActions
+          .getBasePackages(activeBrandId, {
+            skip: base.paquetes.length,
+          })
+          .then((remaining) => {
+            if (cancelled) return;
+            dispatch({
+              type: "APPEND_PAQUETES",
+              payload: {
+                paquetes: remaining.paquetes as any,
+                totalPaquetes: remaining.total,
+              },
+            });
+          })
+          .catch((err) => {
+            console.error("Error hydrating remaining packages:", err);
+            if (cancelled) return;
+            dispatch({
+              type: "APPEND_PAQUETES",
+              payload: {
+                paquetes: [],
+                totalPaquetes: base.total ?? base.paquetes.length,
+              },
+            });
+          });
       })
       .catch((err) => {
         console.error("Error fetching base packages:", err);
@@ -538,6 +609,18 @@ export function usePackageLoading(): boolean {
   return usePackageState().loading;
 }
 
+export function usePackageProgress() {
+  const state = usePackageState();
+  return useMemo(
+    () => ({
+      hydratingPaquetes: state.hydratingPaquetes,
+      totalPaquetes: state.totalPaquetes,
+      loadedPaquetes: state.paquetes.length,
+    }),
+    [state.hydratingPaquetes, state.totalPaquetes, state.paquetes.length],
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Brand-filtered selector hooks
 // ---------------------------------------------------------------------------
@@ -547,8 +630,10 @@ export function usePaquetes(): Paquete[] {
   const state = usePackageState();
   return useMemo(
     () =>
-      state.paquetes.filter(
-        (p) => p.brandId === activeBrandId && !p.deletedAt,
+      sortPaquetesByCreatedAtDesc(
+        state.paquetes.filter(
+          (p) => p.brandId === activeBrandId && !p.deletedAt,
+        ),
       ),
     [state.paquetes, activeBrandId],
   );
@@ -572,7 +657,26 @@ export function usePackageActions() {
     () => ({
       // -- Paquete CRUD --
       createPaquete: async (
-        data: Omit<Paquete, "id" | "createdAt" | "updatedAt" | "deletedAt">,
+        data: {
+          brandId: string;
+          titulo: string;
+          destino: string;
+          descripcion?: string;
+          textoVisual?: string | null;
+          salidas?: string;
+          noches?: number;
+          temporadaId?: string;
+          tipoPaqueteId?: string;
+          estado?: Paquete["estado"];
+          destacado?: boolean;
+          netoCalculado?: number;
+          markup?: number;
+          precioVenta?: number;
+          moneda?: string;
+          validezDesde?: string;
+          validezHasta?: string;
+          ordenServicios?: string[];
+        },
       ) => {
         const entity = await packageActions.createPaquete(data as any);
         dispatch({ type: "ADD_PAQUETE", payload: entity as any });
@@ -829,8 +933,16 @@ export function useAllDestinos(): PaqueteDestino[] {
 
 /** Total nights for a paquete, computed from its destinos. */
 export function useNochesTotales(paqueteId: string): number {
+  const state = usePackageState();
   const destinos = useDestinos(paqueteId);
-  return useMemo(() => computeNochesTotales(destinos), [destinos]);
+  const paquete = useMemo(
+    () => state.paquetes.find((p) => p.id === paqueteId),
+    [state.paquetes, paqueteId],
+  );
+  const total = useMemo(() => computeNochesTotales(destinos), [destinos]);
+
+  if (destinos.length > 0) return total;
+  return paquete?.noches ?? total;
 }
 
 // ---------------------------------------------------------------------------

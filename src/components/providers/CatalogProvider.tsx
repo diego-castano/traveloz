@@ -27,6 +27,8 @@ import { useBrand } from "./BrandProvider";
 // ---------------------------------------------------------------------------
 interface CatalogState {
   loading: boolean;
+  baseLoaded: boolean;
+  hydratingGeography: boolean;
   temporadas: Temporada[];
   tiposPaquete: TipoPaquete[];
   etiquetas: Etiqueta[];
@@ -39,6 +41,8 @@ interface CatalogState {
 
 const initialState: CatalogState = {
   loading: true,
+  baseLoaded: false,
+  hydratingGeography: false,
   temporadas: [],
   tiposPaquete: [],
   etiquetas: [],
@@ -53,7 +57,29 @@ const initialState: CatalogState = {
 // Actions (discriminated union)
 // ---------------------------------------------------------------------------
 type CatalogAction =
-  | { type: "SET_ALL"; payload: CatalogState }
+  | { type: "RESET" }
+  | { type: "SET_LOADING"; payload: boolean }
+  | {
+      type: "SET_BASE";
+      payload: {
+        temporadas: Temporada[];
+        tiposPaquete: TipoPaquete[];
+        etiquetas: Etiqueta[];
+        regiones: Region[];
+        regimenes: Regimen[];
+        proveedores: Proveedor[];
+        hydratingGeography: boolean;
+        loading: boolean;
+      };
+    }
+  | {
+      type: "MERGE_GEOGRAPHY";
+      payload: {
+        paises: Pais[];
+        ciudades: Ciudad[];
+        loading: boolean;
+      };
+    }
   | { type: "ADD_TEMPORADA"; payload: Temporada }
   | { type: "UPDATE_TEMPORADA"; payload: Temporada }
   | { type: "DELETE_TEMPORADA"; payload: string }
@@ -84,8 +110,33 @@ type CatalogAction =
 // ---------------------------------------------------------------------------
 function catalogReducer(state: CatalogState, action: CatalogAction): CatalogState {
   switch (action.type) {
-    case "SET_ALL":
-      return { ...action.payload, loading: false };
+    case "RESET":
+      return initialState;
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
+    case "SET_BASE":
+      return {
+        ...state,
+        loading: action.payload.loading,
+        baseLoaded: true,
+        hydratingGeography: action.payload.hydratingGeography,
+        temporadas: action.payload.temporadas,
+        tiposPaquete: action.payload.tiposPaquete,
+        etiquetas: action.payload.etiquetas,
+        regiones: action.payload.regiones,
+        regimenes: action.payload.regimenes,
+        proveedores: action.payload.proveedores,
+        paises: [],
+        ciudades: [],
+      };
+    case "MERGE_GEOGRAPHY":
+      return {
+        ...state,
+        loading: action.payload.loading,
+        hydratingGeography: false,
+        paises: action.payload.paises,
+        ciudades: action.payload.ciudades,
+      };
 
     // -- Temporada (hard delete) --
     case "ADD_TEMPORADA":
@@ -201,7 +252,7 @@ function catalogReducer(state: CatalogState, action: CatalogAction): CatalogStat
 
     // -- Proveedor (soft delete) --
     case "ADD_PROVEEDOR":
-      return { ...state, proveedores: [...state.proveedores, action.payload] };
+      return { ...state, proveedores: [action.payload, ...state.proveedores] };
     case "UPDATE_PROVEEDOR":
       return {
         ...state,
@@ -246,40 +297,61 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     // fetch completes (prevents the empty-state flash during re-auth).
     if (sessionStatus !== "authenticated") {
       if (sessionStatus === "unauthenticated") {
-        dispatch({ type: "SET_ALL", payload: initialState });
+        dispatch({ type: "RESET" });
       }
       return;
     }
 
-    dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
+    dispatch({ type: "SET_LOADING", payload: true });
 
     catalogActions
-      .getAllCatalogs(activeBrandId)
+      .getBaseCatalogs(activeBrandId)
       .then((data) => {
         if (cancelled) return;
         dispatch({
-          type: "SET_ALL",
+          type: "SET_BASE",
           payload: {
-            loading: false,
             temporadas: data.temporadas as unknown as Temporada[],
             tiposPaquete: data.tiposPaquete as unknown as TipoPaquete[],
             etiquetas: data.etiquetas as unknown as Etiqueta[],
             regiones: (data.regiones ?? []) as unknown as Region[],
-            paises: data.paises.map(({ ciudades: _c, ...p }) => p) as unknown as Pais[],
-            ciudades: data.paises.flatMap((p) => p.ciudades ?? []) as unknown as Ciudad[],
             regimenes: data.regimenes as unknown as Regimen[],
             proveedores: data.proveedores as unknown as Proveedor[],
+            hydratingGeography: true,
+            loading: true,
           },
         });
+
+        catalogActions
+          .getCatalogGeography(activeBrandId)
+          .then((geography) => {
+            if (cancelled) return;
+            dispatch({
+              type: "MERGE_GEOGRAPHY",
+              payload: {
+                paises: geography.paises.map(
+                  ({ ciudades: _c, ...pais }) => pais,
+                ) as unknown as Pais[],
+                ciudades: geography.paises.flatMap(
+                  (pais) => pais.ciudades ?? [],
+                ) as unknown as Ciudad[],
+                loading: false,
+              },
+            });
+          })
+          .catch((err) => {
+            console.error("Error fetching catalog geography:", err);
+            if (cancelled) return;
+            dispatch({
+              type: "MERGE_GEOGRAPHY",
+              payload: { paises: [], ciudades: [], loading: false },
+            });
+          });
       })
       .catch((err) => {
         console.error("Error fetching catalogs:", err);
         if (cancelled) return;
-        // IMPORTANT: Always clear loading on error so UI doesn't hang
-        dispatch({
-          type: "SET_ALL",
-          payload: { ...initialState, loading: false },
-        });
+        dispatch({ type: "SET_LOADING", payload: false });
       });
 
     return () => {
@@ -309,6 +381,23 @@ export function useCatalogState(): CatalogState {
 
 export function useCatalogLoading(): boolean {
   return useCatalogState().loading;
+}
+
+export function useCatalogBaseLoading(): boolean {
+  const state = useCatalogState();
+  return state.loading && !state.baseLoaded;
+}
+
+export function useCatalogProgress() {
+  const state = useCatalogState();
+  return useMemo(
+    () => ({
+      hydratingGeography: state.hydratingGeography,
+      loadedPaises: state.paises.length,
+      loadedCiudades: state.ciudades.length,
+    }),
+    [state.hydratingGeography, state.paises.length, state.ciudades.length],
+  );
 }
 
 export function useCatalogDispatch(): Dispatch<CatalogAction> {

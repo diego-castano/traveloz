@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+import { glassMaterials } from "@/components/lib/glass";
+import { springs } from "@/components/lib/animations";
 import { uploadFile } from "@/components/lib/upload";
 
 interface ItinerarioEditorProps {
@@ -110,16 +113,23 @@ export function ItinerarioEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <div
+      <motion.div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={cn(
-          "relative rounded-[8px] border bg-white transition-colors",
+        animate={
           dragActive
-            ? "border-[#3BBFAD] ring-2 ring-[#3BBFAD33]"
-            : "border-hairline",
+            ? { scale: 1.01, y: -1 }
+            : { scale: 1, y: 0 }
+        }
+        transition={springs.gentle}
+        className={cn(
+          "relative overflow-hidden rounded-[10px] border transition-colors",
+          dragActive ? "border-[#3BBFAD]" : "border-hairline",
         )}
+        style={{
+          ...(dragActive ? glassMaterials.frosted : { background: "#FFFFFF" }),
+        }}
       >
         <textarea
           value={text}
@@ -137,23 +147,39 @@ export function ItinerarioEditor({
               <ImageIcon className="h-3.5 w-3.5" />
               Pega (⌘V) o arrastra imágenes aquí
             </span>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 font-medium text-neutral-700 transition-colors hover:bg-rail"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              Subir
-            </button>
+            <div className="flex items-center gap-2">
+              {uploading > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F8F5] px-2 py-0.5 text-[10.5px] font-medium text-[#2A9E8E]">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Subiendo {uploading}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-1 rounded-[6px] px-2 py-1 font-medium text-neutral-700 transition-colors hover:bg-rail hover:text-neutral-900"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                Subir
+              </button>
+            </div>
           </div>
         )}
 
-        {dragActive && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[8px] bg-[rgba(59,191,173,0.08)] text-[13px] font-medium text-[#2A9E8E]">
-            Suelta para subir
-          </div>
-        )}
-      </div>
+        <AnimatePresence>
+          {dragActive && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={springs.micro}
+              className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[10px] bg-[rgba(59,191,173,0.08)] text-[13px] font-medium text-[#2A9E8E]"
+            >
+              Suelta para subir
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
       <input
         ref={fileInputRef}
@@ -172,10 +198,24 @@ export function ItinerarioEditor({
       )}
 
       {(images.length > 0 || uploading > 0) && (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: {},
+            show: { transition: { staggerChildren: 0.04 } },
+          }}
+          className="grid grid-cols-4 gap-2 sm:grid-cols-6"
+        >
           {images.map((url) => (
-            <div
+            <motion.div
               key={url}
+              variants={{
+                hidden: { opacity: 0, y: 8, scale: 0.96 },
+                show: { opacity: 1, y: 0, scale: 1 },
+              }}
+              whileHover={{ y: -2, scale: 1.02 }}
+              transition={springs.micro}
               className="group relative aspect-square overflow-hidden rounded-[8px] border border-hairline bg-rail"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -194,17 +234,20 @@ export function ItinerarioEditor({
                   <X className="h-3.5 w-3.5" />
                 </button>
               )}
-            </div>
+            </motion.div>
           ))}
           {Array.from({ length: uploading }).map((_, i) => (
-            <div
+            <motion.div
               key={`up-${i}`}
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={springs.micro}
               className="flex aspect-square items-center justify-center rounded-[8px] border border-dashed border-hairline bg-rail"
             >
               <Loader2 className="h-5 w-5 animate-spin text-neutral-400" />
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

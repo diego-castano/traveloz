@@ -9,10 +9,14 @@ import {
   Tag,
   Mail,
   Clock,
+  Plus,
 } from "lucide-react";
 import * as notificacionActions from "@/actions/notificacion.actions";
 import { useBrand } from "@/components/providers/BrandProvider";
-import { useEtiquetas } from "@/components/providers/CatalogProvider";
+import {
+  useCatalogActions,
+  useEtiquetas,
+} from "@/components/providers/CatalogProvider";
 import {
   usePaquetes,
   usePackageState,
@@ -26,6 +30,7 @@ import { usePackageLoading } from "@/components/providers/PackageProvider";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/Modal";
 import {
   DataTable,
   DataTableHeader,
@@ -38,6 +43,7 @@ import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { StatusDot } from "@/components/ui/data/StatusDot";
 import { Field, FieldLabel } from "@/components/ui/form/Field";
 import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 // ---------------------------------------------------------------------------
 // Step labels
@@ -49,6 +55,15 @@ const STEP_LABELS: Record<number, string> = {
   3: "Seleccion",
   4: "Enviar",
 };
+
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
 
 // ---------------------------------------------------------------------------
 // Estado -> StatusDot variant mapping
@@ -74,6 +89,13 @@ export default function NotificacionesPage() {
     new Set(),
   );
   const [isSending, setIsSending] = useState(false);
+  const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+  const [tagForm, setTagForm] = useState({
+    nombre: "",
+    slug: "",
+    color: "#3BBFAD",
+  });
 
   // --- Email subject + body state ---
   const [emailSubject, setEmailSubject] = useState(
@@ -97,6 +119,8 @@ export default function NotificacionesPage() {
   const serviceState = useServiceState();
   const { toast } = useToast();
   const { activeBrandId } = useBrand();
+  const { canEdit } = useAuth();
+  const { createEtiqueta } = useCatalogActions();
   const loading = useCatalogLoading() || usePackageLoading();
 
   // Per-paquete price derivation (Fase 2): computes "desde" price live from
@@ -138,6 +162,15 @@ export default function NotificacionesPage() {
     );
   }, [paquetes, state.paqueteEtiquetas, selectedEtiquetaId]);
 
+  useEffect(() => {
+    setSelectedPaqueteIds(new Set());
+  }, [selectedEtiquetaId]);
+
+  const selectedPaquetesList = useMemo(
+    () => filteredPaquetes.filter((p) => selectedPaqueteIds.has(p.id)),
+    [filteredPaquetes, selectedPaqueteIds],
+  );
+
   const aereoMap = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {};
     for (const a of aereos) {
@@ -163,10 +196,43 @@ export default function NotificacionesPage() {
     ).length;
   }
 
+  function openCreateTagModal() {
+    setTagForm({ nombre: "", slug: "", color: "#3BBFAD" });
+    setTagModalOpen(true);
+  }
+
+  async function handleCreateTag(e?: React.FormEvent) {
+    e?.preventDefault();
+    const nombre = tagForm.nombre.trim();
+    const slug = tagForm.slug.trim() || slugify(nombre);
+    if (!nombre || !slug) return;
+
+    setIsCreatingTag(true);
+    try {
+      const created = await createEtiqueta({
+        brandId: activeBrandId,
+        nombre,
+        slug,
+        color: tagForm.color,
+      });
+      setSelectedEtiquetaId(created.id);
+      setTagModalOpen(false);
+      toast("success", "Etiqueta creada", `"${nombre}" fue creada correctamente`);
+    } catch (err) {
+      toast(
+        "error",
+        "Error al crear etiqueta",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
+    } finally {
+      setIsCreatingTag(false);
+    }
+  }
+
   // --- Navigation logic ---
   function isSiguienteDisabled(): boolean {
     if (step === 1) return !selectedEtiquetaId;
-    if (step === 3) return selectedPaqueteIds.size === 0;
+    if (step === 3) return selectedPaquetesList.length === 0;
     return false;
   }
 
@@ -184,12 +250,12 @@ export default function NotificacionesPage() {
     try {
       await notificacionActions.createNotificacion({
         etiquetaId: selectedEtiquetaId,
-        paqueteIds: Array.from(selectedPaqueteIds),
+        paqueteIds: selectedPaquetesList.map((p) => p.id),
       });
       toast(
         "success",
         "Notificaciones enviadas",
-        `${selectedPaqueteIds.size} paquetes notificados exitosamente`,
+        `${selectedPaquetesList.length} paquetes notificados exitosamente`,
       );
       setStep(1);
       setSelectedEtiquetaId(null);
@@ -226,11 +292,6 @@ export default function NotificacionesPage() {
       setSelectedPaqueteIds(new Set(filteredPaquetes.map((p) => p.id)));
     }
   }
-
-  // --- Selected paquetes list for preview ---
-  const selectedPaquetesList = filteredPaquetes.filter((p) =>
-    selectedPaqueteIds.has(p.id),
-  );
 
   // ---------------------------------------------------------------------------
   // Step Indicator — clean horizontal line stepper
@@ -291,13 +352,40 @@ export default function NotificacionesPage() {
   // Step 1 — Select Etiqueta
   // ---------------------------------------------------------------------------
 
+  function StepBackButton({ label }: { label: string }) {
+    return (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={handleBack}
+        leftIcon={<ChevronLeft size={15} />}
+      >
+        {label}
+      </Button>
+    );
+  }
+
   function Step1Content() {
     return (
       <div>
-        <p className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
-          <Tag size={15} className="text-teal-500" />
-          Selecciona una etiqueta
-        </p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+            <Tag size={15} className="text-teal-500" />
+            Selecciona una etiqueta
+          </p>
+          {canEdit && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={openCreateTagModal}
+              leftIcon={<Plus size={15} />}
+            >
+              Agregar etiqueta
+            </Button>
+          )}
+        </div>
         {etiquetas.length === 0 ? (
           <p className="text-sm text-neutral-400">
             No hay etiquetas disponibles para esta marca.
@@ -352,17 +440,20 @@ export default function NotificacionesPage() {
   function Step2Content() {
     return (
       <div>
-        <p className="text-sm font-semibold text-neutral-700 mb-3">
-          Paquetes con etiqueta:{" "}
-          {selectedEtiqueta && (
-            <span
-              className="ml-1 px-2 py-0.5 rounded-full text-xs text-white"
-              style={{ backgroundColor: selectedEtiqueta.color }}
-            >
-              {selectedEtiqueta.nombre}
-            </span>
-          )}
-        </p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-neutral-700">
+            Paquetes con etiqueta:{" "}
+            {selectedEtiqueta && (
+              <span
+                className="ml-1 px-2 py-0.5 rounded-full text-xs text-white"
+                style={{ backgroundColor: selectedEtiqueta.color }}
+              >
+                {selectedEtiqueta.nombre}
+              </span>
+            )}
+          </p>
+          <StepBackButton label="Volver a etiquetas" />
+        </div>
         {filteredPaquetes.length === 0 ? (
           <p className="text-sm text-neutral-400">
             No hay paquetes con esta etiqueta.
@@ -403,23 +494,31 @@ export default function NotificacionesPage() {
   // ---------------------------------------------------------------------------
 
   function Step3Content() {
-    const selected = selectedPaqueteIds.size;
+    const selected = selectedPaquetesList.length;
     const total = filteredPaquetes.length;
 
     return (
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-neutral-700">
-            Selecciona paquetes a notificar
-          </p>
-          <span className="text-xs text-neutral-400">
-            {selected} de {total} seleccionado{selected !== 1 ? "s" : ""}
-          </span>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-neutral-700">
+              Selecciona paquetes a notificar
+            </p>
+            <span className="text-xs text-neutral-400">
+              {selected} de {total} seleccionado{selected !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <StepBackButton label="Volver a paquetes" />
         </div>
 
         {/* Select all row */}
-        <div className="flex items-center gap-3 px-4 py-3 rounded-[12px] border border-hairline bg-white mb-2">
-          <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+        <div
+          className="flex cursor-pointer items-center gap-3 px-4 py-3 rounded-[12px] border border-hairline bg-white mb-2"
+          onClick={toggleAll}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+          </div>
           <span className="text-sm font-medium text-neutral-600">
             Seleccionar todos
           </span>
@@ -447,10 +546,12 @@ export default function NotificacionesPage() {
                   }}
                   onClick={() => togglePaquete(p.id)}
                 >
-                  <Checkbox
-                    checked={isSel}
-                    onCheckedChange={() => togglePaquete(p.id)}
-                  />
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      checked={isSel}
+                      onCheckedChange={() => togglePaquete(p.id)}
+                    />
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-neutral-800 truncate">
                       {p.titulo}
@@ -478,10 +579,13 @@ export default function NotificacionesPage() {
   function Step4Content() {
     return (
       <div>
-        <p className="text-sm font-semibold text-neutral-700 mb-3 flex items-center gap-2">
-          <Mail size={15} className="text-teal-500" />
-          Vista previa del email
-        </p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-semibold text-neutral-700 flex items-center gap-2">
+            <Mail size={15} className="text-teal-500" />
+            Vista previa del email
+          </p>
+          <StepBackButton label="Volver a selección" />
+        </div>
 
         <div className="flex flex-col gap-4 mb-5">
           <Field>
@@ -635,6 +739,81 @@ export default function NotificacionesPage() {
           </div>
         </div>
       </div>
+
+      <Modal open={tagModalOpen} onOpenChange={setTagModalOpen} size="md">
+        <ModalHeader
+          title="Nueva etiqueta"
+          description="Crea una etiqueta para agrupar paquetes y usarla en este envio."
+          icon={<Tag className="h-5 w-5" strokeWidth={2.2} />}
+        />
+        <form onSubmit={handleCreateTag}>
+          <ModalBody>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel>Nombre</FieldLabel>
+                <Input
+                  value={tagForm.nombre}
+                  onChange={(e) => {
+                    const nombre = e.target.value;
+                    setTagForm((form) => ({
+                      ...form,
+                      nombre,
+                      slug: slugify(nombre),
+                    }));
+                  }}
+                  placeholder="Ej: Caribe"
+                  autoFocus
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Slug</FieldLabel>
+                <Input
+                  value={tagForm.slug}
+                  onChange={(e) =>
+                    setTagForm((form) => ({ ...form, slug: e.target.value }))
+                  }
+                  placeholder="caribe"
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Color</FieldLabel>
+                <div className="flex h-9 items-center gap-2 rounded-[8px] border border-[rgba(17,17,36,0.10)] bg-white px-2">
+                  <input
+                    type="color"
+                    value={tagForm.color}
+                    onChange={(e) =>
+                      setTagForm((form) => ({
+                        ...form,
+                        color: e.target.value,
+                      }))
+                    }
+                    className="h-6 w-8 cursor-pointer rounded border-0 bg-transparent p-0"
+                    aria-label="Color de etiqueta"
+                  />
+                  <span className="font-mono text-[12px] text-neutral-500">
+                    {tagForm.color}
+                  </span>
+                </div>
+              </Field>
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setTagModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              disabled={isCreatingTag || !tagForm.nombre.trim()}
+            >
+              {isCreatingTag ? "Creando..." : "Crear etiqueta"}
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
 
       {/* Notification History */}
       {historial.length > 0 && (

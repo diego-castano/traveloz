@@ -21,6 +21,7 @@ import {
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { formatStoredDate, parseStoredDate } from "@/lib/date";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -130,14 +131,20 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
 
   const handleValidezDesdeChange = (date: Date | undefined) => {
     if (date) {
-      updatePaquete({ ...paquete, validezDesde: date.toISOString() });
+      updatePaquete({
+        ...paquete,
+        validezDesde: formatStoredDate(date) ?? paquete.validezDesde,
+      });
       toast("success", "Fecha de inicio actualizada");
     }
   };
 
   const handleValidezHastaChange = (date: Date | undefined) => {
     if (date) {
-      updatePaquete({ ...paquete, validezHasta: date.toISOString() });
+      updatePaquete({
+        ...paquete,
+        validezHasta: formatStoredDate(date) ?? paquete.validezHasta,
+      });
       toast("success", "Fecha de fin actualizada");
     }
   };
@@ -205,7 +212,7 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
           <Field>
             <FieldLabel>Valido desde</FieldLabel>
             <DatePicker
-              value={new Date(paquete.validezDesde)}
+              value={parseStoredDate(paquete.validezDesde)}
               onChange={handleValidezDesdeChange}
               disabled={!canEdit}
             />
@@ -213,7 +220,7 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
           <Field>
             <FieldLabel>Valido hasta</FieldLabel>
             <DatePicker
-              value={new Date(paquete.validezHasta)}
+              value={parseStoredDate(paquete.validezHasta)}
               onChange={handleValidezHastaChange}
               disabled={!canEdit}
             />

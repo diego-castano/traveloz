@@ -10,6 +10,7 @@ import { glassMaterials } from '@/components/lib/glass';
 import { springs } from '@/components/lib/animations';
 import { usePaquetes } from '@/components/providers/PackageProvider';
 import { useAereos, useAlojamientos, useTraslados, useSeguros, useCircuitos } from '@/components/providers/ServiceProvider';
+import { matchesSearch } from '@/lib/search';
 
 interface SearchResult {
   id: string;
@@ -59,15 +60,11 @@ export function SearchModal() {
   // Build search results
   const results = React.useMemo(() => {
     if (!query.trim()) return [];
-    const q = query.toLowerCase();
     const matches: SearchResult[] = [];
 
     // Search paquetes
     paquetes.forEach(p => {
-      if (
-        p.titulo.toLowerCase().includes(q) ||
-        p.destino.toLowerCase().includes(q)
-      ) {
+      if (matchesSearch(query, p.titulo, p.destino, p.descripcion)) {
         matches.push({
           id: p.id,
           type: 'paquete',
@@ -80,11 +77,7 @@ export function SearchModal() {
 
     // Search aereos
     aereos.forEach(a => {
-      if (
-        a.ruta.toLowerCase().includes(q) ||
-        a.destino.toLowerCase().includes(q) ||
-        (a.aerolinea ?? '').toLowerCase().includes(q)
-      ) {
+      if (matchesSearch(query, a.ruta, a.destino, a.aerolinea)) {
         matches.push({
           id: a.id,
           type: 'aereo',
@@ -97,7 +90,7 @@ export function SearchModal() {
 
     // Search alojamientos
     alojamientos.forEach(a => {
-      if (a.nombre.toLowerCase().includes(q)) {
+      if (matchesSearch(query, a.nombre)) {
         matches.push({
           id: a.id,
           type: 'alojamiento',
@@ -110,7 +103,7 @@ export function SearchModal() {
 
     // Search traslados
     traslados.forEach(t => {
-      if (t.nombre.toLowerCase().includes(q)) {
+      if (matchesSearch(query, t.nombre, t.tipo)) {
         matches.push({
           id: t.id,
           type: 'traslado',
@@ -123,7 +116,7 @@ export function SearchModal() {
 
     // Search seguros
     seguros.forEach(s => {
-      if (s.plan.toLowerCase().includes(q)) {
+      if (matchesSearch(query, s.plan, s.cobertura)) {
         matches.push({
           id: s.id,
           type: 'seguro',
@@ -136,7 +129,7 @@ export function SearchModal() {
 
     // Search circuitos
     circuitos.forEach(c => {
-      if (c.nombre.toLowerCase().includes(q)) {
+      if (matchesSearch(query, c.nombre)) {
         matches.push({
           id: c.id,
           type: 'circuito',

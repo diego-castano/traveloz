@@ -1,9 +1,16 @@
 "use client";
 
-import { useState, useEffect, createContext, useContext } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  createContext,
+  useContext,
+} from "react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   LayoutDashboard,
@@ -129,15 +136,21 @@ export function Sidebar() {
   const { visibleModules } = useAuth();
   const { activeBrand } = useBrand();
   const pathname = usePathname();
+  const router = useRouter();
   const { isMobile, mobileOpen, setMobileOpen } = useSidebar();
+  const prefetchedRoutesRef = useRef<Set<string>>(new Set());
 
   // Filter nav groups by role-visible modules
-  const filteredGroups = navGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => visibleModules.includes(item.id)),
-    }))
-    .filter((group) => group.items.length > 0);
+  const filteredGroups = useMemo(
+    () =>
+      navGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => visibleModules.includes(item.id)),
+        }))
+        .filter((group) => group.items.length > 0),
+    [visibleModules],
+  );
 
   // Detect active nav item
   const isActive = (href: string) => {
@@ -149,6 +162,12 @@ export function Sidebar() {
   const effectiveWidth = isMobile
     ? mobileOpen ? 252 : 0
     : collapsed ? 64 : 252;
+
+  const prefetchRoute = (href: string) => {
+    if (href === pathname || prefetchedRoutesRef.current.has(href)) return;
+    prefetchedRoutesRef.current.add(href);
+    router.prefetch(href);
+  };
 
   return (
     <Tooltip.Provider delayDuration={300}>
@@ -272,6 +291,7 @@ export function Sidebar() {
                 const linkContent = (
                   <Link
                     href={item.href}
+                    prefetch={false}
                     className={cn(
                       "flex items-center gap-3 rounded-[10px] text-[13px] transition-all duration-200 cursor-pointer group",
                       effectiveCollapsed
@@ -293,6 +313,7 @@ export function Sidebar() {
                         : undefined,
                     }}
                     onMouseEnter={(e) => {
+                      prefetchRoute(item.href);
                       if (!active) {
                         e.currentTarget.style.background =
                           "rgba(255,255,255,0.08)";
@@ -311,6 +332,7 @@ export function Sidebar() {
                           "translateX(0)";
                       }
                     }}
+                    onFocus={() => prefetchRoute(item.href)}
                   >
                     <Icon size={18} strokeWidth={1.75} className="flex-shrink-0" />
                     {!effectiveCollapsed && (

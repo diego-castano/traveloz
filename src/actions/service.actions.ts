@@ -23,6 +23,16 @@ const AereoSchema = z.object({
   duracionVuelta: z.string().nullable().optional(),
 });
 
+const PrecioAereoCreateSchema = z.object({
+  periodoDesde: z.string().min(1, "El período desde es requerido"),
+  periodoHasta: z.string().min(1, "El período hasta es requerido"),
+  precioAdulto: z.number().positive("El precio adulto debe ser un número positivo"),
+});
+
+const AereoCreateSchema = AereoSchema.extend({
+  precioInicial: PrecioAereoCreateSchema.optional(),
+});
+
 const PrecioAereoSchema = z.object({
   aereoId: z.string().min(1, "El aereoId es requerido"),
   periodoDesde: z.string().min(1, "El período desde es requerido"),
@@ -75,6 +85,15 @@ const CircuitoSchema = z.object({
   proveedorId: z.string().nullable().optional(),
 });
 
+const CircuitoDiaDraftSchema = z.object({
+  titulo: z.string().min(1, "El título es requerido"),
+  descripcion: z.string().nullable().optional(),
+});
+
+const CircuitoCreateSchema = CircuitoSchema.extend({
+  itinerarioInicial: z.array(CircuitoDiaDraftSchema).optional(),
+});
+
 const CircuitoDiaSchema = z.object({
   circuitoId: z.string().min(1, "El circuitoId es requerido"),
   numeroDia: z.number().int().positive("El número de día debe ser positivo"),
@@ -120,13 +139,27 @@ export async function createAereo(data: {
   codigoVueloVuelta?: string | null;
   duracionIda?: string | null;
   duracionVuelta?: string | null;
+  precioInicial?: {
+    periodoDesde: string;
+    periodoHasta: string;
+    precioAdulto: number;
+  };
 }, requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-    const parsed = AereoSchema.parse(data);
+    const parsed = AereoCreateSchema.parse(data);
     return await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "aereo");
-      return await tx.aereo.create({ data: { ...parsed, id, brandId } });
+      const aereo = await tx.aereo.create({ data: { ...parsed, id, brandId } });
+      if (parsed.precioInicial) {
+        await tx.precioAereo.create({
+          data: {
+            aereoId: aereo.id,
+            ...parsed.precioInicial,
+          },
+        });
+      }
+      return aereo;
     });
   } catch (error) {
     console.error("Error creating aereo:", error);
@@ -548,13 +581,40 @@ export async function createCircuito(data: {
   nombre: string;
   noches: number;
   proveedorId?: string | null;
+  itinerarioInicial?: Array<{
+    titulo: string;
+    descripcion?: string | null;
+  }>;
 }, requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-    const parsed = CircuitoSchema.parse(data);
+    const parsed = CircuitoCreateSchema.parse(data);
     return await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "circuito");
-      return await tx.circuito.create({ data: { ...parsed, id, brandId } });
+      const circuito = await tx.circuito.create({
+        data: {
+          nombre: parsed.nombre,
+          noches: parsed.noches,
+          proveedorId: parsed.proveedorId,
+          id,
+          brandId,
+        },
+      });
+
+      if (parsed.itinerarioInicial?.length) {
+        await tx.circuitoDia.createMany({
+          data: parsed.itinerarioInicial.map((dia, index) => ({
+            id: crypto.randomUUID(),
+            circuitoId: circuito.id,
+            numeroDia: index + 1,
+            titulo: dia.titulo,
+            descripcion: dia.descripcion ?? "",
+            orden: index,
+          })),
+        });
+      }
+
+      return circuito;
     });
   } catch (error) {
     console.error("Error creating circuito:", error);
@@ -699,11 +759,16 @@ export async function deletePrecioCircuito(id: string) {
 //   Heavier but non-blocking — UI is already usable from wave 1.
 // ---------------------------------------------------------------------------
 
-export async function getBaseServices(requestedBrandId?: string) {
+export async function getBaseServices(
+  requestedBrandId?: string,
+  options?: { alojamientosSkip?: number; alojamientosTake?: number },
+) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
+    const alojamientosSkip = Math.max(0, options?.alojamientosSkip ?? 0);
+    const alojamientosTake = options?.alojamientosTake;
 
-    const [aereos, alojamientos, traslados, seguros, circuitos] =
+    const [aereos, alojamientos, totalAlojamientos, traslados, seguros, circuitos] =
       await Promise.all([
         prisma.aereo.findMany({
           where: { brandId, deletedAt: null },
@@ -715,6 +780,11 @@ export async function getBaseServices(requestedBrandId?: string) {
             ciudad: { select: { id: true, nombre: true, paisId: true } },
           },
           orderBy: { createdAt: "desc" },
+          skip: alojamientosSkip,
+          ...(typeof alojamientosTake === "number" ? { take: alojamientosTake } : {}),
+        }),
+        prisma.alojamiento.count({
+          where: { brandId, deletedAt: null },
         }),
         prisma.traslado.findMany({
           where: { brandId, deletedAt: null },
@@ -730,10 +800,48 @@ export async function getBaseServices(requestedBrandId?: string) {
         }),
       ]);
 
-    return { aereos, alojamientos, traslados, seguros, circuitos };
+    return {
+      aereos,
+      alojamientos,
+      totalAlojamientos,
+      traslados,
+      seguros,
+      circuitos,
+    };
   } catch (error) {
     console.error("Error fetching base services:", error);
     throw new Error("No se pudieron obtener los servicios base.");
+  }
+}
+
+export async function getBaseAlojamientos(
+  requestedBrandId?: string,
+  options?: { skip?: number; take?: number },
+) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const skip = Math.max(0, options?.skip ?? 0);
+    const take = options?.take;
+
+    const [alojamientos, total] = await Promise.all([
+      prisma.alojamiento.findMany({
+        where: { brandId, deletedAt: null },
+        include: {
+          ciudad: { select: { id: true, nombre: true, paisId: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        ...(typeof take === "number" ? { take } : {}),
+      }),
+      prisma.alojamiento.count({
+        where: { brandId, deletedAt: null },
+      }),
+    ]);
+
+    return { alojamientos, total };
+  } catch (error) {
+    console.error("Error fetching base alojamientos:", error);
+    throw new Error("No se pudieron obtener los alojamientos base.");
   }
 }
 

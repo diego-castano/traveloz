@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapPin, Globe, Building2, ChevronRight } from "lucide-react";
+import { MapPin, Globe, Building2, ChevronRight, X } from "lucide-react";
 import { useRegiones } from "@/components/providers/CatalogProvider";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/components/lib/cn";
@@ -29,6 +29,8 @@ interface DestinoAutocompleteProps {
   value: string;
   /** Fires with the breadcrumb string whenever the user picks an option or types freely. */
   onChange: (value: string) => void;
+  /** Fires when the user commits a selected option from the autocomplete. */
+  onCommit?: (value: string) => void | Promise<void>;
   placeholder?: string;
   readOnly?: boolean;
   autoFocus?: boolean;
@@ -58,6 +60,7 @@ function normalize(str: string): string {
 export function DestinoAutocomplete({
   value,
   onChange,
+  onCommit,
   placeholder = "Buscar region, pais o ciudad...",
   readOnly,
   autoFocus,
@@ -107,12 +110,28 @@ export function DestinoAutocomplete({
     const q = normalize(value.trim());
     if (!q) return allOptions.slice(0, 30);
     return allOptions
-      .filter(
-        (o) =>
-          normalize(o.nombre).includes(q) ||
-          normalize(o.breadcrumb).includes(q),
-      )
-      .slice(0, 30);
+      .filter((o) => {
+        const nombre = normalize(o.nombre);
+        const breadcrumb = normalize(o.breadcrumb);
+        return nombre.includes(q) || breadcrumb.includes(q);
+      })
+      .sort((a, b) => {
+        const aNombre = normalize(a.nombre);
+        const bNombre = normalize(b.nombre);
+        const aBreadcrumb = normalize(a.breadcrumb);
+        const bBreadcrumb = normalize(b.breadcrumb);
+
+        const aStartsWith = aNombre.startsWith(q) ? 0 : aBreadcrumb.startsWith(q) ? 1 : 2;
+        const bStartsWith = bNombre.startsWith(q) ? 0 : bBreadcrumb.startsWith(q) ? 1 : 2;
+        if (aStartsWith !== bStartsWith) return aStartsWith - bStartsWith;
+
+        const tipoWeight = { region: 0, pais: 1, ciudad: 2 } satisfies Record<Tipo, number>;
+        if (tipoWeight[a.tipo] !== tipoWeight[b.tipo]) {
+          return tipoWeight[a.tipo] - tipoWeight[b.tipo];
+        }
+
+        return a.breadcrumb.localeCompare(b.breadcrumb, "es");
+      });
   }, [allOptions, value]);
 
   // Reset highlight when results change
@@ -132,6 +151,7 @@ export function DestinoAutocomplete({
 
   function commit(option: DestinoOption) {
     onChange(option.breadcrumb);
+    onCommit?.(option.breadcrumb);
     setOpen(false);
   }
 
@@ -157,6 +177,13 @@ export function DestinoAutocomplete({
     }
   }
 
+  function handleClear() {
+    onChange("");
+    onCommit?.("");
+    setOpen(false);
+    setHighlight(0);
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <Input
@@ -171,7 +198,21 @@ export function DestinoAutocomplete({
         readOnly={readOnly}
         autoFocus={autoFocus}
         leftIcon={<MapPin className="w-4 h-4" />}
+        className={value && !readOnly ? "pr-10" : undefined}
       />
+
+      {value && !readOnly && (
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleClear}
+          className="absolute right-3 top-1/2 z-10 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+          aria-label="Borrar destino"
+          title="Borrar destino"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
 
       {open && !readOnly && (
         <div

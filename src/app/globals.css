@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------- */
+/*  Floating UI layers                                                     */
+/*  Radix wraps popper content in an internal transformed element. Raising */
+/*  only the menu panel is not enough; the wrapper itself must sit on top. */
+/* ---------------------------------------------------------------------- */
+[data-radix-popper-content-wrapper] {
+  z-index: 10000 !important;
+}
+
+/* ---------------------------------------------------------------------- */
 /*  Typography — mono fonts get tabular numbers globally                  */
 /* ---------------------------------------------------------------------- */
 .font-mono,

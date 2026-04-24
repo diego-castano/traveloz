@@ -295,6 +295,8 @@ Browser → Next.js App (Railway)
 
 ## 11. Desarrollo local
 
+> Decision operativa del proyecto: para este repo el desarrollo local usa la base de datos de Railway directamente. No levantar una instancia local de PostgreSQL salvo que se acuerde explicitamente un cambio de estrategia.
+
 ### Variables de entorno necesarias (`.env.local`)
 
 ```env
@@ -305,3 +307,8 @@ NEXTAUTH_URL="http://localhost:3000"
 ```
 
 > En Railway, todas las variables estan inyectadas automaticamente. Solo se necesita `.env.local` para desarrollo local.
+
+### Arranque recomendado en esta maquina
+
+- Usar `pnpm run dev:local` en lugar de `pnpm dev`.
+- Este comando levanta Next con la configuracion local, fuerza Prisma a usar el engine binario y precalienta `/login` para evitar la demora de la primera compilacion en navegador.

@@ -16,14 +16,27 @@ import type { EstadoPaquete } from "@prisma/client";
 // Wave 2 — getPackageSubEntities: all paquete-X join rows. Background fill.
 // ---------------------------------------------------------------------------
 
-export async function getBasePackages(requestedBrandId?: string) {
+export async function getBasePackages(
+  requestedBrandId?: string,
+  options?: { skip?: number; take?: number },
+) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-    const paquetes = await prisma.paquete.findMany({
-      where: { brandId, deletedAt: null },
-      orderBy: { createdAt: "desc" },
-    });
-    return { paquetes };
+    const skip = Math.max(0, options?.skip ?? 0);
+    const take = options?.take;
+    const where = { brandId, deletedAt: null };
+
+    const [paquetes, total] = await prisma.$transaction([
+      prisma.paquete.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        ...(typeof take === "number" ? { take } : {}),
+      }),
+      prisma.paquete.count({ where }),
+    ]);
+
+    return { paquetes, total };
   } catch (error) {
     console.error("Error fetching base packages:", error);
     throw new Error("No se pudieron obtener los paquetes.");
@@ -95,10 +108,10 @@ export async function createPaquete(data: {
   destino: string;
   descripcion?: string;
   textoVisual?: string;
-  noches: number;
   salidas?: string;
-  temporadaId?: string;
-  tipoPaqueteId?: string;
+  noches?: number;
+  temporadaId?: string | null;
+  tipoPaqueteId?: string | null;
   validezDesde?: string;
   validezHasta?: string;
   estado?: EstadoPaquete;
@@ -115,7 +128,8 @@ export async function createPaquete(data: {
     const schema = z.object({
       titulo: z.string().min(1),
       destino: z.string(),
-      noches: z.number().int().positive(),
+      temporadaId: z.string().min(1).nullable().optional(),
+      tipoPaqueteId: z.string().min(1).nullable().optional(),
     });
     schema.parse(data);
 

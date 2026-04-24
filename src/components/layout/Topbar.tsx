@@ -1,8 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { DropdownMenu } from "radix-ui";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { Badge } from "@/components/ui/Badge";
@@ -12,7 +12,7 @@ import { interactions } from "@/components/lib/animations";
 import { ChevronDown, LogOut, User, Search, Menu } from "lucide-react";
 import { useSidebar } from "@/components/layout/Sidebar";
 import { SearchModal } from "@/components/ui/SearchModal";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
 // Breadcrumb generation helper
@@ -63,11 +63,71 @@ function generateBreadcrumbs(pathname: string) {
 
 export function Topbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, isVendedor, logout } = useAuth();
   const breadcrumbItems = generateBreadcrumbs(pathname);
 
   const { isMobile, setMobileOpen } = useSidebar();
   const [userOpen, setUserOpen] = useState(false);
+  const [userMenuPosition, setUserMenuPosition] = useState<{
+    top: number;
+    right: number;
+  } | null>(null);
+  const userTriggerRef = useRef<HTMLButtonElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const updateUserMenuPosition = () => {
+    const rect = userTriggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    setUserMenuPosition({
+      top: rect.bottom + 8,
+      right: Math.max(12, window.innerWidth - rect.right),
+    });
+  };
+
+  useEffect(() => {
+    if (!userOpen) return;
+
+    updateUserMenuPosition();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (userTriggerRef.current?.contains(target)) return;
+      if (userMenuRef.current?.contains(target)) return;
+      setUserOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setUserOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updateUserMenuPosition);
+    window.addEventListener("scroll", updateUserMenuPosition, true);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updateUserMenuPosition);
+      window.removeEventListener("scroll", updateUserMenuPosition, true);
+    };
+  }, [userOpen]);
+
+  const handleSwitchUser = async () => {
+    setUserOpen(false);
+    await logout();
+    router.push("/login");
+  };
+
+  const handleLogout = async () => {
+    setUserOpen(false);
+    await logout();
+    router.push("/login");
+  };
 
   return (
     <header
@@ -125,57 +185,88 @@ export function Topbar() {
         {/* ----------------------------------------------------------------- */}
         {/* User menu dropdown                                                  */}
         {/* ----------------------------------------------------------------- */}
-        <DropdownMenu.Root open={userOpen} onOpenChange={setUserOpen}>
-          <DropdownMenu.Trigger asChild>
-            <button className="flex items-center gap-2 outline-none">
-              <Avatar name={user?.name} size="sm" />
-              <span className="hidden text-sm font-medium text-neutral-600 md:block">
-                {user?.name}
-              </span>
-            </button>
-          </DropdownMenu.Trigger>
-
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              forceMount
-              sideOffset={8}
-              align="end"
-              asChild
-            >
-              <AnimatePresence>
-                {userOpen && (
-                  <motion.div
-                    {...interactions.dropdownOpen}
-                    className="min-w-[200px] rounded-xl p-1.5 shadow-elevation-16"
-                    style={{
-                      ...glassMaterials.frosted,
-                      backdropFilter: "blur(24px) saturate(180%)",
-                      WebkitBackdropFilter: "blur(24px) saturate(180%)",
-                    }}
-                  >
-                    {/* User info header */}
-                    <div className="border-b border-neutral-100 px-3 py-2">
-                      <p className="text-sm font-medium text-neutral-700">
-                        {user?.name}
-                      </p>
-                      <p className="text-xs text-neutral-400">{user?.email}</p>
-                    </div>
-
-                    {/* Logout */}
-                    <DropdownMenu.Item
-                      onSelect={() => logout()}
-                      className="mt-1 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-600 outline-none transition-colors hover:bg-red-50 hover:text-red-600"
-                    >
-                      <LogOut size={14} />
-                      Cerrar sesion
-                    </DropdownMenu.Item>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        <button
+          ref={userTriggerRef}
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={userOpen}
+          onClick={() => {
+            if (userOpen) {
+              setUserOpen(false);
+              return;
+            }
+            updateUserMenuPosition();
+            setUserOpen(true);
+          }}
+          className="group flex items-center gap-2 rounded-full border border-hairline bg-white px-2 py-1 shadow-[0_8px_24px_-18px_rgba(17,17,36,0.45)] outline-none transition-colors hover:bg-neutral-50 data-[state=open]:bg-neutral-50"
+        >
+          <Avatar name={user?.name} size="sm" />
+          <span className="hidden text-sm font-medium text-neutral-600 md:block">
+            {user?.name}
+          </span>
+          <ChevronDown
+            size={14}
+            className={`hidden text-neutral-400 transition-transform md:block ${
+              userOpen ? "rotate-180" : ""
+            }`}
+          />
+        </button>
       </div>
+
+      {typeof document !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {userOpen && userMenuPosition && (
+              <motion.div
+                ref={userMenuRef}
+                id="topbar-user-menu"
+                role="menu"
+                {...interactions.dropdownOpen}
+                className="fixed min-w-[220px] overflow-hidden rounded-[12px] border border-hairline bg-white p-1.5 shadow-[0_18px_48px_-18px_rgba(17,17,36,0.35)]"
+                style={{
+                  top: userMenuPosition.top,
+                  right: userMenuPosition.right,
+                  zIndex: 10000,
+                }}
+              >
+                {/* User info header */}
+                <div className="border-b border-hairline bg-neutral-50/70 px-3 py-2.5">
+                  <p className="text-sm font-medium text-neutral-700">
+                    {user?.name}
+                  </p>
+                  <p className="text-xs text-neutral-400">{user?.email}</p>
+                </div>
+
+                {/* Switch user */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    void handleSwitchUser();
+                  }}
+                  className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100"
+                >
+                  <User size={14} />
+                  Cambiar de usuario
+                </button>
+
+                {/* Logout */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    void handleLogout();
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 outline-none transition-colors hover:bg-red-50 focus:bg-red-50"
+                >
+                  <LogOut size={14} />
+                  Cerrar sesión
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
 
       {/* ------------------------------------------------------------------- */}
       {/* Bottom accent line with sheen-slide animation                        */}

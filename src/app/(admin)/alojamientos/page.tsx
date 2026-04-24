@@ -23,17 +23,24 @@ import { RowActions } from "@/components/ui/data/RowActions";
 import { EmptyState } from "@/components/ui/data/EmptyState";
 import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
+import { Badge } from "@/components/ui/Badge";
 import {
   useAlojamientos,
   useServiceActions,
+  useServiceState,
 } from "@/components/providers/ServiceProvider";
-import { usePaises, useProveedores } from "@/components/providers/CatalogProvider";
+import { usePaises } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useToast } from "@/components/ui/Toast";
-import { PageSkeleton } from "@/components/ui/Skeletons";
-import { useServiceLoading } from "@/components/providers/ServiceProvider";
+import { DataTableSkeleton, PageSkeleton } from "@/components/ui/Skeletons";
+import {
+  useServiceLoading,
+  useServiceProgress,
+} from "@/components/providers/ServiceProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
+import { formatCurrency } from "@/lib/utils";
+import { formatStoredDate } from "@/lib/date";
 import type { Alojamiento } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -75,11 +82,16 @@ export default function AlojamientosPage() {
 
   // Data hooks
   const alojamientos = useAlojamientos();
+  const serviceState = useServiceState();
   const { createAlojamiento, deleteAlojamiento } = useServiceActions();
   const paises = usePaises();
-  const proveedores = useProveedores();
   const packageState = usePackageState();
   const loading = useServiceLoading();
+  const {
+    hydratingAlojamientos,
+    totalAlojamientos,
+    loadedAlojamientos,
+  } = useServiceProgress();
 
   // Package usage count map
   const paqueteCountMap = useMemo(() => {
@@ -125,13 +137,43 @@ export default function AlojamientosPage() {
     return map;
   }, [paises]);
 
-  const proveedorMap = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const p of proveedores) {
-      map[p.id] = p.nombre;
+  const tarifaResumenMap = useMemo(() => {
+    const map: Record<
+      string,
+      { total: number; vigente: number | null; minimo: number | null }
+    > = {};
+    const hoy = formatStoredDate(new Date()) ?? "";
+
+    for (const precio of serviceState.preciosAlojamiento) {
+      const current = map[precio.alojamientoId] ?? {
+        total: 0,
+        vigente: null,
+        minimo: null,
+      };
+
+      current.total += 1;
+      current.minimo =
+        current.minimo === null
+          ? precio.precioPorNoche
+          : Math.min(current.minimo, precio.precioPorNoche);
+
+      if (
+        precio.periodoDesde &&
+        precio.periodoHasta &&
+        precio.periodoDesde <= hoy &&
+        hoy <= precio.periodoHasta
+      ) {
+        current.vigente =
+          current.vigente === null
+            ? precio.precioPorNoche
+            : Math.min(current.vigente, precio.precioPorNoche);
+      }
+
+      map[precio.alojamientoId] = current;
     }
+
     return map;
-  }, [proveedores]);
+  }, [serviceState.preciosAlojamiento]);
 
   // ---------------------------------------------------------------------------
   // Filtered and paginated data
@@ -153,12 +195,41 @@ export default function AlojamientosPage() {
     setCurrentPage(1);
   }, [search]);
 
-  const totalPages = Math.ceil(filteredAlojamientos.length / ITEMS_PER_PAGE);
+  const hasSearch = Boolean(search.trim());
+  const visibleTotalAlojamientos = hasSearch
+    ? filteredAlojamientos.length
+    : hydratingAlojamientos
+      ? Math.max(totalAlojamientos, filteredAlojamientos.length)
+      : filteredAlojamientos.length;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(visibleTotalAlojamientos / ITEMS_PER_PAGE),
+  );
+  const isPendingPage =
+    !hasSearch &&
+    hydratingAlojamientos &&
+    currentPage > 1 &&
+    filteredAlojamientos.length < currentPage * ITEMS_PER_PAGE;
+  const showPendingSearch =
+    hasSearch && hydratingAlojamientos && filteredAlojamientos.length === 0;
 
   const paginatedAlojamientos = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredAlojamientos.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredAlojamientos, currentPage]);
+
+  const hydrationMessage = hydratingAlojamientos
+    ? hasSearch
+      ? "La búsqueda todavía está completando el listado. Algunos hoteles pueden aparecer en unos segundos."
+      : `Mostrando la primera página mientras se cargan ${Math.max(
+          totalAlojamientos - loadedAlojamientos,
+          0,
+        )} alojamientos restantes en segundo plano.`
+    : null;
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -223,7 +294,15 @@ export default function AlojamientosPage() {
         className="mb-4"
       />
 
-      {filteredAlojamientos.length === 0 ? (
+      {hydrationMessage && (
+        <div className="mb-4 rounded-[12px] border border-[#45D4C0]/20 bg-[#45D4C0]/7 px-3.5 py-2.5 text-[12.5px] text-[#1A6D63]">
+          {hydrationMessage}
+        </div>
+      )}
+
+      {showPendingSearch ? (
+      <DataTableSkeleton columns={6} rows={8} />
+      ) : filteredAlojamientos.length === 0 ? (
         <EmptyState
           icon={Hotel}
           title="No hay alojamientos registrados"
@@ -239,6 +318,8 @@ export default function AlojamientosPage() {
             ) : undefined
           }
         />
+      ) : isPendingPage ? (
+        <DataTableSkeleton columns={6} rows={8} />
       ) : (
         <>
           <DataTable>
@@ -249,6 +330,7 @@ export default function AlojamientosPage() {
                 <DataTableHead>Ciudad</DataTableHead>
                 <DataTableHead>Pais</DataTableHead>
                 <DataTableHead>Categoria</DataTableHead>
+                <DataTableHead align="right">Tarifas</DataTableHead>
                 <DataTableHead align="right">Acciones</DataTableHead>
               </DataTableRow>
             </DataTableHeader>
@@ -272,6 +354,43 @@ export default function AlojamientosPage() {
                   <DataTableCell variant="muted">{paisMap[alojamiento.paisId] ?? "--"}</DataTableCell>
                   <DataTableCell>
                     <StarRating categoria={alojamiento.categoria} />
+                  </DataTableCell>
+                  <DataTableCell align="right">
+                    {(() => {
+                      const resumen = tarifaResumenMap[alojamiento.id];
+                      if (!resumen) {
+                        return <span className="text-neutral-300">Sin tarifas</span>;
+                      }
+
+                      const amount =
+                        resumen.vigente !== null ? resumen.vigente : resumen.minimo;
+
+                      return (
+                        <div className="flex flex-col items-end gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-[12.5px] font-semibold text-neutral-900">
+                              {amount !== null
+                                ? resumen.vigente !== null
+                                  ? formatCurrency(amount)
+                                  : `Desde ${formatCurrency(amount)}`
+                                : "—"}
+                            </span>
+                            <Badge
+                              size="sm"
+                              variant={resumen.vigente !== null ? "active" : "temporada"}
+                            >
+                              {resumen.total}{" "}
+                              {resumen.total === 1 ? "periodo" : "periodos"}
+                            </Badge>
+                          </div>
+                          <span className="text-[11px] text-neutral-400">
+                            {resumen.vigente !== null
+                              ? "Tarifa vigente"
+                              : "Mejor tarifa disponible"}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </DataTableCell>
                   <DataTableCell align="right">
                     <RowActions
@@ -304,14 +423,17 @@ export default function AlojamientosPage() {
             </DataTableBody>
           </DataTable>
 
-          <div className="mt-5 flex justify-center">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
         </>
+      )}
+
+      {totalPages > 1 && (
+        <div className="mt-5 flex justify-center">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       )}
 
       {/* Delete confirmation modal */}

@@ -29,6 +29,8 @@ import { useBrand } from "./BrandProvider";
 // ---------------------------------------------------------------------------
 interface ServiceState {
   loading: boolean;
+  hydratingAlojamientos: boolean;
+  totalAlojamientos: number;
   aereos: Aereo[];
   preciosAereo: PrecioAereo[];
   alojamientos: Alojamiento[];
@@ -43,6 +45,8 @@ interface ServiceState {
 
 const initialState: ServiceState = {
   loading: true,
+  hydratingAlojamientos: false,
+  totalAlojamientos: 0,
   aereos: [],
   preciosAereo: [],
   alojamientos: [],
@@ -69,6 +73,10 @@ type SubEntityPayload = {
 type ServiceAction =
   | { type: "SET_ALL"; payload: ServiceState }
   | { type: "MERGE_SUB_ENTITIES"; payload: SubEntityPayload }
+  | {
+      type: "APPEND_ALOJAMIENTOS";
+      payload: { alojamientos: Alojamiento[]; totalAlojamientos: number };
+    }
   // Aereo (soft delete)
   | { type: "ADD_AEREO"; payload: Aereo }
   | { type: "UPDATE_AEREO"; payload: Aereo }
@@ -119,6 +127,18 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
       return action.payload;
     case "MERGE_SUB_ENTITIES":
       return { ...state, ...action.payload };
+    case "APPEND_ALOJAMIENTOS": {
+      const merged = new Map(state.alojamientos.map((item) => [item.id, item]));
+      for (const alojamiento of action.payload.alojamientos) {
+        merged.set(alojamiento.id, alojamiento);
+      }
+      return {
+        ...state,
+        hydratingAlojamientos: false,
+        totalAlojamientos: action.payload.totalAlojamientos,
+        alojamientos: Array.from(merged.values()),
+      };
+    }
 
     // -- Aereo (soft delete) --
     case "ADD_AEREO":
@@ -240,7 +260,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
     // -- Seguro (soft delete) --
     case "ADD_SEGURO":
-      return { ...state, seguros: [...state.seguros, action.payload] };
+      return { ...state, seguros: [action.payload, ...state.seguros] };
     case "UPDATE_SEGURO":
       return {
         ...state,
@@ -333,6 +353,7 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
   const { activeBrandId } = useBrand();
   const [state, dispatch] = useReducer(serviceReducer, initialState);
   const { status: sessionStatus } = useSession();
+  const INITIAL_ALOJAMIENTOS_CHUNK = 10;
 
   useEffect(() => {
     let cancelled = false;
@@ -349,7 +370,9 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
     // Wave 1 — base records only (fast, ~300-800 ms against Railway).
     // Clears the skeleton as soon as the main rows arrive.
     serviceActions
-      .getBaseServices(activeBrandId)
+      .getBaseServices(activeBrandId, {
+        alojamientosTake: INITIAL_ALOJAMIENTOS_CHUNK,
+      })
       .then((base) => {
         if (cancelled) return;
         dispatch({
@@ -357,6 +380,10 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
           payload: {
             ...initialState,
             loading: false,
+            hydratingAlojamientos:
+              (base.totalAlojamientos ?? base.alojamientos.length) >
+              base.alojamientos.length,
+            totalAlojamientos: base.totalAlojamientos ?? base.alojamientos.length,
             aereos: base.aereos as any,
             alojamientos: base.alojamientos as any,
             traslados: base.traslados as any,
@@ -364,6 +391,38 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
             circuitos: base.circuitos as any,
           },
         });
+
+        const shouldHydrateMore =
+          (base.totalAlojamientos ?? 0) > base.alojamientos.length;
+
+        if (!shouldHydrateMore) return;
+
+        serviceActions
+          .getBaseAlojamientos(activeBrandId, {
+            skip: base.alojamientos.length,
+          })
+          .then((remaining) => {
+            if (cancelled) return;
+            dispatch({
+              type: "APPEND_ALOJAMIENTOS",
+              payload: {
+                alojamientos: remaining.alojamientos as any,
+                totalAlojamientos: remaining.total,
+              },
+            });
+          })
+          .catch((err) => {
+            console.error("Error hydrating remaining alojamientos:", err);
+            if (cancelled) return;
+            dispatch({
+              type: "APPEND_ALOJAMIENTOS",
+              payload: {
+                alojamientos: [],
+                totalAlojamientos:
+                  base.totalAlojamientos ?? base.alojamientos.length,
+              },
+            });
+          });
       })
       .catch((err) => {
         console.error("Error fetching base services:", err);
@@ -428,6 +487,22 @@ export function useServiceDispatch(): Dispatch<ServiceAction> {
 
 export function useServiceLoading(): boolean {
   return useServiceState().loading;
+}
+
+export function useServiceProgress() {
+  const state = useServiceState();
+  return useMemo(
+    () => ({
+      hydratingAlojamientos: state.hydratingAlojamientos,
+      totalAlojamientos: state.totalAlojamientos,
+      loadedAlojamientos: state.alojamientos.length,
+    }),
+    [
+      state.hydratingAlojamientos,
+      state.totalAlojamientos,
+      state.alojamientos.length,
+    ],
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -535,7 +610,13 @@ export function useServiceActions() {
     () => ({
       // -- Aereo --
       createAereo: async (
-        data: Omit<Aereo, "id" | "createdAt" | "updatedAt" | "deletedAt">,
+        data: Omit<Aereo, "id" | "createdAt" | "updatedAt" | "deletedAt"> & {
+          precioInicial?: {
+            periodoDesde: string;
+            periodoHasta: string;
+            precioAdulto: number;
+          };
+        },
       ) => {
         const entity = await serviceActions.createAereo(data);
         dispatch({ type: "ADD_AEREO", payload: entity as any });
@@ -584,7 +665,9 @@ export function useServiceActions() {
 
       // -- PrecioAlojamiento --
       createPrecioAlojamiento: async (
-        data: Omit<PrecioAlojamiento, "id">,
+        data: Omit<PrecioAlojamiento, "id"> & {
+          regimenId?: string | null;
+        },
       ) => {
         const entity = await serviceActions.createPrecioAlojamiento(data);
         dispatch({ type: "ADD_PRECIO_ALOJAMIENTO", payload: entity as any });
@@ -652,7 +735,12 @@ export function useServiceActions() {
 
       // -- Circuito --
       createCircuito: async (
-        data: Omit<Circuito, "id" | "createdAt" | "updatedAt" | "deletedAt">,
+        data: Omit<Circuito, "id" | "createdAt" | "updatedAt" | "deletedAt"> & {
+          itinerarioInicial?: Array<{
+            titulo: string;
+            descripcion?: string | null;
+          }>;
+        },
       ) => {
         const entity = await serviceActions.createCircuito(data);
         dispatch({ type: "ADD_CIRCUITO", payload: entity as any });

@@ -40,6 +40,7 @@ import {
   useOpcionesHoteleras,
   useDestinos,
   useOpcionHoteles,
+  useNochesTotales,
 } from "@/components/providers/PackageProvider";
 import {
   useAlojamientos,
@@ -57,7 +58,6 @@ import {
   calcularNetoFijos,
   calcularVentaOpcion,
   calcularNetoAlojamientosPorOpcion,
-  computeNochesTotales,
   resolvePrecioAlojamiento,
   resolvePrecioAereo,
   resolvePrecioCircuito,
@@ -70,6 +70,9 @@ import type {
   PaqueteDestino,
   OpcionHotel,
   PrecioAlojamiento,
+  Pais,
+  Region,
+  Ciudad,
 } from "@/lib/types";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs, stagger } from "@/components/lib/animations";
@@ -98,6 +101,144 @@ const fixedCostConfig = [
   { key: "circuitos" as const, label: "Circuitos", icon: MapIcon },
 ] as const;
 
+const DESTINO_BREADCRUMB_SEPARATOR = "›";
+
+type PaisWithCiudades = Pais & { ciudades: Ciudad[] };
+type RegionWithPaises = Region & { paises: PaisWithCiudades[] };
+
+interface DestinoFilterScope {
+  label: string;
+  allowedCiudadIds: Set<string>;
+  allowedPaisIds: Set<string>;
+}
+
+function buildDestinoBreadcrumb(parts: Array<string | null | undefined>): string {
+  return parts
+    .filter((part): part is string => Boolean(part?.trim()))
+    .join(` ${DESTINO_BREADCRUMB_SEPARATOR} `);
+}
+
+function collectDestinoMatches(
+  term: string,
+  paises: PaisWithCiudades[],
+  regiones: RegionWithPaises[],
+) {
+  const normalizedTerm = normalizeSearch(term);
+  const matchedCiudadIds = new Set<string>();
+  const matchedPaisIds = new Set<string>();
+  const matchedRegionIds = new Set<string>();
+  const regionNameById = new Map(regiones.map((region) => [region.id, region.nombre]));
+
+  for (const region of regiones) {
+    if (normalizeSearch(region.nombre) === normalizedTerm) {
+      matchedRegionIds.add(region.id);
+    }
+  }
+
+  for (const pais of paises) {
+    const regionNombre = pais.regionId
+      ? (regionNameById.get(pais.regionId) ?? null)
+      : null;
+    const paisBreadcrumb = buildDestinoBreadcrumb([regionNombre, pais.nombre]);
+
+    if (
+      normalizeSearch(pais.nombre) === normalizedTerm ||
+      normalizeSearch(paisBreadcrumb) === normalizedTerm
+    ) {
+      matchedPaisIds.add(pais.id);
+    }
+
+    for (const ciudad of pais.ciudades) {
+      const ciudadBreadcrumb = buildDestinoBreadcrumb([
+        regionNombre,
+        pais.nombre,
+        ciudad.nombre,
+      ]);
+      if (
+        normalizeSearch(ciudad.nombre) === normalizedTerm ||
+        normalizeSearch(ciudadBreadcrumb) === normalizedTerm
+      ) {
+        matchedCiudadIds.add(ciudad.id);
+        matchedPaisIds.add(pais.id);
+      }
+    }
+  }
+
+  return { matchedCiudadIds, matchedPaisIds, matchedRegionIds };
+}
+
+function tokenizeDestinoInput(value: string): string[] {
+  return value
+    .split(/\s*(?:\+|\/|,|\sy\s|\se\s)\s*/i)
+    .map((term) => term.trim())
+    .filter(Boolean);
+}
+
+function resolveDestinoFilterScope(
+  destinoValue: string | null | undefined,
+  paises: PaisWithCiudades[],
+  regiones: RegionWithPaises[],
+): DestinoFilterScope | null {
+  const raw = destinoValue?.trim();
+  if (!raw) return null;
+
+  const allowedCiudadIds = new Set<string>();
+  const allowedPaisIds = new Set<string>();
+
+  const applyMatches = (
+    matches: ReturnType<typeof collectDestinoMatches>,
+    includePaises: boolean,
+  ) => {
+    for (const ciudadId of Array.from(matches.matchedCiudadIds)) {
+      allowedCiudadIds.add(ciudadId);
+    }
+
+    for (const regionId of Array.from(matches.matchedRegionIds)) {
+      for (const pais of paises) {
+        if (pais.regionId === regionId) {
+          allowedPaisIds.add(pais.id);
+        }
+      }
+    }
+
+    if (includePaises) {
+      for (const paisId of Array.from(matches.matchedPaisIds)) {
+        allowedPaisIds.add(paisId);
+      }
+    }
+  };
+
+  const directMatches = collectDestinoMatches(raw, paises, regiones);
+  const hasDirectMatch =
+    directMatches.matchedCiudadIds.size > 0 ||
+    directMatches.matchedPaisIds.size > 0 ||
+    directMatches.matchedRegionIds.size > 0;
+
+  if (hasDirectMatch) {
+    applyMatches(directMatches, true);
+  } else {
+    for (const token of tokenizeDestinoInput(raw)) {
+      applyMatches(collectDestinoMatches(token, paises, regiones), true);
+    }
+  }
+
+  for (const paisId of Array.from(allowedPaisIds)) {
+    const pais = paises.find((item) => item.id === paisId);
+    if (!pais) continue;
+    for (const ciudad of pais.ciudades) {
+      allowedCiudadIds.add(ciudad.id);
+    }
+  }
+
+  if (allowedCiudadIds.size === 0) return null;
+
+  return {
+    label: raw,
+    allowedCiudadIds,
+    allowedPaisIds,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -108,6 +249,8 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   const allAlojamientos = useAlojamientos();
   const opciones = useOpcionesHoteleras(paquete.id);
   const destinos = useDestinos(paquete.id);
+  const paises = usePaises();
+  const regiones = useRegiones();
 
   const {
     assignAlojamiento,
@@ -143,9 +286,35 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   } | null>(null);
   const [quickEditHotelId, setQuickEditHotelId] = useState<string | null>(null);
 
-  const nochesTotales = useMemo(
-    () => computeNochesTotales(destinos),
-    [destinos],
+  const nochesTotales = useNochesTotales(paquete.id);
+
+  const destinoFilter = useMemo(
+    () => resolveDestinoFilterScope(paquete.destino, paises, regiones),
+    [paquete.destino, paises, regiones],
+  );
+
+  const destinoPickerOptions = useMemo(
+    () =>
+      destinos.map((destino) => {
+        let ciudadNombre = "(ciudad)";
+        for (const pais of paises) {
+          const found = pais.ciudades.find(
+            (ciudadItem) => ciudadItem.id === destino.ciudadId,
+          );
+          if (found) {
+            ciudadNombre = found.nombre;
+            break;
+          }
+        }
+
+        return {
+          destinoId: destino.id,
+          ciudadId: destino.ciudadId,
+          ciudadNombre,
+          noches: destino.noches,
+        };
+      }),
+    [destinos, paises],
   );
 
   // -------------------------------------------------------------------------
@@ -459,6 +628,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
           onDelete={handleDeleteDestino}
           onMove={handleMoveDestino}
           nochesTotales={nochesTotales}
+          destinoFilter={destinoFilter}
         />
       </motion.div>
 
@@ -669,6 +839,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
         onPick={handleAddHotelToPool}
         filterCiudadId={pickerContext?.ciudadId}
         filterCiudadNombre={pickerContext?.ciudadNombre}
+        destinoOptions={pickerContext ? [] : destinoPickerOptions}
       />
 
       {/* ── Modal: Edicion rapida ── */}
@@ -701,6 +872,7 @@ interface ItinerarioEditorProps {
   destinos: PaqueteDestino[];
   canEdit: boolean;
   nochesTotales: number;
+  destinoFilter: DestinoFilterScope | null;
   onAdd: (ciudadId: string, noches: number) => Promise<void>;
   onUpdate: (
     destino: PaqueteDestino,
@@ -714,6 +886,7 @@ function ItinerarioEditor({
   destinos,
   canEdit,
   nochesTotales,
+  destinoFilter,
   onAdd,
   onUpdate,
   onDelete,
@@ -743,7 +916,9 @@ function ItinerarioEditor({
             Este paquete todavía no tiene destinos.
           </p>
           <p className="text-xs text-neutral-400 mt-0.5">
-            Agregá el primero para poder armar opciones hoteleras.
+            {nochesTotales > 0
+              ? `Ya arrancaste con ${nochesTotales} noches iniciales desde Nuevo paquete. Agregá el primer destino para distribuirlas.`
+              : "Agregá el primero para poder armar opciones hoteleras."}
           </p>
         </div>
       ) : (
@@ -766,7 +941,11 @@ function ItinerarioEditor({
 
       {canEdit && (
         <div className="mt-3">
-          <AddDestinoRow onAdd={onAdd} existingCiudadIds={destinos.map((d) => d.ciudadId)} />
+          <AddDestinoRow
+            onAdd={onAdd}
+            existingCiudadIds={destinos.map((d) => d.ciudadId)}
+            destinoFilter={destinoFilter}
+          />
         </div>
       )}
     </div>
@@ -799,13 +978,14 @@ function DestinoRow({
   onDelete: (id: string) => Promise<void>;
   onMove: (id: string, direction: "up" | "down") => Promise<void>;
 }) {
-  const serviceState = useServiceState();
+  const paises = usePaises();
   const ciudad = useMemo(() => {
-    for (const aloj of serviceState.alojamientos) {
-      if (aloj.ciudad?.id === destino.ciudadId) return aloj.ciudad;
+    for (const pais of paises) {
+      const found = pais.ciudades.find((ciudadItem) => ciudadItem.id === destino.ciudadId);
+      if (found) return found;
     }
     return null;
-  }, [serviceState.alojamientos, destino.ciudadId]);
+  }, [paises, destino.ciudadId]);
 
   const [noches, setNoches] = useState<string>(String(destino.noches));
   useEffect(() => {
@@ -913,9 +1093,11 @@ function normalizeSearch(str: string): string {
 function AddDestinoRow({
   onAdd,
   existingCiudadIds,
+  destinoFilter,
 }: {
   onAdd: (ciudadId: string, noches: number) => Promise<void>;
   existingCiudadIds: string[];
+  destinoFilter: DestinoFilterScope | null;
 }) {
   const { toast } = useToast();
   const [ciudadId, setCiudadId] = useState<string>("");
@@ -946,6 +1128,7 @@ function AddDestinoRow({
           selectedId={ciudadId}
           selectedLabel={ciudadLabel}
           excludeCiudadIds={existingCiudadIds}
+          destinoFilter={destinoFilter}
           onSelect={(id, label) => {
             setCiudadId(id);
             setCiudadLabel(label);
@@ -999,12 +1182,14 @@ function CiudadPicker({
   selectedId,
   selectedLabel,
   excludeCiudadIds,
+  destinoFilter,
   onSelect,
   onCreated,
 }: {
   selectedId: string;
   selectedLabel: string;
   excludeCiudadIds: string[];
+  destinoFilter: DestinoFilterScope | null;
   onSelect: (id: string, label: string) => void;
   onCreated: (ciudad: { id: string; nombre: string; paisId: string }, paisNombre: string) => void;
 }) {
@@ -1094,6 +1279,9 @@ function CiudadPicker({
       const regionOrden = meta?.orden ?? Number.MAX_SAFE_INTEGER;
       const visibleCiudades = p.ciudades
         .filter((c) => !excludeSet.has(c.id))
+        .filter((c) =>
+          destinoFilter ? destinoFilter.allowedCiudadIds.has(c.id) : true,
+        )
         .filter((c) => {
           if (!q) return true;
           const paisMatch = normalizeSearch(p.nombre).includes(q);
@@ -1111,7 +1299,7 @@ function CiudadPicker({
           ciudades: visibleCiudades,
         });
       }
-    }
+      }
     rows.sort(
       (a, b) =>
         a.regionOrden - b.regionOrden ||
@@ -1119,7 +1307,7 @@ function CiudadPicker({
         a.paisNombre.localeCompare(b.paisNombre),
     );
     return rows;
-  }, [paises, regionMetaById, search, excludeSet]);
+  }, [paises, regionMetaById, search, excludeSet, destinoFilter]);
 
   // All países — used for "Create '<text>' in <país>" options when search
   // has no direct ciudad match.
@@ -1130,8 +1318,11 @@ function CiudadPicker({
         nombre: p.nombre,
         regionNombre: (p.regionId && regionMetaById.get(p.regionId)?.nombre) || "Sin región",
       }))
+      .filter((p) =>
+        destinoFilter ? destinoFilter.allowedPaisIds.has(p.id) : true,
+      )
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
-  }, [paises, regionMetaById]);
+  }, [paises, regionMetaById, destinoFilter]);
 
   // If user typed something and there are zero ciudad matches, offer to
   // create it in one of the países whose name matches (or any país if only
@@ -1191,7 +1382,11 @@ function CiudadPicker({
             selectedId ? "text-neutral-800" : "text-neutral-400"
           }`}
         >
-          {selectedId ? selectedLabel : "Elegí una ciudad…"}
+          {selectedId
+            ? selectedLabel
+            : destinoFilter
+              ? "Elegí una ciudad del destino…"
+              : "Elegí una ciudad…"}
         </span>
         <Search className="h-3 w-3 text-neutral-300 flex-shrink-0" />
       </button>
@@ -1221,10 +1416,21 @@ function CiudadPicker({
                 />
               </div>
 
+              {destinoFilter && (
+                <div className="flex items-center gap-1.5 border-b border-teal-100 bg-teal-50/60 px-2.5 py-1.5 text-[11px] text-teal-700">
+                  <MapPin className="h-3 w-3 flex-shrink-0" />
+                  <span className="truncate">
+                    Filtrando por destino: {destinoFilter.label}
+                  </span>
+                </div>
+              )}
+
               <div className="max-h-[320px] overflow-y-auto">
                 {!hasAnyResult ? (
                   <div className="px-3 py-6 text-center text-xs text-neutral-400 italic">
-                    Sin resultados.
+                    {destinoFilter
+                      ? "No hay ciudades disponibles para el destino seleccionado."
+                      : "Sin resultados."}
                   </div>
                 ) : (
                   <>
@@ -1591,13 +1797,14 @@ function DestinoSlot({
   onDeleteHotel: (id: string) => Promise<void>;
   onOpenCatalogPicker: (ctx: PickerContext | null) => void;
 }) {
-  const serviceState = useServiceState();
+  const paises = usePaises();
   const ciudadNombre = useMemo(() => {
-    for (const aloj of serviceState.alojamientos) {
-      if (aloj.ciudad?.id === destino.ciudadId) return aloj.ciudad.nombre;
+    for (const pais of paises) {
+      const found = pais.ciudades.find((ciudadItem) => ciudadItem.id === destino.ciudadId);
+      if (found) return found.nombre;
     }
     return "(ciudad)";
-  }, [serviceState.alojamientos, destino.ciudadId]);
+  }, [paises, destino.ciudadId]);
 
   // Hoteles del pool filtrados por la ciudad del destino.
   const hotelesDisponibles = useMemo(
@@ -1718,6 +1925,12 @@ interface HotelPickerModalProps {
   filterCiudadId?: string;
   /** Human-readable name to show in the "filtering by ..." banner. */
   filterCiudadNombre?: string;
+  destinoOptions?: Array<{
+    destinoId: string;
+    ciudadId: string;
+    ciudadNombre: string;
+    noches: number;
+  }>;
 }
 
 function HotelPickerModal({
@@ -1727,25 +1940,34 @@ function HotelPickerModal({
   onPick,
   filterCiudadId,
   filterCiudadNombre,
+  destinoOptions = [],
 }: HotelPickerModalProps) {
   const [search, setSearch] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedCiudadId, setSelectedCiudadId] = useState<string>("");
 
   useEffect(() => {
     if (open) {
       setSearch("");
       setActiveIndex(0);
+      setSelectedCiudadId(filterCiudadId ?? destinoOptions[0]?.ciudadId ?? "");
     }
-  }, [open]);
+  }, [open, filterCiudadId, destinoOptions]);
+
+  const effectiveCiudadId = filterCiudadId ?? selectedCiudadId;
+  const effectiveCiudadNombre =
+    filterCiudadNombre ??
+    destinoOptions.find((destino) => destino.ciudadId === selectedCiudadId)
+      ?.ciudadNombre;
 
   // Base pool: pre-filter by ciudadId when context is set. Search then
   // narrows further by text.
   const cityFiltered = useMemo(
     () =>
-      filterCiudadId
-        ? hotels.filter((h) => h.ciudad?.id === filterCiudadId)
+      effectiveCiudadId
+        ? hotels.filter((h) => h.ciudad?.id === effectiveCiudadId)
         : hotels,
-    [hotels, filterCiudadId],
+    [hotels, effectiveCiudadId],
   );
 
   const filtered = useMemo(() => {
@@ -1782,23 +2004,51 @@ function HotelPickerModal({
     <Modal open={open} onOpenChange={onOpenChange} size="sm">
       <ModalHeader
         title={
-          filterCiudadNombre
-            ? `Agregar hotel — ${filterCiudadNombre}`
+          effectiveCiudadNombre
+            ? `Agregar hotel — ${effectiveCiudadNombre}`
             : "Agregar hotel"
         }
         description={
-          filterCiudadNombre
-            ? `Hoteles disponibles en ${filterCiudadNombre}. El elegido queda asignado al destino.`
+          effectiveCiudadNombre
+            ? `Hoteles disponibles en ${effectiveCiudadNombre}.`
             : "Buscá por nombre o ciudad."
         }
       />
       <ModalBody>
         <div className="space-y-2">
-          {filterCiudadNombre && (
+          {!filterCiudadId && destinoOptions.length > 1 && (
+            <div className="flex flex-wrap gap-1.5">
+              {destinoOptions.map((destino) => {
+                const selected = destino.ciudadId === selectedCiudadId;
+                return (
+                  <button
+                    key={destino.destinoId}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCiudadId(destino.ciudadId);
+                      setActiveIndex(0);
+                    }}
+                    className={`rounded-md border px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
+                      selected
+                        ? "border-teal-300 bg-teal-50 text-teal-700"
+                        : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
+                    }`}
+                  >
+                    {destino.ciudadNombre}
+                    <span className="ml-1 font-mono text-[10.5px] opacity-70">
+                      {destino.noches}n
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {effectiveCiudadNombre && (
             <div className="flex items-center justify-between gap-2 text-[11px] bg-teal-50 border border-teal-200/60 rounded-md px-2.5 py-1.5">
               <div className="flex items-center gap-1.5 text-teal-700 font-medium">
                 <MapPin className="h-3 w-3" />
-                <span>Filtrando por {filterCiudadNombre}</span>
+                <span>Filtrando por {effectiveCiudadNombre}</span>
               </div>
               <span className="font-mono text-teal-700">
                 {cityFiltered.length} hotel{cityFiltered.length === 1 ? "" : "es"}
@@ -1813,8 +2063,8 @@ function HotelPickerModal({
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                filterCiudadNombre
-                  ? `Buscar en ${filterCiudadNombre}…`
+                effectiveCiudadNombre
+                  ? `Buscar en ${effectiveCiudadNombre}…`
                   : "Escribí para buscar…"
               }
               className="pl-9"
@@ -1831,8 +2081,8 @@ function HotelPickerModal({
               <div className="text-sm text-neutral-400 text-center py-8 italic">
                 {search.trim()
                   ? "Sin resultados."
-                  : filterCiudadNombre
-                    ? `No hay hoteles en ${filterCiudadNombre}. Creá uno desde el módulo de Alojamientos.`
+                  : effectiveCiudadNombre
+                    ? `No hay hoteles en ${effectiveCiudadNombre}.`
                     : "No hay hoteles disponibles."}
               </div>
             ) : (

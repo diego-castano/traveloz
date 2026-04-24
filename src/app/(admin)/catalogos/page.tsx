@@ -55,12 +55,13 @@ import {
   useRegiones,
   useRegimenes,
   useCatalogActions,
-  useCatalogLoading,
+  useCatalogBaseLoading,
+  useCatalogProgress,
 } from "@/components/providers/CatalogProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
-import { PageSkeleton } from "@/components/ui/Skeletons";
+import { DataTableSkeleton, PageSkeleton } from "@/components/ui/Skeletons";
 import { cn } from "@/components/lib/cn";
 import type {
   Temporada,
@@ -529,6 +530,8 @@ function RegionesPaisesTab() {
   const { activeBrandId } = useBrand();
   const { toast } = useToast();
   const regiones = useRegiones();
+  const { hydratingGeography, loadedPaises, loadedCiudades } =
+    useCatalogProgress();
   const {
     createRegion,
     updateRegion,
@@ -777,6 +780,12 @@ function RegionesPaisesTab() {
 
   return (
     <>
+      {hydratingGeography && (
+        <div className="mb-4 rounded-[12px] border border-[#45D4C0]/20 bg-[#45D4C0]/7 px-3.5 py-2.5 text-[12.5px] text-[#1A6D63]">
+          Cargando paises y ciudades del catalogo... {loadedPaises} paises y {loadedCiudades} ciudades listos por ahora.
+        </div>
+      )}
+
       <DataTableToolbar
         search={{
           value: search,
@@ -787,7 +796,9 @@ function RegionesPaisesTab() {
         className="mb-4"
       />
 
-      {filteredRegiones.length === 0 ? (
+      {hydratingGeography && loadedPaises === 0 ? (
+        <DataTableSkeleton columns={4} rows={8} />
+      ) : filteredRegiones.length === 0 ? (
         <EmptyState
           icon={Globe}
           title={search ? "Sin resultados" : "No hay regiones registradas"}
@@ -1335,7 +1346,8 @@ function RegionesPaisesTab() {
 // ---------------------------------------------------------------------------
 
 export default function CatalogosPage() {
-  const loading = useCatalogLoading();
+  const loading = useCatalogBaseLoading();
+  const { hydratingGeography } = useCatalogProgress();
 
   if (loading) return <PageSkeleton variant="table" />;
 
@@ -1345,6 +1357,11 @@ export default function CatalogosPage() {
         title="Catalogos"
         subtitle="Temporadas, tipos de paquete, etiquetas, regiones y regimenes"
       />
+      {hydratingGeography && (
+        <div className="mb-4 rounded-[12px] border border-[#45D4C0]/20 bg-[#45D4C0]/7 px-3.5 py-2.5 text-[12.5px] text-[#1A6D63]">
+          El catalogo ya esta listo para usarse. Terminamos de cargar la parte geografica en segundo plano.
+        </div>
+      )}
       <Tabs defaultValue="temporadas" layoutId="catalogos-tabs">
         <TabsList className="mb-0">
           <TabsTrigger value="temporadas">Temporadas</TabsTrigger>

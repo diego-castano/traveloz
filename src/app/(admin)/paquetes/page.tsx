@@ -14,6 +14,7 @@ import {
   MapPin,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { Tooltip } from "radix-ui";
 import { interactions } from "@/components/lib/animations";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -59,9 +60,17 @@ import {
 } from "@/components/providers/ServiceProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
-import { PageSkeleton } from "@/components/ui/Skeletons";
-import { usePackageLoading } from "@/components/providers/PackageProvider";
+import {
+  CardGridSkeleton,
+  DataTableSkeleton,
+  PageSkeleton,
+} from "@/components/ui/Skeletons";
+import {
+  usePackageLoading,
+  usePackageProgress,
+} from "@/components/providers/PackageProvider";
 import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
+import { matchesSearch } from "@/lib/search";
 import type { Paquete, PaqueteFoto, Pais } from "@/lib/types";
 import { PaqueteGridCard } from "./_components/PaqueteGridCard";
 
@@ -85,6 +94,7 @@ const ITEMS_PER_PAGE_GRID = 18;
 type EstadoFilter = "all" | "ACTIVO" | "BORRADOR" | "INACTIVO";
 
 type ColKey =
+  | "id"
   | "destino"
   | "temporada"
   | "tipo"
@@ -151,7 +161,7 @@ function usePaisResolver(
 }
 
 // ---------------------------------------------------------------------------
-// Price formatting helper — produces { main, sub } for the fused column
+// Price formatting helper — keeps only the final sale price visible in the table.
 // ---------------------------------------------------------------------------
 
 function formatPaquetePrice(
@@ -163,7 +173,7 @@ function formatPaquetePrice(
   }
   if (pricing.max !== null && pricing.min !== pricing.max) {
     return {
-      main: `${formatCurrency(pricing.min)} — ${formatCurrency(pricing.max)}`,
+      main: `Desde ${formatCurrency(pricing.min)}`,
       isRange: true,
     };
   }
@@ -194,6 +204,8 @@ export default function PaquetesPage() {
   const allOpciones = useAllOpcionesHoteleras();
   const allDestinos = useAllDestinos();
   const loading = usePackageLoading();
+  const { hydratingPaquetes, totalPaquetes, loadedPaquetes } =
+    usePackageProgress();
 
   // Map paqueteId → total nights (sum of its destinos.noches)
   const nochesPorPaquete = useMemo(() => {
@@ -261,6 +273,7 @@ export default function PaquetesPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [visibleColumns, setVisibleColumns] = useState<Record<ColKey, boolean>>(
     {
+      id: true,
       destino: true,
       temporada: true,
       tipo: false,
@@ -362,11 +375,8 @@ export default function PaquetesPage() {
 
     // Search filter
     if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.titulo.toLowerCase().includes(q) ||
-          p.descripcion.toLowerCase().includes(q),
+      result = result.filter((p) =>
+        matchesSearch(search, p.titulo, p.descripcion, p.destino),
       );
     }
 
@@ -430,10 +440,29 @@ export default function PaquetesPage() {
 
   const itemsPerPage =
     viewMode === "grid" ? ITEMS_PER_PAGE_GRID : ITEMS_PER_PAGE_TABLE;
+  const hasSearchOrFilters =
+    Boolean(search.trim()) ||
+    estadoFilter !== "all" ||
+    temporadaFilter.length > 0 ||
+    tipoFilter.length > 0 ||
+    destinoFilter.length > 0 ||
+    Boolean(regionParam);
+  const visibleTotalPaquetes = hasSearchOrFilters
+    ? filteredPaquetes.length
+    : hydratingPaquetes
+      ? Math.max(totalPaquetes, filteredPaquetes.length)
+      : filteredPaquetes.length;
   const totalPages = Math.max(
     1,
-    Math.ceil(filteredPaquetes.length / itemsPerPage),
+    Math.ceil(visibleTotalPaquetes / itemsPerPage),
   );
+  const isPendingPage =
+    !hasSearchOrFilters &&
+    hydratingPaquetes &&
+    currentPage > 1 &&
+    filteredPaquetes.length < currentPage * itemsPerPage;
+  const showPendingSearch =
+    hasSearchOrFilters && hydratingPaquetes && filteredPaquetes.length === 0;
 
   const paginatedPaquetes = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -445,11 +474,31 @@ export default function PaquetesPage() {
   // ---------------------------------------------------------------------------
 
   const activeFilterCount =
+    (search.trim() ? 1 : 0) +
     (estadoFilter === "all" ? 0 : 1) +
     temporadaFilter.length +
     tipoFilter.length +
     destinoFilter.length +
     (regionParam ? 1 : 0);
+  const packageSubtitle = hydratingPaquetes
+    ? `${loadedPaquetes} de ${Math.max(totalPaquetes, loadedPaquetes)} paquetes cargados${
+        hasSearchOrFilters
+          ? ` · ${filteredPaquetes.length} visibles con los filtros actuales`
+          : ""
+      }`
+    : `${paquetes.length} paquetes en catálogo${
+        hasSearchOrFilters
+          ? ` · ${filteredPaquetes.length} coinciden con los filtros`
+          : ""
+      }`;
+  const hydrationMessage = hydratingPaquetes
+    ? hasSearchOrFilters
+      ? "La búsqueda todavía está completando el catálogo. Algunos resultados pueden aparecer en unos segundos."
+      : `Mostrando la primera tanda mientras se cargan ${Math.max(
+          totalPaquetes - loadedPaquetes,
+          0,
+        )} paquetes restantes en segundo plano.`
+    : null;
 
   function clearAllFilters() {
     setSearch("");
@@ -463,6 +512,10 @@ export default function PaquetesPage() {
   function clearRegionFilter() {
     router.replace("/paquetes");
   }
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -499,6 +552,7 @@ export default function PaquetesPage() {
   // ---------------------------------------------------------------------------
 
   const columnDefs: ColumnDefinition<ColKey>[] = [
+    { key: "id", label: "ID", locked: true },
     { key: "destino", label: "Destino" },
     { key: "temporada", label: "Temporada" },
     { key: "tipo", label: "Tipo" },
@@ -519,25 +573,26 @@ export default function PaquetesPage() {
 
   return (
     <>
-      <PageHeader
-        title="Paquetes"
-        subtitle={`${paquetes.length} paquetes en catálogo · ${filteredPaquetes.length} coinciden con los filtros`}
-        action={
-          canEdit ? (
-            <Button
-              leftIcon={<Plus className="h-4 w-4" />}
-              onClick={() => router.push("/paquetes/nuevo")}
-            >
-              Nuevo Paquete
-            </Button>
-          ) : undefined
-        }
-      />
+      <Tooltip.Provider delayDuration={250}>
+        <PageHeader
+          title="Paquetes"
+          subtitle={packageSubtitle}
+          action={
+            canEdit ? (
+              <Button
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => router.push("/paquetes/nuevo")}
+              >
+                Nuevo Paquete
+              </Button>
+            ) : undefined
+          }
+        />
 
-      {/* ===================== Filter Toolbar ===================== */}
-      <div className="mb-5 flex flex-col gap-3">
-        {/* Row 1: search + estado + view toggle + columns */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* ===================== Filter Toolbar ===================== */}
+        <div className="mb-5 flex flex-col gap-3">
+          {/* Row 1: search + estado + view toggle + columns */}
+          <div className="flex flex-wrap items-center gap-2.5">
           {/* Search input */}
           <div
             className="relative flex h-8 min-w-[200px] flex-1 items-center rounded-[8px] border border-hairline bg-white focus-within:border-[#8B5CF6]/40 focus-within:ring-2 focus-within:ring-[#8B5CF6]/15 lg:max-w-[280px]"
@@ -616,89 +671,107 @@ export default function PaquetesPage() {
             )}
             <ViewToggle value={viewMode} onChange={setViewMode} />
           </div>
-        </div>
+          </div>
 
-        {/* Row 2: multi-select popovers */}
-        <div className="flex flex-wrap items-center gap-2">
-          <MultiSelectFilter
-            label="Temporada"
-            options={temporadaOptions}
-            selected={temporadaFilter}
-            onChange={setTemporadaFilter}
-          />
-          <MultiSelectFilter
-            label="Tipo"
-            options={tipoOptions}
-            selected={tipoFilter}
-            onChange={setTipoFilter}
-          />
-          <MultiSelectFilter
-            label="Destino"
-            options={destinoOptions}
-            selected={destinoFilter}
-            onChange={setDestinoFilter}
-          />
+          {/* Row 2: multi-select popovers */}
+          <div className="flex flex-wrap items-center gap-2">
+            <MultiSelectFilter
+              label="Temporada"
+              options={temporadaOptions}
+              selected={temporadaFilter}
+              onChange={setTemporadaFilter}
+            />
+            <MultiSelectFilter
+              label="Tipo"
+              options={tipoOptions}
+              selected={tipoFilter}
+              onChange={setTipoFilter}
+            />
+            <MultiSelectFilter
+              label="Destino"
+              options={destinoOptions}
+              selected={destinoFilter}
+              onChange={setDestinoFilter}
+            />
 
-          {activeRegion && (
-            <motion.button
-              type="button"
-              onClick={clearRegionFilter}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-[#8B5CF6]/30 bg-[#8B5CF6]/8 px-2.5 text-[12px] font-medium text-[#8B5CF6] hover:bg-[#8B5CF6]/15"
-              aria-label={`Quitar filtro de región ${activeRegion.nombre}`}
-            >
-              <span>Región: {activeRegion.nombre}</span>
-              <X size={12} strokeWidth={2.5} />
-            </motion.button>
-          )}
-
-          <AnimatePresence>
-            {activeFilterCount > 0 && (
+            {activeRegion && (
               <motion.button
-                key="clear"
                 type="button"
-                onClick={clearAllFilters}
+                onClick={clearRegionFilter}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="inline-flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12px] font-medium text-neutral-500 hover:text-neutral-900"
+                className="inline-flex h-8 items-center gap-1.5 rounded-[8px] border border-[#8B5CF6]/30 bg-[#8B5CF6]/8 px-2.5 text-[12px] font-medium text-[#8B5CF6] hover:bg-[#8B5CF6]/15"
+                aria-label={`Quitar filtro de región ${activeRegion.nombre}`}
               >
+                <span>Región: {activeRegion.nombre}</span>
                 <X size={12} strokeWidth={2.5} />
-                Limpiar filtros
-                <span className="font-mono text-[10px] text-neutral-400 tabular-nums">
-                  ({activeFilterCount})
-                </span>
               </motion.button>
             )}
-          </AnimatePresence>
-        </div>
-      </div>
 
-      {/* ===================== Content (table or grid) ===================== */}
-      {filteredPaquetes.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-[14px] border border-dashed border-hairline bg-white py-20 text-neutral-400">
-          <Package className="mb-3 h-12 w-12 opacity-40" />
-          <p className="text-sm">No se encontraron paquetes</p>
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="mt-3 text-xs font-medium text-[#8B5CF6] hover:underline"
-            >
-              Limpiar filtros
-            </button>
-          )}
+            <AnimatePresence>
+              {activeFilterCount > 0 && (
+                <motion.button
+                  key="clear"
+                  type="button"
+                  onClick={clearAllFilters}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="inline-flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[12px] font-medium text-neutral-500 hover:text-neutral-900"
+                >
+                  <X size={12} strokeWidth={2.5} />
+                  Limpiar filtros
+                  <span className="font-mono text-[10px] text-neutral-400 tabular-nums">
+                    ({activeFilterCount})
+                  </span>
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      ) : viewMode === "grid" ? (
-        /* -------------------- GRID VIEW -------------------- */
-        <motion.div
-          key="grid"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.25 }}
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-        >
+
+        {/* ===================== Content (table or grid) ===================== */}
+        {hydrationMessage && (
+          <div className="mb-4 rounded-[12px] border border-[#45D4C0]/20 bg-[#45D4C0]/7 px-3.5 py-2.5 text-[12.5px] text-[#1A6D63]">
+            {hydrationMessage}
+          </div>
+        )}
+
+        {showPendingSearch ? (
+          viewMode === "grid" ? (
+            <CardGridSkeleton cards={8} columns={4} />
+          ) : (
+            <DataTableSkeleton columns={6} rows={8} />
+          )
+        ) : filteredPaquetes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-[14px] border border-dashed border-hairline bg-white py-20 text-neutral-400">
+            <Package className="mb-3 h-12 w-12 opacity-40" />
+            <p className="text-sm">No se encontraron paquetes</p>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="mt-3 text-xs font-medium text-[#8B5CF6] hover:underline"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+        ) : isPendingPage ? (
+          viewMode === "grid" ? (
+            <CardGridSkeleton cards={8} columns={4} />
+          ) : (
+            <DataTableSkeleton columns={6} rows={8} />
+          )
+        ) : viewMode === "grid" ? (
+          /* -------------------- GRID VIEW -------------------- */
+          <motion.div
+            key="grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25 }}
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          >
           {paginatedPaquetes.map((paquete, i) => (
             <PaqueteGridCard
               key={paquete.id}
@@ -724,40 +797,50 @@ export default function PaquetesPage() {
               nochesTotales={nochesPorPaquete.get(paquete.id)}
             />
           ))}
-        </motion.div>
-      ) : (
-        /* -------------------- TABLE VIEW -------------------- */
-        <motion.div
-          key="table"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.25 }}
-          className="relative"
-        >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Paquete</TableHead>
-                {visibleColumns.destino && <TableHead>Destino</TableHead>}
-                {visibleColumns.temporada && <TableHead>Temporada</TableHead>}
-                {visibleColumns.tipo && <TableHead>Tipo</TableHead>}
-                {visibleColumns.noches && (
-                  <TableHead className="text-right">Noches</TableHead>
-                )}
-                {visibleColumns.estado && <TableHead>Estado</TableHead>}
-                {visibleColumns.precio &&
-                  canSeePricing.venta !== false && (
-                    <TableHead variant="price">Precio</TableHead>
-                  )}
-                {canEdit && (
-                  <TableHead className="w-[1%] whitespace-nowrap">
-                    Acciones
+          </motion.div>
+        ) : (
+          /* -------------------- TABLE VIEW -------------------- */
+          <motion.div
+            key="table"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.25 }}
+            className="relative"
+          >
+            <Table className="!overflow-x-auto !overflow-y-visible [&>table]:min-w-[980px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    variant="id"
+                    className="w-[96px] whitespace-nowrap text-center"
+                  >
+                    ID
                   </TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedPaquetes.map((paquete) => {
+                  <TableHead>Paquete</TableHead>
+                  {visibleColumns.destino && (
+                    <TableHead className="text-center">Destino</TableHead>
+                  )}
+                  {visibleColumns.temporada && <TableHead>Temporada</TableHead>}
+                  {visibleColumns.tipo && <TableHead>Tipo</TableHead>}
+                  {visibleColumns.noches && (
+                    <TableHead className="text-center">Noches</TableHead>
+                  )}
+                  {visibleColumns.estado && <TableHead>Estado</TableHead>}
+                  {visibleColumns.precio &&
+                    canSeePricing.venta !== false && (
+                      <TableHead variant="price" className="text-center">
+                        Precio
+                      </TableHead>
+                    )}
+                  {canEdit && (
+                    <TableHead className="w-[1%] whitespace-nowrap">
+                      Acciones
+                    </TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedPaquetes.map((paquete) => {
                 const pricing = preciosMap[paquete.id];
                 const destinoNombre =
                   resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "—";
@@ -770,27 +853,18 @@ export default function PaquetesPage() {
                   : undefined;
                 const price = formatPaquetePrice(pricing, paquete.precioVenta);
 
-                // Factor display for the price sub-line
-                const factorSub = (() => {
-                  if (!canSeePricing.markup || !pricing || pricing.opcionFactors.length === 0)
-                    return null;
-                  const fs = pricing.opcionFactors;
-                  if (fs.length === 1) return fs[0].toFixed(2);
-                  const min = Math.min(...fs);
-                  const max = Math.max(...fs);
-                  return min === max
-                    ? min.toFixed(2)
-                    : `${min.toFixed(2)}–${max.toFixed(2)}`;
-                })();
-
                 return (
                   <TableRow
                     key={paquete.id}
                     className="cursor-pointer"
                     onClick={() => router.push(`/paquetes/${paquete.id}`)}
                   >
+                    <TableCell variant="id" className="whitespace-nowrap">
+                      {paquete.id}
+                    </TableCell>
+
                     {/* Título (with destino sublabel when that column is hidden) */}
-                    <TableCell className="max-w-[280px]">
+                    <TableCell className="max-w-[260px]">
                       <div className="flex flex-col">
                         <span className="truncate font-medium text-neutral-900">
                           {paquete.titulo}
@@ -805,8 +879,8 @@ export default function PaquetesPage() {
                     </TableCell>
 
                     {visibleColumns.destino && (
-                      <TableCell>
-                        <div className="flex flex-col">
+                      <TableCell className="text-center">
+                        <div className="flex flex-col items-center">
                           {regionNombre && (
                             <span className="text-[10.5px] font-medium uppercase tracking-wider text-neutral-400">
                               {regionNombre}
@@ -844,7 +918,7 @@ export default function PaquetesPage() {
                     )}
 
                     {visibleColumns.noches && (
-                      <TableCell className="text-right font-mono text-[12px] tabular-nums text-neutral-600">
+                      <TableCell className="text-center font-mono text-[12px] tabular-nums text-neutral-600">
                         {(() => {
                           const n = nochesPorPaquete.get(paquete.id) ?? 0;
                           return n > 0 ? n : "—";
@@ -861,96 +935,183 @@ export default function PaquetesPage() {
                     )}
 
                     {visibleColumns.precio && canSeePricing.venta !== false && (
-                      <TableCell variant="price">
-                        <div className="flex flex-col items-end">
-                          <span
-                            className={`font-mono font-semibold tabular-nums text-neutral-900 ${
-                              price.isRange ? "text-[12.5px]" : "text-[13.5px]"
-                            }`}
-                          >
-                            {price.main}
-                          </span>
-                          {(canSeePricing.neto || factorSub) && (
-                            <span className="mt-0.5 flex items-center gap-1 font-mono text-[10px] tabular-nums text-neutral-400">
-                              {canSeePricing.neto && pricing && (
-                                <>neto {formatCurrency(pricing.netoFijos)}</>
-                              )}
-                              {canSeePricing.neto && factorSub && <span>·</span>}
-                              {factorSub && <>×{factorSub}</>}
-                            </span>
-                          )}
-                        </div>
+                      <TableCell variant="price" className="text-center">
+                        <span
+                          className={`font-mono font-semibold tabular-nums text-neutral-900 ${
+                            price.isRange ? "text-[12.5px]" : "text-[13.5px]"
+                          }`}
+                        >
+                          {price.main}
+                        </span>
                       </TableCell>
                     )}
 
                     {canEdit && (
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-0.5">
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/paquetes/${paquete.id}`);
-                            }}
-                            aria-label="Ver detalle"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/paquetes/${paquete.id}?tab=datos`);
-                            }}
-                            aria-label="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleClone(e, paquete.id)}
-                            aria-label="Clonar"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="icon"
-                            size="xs"
-                            onClick={(e) => handleOpenDelete(e, paquete)}
-                            aria-label="Eliminar"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                      <TableCell
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/paquetes/${paquete.id}?tab=datos`);
+                        }}
+                      >
+                        <div className="flex items-center justify-center gap-0.5 lg:justify-end">
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <Button
+                                variant="icon"
+                                size="xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/paquetes/${paquete.id}`);
+                                }}
+                                aria-label="Ver"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                side="top"
+                                sideOffset={8}
+                                className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                                style={{
+                                  background: "rgba(26,26,46,0.92)",
+                                  backdropFilter: "blur(12px)",
+                                  WebkitBackdropFilter: "blur(12px)",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                  boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                                }}
+                              >
+                                Ver
+                                <Tooltip.Arrow
+                                  style={{ fill: "rgba(26,26,46,0.92)" }}
+                                />
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <Button
+                                variant="icon"
+                                size="xs"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/paquetes/${paquete.id}?tab=datos`);
+                                }}
+                                aria-label="Editar"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                side="top"
+                                sideOffset={8}
+                                className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                                style={{
+                                  background: "rgba(26,26,46,0.92)",
+                                  backdropFilter: "blur(12px)",
+                                  WebkitBackdropFilter: "blur(12px)",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                  boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                                }}
+                              >
+                                Editar
+                                <Tooltip.Arrow
+                                  style={{ fill: "rgba(26,26,46,0.92)" }}
+                                />
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <Button
+                                variant="icon"
+                                size="xs"
+                                onClick={(e) => handleClone(e, paquete.id)}
+                                aria-label="Clonar"
+                              >
+                                <Copy className="h-4 w-4" />
+                              </Button>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                side="top"
+                                sideOffset={8}
+                                className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                                style={{
+                                  background: "rgba(26,26,46,0.92)",
+                                  backdropFilter: "blur(12px)",
+                                  WebkitBackdropFilter: "blur(12px)",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                  boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                                }}
+                              >
+                                Clonar
+                                <Tooltip.Arrow
+                                  style={{ fill: "rgba(26,26,46,0.92)" }}
+                                />
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <Button
+                                variant="icon"
+                                size="xs"
+                                onClick={(e) => handleOpenDelete(e, paquete)}
+                                aria-label="Eliminar"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                side="top"
+                                sideOffset={8}
+                                className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                                style={{
+                                  background: "rgba(26,26,46,0.92)",
+                                  backdropFilter: "blur(12px)",
+                                  WebkitBackdropFilter: "blur(12px)",
+                                  border: "1px solid rgba(255,255,255,0.08)",
+                                  boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                                }}
+                              >
+                                Eliminar
+                                <Tooltip.Arrow
+                                  style={{ fill: "rgba(26,26,46,0.92)" }}
+                                />
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
                         </div>
                       </TableCell>
                     )}
                   </TableRow>
                 );
               })}
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
 
-          {/* Fade indicator for horizontal scroll on mobile */}
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent md:hidden" />
-        </motion.div>
-      )}
+            {/* Fade indicator for horizontal scroll on mobile */}
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white/80 to-transparent md:hidden" />
+          </motion.div>
+        )}
 
-      {/* ===================== Pagination ===================== */}
-      {filteredPaquetes.length > itemsPerPage && (
-        <div className="mt-6 flex justify-center">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </div>
-      )}
+        {/* ===================== Pagination ===================== */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex justify-center">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
 
-      {/* ===================== Delete modal ===================== */}
-      <Modal
+        {/* ===================== Delete modal ===================== */}
+        <Modal
         open={!!deleteTarget}
         onOpenChange={(open) => {
           if (!open) {
@@ -990,6 +1151,7 @@ export default function PaquetesPage() {
           </Button>
         </ModalFooter>
       </Modal>
+      </Tooltip.Provider>
     </>
   );
 }

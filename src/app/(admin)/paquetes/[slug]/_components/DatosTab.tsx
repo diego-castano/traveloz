@@ -36,6 +36,11 @@ import { useToast } from "@/components/ui/Toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
 import { validateForActivation } from "@/lib/validation";
+import {
+  formatStoredDate,
+  parseStoredDate,
+  startOfLocalDay,
+} from "@/lib/date";
 import { Star, Check, Circle } from "lucide-react";
 import { springs } from "@/components/lib/animations";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
@@ -105,9 +110,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [destino, setDestino] = useState(paquete.destino ?? "");
   const [descripcion, setDescripcion] = useState(paquete.descripcion);
   const [textoVisual, setTextoVisual] = useState(paquete.textoVisual ?? "");
-  // `noches` is now derived from PaqueteDestino (sum of nights). The input
-  // below is readonly. Until PR 3 drops the column, we keep paquete.noches
-  // as the persisted value for backfill compat but don't edit it from here.
+  // `noches` comes from the itinerary when destinos exist and falls back to
+  // the initial value loaded from "Nuevo paquete" while the itinerary is empty.
   const nochesTotales = useNochesTotales(paquete.id);
   const destinos = useDestinos(paquete.id);
   const [salidas, setSalidas] = useState(paquete.salidas);
@@ -117,10 +121,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [destacado, setDestacado] = useState(paquete.destacado);
   const [moneda, setMoneda] = useState(paquete.moneda);
   const [validezDesdeDate, setValidezDesdeDate] = useState<Date | undefined>(
-    paquete.validezDesde ? new Date(paquete.validezDesde) : undefined,
+    parseStoredDate(paquete.validezDesde),
   );
   const [validezHastaDate, setValidezHastaDate] = useState<Date | undefined>(
-    paquete.validezHasta ? new Date(paquete.validezHasta) : undefined,
+    parseStoredDate(paquete.validezHasta),
   );
 
   // -- Etiquetas --
@@ -153,7 +157,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const validation = validateForActivation(paquete, assignedAereoCount, opciones);
 
   // -- Vigencia helper: warn if close to expiry --
-  const now = new Date();
+  const now = startOfLocalDay(new Date()) ?? new Date();
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
   const hastaExpired = validezHastaDate ? validezHastaDate < now : false;
   const hastaWarning =
@@ -161,40 +165,61 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       ? validezHastaDate.getTime() - now.getTime() < thirtyDaysMs
       : false;
 
-  // -- Auto-save handler --
-  const handleAutoSave = useCallback(() => {
-    updatePaquete({
-      ...paquete,
+  const persistPaquete = useCallback(
+    (overrides: Partial<Paquete> = {}) => {
+      return updatePaquete({
+        ...paquete,
+        titulo,
+        destino,
+        descripcion,
+        textoVisual: textoVisual || null,
+        salidas,
+        temporadaId,
+        tipoPaqueteId,
+        estado: estado as EstadoPaquete,
+        destacado,
+        moneda,
+        validezDesde: validezDesdeDate
+          ? (formatStoredDate(validezDesdeDate) ?? paquete.validezDesde)
+          : paquete.validezDesde,
+        validezHasta: validezHastaDate
+          ? (formatStoredDate(validezHastaDate) ?? paquete.validezHasta)
+          : paquete.validezHasta,
+        updatedAt: new Date().toISOString(),
+        ...overrides,
+      });
+    },
+    [
+      paquete,
       titulo,
       destino,
       descripcion,
-      textoVisual: textoVisual || null,
+      textoVisual,
       salidas,
       temporadaId,
       tipoPaqueteId,
-      estado: estado as EstadoPaquete,
+      estado,
       destacado,
       moneda,
-      validezDesde: validezDesdeDate
-        ? validezDesdeDate.toISOString().split("T")[0]
-        : paquete.validezDesde,
-      validezHasta: validezHastaDate
-        ? validezHastaDate.toISOString().split("T")[0]
-        : paquete.validezHasta,
-      updatedAt: new Date().toISOString(),
-    });
-  }, [
-    paquete, titulo, destino, descripcion, textoVisual, nochesTotales, salidas,
-    temporadaId, tipoPaqueteId, estado, destacado, moneda,
-    validezDesdeDate, validezHastaDate, updatePaquete,
-  ]);
+      validezDesdeDate,
+      validezHastaDate,
+      updatePaquete,
+    ],
+  );
 
-  const { status: autoSaveStatus, markDirty, saveNow } = useAutoSave({
-    onSave: handleAutoSave,
-    enabled: canEdit,
-  });
+  // -- Auto-save handler --
+  const handleAutoSave = useCallback(() => {
+    return persistPaquete();
+  }, [persistPaquete]);
 
-  // -- Save handler (manual fallback) --
+  const handleDestinoCommit = useCallback(
+    async (nextDestino: string) => {
+      if (!canEdit) return;
+      await persistPaquete({ destino: nextDestino });
+    },
+    [canEdit, persistPaquete],
+  );
+
   const handleSave = () => {
     saveNow();
     toast(
@@ -205,12 +230,12 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   };
 
   // -- Etiqueta handlers --
-  const handleAddEtiqueta = (etiquetaId: string) => {
-    assignEtiqueta({ paqueteId: paquete.id, etiquetaId });
+  const handleAddEtiqueta = async (etiquetaId: string) => {
+    await assignEtiqueta({ paqueteId: paquete.id, etiquetaId });
   };
 
-  const handleRemoveEtiqueta = (assignmentId: string) => {
-    removeEtiqueta(assignmentId);
+  const handleRemoveEtiqueta = async (assignmentId: string) => {
+    await removeEtiqueta(assignmentId);
   };
 
   const isReadOnly = !canEdit;
@@ -230,12 +255,21 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setValidezDesdeDateDirty = (v: Date | undefined) => { setValidezDesdeDate(v); markDirty(); };
   const setValidezHastaDateDirty = (v: Date | undefined) => { setValidezHastaDate(v); markDirty(); };
 
+  const { status: autoSaveStatus, markDirty, saveNow } = useAutoSave({
+    onSave: handleAutoSave,
+    enabled: canEdit,
+  });
+
   return (
     <div className="relative">
-      {/* Auto-save indicator */}
       {canEdit && (
-        <div className="absolute -top-1 right-0 z-10">
-          <AutoSaveIndicator status={autoSaveStatus} />
+        <div className="sticky top-2 z-20 mb-4 flex justify-end">
+          <div className="flex items-center gap-2 rounded-full bg-white/70 px-2 py-1 backdrop-blur-sm">
+            <AutoSaveIndicator status={autoSaveStatus} />
+            <Button variant="secondary" size="sm" onClick={handleSave}>
+              Guardar Cambios
+            </Button>
+          </div>
         </div>
       )}
 
@@ -264,6 +298,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               <DestinoAutocomplete
                 value={destino}
                 onChange={setDestinoDirty}
+                onCommit={handleDestinoCommit}
                 placeholder="Buscar region, pais o ciudad..."
                 readOnly={isReadOnly}
               />
@@ -386,7 +421,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 </span>
                 <span className="text-xs text-neutral-400">
                   {destinos.length === 0
-                    ? "Agregá destinos en la pestaña Alojamientos"
+                    ? nochesTotales > 0
+                      ? "Valor inicial cargado desde Nuevo paquete"
+                      : "Agregá destinos en la pestaña Alojamientos"
                     : `Total de ${destinos.length} destino${destinos.length === 1 ? "" : "s"} — editable desde Alojamientos`}
                 </span>
               </div>
@@ -535,14 +572,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {canEdit && (
-            <div className="mt-6 flex justify-end">
-              <Button variant="secondary" onClick={handleSave}>
-                Guardar Cambios
-              </Button>
             </div>
           )}
         </FormSection>

@@ -27,7 +27,7 @@ interface AuthContextValue {
   canSeePricing: { neto: boolean; markup: boolean; venta: boolean };
   visibleModules: string[];
   login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------

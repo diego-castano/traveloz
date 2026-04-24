@@ -29,6 +29,7 @@ export interface Paquete {
   descripcion: string;
   textoVisual: string | null;
   salidas: string;
+  noches?: number;
   temporadaId: string;
   tipoPaqueteId: string;
   validezDesde: string;
@@ -117,6 +118,7 @@ export interface Circuito {
   nombre: string;
   noches: number;
   proveedorId: string;
+  itinerario?: CircuitoDia[];
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;

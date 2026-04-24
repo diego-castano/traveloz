@@ -44,20 +44,25 @@ function SearchFilter({
       {/* Glass search bar */}
       <div
         className={cn(
-          'flex items-center gap-2 rounded-[10px] border border-neutral-150/50 px-3',
-          'transition-shadow duration-200',
-          isFocused && 'shadow-focus-teal'
+          'flex items-center gap-2 rounded-[12px] border px-3',
+          'transition-all duration-200',
+          isFocused
+            ? 'border-teal-300 bg-white shadow-[0_0_0_4px_rgba(59,191,173,0.12),0_8px_18px_rgba(17,17,36,0.08)]'
+            : 'border-neutral-200 bg-white shadow-[0_2px_8px_rgba(17,17,36,0.04)] hover:border-neutral-300'
         )}
         style={{
-          width: 260,
-          background: isFocused
-            ? 'rgba(255,255,255,0.85)'
-            : 'rgba(255,255,255,0.5)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
         }}
       >
-        <Search className="h-4 w-4 shrink-0 text-neutral-400" />
+        <span
+          className={cn(
+            'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors',
+            isFocused ? 'bg-teal-50 text-teal-600' : 'bg-neutral-50 text-neutral-400'
+          )}
+        >
+          <Search className="h-4 w-4" />
+        </span>
         <input
           type="text"
           value={searchValue}
@@ -65,7 +70,7 @@ function SearchFilter({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
-          className="h-9 w-full bg-transparent border-none focus:outline-none text-sm text-neutral-700 placeholder:text-neutral-400"
+          className="h-10 w-full bg-transparent border-none text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
         />
       </div>
 

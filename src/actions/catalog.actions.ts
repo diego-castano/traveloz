@@ -545,7 +545,7 @@ export async function deleteProveedor(id: string) {
 // Combined fetch — getAllCatalogs
 // ──────────────────────────────────────────────
 
-export async function getAllCatalogs(requestedBrandId?: string) {
+export async function getBaseCatalogs(requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const [
@@ -554,7 +554,6 @@ export async function getAllCatalogs(requestedBrandId?: string) {
       etiquetas,
       regimenes,
       regiones,
-      paises,
       proveedores,
     ] = await Promise.all([
       prisma.temporada.findMany({
@@ -577,11 +576,6 @@ export async function getAllCatalogs(requestedBrandId?: string) {
         where: { brandId },
         orderBy: [{ orden: "asc" }, { nombre: "asc" }],
       }),
-      prisma.pais.findMany({
-        where: { brandId },
-        include: { ciudades: true },
-        orderBy: { nombre: "asc" },
-      }),
       prisma.proveedor.findMany({
         where: { brandId, deletedAt: null },
         orderBy: { nombre: "asc" },
@@ -594,8 +588,40 @@ export async function getAllCatalogs(requestedBrandId?: string) {
       etiquetas,
       regimenes,
       regiones,
-      paises,
       proveedores,
+    };
+  } catch (error) {
+    console.error("Error fetching base catalogs:", error);
+    throw new Error("No se pudieron obtener los catálogos base.");
+  }
+}
+
+export async function getCatalogGeography(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const paises = await prisma.pais.findMany({
+      where: { brandId },
+      include: { ciudades: true },
+      orderBy: { nombre: "asc" },
+    });
+
+    return { paises };
+  } catch (error) {
+    console.error("Error fetching catalog geography:", error);
+    throw new Error("No se pudieron obtener los paises y ciudades.");
+  }
+}
+
+export async function getAllCatalogs(requestedBrandId?: string) {
+  try {
+    const [base, geography] = await Promise.all([
+      getBaseCatalogs(requestedBrandId),
+      getCatalogGeography(requestedBrandId),
+    ]);
+
+    return {
+      ...base,
+      ...geography,
     };
   } catch (error) {
     console.error("Error fetching all catalogs:", error);

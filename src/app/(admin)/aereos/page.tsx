@@ -33,6 +33,7 @@ import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import type { Aereo } from "@/lib/types";
+import { matchesSearch } from "@/lib/search";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -82,12 +83,8 @@ export default function AereosPage() {
 
   const filteredAereos = useMemo(() => {
     if (!search.trim()) return aereos;
-    const q = search.toLowerCase();
-    return aereos.filter(
-      (a) =>
-        a.ruta.toLowerCase().includes(q) ||
-        a.destino.toLowerCase().includes(q) ||
-        a.aerolinea.toLowerCase().includes(q),
+    return aereos.filter((a) =>
+      matchesSearch(search, a.ruta, a.destino, a.aerolinea),
     );
   }, [aereos, search]);
 

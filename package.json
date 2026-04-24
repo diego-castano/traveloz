@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:local": "bash scripts/local-dev.sh",
     "build": "npx prisma generate && next build",
     "start": "bash scripts/railway-start.sh",
     "lint": "next lint",

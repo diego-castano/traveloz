@@ -3,16 +3,19 @@
 import { useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { format } from "date-fns";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { DatePicker } from "@/components/ui/DatePicker";
 import {
   ImageUploader,
   type ImageItem,
 } from "@/components/ui/ImageUploader";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { FormSection, FormSections } from "@/components/ui/form/FormSection";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
 import { SelectCascade } from "@/components/ui/form/SelectCascade";
 import {
   InlineEditTable,
@@ -33,7 +36,23 @@ import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
+import { formatStoredDate, parseStoredDate } from "@/lib/date";
 import type { PrecioAlojamiento } from "@/lib/types";
+
+function formatPeriodLabel(value?: string | null) {
+  const date = parseStoredDate(value);
+  return date ? format(date, "dd/MM/yyyy") : "—";
+}
+
+function isCurrentPeriod(periodoDesde?: string | null, periodoHasta?: string | null) {
+  const today = formatStoredDate(new Date()) ?? "";
+  return Boolean(
+    periodoDesde &&
+      periodoHasta &&
+      periodoDesde <= today &&
+      today <= periodoHasta,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // AlojamientoDetailPage
@@ -121,10 +140,33 @@ export default function AlojamientoDetailPage() {
   );
 
   async function handleSavePrecio(row: PrecioAlojamiento) {
+    if (!row.periodoDesde?.trim() || !row.periodoHasta?.trim()) {
+      toast(
+        "warning",
+        "Periodo requerido",
+        "Debes completar desde y hasta antes de guardar el precio.",
+      );
+      return;
+    }
+    if (!Number.isFinite(Number(row.precioPorNoche)) || Number(row.precioPorNoche) <= 0) {
+      toast(
+        "warning",
+        "Precio requerido",
+        "El precio por noche debe ser mayor a cero.",
+      );
+      return;
+    }
+
+    const normalizedRegimenId = row.regimenId?.trim() || "";
+    const normalizedRow = {
+      ...row,
+      regimenId: normalizedRegimenId,
+    };
+
     const doSave = () => {
       try {
-        if (row.id) {
-          updatePrecioAlojamiento(row);
+        if (normalizedRow.id) {
+          updatePrecioAlojamiento(normalizedRow);
           toast(
             "success",
             "Precio actualizado",
@@ -133,10 +175,10 @@ export default function AlojamientoDetailPage() {
         } else {
           createPrecioAlojamiento({
             alojamientoId: alojamiento!.id,
-            periodoDesde: row.periodoDesde ?? "",
-            periodoHasta: row.periodoHasta ?? "",
-            precioPorNoche: Number(row.precioPorNoche ?? 0),
-            regimenId: row.regimenId ?? "",
+            periodoDesde: normalizedRow.periodoDesde ?? "",
+            periodoHasta: normalizedRow.periodoHasta ?? "",
+            precioPorNoche: Number(normalizedRow.precioPorNoche ?? 0),
+            regimenId: normalizedRegimenId,
           });
           toast(
             "success",
@@ -193,26 +235,53 @@ export default function AlojamientoDetailPage() {
     {
       key: "periodoDesde",
       label: "Periodo Desde",
-      width: "170px",
-      render: (r) => r.periodoDesde,
+      width: "250px",
+      render: (r) => (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-neutral-900">
+              {formatPeriodLabel(r.periodoDesde)}
+            </span>
+            {isCurrentPeriod(r.periodoDesde, r.periodoHasta) && (
+              <Badge variant="active" size="sm">
+                Vigente
+              </Badge>
+            )}
+          </div>
+          <span className="text-[11px] text-neutral-400">
+            Inicio de vigencia
+          </span>
+        </div>
+      ),
       editor: (r, update) => (
-        <Input
-          type="date"
-          value={r.periodoDesde ?? ""}
-          onChange={(e) => update("periodoDesde", e.target.value)}
+        <DatePicker
+          value={parseStoredDate(r.periodoDesde)}
+          onChange={(date) =>
+            update("periodoDesde", formatStoredDate(date) ?? "")
+          }
+          placeholder="Seleccionar fecha..."
         />
       ),
     },
     {
       key: "periodoHasta",
       label: "Periodo Hasta",
-      width: "170px",
-      render: (r) => r.periodoHasta,
+      width: "250px",
+      render: (r) => (
+        <div className="flex flex-col gap-1">
+          <span className="font-medium text-neutral-900">
+            {formatPeriodLabel(r.periodoHasta)}
+          </span>
+          <span className="text-[11px] text-neutral-400">Fin de vigencia</span>
+        </div>
+      ),
       editor: (r, update) => (
-        <Input
-          type="date"
-          value={r.periodoHasta ?? ""}
-          onChange={(e) => update("periodoHasta", e.target.value)}
+        <DatePicker
+          value={parseStoredDate(r.periodoHasta)}
+          onChange={(date) =>
+            update("periodoHasta", formatStoredDate(date) ?? "")
+          }
+          placeholder="Seleccionar fecha..."
         />
       ),
     },
@@ -220,7 +289,7 @@ export default function AlojamientoDetailPage() {
       key: "precioPorNoche",
       label: "USD / noche",
       align: "right",
-      width: "150px",
+      width: "180px",
       render: (r) => (
         <span className="font-mono text-[13px] font-semibold text-neutral-900">
           {formatCurrency(r.precioPorNoche)}
@@ -240,6 +309,7 @@ export default function AlojamientoDetailPage() {
     {
       key: "regimenId",
       label: "Regimen",
+      width: "210px",
       render: (r) => regimenMap[r.regimenId] ?? "—",
       editor: (r, update) => (
         <Select
@@ -432,6 +502,10 @@ export default function AlojamientoDetailPage() {
           title="Precios por periodo"
           description="Tarifas por noche y regimen segun la temporada."
         >
+          <FieldDescription>
+            Los periodos no pueden quedar vacíos. Si editás un valor, se guarda
+            con el selector de fecha y el precio por noche.
+          </FieldDescription>
           <InlineEditTable<PrecioAlojamiento>
             columns={precioColumns}
             rows={precios}
@@ -447,10 +521,11 @@ export default function AlojamientoDetailPage() {
                       precioPorNoche: 0,
                       regimenId: "",
                     }) as Partial<PrecioAlojamiento>
-                : undefined
+                  : undefined
             }
-            addLabel="Agregar periodo"
+            addLabel="Agregar tarifa"
             emptyMessage="No hay periodos de precio registrados"
+            className="min-w-[980px]"
           />
         </FormSection>
 
@@ -467,6 +542,7 @@ export default function AlojamientoDetailPage() {
             onRemove={canEdit ? handleRemove : undefined}
             onReorder={canEdit ? handleReorder : undefined}
             maxImages={10}
+            folder={`alojamientos/${alojamiento.id}`}
           />
 
           {images.length === 0 && !canEdit && (

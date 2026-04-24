@@ -8,26 +8,29 @@ import { Input } from "@/components/ui/Input";
 import {
   usePaqueteServices,
   usePackageActions,
+  usePaqueteById,
 } from "@/components/providers/PackageProvider";
 import {
   useAereos,
-  useAlojamientos,
   useTraslados,
   useSeguros,
   useCircuitos,
 } from "@/components/providers/ServiceProvider";
 import {
   usePaises,
+  useRegiones,
   useProveedores,
 } from "@/components/providers/CatalogProvider";
 import { useToast } from "@/components/ui/Toast";
-import { Plus, Plane, Hotel, Bus, Shield, MapIcon, Search } from "lucide-react";
+import { Plus, Plane, Bus, Shield, MapIcon, Search } from "lucide-react";
 import type {
   Aereo,
-  Alojamiento,
   Traslado,
   Seguro,
   Circuito,
+  Pais,
+  Region,
+  Ciudad,
 } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -40,6 +43,106 @@ interface ServiceSelectorModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function normalizeSearch(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+type PaisWithCiudades = Pais & { ciudades: Ciudad[] };
+type RegionWithPaises = Region & { paises: PaisWithCiudades[] };
+
+function extractFlightDestinationTokens(destino: string | null | undefined): string[] {
+  const raw = destino?.trim();
+  if (!raw) return [];
+
+  const primaryParts = raw
+    .split(/\s*(?:\+|\/|,|\sy\s|\se\s)\s*/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const tokens = primaryParts.flatMap((part) =>
+    part
+      .split(/\s*(?:›|>|-|–|—)\s*/)
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+      ,
+  );
+
+  return Array.from(new Set(tokens.map(normalizeSearch).filter(Boolean)));
+}
+
+function resolveRegionNamesFromDestino(
+  destino: string | null | undefined,
+  paises: PaisWithCiudades[],
+  regiones: RegionWithPaises[],
+): string[] {
+  const tokens = extractFlightDestinationTokens(destino);
+  if (tokens.length === 0) return [];
+
+  const regionNameById = new Map(
+    regiones.map((region) => [region.id, normalizeSearch(region.nombre)]),
+  );
+  const allowedRegions = new Set<string>();
+
+  for (const token of tokens) {
+    for (const region of regiones) {
+      if (normalizeSearch(region.nombre) === token) {
+        allowedRegions.add(normalizeSearch(region.nombre));
+      }
+    }
+
+    for (const pais of paises) {
+      if (normalizeSearch(pais.nombre) === token && pais.regionId) {
+        const regionName = regionNameById.get(pais.regionId);
+        if (regionName) allowedRegions.add(regionName);
+      }
+
+      for (const ciudad of pais.ciudades) {
+        if (normalizeSearch(ciudad.nombre) === token && pais.regionId) {
+          const regionName = regionNameById.get(pais.regionId);
+          if (regionName) allowedRegions.add(regionName);
+        }
+      }
+    }
+  }
+
+  return Array.from(allowedRegions);
+}
+
+function resolveRegionForFlightDestino(
+  destino: string,
+  paises: PaisWithCiudades[],
+  regiones: RegionWithPaises[],
+): string | null {
+  const normalizedDestino = normalizeSearch(destino);
+  const regionNameById = new Map(
+    regiones.map((region) => [region.id, normalizeSearch(region.nombre)]),
+  );
+
+  for (const region of regiones) {
+    if (normalizeSearch(region.nombre) === normalizedDestino) {
+      return normalizeSearch(region.nombre);
+    }
+  }
+
+  for (const pais of paises) {
+    if (normalizeSearch(pais.nombre) === normalizedDestino && pais.regionId) {
+      return regionNameById.get(pais.regionId) ?? null;
+    }
+
+    for (const ciudad of pais.ciudades) {
+      if (normalizeSearch(ciudad.nombre) === normalizedDestino && pais.regionId) {
+        return regionNameById.get(pais.regionId) ?? null;
+      }
+    }
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -50,9 +153,9 @@ export default function ServiceSelectorModal({
   onOpenChange,
 }: ServiceSelectorModalProps) {
   const services = usePaqueteServices(paqueteId);
+  const paquete = usePaqueteById(paqueteId);
   const {
     assignAereo,
-    assignAlojamiento,
     assignTraslado,
     assignSeguro,
     assignCircuito,
@@ -62,23 +165,12 @@ export default function ServiceSelectorModal({
 
   // All available services
   const aereos = useAereos();
-  const alojamientos = useAlojamientos();
   const traslados = useTraslados();
   const seguros = useSeguros();
   const circuitos = useCircuitos();
   const paises = usePaises();
+  const regiones = useRegiones();
   const proveedores = useProveedores();
-
-  // Build ciudades lookup map from paises
-  const ciudadMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const pais of paises) {
-      for (const ciudad of pais.ciudades) {
-        map.set(ciudad.id, ciudad.nombre);
-      }
-    }
-    return map;
-  }, [paises]);
 
   // Build proveedor lookup map
   const proveedorMap = useMemo(() => {
@@ -93,10 +185,6 @@ export default function ServiceSelectorModal({
   const assignedAereoIds = useMemo(
     () => new Set(services.aereos.map((a) => a.aereoId)),
     [services.aereos],
-  );
-  const assignedAlojamientoIds = useMemo(
-    () => new Set(services.alojamientos.map((a) => a.alojamientoId)),
-    [services.alojamientos],
   );
   const assignedTrasladoIds = useMemo(
     () => new Set(services.traslados.map((t) => t.trasladoId)),
@@ -113,12 +201,26 @@ export default function ServiceSelectorModal({
 
   // -- Search match helper --
   const sq = searchQuery.toLowerCase().trim();
+  const aereoRegionTokens = useMemo(
+    () => resolveRegionNamesFromDestino(paquete?.destino, paises, regiones),
+    [paquete?.destino, paises, regiones],
+  );
+  const hasAereoRegionFilter = aereoRegionTokens.length > 0;
 
   // Available (unassigned) services, filtered by search query
   const availableAereos = useMemo(
     () =>
       aereos
         .filter((a) => !assignedAereoIds.has(a.id))
+        .filter((a) => {
+          if (!hasAereoRegionFilter) return true;
+          const flightRegion = resolveRegionForFlightDestino(
+            a.destino,
+            paises,
+            regiones,
+          );
+          return flightRegion ? aereoRegionTokens.includes(flightRegion) : false;
+        })
         .filter(
           (a) =>
             !sq ||
@@ -126,11 +228,15 @@ export default function ServiceSelectorModal({
             a.destino.toLowerCase().includes(sq) ||
             (a.aerolinea ?? "").toLowerCase().includes(sq),
         ),
-    [aereos, assignedAereoIds, sq],
-  );
-  const availableAlojamientos = useMemo(
-    () => alojamientos.filter((a) => !assignedAlojamientoIds.has(a.id)),
-    [alojamientos, assignedAlojamientoIds],
+    [
+      aereos,
+      assignedAereoIds,
+      sq,
+      hasAereoRegionFilter,
+      aereoRegionTokens,
+      paises,
+      regiones,
+    ],
   );
   const availableTraslados = useMemo(
     () =>
@@ -177,17 +283,6 @@ export default function ServiceSelectorModal({
       orden: nextOrden,
     });
     toast("success", "Aereo agregado", `${aereo.ruta} asignado al paquete.`);
-  };
-
-  const handleAssignAlojamiento = (aloj: Alojamiento) => {
-    const nextOrden = services.alojamientos.length;
-    assignAlojamiento({
-      paqueteId,
-      alojamientoId: aloj.id,
-      textoDisplay: null,
-      orden: nextOrden,
-    });
-    toast("success", "Alojamiento agregado", `${aloj.nombre} asignado al paquete.`);
   };
 
   const handleAssignTraslado = (traslado: Traslado) => {
@@ -282,8 +377,22 @@ export default function ServiceSelectorModal({
                 size="sm"
               />
             </div>
+            {hasAereoRegionFilter && paquete?.destino && (
+              <div className="mb-3 flex items-center gap-1.5 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-[12px] text-sky-700">
+                <Plane className="h-3.5 w-3.5 flex-shrink-0" />
+                <span className="truncate">
+                  Mostrando aéreos de la región de: {paquete.destino}
+                </span>
+              </div>
+            )}
             {availableAereos.length === 0 ? (
-              emptyMessage("aereos")
+              <div className="flex items-center justify-center py-8 text-neutral-400 text-sm">
+                {sq
+                  ? `No se encontraron aereos para "${searchQuery}"`
+                  : hasAereoRegionFilter
+                    ? `No hay aereos disponibles para la región de ${paquete?.destino ?? "el destino seleccionado"}`
+                    : "Todos los aereos estan asignados"}
+              </div>
             ) : (
               <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
                 <div className="divide-y divide-hairline">

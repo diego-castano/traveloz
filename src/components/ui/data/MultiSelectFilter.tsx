@@ -152,13 +152,13 @@ export function MultiSelectFilter({
               <div className="relative mt-1.5">
                 <Search
                   size={12}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400"
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-teal-500"
                 />
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar..."
-                  className="h-7 w-full rounded-[6px] border border-hairline bg-neutral-50 pl-7 pr-2 text-[12px] text-neutral-800 placeholder:text-neutral-400 focus:outline-none focus:ring-2 focus:ring-[#8B5CF6]/20"
+                  className="h-8 w-full rounded-[8px] border border-neutral-200 bg-white pl-7 pr-2 text-[12px] text-neutral-900 placeholder:text-neutral-400 shadow-[0_1px_2px_rgba(17,17,36,0.03)] focus:outline-none focus:border-[#8B5CF6]/30 focus:ring-2 focus:ring-[#8B5CF6]/15"
                 />
               </div>
             )}

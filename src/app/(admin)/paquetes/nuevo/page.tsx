@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { Toggle } from "@/components/ui/Toggle";
 import { Button } from "@/components/ui/Button";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { FormSection, FormSections } from "@/components/ui/form/FormSection";
@@ -18,6 +20,7 @@ import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { formatStoredDate } from "@/lib/date";
 import { ArrowLeft } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -45,50 +48,86 @@ export default function NuevoPaquetePage() {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [textoVisual, setTextoVisual] = useState("");
-  // (noches removed — use destinos/itinerario after creation)
+  const [noches, setNoches] = useState("7");
   const [salidas, setSalidas] = useState("Consultar");
   const [temporadaId, setTemporadaId] = useState(temporadas[0]?.id ?? "");
   const [tipoPaqueteId, setTipoPaqueteId] = useState(tiposPaquete[0]?.id ?? "");
+  const [validezDesdeDate, setValidezDesdeDate] = useState<Date | undefined>(
+    new Date(),
+  );
+  const [validezHastaDate, setValidezHastaDate] = useState<Date | undefined>(
+    new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+  );
+  const [activarPorDefecto, setActivarPorDefecto] = useState(false);
+  const [destacado, setDestacado] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  useEffect(() => {
+    if (!temporadaId && temporadas[0]?.id) {
+      setTemporadaId(temporadas[0].id);
+    }
+  }, [temporadas, temporadaId]);
+
+  useEffect(() => {
+    if (!tipoPaqueteId && tiposPaquete[0]?.id) {
+      setTipoPaqueteId(tiposPaquete[0].id);
+    }
+  }, [tiposPaquete, tipoPaqueteId]);
 
   // -- Create handler --
   const handleCreate = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (isCreating) return;
     if (!titulo.trim()) {
       toast("warning", "Titulo requerido", "Ingresa un nombre para el paquete.");
       return;
     }
 
-    const now = new Date().toISOString();
-    const oneYearLater = new Date(
-      Date.now() + 365 * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    setIsCreating(true);
+    try {
+      const now = formatStoredDate(new Date());
+      const oneYearLater = new Date(
+        Date.now() + 365 * 24 * 60 * 60 * 1000,
+      );
+      const oneYearLaterFormatted = formatStoredDate(oneYearLater);
 
-    const newPaquete = await createPaquete({
-      brandId: activeBrandId,
-      titulo: titulo.trim(),
-      destino: "",
-      descripcion,
-      textoVisual: textoVisual || null,
-      salidas,
-      temporadaId,
-      tipoPaqueteId,
-      estado: "BORRADOR",
-      destacado: false,
-      netoCalculado: 0,
-      markup: 0.8,
-      precioVenta: 0,
-      moneda: "USD",
-      validezDesde: now,
-      validezHasta: oneYearLater,
-      ordenServicios: [],
-    });
+      const newPaquete = await createPaquete({
+        brandId: activeBrandId,
+        titulo: titulo.trim(),
+        destino: "",
+        descripcion: descripcion.trim(),
+        textoVisual: textoVisual.trim() || null,
+        noches: Math.max(0, Number(noches) || 0),
+        salidas: salidas.trim() || "Consultar",
+        temporadaId: temporadaId || undefined,
+        tipoPaqueteId: tipoPaqueteId || undefined,
+        estado: activarPorDefecto ? "ACTIVO" : "BORRADOR",
+        destacado,
+        netoCalculado: 0,
+        markup: 0.8,
+        precioVenta: 0,
+        moneda: "USD",
+        validezDesde: formatStoredDate(validezDesdeDate) ?? now ?? "",
+        validezHasta: formatStoredDate(validezHastaDate) ?? oneYearLaterFormatted ?? "",
+        ordenServicios: [],
+      });
 
-    toast(
-      "success",
-      "Paquete creado",
-      `"${newPaquete.titulo}" fue creado en estado Borrador.`,
-    );
-    router.push(`/paquetes/${newPaquete.id}?tab=datos`);
+      toast(
+        "success",
+        "Paquete creado",
+        `"${newPaquete.titulo}" fue creado en estado Borrador.`,
+      );
+      router.push(`/paquetes/${newPaquete.id}?tab=datos`);
+    } catch (error) {
+      console.error("Error creating paquete:", error);
+      toast(
+        "error",
+        "No se pudo crear el paquete",
+        "Revisá los datos e intentá nuevamente.",
+      );
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   // Don't render form if user cannot edit (redirect is in progress)
@@ -168,6 +207,75 @@ export default function NuevoPaquetePage() {
           </FormSection>
 
           <FormSection
+            title="Duracion y vigencia"
+            description="Noches iniciales, periodo comercial y estados de publicación."
+          >
+            <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel>Noches iniciales</FieldLabel>
+                <Input
+                  type="number"
+                  min={0}
+                  value={noches}
+                  onChange={(e) => setNoches(e.target.value)}
+                  placeholder="7"
+                />
+              </Field>
+
+              <Field>
+                <DatePicker
+                  label="Válido desde"
+                  value={validezDesdeDate}
+                  onChange={setValidezDesdeDate}
+                  placeholder="Seleccionar fecha..."
+                />
+              </Field>
+
+              <Field>
+                <DatePicker
+                  label="Válido hasta"
+                  value={validezHastaDate}
+                  onChange={setValidezHastaDate}
+                  placeholder="Seleccionar fecha..."
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel>Activar por defecto</FieldLabel>
+                <div className="flex items-center justify-between gap-3 rounded-[8px] border border-hairline bg-white px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-medium text-neutral-800">
+                      Crear el paquete como activo
+                    </p>
+                    <p className="text-[11.5px] text-neutral-400">
+                      Si está encendido, el paquete queda publicado al guardarlo.
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={activarPorDefecto}
+                    onCheckedChange={setActivarPorDefecto}
+                  />
+                </div>
+              </Field>
+
+              <Field>
+                <FieldLabel>Destacado</FieldLabel>
+                <div className="flex items-center justify-between gap-3 rounded-[8px] border border-hairline bg-white px-3 py-2.5">
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-medium text-neutral-800">
+                      Mostrar en frontend como destacado
+                    </p>
+                    <p className="text-[11.5px] text-neutral-400">
+                      Se usará para resaltar el paquete en el sitio público.
+                    </p>
+                  </div>
+                  <Toggle checked={destacado} onCheckedChange={setDestacado} />
+                </div>
+              </Field>
+            </FieldGroup>
+          </FormSection>
+
+          <FormSection
             title="Descripcion"
             description="Texto narrativo y texto visual para la ficha."
           >
@@ -201,10 +309,13 @@ export default function NuevoPaquetePage() {
             type="button"
             variant="ghost"
             onClick={() => router.push("/paquetes")}
+            disabled={isCreating}
           >
             Cancelar
           </Button>
-          <Button type="submit">Crear Paquete</Button>
+          <Button type="submit" disabled={isCreating}>
+            {isCreating ? "Creando..." : "Crear Paquete"}
+          </Button>
         </div>
       </form>
     </>

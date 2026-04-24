@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { FormSection, FormSections } from "@/components/ui/form/FormSection";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
 import { PillGroup } from "@/components/ui/form/PillGroup";
 import { ItinerarioEditor } from "@/components/ui/form/ItinerarioEditor";
 import {
@@ -31,17 +31,31 @@ import type { PrecioAereo } from "@/lib/types";
 // Constants
 // ---------------------------------------------------------------------------
 
-const equipajeOptions = [
-  { value: "Articulo personal", label: "Personal" },
+const equipajeOptions: {
+  value: string;
+  label: string;
+  description: string;
+  tone: "neutral" | "sky" | "teal" | "amber" | "violet" | "rose";
+}[] = [
+  {
+    value: "Articulo personal",
+    label: "Personal",
+    description: "Solo artículo personal",
+    tone: "sky",
+  },
   {
     value: "Articulo personal + Equipaje de mano",
     label: "+ Mano",
+    description: "Artículo personal + carry-on",
+    tone: "amber",
   },
   {
     value: "Equipaje de mano + Equipaje en bodega",
     label: "+ Bodega",
+    description: "Carry-on + equipaje despachado",
+    tone: "violet",
   },
-] as const;
+];
 
 // ---------------------------------------------------------------------------
 // AereoDetailPage
@@ -131,6 +145,26 @@ export default function AereoDetailPage() {
 
   function handleSaveFlight() {
     if (!aereo) return;
+    if (!ruta.trim()) {
+      toast("warning", "Ruta requerida", "La ruta no puede quedar vacía.");
+      return;
+    }
+    if (!equipaje.trim()) {
+      toast(
+        "warning",
+        "Equipaje requerido",
+        "Selecciona una opción de equipaje antes de guardar.",
+      );
+      return;
+    }
+    if (!itinerario.trim()) {
+      toast(
+        "warning",
+        "Itinerario requerido",
+        "Debes completar el itinerario para guardar.",
+      );
+      return;
+    }
     updateAereo({
       ...aereo,
       ruta,
@@ -148,6 +182,23 @@ export default function AereoDetailPage() {
   // ---------------------------------------------------------------------------
 
   async function handleSavePrecio(row: PrecioAereo) {
+    if (!row.periodoDesde?.trim() || !row.periodoHasta?.trim()) {
+      toast(
+        "warning",
+        "Periodo requerido",
+        "Debes completar desde y hasta antes de guardar el precio.",
+      );
+      return;
+    }
+    if (!Number.isFinite(Number(row.precioAdulto)) || Number(row.precioAdulto) <= 0) {
+      toast(
+        "warning",
+        "Precio requerido",
+        "El precio adulto debe ser mayor a cero.",
+      );
+      return;
+    }
+
     const doSave = () => {
       try {
         if (row.id) {
@@ -208,8 +259,13 @@ export default function AereoDetailPage() {
     {
       key: "periodoDesde",
       label: "Periodo Desde",
-      width: "180px",
-      render: (r) => r.periodoDesde,
+      width: "220px",
+      render: (r) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-neutral-900">{r.periodoDesde}</span>
+          <span className="text-[11px] text-neutral-400">Fecha de inicio</span>
+        </div>
+      ),
       editor: (r, update) => (
         <Input
           type="date"
@@ -221,8 +277,13 @@ export default function AereoDetailPage() {
     {
       key: "periodoHasta",
       label: "Periodo Hasta",
-      width: "180px",
-      render: (r) => r.periodoHasta,
+      width: "220px",
+      render: (r) => (
+        <div className="flex flex-col">
+          <span className="font-medium text-neutral-900">{r.periodoHasta}</span>
+          <span className="text-[11px] text-neutral-400">Fecha de cierre</span>
+        </div>
+      ),
       editor: (r, update) => (
         <Input
           type="date"
@@ -235,7 +296,7 @@ export default function AereoDetailPage() {
       key: "precioAdulto",
       label: "Neto Adulto USD",
       align: "right",
-      width: "180px",
+      width: "190px",
       render: (r) => (
         <span className="font-mono text-[13px] font-semibold text-neutral-900">
           {formatCurrency(r.precioAdulto)}
@@ -282,9 +343,9 @@ export default function AereoDetailPage() {
           title="Datos del vuelo"
           description="Ruta, destino y compania aerea principal del vuelo."
         >
-          <FieldGroup columns={2}>
-            <Field span={2}>
-              <FieldLabel required>Ruta</FieldLabel>
+        <FieldGroup columns={2}>
+          <Field span={2}>
+            <FieldLabel required>Ruta</FieldLabel>
               <Input
                 value={ruta}
                 onChange={(e) => setRuta(e.target.value)}
@@ -318,21 +379,21 @@ export default function AereoDetailPage() {
         {/* ------------------------------------------------------------------ */}
         <FormSection
           title="Detalles del vuelo"
-          description="Equipaje incluido con la tarifa aerea."
+          description="Equipaje incluido con la tarifa aerea. Este bloque es obligatorio para guardar cambios."
         >
           <FieldGroup>
             <Field>
-              <FieldLabel>Equipaje</FieldLabel>
+              <FieldLabel required>Equipaje</FieldLabel>
               <PillGroup
                 value={equipaje}
                 onValueChange={setEquipaje}
-                options={equipajeOptions as unknown as {
-                  value: string;
-                  label: string;
-                }[]}
+                options={equipajeOptions}
                 disabled={!canEdit}
                 aria-label="Equipaje"
               />
+              <FieldDescription>
+                Elegí una sola opción. Si queda vacío, no se permite guardar.
+              </FieldDescription>
             </Field>
           </FieldGroup>
         </FormSection>
@@ -342,11 +403,11 @@ export default function AereoDetailPage() {
         {/* ------------------------------------------------------------------ */}
         <FormSection
           title="Itinerario"
-          description="Notas libres con horarios, escalas y observaciones. Podes pegar texto o arrastrar imagenes."
+          description="Notas libres con horarios, escalas y observaciones. Es obligatorio para poder guardar."
         >
           <FieldGroup>
             <Field>
-              <FieldLabel>Itinerario</FieldLabel>
+              <FieldLabel required>Itinerario</FieldLabel>
               <ItinerarioEditor
                 text={itinerario}
                 onTextChange={setItinerario}
@@ -354,8 +415,11 @@ export default function AereoDetailPage() {
                 onImagesChange={setItinerarioImagenes}
                 readOnly={!canEdit}
                 folder={`itinerarios/aereos/${aereo.id}`}
-                rows={4}
+                rows={5}
               />
+              <FieldDescription>
+                Sin itinerario no se puede guardar el vuelo.
+              </FieldDescription>
             </Field>
           </FieldGroup>
 
@@ -371,7 +435,7 @@ export default function AereoDetailPage() {
         {/* ------------------------------------------------------------------ */}
         <FormSection
           title="Precios por periodo"
-          description="Tarifas netas por adulto segun el periodo de viaje."
+          description="Tarifas netas por adulto segun el periodo de viaje. Desde, hasta y precio son obligatorios."
         >
           <InlineEditTable<PrecioAereo>
             columns={precioColumns}
@@ -389,7 +453,7 @@ export default function AereoDetailPage() {
                     }) as Partial<PrecioAereo>
                 : undefined
             }
-            addLabel="Agregar periodo"
+            addLabel="Agregar tarifa"
             emptyMessage="Sin periodos definidos"
           />
         </FormSection>

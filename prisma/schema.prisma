@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -64,6 +65,7 @@ model Paquete {
   descripcion       String?       @db.Text
   textoVisual       String?       @db.Text
   salidas           String?
+  noches            Int           @default(0)
   temporadaId       String?
   tipoPaqueteId     String?
   validezDesde      String?

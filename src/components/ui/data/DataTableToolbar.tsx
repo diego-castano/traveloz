@@ -69,31 +69,32 @@ export function DataTableToolbar({
         className
       )}
     >
-      {/* Search — flush underline, no rounded box */}
       {search && (
-        <div className="group relative flex flex-1 min-w-[240px] items-center">
-          <Search
-            className="pointer-events-none absolute left-0 h-4 w-4 text-neutral-400 transition-colors group-focus-within:text-neutral-600"
-            strokeWidth={2}
-          />
+        <div className="group relative flex flex-1 min-w-[260px] items-center">
+          <div className="pointer-events-none absolute left-2.5 flex h-7 w-7 items-center justify-center rounded-lg border border-teal-100 bg-teal-50 text-teal-600 shadow-[0_1px_2px_rgba(17,17,36,0.04)] transition-colors group-focus-within:border-teal-200 group-focus-within:bg-teal-100">
+            <Search className="h-4 w-4" strokeWidth={2.15} />
+          </div>
           <input
             type="search"
             value={search.value}
             onChange={(e) => search.onChange(e.target.value)}
             placeholder={search.placeholder ?? "Buscar..."}
             className={cn(
-              "w-full bg-transparent pl-6 pr-12 py-2",
-              "text-[14px] text-neutral-900 placeholder:text-neutral-400",
-              "outline-none border-0",
+              "h-10 w-full rounded-[12px] border border-neutral-200 bg-white pl-12 pr-14",
+              "text-[14px] text-neutral-900 placeholder:text-neutral-400 outline-none",
+              "shadow-[0_2px_8px_rgba(17,17,36,0.04)] transition-all",
+              "hover:border-neutral-300 hover:shadow-[0_4px_12px_rgba(17,17,36,0.06)]",
+              "focus:border-teal-300 focus:shadow-[0_0_0_4px_rgba(59,191,173,0.14),0_6px_16px_rgba(17,17,36,0.08)]",
               "focus:placeholder:text-neutral-300"
             )}
           />
           <kbd
             className={cn(
-              "pointer-events-none absolute right-0 inline-flex h-5 items-center gap-0.5",
-              "rounded-md border border-hairline bg-white px-1.5",
-              "font-mono text-[10.5px] font-medium text-neutral-400",
-              "opacity-0 transition-opacity group-focus-within:opacity-0 group-hover:opacity-100"
+              "pointer-events-none absolute right-2.5 inline-flex h-6 items-center gap-1",
+              "rounded-lg border border-neutral-200 bg-neutral-50 px-2",
+              "font-mono text-[10px] font-semibold text-neutral-500",
+              "shadow-[0_1px_2px_rgba(17,17,36,0.03)] opacity-100 transition-colors",
+              "group-focus-within:border-teal-200 group-focus-within:bg-teal-50 group-focus-within:text-teal-600"
             )}
             aria-hidden="true"
           >
@@ -118,12 +119,12 @@ export function DataTableToolbar({
                 onClick={() =>
                   onFilterChange?.(isActive ? null : f.key)
                 }
-                className={cn(
+              className={cn(
                   "relative inline-flex items-center gap-1.5 px-3 py-1.5",
                   "text-[12px] font-medium transition-colors",
                   i > 0 && "border-l border-hairline",
                   isActive
-                    ? "bg-neutral-900 text-white"
+                    ? "bg-neutral-900 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
                     : "bg-white text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
                 )}
               >

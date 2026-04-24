@@ -39,12 +39,17 @@ import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import { formatCurrency } from "@/lib/utils";
 import type { Seguro } from "@/lib/types";
+import { matchesSearch } from "@/lib/search";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 10;
+
+function nullableId(value: string | null | undefined): string | null {
+  return value?.trim() ? value : null;
+}
 
 // ---------------------------------------------------------------------------
 // SegurosPage
@@ -94,6 +99,7 @@ export default function SegurosPage() {
   const [editTarget, setEditTarget] = useState<Seguro | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Seguro | null>(null);
   const [isShaking, setIsShaking] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Form state
   const [form, setForm] = useState({
@@ -113,12 +119,8 @@ export default function SegurosPage() {
 
   const filteredSeguros = useMemo(() => {
     if (!search.trim()) return seguros;
-    const q = search.toLowerCase();
-    return seguros.filter(
-      (s) =>
-        s.plan.toLowerCase().includes(q) ||
-        s.cobertura.toLowerCase().includes(q) ||
-        (proveedorMap[s.proveedorId] ?? "").toLowerCase().includes(q),
+    return seguros.filter((s) =>
+      matchesSearch(search, s.plan, s.cobertura, proveedorMap[s.proveedorId]),
     );
   }, [seguros, search, proveedorMap]);
 
@@ -155,15 +157,35 @@ export default function SegurosPage() {
     setModalOpen(true);
   }
 
-  function handleSave() {
-    if (editTarget) {
-      updateSeguro({ ...editTarget, ...form });
-      toast("success", "Seguro actualizado", `"${form.plan}" fue actualizado correctamente`);
-    } else {
-      createSeguro({ brandId: activeBrandId, ...form });
-      toast("success", "Seguro creado", `"${form.plan}" fue creado correctamente`);
+  async function handleSave() {
+    const payload = {
+      proveedorId: nullableId(form.proveedorId),
+      plan: form.plan.trim(),
+      cobertura: form.cobertura.trim() || null,
+      costoPorDia: form.costoPorDia,
+    };
+
+    setSaving(true);
+    try {
+      if (editTarget) {
+        await updateSeguro({ ...editTarget, ...payload } as any);
+        toast("success", "Seguro actualizado", `"${payload.plan}" fue actualizado correctamente`);
+      } else {
+        await createSeguro({ brandId: activeBrandId, ...payload } as any);
+        setPage(1);
+        setSearch("");
+        toast("success", "Seguro creado", `"${payload.plan}" fue creado correctamente`);
+      }
+      setModalOpen(false);
+    } catch (err) {
+      toast(
+        "error",
+        "Error al guardar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
   }
 
   function handleClone(s: Seguro) {
@@ -369,9 +391,9 @@ export default function SegurosPage() {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={!form.plan.trim() || !form.proveedorId}
+            disabled={saving || !form.plan.trim() || !form.proveedorId}
           >
-            {editTarget ? "Guardar" : "Crear"}
+            {saving ? "Guardando..." : editTarget ? "Guardar" : "Crear"}
           </Button>
         </ModalFooter>
       </Modal>
