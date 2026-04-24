@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { formatCurrency } from "@/lib/utils";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
@@ -18,7 +19,6 @@ import {
 } from "@/components/providers/ServiceProvider";
 import {
   usePaises,
-  useRegiones,
   useProveedores,
 } from "@/components/providers/CatalogProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -29,7 +29,6 @@ import type {
   Seguro,
   Circuito,
   Pais,
-  Region,
   Ciudad,
 } from "@/lib/types";
 
@@ -52,7 +51,6 @@ function normalizeSearch(str: string): string {
 }
 
 type PaisWithCiudades = Pais & { ciudades: Ciudad[] };
-type RegionWithPaises = Region & { paises: PaisWithCiudades[] };
 
 function extractFlightDestinationTokens(destino: string | null | undefined): string[] {
   const raw = destino?.trim();
@@ -74,68 +72,50 @@ function extractFlightDestinationTokens(destino: string | null | undefined): str
   return Array.from(new Set(tokens.map(normalizeSearch).filter(Boolean)));
 }
 
-function resolveRegionNamesFromDestino(
+/**
+ * Resolve one or more país names the paquete's destino string references.
+ * The filter is intentionally país-scoped (not región-scoped) — a paquete to
+ * Colombia shouldn't surface every flight in "Sudamerica".
+ */
+function resolvePaisNamesFromDestino(
   destino: string | null | undefined,
   paises: PaisWithCiudades[],
-  regiones: RegionWithPaises[],
 ): string[] {
   const tokens = extractFlightDestinationTokens(destino);
   if (tokens.length === 0) return [];
 
-  const regionNameById = new Map(
-    regiones.map((region) => [region.id, normalizeSearch(region.nombre)]),
-  );
-  const allowedRegions = new Set<string>();
+  const allowedPaises = new Set<string>();
 
   for (const token of tokens) {
-    for (const region of regiones) {
-      if (normalizeSearch(region.nombre) === token) {
-        allowedRegions.add(normalizeSearch(region.nombre));
-      }
-    }
-
     for (const pais of paises) {
-      if (normalizeSearch(pais.nombre) === token && pais.regionId) {
-        const regionName = regionNameById.get(pais.regionId);
-        if (regionName) allowedRegions.add(regionName);
+      if (normalizeSearch(pais.nombre) === token) {
+        allowedPaises.add(normalizeSearch(pais.nombre));
       }
-
       for (const ciudad of pais.ciudades) {
-        if (normalizeSearch(ciudad.nombre) === token && pais.regionId) {
-          const regionName = regionNameById.get(pais.regionId);
-          if (regionName) allowedRegions.add(regionName);
+        if (normalizeSearch(ciudad.nombre) === token) {
+          allowedPaises.add(normalizeSearch(pais.nombre));
         }
       }
     }
   }
 
-  return Array.from(allowedRegions);
+  return Array.from(allowedPaises);
 }
 
-function resolveRegionForFlightDestino(
+/** Return the (normalized) país a flight's `destino` string belongs to. */
+function resolvePaisForFlightDestino(
   destino: string,
   paises: PaisWithCiudades[],
-  regiones: RegionWithPaises[],
 ): string | null {
   const normalizedDestino = normalizeSearch(destino);
-  const regionNameById = new Map(
-    regiones.map((region) => [region.id, normalizeSearch(region.nombre)]),
-  );
-
-  for (const region of regiones) {
-    if (normalizeSearch(region.nombre) === normalizedDestino) {
-      return normalizeSearch(region.nombre);
-    }
-  }
 
   for (const pais of paises) {
-    if (normalizeSearch(pais.nombre) === normalizedDestino && pais.regionId) {
-      return regionNameById.get(pais.regionId) ?? null;
+    if (normalizeSearch(pais.nombre) === normalizedDestino) {
+      return normalizeSearch(pais.nombre);
     }
-
     for (const ciudad of pais.ciudades) {
-      if (normalizeSearch(ciudad.nombre) === normalizedDestino && pais.regionId) {
-        return regionNameById.get(pais.regionId) ?? null;
+      if (normalizeSearch(ciudad.nombre) === normalizedDestino) {
+        return normalizeSearch(pais.nombre);
       }
     }
   }
@@ -169,7 +149,6 @@ export default function ServiceSelectorModal({
   const seguros = useSeguros();
   const circuitos = useCircuitos();
   const paises = usePaises();
-  const regiones = useRegiones();
   const proveedores = useProveedores();
 
   // Build proveedor lookup map
@@ -201,25 +180,22 @@ export default function ServiceSelectorModal({
 
   // -- Search match helper --
   const sq = searchQuery.toLowerCase().trim();
-  const aereoRegionTokens = useMemo(
-    () => resolveRegionNamesFromDestino(paquete?.destino, paises, regiones),
-    [paquete?.destino, paises, regiones],
+  const aereoPaisTokens = useMemo(
+    () => resolvePaisNamesFromDestino(paquete?.destino, paises),
+    [paquete?.destino, paises],
   );
-  const hasAereoRegionFilter = aereoRegionTokens.length > 0;
+  const hasAereoPaisFilter = aereoPaisTokens.length > 0;
 
-  // Available (unassigned) services, filtered by search query
+  // Available (unassigned) aereos, filtered to the país(s) the paquete targets
+  // (rather than the whole región) so the picker stays focused.
   const availableAereos = useMemo(
     () =>
       aereos
         .filter((a) => !assignedAereoIds.has(a.id))
         .filter((a) => {
-          if (!hasAereoRegionFilter) return true;
-          const flightRegion = resolveRegionForFlightDestino(
-            a.destino,
-            paises,
-            regiones,
-          );
-          return flightRegion ? aereoRegionTokens.includes(flightRegion) : false;
+          if (!hasAereoPaisFilter) return true;
+          const flightPais = resolvePaisForFlightDestino(a.destino, paises);
+          return flightPais ? aereoPaisTokens.includes(flightPais) : false;
         })
         .filter(
           (a) =>
@@ -228,15 +204,7 @@ export default function ServiceSelectorModal({
             a.destino.toLowerCase().includes(sq) ||
             (a.aerolinea ?? "").toLowerCase().includes(sq),
         ),
-    [
-      aereos,
-      assignedAereoIds,
-      sq,
-      hasAereoRegionFilter,
-      aereoRegionTokens,
-      paises,
-      regiones,
-    ],
+    [aereos, assignedAereoIds, sq, hasAereoPaisFilter, aereoPaisTokens, paises],
   );
   const availableTraslados = useMemo(
     () =>
@@ -377,11 +345,11 @@ export default function ServiceSelectorModal({
                 size="sm"
               />
             </div>
-            {hasAereoRegionFilter && paquete?.destino && (
+            {hasAereoPaisFilter && paquete?.destino && (
               <div className="mb-3 flex items-center gap-1.5 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-[12px] text-sky-700">
                 <Plane className="h-3.5 w-3.5 flex-shrink-0" />
                 <span className="truncate">
-                  Mostrando aéreos de la región de: {paquete.destino}
+                  Mostrando aéreos del país: {paquete.destino}
                 </span>
               </div>
             )}
@@ -389,8 +357,8 @@ export default function ServiceSelectorModal({
               <div className="flex items-center justify-center py-8 text-neutral-400 text-sm">
                 {sq
                   ? `No se encontraron aereos para "${searchQuery}"`
-                  : hasAereoRegionFilter
-                    ? `No hay aereos disponibles para la región de ${paquete?.destino ?? "el destino seleccionado"}`
+                  : hasAereoPaisFilter
+                    ? `No hay aereos disponibles para ${paquete?.destino ?? "el destino seleccionado"}`
                     : "Todos los aereos estan asignados"}
               </div>
             ) : (
@@ -453,7 +421,7 @@ export default function ServiceSelectorModal({
                           {traslado.nombre}
                         </span>
                         <span className="text-xs text-neutral-500">
-                          {traslado.tipo} &middot; USD {traslado.precio}
+                          {traslado.tipo} &middot; {formatCurrency(traslado.precio)}
                         </span>
                       </div>
                       <Button
@@ -500,7 +468,7 @@ export default function ServiceSelectorModal({
                           </span>
                           <span className="text-xs text-neutral-500">
                             {provNombre && <>{provNombre} &middot; </>}
-                            {seguro.cobertura} &middot; USD {seguro.costoPorDia}/dia
+                            {seguro.cobertura} &middot; {formatCurrency(seguro.costoPorDia)}/día
                           </span>
                         </div>
                         <Button

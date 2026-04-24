@@ -8,6 +8,7 @@ import { DestinoAutocomplete } from "@/components/ui/form/DestinoAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { Tag } from "@/components/ui/Tag";
 import type { TagColor } from "@/components/ui/Tag";
 import {
@@ -510,31 +511,28 @@ export default function DatosTab({ paquete }: DatosTabProps) {
           title="Validez"
           description="El paquete se auto-desactiva al llegar a la fecha de validez hasta."
         >
-          <FieldGroup columns={2}>
+          <FieldGroup columns={1}>
             <Field>
-              <FieldLabel>Valido desde</FieldLabel>
-              <DatePicker
-                value={validezDesdeDate}
-                onChange={setValidezDesdeDateDirty}
-                placeholder="Seleccionar fecha..."
+              <FieldLabel>Rango de validez</FieldLabel>
+              <PeriodPicker
+                valueFrom={formatStoredDate(validezDesdeDate) ?? null}
+                valueTo={formatStoredDate(validezHastaDate) ?? null}
+                onChange={(desde, hasta) => {
+                  setValidezDesdeDateDirty(parseStoredDate(desde));
+                  setValidezHastaDateDirty(parseStoredDate(hasta));
+                }}
+                placeholder="Seleccionar rango de validez..."
                 disabled={isReadOnly}
               />
-            </Field>
-            <Field>
-              <FieldLabel>Valido hasta</FieldLabel>
-              <DatePicker
-                value={validezHastaDate}
-                onChange={setValidezHastaDateDirty}
-                placeholder="Seleccionar fecha..."
-                disabled={isReadOnly}
-                error={
-                  hastaExpired
+              {(hastaExpired || hastaWarning) && (
+                <p
+                  className={`mt-1.5 text-[11.5px] font-medium ${hastaExpired ? "text-[#CC2030]" : "text-amber-600"}`}
+                >
+                  {hastaExpired
                     ? "Vigencia vencida"
-                    : hastaWarning
-                      ? "Vence en menos de 30 dias"
-                      : undefined
-                }
-              />
+                    : "Vence en menos de 30 días"}
+                </p>
+              )}
             </Field>
           </FieldGroup>
         </FormSection>

@@ -27,20 +27,21 @@ import type {
 // formatCurrency -- canonical USD formatter for the entire application
 // ---------------------------------------------------------------------------
 
-const usdFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
+// de-DE locale gives us dot as thousands separator; style:"decimal" avoids the
+// "$" symbol so we can prepend an explicit "USD " label per client request.
+const usdFormatter = new Intl.NumberFormat('de-DE', {
+  style: 'decimal',
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
 
 /**
- * Format a numeric amount as USD currency string.
- * @example formatCurrency(1234.5) // "$1,235"
- * @example formatCurrency(0) // "$0"
+ * Format a numeric amount as a USD currency string.
+ * @example formatCurrency(1234.5) // "USD 1.235"
+ * @example formatCurrency(0) // "USD 0"
  */
 export function formatCurrency(amount: number): string {
-  return usdFormatter.format(Math.round(amount));
+  return `USD ${usdFormatter.format(Math.round(amount))}`;
 }
 
 // ---------------------------------------------------------------------------

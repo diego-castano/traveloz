@@ -499,11 +499,11 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                     </div>
                   )}
 
-                  {/* Factor + margin bar (editable) */}
+                  {/* Markup + margin bar (editable) */}
                   {canSeePricing.markup && (
                     <div className="flex items-center gap-4 px-3 py-2 rounded-lg bg-white/30 mb-3">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium text-neutral-500 uppercase">Factor:</span>
+                        <span className="text-xs font-medium text-neutral-500 uppercase">Markup:</span>
                         {canEdit ? (
                           <input
                             type="number"

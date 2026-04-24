@@ -664,62 +664,105 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {pool.map((entry) => (
-                <div
-                  key={entry.pa.id}
-                  className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/60 border border-white/40"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      {Array.from({
-                        length: entry.alojamiento.categoria ?? 0,
-                      }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className="h-3 w-3 fill-amber-400 text-amber-400"
-                        />
-                      ))}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-neutral-800 truncate">
-                        {entry.alojamiento.nombre}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-neutral-500">
-                        <MapPin className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">
-                          {entry.ciudadNombre ?? "Sin ciudad asignada"}
-                        </span>
-                        {entry.precio && (
-                          <span className="font-mono">
-                            · {formatCurrency(entry.precio.precioPorNoche)}
-                            /noche
+            (() => {
+              // Group pool hotels by their ciudad. Order follows the paquete's
+              // destinos list (so groups appear in itinerary order); any ciudad
+              // not present in destinos is appended after, then orphans last.
+              const byCiudad = new Map<string, typeof pool>();
+              const ORPHAN_KEY = "__sin_ciudad__";
+              for (const entry of pool) {
+                const key = entry.ciudadId ?? ORPHAN_KEY;
+                const list = byCiudad.get(key) ?? [];
+                list.push(entry);
+                byCiudad.set(key, list);
+              }
+              const orderedCiudadIds: string[] = [];
+              for (const d of destinos) {
+                if (d.ciudadId && byCiudad.has(d.ciudadId) && !orderedCiudadIds.includes(d.ciudadId)) {
+                  orderedCiudadIds.push(d.ciudadId);
+                }
+              }
+              for (const id of Array.from(byCiudad.keys())) {
+                if (id === ORPHAN_KEY) continue;
+                if (!orderedCiudadIds.includes(id)) orderedCiudadIds.push(id);
+              }
+              if (byCiudad.has(ORPHAN_KEY)) orderedCiudadIds.push(ORPHAN_KEY);
+
+              return (
+                <div className="space-y-4">
+                  {orderedCiudadIds.map((ciudadId) => {
+                    const entries = byCiudad.get(ciudadId) ?? [];
+                    const ciudadNombre =
+                      ciudadId === ORPHAN_KEY
+                        ? "Sin ciudad asignada"
+                        : (entries[0]?.ciudadNombre ?? "Sin ciudad asignada");
+                    return (
+                      <div key={ciudadId}>
+                        <div className="flex items-center gap-2 px-1 mb-2">
+                          <MapPin className="h-3.5 w-3.5 text-neutral-400" />
+                          <h5 className="text-[11px] uppercase tracking-wide text-neutral-500 font-semibold">
+                            {ciudadNombre}
+                          </h5>
+                          <span className="text-[11px] text-neutral-400">
+                            {entries.length}{" "}
+                            {entries.length === 1 ? "hotel" : "hoteles"}
                           </span>
-                        )}
+                        </div>
+                        <div className="space-y-2">
+                          {entries.map((entry) => (
+                            <div
+                              key={entry.pa.id}
+                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/60 border border-white/40"
+                            >
+                              <div className="flex items-center gap-3 min-w-0 flex-1">
+                                <div className="flex items-center gap-0.5 flex-shrink-0">
+                                  {Array.from({
+                                    length: entry.alojamiento.categoria ?? 0,
+                                  }).map((_, i) => (
+                                    <Star
+                                      key={i}
+                                      className="h-3 w-3 fill-amber-400 text-amber-400"
+                                    />
+                                  ))}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-neutral-800 truncate">
+                                    {entry.alojamiento.nombre}
+                                  </div>
+                                  {entry.precio && (
+                                    <div className="text-xs text-neutral-500 font-mono">
+                                      {formatCurrency(entry.precio.precioPorNoche)}/noche
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              {canEdit && (
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <button
+                                    onClick={() => setQuickEditHotelId(entry.alojamiento.id)}
+                                    className="p-1 rounded hover:bg-teal-50 text-neutral-300 hover:text-teal-600 transition-colors"
+                                    title="Edición rápida"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemoveHotelFromPool(entry.pa.id)}
+                                    className="p-1 rounded hover:bg-red-50 text-neutral-300 hover:text-red-500 transition-colors"
+                                    title="Quitar del pool del paquete"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  {canEdit && (
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <button
-                        onClick={() => setQuickEditHotelId(entry.alojamiento.id)}
-                        className="p-1 rounded hover:bg-teal-50 text-neutral-300 hover:text-teal-600 transition-colors"
-                        title="Edición rápida"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleRemoveHotelFromPool(entry.pa.id)}
-                        className="p-1 rounded hover:bg-red-50 text-neutral-300 hover:text-red-500 transition-colors"
-                        title="Quitar del pool del paquete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              );
+            })()
           )}
         </div>
       </motion.div>
@@ -1710,7 +1753,7 @@ function OpcionCard({
           <div className="mt-3 flex items-end justify-between gap-3">
             <div className="flex items-center gap-2">
               <label className="text-[11px] uppercase tracking-wide text-neutral-500 font-semibold">
-                Factor
+                Markup
               </label>
               {canEdit ? (
                 <motion.input
