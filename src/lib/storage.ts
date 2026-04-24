@@ -1,17 +1,22 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
-const endpoint = process.env.STORAGE_ENDPOINT;
-const region = process.env.STORAGE_REGION ?? "auto";
-const bucket = process.env.STORAGE_BUCKET;
-const accessKeyId = process.env.STORAGE_ACCESS_KEY_ID;
-const secretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY;
+// Accept both STORAGE_* and AWS_* env var names (Railway's built-in S3 integration
+// populates the AWS_* variants automatically).
+const endpoint = process.env.STORAGE_ENDPOINT ?? process.env.AWS_ENDPOINT_URL;
+const region =
+  process.env.STORAGE_REGION ?? process.env.AWS_DEFAULT_REGION ?? "auto";
+const bucket = process.env.STORAGE_BUCKET ?? process.env.AWS_S3_BUCKET_NAME;
+const accessKeyId =
+  process.env.STORAGE_ACCESS_KEY_ID ?? process.env.AWS_ACCESS_KEY_ID;
+const secretAccessKey =
+  process.env.STORAGE_SECRET_ACCESS_KEY ?? process.env.AWS_SECRET_ACCESS_KEY;
 
 let cachedClient: S3Client | null = null;
 
 function getClient(): S3Client {
   if (!endpoint || !accessKeyId || !secretAccessKey || !bucket) {
     throw new Error(
-      "Storage not configured. Missing STORAGE_ENDPOINT / STORAGE_BUCKET / STORAGE_ACCESS_KEY_ID / STORAGE_SECRET_ACCESS_KEY.",
+      "Storage not configured. Missing STORAGE_ENDPOINT / STORAGE_BUCKET / STORAGE_ACCESS_KEY_ID / STORAGE_SECRET_ACCESS_KEY (or the AWS_* equivalents).",
     );
   }
   if (!cachedClient) {

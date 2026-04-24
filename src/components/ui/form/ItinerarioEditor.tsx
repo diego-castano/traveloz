@@ -2,7 +2,16 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
+import {
+  Bold,
+  Heading,
+  Image as ImageIcon,
+  Italic,
+  Loader2,
+  Underline,
+  Upload,
+  X,
+} from "lucide-react";
 import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
@@ -30,9 +39,39 @@ export function ItinerarioEditor({
   rows = 4,
 }: ItinerarioEditorProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const editorRef = React.useRef<HTMLDivElement>(null);
   const [dragActive, setDragActive] = React.useState(false);
   const [uploading, setUploading] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Sync external `text` prop into the contentEditable div without stomping
+  // on the user's cursor. We treat plain-text inputs as already-valid HTML.
+  React.useLayoutEffect(() => {
+    const node = editorRef.current;
+    if (!node) return;
+    const current = node.innerHTML;
+    const incoming = text ?? "";
+    if (current !== incoming) {
+      node.innerHTML = incoming;
+    }
+  }, [text]);
+
+  const applyFormat = React.useCallback(
+    (command: "bold" | "italic" | "underline" | "formatBlock", value?: string) => {
+      if (readOnly) return;
+      editorRef.current?.focus();
+      // execCommand is deprecated but still the simplest cross-browser API for
+      // toggling inline formatting inside contentEditable. A full rich-text
+      // library (Tiptap/Lexical) would be overkill for four format buttons.
+      document.execCommand(command, false, value);
+      if (editorRef.current) onTextChange(editorRef.current.innerHTML);
+    },
+    [onTextChange, readOnly],
+  );
+
+  const handleInput = () => {
+    if (editorRef.current) onTextChange(editorRef.current.innerHTML);
+  };
 
   const imagesRef = React.useRef(images);
   React.useEffect(() => {
@@ -66,7 +105,7 @@ export function ItinerarioEditor({
   );
 
   const handlePaste = React.useCallback(
-    async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    async (e: React.ClipboardEvent<HTMLDivElement>) => {
       if (readOnly) return;
       const items = Array.from(e.clipboardData.items ?? []);
       const files: File[] = [];
@@ -79,9 +118,23 @@ export function ItinerarioEditor({
       if (files.length > 0) {
         e.preventDefault();
         await handleFiles(files);
+        return;
       }
+      // For plain/rich text pastes, strip everything except the most basic
+      // inline formatting. Avoids dumping Word/Gmail junk HTML into the field.
+      e.preventDefault();
+      const html = e.clipboardData.getData("text/html");
+      const textOnly = e.clipboardData.getData("text/plain");
+      const cleaned = html
+        ? html
+            .replace(/<\/?(?!\/?(b|strong|i|em|u|h1|h2|h3|br|p)\b)[^>]+>/gi, "")
+            .replace(/\sstyle="[^"]*"/gi, "")
+            .replace(/\sclass="[^"]*"/gi, "")
+        : textOnly.replace(/\n/g, "<br>");
+      document.execCommand("insertHTML", false, cleaned);
+      if (editorRef.current) onTextChange(editorRef.current.innerHTML);
     },
-    [handleFiles, readOnly],
+    [handleFiles, onTextChange, readOnly],
   );
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -131,14 +184,46 @@ export function ItinerarioEditor({
           ...(dragActive ? glassMaterials.frosted : { background: "#FFFFFF" }),
         }}
       >
-        <textarea
-          value={text}
-          onChange={(e) => onTextChange(e.target.value)}
+        {!readOnly && (
+          <div className="flex items-center gap-0.5 border-b border-hairline px-2 py-1">
+            <ToolbarButton
+              label="Título"
+              icon={<Heading className="h-3.5 w-3.5" />}
+              onClick={() => applyFormat("formatBlock", "H3")}
+            />
+            <div className="mx-1 h-4 w-px bg-hairline" />
+            <ToolbarButton
+              label="Negrita"
+              icon={<Bold className="h-3.5 w-3.5" />}
+              onClick={() => applyFormat("bold")}
+            />
+            <ToolbarButton
+              label="Itálica"
+              icon={<Italic className="h-3.5 w-3.5" />}
+              onClick={() => applyFormat("italic")}
+            />
+            <ToolbarButton
+              label="Subrayado"
+              icon={<Underline className="h-3.5 w-3.5" />}
+              onClick={() => applyFormat("underline")}
+            />
+          </div>
+        )}
+
+        <div
+          ref={editorRef}
+          role="textbox"
+          aria-multiline="true"
+          contentEditable={!readOnly}
+          suppressContentEditableWarning
+          onInput={handleInput}
           onPaste={handlePaste}
-          readOnly={readOnly}
-          rows={rows}
-          placeholder={placeholder}
-          className="w-full resize-y rounded-[8px] bg-transparent px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+          data-placeholder={placeholder}
+          className={cn(
+            "prose prose-sm max-w-none w-full rounded-[8px] bg-transparent px-3 py-2 text-sm text-neutral-900 focus:outline-none [&_h3]:text-[15px] [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1",
+            "before:empty:content-[attr(data-placeholder)] before:text-neutral-400",
+          )}
+          style={{ minHeight: `${rows * 22}px` }}
         />
 
         {!readOnly && (
@@ -250,5 +335,32 @@ export function ItinerarioEditor({
         </motion.div>
       )}
     </div>
+  );
+}
+
+function ToolbarButton({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      // Use mousedown (not click) so the contentEditable div retains focus and
+      // the active selection survives — execCommand needs a live selection.
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onClick();
+      }}
+      title={label}
+      aria-label={label}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+    >
+      {icon}
+    </button>
   );
 }

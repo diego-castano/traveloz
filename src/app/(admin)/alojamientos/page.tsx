@@ -53,19 +53,52 @@ const ITEMS_PER_PAGE = 10;
 // StarRating inline component
 // ---------------------------------------------------------------------------
 
-function StarRating({ categoria }: { categoria: number }) {
+function StarRating({
+  categoria,
+  onChange,
+}: {
+  categoria: number;
+  onChange?: (next: number) => void;
+}) {
+  const interactive = !!onChange;
   return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: 5 }, (_, i) => (
-        <Star
-          key={i}
-          className={
-            i < categoria
-              ? "h-3 w-3 fill-amber-400 text-amber-400"
-              : "h-3 w-3 text-neutral-600"
-          }
-        />
-      ))}
+    <div
+      className="flex items-center gap-0.5"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {Array.from({ length: 5 }, (_, i) => {
+        const star = i + 1;
+        const filled = i < categoria;
+        const common = "h-3 w-3 transition-colors";
+        const inner = filled
+          ? "fill-amber-400 text-amber-400"
+          : "text-neutral-600";
+        if (!interactive) {
+          return <Star key={i} className={`${common} ${inner}`} />;
+        }
+        return (
+          <button
+            key={i}
+            type="button"
+            title={`${star} ${star === 1 ? "estrella" : "estrellas"}`}
+            aria-label={`Fijar categoría a ${star}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Click on already-set value clears to 0 (toggle behaviour).
+              onChange!(categoria === star ? 0 : star);
+            }}
+            className="cursor-pointer p-0.5 rounded hover:bg-amber-50"
+          >
+            <Star
+              className={`${common} ${
+                filled
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-neutral-400 hover:text-amber-300"
+              }`}
+            />
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -83,7 +116,7 @@ export default function AlojamientosPage() {
   // Data hooks
   const alojamientos = useAlojamientos();
   const serviceState = useServiceState();
-  const { createAlojamiento, deleteAlojamiento } = useServiceActions();
+  const { createAlojamiento, deleteAlojamiento, updateAlojamiento } = useServiceActions();
   const paises = usePaises();
   const packageState = usePackageState();
   const loading = useServiceLoading();
@@ -353,7 +386,18 @@ export default function AlojamientosPage() {
                   <DataTableCell variant="muted">{ciudadMap[alojamiento.ciudadId] ?? "--"}</DataTableCell>
                   <DataTableCell variant="muted">{paisMap[alojamiento.paisId] ?? "--"}</DataTableCell>
                   <DataTableCell>
-                    <StarRating categoria={alojamiento.categoria} />
+                    <StarRating
+                      categoria={alojamiento.categoria}
+                      onChange={
+                        canEdit
+                          ? (next) =>
+                              updateAlojamiento({
+                                ...alojamiento,
+                                categoria: next,
+                              })
+                          : undefined
+                      }
+                    />
                   </DataTableCell>
                   <DataTableCell align="right">
                     {(() => {

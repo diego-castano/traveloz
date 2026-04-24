@@ -106,7 +106,7 @@ function PriceDisplay({
             'uppercase text-orange-400 font-medium tracking-wide'
           )}
         >
-          Factor
+          Markup
         </span>
         {editable ? (
           <input
