@@ -70,10 +70,7 @@ const estadoOptions = [
   { value: "INACTIVO", label: "Inactivo" },
 ];
 
-const monedaOptions = [
-  { value: "USD", label: "USD" },
-  { value: "UYU", label: "UYU" },
-];
+const monedaOptions = [{ value: "USD", label: "USD" }];
 
 // ---------------------------------------------------------------------------
 // Etiqueta color mapping helper
@@ -274,6 +271,72 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       )}
 
       <FormSections>
+        {/* ================================================================ */}
+        {/* Estado y completitud (moved to top per client feedback)          */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Estado"
+          description="Controla la visibilidad del paquete en el frontend publico. El checklist muestra los datos pendientes para activar."
+        >
+          <FieldGroup columns={2}>
+            <Field>
+              <FieldLabel>Estado</FieldLabel>
+              <Select
+                value={estado}
+                onValueChange={setEstadoDirty}
+                disabled={isReadOnly}
+                options={estadoOptions}
+                placeholder="Seleccionar estado..."
+              />
+            </Field>
+          </FieldGroup>
+
+          {/* Validation checklist (shown when BORRADOR and incomplete) */}
+          {estado === "BORRADOR" && !validation.valid && (
+            <div
+              className="mt-4 rounded-[12px] border border-hairline bg-white p-4"
+              style={{
+                background: "rgba(232,168,56,0.05)",
+                borderColor: "rgba(232,168,56,0.25)",
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="text-[12px] font-medium text-amber-700">
+                  Completitud para activar: {validation.completionPercent}%
+                </div>
+                <div className="flex-1 h-1.5 rounded-full bg-amber-100 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-amber-400"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${validation.completionPercent}%` }}
+                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                {validation.missing.map((item) => (
+                  <div key={item.key} className="flex items-center gap-2 text-[12px]">
+                    {item.completed ? (
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                    ) : (
+                      <Circle className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                    <span
+                      className={
+                        item.completed
+                          ? "text-neutral-400 line-through"
+                          : "text-amber-700"
+                      }
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </FormSection>
+
         {/* ================================================================ */}
         {/* Identificacion                                                   */}
         {/* ================================================================ */}
@@ -510,71 +573,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
           </FieldGroup>
         </FormSection>
 
-        {/* ================================================================ */}
-        {/* Estado y completitud                                             */}
-        {/* ================================================================ */}
-        <FormSection
-          title="Estado"
-          description="Controla la visibilidad del paquete en el frontend publico. El checklist muestra los datos pendientes para activar."
-        >
-          <FieldGroup columns={2}>
-            <Field>
-              <FieldLabel>Estado</FieldLabel>
-              <Select
-                value={estado}
-                onValueChange={setEstadoDirty}
-                disabled={isReadOnly}
-                options={estadoOptions}
-                placeholder="Seleccionar estado..."
-              />
-            </Field>
-          </FieldGroup>
-
-          {/* Validation checklist (shown when BORRADOR and incomplete) */}
-          {estado === "BORRADOR" && !validation.valid && (
-            <div
-              className="mt-4 rounded-[12px] border border-hairline bg-white p-4"
-              style={{
-                background: "rgba(232,168,56,0.05)",
-                borderColor: "rgba(232,168,56,0.25)",
-              }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="text-[12px] font-medium text-amber-700">
-                  Completitud para activar: {validation.completionPercent}%
-                </div>
-                <div className="flex-1 h-1.5 rounded-full bg-amber-100 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-amber-400"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${validation.completionPercent}%` }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                {validation.missing.map((item) => (
-                  <div key={item.key} className="flex items-center gap-2 text-[12px]">
-                    {item.completed ? (
-                      <Check className="w-3.5 h-3.5 text-green-500" />
-                    ) : (
-                      <Circle className="w-3.5 h-3.5 text-amber-400" />
-                    )}
-                    <span
-                      className={
-                        item.completed
-                          ? "text-neutral-400 line-through"
-                          : "text-amber-700"
-                      }
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </FormSection>
       </FormSections>
     </div>
   );
