@@ -2,12 +2,15 @@
 // Public site header (placeholder for Fase 2)
 //
 // Markup is a 1:1 port of <header class="header-area"> from html_inicial/.
-// In Fase 4 the mobile menu toggle gets wired to React state; in Fase 6 the
-// destinos submenu gets driven by the Region catalog from Prisma.
+// Wrapped in <StickyHeader> for the scroll-based .scrolled/.hidden behavior.
+// In Fase 6 the destinos submenu gets driven by the Region catalog from Prisma.
 // ---------------------------------------------------------------------------
+
+import { StickyHeader } from "./StickyHeader";
 
 export function Header() {
   return (
+    <StickyHeader>
     <header className="header-area">
       <div className="container wide">
         <div className="header-inn d-flex align-items-center justify-content-between">
@@ -69,5 +72,6 @@ export function Header() {
         </div>
       </div>
     </header>
+    </StickyHeader>
   );
 }
