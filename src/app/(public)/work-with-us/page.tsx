@@ -8,9 +8,9 @@
 // ---------------------------------------------------------------------------
 
 import { useFormState, useFormStatus } from "react-dom";
-import { useRef, useState } from "react";
 import { submitWorkWithUsForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "@/components/public/FormStatus";
+import { FileUploadField } from "@/components/public/FileUploadField";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -23,8 +23,6 @@ function SubmitButton() {
 
 export default function WorkWithUsPage() {
   const [result, formAction] = useFormState(submitWorkWithUsForm, null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
 
   return (
     <section className="content-area gradient-page-bg">
@@ -84,25 +82,7 @@ export default function WorkWithUsPage() {
                     />
                   </li>
                   <li className="col-sm-12">
-                    <div className="file-up">
-                      <input
-                        ref={fileRef}
-                        type="file"
-                        name="cv"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) =>
-                          setFileName(e.target.files?.[0]?.name ?? null)
-                        }
-                        required
-                      />
-                      <span className="placeholder-title">Adjuntá tu CV *</span>
-                      <div className="inner">
-                        <img src="/site/img/file-cv.svg" alt="" />
-                        <span className="file-label">
-                          {fileName ?? "Explorar"}
-                        </span>
-                      </div>
-                    </div>
+                    <FileUploadField name="cv" required />
                   </li>
                 </ul>
                 <div className="text-start mt-4">

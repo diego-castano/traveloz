@@ -4218,3 +4218,35 @@ header.header-area.header-dark {
   filter: brightness(0) invert(1);
   -webkit-filter: brightness(0) invert(1);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   DateRangePicker (react-day-picker) — used by Fase 6 quote forms.
+   Visual parity with the original Litepicker styling; only override what
+   differs from the lib defaults.
+   ───────────────────────────────────────────────────────────────────────── */
+.date-range-picker .date-range-display {
+  width: 100%;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.date-range-picker .date-range-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 8px;
+}
+
+.rdp-root {
+  --rdp-accent-color: #785AE5;
+  --rdp-accent-background-color: rgba(120, 90, 229, 0.1);
+}
