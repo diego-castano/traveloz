@@ -19,6 +19,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { submitCorporateForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "@/components/public/FormStatus";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
+import { Typewriter } from "@/components/public/Typewriter";
 
 const ICON_TEASERS = [
   {
@@ -116,9 +117,12 @@ export default function CorporativoPage() {
         </video>
         <div className="container z-99">
           <div className="hero-inner text-sm-center text-start p_150">
-            <h1 className="hero-text anim-text">
-              Viajes que impulsan negocios.
-            </h1>
+            <Typewriter
+              as="h1"
+              className="hero-text"
+              text="Viajes que impulsan negocios."
+              speedMs={80}
+            />
           </div>
         </div>
       </section>
