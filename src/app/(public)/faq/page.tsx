@@ -2,12 +2,12 @@
 // /faq -- 1:1 port of html_inicial/faq.html.
 //
 // Six topics (Documentación, Menores, Visados, Sanitarios, Mascotas,
-// Embarazadas) rendered TWICE: as Bootstrap tabs on desktop (d-none d-md-block)
-// and as a Bootstrap accordion on mobile (d-md-none). Same content array
-// powers both -- Fase 4 swaps to Radix Tabs + Accordion in one component.
+// Embarazadas) rendered as Radix Tabs on desktop (d-none d-md-block) and
+// as a Radix Accordion on mobile (d-md-none). Same content array powers
+// both via the FaqContent client island.
 // ---------------------------------------------------------------------------
 
-import { AccordionStatic, type AccordionItem } from "@/components/public/AccordionStatic";
+import { FaqContent, type FaqTopic } from "./_components/FaqContent";
 
 export const metadata = {
   title: "Preguntas frecuentes | TravelOz",
@@ -15,23 +15,11 @@ export const metadata = {
     "Información sobre documentación, menores de edad, visados, requisitos sanitarios, mascotas y embarazadas para viajar tranquilo.",
 };
 
-type FaqTopic = {
-  id: string;
-  /** Tab id used by data-bs-target / aria-controls (desktop tabs) */
-  tabId: string;
-  label: string;
-  iconBlue: string;
-  iconRed: string;
-  bodyHtml: string;
-};
-
 const TOPICS: FaqTopic[] = [
   {
     id: "documentacion",
-    tabId: "home",
     label: "Documentación",
     iconBlue: "faq-icon-1-blue.webp",
-    iconRed: "faq-icon-red.png",
     bodyHtml: `
       <h2>Documentación</h2>
       <p>El pasajero es responsable de contar con la documentación adecuada y vigente para su viaje. A continuación, detallamos los aspectos fundamentales que deben ser considerados antes de la salida:</p>
@@ -59,10 +47,8 @@ const TOPICS: FaqTopic[] = [
   },
   {
     id: "menores",
-    tabId: "profile",
     label: "Menores de edad",
     iconBlue: "faq-icon-2.webp",
-    iconRed: "red-icon-2.png",
     bodyHtml: `
       <h2>Menores de edad</h2>
       <p>Todo menor de edad con nacionalidad uruguaya o extranjera, y con residencia habitual en Uruguay, requiere una autorización expresa de sus padres o representantes legales para salir del país cuando viaja acompañado por sólo uno de ellos o sin la compañía de ambos.</p>
@@ -83,10 +69,8 @@ const TOPICS: FaqTopic[] = [
   },
   {
     id: "visados",
-    tabId: "contact",
     label: "Visados",
     iconBlue: "faq-icon-3.webp",
-    iconRed: "red-icon-3.png",
     bodyHtml: `
       <h2>Visados</h2>
       <p>Al planificar su viaje, es fundamental verificar los requisitos migratorios de todos los países incluidos en el itinerario, incluyendo aquellos en los que se realicen escalas, incluso si estas son únicamente en tránsito.</p>
@@ -105,10 +89,8 @@ const TOPICS: FaqTopic[] = [
   },
   {
     id: "sanitarios",
-    tabId: "contact2",
     label: "Requisitos Sanitarios",
     iconBlue: "faq-icon-4.webp",
-    iconRed: "red-icon-4.png",
     bodyHtml: `
       <h2>Requisitos Sanitarios</h2>
       <p>Algunos países exigen la presentación de certificados de vacunación específicos como condición de ingreso. Esto aplica tanto para el destino final como para escalas en tránsito.</p>
@@ -125,10 +107,8 @@ const TOPICS: FaqTopic[] = [
   },
   {
     id: "mascotas",
-    tabId: "contact3",
     label: "Mascotas",
     iconBlue: "faq-icon-5.webp",
-    iconRed: "red-icon-5.png",
     bodyHtml: `
       <h2>Mascotas</h2>
       <p>Si tiene previsto viajar con su mascota, le recomendamos gestionar con antelación todos los requisitos necesarios, ya que estos pueden variar según el medio de transporte, el país de destino y las características del animal.</p>
@@ -148,10 +128,8 @@ const TOPICS: FaqTopic[] = [
   },
   {
     id: "embarazadas",
-    tabId: "contact4",
     label: "Embarazadas",
     iconBlue: "faq-icon-6.webp",
-    iconRed: "red-icon-6.png",
     bodyHtml: `
       <h2>Mujeres Embarazadas</h2>
       <p>Las condiciones para viajar durante el embarazo pueden variar según la aerolínea u otro medio de transporte. Por ello, es fundamental consultar con anticipación para asegurar el cumplimiento de los requisitos y evitar contratiempos al momento del embarque.</p>
@@ -166,12 +144,6 @@ const TOPICS: FaqTopic[] = [
     `,
   },
 ];
-
-const accordionItems: AccordionItem[] = TOPICS.map((t) => ({
-  id: t.id,
-  title: t.label,
-  bodyHtml: `<div class="faq-tab-content"><div class="plain-content">${t.bodyHtml}</div></div>`,
-}));
 
 export default function FaqPage() {
   return (
@@ -206,65 +178,7 @@ export default function FaqPage() {
 
       <section className="faq-area">
         <div className="container">
-          {/* Desktop: Bootstrap tabs */}
-          <div className="d-none d-md-block">
-            <div className="row">
-              <div className="col-md-4">
-                <div className="faq-tabs">
-                  <ul id="myTab" role="tablist">
-                    {TOPICS.map((t, i) => (
-                      <li className="nav-item" role="presentation" key={t.id}>
-                        <button
-                          className={`nav-link ${i === 0 ? "active" : ""}`}
-                          id={`${t.tabId}-tab`}
-                          data-bs-toggle="tab"
-                          data-bs-target={`#${t.tabId}`}
-                          type="button"
-                          role="tab"
-                          aria-controls={t.tabId}
-                          aria-selected={i === 0}
-                        >
-                          {t.label}{" "}
-                          <img
-                            src={`/site/img/${t.iconBlue}`}
-                            alt=""
-                          />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-              <div className="col-md-8">
-                <div className="faq-tab-content">
-                  <div className="tab-content" id="myTabContent">
-                    {TOPICS.map((t, i) => (
-                      <div
-                        key={t.id}
-                        className={`tab-pane fade ${i === 0 ? "show active" : ""}`}
-                        id={t.tabId}
-                        role="tabpanel"
-                        aria-labelledby={`${t.tabId}-tab`}
-                      >
-                        <div
-                          className="plain-content"
-                          dangerouslySetInnerHTML={{ __html: t.bodyHtml }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile: accordion -- same content */}
-          <div className="d-md-none">
-            <AccordionStatic
-              parentId="faq-accordion-mobile"
-              items={accordionItems}
-            />
-          </div>
+          <FaqContent topics={TOPICS} />
         </div>
       </section>
     </>

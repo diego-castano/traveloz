@@ -13,7 +13,6 @@
 // ---------------------------------------------------------------------------
 
 import type { ReactNode } from "react";
-import Script from "next/script";
 import { Header } from "@/components/public/Header";
 import { Footer } from "@/components/public/Footer";
 import { AgenciaModal } from "@/components/public/AgenciaModal";
@@ -31,14 +30,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
 
       <WhatsAppButton />
       <AgenciaModal />
-
-      {/* Bootstrap JS: enables data-bs-toggle accordion + tabs (terms / faq).
-          afterInteractive defers it past first paint. Fase 4 replaces it with
-          Radix Accordion + Tabs so this script can be removed. */}
-      <Script
-        src="/site/vendors/bootstrap/js/bootstrap.min.js"
-        strategy="afterInteractive"
-      />
     </>
   );
 }

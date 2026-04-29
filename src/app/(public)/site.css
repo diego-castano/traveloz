@@ -4203,3 +4203,18 @@ header.header-area.header-dark {
         max-width: 90%;
     }
 }
+/* ─────────────────────────────────────────────────────────────────────────
+   Radix Tabs adapter — map [data-state="active"] to the legacy Bootstrap
+   .nav-link.active styling that the original site.css targets via class.
+   Used by /faq desktop tabs (FaqContent client island).
+   ───────────────────────────────────────────────────────────────────────── */
+.faq-tabs button[data-state="active"] {
+  background: #F43E55;
+  color: #fff;
+  border-color: #F43E55;
+}
+
+.faq-tabs button[data-state="active"] img {
+  filter: brightness(0) invert(1);
+  -webkit-filter: brightness(0) invert(1);
+}
