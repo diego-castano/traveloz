@@ -34,7 +34,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   ],
   session: { strategy: "jwt" },
   pages: {
-    signIn: "/login",
+    signIn: "/backend/login",
   },
   callbacks: {
     jwt({ token, user }) {

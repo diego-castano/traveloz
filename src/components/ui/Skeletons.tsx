@@ -20,7 +20,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
  * Exports:
  *   - `DataTableSkeleton` — replaces TableSkeleton, matches new DataTable
  *   - `FormSkeleton` — Field-aware form placeholder
- *   - `DetailPageSkeleton` — for `/paquetes/[slug]` and similar detail routes
+ *   - `DetailPageSkeleton` — for `/backend/paquetes/[slug]` and similar detail routes
  *   - `ModalFormSkeleton` — used while edit data is being fetched
  *   - `StatCardsSkeleton`, `CardGridSkeleton`, `TabsSkeleton` — ported from v1
  *   - `PageSkeleton` — variant-driven top-level skeleton (legacy-compatible)

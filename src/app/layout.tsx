@@ -20,7 +20,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className="font-body antialiased">
+      {/* Root <body> stays unstyled. Each route group sets its own typography:
+          - /backend wraps children in font-body (DM Sans) + admin shell.
+          - /(public) loads site.css which sets body { font-family: Clarika }. */}
+      <body className="antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>

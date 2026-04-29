@@ -15,7 +15,7 @@ import {
 import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
-import { uploadFile } from "@/components/lib/upload";
+import { deleteFile, uploadFile } from "@/components/lib/upload";
 
 interface ItinerarioEditorProps {
   text: string;
@@ -41,8 +41,20 @@ export function ItinerarioEditor({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const editorRef = React.useRef<HTMLDivElement>(null);
   const [dragActive, setDragActive] = React.useState(false);
-  const [uploading, setUploading] = React.useState(0);
+  const [progressByName, setProgressByName] = React.useState<Record<string, number>>(
+    {},
+  );
   const [error, setError] = React.useState<string | null>(null);
+
+  const uploadingNames = Object.keys(progressByName);
+  const uploading = uploadingNames.length;
+  const averagePercent =
+    uploading === 0
+      ? 0
+      : Math.round(
+          uploadingNames.reduce((sum, k) => sum + (progressByName[k] ?? 0), 0) /
+            uploading,
+        );
 
   // Sync external `text` prop into the contentEditable div without stomping
   // on the user's cursor. We treat plain-text inputs as already-valid HTML.
@@ -85,21 +97,47 @@ export function ItinerarioEditor({
       );
       if (files.length === 0) return;
       setError(null);
-      setUploading((n) => n + files.length);
-      const uploaded: string[] = [];
-      for (const f of files) {
-        try {
-          const { url } = await uploadFile(f, folder);
-          uploaded.push(url);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Error al subir");
-        } finally {
-          setUploading((n) => n - 1);
-        }
-      }
+
+      // Tag each file with a unique slot so duplicate names don't collide.
+      const slots = files.map((f, i) => ({ file: f, slot: `${Date.now()}:${i}:${f.name}` }));
+      setProgressByName((prev) => ({
+        ...prev,
+        ...Object.fromEntries(slots.map((s) => [s.slot, 0])),
+      }));
+
+      const results = await Promise.all(
+        slots.map(async ({ file: f, slot }) => {
+          try {
+            const { url } = await uploadFile(f, {
+              folder,
+              onProgress: (percent) =>
+                setProgressByName((prev) => ({ ...prev, [slot]: percent })),
+            });
+            return { ok: true as const, slot, url };
+          } catch (err) {
+            return {
+              ok: false as const,
+              slot,
+              error:
+                err instanceof Error ? err.message : "Error al subir",
+            };
+          }
+        }),
+      );
+
+      // Drop the tracking rows whose uploads have finished (success or error).
+      setProgressByName((prev) => {
+        const next = { ...prev };
+        for (const r of results) delete next[r.slot];
+        return next;
+      });
+
+      const uploaded = results.flatMap((r) => (r.ok ? [r.url] : []));
+      const firstError = results.find((r) => !r.ok)?.error;
       if (uploaded.length > 0) {
         onImagesChange([...imagesRef.current, ...uploaded]);
       }
+      if (firstError) setError(firstError);
     },
     [folder, onImagesChange],
   );
@@ -162,6 +200,9 @@ export function ItinerarioEditor({
   const handleRemove = (url: string) => {
     if (readOnly) return;
     onImagesChange(images.filter((u) => u !== url));
+    // Best-effort bucket cleanup. The DB row is the source of truth — if the
+    // bucket delete fails, the user-visible state is still consistent.
+    void deleteFile(url);
   };
 
   return (
@@ -234,9 +275,15 @@ export function ItinerarioEditor({
             </span>
             <div className="flex items-center gap-2">
               {uploading > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F8F5] px-2 py-0.5 text-[10.5px] font-medium text-[#2A9E8E]">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Subiendo {uploading}
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E6F8F5] px-2 py-0.5 text-[10.5px] font-medium text-[#2A9E8E]">
+                  <span className="relative inline-block h-1.5 w-12 overflow-hidden rounded-full bg-white/60">
+                    <motion.span
+                      animate={{ width: `${averagePercent}%` }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="absolute left-0 top-0 h-full bg-[#2A9E8E]"
+                    />
+                  </span>
+                  Subiendo {uploading} · {averagePercent}%
                 </span>
               )}
               <button

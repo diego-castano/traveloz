@@ -11,7 +11,7 @@ import { glassMaterials } from "@/components/lib/glass";
 import { interactions } from "@/components/lib/animations";
 import { ChevronDown, LogOut, User, Search, Menu } from "lucide-react";
 import { useSidebar } from "@/components/layout/Sidebar";
-import { SearchModal } from "@/components/ui/SearchModal";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 import { useEffect, useRef, useState } from "react";
 
 // ---------------------------------------------------------------------------
@@ -43,7 +43,7 @@ function generateBreadcrumbs(pathname: string) {
   }
 
   const items: { label: string; href?: string }[] = [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Dashboard", href: "/backend/dashboard" },
   ];
 
   segments.forEach((segment, index) => {
@@ -120,13 +120,13 @@ export function Topbar() {
   const handleSwitchUser = async () => {
     setUserOpen(false);
     await logout();
-    router.push("/login");
+    router.push("/backend/login");
   };
 
   const handleLogout = async () => {
     setUserOpen(false);
     await logout();
-    router.push("/login");
+    router.push("/backend/login");
   };
 
   return (
@@ -281,8 +281,8 @@ export function Topbar() {
         }}
       />
 
-      {/* Global search modal (Cmd+K) */}
-      <SearchModal />
+      {/* Global command palette (Cmd+K) */}
+      <CommandPalette />
     </header>
   );
 }

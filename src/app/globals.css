@@ -44,6 +44,25 @@ samp {
 }
 
 /* ---------------------------------------------------------------------- */
+/*  Density — applied via DensityProvider on <body>. Adjusts vertical      */
+/*  padding inside data tables only. Width and column logic stay intact.   */
+/* ---------------------------------------------------------------------- */
+body[data-density="compact"] table td,
+body[data-density="compact"] table th {
+  padding-top: 0.35rem;
+  padding-bottom: 0.35rem;
+}
+body[data-density="compact"] table tr {
+  height: auto;
+}
+
+body[data-density="spacious"] table td,
+body[data-density="spacious"] table th {
+  padding-top: 0.95rem;
+  padding-bottom: 0.95rem;
+}
+
+/* ---------------------------------------------------------------------- */
 /*  Select dropdown CSS animations (Radix Select does not support        */
 /*  forceMount on popper Content, so we use data-state CSS animations)    */
 /* ---------------------------------------------------------------------- */
