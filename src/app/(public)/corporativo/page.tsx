@@ -18,6 +18,42 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { submitCorporateForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "@/components/public/FormStatus";
+import { EmblaSlider } from "@/components/public/EmblaSlider";
+
+const ICON_TEASERS = [
+  {
+    icon: "hand-icon.webp",
+    title: "Nuestros valores",
+    body: (
+      <>
+        Trabajamos con una premisa clara: generar valor real a través de la{" "}
+        <strong>confianza, la eficiencia y el compromiso.</strong>
+      </>
+    ),
+  },
+  {
+    icon: "flight-icon.webp",
+    title: "¿Cómo trabajamos?",
+    body: (
+      <>
+        Identificamos las necesidades de cada organización y brindamos
+        soluciones alineadas a sus objetivos, garantizando{" "}
+        <strong>calidad y respaldo.</strong>
+      </>
+    ),
+  },
+  {
+    icon: "clock-icon.webp",
+    title: "Atención 24/7",
+    body: (
+      <>
+        Más de 35 profesionales brindan un servicio de excelencia, resolviendo
+        cada solicitud de{" "}
+        <strong>forma ágil y con la máxima calidad las 24 horas.</strong>
+      </>
+    ),
+  },
+];
 
 const CLIENT_LOGOS = [
   "canal-10",
@@ -131,48 +167,25 @@ export default function CorporativoPage() {
               </div>
             </div>
           </div>
-          {/* Mobile: same items stacked. The icon-teaser-slider class is kept
-              so Fase 4 (Embla wrapper) can pick it up later. */}
+          {/* Mobile: Embla slider replaces the original Slick icon-teaser-slider */}
           <div className="d-md-none">
-            <div className="icon-teaser-slider">
-              <div className="slide">
-                <div className="icon-teaser style1">
-                  <img src="/site/img/hand-icon.webp" alt="icon" />
-                  <h3 className="title">Nuestros valores</h3>
-                  <p>
-                    Trabajamos con una premisa clara: generar valor real a
-                    través de la{" "}
-                    <strong>
-                      confianza, la eficiencia y el compromiso.
-                    </strong>
-                  </p>
+            <EmblaSlider
+              slidesToShow={1}
+              autoplay
+              autoplayDelay={5000}
+              loop
+              showArrows={false}
+              showDots
+              className="icon-teaser-slider"
+            >
+              {ICON_TEASERS.map((t) => (
+                <div className="icon-teaser style1" key={t.title}>
+                  <img src={`/site/img/${t.icon}`} alt="icon" />
+                  <h3 className="title">{t.title}</h3>
+                  <p>{t.body}</p>
                 </div>
-              </div>
-              <div className="slide">
-                <div className="icon-teaser style1">
-                  <img src="/site/img/flight-icon.webp" alt="icon" />
-                  <h3 className="title">¿Cómo trabajamos?</h3>
-                  <p>
-                    Identificamos las necesidades de cada organización y
-                    brindamos soluciones alineadas a sus objetivos,
-                    garantizando <strong>calidad y respaldo.</strong>
-                  </p>
-                </div>
-              </div>
-              <div className="slide">
-                <div className="icon-teaser style1">
-                  <img src="/site/img/clock-icon.webp" alt="icon" />
-                  <h3 className="title">Atención 24/7</h3>
-                  <p>
-                    Más de 35 profesionales brindan un servicio de excelencia,
-                    resolviendo cada solicitud de{" "}
-                    <strong>
-                      forma ágil y con la máxima calidad las 24 horas.
-                    </strong>
-                  </p>
-                </div>
-              </div>
-            </div>
+              ))}
+            </EmblaSlider>
           </div>
         </div>
       </section>
@@ -200,15 +213,20 @@ export default function CorporativoPage() {
               </div>
               <div className="d-md-none">
                 <div className="company-logo style2">
-                  <div className="logo-slider">
+                  <EmblaSlider
+                    slidesToShow={3}
+                    autoplay
+                    autoplayDelay={3000}
+                    loop
+                    showArrows={false}
+                    className="logo-slider"
+                  >
                     {CLIENT_LOGOS.map((logo) => (
-                      <div className="slide" key={logo}>
-                        <a href="#">
-                          <img src={`/site/img/${logo}.webp`} alt={logo} />
-                        </a>
-                      </div>
+                      <a href="#" key={logo}>
+                        <img src={`/site/img/${logo}.webp`} alt={logo} />
+                      </a>
                     ))}
-                  </div>
+                  </EmblaSlider>
                 </div>
               </div>
             </div>
