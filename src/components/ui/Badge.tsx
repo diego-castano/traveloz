@@ -89,6 +89,22 @@ const variantStyles: Record<string, React.CSSProperties> = {
     backdropFilter: "blur(8px)",
     WebkitBackdropFilter: "blur(8px)",
   },
+  // Lifecycle: EN_REVISION — paquete waiting for editorial sign-off before publish.
+  review: {
+    background: "rgba(238,232,255,0.8)",
+    color: "#5B3CB7",
+    border: "1px solid rgba(139,92,246,0.18)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+  },
+  // Lifecycle: ARCHIVADO — paquete withdrawn from circulation but not deleted.
+  archived: {
+    background: "rgba(245,245,247,0.85)",
+    color: "#5A5E7A",
+    border: "1px dashed rgba(17,17,36,0.18)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+  },
 };
 
 /* -------------------------------------------------------------------------- */
@@ -99,7 +115,9 @@ type BadgeVariant =
   | "confirmed"
   | "pending"
   | "draft"
+  | "review"
   | "active"
+  | "archived"
   | "inactive"
   | "removed"
   | "new"

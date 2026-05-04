@@ -85,25 +85,39 @@ import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
 import type { Paquete, PaqueteFoto, Pais } from "@/lib/types";
 import { PaqueteGridCard } from "./_components/PaqueteGridCard";
+import {
+  bulkPublish as serverBulkPublish,
+  bulkUnpublish as serverBulkUnpublish,
+  bulkArchive as serverBulkArchive,
+} from "@/actions/package-lifecycle.actions";
+import { Send as SendIcon, Archive as ArchiveIcon } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
+// Lifecycle badges. INACTIVO is preserved for legacy rows that haven't been
+// migrated yet; new code/UX uses the four-state model BORRADOR / EN_REVISION /
+// ACTIVO / ARCHIVADO. Each entry maps to a Badge variant + color used in the
+// segmented control and chip rendering.
 const estadoBadge = {
-  ACTIVO: { variant: "active" as const, label: "Activo", color: "#3BBFAD" },
   BORRADOR: { variant: "draft" as const, label: "Borrador", color: "#E8913A" },
-  INACTIVO: {
-    variant: "inactive" as const,
-    label: "Inactivo",
-    color: "#6B6F99",
-  },
-};
+  EN_REVISION: { variant: "review" as const, label: "En revisión", color: "#8B5CF6" },
+  ACTIVO: { variant: "active" as const, label: "Publicado", color: "#3BBFAD" },
+  ARCHIVADO: { variant: "archived" as const, label: "Archivado", color: "#5A5E7A" },
+  INACTIVO: { variant: "inactive" as const, label: "Inactivo", color: "#6B6F99" },
+} as const;
 
 const ITEMS_PER_PAGE_TABLE = 12;
 const ITEMS_PER_PAGE_GRID = 18;
 
-type EstadoFilter = "all" | "ACTIVO" | "BORRADOR" | "INACTIVO";
+type EstadoFilter =
+  | "all"
+  | "ACTIVO"
+  | "BORRADOR"
+  | "EN_REVISION"
+  | "ARCHIVADO"
+  | "INACTIVO";
 
 type ColKey =
   | "id"
@@ -326,9 +340,16 @@ export default function PaquetesPage() {
 
   // ---- Count helper for each filter option (shows next to each) ----
   const estadoCounts = useMemo(() => {
-    const counts = { ACTIVO: 0, BORRADOR: 0, INACTIVO: 0 };
+    const counts = {
+      ACTIVO: 0,
+      BORRADOR: 0,
+      EN_REVISION: 0,
+      ARCHIVADO: 0,
+      INACTIVO: 0,
+    };
     for (const p of paquetes) {
-      counts[p.estado as keyof typeof counts]++;
+      const key = p.estado as keyof typeof counts;
+      if (key in counts) counts[key]++;
     }
     return counts;
   }, [paquetes]);
@@ -743,6 +764,70 @@ export default function PaquetesPage() {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Lifecycle bulk actions — server-side transitions enforce the matrix in
+  // package-lifecycle.actions.ts (e.g. ARCHIVADO can't be re-published in one
+  // step). The toast surfaces partial-success counts when some rows are
+  // rejected by the transition guard.
+  // ---------------------------------------------------------------------------
+
+  function reportBulkResult(
+    label: string,
+    res: { updated: number; skipped: number; reasons?: string[] },
+  ) {
+    if (res.updated > 0 && res.skipped === 0) {
+      toast("success", label, `${res.updated} paquete(s) actualizado(s).`);
+    } else if (res.updated > 0 && res.skipped > 0) {
+      toast(
+        "info",
+        label,
+        `${res.updated} actualizado(s), ${res.skipped} omitido(s) por transición no permitida.`,
+      );
+    } else {
+      toast(
+        "error",
+        "Sin cambios",
+        res.reasons?.[0] ?? "Ninguna fila admitía la transición solicitada.",
+      );
+    }
+  }
+
+  async function handleBulkPublish() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    try {
+      const res = await serverBulkPublish(ids);
+      setSelected(new Set());
+      reportBulkResult("Paquetes publicados", res);
+    } catch (err) {
+      toast("error", "No se pudo publicar", err instanceof Error ? err.message : "Error desconocido");
+    }
+  }
+
+  async function handleBulkUnpublish() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    try {
+      const res = await serverBulkUnpublish(ids);
+      setSelected(new Set());
+      reportBulkResult("Paquetes movidos a revisión", res);
+    } catch (err) {
+      toast("error", "No se pudo despublicar", err instanceof Error ? err.message : "Error desconocido");
+    }
+  }
+
+  async function handleBulkArchive() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    try {
+      const res = await serverBulkArchive(ids);
+      setSelected(new Set());
+      reportBulkResult("Paquetes archivados", res);
+    } catch (err) {
+      toast("error", "No se pudo archivar", err instanceof Error ? err.message : "Error desconocido");
+    }
+  }
+
   function toggleRowSelected(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -786,7 +871,11 @@ export default function PaquetesPage() {
   // Render
   // ---------------------------------------------------------------------------
 
-  if (loading) return <PageSkeleton variant="table" />;
+  // Cold mount (no paquetes in state yet) → full page skeleton.
+  // Otherwise we paint the chrome (header, filter toolbar, sticky bar) and
+  // let the table area handle its own skeleton via `showPendingSearch`. This
+  // makes navigation feel instant when the provider already has stale data.
+  if (loading && paquetes.length === 0) return <PageSkeleton variant="table" />;
 
   return (
     <>
@@ -856,7 +945,7 @@ export default function PaquetesPage() {
           <SegmentedControl<EstadoFilter>
             value={estadoFilter}
             onChange={setEstadoFilter}
-            aria-label="Filtrar por estado"
+            aria-label="Filtrar por estado del ciclo de vida"
             options={[
               {
                 value: "all",
@@ -864,13 +953,9 @@ export default function PaquetesPage() {
                 count:
                   estadoCounts.ACTIVO +
                   estadoCounts.BORRADOR +
+                  estadoCounts.EN_REVISION +
+                  estadoCounts.ARCHIVADO +
                   estadoCounts.INACTIVO,
-              },
-              {
-                value: "ACTIVO",
-                label: "Activos",
-                count: estadoCounts.ACTIVO,
-                color: "#3BBFAD",
               },
               {
                 value: "BORRADOR",
@@ -878,11 +963,33 @@ export default function PaquetesPage() {
                 count: estadoCounts.BORRADOR,
                 color: "#E8913A",
               },
+              {
+                value: "EN_REVISION",
+                label: "En revisión",
+                count: estadoCounts.EN_REVISION,
+                color: "#8B5CF6",
+              },
+              {
+                value: "ACTIVO",
+                label: "Publicados",
+                count: estadoCounts.ACTIVO,
+                color: "#3BBFAD",
+              },
+              ...(estadoCounts.ARCHIVADO > 0
+                ? [
+                    {
+                      value: "ARCHIVADO" as const,
+                      label: "Archivados",
+                      count: estadoCounts.ARCHIVADO,
+                      color: "#5A5E7A",
+                    },
+                  ]
+                : []),
               ...(estadoCounts.INACTIVO > 0
                 ? [
                     {
                       value: "INACTIVO" as const,
-                      label: "Inactivos",
+                      label: "Inactivos (legado)",
                       count: estadoCounts.INACTIVO,
                       color: "#6B6F99",
                     },
@@ -1393,6 +1500,33 @@ export default function PaquetesPage() {
           onClear={() => setSelected(new Set())}
           actions={
             <>
+              <Button
+                variant="ghost"
+                size="xs"
+                leftIcon={<SendIcon className="h-3.5 w-3.5" />}
+                onClick={handleBulkPublish}
+                className="!text-white hover:!bg-white/10"
+              >
+                Publicar
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                leftIcon={<Eye className="h-3.5 w-3.5" />}
+                onClick={handleBulkUnpublish}
+                className="!text-white hover:!bg-white/10"
+              >
+                A revisión
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
+                leftIcon={<ArchiveIcon className="h-3.5 w-3.5" />}
+                onClick={handleBulkArchive}
+                className="!text-white hover:!bg-white/10"
+              >
+                Archivar
+              </Button>
               <Button
                 variant="ghost"
                 size="xs"

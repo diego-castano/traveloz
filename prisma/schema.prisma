@@ -133,6 +133,13 @@ model Paquete {
   @@index([temporadaId])
   @@index([tipoPaqueteId])
   @@index([publicado])
+  // Composite — every list query filters by (brandId, deletedAt) and sorts by
+  // createdAt DESC. With this Postgres can satisfy the WHERE + ORDER BY
+  // straight from the index without a separate sort step.
+  @@index([brandId, deletedAt, createdAt(sort: Desc)])
+  // Speeds up the wave-2 sub-entity joins that constrain on the parent
+  // Paquete being live (brandId + not soft-deleted).
+  @@index([brandId, deletedAt])
 }
 
 model Aereo {
@@ -157,6 +164,7 @@ model Aereo {
   paquetes PaqueteAereo[]
 
   @@index([brandId])
+  @@index([brandId, deletedAt])
 }
 
 model PrecioAereo {
@@ -199,6 +207,7 @@ model Alojamiento {
   opcionHoteles OpcionHotel[]
 
   @@index([brandId])
+  @@index([brandId, deletedAt])
 }
 
 model PrecioAlojamiento {
@@ -248,6 +257,7 @@ model Traslado {
   paquetes  PaqueteTraslado[]
 
   @@index([brandId])
+  @@index([brandId, deletedAt])
 }
 
 model Seguro {
@@ -265,6 +275,7 @@ model Seguro {
   paquetes  PaqueteSeguro[]
 
   @@index([brandId])
+  @@index([brandId, deletedAt])
 }
 
 model Circuito {
@@ -283,6 +294,7 @@ model Circuito {
   paquetes   PaqueteCircuito[]
 
   @@index([brandId])
+  @@index([brandId, deletedAt])
 }
 
 model CircuitoDia {

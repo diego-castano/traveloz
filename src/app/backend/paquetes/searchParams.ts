@@ -17,10 +17,14 @@ import {
  */
 export const paquetesParsers = {
   q: parseAsString.withDefault(""),
-  estado: parseAsStringEnum<"all" | "ACTIVO" | "BORRADOR" | "INACTIVO">([
+  estado: parseAsStringEnum<
+    "all" | "ACTIVO" | "BORRADOR" | "EN_REVISION" | "ARCHIVADO" | "INACTIVO"
+  >([
     "all",
     "ACTIVO",
     "BORRADOR",
+    "EN_REVISION",
+    "ARCHIVADO",
     "INACTIVO",
   ]).withDefault("all"),
   temporada: parseAsArrayOf(parseAsString).withDefault([]),

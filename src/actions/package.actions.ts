@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { revalidateTag } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
@@ -10,13 +10,15 @@ import type { EstadoPaquete, Prisma } from "@prisma/client";
 
 const log = logger.child({ module: "package.actions" });
 
-// Cache busters for the dashboard / report aggregates. Called after every
-// paquete mutation so the UI stops serving stale counts the moment the user
-// commits a change.
+// Cache busters for dashboard, report, AND paquete listing aggregates. Called
+// after every paquete mutation so the UI stops serving stale counts/lists the
+// moment the user commits a change.
 function bustDashboardCache(brandId: string) {
   revalidateTag(`dashboard:${brandId}`);
   revalidateTag(`metrics:${brandId}`);
   revalidateTag(`reports:${brandId}`);
+  revalidateTag(`paquetes:${brandId}`);
+  revalidateTag(`paquete-sub:${brandId}`);
 }
 
 // ──────────────────────────────────────────────
@@ -104,6 +106,32 @@ function buildPaqueteWhere(
   return where;
 }
 
+// Hot-path cache for the wave-1 paquete fetch. Keyed by every input that can
+// change the result so different filters and pagination windows each get their
+// own bucket. Mutations call `bustDashboardCache(brandId)` which fires
+// `revalidateTag("paquetes:{brandId}")` to invalidate every bucket at once.
+async function fetchBasePackagesUncached(
+  brandId: string,
+  options: {
+    skip: number;
+    take: number | null;
+    filter?: PaquetesFilter;
+    sortCreated: "asc" | "desc";
+  },
+) {
+  const where = buildPaqueteWhere(brandId, options.filter);
+  const [paquetes, total] = await prisma.$transaction([
+    prisma.paquete.findMany({
+      where,
+      orderBy: { createdAt: options.sortCreated },
+      skip: options.skip,
+      ...(options.take != null ? { take: options.take } : {}),
+    }),
+    prisma.paquete.count({ where }),
+  ]);
+  return { paquetes, total };
+}
+
 export async function getBasePackages(
   requestedBrandId?: string,
   options?: {
@@ -117,72 +145,90 @@ export async function getBasePackages(
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const skip = Math.max(0, options?.skip ?? 0);
-    const take = options?.take;
-    const where = buildPaqueteWhere(brandId, options?.filter);
+    const take = options?.take ?? null;
     const sortCreated = options?.sortCreated ?? "desc";
-
-    const [paquetes, total] = await prisma.$transaction([
-      prisma.paquete.findMany({
-        where,
-        orderBy: { createdAt: sortCreated },
-        skip,
-        ...(typeof take === "number" ? { take } : {}),
-      }),
-      prisma.paquete.count({ where }),
-    ]);
-
-    return { paquetes, total };
+    // Stable cache key: brandId + the JSON of the filter + pagination + sort.
+    // unstable_cache uses the array argument to derive its bucket id.
+    const cacheKey = [
+      "paquetes-base",
+      brandId,
+      String(skip),
+      String(take ?? "all"),
+      sortCreated,
+      JSON.stringify(options?.filter ?? {}),
+    ];
+    const cached = unstable_cache(
+      () =>
+        fetchBasePackagesUncached(brandId, {
+          skip,
+          take,
+          filter: options?.filter,
+          sortCreated,
+        }),
+      cacheKey,
+      { revalidate: 60, tags: [`paquetes:${brandId}`] },
+    );
+    return await cached();
   } catch (error) {
     log.error("fetching base packages", error);
     throw new Error("No se pudieron obtener los paquetes.");
   }
 }
 
+async function fetchPackageSubEntitiesUncached(brandId: string) {
+  const paqueteFilter = { paquete: { brandId, deletedAt: null } };
+
+  const [
+    paqueteAereos,
+    paqueteAlojamientos,
+    paqueteTraslados,
+    paqueteSeguros,
+    paqueteCircuitos,
+    paqueteFotos,
+    paqueteEtiquetas,
+    opcionesHoteleras,
+    destinos,
+    opcionHoteles,
+  ] = await Promise.all([
+    prisma.paqueteAereo.findMany({ where: paqueteFilter }),
+    prisma.paqueteAlojamiento.findMany({ where: paqueteFilter }),
+    prisma.paqueteTraslado.findMany({ where: paqueteFilter }),
+    prisma.paqueteSeguro.findMany({ where: paqueteFilter }),
+    prisma.paqueteCircuito.findMany({ where: paqueteFilter }),
+    prisma.paqueteFoto.findMany({ where: paqueteFilter }),
+    prisma.paqueteEtiqueta.findMany({ where: paqueteFilter }),
+    prisma.opcionHotelera.findMany({ where: paqueteFilter }),
+    prisma.paqueteDestino.findMany({ where: paqueteFilter }),
+    prisma.opcionHotel.findMany({
+      where: { opcion: { paquete: { brandId, deletedAt: null } } },
+    }),
+  ]);
+
+  return {
+    paqueteAereos,
+    paqueteAlojamientos,
+    paqueteTraslados,
+    paqueteSeguros,
+    paqueteCircuitos,
+    paqueteFotos,
+    paqueteEtiquetas,
+    opcionesHoteleras,
+    destinos,
+    opcionHoteles,
+  };
+}
+
 export async function getPackageSubEntities(requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-
-    // Filter sub-entities by brand via their parent Paquete.
-    const paqueteFilter = { paquete: { brandId, deletedAt: null } };
-
-    const [
-      paqueteAereos,
-      paqueteAlojamientos,
-      paqueteTraslados,
-      paqueteSeguros,
-      paqueteCircuitos,
-      paqueteFotos,
-      paqueteEtiquetas,
-      opcionesHoteleras,
-      destinos,
-      opcionHoteles,
-    ] = await Promise.all([
-      prisma.paqueteAereo.findMany({ where: paqueteFilter }),
-      prisma.paqueteAlojamiento.findMany({ where: paqueteFilter }),
-      prisma.paqueteTraslado.findMany({ where: paqueteFilter }),
-      prisma.paqueteSeguro.findMany({ where: paqueteFilter }),
-      prisma.paqueteCircuito.findMany({ where: paqueteFilter }),
-      prisma.paqueteFoto.findMany({ where: paqueteFilter }),
-      prisma.paqueteEtiqueta.findMany({ where: paqueteFilter }),
-      prisma.opcionHotelera.findMany({ where: paqueteFilter }),
-      prisma.paqueteDestino.findMany({ where: paqueteFilter }),
-      prisma.opcionHotel.findMany({
-        where: { opcion: { paquete: { brandId, deletedAt: null } } },
-      }),
-    ]);
-
-    return {
-      paqueteAereos,
-      paqueteAlojamientos,
-      paqueteTraslados,
-      paqueteSeguros,
-      paqueteCircuitos,
-      paqueteFotos,
-      paqueteEtiquetas,
-      opcionesHoteleras,
-      destinos,
-      opcionHoteles,
-    };
+    // Wave 2 fires 10 join-table queries. Caching it for 60 s drops navigation
+    // back to /backend/paquetes from "round-trip to Postgres" to "memory hit".
+    const cached = unstable_cache(
+      () => fetchPackageSubEntitiesUncached(brandId),
+      ["paquete-sub", brandId],
+      { revalidate: 60, tags: [`paquete-sub:${brandId}`, `paquetes:${brandId}`] },
+    );
+    return await cached();
   } catch (error) {
     log.error("fetching package sub-entities", error);
     throw new Error("No se pudieron obtener los datos relacionales de paquetes.");

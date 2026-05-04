@@ -3,6 +3,8 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
+import { logger } from "@/lib/logger";
+const log = logger.child({ module: "notificacion.actions" });
 
 // ──────────────────────────────────────────────
 // Notificacion — History of sent notifications
@@ -24,7 +26,7 @@ export async function createNotificacion(data: {
 
     return await prisma.notificacion.create({ data: { ...data, brandId } });
   } catch (error) {
-    console.error("Error creating notificacion:", error);
+    log.error("creating notificacion", error);
     throw new Error("No se pudo registrar la notificacion.");
   }
 }
@@ -40,7 +42,7 @@ export async function getNotificaciones(requestedBrandId?: string) {
       take: 50,
     });
   } catch (error) {
-    console.error("Error fetching notificaciones:", error);
+    log.error("fetching notificaciones", error);
     throw new Error("No se pudieron obtener las notificaciones.");
   }
 }

@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { compareSync } from "bcryptjs";
+import { logger } from "@/lib/logger";
+const log = logger.child({ module: "auth.actions" });
 
 // ──────────────────────────────────────────────
 // Authenticate user
@@ -27,7 +29,7 @@ export async function authenticateUser(email: string, password: string) {
       isActive: user.isActive,
     };
   } catch (error) {
-    console.error("Error authenticating user:", error);
+    log.error("authenticating user", error);
     throw new Error("Error al autenticar el usuario.");
   }
 }

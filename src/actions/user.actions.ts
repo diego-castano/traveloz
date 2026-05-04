@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-auth";
 import { hashSync } from "bcryptjs";
 import type { Role } from "@prisma/client";
+import { logger } from "@/lib/logger";
+const log = logger.child({ module: "user.actions" });
 
 // ──────────────────────────────────────────────
 // Get all users (admin — no brand filter)
@@ -17,7 +19,7 @@ export async function getUsers() {
       orderBy: { createdAt: "desc" },
     });
   } catch (error) {
-    console.error("Error fetching users:", error);
+    log.error("fetching users", error);
     throw new Error("No se pudieron obtener los usuarios.");
   }
 }
@@ -56,7 +58,7 @@ export async function createUser(data: {
       },
     });
   } catch (error) {
-    console.error("Error creating user:", error);
+    log.error("creating user", error);
     throw new Error("No se pudo crear el usuario.");
   }
 }
@@ -89,7 +91,7 @@ export async function updateUser(
 
     return await prisma.user.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating user:", error);
+    log.error("updating user", error);
     throw new Error("No se pudo actualizar el usuario.");
   }
 }
@@ -114,7 +116,7 @@ export async function updateUserPassword(id: string, newPassword: string) {
       data: { passwordHash },
     });
   } catch (error) {
-    console.error("Error updating user password:", error);
+    log.error("updating user password", error);
     throw new Error("No se pudo actualizar la contraseña del usuario.");
   }
 }
@@ -145,7 +147,7 @@ export async function deleteUser(id: string) {
 
     return await prisma.user.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting user:", error);
+    log.error("deleting user", error);
     throw error instanceof Error ? error : new Error("No se pudo eliminar el usuario.");
   }
 }
