@@ -1,33 +1,60 @@
 // ---------------------------------------------------------------------------
-// Home (/) -- minimal placeholder for Fase 2.
-//
-// Fase 6 will replace this with the full hero + categories slider + testimonios
-// section ported from html_inicial/index.html, fed by Prisma data.
-//
-// The wrapping <header>, <footer>, <AgenciaModal> and WhatsApp button are
-// rendered by src/app/(public)/layout.tsx.
+// Home (/) — server component, reads SiteSettings + CategoriasDestacadas +
+// Testimonios from Prisma via the cached public-data helpers. Each section
+// is editable from /backend/web/*.
 // ---------------------------------------------------------------------------
 
+import {
+  getSiteSettings,
+  getCategoriasDestacadas,
+  getTestimoniosPublicados,
+} from "@/lib/public-data";
+import { HomeHero } from "@/components/public/HomeHero";
+import { HomeCategorias } from "@/components/public/HomeCategorias";
+import { HomeTestimonios } from "@/components/public/HomeTestimonios";
+import { HomeNewsletter } from "@/components/public/HomeNewsletter";
+
 export const metadata = {
-  title: "TravelOz",
+  title: "TravelOz — Diseñamos tu viaje, creamos tu historia",
   description:
-    "TravelOz - Agencia de viajes en Uruguay. Diseñamos experiencias únicas a tu medida: lunas de miel, salidas grupales, cruceros y más.",
+    "Agencia de viajes en Uruguay. Lunas de miel, salidas grupales, cruceros y más.",
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [settings, categorias, testimonios] = await Promise.all([
+    getSiteSettings("home"),
+    getCategoriasDestacadas(),
+    getTestimoniosPublicados(),
+  ]);
+
   return (
-    <section className="content-area">
-      <div className="container">
-        <div className="text-center">
-          <h1 className="hero-text">TravelOz</h1>
-          <h3 className="hero-sub-title">Sitio público en construcción.</h3>
-          <p>
-            <a className="hero-btn" href="/backend/login">
-              Acceso al panel
-            </a>
-          </p>
-        </div>
-      </div>
-    </section>
+    <>
+      <HomeHero
+        title={
+          settings.home_hero_title ?? "Diseñamos tu viaje, creamos tu historia."
+        }
+        subtitle={
+          settings.home_hero_subtitle ??
+          "Experiencias únicas hechas a tu medida."
+        }
+        ctaText={settings.home_hero_cta_text ?? "Ver más"}
+        ctaLink={settings.home_hero_cta_link ?? "/destinos"}
+        videoUrl={
+          settings.home_hero_video ??
+          "/site/video/video-banner-traveloz.mp4"
+        }
+      />
+      <HomeCategorias items={categorias} />
+      <HomeTestimonios
+        title={
+          settings.home_testimonios_title ?? "Relatos de nuestros viajeros"
+        }
+        items={testimonios}
+      />
+      <HomeNewsletter
+        label={settings.home_newsletter_label ?? "Unite al newsletter"}
+        button={settings.home_newsletter_button ?? "Suscribirse"}
+      />
+    </>
   );
 }
