@@ -19,6 +19,13 @@ import { AgenciaModal } from "@/components/public/AgenciaModal";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
 import "./site.css";
 
+// Public site is data-driven from CMS (SiteSettings) and Postgres. Skip SSG
+// at build time so the build doesn't depend on a live DB inside Railway's
+// build environment (postgres.railway.internal isn't always reachable from
+// the build runner). `unstable_cache` with `revalidate: 60` still gives us
+// effective ISR-style caching at runtime.
+export const dynamic = "force-dynamic";
+
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <>

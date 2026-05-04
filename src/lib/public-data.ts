@@ -6,11 +6,18 @@ import { BRAND_ID } from "@/lib/brand";
 // PUBLIC_BRAND_ID alias is kept for callers that imported it before Fase 7.
 export const PUBLIC_BRAND_ID = BRAND_ID;
 
-// SiteSettings — keyed by group, returned as a flat key→value record
+// SiteSettings — keyed by group, returned as a flat key→value record.
+// Wrapped in try/catch so a transient DB outage during a build/cold start
+// degrades to empty defaults rather than crashing the page render.
 export const getSiteSettings = unstable_cache(
-  async (group: string) => {
-    const list = await prisma.siteSetting.findMany({ where: { group } });
-    return Object.fromEntries(list.map((s) => [s.key, s.value]));
+  async (group: string): Promise<Record<string, string>> => {
+    try {
+      const list = await prisma.siteSetting.findMany({ where: { group } });
+      return Object.fromEntries(list.map((s) => [s.key, s.value]));
+    } catch (err) {
+      console.warn(`[public-data] getSiteSettings(${group}) failed:`, err);
+      return {};
+    }
   },
   ["site-settings"],
   { revalidate: 60, tags: ["site-settings"] },
