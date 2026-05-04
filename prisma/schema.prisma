@@ -2,7 +2,7 @@
 // PostgreSQL on Railway
 
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "binary"
 }
 
@@ -17,7 +17,11 @@ datasource db {
 
 enum EstadoPaquete {
   BORRADOR
+  EN_REVISION
   ACTIVO
+  ARCHIVADO
+  // Legacy value — kept until backfill removes the last row using it.
+  // New code should never assign INACTIVO; use ARCHIVADO instead.
   INACTIVO
 }
 
@@ -37,6 +41,19 @@ enum Role {
   ADMIN
   VENDEDOR
   MARKETING
+}
+
+enum EstadoMensaje {
+  NUEVO
+  LEIDO
+  RESPONDIDO
+  CERRADA
+}
+
+enum CanalContacto {
+  LLAMADA
+  EMAIL
+  WHATSAPP
 }
 
 // ──────────────────────────────────────────────
@@ -80,27 +97,42 @@ model Paquete {
   webId             String?
   itinerarioAmadeus String?       @db.Text
   campana           String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  deletedAt         DateTime?
 
-  temporada         Temporada?           @relation(fields: [temporadaId], references: [id])
-  tipoPaquete       TipoPaquete?         @relation(fields: [tipoPaqueteId], references: [id])
-  fotos             PaqueteFoto[]
-  etiquetas         PaqueteEtiqueta[]
-  aereos            PaqueteAereo[]
-  alojamientos      PaqueteAlojamiento[]
-  traslados         PaqueteTraslado[]
-  seguros           PaqueteSeguro[]
-  circuitos         PaqueteCircuito[]
-  opcionesHoteleras OpcionHotelera[]
-  destinos          PaqueteDestino[]
+  // ── Public-site copy (Fase 5C: edited from /backend/paquetes/[slug]?tab=frontend) ──
+  slug              String? @unique
+  publicado         Boolean @default(false)
+  metaTitle         String?
+  metaDescription   String? @db.Text
+  heroImage         String?
+  textoIncluye      String? @db.Text
+  precioDesde       Float?
+  precioDesdeMoneda String? @default("USD")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  temporada          Temporada?           @relation(fields: [temporadaId], references: [id])
+  tipoPaquete        TipoPaquete?         @relation(fields: [tipoPaqueteId], references: [id])
+  fotos              PaqueteFoto[]
+  etiquetas          PaqueteEtiqueta[]
+  aereos             PaqueteAereo[]
+  alojamientos       PaqueteAlojamiento[]
+  traslados          PaqueteTraslado[]
+  seguros            PaqueteSeguro[]
+  circuitos          PaqueteCircuito[]
+  opcionesHoteleras  OpcionHotelera[]
+  destinos           PaqueteDestino[]
+  serviciosIncluidos PaqueteServicio[]
+  testimonios        Testimonio[]
+  cotizaciones       Cotizacion[]
 
   @@index([brandId])
   @@index([estado])
   @@index([deletedAt])
   @@index([temporadaId])
   @@index([tipoPaqueteId])
+  @@index([publicado])
 }
 
 model Aereo {
@@ -128,15 +160,19 @@ model Aereo {
 }
 
 model PrecioAereo {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   aereoId      String
   periodoDesde String
   periodoHasta String
   precioAdulto Float
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   aereo Aereo @relation(fields: [aereoId], references: [id], onDelete: Cascade)
+
+  @@index([aereoId, periodoDesde, periodoHasta])
+  @@index([deletedAt])
 }
 
 model Alojamiento {
@@ -166,17 +202,21 @@ model Alojamiento {
 }
 
 model PrecioAlojamiento {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   alojamientoId  String
   periodoDesde   String
   periodoHasta   String
   precioPorNoche Float
   regimenId      String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
 
   alojamiento Alojamiento @relation(fields: [alojamientoId], references: [id], onDelete: Cascade)
   regimen     Regimen?    @relation(fields: [regimenId], references: [id])
+
+  @@index([alojamientoId, periodoDesde, periodoHasta])
+  @@index([deletedAt])
 }
 
 model AlojamientoFoto {
@@ -257,15 +297,19 @@ model CircuitoDia {
 }
 
 model PrecioCircuito {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   circuitoId   String
   periodoDesde String
   periodoHasta String
   precio       Float
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   circuito Circuito @relation(fields: [circuitoId], references: [id], onDelete: Cascade)
+
+  @@index([circuitoId, periodoDesde, periodoHasta])
+  @@index([deletedAt])
 }
 
 model Proveedor {
@@ -302,8 +346,8 @@ model Temporada {
 
   paquetes Paquete[]
 
-  @@index([brandId])
   @@unique([brandId, nombre])
+  @@index([brandId])
 }
 
 model TipoPaquete {
@@ -317,8 +361,8 @@ model TipoPaquete {
 
   paquetes Paquete[]
 
-  @@index([brandId])
   @@unique([brandId, nombre])
+  @@index([brandId])
 }
 
 model Etiqueta {
@@ -333,23 +377,26 @@ model Etiqueta {
   paquetes       PaqueteEtiqueta[]
   notificaciones Notificacion[]
 
-  @@index([brandId])
   @@unique([brandId, slug])
+  @@index([brandId])
 }
 
 model Region {
-  id        String   @id @default(cuid())
-  brandId   String
-  nombre    String
-  slug      String
-  orden     Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  brandId     String
+  nombre      String
+  slug        String
+  orden       Int      @default(0)
+  // ── Public-site copy ──
+  heroImage   String?
+  descripcion String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   paises Pais[]
 
-  @@index([brandId])
   @@unique([brandId, slug])
+  @@index([brandId])
 }
 
 model Pais {
@@ -393,8 +440,8 @@ model Regimen {
 
   precios PrecioAlojamiento[]
 
-  @@index([brandId])
   @@unique([brandId, nombre])
+  @@index([brandId])
 }
 
 // ──────────────────────────────────────────────
@@ -557,6 +604,169 @@ model Notificacion {
   etiqueta Etiqueta @relation(fields: [etiquetaId], references: [id])
 
   @@index([brandId])
+}
+
+// ──────────────────────────────────────────────
+// Public site editable content (single-tenant — no brandId)
+// ──────────────────────────────────────────────
+
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  type      String   @default("text") // "text" | "textarea" | "image_url" | "number" | "url"
+  label     String?
+  group     String? // "home" | "general" | "corporativo" | etc.
+  updatedAt DateTime @updatedAt
+
+  @@index([group])
+}
+
+model Testimonio {
+  id        String   @id @default(cuid())
+  paqueteId String?
+  ubicacion String
+  titulo    String
+  texto     String   @db.Text
+  rating    Int      @default(5)
+  autor     String
+  imageUrl  String?
+  publicado Boolean  @default(true)
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  paquete Paquete? @relation(fields: [paqueteId], references: [id])
+
+  @@index([publicado])
+  @@index([orden])
+}
+
+model CategoriaDestacada {
+  id        String   @id @default(cuid())
+  titulo    String
+  imagen    String // /site/img/slider-N.webp or external URL
+  link      String // e.g. "/destinos?tipo=lunas-de-miel"
+  orden     Int      @default(0)
+  activa    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([activa])
+}
+
+model CatalogoServicio {
+  id          String   @id @default(cuid())
+  nombre      String   @unique
+  icon        String // "flight" | "bag" | "bus" | "bed" | "exc" | "shield" | …
+  descripcion String?
+  orden       Int      @default(0)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  paquetes PaqueteServicio[]
+
+  @@index([activo])
+}
+
+model PaqueteServicio {
+  id          String  @id @default(cuid())
+  paqueteId   String
+  servicioId  String
+  textoCustom String?
+  orden       Int     @default(0)
+
+  paquete  Paquete          @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  servicio CatalogoServicio @relation(fields: [servicioId], references: [id])
+
+  @@unique([paqueteId, servicioId])
+  @@index([paqueteId])
+}
+
+// ──────────────────────────────────────────────
+// Public form submissions (models only — server actions still stubs per
+// pending-public-forms.md decision; activation will be a separate change)
+// ──────────────────────────────────────────────
+
+model Cotizacion {
+  id              String         @id @default(cuid())
+  paqueteId       String?
+  nombre          String
+  email           String
+  telefono        String?
+  paisCodigo      String?
+  fechaDesde      DateTime?
+  fechaHasta      DateTime?
+  adultos         Int            @default(0)
+  ninos           Int            @default(0)
+  infantes        Int            @default(0)
+  preferencia     CanalContacto?
+  comentarios     String?        @db.Text
+  origen          String?
+  aceptaPromos    Boolean        @default(false)
+  estado          EstadoMensaje  @default(NUEVO)
+  asignadoAUserId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  paquete Paquete? @relation(fields: [paqueteId], references: [id])
+
+  @@index([estado])
+  @@index([createdAt])
+}
+
+model MensajeContacto {
+  id          String        @id @default(cuid())
+  nombre      String
+  email       String
+  telefono    String?
+  comentarios String        @db.Text
+  estado      EstadoMensaje @default(NUEVO)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([estado])
+}
+
+model ContactoCorporativo {
+  id          String        @id @default(cuid())
+  nombre      String
+  email       String
+  telefono    String?
+  cargo       String?
+  empresa     String
+  comentarios String?       @db.Text
+  estado      EstadoMensaje @default(NUEVO)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([estado])
+}
+
+model Postulacion {
+  id         String        @id @default(cuid())
+  nombre     String
+  email      String
+  telefono   String?
+  motivacion String        @db.Text
+  cvUrl      String
+  cvFilename String
+  estado     EstadoMensaje @default(NUEVO)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([estado])
+}
+
+model SuscripcionNewsletter {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  source         String?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  unsubscribedAt DateTime?
+
+  @@index([active])
 }
 
 // ──────────────────────────────────────────────
