@@ -98,15 +98,24 @@ model Paquete {
   itinerarioAmadeus String?       @db.Text
   campana           String?
 
-  // ── Public-site copy (Fase 5C: edited from /backend/paquetes/[slug]?tab=frontend) ──
-  slug              String? @unique
-  publicado         Boolean @default(false)
-  metaTitle         String?
-  metaDescription   String? @db.Text
-  heroImage         String?
-  textoIncluye      String? @db.Text
-  precioDesde       Float?
-  precioDesdeMoneda String? @default("USD")
+  // ── Public-site copy (Fase 5C/8: edited from /backend/paquetes/[slug]?tab=frontend) ──
+  slug                String? @unique
+  publicado           Boolean @default(false)
+  metaTitle           String?
+  metaDescription     String? @db.Text
+  heroImage           String?
+  // Texto introductorio del paquete (aparece arriba/al lado del título en el detalle público)
+  textoIntro          String? @db.Text
+  // Texto introductorio de la lista "Incluye"
+  textoIncluye        String? @db.Text
+  // Lista (markdown / texto libre) de qué NO incluye el paquete
+  textoNoIncluye      String? @db.Text
+  // Itinerario día a día visible públicamente (distinto al itinerarioAmadeus interno)
+  itinerarioPublico   String? @db.Text
+  // Notas de condiciones/cancelación específicas del paquete
+  textoCondiciones    String? @db.Text
+  precioDesde         Float?
+  precioDesdeMoneda   String? @default("USD")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -779,6 +788,68 @@ model SuscripcionNewsletter {
   unsubscribedAt DateTime?
 
   @@index([active])
+}
+
+// ──────────────────────────────────────────────
+// Public site editable content — additional CMS models (Fase 9)
+// ──────────────────────────────────────────────
+
+model FaqTopic {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  label     String
+  iconUrl   String?
+  bodyHtml  String   @db.Text
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([activo])
+  @@index([orden])
+}
+
+model TermSection {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  bodyHtml  String   @db.Text
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([activo])
+  @@index([orden])
+}
+
+model ClienteCorporativo {
+  id        String   @id @default(cuid())
+  nombre    String
+  logoUrl   String
+  link      String?
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([activo])
+  @@index([orden])
+}
+
+model PersonaContacto {
+  id        String   @id @default(cuid())
+  nombre    String
+  rol       String
+  email     String
+  photoUrl  String?
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([activo])
+  @@index([orden])
 }
 
 // ──────────────────────────────────────────────

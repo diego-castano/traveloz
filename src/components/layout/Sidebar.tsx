@@ -23,7 +23,6 @@ import {
   Users,
   Settings,
   Bell,
-  BarChart3,
   Truck,
   ChevronsLeft,
   ChevronsRight,
@@ -135,7 +134,6 @@ const navGroups: NavGroup[] = [
       { id: "perfiles", label: "Perfiles y Roles", icon: Users, href: "/backend/perfiles" },
       { id: "catalogos", label: "Catalogos", icon: Settings, href: "/backend/catalogos" },
       { id: "notificaciones", label: "Notificaciones", icon: Bell, href: "/backend/notificaciones" },
-      { id: "reportes", label: "Reportes", icon: BarChart3, href: "/backend/reportes" },
     ],
   },
 ];
@@ -219,13 +217,13 @@ export function Sidebar() {
           borderRight: "1px solid rgba(139,92,246,0.1)",
         }}
       >
-        {/* Pulsing glow overlay */}
-        <div className="pointer-events-none absolute inset-0 animate-sidebar-glow" />
-
-        {/* Top glow radial gradient */}
+        {/* Subtle top accent — no pulsing animation */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-32"
-          style={{ background: activeBrand.sidebarTopGlow }}
+          className="pointer-events-none absolute inset-x-0 top-0 h-24"
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.15) 0%, transparent 60%)",
+          }}
         />
 
         {/* ----------------------------------------------------------------- */}
@@ -271,24 +269,16 @@ export function Sidebar() {
         {/* ----------------------------------------------------------------- */}
         {/* Nav section (scrollable) */}
         {/* ----------------------------------------------------------------- */}
-        <nav className="relative flex-1 overflow-y-auto py-2 px-3">
+        <nav className="relative flex-1 overflow-y-auto py-3 px-3">
           {filteredGroups.map((group, groupIndex) => (
-            <div key={group.group}>
-              {/* Group divider (not before first group) */}
-              {groupIndex > 0 && (
-                <div
-                  className="mx-3 my-1"
-                  style={{ height: 1, background: "rgba(255,255,255,0.06)" }}
-                />
-              )}
-
+            <div key={group.group} className={groupIndex > 0 ? "mt-4" : ""}>
               {/* Group label (only when expanded) */}
               {!effectiveCollapsed && (
                 <div
-                  className="mb-2 mt-4 px-3 text-[10px] font-medium uppercase"
+                  className="mb-1.5 px-3 text-[10px] font-semibold uppercase"
                   style={{
-                    letterSpacing: "1.8px",
-                    color: "rgba(255,255,255,0.3)",
+                    letterSpacing: "1.4px",
+                    color: "rgba(255,255,255,0.35)",
                   }}
                 >
                   {group.label}
@@ -305,48 +295,46 @@ export function Sidebar() {
                     href={item.href}
                     prefetch={false}
                     className={cn(
-                      "flex items-center gap-3 rounded-[10px] text-[13px] transition-all duration-200 cursor-pointer group",
+                      "flex items-center gap-2.5 rounded-md text-[12.5px] transition-colors duration-150 cursor-pointer group",
                       effectiveCollapsed
-                        ? "justify-center px-0 py-2.5"
-                        : "px-3 py-2.5",
+                        ? "justify-center px-0 py-2"
+                        : "px-3 py-1.5",
                     )}
                     style={{
                       color: active
                         ? "rgba(255,255,255,1)"
-                        : "rgba(255,255,255,0.55)",
+                        : "rgba(255,255,255,0.6)",
                       background: active
-                        ? "rgba(139,92,246,0.2)"
+                        ? "rgba(255,255,255,0.08)"
                         : undefined,
-                      border: active
-                        ? "1px solid rgba(139,92,246,0.15)"
-                        : "1px solid transparent",
-                      boxShadow: active
-                        ? "inset 0 0 16px rgba(139,92,246,0.12), 0 0 12px rgba(139,92,246,0.08)"
-                        : undefined,
+                      borderLeft: active
+                        ? "2px solid rgba(167,139,250,0.85)"
+                        : "2px solid transparent",
+                      paddingLeft: effectiveCollapsed
+                        ? undefined
+                        : active
+                          ? "10px"
+                          : "12px",
                     }}
                     onMouseEnter={(e) => {
                       prefetchRoute(item.href);
                       if (!active) {
                         e.currentTarget.style.background =
-                          "rgba(255,255,255,0.08)";
+                          "rgba(255,255,255,0.04)";
                         e.currentTarget.style.color =
                           "rgba(255,255,255,0.9)";
-                        e.currentTarget.style.transform =
-                          "translateX(2px)";
                       }
                     }}
                     onMouseLeave={(e) => {
                       if (!active) {
                         e.currentTarget.style.background = "transparent";
                         e.currentTarget.style.color =
-                          "rgba(255,255,255,0.55)";
-                        e.currentTarget.style.transform =
-                          "translateX(0)";
+                          "rgba(255,255,255,0.6)";
                       }
                     }}
                     onFocus={() => prefetchRoute(item.href)}
                   >
-                    <Icon size={18} strokeWidth={1.75} className="flex-shrink-0" />
+                    <Icon size={16} strokeWidth={1.75} className="flex-shrink-0" />
                     {!effectiveCollapsed && (
                       <span className="truncate">{item.label}</span>
                     )}

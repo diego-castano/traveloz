@@ -13,6 +13,11 @@ import {
   Briefcase,
   PanelBottom,
   ExternalLink,
+  HelpCircle,
+  FileText,
+  Building2,
+  UserCircle,
+  Send,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/components/lib/cn";
@@ -41,6 +46,16 @@ const GROUPS: Group[] = [
       { href: "/backend/web/nosotros", label: "Nosotros", icon: Users },
       { href: "/backend/web/contacto", label: "Contacto", icon: Mail },
       { href: "/backend/web/corporativo", label: "Corporativo", icon: Briefcase },
+      { href: "/backend/web/cotizar", label: "Cotizar", icon: Send },
+      { href: "/backend/web/faq", label: "FAQ", icon: HelpCircle },
+      { href: "/backend/web/terms", label: "Términos", icon: FileText },
+    ],
+  },
+  {
+    label: "Corporativo",
+    items: [
+      { href: "/backend/web/clientes", label: "Clientes", icon: Building2 },
+      { href: "/backend/web/equipo", label: "Equipo", icon: UserCircle },
     ],
   },
   {

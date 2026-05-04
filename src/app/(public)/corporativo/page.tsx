@@ -16,38 +16,16 @@ import { FormStatus } from "@/components/public/FormStatus";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Typewriter } from "@/components/public/Typewriter";
 import { getSettingsByGroup } from "@/actions/site-settings.actions";
+import {
+  listClientesCorporativos,
+  listPersonasContacto,
+} from "@/actions/cms-content.actions";
 
 type Settings = Record<string, string>;
-
-const CLIENT_LOGOS = [
-  "canal-10",
-  "ucu",
-  "eju",
-  "mmt",
-  "inac",
-  "inavi",
-  "barrios",
-  "arkano",
-  "amcs",
-  "proeza",
-  "cibeles",
-  "ubs",
-];
-
-const CONTACTS = [
-  {
-    name: "Agustina Magnani",
-    role: "Growth Manager",
-    email: "agustina.magnani@traveloz.com.uy",
-    photo: "Agustina.webp",
-  },
-  {
-    name: "Francisco Calviño",
-    role: "CEO",
-    email: "francisco.calvino@traveloz.com.uy",
-    photo: "Francisco.webp",
-  },
-];
+type Cliente = Awaited<
+  ReturnType<typeof listClientesCorporativos>
+>[number];
+type Persona = Awaited<ReturnType<typeof listPersonasContacto>>[number];
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -61,10 +39,18 @@ function SubmitButton() {
 export default function CorporativoPage() {
   const [result, formAction] = useFormState(submitCorporateForm, null);
   const [s, setS] = useState<Settings>({});
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [equipo, setEquipo] = useState<Persona[]>([]);
 
   useEffect(() => {
-    getSettingsByGroup("corporativo").then((rows) => {
-      setS(Object.fromEntries(rows.map((r) => [r.key, r.value])));
+    Promise.all([
+      getSettingsByGroup("corporativo"),
+      listClientesCorporativos(),
+      listPersonasContacto(),
+    ]).then(([sRows, clientesRows, equipoRows]) => {
+      setS(Object.fromEntries(sRows.map((r) => [r.key, r.value])));
+      setClientes(clientesRows.filter((c) => c.activo));
+      setEquipo(equipoRows.filter((p) => p.activo));
     });
   }, []);
 
@@ -167,10 +153,14 @@ export default function CorporativoPage() {
               <div className="d-none d-md-block">
                 <div className="company-logo style2">
                   <ul className="row align-items-center justify-content-center">
-                    {CLIENT_LOGOS.map((logo) => (
-                      <li className="col-lg-2 col-md-3" key={logo}>
-                        <a href="#">
-                          <img src={`/site/img/${logo}.webp`} alt={logo} />
+                    {clientes.map((c) => (
+                      <li className="col-lg-2 col-md-3" key={c.id}>
+                        <a
+                          href={c.link ?? "#"}
+                          target={c.link ? "_blank" : undefined}
+                          rel={c.link ? "noopener noreferrer" : undefined}
+                        >
+                          <img src={c.logoUrl} alt={c.nombre} />
                         </a>
                       </li>
                     ))}
@@ -179,20 +169,27 @@ export default function CorporativoPage() {
               </div>
               <div className="d-md-none">
                 <div className="company-logo style2">
-                  <EmblaSlider
-                    slidesToShow={3}
-                    autoplay
-                    autoplayDelay={3000}
-                    loop
-                    showArrows={false}
-                    className="logo-slider"
-                  >
-                    {CLIENT_LOGOS.map((logo) => (
-                      <a href="#" key={logo}>
-                        <img src={`/site/img/${logo}.webp`} alt={logo} />
-                      </a>
-                    ))}
-                  </EmblaSlider>
+                  {clientes.length > 0 && (
+                    <EmblaSlider
+                      slidesToShow={3}
+                      autoplay
+                      autoplayDelay={3000}
+                      loop
+                      showArrows={false}
+                      className="logo-slider"
+                    >
+                      {clientes.map((c) => (
+                        <a
+                          href={c.link ?? "#"}
+                          target={c.link ? "_blank" : undefined}
+                          rel={c.link ? "noopener noreferrer" : undefined}
+                          key={c.id}
+                        >
+                          <img src={c.logoUrl} alt={c.nombre} />
+                        </a>
+                      ))}
+                    </EmblaSlider>
+                  )}
                 </div>
               </div>
             </div>
@@ -277,17 +274,20 @@ export default function CorporativoPage() {
             </div>
             <div className="col-lg-8 mx-auto">
               <div className="row">
-                {CONTACTS.map((c) => (
-                  <div className="col-sm-6" key={c.email}>
+                {equipo.map((p) => (
+                  <div className="col-sm-6" key={p.id}>
                     <div className="content-box text-center style3">
                       <div className="image-box">
-                        <img src={`/site/img/${c.photo}`} alt={c.name} />
+                        <img
+                          src={p.photoUrl ?? "/site/img/agencia.jpeg"}
+                          alt={p.nombre}
+                        />
                       </div>
                       <div className="text">
-                        <span className="name">{c.name}</span>
-                        <span className="deg">{c.role}</span>
-                        <a href={`mailto:${c.email}`} className="email">
-                          {c.email}
+                        <span className="name">{p.nombre}</span>
+                        <span className="deg">{p.rol}</span>
+                        <a href={`mailto:${p.email}`} className="email">
+                          {p.email}
                         </a>
                       </div>
                     </div>

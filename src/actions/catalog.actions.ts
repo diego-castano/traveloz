@@ -8,11 +8,22 @@ import type { CategoriaServicio } from "@prisma/client";
 import { logger } from "@/lib/logger";
 const log = logger.child({ module: "catalog.actions" });
 
+/** Global catalog-cache tag. Same rationale as services-global: lets every
+ *  mutation invalidate without resolving brandId first. Catalogs are tiny
+ *  and rarely change, so over-invalidation across brands is cheap. */
+const CATALOGS_GLOBAL_TAG = "catalogs-global";
+
 /** Bust the per-brand catalog cache. Catalogs change rarely, so we use a long
  *  TTL (5 min) but still invalidate on every mutation so admins see edits
  *  immediately. */
 function bustCatalogsCache(brandId: string) {
   revalidateTag(`catalogs:${brandId}`);
+  revalidateTag(CATALOGS_GLOBAL_TAG);
+}
+
+/** Bust the global catalog cache. For mutations without brandId in scope. */
+function bustCatalogsCacheGlobal() {
+  revalidateTag(CATALOGS_GLOBAL_TAG);
 }
 
 // ──────────────────────────────────────────────
@@ -93,7 +104,7 @@ export async function createTemporada(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = TemporadaSchema.parse(data);
-    return await prisma.temporada.create({ data: { ...parsed, brandId } });
+    const __res = await prisma.temporada.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating temporada", error);
     throw new Error("No se pudo crear la temporada.");
@@ -106,7 +117,7 @@ export async function updateTemporada(
 ) {
   try {
     await requireAuth();
-    return await prisma.temporada.update({ where: { id }, data });
+    const __res = await prisma.temporada.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating temporada", error);
     throw new Error("No se pudo actualizar la temporada.");
@@ -122,7 +133,7 @@ export async function deleteTemporada(id: string) {
         `No se puede eliminar: hay ${count} paquete${count === 1 ? "" : "s"} usando esta temporada.`
       );
     }
-    return await prisma.temporada.delete({ where: { id } });
+    const __res = await prisma.temporada.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting temporada", error);
     throw error instanceof Error
@@ -156,7 +167,7 @@ export async function createTipoPaquete(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = TipoPaqueteSchema.parse(data);
-    return await prisma.tipoPaquete.create({ data: { ...parsed, brandId } });
+    const __res = await prisma.tipoPaquete.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating tipo de paquete", error);
     throw new Error("No se pudo crear el tipo de paquete.");
@@ -169,7 +180,7 @@ export async function updateTipoPaquete(
 ) {
   try {
     await requireAuth();
-    return await prisma.tipoPaquete.update({ where: { id }, data });
+    const __res = await prisma.tipoPaquete.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating tipo de paquete", error);
     throw new Error("No se pudo actualizar el tipo de paquete.");
@@ -185,7 +196,7 @@ export async function deleteTipoPaquete(id: string) {
         `No se puede eliminar: hay ${count} paquete${count === 1 ? "" : "s"} usando este tipo de paquete.`
       );
     }
-    return await prisma.tipoPaquete.delete({ where: { id } });
+    const __res = await prisma.tipoPaquete.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting tipo de paquete", error);
     throw error instanceof Error
@@ -219,7 +230,7 @@ export async function createEtiqueta(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = EtiquetaSchema.parse(data);
-    return await prisma.etiqueta.create({ data: { ...parsed, brandId } });
+    const __res = await prisma.etiqueta.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating etiqueta", error);
     throw new Error("No se pudo crear la etiqueta.");
@@ -232,7 +243,7 @@ export async function updateEtiqueta(
 ) {
   try {
     await requireAuth();
-    return await prisma.etiqueta.update({ where: { id }, data });
+    const __res = await prisma.etiqueta.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating etiqueta", error);
     throw new Error("No se pudo actualizar la etiqueta.");
@@ -242,7 +253,7 @@ export async function updateEtiqueta(
 export async function deleteEtiqueta(id: string) {
   try {
     await requireAuth();
-    return await prisma.etiqueta.delete({ where: { id } });
+    const __res = await prisma.etiqueta.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting etiqueta", error);
     throw new Error("No se pudo eliminar la etiqueta.");
@@ -273,7 +284,7 @@ export async function createRegimen(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = RegimenSchema.parse(data);
-    return await prisma.regimen.create({ data: { ...parsed, brandId } });
+    const __res = await prisma.regimen.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating regimen", error);
     throw new Error("No se pudo crear el régimen.");
@@ -286,7 +297,7 @@ export async function updateRegimen(
 ) {
   try {
     await requireAuth();
-    return await prisma.regimen.update({ where: { id }, data });
+    const __res = await prisma.regimen.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating regimen", error);
     throw new Error("No se pudo actualizar el régimen.");
@@ -302,7 +313,7 @@ export async function deleteRegimen(id: string) {
         `No se puede eliminar: hay ${count} precio${count === 1 ? "" : "s"} de alojamiento usando este régimen.`
       );
     }
-    return await prisma.regimen.delete({ where: { id } });
+    const __res = await prisma.regimen.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting regimen", error);
     throw error instanceof Error
@@ -336,7 +347,7 @@ export async function createRegion(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = RegionSchema.parse(data);
-    return await prisma.region.create({ data: { ...parsed, brandId } });
+    const __res = await prisma.region.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating region", error);
     throw new Error("No se pudo crear la región.");
@@ -349,7 +360,7 @@ export async function updateRegion(
 ) {
   try {
     await requireAuth();
-    return await prisma.region.update({ where: { id }, data });
+    const __res = await prisma.region.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating region", error);
     throw new Error("No se pudo actualizar la región.");
@@ -365,7 +376,7 @@ export async function deleteRegion(id: string) {
         `No se puede eliminar: hay ${count} país${count === 1 ? "" : "es"} asignado${count === 1 ? "" : "s"} a esta región.`
       );
     }
-    return await prisma.region.delete({ where: { id } });
+    const __res = await prisma.region.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting region", error);
     throw error instanceof Error
@@ -400,7 +411,7 @@ export async function createPais(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = PaisSchema.parse(data);
-    return await prisma.pais.create({ data: { ...parsed, brandId } });
+    const __res = await prisma.pais.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating pais", error);
     throw new Error("No se pudo crear el país.");
@@ -413,7 +424,7 @@ export async function updatePais(
 ) {
   try {
     await requireAuth();
-    return await prisma.pais.update({ where: { id }, data });
+    const __res = await prisma.pais.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating pais", error);
     throw new Error("No se pudo actualizar el país.");
@@ -423,7 +434,7 @@ export async function updatePais(
 export async function deletePais(id: string) {
   try {
     await requireAuth();
-    return await prisma.pais.delete({ where: { id } });
+    const __res = await prisma.pais.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting pais", error);
     throw new Error("No se pudo eliminar el país.");
@@ -451,7 +462,7 @@ export async function createCiudad(data: { paisId: string; nombre: string }) {
   try {
     await requireAuth();
     const parsed = CiudadSchema.parse(data);
-    return await prisma.ciudad.create({ data: parsed });
+    const __res = await prisma.ciudad.create({ data: parsed }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating ciudad", error);
     throw new Error("No se pudo crear la ciudad.");
@@ -464,7 +475,7 @@ export async function updateCiudad(
 ) {
   try {
     await requireAuth();
-    return await prisma.ciudad.update({ where: { id }, data });
+    const __res = await prisma.ciudad.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating ciudad", error);
     throw new Error("No se pudo actualizar la ciudad.");
@@ -474,7 +485,7 @@ export async function updateCiudad(
 export async function deleteCiudad(id: string) {
   try {
     await requireAuth();
-    return await prisma.ciudad.delete({ where: { id } });
+    const __res = await prisma.ciudad.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting ciudad", error);
     throw new Error("No se pudo eliminar la ciudad.");
@@ -531,7 +542,7 @@ export async function updateProveedor(
 ) {
   try {
     await requireAuth();
-    return await prisma.proveedor.update({ where: { id }, data });
+    const __res = await prisma.proveedor.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating proveedor", error);
     throw new Error("No se pudo actualizar el proveedor.");
@@ -582,7 +593,7 @@ export async function getBaseCatalogs(requestedBrandId?: string) {
     const cached = unstable_cache(
       () => fetchBaseCatalogsUncached(brandId),
       ["catalogs-base", brandId],
-      { revalidate: 300, tags: [`catalogs:${brandId}`] },
+      { revalidate: 300, tags: [`catalogs:${brandId}`, CATALOGS_GLOBAL_TAG] },
     );
     return await cached();
   } catch (error) {
@@ -606,7 +617,7 @@ export async function getCatalogGeography(requestedBrandId?: string) {
     const cached = unstable_cache(
       () => fetchCatalogGeographyUncached(brandId),
       ["catalogs-geography", brandId],
-      { revalidate: 300, tags: [`catalogs:${brandId}`] },
+      { revalidate: 300, tags: [`catalogs:${brandId}`, CATALOGS_GLOBAL_TAG] },
     );
     return await cached();
   } catch (error) {

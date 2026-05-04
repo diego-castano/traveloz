@@ -75,6 +75,46 @@ export const getPaquetesByRegion = unstable_cache(
   { revalidate: 60, tags: ["paquetes"] },
 );
 
+export const getFaqTopics = unstable_cache(
+  async () =>
+    prisma.faqTopic.findMany({
+      where: { activo: true },
+      orderBy: { orden: "asc" },
+    }),
+  ["faq-topics"],
+  { revalidate: 300, tags: ["faq"] },
+);
+
+export const getTermSections = unstable_cache(
+  async () =>
+    prisma.termSection.findMany({
+      where: { activo: true },
+      orderBy: { orden: "asc" },
+    }),
+  ["term-sections"],
+  { revalidate: 300, tags: ["terms"] },
+);
+
+export const getClientesCorporativos = unstable_cache(
+  async () =>
+    prisma.clienteCorporativo.findMany({
+      where: { activo: true },
+      orderBy: { orden: "asc" },
+    }),
+  ["clientes-corporativos"],
+  { revalidate: 300, tags: ["clientes-corporativos"] },
+);
+
+export const getPersonasContacto = unstable_cache(
+  async () =>
+    prisma.personaContacto.findMany({
+      where: { activo: true },
+      orderBy: { orden: "asc" },
+    }),
+  ["personas-contacto"],
+  { revalidate: 300, tags: ["equipo"] },
+);
+
 export const getPaqueteBySlug = unstable_cache(
   async (slug: string) =>
     prisma.paquete.findUnique({

@@ -15,7 +15,11 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       metaTitle: true,
       metaDescription: true,
       heroImage: true,
+      textoIntro: true,
       textoIncluye: true,
+      textoNoIncluye: true,
+      itinerarioPublico: true,
+      textoCondiciones: true,
       precioDesde: true,
       precioDesdeMoneda: true,
       fotos: {
@@ -43,7 +47,11 @@ export async function updatePaqueteFrontend(
     metaTitle?: string | null;
     metaDescription?: string | null;
     heroImage?: string | null;
+    textoIntro?: string | null;
     textoIncluye?: string | null;
+    textoNoIncluye?: string | null;
+    itinerarioPublico?: string | null;
+    textoCondiciones?: string | null;
   },
 ) {
   await requireAuth();

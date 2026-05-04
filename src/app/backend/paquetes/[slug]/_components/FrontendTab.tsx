@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Save, ExternalLink } from "lucide-react";
+import { Save, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -18,8 +18,40 @@ import {
   listServicios,
   createServicio,
 } from "@/actions/catalogo-servicios.actions";
+import { MediaPicker } from "@/app/backend/web/_components/MediaPicker";
 
 type Servicio = { id: string; nombre: string; icon: string; activo?: boolean };
+
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="bg-white border border-neutral-200 rounded-lg p-5 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-neutral-900">{title}</h3>
+        {description && (
+          <p className="text-xs text-neutral-500 mt-0.5">{description}</p>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function FrontendTab({ paqueteId }: { paqueteId: string }) {
   const { toast } = useToast();
@@ -35,7 +67,11 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
     metaTitle: "",
     metaDescription: "",
     heroImage: "",
+    textoIntro: "",
     textoIncluye: "",
+    textoNoIncluye: "",
+    itinerarioPublico: "",
+    textoCondiciones: "",
   });
 
   useEffect(() => {
@@ -49,7 +85,11 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
             metaTitle: d.metaTitle ?? "",
             metaDescription: d.metaDescription ?? "",
             heroImage: d.heroImage ?? "",
+            textoIntro: d.textoIntro ?? "",
             textoIncluye: d.textoIncluye ?? "",
+            textoNoIncluye: d.textoNoIncluye ?? "",
+            itinerarioPublico: d.itinerarioPublico ?? "",
+            textoCondiciones: d.textoCondiciones ?? "",
           });
           setSelected(d.serviciosIncluidos.map((x) => x.servicio.id));
         }
@@ -83,189 +123,359 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           paqueteId,
           selected.map((id, i) => ({ servicioId: id, orden: i })),
         );
-        toast("success", "Cambios guardados");
+        toast(
+          "success",
+          "Cambios guardados",
+          "El sitio público se actualiza en menos de 1 minuto.",
+        );
       } catch (e) {
         toast("error", "Error al guardar", (e as Error).message);
       }
     });
 
   if (!data) {
-    return (
-      <div className="p-6 text-sm text-neutral-500">Cargando datos…</div>
-    );
+    return <div className="p-6 text-sm text-neutral-500">Cargando datos…</div>;
   }
 
-  const previewUrl = form.publicado && form.slug
-    ? `/destinos/${form.slug.split("/")[0] || "ver"}/${form.slug}`
-    : null;
+  const previewUrl =
+    form.publicado && form.slug ? `/destinos/ver/${form.slug}` : null;
 
   return (
-    <div className="space-y-6 p-6 max-w-3xl">
-      <div className="flex items-start justify-between">
+    <div className="p-6 max-w-4xl space-y-5">
+      {/* Header / state bar */}
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Contenido público (Frontend)</h2>
+          <h2 className="text-xl font-semibold text-neutral-900">
+            Contenido público
+          </h2>
           <p className="text-sm text-neutral-500 mt-1">
-            Editá la URL, SEO, imagen y servicios incluidos del paquete tal
-            como aparecerá en el sitio público.
+            Configurá cómo aparece este paquete en el sitio público.
           </p>
         </div>
-        {previewUrl && (
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-violet-600 hover:underline"
+        <div className="flex items-center gap-2 shrink-0">
+          {previewUrl && (
+            <a
+              href={previewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-violet-600 hover:underline"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Ver en el sitio
+            </a>
+          )}
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ring-1 ring-inset ${
+              form.publicado
+                ? "bg-green-50 text-green-700 ring-green-200"
+                : "bg-neutral-100 text-neutral-600 ring-neutral-200"
+            }`}
           >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Ver en el sitio
-          </a>
-        )}
+            {form.publicado ? (
+              <Eye className="w-3 h-3" />
+            ) : (
+              <EyeOff className="w-3 h-3" />
+            )}
+            {form.publicado ? "Publicado" : "Borrador"}
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Section 1 — URL & Visibilidad */}
+      <Section
+        title="URL y visibilidad"
+        description="Slug del paquete y si está visible para el público."
+      >
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="block text-xs font-medium text-neutral-700 mb-1">
+              Slug (URL pública)
+            </label>
+            <div className="flex gap-2">
+              <Input
+                value={form.slug}
+                onChange={(e) =>
+                  setForm({ ...form, slug: slugify(e.target.value) })
+                }
+                placeholder="ej. buzios-7-noches"
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, slug: slugify(data.titulo) })}
+                className="text-[11px] text-violet-600 hover:underline px-2"
+                title="Generar desde el título"
+              >
+                Auto
+              </button>
+            </div>
+            <p className="text-[11px] text-neutral-500 mt-1 font-mono">
+              /destinos/[región]/{form.slug || "<slug>"}
+            </p>
+          </div>
+          <div className="flex items-center pt-6">
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.publicado}
+                onChange={(e) =>
+                  setForm({ ...form, publicado: e.target.checked })
+                }
+                className="w-4 h-4 rounded text-violet-600"
+              />
+              <span className="text-sm text-neutral-700">
+                Publicar en el sitio
+              </span>
+            </label>
+          </div>
+        </div>
+      </Section>
+
+      {/* Section 2 — Hero */}
+      <Section
+        title="Hero"
+        description="Imagen principal del paquete. Se muestra en la galería y como destacada."
+      >
+        <MediaPicker
+          value={form.heroImage}
+          onChange={(v) => setForm({ ...form, heroImage: v })}
+          accept="image/*"
+        />
+        {data.fotos.length > 0 && (
+          <div>
+            <p className="text-[11px] text-neutral-500 mb-2">
+              O elegí una foto de la galería del paquete:
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {data.fotos.map((f) => {
+                const active = form.heroImage === f.url;
+                return (
+                  <button
+                    key={f.url}
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        heroImage: active ? "" : f.url,
+                      })
+                    }
+                    className={`shrink-0 rounded border-2 overflow-hidden transition ${
+                      active
+                        ? "border-violet-500 ring-2 ring-violet-200"
+                        : "border-transparent hover:border-neutral-300"
+                    }`}
+                  >
+                    <img
+                      src={f.url}
+                      alt={f.alt}
+                      className="w-20 h-14 object-cover"
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </Section>
+
+      {/* Section 3 — Texto principal */}
+      <Section
+        title="Textos del paquete"
+        description="Lo que el viajero ve al entrar al detalle."
+      >
         <div>
-          <label className="block text-xs font-medium text-neutral-600 mb-1">
-            URL pública (slug)
+          <label className="block text-xs font-medium text-neutral-700 mb-1">
+            Texto introductorio
+            <span className="text-neutral-400 font-normal ml-2">
+              (aparece al lado del título)
+            </span>
+          </label>
+          <textarea
+            value={form.textoIntro}
+            onChange={(e) => setForm({ ...form, textoIntro: e.target.value })}
+            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            rows={3}
+            placeholder="Por qué este destino, qué lo hace especial, etc."
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-700 mb-1">
+            Itinerario público
+            <span className="text-neutral-400 font-normal ml-2">
+              (día a día, distinto al itinerario interno Amadeus)
+            </span>
+          </label>
+          <textarea
+            value={form.itinerarioPublico}
+            onChange={(e) =>
+              setForm({ ...form, itinerarioPublico: e.target.value })
+            }
+            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            rows={6}
+            placeholder={`Día 1 — Llegada y traslado al hotel.\nDía 2 — City tour por el centro histórico.\nDía 3 — Excursión a las playas…`}
+          />
+        </div>
+      </Section>
+
+      {/* Section 4 — Incluye / No incluye */}
+      <Section
+        title="Qué incluye / no incluye"
+        description="Servicios incluidos (visibles con icono) y notas de qué queda fuera."
+      >
+        <div>
+          <label className="block text-xs font-medium text-neutral-700 mb-1">
+            Texto introductorio &ldquo;Incluye&rdquo;
+          </label>
+          <textarea
+            value={form.textoIncluye}
+            onChange={(e) => setForm({ ...form, textoIncluye: e.target.value })}
+            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            rows={2}
+            placeholder="Texto opcional que aparece encima de la lista…"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-700 mb-1">
+            Servicios incluidos
+          </label>
+          <MultiSelectCombobox
+            options={options}
+            value={selected}
+            onChange={setSelected}
+            placeholder="Agregar servicios…"
+            onCreate={async (name) => {
+              const created = await createServicio({
+                nombre: name,
+                icon: "flight",
+              });
+              setCatalog((c) => [
+                ...c,
+                { id: created.id, nombre: created.nombre, icon: created.icon },
+              ]);
+              return {
+                value: created.id,
+                label: created.nombre,
+                icon: (
+                  <img
+                    src={`/site/img/p-${created.icon}-icon.png`}
+                    alt=""
+                    className="w-4 h-4"
+                  />
+                ),
+              };
+            }}
+          />
+          <p className="text-[11px] text-neutral-400 mt-1">
+            ¿Falta un servicio? Crealo escribiendo el nombre y &ldquo;+ Crear&rdquo;,
+            o gestionalos desde{" "}
+            <a
+              href="/backend/catalogos/servicios"
+              className="text-violet-600 hover:underline"
+            >
+              Catálogo de servicios
+            </a>
+            .
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-700 mb-1">
+            No incluye
+          </label>
+          <textarea
+            value={form.textoNoIncluye}
+            onChange={(e) =>
+              setForm({ ...form, textoNoIncluye: e.target.value })
+            }
+            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            rows={3}
+            placeholder={`Excursiones opcionales\nGastos personales\nPropinas`}
+          />
+        </div>
+      </Section>
+
+      {/* Section 5 — Condiciones */}
+      <Section
+        title="Condiciones específicas"
+        description="Política de cancelación, pagos, requisitos especiales."
+      >
+        <textarea
+          value={form.textoCondiciones}
+          onChange={(e) =>
+            setForm({ ...form, textoCondiciones: e.target.value })
+          }
+          className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+          rows={4}
+          placeholder="Notas que aparecen al final del detalle. Si lo dejás vacío se muestran las condiciones generales del sitio."
+        />
+      </Section>
+
+      {/* Section 6 — SEO */}
+      <Section
+        title="SEO"
+        description="Cómo aparece en Google y al compartir en redes."
+      >
+        <div>
+          <label className="block text-xs font-medium text-neutral-700 mb-1">
+            Meta title
           </label>
           <Input
-            value={form.slug}
-            onChange={(e) => setForm({ ...form, slug: e.target.value })}
-            placeholder="ej. buzios-7-noches"
+            value={form.metaTitle}
+            onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
+            maxLength={60}
+            placeholder={data.titulo}
           />
-          <p className="text-xs text-neutral-500 mt-1">
-            <code className="text-[11px]">
-              /destinos/[region]/{form.slug || "<slug>"}
-            </code>
+          <p className="text-[10px] text-neutral-400 mt-0.5">
+            {form.metaTitle.length}/60 — si lo dejás vacío, usa el título del paquete.
           </p>
         </div>
-        <div className="flex items-center gap-2 pt-7">
-          <input
-            type="checkbox"
-            id="publicado"
-            checked={form.publicado}
-            onChange={(e) => setForm({ ...form, publicado: e.target.checked })}
-            className="w-4 h-4"
-          />
-          <label htmlFor="publicado" className="text-sm">
-            Visible en el sitio público
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-700 mb-1">
+            Meta description
           </label>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-neutral-600 mb-1">
-          Meta title (SEO) — máx 60
-        </label>
-        <Input
-          value={form.metaTitle}
-          onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
-          maxLength={60}
-        />
-        <p className="text-[11px] text-neutral-400 mt-0.5">
-          {form.metaTitle.length}/60
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-neutral-600 mb-1">
-          Meta description (SEO) — máx 160
-        </label>
-        <textarea
-          value={form.metaDescription}
-          onChange={(e) =>
-            setForm({ ...form, metaDescription: e.target.value })
-          }
-          className="w-full border border-neutral-300 rounded px-3 py-2 text-sm bg-white"
-          rows={2}
-          maxLength={160}
-        />
-        <p className="text-[11px] text-neutral-400 mt-0.5">
-          {form.metaDescription.length}/160
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-neutral-600 mb-1">
-          Hero image — elegí de la galería del paquete
-        </label>
-        <select
-          value={form.heroImage}
-          onChange={(e) => setForm({ ...form, heroImage: e.target.value })}
-          className="w-full border border-neutral-300 rounded px-3 py-2 text-sm bg-white"
-        >
-          <option value="">— Seleccionar —</option>
-          {data.fotos.map((f) => (
-            <option key={f.url} value={f.url}>
-              {f.alt || f.url}
-            </option>
-          ))}
-        </select>
-        {form.heroImage && (
-          <img
-            src={form.heroImage}
-            alt=""
-            className="mt-2 max-h-48 rounded border border-neutral-200"
+          <textarea
+            value={form.metaDescription}
+            onChange={(e) =>
+              setForm({ ...form, metaDescription: e.target.value })
+            }
+            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+            rows={2}
+            maxLength={160}
+            placeholder="Resumen de hasta 160 caracteres para los resultados de búsqueda."
           />
+          <p className="text-[10px] text-neutral-400 mt-0.5">
+            {form.metaDescription.length}/160
+          </p>
+        </div>
+
+        {(form.metaTitle || form.metaDescription) && (
+          <div className="bg-neutral-50 border border-neutral-200 rounded-md p-3 mt-3">
+            <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-1.5">
+              Vista previa SERP
+            </p>
+            <div className="text-blue-700 text-sm hover:underline cursor-pointer truncate">
+              {form.metaTitle || data.titulo} — TravelOz
+            </div>
+            <div className="text-green-800 text-[11px] mt-0.5">
+              traveloz.com.uy/destinos/.../{form.slug || "<slug>"}
+            </div>
+            {form.metaDescription && (
+              <div className="text-neutral-600 text-[12px] mt-1 line-clamp-2">
+                {form.metaDescription}
+              </div>
+            )}
+          </div>
         )}
-      </div>
+      </Section>
 
-      <div>
-        <label className="block text-xs font-medium text-neutral-600 mb-1">
-          Texto introductorio &ldquo;Incluye&rdquo;
-        </label>
-        <textarea
-          value={form.textoIncluye}
-          onChange={(e) => setForm({ ...form, textoIncluye: e.target.value })}
-          className="w-full border border-neutral-300 rounded px-3 py-2 text-sm bg-white"
-          rows={3}
-          placeholder="Texto que aparece encima de la lista de servicios incluidos…"
-        />
-      </div>
-
-      <div>
-        <label className="block text-xs font-medium text-neutral-600 mb-1">
-          Servicios incluidos
-        </label>
-        <MultiSelectCombobox
-          options={options}
-          value={selected}
-          onChange={setSelected}
-          placeholder="Agregar servicios…"
-          onCreate={async (name) => {
-            const created = await createServicio({
-              nombre: name,
-              icon: "flight",
-            });
-            setCatalog((c) => [
-              ...c,
-              { id: created.id, nombre: created.nombre, icon: created.icon },
-            ]);
-            return {
-              value: created.id,
-              label: created.nombre,
-              icon: (
-                <img
-                  src={`/site/img/p-${created.icon}-icon.png`}
-                  alt=""
-                  className="w-4 h-4"
-                />
-              ),
-            };
-          }}
-        />
-        <p className="text-[11px] text-neutral-400 mt-1">
-          ¿Falta un servicio? Agregalo desde{" "}
-          <a
-            href="/backend/catalogos/servicios"
-            className="text-violet-600 hover:underline"
-          >
-            Servicios incluidos
-          </a>
-          .
-        </p>
-      </div>
-
-      <div className="flex justify-end pt-4 border-t border-neutral-200">
+      {/* Sticky save bar */}
+      <div className="sticky bottom-4 bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-lg shadow-lg px-4 py-3 flex items-center justify-between">
+        <div className="text-xs text-neutral-500">
+          Los cambios se reflejan en el sitio público en &lt; 1 min.
+        </div>
         <Button
           onClick={onSave}
           disabled={isPending}
