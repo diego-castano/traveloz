@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/providers/AuthProvider";
 import {
   usePackageLoading,
+  usePaquetes,
 } from "@/components/providers/PackageProvider";
 import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import { useCatalogLoading } from "@/components/providers/CatalogProvider";
@@ -15,12 +16,19 @@ export default function DashboardPage() {
   const packageLoading = usePackageLoading();
   const serviceLoading = useServiceLoading();
   const catalogLoading = useCatalogLoading();
+  const paquetes = usePaquetes();
 
-  // Wait for every dataset the dashboards depend on before deciding which
-  // variant to render — otherwise stats animate from 0 twice as data streams in.
-  const loading = packageLoading || serviceLoading || catalogLoading || !user;
+  // Cold mount: every provider is loading and we have no cached data.
+  // Once any provider has data (stale-while-revalidate from a previous mount)
+  // we render the dashboard immediately and let individual sections show
+  // their own loading affordances.
+  const isColdMount =
+    !user ||
+    (packageLoading && paquetes.length === 0) ||
+    (serviceLoading && paquetes.length === 0) ||
+    (catalogLoading && paquetes.length === 0);
 
-  if (loading) return <PageSkeleton variant="dashboard" />;
+  if (isColdMount) return <PageSkeleton variant="dashboard" />;
 
   return isAdmin ? <AdminDashboard /> : <VendedorDashboard />;
 }

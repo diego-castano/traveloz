@@ -302,7 +302,12 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    dispatch({ type: "SET_LOADING", payload: true });
+    // Stale-while-revalidate: only show the loading skeleton on cold mount.
+    // If we already have temporadas (and therefore catalogs) from a previous
+    // mount, keep them visible while the fresh fetch lands.
+    if (state.temporadas.length === 0) {
+      dispatch({ type: "SET_LOADING", payload: true });
+    }
 
     catalogActions
       .getBaseCatalogs(activeBrandId)

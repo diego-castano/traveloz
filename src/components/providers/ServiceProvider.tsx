@@ -365,7 +365,16 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
+    // Stale-while-revalidate: keep the previous mount's data on screen while
+    // the new fetch lands. Only flip `loading: true` on the very first cold
+    // mount (no rows yet) so navigation never blanks the UI.
+    dispatch({
+      type: "SET_ALL",
+      payload: {
+        ...state,
+        loading: state.aereos.length === 0 && state.alojamientos.length === 0,
+      },
+    });
 
     // Wave 1 — base records only (fast, ~300-800 ms against Railway).
     // Clears the skeleton as soon as the main rows arrive.

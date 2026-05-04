@@ -493,7 +493,18 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    dispatch({ type: "SET_ALL", payload: { ...initialState, loading: true } });
+    // Stale-while-revalidate: if we already have data from a previous mount,
+    // keep it on screen (loading: false) and only refresh in the background.
+    // Cold mounts still show skeleton via loading:true. This kills the
+    // "everything blanks out for 1-2 s on every navigation" jank.
+    dispatch({
+      type: "SET_ALL",
+      payload: {
+        ...state,
+        loading: state.paquetes.length === 0,
+        hydratingPaquetes: state.paquetes.length > 0,
+      },
+    });
 
     // Wave 1 — only Paquete rows. Fast (<1 s). Lifts skeleton & shows list.
     packageActions

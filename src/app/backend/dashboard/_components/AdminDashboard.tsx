@@ -44,6 +44,7 @@ import {
   formatFecha,
   colorForIndex,
 } from "./metrics";
+import { MetricsTimeFilter } from "./MetricsTimeFilter";
 
 // ---------------------------------------------------------------------------
 // KpiPill — rounded-full hero number with icon chip
@@ -180,8 +181,10 @@ function RegionPill({
 
 function EstadoBadge({ estado }: { estado: string }) {
   const map: Record<string, { label: string; color: string }> = {
-    ACTIVO: { label: "Activo", color: "#10B981" },
     BORRADOR: { label: "Borrador", color: "#E8913A" },
+    EN_REVISION: { label: "En revisión", color: "#8B5CF6" },
+    ACTIVO: { label: "Publicado", color: "#10B981" },
+    ARCHIVADO: { label: "Archivado", color: "#5A5E7A" },
     INACTIVO: { label: "Inactivo", color: "#6B7280" },
   };
   const m = map[estado] ?? { label: estado, color: "#6B7280" };
@@ -484,6 +487,9 @@ export default function AdminDashboard() {
           delay={0.05}
         />
       </div>
+
+      {/* =================== 3.5 Server-aggregated time-windowed KPIs =================== */}
+      <MetricsTimeFilter />
 
       {/* =================== 4. Region pills row =================== */}
       <motion.section
