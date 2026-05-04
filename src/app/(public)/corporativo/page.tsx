@@ -1,60 +1,23 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// /corporativo -- 1:1 port of html_inicial/corporativo.html
-//
-// Sections: hero (video) + 3 valor cards + clients logos grid + contact form
-// + 2 contact people cards.
-//
-// Interactivity:
-//   - Form: useFormState -> submitCorporateForm (stub; Fase 5 -> Prisma).
-//   - Mobile sliders (icon-teaser-slider, logo-slider) come back in Fase 4
-//     when Embla Carousel replaces Slick. For now mobile shows a stacked
-//     fallback (just the d-none d-md-block desktop variant -- mobile users
-//     see the same content scrolled vertically).
-//   - Hero typewriter (.anim-text) is a Fase 4 effect; static text for now.
+// /corporativo — uses CorporativoContent client component which receives
+// SiteSettings (group=corporativo) loaded by the server wrapper page below.
+// Wait, we keep this file as the page itself — it loads settings via a
+// fetch hook on first render. Hero title, video URL, valores cards and
+// section titles come from SiteSettings; clients logos + contact people
+// remain hardcoded for now.
 // ---------------------------------------------------------------------------
 
+import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { submitCorporateForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "@/components/public/FormStatus";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Typewriter } from "@/components/public/Typewriter";
+import { getSettingsByGroup } from "@/actions/site-settings.actions";
 
-const ICON_TEASERS = [
-  {
-    icon: "hand-icon.webp",
-    title: "Nuestros valores",
-    body: (
-      <>
-        Trabajamos con una premisa clara: generar valor real a través de la{" "}
-        <strong>confianza, la eficiencia y el compromiso.</strong>
-      </>
-    ),
-  },
-  {
-    icon: "flight-icon.webp",
-    title: "¿Cómo trabajamos?",
-    body: (
-      <>
-        Identificamos las necesidades de cada organización y brindamos
-        soluciones alineadas a sus objetivos, garantizando{" "}
-        <strong>calidad y respaldo.</strong>
-      </>
-    ),
-  },
-  {
-    icon: "clock-icon.webp",
-    title: "Atención 24/7",
-    body: (
-      <>
-        Más de 35 profesionales brindan un servicio de excelencia, resolviendo
-        cada solicitud de{" "}
-        <strong>forma ágil y con la máxima calidad las 24 horas.</strong>
-      </>
-    ),
-  },
-];
+type Settings = Record<string, string>;
 
 const CLIENT_LOGOS = [
   "canal-10",
@@ -97,12 +60,42 @@ function SubmitButton() {
 
 export default function CorporativoPage() {
   const [result, formAction] = useFormState(submitCorporateForm, null);
+  const [s, setS] = useState<Settings>({});
+
+  useEffect(() => {
+    getSettingsByGroup("corporativo").then((rows) => {
+      setS(Object.fromEntries(rows.map((r) => [r.key, r.value])));
+    });
+  }, []);
+
+  const heroTitulo = s.corporativo_hero_titulo ?? "Viajes que impulsan negocios.";
+  const heroVideo = s.corporativo_hero_video ?? "/site/video/Video-Traveloz-Corporativo.mp4";
+  const cards = [
+    {
+      icon: "hand-icon.webp",
+      title: s.corporativo_valores_titulo_1 ?? "Nuestros valores",
+      body: s.corporativo_valores_texto_1 ?? "Trabajamos con una premisa clara: generar valor real a través de la confianza, la eficiencia y el compromiso.",
+    },
+    {
+      icon: "flight-icon.webp",
+      title: s.corporativo_valores_titulo_2 ?? "¿Cómo trabajamos?",
+      body: s.corporativo_valores_texto_2 ?? "Identificamos las necesidades de cada organización y brindamos soluciones alineadas a sus objetivos, garantizando calidad y respaldo.",
+    },
+    {
+      icon: "clock-icon.webp",
+      title: s.corporativo_valores_titulo_3 ?? "Atención 24/7",
+      body: s.corporativo_valores_texto_3 ?? "Más de 35 profesionales brindan un servicio de excelencia, resolviendo cada solicitud de forma ágil y con la máxima calidad las 24 horas.",
+    },
+  ];
+  const clientesTitulo = s.corporativo_clientes_titulo ?? "Confían en nosotros";
+  const formTitulo = s.corporativo_form_titulo ?? "Contactanos";
 
   return (
     <>
       {/* Hero with video */}
       <section className="hero-area relative">
         <video
+          key={heroVideo}
           className="hero-video"
           autoPlay
           muted
@@ -110,17 +103,14 @@ export default function CorporativoPage() {
           playsInline
           preload="none"
         >
-          <source
-            src="/site/video/Video-Traveloz-Corporativo.mp4"
-            type="video/mp4"
-          />
+          <source src={heroVideo} type="video/mp4" />
         </video>
         <div className="container z-99">
           <div className="hero-inner text-sm-center text-start p_150">
             <Typewriter
               as="h1"
               className="hero-text"
-              text="Viajes que impulsan negocios."
+              text={heroTitulo}
               speedMs={80}
             />
           </div>
@@ -132,43 +122,15 @@ export default function CorporativoPage() {
         <div className="container">
           <div className="d-none d-md-block">
             <div className="row">
-              <div className="col-md-4">
-                <div className="icon-teaser style1">
-                  <img src="/site/img/hand-icon.webp" alt="icon" />
-                  <h3 className="title">Nuestros valores</h3>
-                  <p>
-                    Trabajamos con una premisa clara: generar valor real a
-                    través de la{" "}
-                    <strong>
-                      confianza, la eficiencia y el compromiso.
-                    </strong>
-                  </p>
+              {cards.map((c) => (
+                <div className="col-md-4" key={c.icon}>
+                  <div className="icon-teaser style1">
+                    <img src={`/site/img/${c.icon}`} alt="icon" />
+                    <h3 className="title">{c.title}</h3>
+                    <p>{c.body}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="col-md-4">
-                <div className="icon-teaser style1">
-                  <img src="/site/img/flight-icon.webp" alt="icon" />
-                  <h3 className="title">¿Cómo trabajamos?</h3>
-                  <p>
-                    Identificamos las necesidades de cada organización y
-                    brindamos soluciones alineadas a sus objetivos,
-                    garantizando <strong>calidad y respaldo.</strong>
-                  </p>
-                </div>
-              </div>
-              <div className="col-md-4">
-                <div className="icon-teaser style1">
-                  <img src="/site/img/clock-icon.webp" alt="icon" />
-                  <h3 className="title">Atención 24/7</h3>
-                  <p>
-                    Más de 35 profesionales brindan un servicio de excelencia,
-                    resolviendo cada solicitud de{" "}
-                    <strong>
-                      forma ágil y con la máxima calidad las 24 horas.
-                    </strong>
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
           {/* Mobile: Embla slider replaces the original Slick icon-teaser-slider */}
@@ -182,11 +144,11 @@ export default function CorporativoPage() {
               showDots
               className="icon-teaser-slider"
             >
-              {ICON_TEASERS.map((t) => (
-                <div className="icon-teaser style1" key={t.title}>
-                  <img src={`/site/img/${t.icon}`} alt="icon" />
-                  <h3 className="title">{t.title}</h3>
-                  <p>{t.body}</p>
+              {cards.map((c) => (
+                <div className="icon-teaser style1" key={c.icon}>
+                  <img src={`/site/img/${c.icon}`} alt="icon" />
+                  <h3 className="title">{c.title}</h3>
+                  <p>{c.body}</p>
                 </div>
               ))}
             </EmblaSlider>
@@ -200,7 +162,7 @@ export default function CorporativoPage() {
           <div className="row">
             <div className="col-lg-10 mx-auto">
               <div className="text-center mb-lg-4 mb-3">
-                <h2 className="section-heading purple">Confían en nosotros</h2>
+                <h2 className="section-heading purple">{clientesTitulo}</h2>
               </div>
               <div className="d-none d-md-block">
                 <div className="company-logo style2">
@@ -245,7 +207,7 @@ export default function CorporativoPage() {
             <div className="col-lg-5 col-sm-6 mx-auto">
               <div className="content-box style2 ver2">
                 <div className="text-center mb_50">
-                  <h2 className="section-heading">Contactanos</h2>
+                  <h2 className="section-heading">{formTitulo}</h2>
                 </div>
                 <form action={formAction}>
                   <ul className="row">

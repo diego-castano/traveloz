@@ -1,111 +1,168 @@
 // ---------------------------------------------------------------------------
-// Public site footer -- 1:1 port of <footer class="footer-area"> from
-// html_inicial/index.html. Static content; no dynamic data needed.
+// Public site footer — server component reading SiteSettings groups
+// "footer" (columns + links + social + copyright) and "general"
+// (contact info reused across the site). Editable from /backend/web/footer
+// and /backend/web/general.
 // ---------------------------------------------------------------------------
 
-export function Footer() {
+import { getSiteSettings } from "@/lib/public-data";
+
+type FooterLink = { label: string; href: string };
+
+function parseLinks(json: string | undefined): FooterLink[] {
+  if (!json) return [];
+  try {
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (x): x is FooterLink =>
+        x &&
+        typeof x.label === "string" &&
+        typeof x.href === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
+export async function Footer() {
+  const [footer, general] = await Promise.all([
+    getSiteSettings("footer"),
+    getSiteSettings("general"),
+  ]);
+
+  const aboutTitulo = footer.footer_about_titulo ?? "Sobre TravelOz";
+  const aboutTexto =
+    footer.footer_about_texto ??
+    "Unimos agilidad, profesionalismo y tarifas competitivas.";
+  const linksTitulo = footer.footer_links_titulo ?? "Enlaces rápidos";
+  const links = parseLinks(footer.footer_links_json);
+  const legalTitulo = footer.footer_legal_titulo ?? "Legal";
+  const legal = parseLinks(footer.footer_legal_json);
+  const copyright =
+    footer.footer_copyright ?? "© 2026 TravelOz. Todos los derechos reservados.";
+
+  const SOCIAL: Array<{ url?: string; icon: string; label: string }> = [
+    { url: footer.footer_social_instagram, icon: "fa-instagram", label: "Instagram" },
+    { url: footer.footer_social_facebook, icon: "fa-facebook-f", label: "Facebook" },
+    { url: footer.footer_social_linkedin, icon: "fa-linkedin-in", label: "LinkedIn" },
+    { url: footer.footer_social_youtube, icon: "fa-youtube", label: "YouTube" },
+  ].filter((s) => s.url && s.url.trim().length > 0) as Array<{
+    url: string;
+    icon: string;
+    label: string;
+  }>;
+
   return (
     <footer className="footer-area">
       <div className="container wide relative">
         <div className="row">
+          {/* Column 1 — about + social */}
           <div className="col-lg-3 col-sm-6">
             <div className="footer-left">
               <a className="footer-logo" href="/">
                 <img src="/site/img/footer-logo.webp" alt="TravelOz" />
               </a>
-              <p>
-                Unimos agilidad, profesionalismo y tarifas competitivas para
-                que vivas la mejor experiencia de viaje.
-              </p>
-              <ul>
-                <li>
-                  <a
-                    href="https://www.instagram.com/traveloz.uy/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <i className="fa-brands fa-instagram"></i>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://www.facebook.com/traveloz.uy/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <i className="fa-brands fa-facebook-f"></i>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://www.linkedin.com/company/travelozuy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <i className="fa-brands fa-linkedin-in"></i>
-                  </a>
-                </li>
-              </ul>
+              <p>{aboutTexto}</p>
+              {SOCIAL.length > 0 && (
+                <ul>
+                  {SOCIAL.map((s) => (
+                    <li key={s.icon}>
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={s.label}
+                      >
+                        <i className={`fa-brands ${s.icon}`}></i>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
+
+          {/* Column 2 — Contacto (datos generales) */}
           <div className="col-lg-3 col-sm-6">
             <div className="footer-link style2 ps-lg-4">
               <h3 className="title">Contacto</h3>
               <ul>
-                <li>
-                  <span className="icon">
-                    <i className="fa-solid fa-location-dot"></i>
-                  </span>
-                  <a href="#">
-                    Av. Dr. Luis Alberto de Herrera 1343 Of. 301 - Edificio
-                    Trade Plaza
-                  </a>
-                </li>
-                <li>
-                  <span className="icon">
-                    <i className="fa-solid fa-envelope"></i>
-                  </span>
-                  <a href="mailto:info@traveloz.com.uy">info@traveloz.com.uy</a>
-                </li>
-                <li>
-                  <span className="icon">
-                    <i className="fa-solid fa-mobile-screen-button"></i>
-                  </span>
-                  <a href="tel:+59826281717">+598 2628 1717</a>
-                </li>
-                <li>
-                  <span className="icon">
-                    <i className="fa-solid fa-clock"></i>
-                  </span>
-                  09:30 AM - 18:30 PM
-                </li>
+                {general.general_address && (
+                  <li>
+                    <span className="icon">
+                      <i className="fa-solid fa-location-dot"></i>
+                    </span>
+                    <a href="#">{general.general_address}</a>
+                  </li>
+                )}
+                {general.general_email && (
+                  <li>
+                    <span className="icon">
+                      <i className="fa-solid fa-envelope"></i>
+                    </span>
+                    <a href={`mailto:${general.general_email}`}>
+                      {general.general_email}
+                    </a>
+                  </li>
+                )}
+                {general.general_phone && (
+                  <li>
+                    <span className="icon">
+                      <i className="fa-solid fa-mobile-screen-button"></i>
+                    </span>
+                    <a href={`tel:${general.general_phone.replace(/\s/g, "")}`}>
+                      {general.general_phone}
+                    </a>
+                  </li>
+                )}
+                {general.general_hours && (
+                  <li>
+                    <span className="icon">
+                      <i className="fa-solid fa-clock"></i>
+                    </span>
+                    {general.general_hours}
+                  </li>
+                )}
               </ul>
             </div>
           </div>
+
+          {/* Column 3 — Enlaces rápidos + Legal */}
           <div className="col-lg-3 col-sm-6">
             <div className="footer-link ps-lg-5">
-              <h3 className="title">Información útil</h3>
+              <h3 className="title">{linksTitulo}</h3>
               <ul>
+                {links.map((l) => (
+                  <li key={l.href}>
+                    <a href={l.href}>{l.label}</a>
+                  </li>
+                ))}
+                {/* AgenciaModal trigger stays as data-attribute so we don't break the modal pattern */}
                 <li>
-                  <a href="/work-with-us">Trabaja con nosotros</a>
-                </li>
-                <li>
-                  <a href="/terms">Términos y condiciones</a>
-                </li>
-                <li>
-                  <a href="/faq">Preguntas frecuentes</a>
-                </li>
-                <li>
-                  {/* Modal trigger -- AgenciaModal client component intercepts
-                      [data-agencia-modal-open] clicks document-wide and
-                      preventDefault()s, so this <a> stays a server component. */}
                   <a href="#" data-agencia-modal-open>
                     Agencia registrada
                   </a>
                 </li>
               </ul>
+              {legal.length > 0 && (
+                <>
+                  <h3 className="title" style={{ marginTop: 24 }}>
+                    {legalTitulo}
+                  </h3>
+                  <ul>
+                    {legal.map((l) => (
+                      <li key={l.href}>
+                        <a href={l.href}>{l.label}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           </div>
+
+          {/* Column 4 — Brand logos (kept hardcoded; they're partner logos) */}
           <div className="col-lg-3 col-sm-6">
             <ul className="footer-brand-logo">
               <li>
@@ -124,6 +181,21 @@ export function Footer() {
             </ul>
           </div>
         </div>
+
+        {copyright && (
+          <div
+            className="text-center pt-4"
+            style={{
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              marginTop: 32,
+              paddingTop: 16,
+              fontSize: 12,
+              color: "rgba(255,255,255,0.6)",
+            }}
+          >
+            {copyright}
+          </div>
+        )}
       </div>
     </footer>
   );

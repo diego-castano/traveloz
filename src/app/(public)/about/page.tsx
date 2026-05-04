@@ -1,8 +1,10 @@
 // ---------------------------------------------------------------------------
-// /about (NOSOTROS) -- 1:1 port of html_inicial/about.html body content.
-// Pure static page; no forms, no JS. Header/Footer/Modal/WhatsApp come from
-// src/app/(public)/layout.tsx.
+// /about (NOSOTROS) — server component. Hero title, lead, history text and
+// image come from SiteSettings (group=nosotros), editable via /backend/web/nosotros.
+// The rest of the page body remains hardcoded for now.
 // ---------------------------------------------------------------------------
+
+import { getSiteSettings } from "@/lib/public-data";
 
 export const metadata = {
   title: "Nosotros | TravelOz",
@@ -10,22 +12,36 @@ export const metadata = {
     "Conocé la historia de TravelOz. Somos una agencia de viajes uruguaya fundada en 2018, comprometida con brindar experiencias de viaje personalizadas y de excelencia.",
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const s = await getSiteSettings("nosotros");
+  const titulo = s.nosotros_titulo ?? "El viaje que nos hizo agencia";
+  const subtitulo = s.nosotros_subtitulo ?? "";
+  const historia =
+    s.nosotros_historia ??
+    "TravelOz nació en 2018 con la idea de cambiar la forma en que se diseñan los viajes en Uruguay.";
+  const imagen = s.nosotros_imagen ?? "/site/img/about1.webp";
+
   return (
     <section className="content-area gradient-page-bg">
       <div className="container">
         <div className="inner-media-content">
           <h1 className="h2 text_white mb-4 font_clarik">
-            <strong>El viaje que nos hizo agencia</strong>
+            <strong>{titulo}</strong>
           </h1>
+          {subtitulo && (
+            <p className="text_white mb-4" style={{ fontSize: 18, opacity: 0.9 }}>
+              {subtitulo}
+            </p>
+          )}
           <div className="row align-items-lg-center">
             <div className="col-sm-6 order-sm-2 order-1">
               <div className="content-img">
-                <img src="/site/img/about1.webp" alt="TravelOz fundadores" />
+                <img src={imagen} alt="TravelOz" />
               </div>
             </div>
             <div className="col-sm-6 order-sm-1 order-2">
               <div className="content-text text_white pe-lg-5">
+                <p>{historia}</p>
                 <p>
                   TravelOz nació en agosto de 2018 como el sueño compartido de
                   cuatro amigos unidos por una misma pasión: viajar y ayudar a

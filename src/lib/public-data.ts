@@ -1,6 +1,11 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 
+// The public site is single-tenant TravelOz. Multi-brand catalog tables
+// (Region, Pais, Paquete, etc.) are filtered by this brand id so they don't
+// leak rows from other brands managed in the same admin.
+export const PUBLIC_BRAND_ID = "brand-1";
+
 // SiteSettings — keyed by group, returned as a flat key→value record
 export const getSiteSettings = unstable_cache(
   async (group: string) => {
@@ -32,7 +37,11 @@ export const getTestimoniosPublicados = unstable_cache(
 );
 
 export const getRegionesPublicas = unstable_cache(
-  async () => prisma.region.findMany({ orderBy: { orden: "asc" } }),
+  async () =>
+    prisma.region.findMany({
+      where: { brandId: PUBLIC_BRAND_ID },
+      orderBy: { orden: "asc" },
+    }),
   ["regiones"],
   { revalidate: 300, tags: ["regiones"] },
 );
@@ -40,7 +49,7 @@ export const getRegionesPublicas = unstable_cache(
 export const getRegionBySlug = unstable_cache(
   async (slug: string) =>
     prisma.region.findFirst({
-      where: { slug },
+      where: { slug, brandId: PUBLIC_BRAND_ID },
       include: { paises: { include: { ciudades: true } } },
     }),
   ["region-by-slug"],
@@ -53,6 +62,7 @@ export const getPaquetesByRegion = unstable_cache(
       where: {
         publicado: true,
         deletedAt: null,
+        brandId: PUBLIC_BRAND_ID,
         destinos: { some: { ciudad: { pais: { regionId } } } },
       },
       orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
