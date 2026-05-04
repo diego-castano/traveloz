@@ -1,10 +1,23 @@
 "use server";
 
 import { z } from "zod";
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
-import type { EstadoPaquete } from "@prisma/client";
+import { logger } from "@/lib/logger";
+import type { EstadoPaquete, Prisma } from "@prisma/client";
+
+const log = logger.child({ module: "package.actions" });
+
+// Cache busters for the dashboard / report aggregates. Called after every
+// paquete mutation so the UI stops serving stale counts the moment the user
+// commits a change.
+function bustDashboardCache(brandId: string) {
+  revalidateTag(`dashboard:${brandId}`);
+  revalidateTag(`metrics:${brandId}`);
+  revalidateTag(`reports:${brandId}`);
+}
 
 // ──────────────────────────────────────────────
 // Paquete — Main entity (soft delete)
@@ -16,20 +29,102 @@ import type { EstadoPaquete } from "@prisma/client";
 // Wave 2 — getPackageSubEntities: all paquete-X join rows. Background fill.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Filter shape for server-side paquete listing. Every field is optional so
+// callers (page server components, dashboard drill-down links, exporters) can
+// compose just the filters they need. Translates 1:1 into a Prisma WHERE
+// clause inside `buildPaqueteWhere` below.
+// ---------------------------------------------------------------------------
+
+export interface PaquetesFilter {
+  /** Free-text match on titulo / destino / descripcion (case-insensitive). */
+  q?: string;
+  /** Lifecycle states to include. Empty/undefined = all (except soft-deleted). */
+  estados?: EstadoPaquete[];
+  temporadaIds?: string[];
+  tipoPaqueteIds?: string[];
+  /** Filter by País IDs (resolved via linked alojamientos). */
+  paisIds?: string[];
+  /** Filter by Region (resolved via País → Region). */
+  regionId?: string;
+  /** Only paquetes flagged for the public site. */
+  publicado?: boolean;
+  /** Only paquetes whose validezHasta falls in the next N days. */
+  porVencerDias?: number;
+}
+
+function buildPaqueteWhere(
+  brandId: string,
+  filter: PaquetesFilter | undefined,
+): Prisma.PaqueteWhereInput {
+  const where: Prisma.PaqueteWhereInput = { brandId, deletedAt: null };
+  if (!filter) return where;
+
+  if (filter.q && filter.q.trim()) {
+    const q = filter.q.trim();
+    where.OR = [
+      { titulo: { contains: q, mode: "insensitive" } },
+      { destino: { contains: q, mode: "insensitive" } },
+      { descripcion: { contains: q, mode: "insensitive" } },
+    ];
+  }
+  if (filter.estados && filter.estados.length > 0) {
+    where.estado = { in: filter.estados };
+  }
+  if (filter.temporadaIds && filter.temporadaIds.length > 0) {
+    where.temporadaId = { in: filter.temporadaIds };
+  }
+  if (filter.tipoPaqueteIds && filter.tipoPaqueteIds.length > 0) {
+    where.tipoPaqueteId = { in: filter.tipoPaqueteIds };
+  }
+  if (filter.publicado !== undefined) {
+    where.publicado = filter.publicado;
+  }
+  if (filter.porVencerDias && filter.porVencerDias > 0) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const horizon = new Date(now.getTime() + filter.porVencerDias * 86_400_000);
+    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    where.validezHasta = { gte: fmt(now), lte: fmt(horizon) };
+  }
+
+  // País / Region drill-down resolves through alojamientos linked to this
+  // paquete. We keep the filter as a relational `some` so Postgres handles
+  // the join and we don't materialize alojamiento IDs in JS first.
+  if (filter.paisIds && filter.paisIds.length > 0) {
+    where.alojamientos = {
+      some: { alojamiento: { paisId: { in: filter.paisIds } } },
+    };
+  } else if (filter.regionId) {
+    where.alojamientos = {
+      some: { alojamiento: { pais: { regionId: filter.regionId } } },
+    };
+  }
+
+  return where;
+}
+
 export async function getBasePackages(
   requestedBrandId?: string,
-  options?: { skip?: number; take?: number },
+  options?: {
+    skip?: number;
+    take?: number;
+    filter?: PaquetesFilter;
+    /** Sort direction on createdAt. Defaults to "desc" (newest first). */
+    sortCreated?: "asc" | "desc";
+  },
 ) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const skip = Math.max(0, options?.skip ?? 0);
     const take = options?.take;
-    const where = { brandId, deletedAt: null };
+    const where = buildPaqueteWhere(brandId, options?.filter);
+    const sortCreated = options?.sortCreated ?? "desc";
 
     const [paquetes, total] = await prisma.$transaction([
       prisma.paquete.findMany({
         where,
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: sortCreated },
         skip,
         ...(typeof take === "number" ? { take } : {}),
       }),
@@ -38,7 +133,7 @@ export async function getBasePackages(
 
     return { paquetes, total };
   } catch (error) {
-    console.error("Error fetching base packages:", error);
+    log.error("fetching base packages", error);
     throw new Error("No se pudieron obtener los paquetes.");
   }
 }
@@ -89,7 +184,7 @@ export async function getPackageSubEntities(requestedBrandId?: string) {
       opcionHoteles,
     };
   } catch (error) {
-    console.error("Error fetching package sub-entities:", error);
+    log.error("fetching package sub-entities", error);
     throw new Error("No se pudieron obtener los datos relacionales de paquetes.");
   }
 }
@@ -133,12 +228,24 @@ export async function createPaquete(data: {
     });
     schema.parse(data);
 
-    return await prisma.$transaction(async (tx) => {
+    // Margin guardrail — only enforced when both prices are present and positive,
+    // so half-filled drafts still save (the writer will fill numbers later).
+    const { assertMargenPositivo } = await import("./package-lifecycle.utils");
+    if ((data.netoCalculado ?? 0) > 0 && (data.precioVenta ?? 0) > 0) {
+      assertMargenPositivo(data.netoCalculado!, data.precioVenta!, data.markup);
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "paquete");
       return await tx.paquete.create({ data: { ...data, id, brandId } });
     });
+    bustDashboardCache(brandId);
+    return created;
   } catch (error) {
-    console.error("Error creating paquete:", error);
+    log.error("creating paquete", error);
+    if (error instanceof Error && /margen|markup|venta/i.test(error.message)) {
+      throw error; // surface the validation message to the UI
+    }
     throw new Error("No se pudo crear el paquete.");
   }
 }
@@ -166,23 +273,55 @@ export async function updatePaquete(
   }
 ) {
   try {
-    await requireAuth();
-    return await prisma.paquete.update({ where: { id }, data });
+    const { brandId } = await requireAuth();
+
+    // Brand-ownership check: prevent users from editing paquetes of other brands
+    // even if they happen to know the ID. Cheap (indexed by id) and stops the
+    // most common cross-tenant footgun.
+    const owner = await prisma.paquete.findFirst({
+      where: { id, brandId, deletedAt: null },
+      select: { id: true, netoCalculado: true, precioVenta: true, markup: true },
+    });
+    if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
+
+    // Margin guardrail using the merged values (incoming-or-existing).
+    const nextNeto = data.netoCalculado ?? owner.netoCalculado;
+    const nextVenta = data.precioVenta ?? owner.precioVenta;
+    const nextFactor = data.markup ?? owner.markup;
+    if (nextNeto > 0 && nextVenta > 0) {
+      const { assertMargenPositivo } = await import("./package-lifecycle.utils");
+      assertMargenPositivo(nextNeto, nextVenta, nextFactor);
+    }
+
+    const updated = await prisma.paquete.update({ where: { id }, data });
+    bustDashboardCache(brandId);
+    return updated;
   } catch (error) {
-    console.error("Error updating paquete:", error);
+    log.error("updating paquete", error);
+    if (error instanceof Error && /margen|markup|venta|pertenece/i.test(error.message)) {
+      throw error;
+    }
     throw new Error("No se pudo actualizar el paquete.");
   }
 }
 
 export async function deletePaquete(id: string) {
   try {
-    await requireAuth();
-    return await prisma.paquete.update({
+    const { brandId } = await requireAuth();
+    const owner = await prisma.paquete.findFirst({
+      where: { id, brandId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
+    const result = await prisma.paquete.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    bustDashboardCache(brandId);
+    return result;
   } catch (error) {
-    console.error("Error deleting paquete:", error);
+    log.error("deleting paquete", error);
+    if (error instanceof Error && /pertenece/i.test(error.message)) throw error;
     throw new Error("No se pudo eliminar el paquete.");
   }
 }
@@ -418,7 +557,7 @@ export async function clonePaquete(sourceId: string) {
       };
     });
   } catch (error) {
-    console.error("Error cloning paquete:", error);
+    log.error("cloning paquete", error);
     throw new Error("No se pudo clonar el paquete.");
   }
 }
@@ -437,7 +576,7 @@ export async function assignAereo(data: {
     await requireAuth();
     return await prisma.paqueteAereo.create({ data });
   } catch (error) {
-    console.error("Error assigning aereo:", error);
+    log.error("assigning aereo", error);
     throw new Error("No se pudo asignar el aéreo al paquete.");
   }
 }
@@ -447,7 +586,7 @@ export async function removeAereo(id: string) {
     await requireAuth();
     return await prisma.paqueteAereo.delete({ where: { id } });
   } catch (error) {
-    console.error("Error removing aereo:", error);
+    log.error("removing aereo", error);
     throw new Error("No se pudo quitar el aéreo del paquete.");
   }
 }
@@ -460,7 +599,7 @@ export async function updateAereoAssignment(
     await requireAuth();
     return await prisma.paqueteAereo.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating aereo assignment:", error);
+    log.error("updating aereo assignment", error);
     throw new Error("No se pudo actualizar la asignación del aéreo.");
   }
 }
@@ -480,7 +619,7 @@ export async function assignAlojamiento(data: {
     await requireAuth();
     return await prisma.paqueteAlojamiento.create({ data });
   } catch (error) {
-    console.error("Error assigning alojamiento:", error);
+    log.error("assigning alojamiento", error);
     throw new Error("No se pudo asignar el alojamiento al paquete.");
   }
 }
@@ -490,7 +629,7 @@ export async function removeAlojamiento(id: string) {
     await requireAuth();
     return await prisma.paqueteAlojamiento.delete({ where: { id } });
   } catch (error) {
-    console.error("Error removing alojamiento:", error);
+    log.error("removing alojamiento", error);
     throw new Error("No se pudo quitar el alojamiento del paquete.");
   }
 }
@@ -503,7 +642,7 @@ export async function updateAlojamientoAssignment(
     await requireAuth();
     return await prisma.paqueteAlojamiento.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating alojamiento assignment:", error);
+    log.error("updating alojamiento assignment", error);
     throw new Error("No se pudo actualizar la asignación del alojamiento.");
   }
 }
@@ -522,7 +661,7 @@ export async function assignTraslado(data: {
     await requireAuth();
     return await prisma.paqueteTraslado.create({ data });
   } catch (error) {
-    console.error("Error assigning traslado:", error);
+    log.error("assigning traslado", error);
     throw new Error("No se pudo asignar el traslado al paquete.");
   }
 }
@@ -532,7 +671,7 @@ export async function removeTraslado(id: string) {
     await requireAuth();
     return await prisma.paqueteTraslado.delete({ where: { id } });
   } catch (error) {
-    console.error("Error removing traslado:", error);
+    log.error("removing traslado", error);
     throw new Error("No se pudo quitar el traslado del paquete.");
   }
 }
@@ -545,7 +684,7 @@ export async function updateTrasladoAssignment(
     await requireAuth();
     return await prisma.paqueteTraslado.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating traslado assignment:", error);
+    log.error("updating traslado assignment", error);
     throw new Error("No se pudo actualizar la asignación del traslado.");
   }
 }
@@ -565,7 +704,7 @@ export async function assignSeguro(data: {
     await requireAuth();
     return await prisma.paqueteSeguro.create({ data });
   } catch (error) {
-    console.error("Error assigning seguro:", error);
+    log.error("assigning seguro", error);
     throw new Error("No se pudo asignar el seguro al paquete.");
   }
 }
@@ -575,7 +714,7 @@ export async function removeSeguro(id: string) {
     await requireAuth();
     return await prisma.paqueteSeguro.delete({ where: { id } });
   } catch (error) {
-    console.error("Error removing seguro:", error);
+    log.error("removing seguro", error);
     throw new Error("No se pudo quitar el seguro del paquete.");
   }
 }
@@ -588,7 +727,7 @@ export async function updateSeguroAssignment(
     await requireAuth();
     return await prisma.paqueteSeguro.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating seguro assignment:", error);
+    log.error("updating seguro assignment", error);
     throw new Error("No se pudo actualizar la asignación del seguro.");
   }
 }
@@ -607,7 +746,7 @@ export async function assignCircuito(data: {
     await requireAuth();
     return await prisma.paqueteCircuito.create({ data });
   } catch (error) {
-    console.error("Error assigning circuito:", error);
+    log.error("assigning circuito", error);
     throw new Error("No se pudo asignar el circuito al paquete.");
   }
 }
@@ -617,7 +756,7 @@ export async function removeCircuito(id: string) {
     await requireAuth();
     return await prisma.paqueteCircuito.delete({ where: { id } });
   } catch (error) {
-    console.error("Error removing circuito:", error);
+    log.error("removing circuito", error);
     throw new Error("No se pudo quitar el circuito del paquete.");
   }
 }
@@ -630,7 +769,7 @@ export async function updateCircuitoAssignment(
     await requireAuth();
     return await prisma.paqueteCircuito.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating circuito assignment:", error);
+    log.error("updating circuito assignment", error);
     throw new Error("No se pudo actualizar la asignación del circuito.");
   }
 }
@@ -649,7 +788,7 @@ export async function addPaqueteFoto(data: {
     await requireAuth();
     return await prisma.paqueteFoto.create({ data });
   } catch (error) {
-    console.error("Error adding paquete foto:", error);
+    log.error("adding paquete foto", error);
     throw new Error("No se pudo agregar la foto al paquete.");
   }
 }
@@ -659,7 +798,7 @@ export async function removePaqueteFoto(id: string) {
     await requireAuth();
     return await prisma.paqueteFoto.delete({ where: { id } });
   } catch (error) {
-    console.error("Error removing paquete foto:", error);
+    log.error("removing paquete foto", error);
     throw new Error("No se pudo eliminar la foto del paquete.");
   }
 }
@@ -672,7 +811,7 @@ export async function updatePaqueteFoto(
     await requireAuth();
     return await prisma.paqueteFoto.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating paquete foto:", error);
+    log.error("updating paquete foto", error);
     throw new Error("No se pudo actualizar la foto del paquete.");
   }
 }
@@ -689,7 +828,7 @@ export async function assignEtiqueta(data: {
     await requireAuth();
     return await prisma.paqueteEtiqueta.create({ data });
   } catch (error) {
-    console.error("Error assigning etiqueta:", error);
+    log.error("assigning etiqueta", error);
     throw new Error("No se pudo asignar la etiqueta al paquete.");
   }
 }
@@ -699,7 +838,7 @@ export async function removeEtiqueta(id: string) {
     await requireAuth();
     return await prisma.paqueteEtiqueta.delete({ where: { id } });
   } catch (error) {
-    console.error("Error removing etiqueta:", error);
+    log.error("removing etiqueta", error);
     throw new Error("No se pudo quitar la etiqueta del paquete.");
   }
 }
@@ -720,7 +859,7 @@ export async function createOpcionHotelera(data: {
     await requireAuth();
     return await prisma.opcionHotelera.create({ data });
   } catch (error) {
-    console.error("Error creating opcion hotelera:", error);
+    log.error("creating opcion hotelera", error);
     throw new Error("No se pudo crear la opción hotelera.");
   }
 }
@@ -739,7 +878,7 @@ export async function updateOpcionHotelera(
     await requireAuth();
     return await prisma.opcionHotelera.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating opcion hotelera:", error);
+    log.error("updating opcion hotelera", error);
     throw new Error("No se pudo actualizar la opción hotelera.");
   }
 }
@@ -749,7 +888,7 @@ export async function deleteOpcionHotelera(id: string) {
     await requireAuth();
     return await prisma.opcionHotelera.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting opcion hotelera:", error);
+    log.error("deleting opcion hotelera", error);
     throw new Error("No se pudo eliminar la opción hotelera.");
   }
 }
@@ -775,7 +914,7 @@ export async function createPaqueteDestino(data: {
     const parsed = schema.parse(data);
     return await prisma.paqueteDestino.create({ data: parsed });
   } catch (error) {
-    console.error("Error creating paquete destino:", error);
+    log.error("creating paquete destino", error);
     throw new Error("No se pudo crear el destino del paquete.");
   }
 }
@@ -788,7 +927,7 @@ export async function updatePaqueteDestino(
     await requireAuth();
     return await prisma.paqueteDestino.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating paquete destino:", error);
+    log.error("updating paquete destino", error);
     throw new Error("No se pudo actualizar el destino del paquete.");
   }
 }
@@ -798,7 +937,7 @@ export async function deletePaqueteDestino(id: string) {
     await requireAuth();
     return await prisma.paqueteDestino.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting paquete destino:", error);
+    log.error("deleting paquete destino", error);
     throw new Error("No se pudo eliminar el destino del paquete.");
   }
 }
@@ -823,7 +962,7 @@ export async function reorderPaqueteDestinos(
       ),
     );
   } catch (error) {
-    console.error("Error reordering paquete destinos:", error);
+    log.error("reordering paquete destinos", error);
     throw new Error("No se pudo reordenar los destinos.");
   }
 }
@@ -842,7 +981,7 @@ export async function createOpcionHotel(data: {
     await requireAuth();
     return await prisma.opcionHotel.create({ data });
   } catch (error) {
-    console.error("Error creating opcion hotel:", error);
+    log.error("creating opcion hotel", error);
     throw new Error("No se pudo asignar el hotel al destino.");
   }
 }
@@ -855,7 +994,7 @@ export async function updateOpcionHotel(
     await requireAuth();
     return await prisma.opcionHotel.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating opcion hotel:", error);
+    log.error("updating opcion hotel", error);
     throw new Error("No se pudo actualizar la asignación del hotel.");
   }
 }
@@ -865,7 +1004,7 @@ export async function deleteOpcionHotel(id: string) {
     await requireAuth();
     return await prisma.opcionHotel.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting opcion hotel:", error);
+    log.error("deleting opcion hotel", error);
     throw new Error("No se pudo eliminar la asignación del hotel.");
   }
 }
@@ -890,7 +1029,7 @@ export async function upsertOpcionHotelPrincipal(
       update: { alojamientoId },
     });
   } catch (error) {
-    console.error("Error upserting opcion hotel:", error);
+    log.error("upserting opcion hotel", error);
     throw new Error("No se pudo asignar el hotel.");
   }
 }
