@@ -8,10 +8,24 @@ import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
 const log = logger.child({ module: "service.actions" });
 
+/** Global service-cache tag. Lets every mutation invalidate without first
+ *  resolving the brandId (avoids the extra requireAuth round-trip). All
+ *  cached service reads include this tag, so the trade-off is over-eager
+ *  invalidation across brands — acceptable inside the admin where cross-brand
+ *  navigation is rare and the TTL is only 60 s anyway. */
+const SERVICES_GLOBAL_TAG = "services-global";
+
 /** Invalidate the per-brand service caches. Call after any service mutation. */
 function bustServicesCache(brandId: string) {
   revalidateTag(`services:${brandId}`);
   revalidateTag(`service-sub:${brandId}`);
+  revalidateTag(SERVICES_GLOBAL_TAG);
+}
+
+/** Bust the global service cache. Use from mutations that don't already have
+ *  brandId in scope — saves the extra requireAuth call. */
+function bustServicesCacheGlobal() {
+  revalidateTag(SERVICES_GLOBAL_TAG);
 }
 
 // ──────────────────────────────────────────────
@@ -194,7 +208,7 @@ export async function updateAereo(
 ) {
   try {
     await requireAuth();
-    return await prisma.aereo.update({ where: { id }, data });
+    const __res = await prisma.aereo.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating aereo", error);
     throw new Error("No se pudo actualizar el aéreo.");
@@ -227,7 +241,7 @@ export async function createPrecioAereo(data: {
   try {
     await requireAuth();
     const parsed = PrecioAereoSchema.parse(data);
-    return await prisma.precioAereo.create({ data: parsed });
+    const __res = await prisma.precioAereo.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating precio aereo", error);
     throw new Error("No se pudo crear el precio del aéreo.");
@@ -244,7 +258,7 @@ export async function updatePrecioAereo(
 ) {
   try {
     await requireAuth();
-    return await prisma.precioAereo.update({ where: { id }, data });
+    const __res = await prisma.precioAereo.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating precio aereo", error);
     throw new Error("No se pudo actualizar el precio del aéreo.");
@@ -254,7 +268,7 @@ export async function updatePrecioAereo(
 export async function deletePrecioAereo(id: string) {
   try {
     await requireAuth();
-    return await prisma.precioAereo.delete({ where: { id } });
+    const __res = await prisma.precioAereo.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting precio aereo", error);
     throw new Error("No se pudo eliminar el precio del aéreo.");
@@ -311,7 +325,7 @@ export async function updateAlojamiento(
 ) {
   try {
     await requireAuth();
-    return await prisma.alojamiento.update({ where: { id }, data });
+    const __res = await prisma.alojamiento.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating alojamiento", error);
     throw new Error("No se pudo actualizar el alojamiento.");
@@ -345,7 +359,7 @@ export async function createPrecioAlojamiento(data: {
   try {
     await requireAuth();
     const parsed = PrecioAlojamientoSchema.parse(data);
-    return await prisma.precioAlojamiento.create({ data: parsed });
+    const __res = await prisma.precioAlojamiento.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating precio alojamiento", error);
     throw new Error("No se pudo crear el precio del alojamiento.");
@@ -363,7 +377,7 @@ export async function updatePrecioAlojamiento(
 ) {
   try {
     await requireAuth();
-    return await prisma.precioAlojamiento.update({ where: { id }, data });
+    const __res = await prisma.precioAlojamiento.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating precio alojamiento", error);
     throw new Error("No se pudo actualizar el precio del alojamiento.");
@@ -373,7 +387,7 @@ export async function updatePrecioAlojamiento(
 export async function deletePrecioAlojamiento(id: string) {
   try {
     await requireAuth();
-    return await prisma.precioAlojamiento.delete({ where: { id } });
+    const __res = await prisma.precioAlojamiento.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting precio alojamiento", error);
     throw new Error("No se pudo eliminar el precio del alojamiento.");
@@ -393,7 +407,7 @@ export async function createAlojamientoFoto(data: {
   try {
     await requireAuth();
     const parsed = AlojamientoFotoSchema.parse(data);
-    return await prisma.alojamientoFoto.create({ data: parsed });
+    const __res = await prisma.alojamientoFoto.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating alojamiento foto", error);
     throw new Error("No se pudo crear la foto del alojamiento.");
@@ -410,7 +424,7 @@ export async function updateAlojamientoFoto(
 ) {
   try {
     await requireAuth();
-    return await prisma.alojamientoFoto.update({ where: { id }, data });
+    const __res = await prisma.alojamientoFoto.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating alojamiento foto", error);
     throw new Error("No se pudo actualizar la foto del alojamiento.");
@@ -420,7 +434,7 @@ export async function updateAlojamientoFoto(
 export async function deleteAlojamientoFoto(id: string) {
   try {
     await requireAuth();
-    return await prisma.alojamientoFoto.delete({ where: { id } });
+    const __res = await prisma.alojamientoFoto.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting alojamiento foto", error);
     throw new Error("No se pudo eliminar la foto del alojamiento.");
@@ -478,7 +492,7 @@ export async function updateTraslado(
 ) {
   try {
     await requireAuth();
-    return await prisma.traslado.update({ where: { id }, data });
+    const __res = await prisma.traslado.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating traslado", error);
     throw new Error("No se pudo actualizar el traslado.");
@@ -545,7 +559,7 @@ export async function updateSeguro(
 ) {
   try {
     await requireAuth();
-    return await prisma.seguro.update({ where: { id }, data });
+    const __res = await prisma.seguro.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating seguro", error);
     throw new Error("No se pudo actualizar el seguro.");
@@ -641,7 +655,7 @@ export async function updateCircuito(
 ) {
   try {
     await requireAuth();
-    return await prisma.circuito.update({ where: { id }, data });
+    const __res = await prisma.circuito.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating circuito", error);
     throw new Error("No se pudo actualizar el circuito.");
@@ -675,7 +689,7 @@ export async function createCircuitoDia(data: {
   try {
     await requireAuth();
     const parsed = CircuitoDiaSchema.parse(data);
-    return await prisma.circuitoDia.create({ data: parsed });
+    const __res = await prisma.circuitoDia.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating circuito dia", error);
     throw new Error("No se pudo crear el día del circuito.");
@@ -693,7 +707,7 @@ export async function updateCircuitoDia(
 ) {
   try {
     await requireAuth();
-    return await prisma.circuitoDia.update({ where: { id }, data });
+    const __res = await prisma.circuitoDia.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating circuito dia", error);
     throw new Error("No se pudo actualizar el día del circuito.");
@@ -703,7 +717,7 @@ export async function updateCircuitoDia(
 export async function deleteCircuitoDia(id: string) {
   try {
     await requireAuth();
-    return await prisma.circuitoDia.delete({ where: { id } });
+    const __res = await prisma.circuitoDia.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting circuito dia", error);
     throw new Error("No se pudo eliminar el día del circuito.");
@@ -723,7 +737,7 @@ export async function createPrecioCircuito(data: {
   try {
     await requireAuth();
     const parsed = PrecioCircuitoSchema.parse(data);
-    return await prisma.precioCircuito.create({ data: parsed });
+    const __res = await prisma.precioCircuito.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("creating precio circuito", error);
     throw new Error("No se pudo crear el precio del circuito.");
@@ -740,7 +754,7 @@ export async function updatePrecioCircuito(
 ) {
   try {
     await requireAuth();
-    return await prisma.precioCircuito.update({ where: { id }, data });
+    const __res = await prisma.precioCircuito.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating precio circuito", error);
     throw new Error("No se pudo actualizar el precio del circuito.");
@@ -750,7 +764,7 @@ export async function updatePrecioCircuito(
 export async function deletePrecioCircuito(id: string) {
   try {
     await requireAuth();
-    return await prisma.precioCircuito.delete({ where: { id } });
+    const __res = await prisma.precioCircuito.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting precio circuito", error);
     throw new Error("No se pudo eliminar el precio del circuito.");
@@ -819,7 +833,7 @@ export async function getBaseServices(
     const cached = unstable_cache(
       () => fetchBaseServicesUncached(brandId, alojamientosSkip, alojamientosTake),
       ["services-base", brandId, String(alojamientosSkip), String(alojamientosTake ?? "all")],
-      { revalidate: 60, tags: [`services:${brandId}`] },
+      { revalidate: 60, tags: [`services:${brandId}`, SERVICES_GLOBAL_TAG] },
     );
     return await cached();
   } catch (error) {

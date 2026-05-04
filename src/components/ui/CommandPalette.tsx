@@ -31,7 +31,6 @@ import {
   Truck,
   Users,
   Bell,
-  BarChart3,
   Settings,
   Plus,
   ArrowRight,
@@ -99,7 +98,6 @@ const navEntries: Array<{
   { id: "perfiles", label: "Perfiles y Roles", href: "/backend/perfiles", icon: Users },
   { id: "catalogos", label: "Catálogos", href: "/backend/catalogos", icon: Settings },
   { id: "notificaciones", label: "Notificaciones", href: "/backend/notificaciones", icon: Bell },
-  { id: "reportes", label: "Reportes", href: "/backend/reportes", icon: BarChart3 },
 ];
 
 // Recents persisted across sessions.

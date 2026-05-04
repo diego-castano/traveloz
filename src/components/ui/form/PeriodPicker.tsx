@@ -387,11 +387,13 @@ export function PeriodPicker({
             mode === "day" ? "w-[700px] max-w-[calc(100vw-24px)]" : "w-[296px]",
           )}
           style={{
-            background:
-              "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.96) 100%)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            border: "1px solid rgba(17,17,36,0.06)",
+            // Solid white instead of a translucent gradient. The previous
+            // rgba(0.98 → 0.96) + backdrop-filter combo rendered as visibly
+            // transparent over the admin's blurred orb background — readable
+            // for the calendar header but the lower portion of the popover
+            // (especially in 700px "Día" mode) bled the page underneath.
+            background: "#FFFFFF",
+            border: "1px solid rgba(17,17,36,0.08)",
             borderRadius: "14px",
             boxShadow:
               "0 24px 64px -16px rgba(17,17,36,0.18), 0 8px 24px -8px rgba(17,17,36,0.06)",

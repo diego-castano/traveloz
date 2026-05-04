@@ -638,12 +638,6 @@ export default function AdminDashboard() {
               href="/backend/notificaciones"
               color="#2B8AFF"
             />
-            <QuickAction
-              icon={BarChart3}
-              label="Ver reportes"
-              href="/backend/reportes"
-              color="#6366F1"
-            />
           </div>
         </motion.section>
       </div>
