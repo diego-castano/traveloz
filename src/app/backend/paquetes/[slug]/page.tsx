@@ -15,6 +15,7 @@ import AlojamientosTab from "./_components/AlojamientosTab";
 import PreciosTab from "./_components/PreciosTab";
 import FotosTab from "./_components/FotosTab";
 import { PublicacionTab } from "./_components/PublicacionTab";
+import { FrontendTab } from "./_components/FrontendTab";
 
 // ---------------------------------------------------------------------------
 // Tab constants
@@ -27,6 +28,7 @@ const TABS = [
   "precios",
   "fotos",
   "publicacion",
+  "frontend",
 ] as const;
 
 const TAB_LABELS: Record<(typeof TABS)[number], string> = {
@@ -36,6 +38,7 @@ const TAB_LABELS: Record<(typeof TABS)[number], string> = {
   precios: "Precios",
   fotos: "Fotos",
   publicacion: "Publicacion",
+  frontend: "Frontend",
 };
 
 // ---------------------------------------------------------------------------
@@ -143,6 +146,10 @@ export default function PaqueteDetailPage() {
 
         <TabsContent value="publicacion">
           <PublicacionTab paquete={paquete} />
+        </TabsContent>
+
+        <TabsContent value="frontend">
+          <FrontendTab paqueteId={paquete.id} />
         </TabsContent>
       </Tabs>
     </div>

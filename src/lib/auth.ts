@@ -31,11 +31,13 @@ export const roleConfig: Record<Role, RoleConfig> = {
       "traslados",
       "circuitos",
       "seguros",
+      "servicios",
       "proveedores",
       "catalogos",
       "perfiles",
       "notificaciones",
       "reportes",
+      "web",
     ],
   },
   VENDEDOR: {

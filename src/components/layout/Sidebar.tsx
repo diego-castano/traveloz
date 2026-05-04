@@ -28,6 +28,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   X,
+  Globe,
+  ListChecks,
 } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -113,6 +115,14 @@ const navGroups: NavGroup[] = [
       { id: "traslados", label: "Traslados", icon: Bus, href: "/backend/traslados" },
       { id: "circuitos", label: "Circuitos", icon: Ship, href: "/backend/circuitos" },
       { id: "seguros", label: "Seguros", icon: ShieldCheck, href: "/backend/seguros" },
+      { id: "servicios", label: "Servicios incluidos", icon: ListChecks, href: "/backend/catalogos/servicios" },
+    ],
+  },
+  {
+    group: "web",
+    label: "Web",
+    items: [
+      { id: "web", label: "Frontend", icon: Globe, href: "/backend/web" },
     ],
   },
   {
