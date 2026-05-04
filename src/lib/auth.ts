@@ -53,7 +53,8 @@ export const roleConfig: Record<Role, RoleConfig> = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Demo users for simulated login (password: "admin" for all)
+// Demo users for simulated login (password: "admin" for all).
+// Single-tenant since Fase 7 — every user belongs to TravelOz.
 // ---------------------------------------------------------------------------
 export const DEMO_USERS: AuthUser[] = [
   {
@@ -76,20 +77,6 @@ export const DEMO_USERS: AuthUser[] = [
     email: "ventas@traveloz.com.uy",
     role: "VENDEDOR",
     brandId: "brand-1",
-  },
-  {
-    id: "user-4",
-    name: "Admin DestinoIcono",
-    email: "admin@destinoicono.com",
-    role: "ADMIN",
-    brandId: "brand-2",
-  },
-  {
-    id: "user-5",
-    name: "Equipo Ventas DestinoIcono",
-    email: "ventas@destinoicono.com",
-    role: "VENDEDOR",
-    brandId: "brand-2",
   },
   {
     id: "user-6",

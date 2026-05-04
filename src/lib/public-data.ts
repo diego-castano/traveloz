@@ -1,10 +1,10 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
+import { BRAND_ID } from "@/lib/brand";
 
-// The public site is single-tenant TravelOz. Multi-brand catalog tables
-// (Region, Pais, Paquete, etc.) are filtered by this brand id so they don't
-// leak rows from other brands managed in the same admin.
-export const PUBLIC_BRAND_ID = "brand-1";
+// Single-tenant: every public query filters by the constant brandId. The
+// PUBLIC_BRAND_ID alias is kept for callers that imported it before Fase 7.
+export const PUBLIC_BRAND_ID = BRAND_ID;
 
 // SiteSettings — keyed by group, returned as a flat key→value record
 export const getSiteSettings = unstable_cache(

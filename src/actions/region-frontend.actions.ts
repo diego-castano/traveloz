@@ -3,13 +3,11 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
-
-// Public site is single-tenant; the admin Web module only edits TravelOz regions.
-const PUBLIC_BRAND_ID = "brand-1";
+import { BRAND_ID } from "@/lib/brand";
 
 export async function listRegionesForFrontend() {
   return prisma.region.findMany({
-    where: { brandId: PUBLIC_BRAND_ID },
+    where: { brandId: BRAND_ID },
     orderBy: { orden: "asc" },
     select: {
       id: true,
