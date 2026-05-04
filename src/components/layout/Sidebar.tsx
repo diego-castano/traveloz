@@ -30,6 +30,7 @@ import {
   X,
   Globe,
   ListChecks,
+  Inbox,
 } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -123,6 +124,7 @@ const navGroups: NavGroup[] = [
     label: "Web",
     items: [
       { id: "web", label: "Frontend", icon: Globe, href: "/backend/web" },
+      { id: "leads", label: "Leads", icon: Inbox, href: "/backend/leads" },
     ],
   },
   {

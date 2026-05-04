@@ -38,6 +38,7 @@ export const roleConfig: Record<Role, RoleConfig> = {
       "notificaciones",
       "reportes",
       "web",
+      "leads",
     ],
   },
   VENDEDOR: {
