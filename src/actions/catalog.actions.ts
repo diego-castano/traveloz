@@ -1,9 +1,19 @@
 "use server";
 
 import { z } from "zod";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import type { CategoriaServicio } from "@prisma/client";
+import { logger } from "@/lib/logger";
+const log = logger.child({ module: "catalog.actions" });
+
+/** Bust the per-brand catalog cache. Catalogs change rarely, so we use a long
+ *  TTL (5 min) but still invalidate on every mutation so admins see edits
+ *  immediately. */
+function bustCatalogsCache(brandId: string) {
+  revalidateTag(`catalogs:${brandId}`);
+}
 
 // ──────────────────────────────────────────────
 // Zod schemas
@@ -70,7 +80,7 @@ export async function getTemporadas(requestedBrandId?: string) {
       orderBy: { orden: "asc" },
     });
   } catch (error) {
-    console.error("Error fetching temporadas:", error);
+    log.error("fetching temporadas", error);
     throw new Error("No se pudieron obtener las temporadas.");
   }
 }
@@ -85,7 +95,7 @@ export async function createTemporada(data: {
     const parsed = TemporadaSchema.parse(data);
     return await prisma.temporada.create({ data: { ...parsed, brandId } });
   } catch (error) {
-    console.error("Error creating temporada:", error);
+    log.error("creating temporada", error);
     throw new Error("No se pudo crear la temporada.");
   }
 }
@@ -98,7 +108,7 @@ export async function updateTemporada(
     await requireAuth();
     return await prisma.temporada.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating temporada:", error);
+    log.error("updating temporada", error);
     throw new Error("No se pudo actualizar la temporada.");
   }
 }
@@ -114,7 +124,7 @@ export async function deleteTemporada(id: string) {
     }
     return await prisma.temporada.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting temporada:", error);
+    log.error("deleting temporada", error);
     throw error instanceof Error
       ? error
       : new Error("No se pudo eliminar la temporada.");
@@ -133,7 +143,7 @@ export async function getTiposPaquete(requestedBrandId?: string) {
       orderBy: { orden: "asc" },
     });
   } catch (error) {
-    console.error("Error fetching tipos de paquete:", error);
+    log.error("fetching tipos de paquete", error);
     throw new Error("No se pudieron obtener los tipos de paquete.");
   }
 }
@@ -148,7 +158,7 @@ export async function createTipoPaquete(data: {
     const parsed = TipoPaqueteSchema.parse(data);
     return await prisma.tipoPaquete.create({ data: { ...parsed, brandId } });
   } catch (error) {
-    console.error("Error creating tipo de paquete:", error);
+    log.error("creating tipo de paquete", error);
     throw new Error("No se pudo crear el tipo de paquete.");
   }
 }
@@ -161,7 +171,7 @@ export async function updateTipoPaquete(
     await requireAuth();
     return await prisma.tipoPaquete.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating tipo de paquete:", error);
+    log.error("updating tipo de paquete", error);
     throw new Error("No se pudo actualizar el tipo de paquete.");
   }
 }
@@ -177,7 +187,7 @@ export async function deleteTipoPaquete(id: string) {
     }
     return await prisma.tipoPaquete.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting tipo de paquete:", error);
+    log.error("deleting tipo de paquete", error);
     throw error instanceof Error
       ? error
       : new Error("No se pudo eliminar el tipo de paquete.");
@@ -196,7 +206,7 @@ export async function getEtiquetas(requestedBrandId?: string) {
       orderBy: { nombre: "asc" },
     });
   } catch (error) {
-    console.error("Error fetching etiquetas:", error);
+    log.error("fetching etiquetas", error);
     throw new Error("No se pudieron obtener las etiquetas.");
   }
 }
@@ -211,7 +221,7 @@ export async function createEtiqueta(data: {
     const parsed = EtiquetaSchema.parse(data);
     return await prisma.etiqueta.create({ data: { ...parsed, brandId } });
   } catch (error) {
-    console.error("Error creating etiqueta:", error);
+    log.error("creating etiqueta", error);
     throw new Error("No se pudo crear la etiqueta.");
   }
 }
@@ -224,7 +234,7 @@ export async function updateEtiqueta(
     await requireAuth();
     return await prisma.etiqueta.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating etiqueta:", error);
+    log.error("updating etiqueta", error);
     throw new Error("No se pudo actualizar la etiqueta.");
   }
 }
@@ -234,7 +244,7 @@ export async function deleteEtiqueta(id: string) {
     await requireAuth();
     return await prisma.etiqueta.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting etiqueta:", error);
+    log.error("deleting etiqueta", error);
     throw new Error("No se pudo eliminar la etiqueta.");
   }
 }
@@ -251,7 +261,7 @@ export async function getRegimenes(requestedBrandId?: string) {
       orderBy: { nombre: "asc" },
     });
   } catch (error) {
-    console.error("Error fetching regimenes:", error);
+    log.error("fetching regimenes", error);
     throw new Error("No se pudieron obtener los regímenes.");
   }
 }
@@ -265,7 +275,7 @@ export async function createRegimen(data: {
     const parsed = RegimenSchema.parse(data);
     return await prisma.regimen.create({ data: { ...parsed, brandId } });
   } catch (error) {
-    console.error("Error creating regimen:", error);
+    log.error("creating regimen", error);
     throw new Error("No se pudo crear el régimen.");
   }
 }
@@ -278,7 +288,7 @@ export async function updateRegimen(
     await requireAuth();
     return await prisma.regimen.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating regimen:", error);
+    log.error("updating regimen", error);
     throw new Error("No se pudo actualizar el régimen.");
   }
 }
@@ -294,7 +304,7 @@ export async function deleteRegimen(id: string) {
     }
     return await prisma.regimen.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting regimen:", error);
+    log.error("deleting regimen", error);
     throw error instanceof Error
       ? error
       : new Error("No se pudo eliminar el régimen.");
@@ -313,7 +323,7 @@ export async function getRegiones(requestedBrandId?: string) {
       orderBy: [{ orden: "asc" }, { nombre: "asc" }],
     });
   } catch (error) {
-    console.error("Error fetching regiones:", error);
+    log.error("fetching regiones", error);
     throw new Error("No se pudieron obtener las regiones.");
   }
 }
@@ -328,7 +338,7 @@ export async function createRegion(data: {
     const parsed = RegionSchema.parse(data);
     return await prisma.region.create({ data: { ...parsed, brandId } });
   } catch (error) {
-    console.error("Error creating region:", error);
+    log.error("creating region", error);
     throw new Error("No se pudo crear la región.");
   }
 }
@@ -341,7 +351,7 @@ export async function updateRegion(
     await requireAuth();
     return await prisma.region.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating region:", error);
+    log.error("updating region", error);
     throw new Error("No se pudo actualizar la región.");
   }
 }
@@ -357,7 +367,7 @@ export async function deleteRegion(id: string) {
     }
     return await prisma.region.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting region:", error);
+    log.error("deleting region", error);
     throw error instanceof Error
       ? error
       : new Error("No se pudo eliminar la región.");
@@ -377,7 +387,7 @@ export async function getPaises(requestedBrandId?: string) {
       orderBy: { nombre: "asc" },
     });
   } catch (error) {
-    console.error("Error fetching paises:", error);
+    log.error("fetching paises", error);
     throw new Error("No se pudieron obtener los países.");
   }
 }
@@ -392,7 +402,7 @@ export async function createPais(data: {
     const parsed = PaisSchema.parse(data);
     return await prisma.pais.create({ data: { ...parsed, brandId } });
   } catch (error) {
-    console.error("Error creating pais:", error);
+    log.error("creating pais", error);
     throw new Error("No se pudo crear el país.");
   }
 }
@@ -405,7 +415,7 @@ export async function updatePais(
     await requireAuth();
     return await prisma.pais.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating pais:", error);
+    log.error("updating pais", error);
     throw new Error("No se pudo actualizar el país.");
   }
 }
@@ -415,7 +425,7 @@ export async function deletePais(id: string) {
     await requireAuth();
     return await prisma.pais.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting pais:", error);
+    log.error("deleting pais", error);
     throw new Error("No se pudo eliminar el país.");
   }
 }
@@ -432,7 +442,7 @@ export async function getCiudades(paisId: string) {
       orderBy: { nombre: "asc" },
     });
   } catch (error) {
-    console.error("Error fetching ciudades:", error);
+    log.error("fetching ciudades", error);
     throw new Error("No se pudieron obtener las ciudades.");
   }
 }
@@ -443,7 +453,7 @@ export async function createCiudad(data: { paisId: string; nombre: string }) {
     const parsed = CiudadSchema.parse(data);
     return await prisma.ciudad.create({ data: parsed });
   } catch (error) {
-    console.error("Error creating ciudad:", error);
+    log.error("creating ciudad", error);
     throw new Error("No se pudo crear la ciudad.");
   }
 }
@@ -456,7 +466,7 @@ export async function updateCiudad(
     await requireAuth();
     return await prisma.ciudad.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating ciudad:", error);
+    log.error("updating ciudad", error);
     throw new Error("No se pudo actualizar la ciudad.");
   }
 }
@@ -466,7 +476,7 @@ export async function deleteCiudad(id: string) {
     await requireAuth();
     return await prisma.ciudad.delete({ where: { id } });
   } catch (error) {
-    console.error("Error deleting ciudad:", error);
+    log.error("deleting ciudad", error);
     throw new Error("No se pudo eliminar la ciudad.");
   }
 }
@@ -483,7 +493,7 @@ export async function getProveedores(requestedBrandId?: string) {
       orderBy: { nombre: "asc" },
     });
   } catch (error) {
-    console.error("Error fetching proveedores:", error);
+    log.error("fetching proveedores", error);
     throw new Error("No se pudieron obtener los proveedores.");
   }
 }
@@ -503,7 +513,7 @@ export async function createProveedor(data: {
       data: { ...parsed, servicio: data.servicio, brandId },
     });
   } catch (error) {
-    console.error("Error creating proveedor:", error);
+    log.error("creating proveedor", error);
     throw new Error("No se pudo crear el proveedor.");
   }
 }
@@ -523,7 +533,7 @@ export async function updateProveedor(
     await requireAuth();
     return await prisma.proveedor.update({ where: { id }, data });
   } catch (error) {
-    console.error("Error updating proveedor:", error);
+    log.error("updating proveedor", error);
     throw new Error("No se pudo actualizar el proveedor.");
   }
 }
@@ -536,7 +546,7 @@ export async function deleteProveedor(id: string) {
       data: { deletedAt: new Date() },
     });
   } catch (error) {
-    console.error("Error deleting proveedor:", error);
+    log.error("deleting proveedor", error);
     throw new Error("No se pudo eliminar el proveedor.");
   }
 }
@@ -545,69 +555,62 @@ export async function deleteProveedor(id: string) {
 // Combined fetch — getAllCatalogs
 // ──────────────────────────────────────────────
 
-export async function getBaseCatalogs(requestedBrandId?: string) {
-  try {
-    const { brandId } = await requireAuth(requestedBrandId);
-    const [
-      temporadas,
-      tiposPaquete,
-      etiquetas,
-      regimenes,
-      regiones,
-      proveedores,
-    ] = await Promise.all([
-      prisma.temporada.findMany({
-        where: { brandId },
-        orderBy: { orden: "asc" },
-      }),
-      prisma.tipoPaquete.findMany({
-        where: { brandId },
-        orderBy: { orden: "asc" },
-      }),
-      prisma.etiqueta.findMany({
-        where: { brandId },
-        orderBy: { nombre: "asc" },
-      }),
-      prisma.regimen.findMany({
-        where: { brandId },
-        orderBy: { nombre: "asc" },
-      }),
+async function fetchBaseCatalogsUncached(_brandId: string) {
+  // Single-tenant since Fase 7. The catalog admin shows ALL rows regardless
+  // of brandId so legacy seed data tagged 'brand-2' remains visible/editable.
+  // Mutations still write brandId='brand-1' (BRAND_ID).
+  const [temporadas, tiposPaquete, etiquetas, regimenes, regiones, proveedores] =
+    await Promise.all([
+      prisma.temporada.findMany({ orderBy: { orden: "asc" } }),
+      prisma.tipoPaquete.findMany({ orderBy: { orden: "asc" } }),
+      prisma.etiqueta.findMany({ orderBy: { nombre: "asc" } }),
+      prisma.regimen.findMany({ orderBy: { nombre: "asc" } }),
       prisma.region.findMany({
-        where: { brandId },
         orderBy: [{ orden: "asc" }, { nombre: "asc" }],
       }),
       prisma.proveedor.findMany({
-        where: { brandId, deletedAt: null },
+        where: { deletedAt: null },
         orderBy: { nombre: "asc" },
       }),
     ]);
+  return { temporadas, tiposPaquete, etiquetas, regimenes, regiones, proveedores };
+}
 
-    return {
-      temporadas,
-      tiposPaquete,
-      etiquetas,
-      regimenes,
-      regiones,
-      proveedores,
-    };
+export async function getBaseCatalogs(requestedBrandId?: string) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const cached = unstable_cache(
+      () => fetchBaseCatalogsUncached(brandId),
+      ["catalogs-base", brandId],
+      { revalidate: 300, tags: [`catalogs:${brandId}`] },
+    );
+    return await cached();
   } catch (error) {
-    console.error("Error fetching base catalogs:", error);
+    log.error("fetching base catalogs", error);
     throw new Error("No se pudieron obtener los catálogos base.");
   }
+}
+
+async function fetchCatalogGeographyUncached(_brandId: string) {
+  // Single-tenant — show all paises + ciudades regardless of brandId.
+  const paises = await prisma.pais.findMany({
+    include: { ciudades: true },
+    orderBy: { nombre: "asc" },
+  });
+  return { paises };
 }
 
 export async function getCatalogGeography(requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-    const paises = await prisma.pais.findMany({
-      where: { brandId },
-      include: { ciudades: true },
-      orderBy: { nombre: "asc" },
-    });
-
-    return { paises };
+    const cached = unstable_cache(
+      () => fetchCatalogGeographyUncached(brandId),
+      ["catalogs-geography", brandId],
+      { revalidate: 300, tags: [`catalogs:${brandId}`] },
+    );
+    return await cached();
   } catch (error) {
-    console.error("Error fetching catalog geography:", error);
+    log.error("fetching catalog geography", error);
     throw new Error("No se pudieron obtener los paises y ciudades.");
   }
 }
@@ -624,7 +627,7 @@ export async function getAllCatalogs(requestedBrandId?: string) {
       ...geography,
     };
   } catch (error) {
-    console.error("Error fetching all catalogs:", error);
+    log.error("fetching all catalogs", error);
     throw new Error("No se pudieron obtener los datos de catálogo.");
   }
 }
