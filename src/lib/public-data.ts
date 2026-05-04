@@ -36,6 +36,53 @@ export const getTestimoniosPublicados = unstable_cache(
   { revalidate: 60, tags: ["testimonios"] },
 );
 
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Resolve a tipo-paquete by its slugified name (e.g. "lunas-de-miel" matches
+ * the TipoPaquete row whose nombre slugifies to that). Returns the row or null.
+ */
+export const getTipoPaqueteBySlug = unstable_cache(
+  async (slug: string) => {
+    const tipos = await prisma.tipoPaquete.findMany({
+      where: { brandId: PUBLIC_BRAND_ID },
+    });
+    return tipos.find((t) => slugify(t.nombre) === slug) ?? null;
+  },
+  ["tipo-paquete-by-slug"],
+  { revalidate: 300, tags: ["tipos-paquete"] },
+);
+
+/**
+ * Public packages filtered by tipo (no region constraint). Used by /destinos
+ * when the URL has ?tipo=X (links from CategoriaDestacada).
+ */
+export const getPaquetesByTipo = unstable_cache(
+  async (tipoPaqueteId: string) =>
+    prisma.paquete.findMany({
+      where: {
+        publicado: true,
+        deletedAt: null,
+        brandId: PUBLIC_BRAND_ID,
+        tipoPaqueteId,
+      },
+      orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
+      include: {
+        fotos: { take: 1, orderBy: { orden: "asc" } },
+        destinos: { orderBy: { orden: "asc" }, include: { ciudad: true } },
+      },
+    }),
+  ["paquetes-by-tipo"],
+  { revalidate: 60, tags: ["paquetes"] },
+);
+
 export const getRegionesPublicas = unstable_cache(
   async () =>
     prisma.region.findMany({
