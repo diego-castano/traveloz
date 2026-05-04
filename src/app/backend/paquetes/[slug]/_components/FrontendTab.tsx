@@ -231,22 +231,34 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
         </div>
       </Section>
 
-      {/* Section 2 — Hero */}
+      {/* Section 2 — Slider de fotos (hero + galería) */}
       <Section
-        title="Hero"
-        description="Imagen principal del paquete. Se muestra en la galería y como destacada."
+        title="Slider de fotos"
+        description="El paquete muestra un carrusel de fotos en su detalle público. La foto principal aparece primero. Las fotos extra se administran en la pestaña Fotos."
       >
-        <MediaPicker
-          value={form.heroImage}
-          onChange={(v) => setForm({ ...form, heroImage: v })}
-          accept="image/*"
-        />
-        {data.fotos.length > 0 && (
+        <div>
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
+            Foto principal del slider
+            <span className="text-neutral-400 font-normal ml-2 text-xs">
+              (primera diapositiva del carrusel)
+            </span>
+          </label>
+          <MediaPicker
+            value={form.heroImage}
+            onChange={(v) => setForm({ ...form, heroImage: v })}
+            accept="image/*"
+          />
+        </div>
+
+        {data.fotos.length > 0 ? (
           <div>
-            <p className="text-[11px] text-neutral-500 mb-2">
-              O elegí una foto de la galería del paquete:
+            <p className="text-xs font-medium text-neutral-700 mb-2">
+              Fotos del slider ({data.fotos.length})
+              <span className="text-neutral-400 font-normal ml-1">
+                — ya cargadas en la pestaña Fotos
+              </span>
             </p>
-            <div className="flex gap-2 overflow-x-auto pb-2">
+            <div className="grid grid-cols-6 gap-2">
               {data.fotos.map((f) => {
                 const active = form.heroImage === f.url;
                 return (
@@ -259,7 +271,10 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
                         heroImage: active ? "" : f.url,
                       })
                     }
-                    className={`shrink-0 rounded border-2 overflow-hidden transition ${
+                    title={
+                      active ? "Foto principal" : "Marcar como principal"
+                    }
+                    className={`relative aspect-[4/3] rounded-md border-2 overflow-hidden transition ${
                       active
                         ? "border-violet-500 ring-2 ring-violet-200"
                         : "border-transparent hover:border-neutral-300"
@@ -268,12 +283,29 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
                     <img
                       src={f.url}
                       alt={f.alt}
-                      className="w-20 h-14 object-cover"
+                      className="w-full h-full object-cover"
                     />
+                    {active && (
+                      <span className="absolute top-1 right-1 bg-violet-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                        PRINCIPAL
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
+          </div>
+        ) : (
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            Este paquete no tiene fotos en el slider todavía. Agregalas en la
+            pestaña{" "}
+            <a
+              href={`?tab=fotos`}
+              className="font-semibold underline"
+            >
+              Fotos
+            </a>{" "}
+            y volvé acá para elegir la principal.
           </div>
         )}
       </Section>
@@ -284,26 +316,26 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
         description="Lo que el viajero ve al entrar al detalle."
       >
         <div>
-          <label className="block text-xs font-medium text-neutral-700 mb-1">
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
             Texto introductorio
-            <span className="text-neutral-400 font-normal ml-2">
-              (aparece al lado del título)
+            <span className="text-neutral-400 font-normal ml-2 text-xs">
+              (sobre el destino, aparece arriba del itinerario)
             </span>
           </label>
           <textarea
             value={form.textoIntro}
             onChange={(e) => setForm({ ...form, textoIntro: e.target.value })}
-            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-            rows={3}
+            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            rows={6}
             placeholder="Por qué este destino, qué lo hace especial, etc."
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-700 mb-1">
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
             Itinerario público
-            <span className="text-neutral-400 font-normal ml-2">
-              (día a día, distinto al itinerario interno Amadeus)
+            <span className="text-neutral-400 font-normal ml-2 text-xs">
+              (día a día — distinto al itinerario interno Amadeus)
             </span>
           </label>
           <textarea
@@ -311,8 +343,8 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
             onChange={(e) =>
               setForm({ ...form, itinerarioPublico: e.target.value })
             }
-            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-            rows={6}
+            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            rows={10}
             placeholder={`Día 1 — Llegada y traslado al hotel.\nDía 2 — City tour por el centro histórico.\nDía 3 — Excursión a las playas…`}
           />
         </div>
@@ -321,30 +353,36 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
       {/* Section 4 — Incluye / No incluye */}
       <Section
         title="Qué incluye / no incluye"
-        description="Servicios incluidos (visibles con icono) y notas de qué queda fuera."
+        description="Servicios incluidos (con icono auto-detectado por palabra clave) y notas de lo que queda fuera. Una línea = un bullet."
       >
         <div>
-          <label className="block text-xs font-medium text-neutral-700 mb-1">
-            Texto introductorio &ldquo;Incluye&rdquo;
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
+            Lo que incluye
+            <span className="text-neutral-400 font-normal ml-2 text-xs">
+              (cada línea es un bullet — el icono se elige automáticamente: ✈ pasaje, 🧳 equipaje, 🚌 traslado, 🏨 alojamiento)
+            </span>
           </label>
           <textarea
             value={form.textoIncluye}
             onChange={(e) => setForm({ ...form, textoIncluye: e.target.value })}
-            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-            rows={2}
-            placeholder="Texto opcional que aparece encima de la lista…"
+            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            rows={8}
+            placeholder={`Pasaje aéreo Montevideo / Río de Janeiro / Montevideo\nCarry on de cabina\nTraslados aeropuerto / hotel / aeropuerto\n7 noches con régimen All Inclusive\nTasas e impuestos incluidos`}
           />
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-700 mb-1">
-            Servicios incluidos
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
+            Servicios estructurados (catálogo)
+            <span className="text-neutral-400 font-normal ml-2 text-xs">
+              (opcional — para reusar servicios entre paquetes con icono fijo)
+            </span>
           </label>
           <MultiSelectCombobox
             options={options}
             value={selected}
             onChange={setSelected}
-            placeholder="Agregar servicios…"
+            placeholder="Agregar servicios del catálogo…"
             onCreate={async (name) => {
               const created = await createServicio({
                 nombre: name,
@@ -368,8 +406,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
             }}
           />
           <p className="text-[11px] text-neutral-400 mt-1">
-            ¿Falta un servicio? Crealo escribiendo el nombre y &ldquo;+ Crear&rdquo;,
-            o gestionalos desde{" "}
+            Si dejás esto vacío se usan los bullets del textarea de arriba. Gestioná el catálogo en{" "}
             <a
               href="/backend/catalogos/servicios"
               className="text-violet-600 hover:underline"
@@ -381,16 +418,19 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-neutral-700 mb-1">
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
             No incluye
+            <span className="text-neutral-400 font-normal ml-2 text-xs">
+              (una línea = un bullet)
+            </span>
           </label>
           <textarea
             value={form.textoNoIncluye}
             onChange={(e) =>
               setForm({ ...form, textoNoIncluye: e.target.value })
             }
-            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-            rows={3}
+            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            rows={6}
             placeholder={`Excursiones opcionales\nGastos personales\nPropinas`}
           />
         </div>
@@ -406,8 +446,8 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           onChange={(e) =>
             setForm({ ...form, textoCondiciones: e.target.value })
           }
-          className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
-          rows={4}
+          className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+          rows={8}
           placeholder="Notas que aparecen al final del detalle. Si lo dejás vacío se muestran las condiciones generales del sitio."
         />
       </Section>

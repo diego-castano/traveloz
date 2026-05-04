@@ -113,7 +113,7 @@ export default function CorporativoPage() {
                   <div className="icon-teaser style1">
                     <img src={`/site/img/${c.icon}`} alt="icon" />
                     <h3 className="title">{c.title}</h3>
-                    <p>{c.body}</p>
+                    <CardBody html={c.body} />
                   </div>
                 </div>
               ))}
@@ -134,7 +134,7 @@ export default function CorporativoPage() {
                 <div className="icon-teaser style1" key={c.icon}>
                   <img src={`/site/img/${c.icon}`} alt="icon" />
                   <h3 className="title">{c.title}</h3>
-                  <p>{c.body}</p>
+                  <CardBody html={c.body} />
                 </div>
               ))}
             </EmblaSlider>
@@ -300,4 +300,11 @@ export default function CorporativoPage() {
       </section>
     </>
   );
+}
+
+function CardBody({ html }: { html: string }) {
+  if (!html) return null;
+  const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(html);
+  if (!looksLikeHtml) return <p>{html}</p>;
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }

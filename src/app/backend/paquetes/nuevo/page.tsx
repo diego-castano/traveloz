@@ -115,7 +115,9 @@ export default function NuevoPaquetePage() {
       toast(
         "success",
         "Paquete creado",
-        `"${newPaquete.titulo}" fue creado en estado Borrador.`,
+        `"${newPaquete.titulo}" fue creado en estado ${
+          newPaquete.estado === "ACTIVO" ? "Activo" : "Borrador"
+        }.`,
       );
       router.push(`/backend/paquetes/${newPaquete.id}?tab=datos`);
     } catch (error) {

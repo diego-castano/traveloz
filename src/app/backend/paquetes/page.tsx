@@ -17,6 +17,7 @@ import { motion } from "motion/react";
 import { Tooltip } from "radix-ui";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/data/EmptyState";
 import {
   Table,
   TableHeader,
@@ -1062,19 +1063,33 @@ export default function PaquetesPage() {
             <DataTableSkeleton columns={6} rows={8} />
           )
         ) : filteredPaquetes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-[14px] border border-dashed border-hairline bg-white py-20 text-neutral-400">
-            <Package className="mb-3 h-12 w-12 opacity-40" />
-            <p className="text-sm">No se encontraron paquetes</p>
-            {activeFilterCount > 0 && (
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="mt-3 text-xs font-medium text-[#8B5CF6] hover:underline"
-              >
-                Limpiar filtros
-              </button>
-            )}
-          </div>
+          <EmptyState
+            icon={Package}
+            title={
+              activeFilterCount > 0
+                ? "No se encontraron paquetes"
+                : "Aún no hay paquetes en el catálogo"
+            }
+            description={
+              activeFilterCount > 0
+                ? "Probá quitar algunos filtros o ajustar la búsqueda."
+                : "Creá el primer paquete para empezar a venderlo. Podés cargarle fotos, opciones de hotelería, precios y publicarlo cuando esté listo."
+            }
+            action={
+              activeFilterCount > 0 ? (
+                <Button variant="secondary" onClick={clearAllFilters}>
+                  Limpiar filtros
+                </Button>
+              ) : (
+                <Button
+                  leftIcon={<Plus className="h-4 w-4" />}
+                  onClick={() => router.push("/backend/paquetes/nuevo")}
+                >
+                  Nuevo paquete
+                </Button>
+              )
+            }
+          />
         ) : isPendingPage ? (
           viewMode === "grid" ? (
             <CardGridSkeleton cards={8} columns={4} />

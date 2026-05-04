@@ -23,6 +23,9 @@ import type {
 import { useSession } from "next-auth/react";
 import * as serviceActions from "@/actions/service.actions";
 import { useBrand } from "./BrandProvider";
+import { readSessionCache, writeSessionCache } from "@/lib/session-cache";
+
+const SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // State
@@ -365,14 +368,18 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Stale-while-revalidate: keep the previous mount's data on screen while
-    // the new fetch lands. Only flip `loading: true` on the very first cold
-    // mount (no rows yet) so navigation never blanks the UI.
+    // Try the per-tab session cache first (instant on hard reload).
+    const cached = readSessionCache<ServiceState>(
+      "service-state",
+      activeBrandId,
+      SESSION_CACHE_TTL_MS,
+    );
+    const baseline = cached ?? state;
     dispatch({
       type: "SET_ALL",
       payload: {
-        ...state,
-        loading: state.aereos.length === 0 && state.alojamientos.length === 0,
+        ...baseline,
+        loading: baseline.aereos.length === 0 && baseline.alojamientos.length === 0,
       },
     });
 
@@ -465,6 +472,16 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [activeBrandId, sessionStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist to sessionStorage with debounce — same pattern as PackageProvider.
+  useEffect(() => {
+    if (state.loading) return;
+    if (sessionStatus !== "authenticated") return;
+    const handle = window.setTimeout(() => {
+      writeSessionCache("service-state", activeBrandId, state);
+    }, 800);
+    return () => window.clearTimeout(handle);
+  }, [state, activeBrandId, sessionStatus]);
 
   return (
     <ServiceStateContext.Provider value={state}>

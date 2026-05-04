@@ -104,8 +104,13 @@ export const getRegionBySlug = unstable_cache(
 );
 
 export const getPaquetesByRegion = unstable_cache(
-  async (regionId: string) =>
-    prisma.paquete.findMany({
+  async (regionId: string) => {
+    // Prisma `some` brings in any paquete with AT LEAST ONE city in the region —
+    // that includes "CURAZAO" packages that happen to have a Madrid stopover.
+    // We narrow it client-side to only paquetes whose PRIMARY destino (lowest
+    // orden) is in the region. Multi-region packages are then anchored to a
+    // single region for listing purposes.
+    const candidates = await prisma.paquete.findMany({
       where: {
         publicado: true,
         deletedAt: null,
@@ -115,9 +120,16 @@ export const getPaquetesByRegion = unstable_cache(
       orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
       include: {
         fotos: { take: 1, orderBy: { orden: "asc" } },
-        destinos: { orderBy: { orden: "asc" }, include: { ciudad: true } },
+        destinos: {
+          orderBy: { orden: "asc" },
+          include: { ciudad: { include: { pais: true } } },
+        },
       },
-    }),
+    });
+    return candidates.filter(
+      (p) => p.destinos[0]?.ciudad?.pais?.regionId === regionId,
+    );
+  },
   ["paquetes-by-region"],
   { revalidate: 60, tags: ["paquetes"] },
 );

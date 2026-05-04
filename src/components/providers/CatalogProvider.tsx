@@ -21,6 +21,11 @@ import type {
 import { useSession } from "next-auth/react";
 import * as catalogActions from "@/actions/catalog.actions";
 import { useBrand } from "./BrandProvider";
+import { readSessionCache, writeSessionCache } from "@/lib/session-cache";
+
+// Catalogs change rarely; a 1-hour TTL is safe and gives near-instant first
+// paint on hard reloads.
+const SESSION_CACHE_TTL_MS = 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // State
@@ -302,10 +307,21 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Stale-while-revalidate: only show the loading skeleton on cold mount.
-    // If we already have temporadas (and therefore catalogs) from a previous
-    // mount, keep them visible while the fresh fetch lands.
-    if (state.temporadas.length === 0) {
+    // Try the per-tab session cache first. Catalogs rarely change so this
+    // gives us instant first paint after a hard reload, with a background
+    // revalidation to pick up any edits made in another tab.
+    const cached = readSessionCache<CatalogState>(
+      "catalog-state",
+      activeBrandId,
+      SESSION_CACHE_TTL_MS,
+    );
+    if (cached && cached.temporadas.length > 0) {
+      dispatch({ type: "SET_BASE", payload: { ...cached, loading: false, hydratingGeography: false } });
+      dispatch({
+        type: "MERGE_GEOGRAPHY",
+        payload: { paises: cached.paises, ciudades: cached.ciudades, loading: false },
+      });
+    } else if (state.temporadas.length === 0) {
       dispatch({ type: "SET_LOADING", payload: true });
     }
 
@@ -363,6 +379,16 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [activeBrandId, sessionStatus]);
+
+  // Persist to sessionStorage with debounce — same pattern as Package/Service.
+  useEffect(() => {
+    if (state.loading) return;
+    if (sessionStatus !== "authenticated") return;
+    const handle = window.setTimeout(() => {
+      writeSessionCache("catalog-state", activeBrandId, state);
+    }, 800);
+    return () => window.clearTimeout(handle);
+  }, [state, activeBrandId, sessionStatus]);
 
   return (
     <CatalogStateContext.Provider value={state}>

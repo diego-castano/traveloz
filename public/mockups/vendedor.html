@@ -1,0 +1,1361 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>TravelOz · Vista Vendedor (mockup)</title>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+<style>
+  :root {
+    --teal: #3BBFAD;
+    --teal-dark: #2BA08F;
+    --violet: #8B5CF6;
+    --violet-50: #F5F3FF;
+    --violet-100: #EDE9FE;
+    --bg: #F7F8FA;
+    --surface: #FFFFFF;
+    --border: #E8EAEE;
+    --border-strong: #D5D8DD;
+    --text: #1A1A2E;
+    --muted: #6B7280;
+    --soft: #9CA3AF;
+    --gold: #E8B341;
+    --shadow: 0 1px 2px rgba(26,26,46,0.04), 0 4px 12px rgba(26,26,46,0.04);
+    --shadow-lg: 0 8px 24px rgba(26,26,46,0.08);
+    --shadow-search: 0 1px 2px rgba(26,26,46,0.04), 0 8px 24px rgba(139,92,246,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "SF Pro Display",
+      "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  /* ─── Top bar ─────────────────────────────────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1200px; margin: 0 auto;
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .logo { height: 32px; width: auto; }
+  .topbar-title {
+    margin: 0; font-size: 13px; font-weight: 500; color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .vendor-pill {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--violet-50);
+    color: var(--violet);
+    font-size: 12px; font-weight: 600;
+  }
+  .vendor-pill .avatar {
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    background: var(--violet);
+    color: white;
+    display: grid; place-items: center;
+    font-size: 10px; font-weight: 700;
+  }
+
+  /* ─── Hero ─────────────────────────────────────────── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px 120px; }
+  .hero {
+    display: flex; align-items: end; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .hero h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .hero-sub { margin: 4px 0 0; color: var(--muted); }
+  .hero-stats { display: flex; gap: 28px; }
+  .stat .v { font-size: 22px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: 12px; color: var(--muted); }
+
+  /* ─── Search bar ─────────────────────── */
+  .search-bar {
+    display: flex;
+    align-items: stretch;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-search);
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    height: 56px;
+  }
+  .search-bar:focus-within {
+    border-color: var(--violet);
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.10), 0 8px 24px rgba(139,92,246,0.10);
+  }
+  .search-input-wrap { flex: 1; position: relative; display: flex; align-items: center; }
+  .search-input-wrap > svg.icon-search {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    color: var(--muted); pointer-events: none;
+  }
+  .search-input-wrap input {
+    width: 100%; height: 100%;
+    border: 0; outline: 0; background: transparent;
+    padding: 0 56px 0 50px;
+    font-size: 15px; color: var(--text);
+    font-family: inherit;
+  }
+  .search-input-wrap input::placeholder { color: var(--soft); }
+  .search-clear {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    width: 24px; height: 24px;
+    border: 0; background: var(--bg); color: var(--muted);
+    border-radius: 999px; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+    transition: background 0.12s, color 0.12s;
+  }
+  .search-clear:hover { background: var(--border); color: var(--text); }
+  .search-clear.visible { display: inline-flex; }
+  .search-kbd {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--soft);
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px;
+  }
+  .search-kbd kbd {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 11px; color: var(--muted);
+  }
+  .search-bar.has-text .search-kbd { display: none; }
+  .search-divider { width: 1px; background: var(--border); margin: 10px 0; }
+  .search-filter {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 0 18px;
+    background: transparent; border: 0; cursor: pointer;
+    font-family: inherit; color: var(--text);
+    transition: background 0.12s;
+    min-width: 170px;
+    text-align: left;
+  }
+  .search-filter:hover { background: rgba(139,92,246,0.04); }
+  .search-filter .label-stack { display: flex; flex-direction: column; line-height: 1.1; }
+  .search-filter .label-stack .l { font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--soft); text-transform: uppercase; }
+  .search-filter .label-stack .v { font-size: 14px; font-weight: 600; color: var(--text); margin-top: 3px; }
+  .search-filter .chev { color: var(--soft); }
+
+  /* ─── Pax selector (always visible, inline) ─────────── */
+  .pax-bar {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    flex-wrap: wrap;
+  }
+  .pax-bar .pax-label {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; color: var(--muted);
+    text-transform: uppercase;
+    padding-right: 10px;
+    border-right: 1px solid var(--border);
+  }
+  .pax-bar .pax-label svg { color: var(--violet); }
+  .stepper {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .stepper button {
+    width: 26px; height: 26px;
+    border: 0; border-radius: 999px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px; font-weight: 700;
+    display: grid; place-items: center;
+    transition: background 0.12s, color 0.12s;
+    border: 1px solid var(--border);
+  }
+  .stepper button:hover { background: var(--violet); color: white; border-color: var(--violet); }
+  .stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .stepper button:disabled:hover { background: var(--surface); color: var(--text); border-color: var(--border); }
+  .stepper .stepper-value {
+    min-width: 75px;
+    text-align: center;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stepper .stepper-value strong { font-weight: 700; color: var(--text); }
+  .stepper .stepper-value span { color: var(--muted); margin-left: 3px; }
+
+  .room-toggle {
+    display: inline-flex; align-items: center;
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .room-toggle button {
+    border: 0; background: transparent;
+    padding: 5px 12px;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--muted);
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.12s, color 0.12s;
+  }
+  .room-toggle button:hover { color: var(--text); }
+  .room-toggle button.active {
+    background: var(--violet);
+    color: white;
+    box-shadow: 0 1px 3px rgba(139,92,246,0.3);
+  }
+  .pax-hint {
+    margin-left: auto;
+    font-size: 11.5px; color: var(--muted);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .pax-hint .pulse {
+    width: 7px; height: 7px;
+    border-radius: 999px;
+    background: var(--teal);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.5; transform: scale(0.9); }
+    50% { opacity: 1; transform: scale(1.15); }
+  }
+
+  /* ─── Results bar ─── */
+  .results-bar {
+    margin: 14px 2px 12px;
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--muted); font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+  .results-bar .count strong { color: var(--text); font-weight: 700; }
+  .results-bar .right { display: flex; align-items: center; gap: 16px; }
+  .sort {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: transparent; border: 0;
+    color: var(--muted);
+    font-family: inherit; font-size: 13px;
+    cursor: pointer;
+  }
+  .sort:hover { color: var(--text); }
+
+  /* ─── Table ──────────────────────────────────────────── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left;
+    background: #FBFBFC;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tbody tr.row { cursor: pointer; transition: background 0.12s; }
+  tbody tr.row:hover { background: #FBFBFC; }
+  tbody tr.row.open { background: #F8F7FF; }
+  tbody tr.row.starred { background: #FFFAEC; }
+  tbody tr.row.starred:hover { background: #FFF4D9; }
+  tbody tr.row.starred.open { background: #FFF1CC; }
+  tbody tr.detail-row td { padding: 0; border-bottom: 1px solid var(--border); }
+
+  .pkg { display: flex; align-items: center; gap: 12px; }
+  .pkg-thumb {
+    width: 48px; height: 48px; border-radius: 10px;
+    object-fit: cover; flex-shrink: 0;
+    background: linear-gradient(135deg, #E8E5FF 0%, #DCFAF4 100%);
+  }
+  .pkg .name { font-weight: 600; font-size: 14.5px; color: var(--text); }
+  .pkg .meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  mark { background: rgba(139,92,246,0.18); color: var(--violet); padding: 0 1px; border-radius: 2px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .badge.tem-alta { background: #FFF1E0; color: #B45A0F; }
+  .badge.tem-baja { background: #EAF1FF; color: #2257B5; }
+  .price {
+    font-weight: 700; font-size: 15px; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .price small { display: block; font-weight: 500; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .price.flash { animation: flash 0.5s ease; }
+  @keyframes flash {
+    0% { color: var(--violet); transform: scale(1.04); }
+    100% { color: var(--text); transform: scale(1); }
+  }
+  .row-actions {
+    display: flex; align-items: center; gap: 4px;
+    justify-content: flex-end;
+  }
+  .star-btn {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    border: 0; background: transparent;
+    cursor: pointer;
+    color: var(--soft);
+    border-radius: 8px;
+    transition: background 0.12s, color 0.12s, transform 0.15s;
+  }
+  .star-btn:hover { background: var(--bg); color: var(--gold); }
+  .star-btn.active { color: var(--gold); }
+  .star-btn.active:hover { color: #C99326; }
+  .chev {
+    width: 24px; height: 24px;
+    display: grid; place-items: center;
+    color: var(--soft);
+    transition: transform 0.2s;
+  }
+  tr.row.open .chev { transform: rotate(90deg); color: var(--violet); }
+
+  /* ─── Detail panel (slide down) ──────────────────────── */
+  .detail-row .panel {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .detail-row.open .panel { max-height: 800px; }
+  .panel-inner {
+    padding: 20px 22px 26px;
+    background: linear-gradient(180deg, #F8F7FF 0%, #FBFBFC 100%);
+    display: grid;
+    grid-template-columns: 2fr 2fr 1.2fr;
+    gap: 22px;
+  }
+  .block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .block h4 {
+    margin: 0 0 10px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .block h4 .ico { color: var(--teal); display: inline-flex; }
+  .row-line {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 13px;
+  }
+  .row-line:last-child { border-bottom: 0; }
+  .row-line .l { color: var(--muted); }
+  .row-line .v { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .row-line .v.usd::after { content: " USD"; color: var(--muted); font-weight: 400; font-size: 11px; }
+
+  .opcion-picker {
+    display: flex; gap: 6px;
+    margin: 8px 0 12px;
+    flex-wrap: wrap;
+  }
+  .opcion-picker button {
+    flex: 1; min-width: 0;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    display: flex; flex-direction: column; gap: 2px;
+    transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
+  }
+  .opcion-picker button:hover { border-color: var(--violet); }
+  .opcion-picker button.active {
+    border-color: var(--violet);
+    background: var(--violet-50);
+    box-shadow: 0 0 0 2px rgba(139,92,246,0.15);
+  }
+  .opcion-picker .o-label { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .opcion-picker button.active .o-label { color: var(--violet); }
+  .opcion-picker .o-hotel { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opcion-picker .o-price { font-size: 11.5px; color: var(--text); font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .opcion-picker button.active .o-price { color: var(--violet); font-weight: 700; }
+
+  .summary {
+    background: linear-gradient(135deg, #F1EEFF 0%, #E5F8F4 100%);
+    border: 1px solid #DCD6FF;
+    color: var(--text);
+  }
+  .summary h4 { color: var(--violet); }
+  .summary .total {
+    margin-top: 8px;
+    font-size: 26px; font-weight: 800; letter-spacing: -0.01em;
+    color: var(--violet);
+    font-variant-numeric: tabular-nums;
+  }
+  .summary .neto {
+    font-size: 18px; font-weight: 700; color: var(--text); margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary .markup { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .summary .actions { margin-top: 14px; display: flex; gap: 8px; }
+  .summary .pax-line {
+    margin-top: 4px; font-size: 12px; color: var(--muted);
+  }
+  .btn {
+    flex: 1;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13px; font-weight: 600;
+    border: 0; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    font-family: inherit;
+  }
+  .btn.primary { background: var(--violet); color: white; }
+  .btn.primary:hover { background: #7B4EE6; }
+  .btn.ghost { background: transparent; color: var(--violet); border: 1px solid #DCD6FF; }
+  .btn.ghost:hover { background: white; }
+
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty svg { color: var(--soft); margin-bottom: 12px; }
+
+  /* ─── Load more ─── */
+  .load-more-wrap {
+    padding: 18px;
+    text-align: center;
+    background: #FBFBFC;
+    border-top: 1px solid var(--border);
+  }
+  .load-more {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.12s, color 0.12s;
+  }
+  .load-more:hover { border-color: var(--violet); color: var(--violet); }
+  .skeleton-hint { color: var(--muted); font-size: 12px; }
+
+  /* ─── Compare drawer (sticky bottom) ─── */
+  .compare-drawer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -8px 32px rgba(26,26,46,0.10);
+    z-index: 40;
+    transform: translateY(100%);
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .compare-drawer.visible { transform: translateY(0); }
+  .compare-inner {
+    max-width: 1200px; margin: 0 auto;
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .compare-title {
+    font-size: 12px; font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .compare-title strong { color: var(--violet); font-size: 13px; }
+  .compare-cards {
+    display: flex; gap: 10px;
+    flex: 1; min-width: 0;
+    overflow-x: auto;
+  }
+  .compare-card {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px 6px 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-width: 280px;
+  }
+  .compare-card img {
+    width: 36px; height: 36px; border-radius: 6px;
+    object-fit: cover; flex-shrink: 0;
+  }
+  .compare-card .info { display: flex; flex-direction: column; min-width: 0; }
+  .compare-card .info .nm {
+    font-size: 12.5px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 160px;
+  }
+  .compare-card .info .pr { font-size: 12px; color: var(--violet); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .compare-card .x {
+    width: 22px; height: 22px;
+    border: 0; border-radius: 999px;
+    background: transparent;
+    color: var(--soft);
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .compare-card .x:hover { background: var(--surface); color: var(--text); }
+  .compare-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .compare-actions button {
+    border-radius: 9px;
+    padding: 9px 14px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    border: 0;
+  }
+  .compare-actions .clear {
+    background: transparent;
+    color: var(--muted);
+  }
+  .compare-actions .clear:hover { color: var(--text); }
+  .compare-actions .open {
+    background: var(--violet); color: white;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .compare-actions .open:hover { background: #7B4EE6; }
+
+  /* ─── Compare overlay ─── */
+  .overlay-bg {
+    position: fixed; inset: 0;
+    background: rgba(26,26,46,0.45);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 50;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .overlay-bg.visible { opacity: 1; pointer-events: auto; }
+  .overlay-card {
+    position: fixed; inset: 30px;
+    max-width: 1280px; margin: 0 auto;
+    background: var(--surface);
+    border-radius: 18px;
+    box-shadow: var(--shadow-lg);
+    z-index: 51;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    opacity: 0; pointer-events: none;
+    transform: scale(0.97);
+    transition: opacity 0.2s, transform 0.22s;
+  }
+  .overlay-card.visible { opacity: 1; pointer-events: auto; transform: scale(1); }
+  .overlay-header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .overlay-header h2 { margin: 0; font-size: 18px; font-weight: 700; }
+  .overlay-header .pax-summary {
+    margin-left: 12px;
+    font-size: 12.5px; color: var(--muted);
+    background: var(--bg);
+    padding: 5px 11px;
+    border-radius: 999px;
+  }
+  .overlay-close {
+    margin-left: auto;
+    width: 36px; height: 36px;
+    border: 0; background: var(--bg); color: var(--text);
+    border-radius: 999px;
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .overlay-close:hover { background: var(--border); }
+  .overlay-grid {
+    flex: 1; overflow: auto;
+    display: grid;
+    gap: 16px;
+    padding: 20px 24px;
+    background: linear-gradient(180deg, #F8F7FF 0%, #FBFBFC 100%);
+  }
+  .overlay-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .overlay-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .compare-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .compare-col .head {
+    display: flex; align-items: center; gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .compare-col .head img {
+    width: 56px; height: 56px; border-radius: 10px;
+    object-fit: cover;
+  }
+  .compare-col .head .name { font-weight: 700; font-size: 15px; line-height: 1.25; }
+  .compare-col .head .destino { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .compare-col .price-big {
+    text-align: center;
+    padding: 14px;
+    background: linear-gradient(135deg, #F1EEFF 0%, #E5F8F4 100%);
+    border-radius: 12px;
+    border: 1px solid #DCD6FF;
+  }
+  .compare-col .price-big .total {
+    font-size: 24px; font-weight: 800; color: var(--violet);
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .compare-col .price-big .perpax { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .compare-col .price-big .neto {
+    font-size: 13px; color: var(--text); font-weight: 600;
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .compare-col .actions { display: flex; gap: 6px; }
+
+  .footer-note { margin-top: 20px; text-align: center; font-size: 11px; color: var(--soft); }
+
+  @media (max-width: 880px) {
+    .search-bar { flex-direction: column; height: auto; border-radius: 14px; }
+    .search-bar .search-divider { display: none; }
+    .search-input-wrap { border-bottom: 1px solid var(--border); }
+    .search-input-wrap > svg.icon-search { left: 16px; }
+    .search-input-wrap input { padding: 16px 50px 16px 46px; }
+    .search-kbd { display: none; }
+    .search-filter { padding: 12px 16px; min-width: 0; width: 100%; border-bottom: 1px solid var(--border); }
+    .search-filter:last-child { border-bottom: 0; }
+    .pax-bar { gap: 8px 14px; }
+    .pax-bar .pax-label { width: 100%; border-right: 0; padding-right: 0; }
+    .pax-hint { display: none; }
+    .panel-inner { grid-template-columns: 1fr; }
+    .hero-stats { width: 100%; gap: 18px; }
+    th.col-precio, td.col-precio,
+    th.col-tipo, td.col-tipo { display: none; }
+    .overlay-card { inset: 0; border-radius: 0; }
+    .overlay-grid.cols-2, .overlay-grid.cols-3 { grid-template-columns: 1fr; }
+    .compare-inner { padding: 12px 14px; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <img src="/header-logo.webp" alt="TravelOz" class="logo" />
+    <p class="topbar-title">VENDEDORES</p>
+    <div class="vendor-pill">
+      <span class="avatar">JV</span>
+      <span>Juan Vendedor</span>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <section class="hero">
+    <div>
+      <h1>Paquetes disponibles</h1>
+      <p class="hero-sub">Buscá un paquete por nombre, destino, hotel o aerolínea para ver costos al instante.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat"><div class="v" id="stat-total">—</div><div class="l">paquetes activos</div></div>
+      <div class="stat"><div class="v" id="stat-destinos">—</div><div class="l">destinos</div></div>
+      <div class="stat"><div class="v" id="stat-precio">—</div><div class="l">precio promedio</div></div>
+    </div>
+  </section>
+
+  <!-- Search bar -->
+  <div class="search-bar" id="search-bar">
+    <div class="search-input-wrap">
+      <svg class="icon-search" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" type="search" placeholder="Buscar por nombre, destino, hotel, aerolínea, ruta…" autocomplete="off" />
+      <span class="search-kbd"><kbd>/</kbd> para buscar</span>
+      <button class="search-clear" id="clear-btn" type="button" aria-label="Limpiar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="search-divider"></div>
+    <button class="search-filter" type="button">
+      <span class="label-stack"><span class="l">Destino</span><span class="v">Todos</span></span>
+      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <div class="search-divider"></div>
+    <button class="search-filter" type="button">
+      <span class="label-stack"><span class="l">Temporada</span><span class="v">Todas</span></span>
+      <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+  </div>
+
+  <!-- Pax selector — always visible, recalculates everything live -->
+  <div class="pax-bar">
+    <span class="pax-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>
+      Para
+    </span>
+    <div class="stepper">
+      <button data-pax="adultos" data-delta="-1" aria-label="Menos adultos">−</button>
+      <span class="stepper-value"><strong id="pax-adultos">2</strong><span>adultos</span></span>
+      <button data-pax="adultos" data-delta="1" aria-label="Más adultos">+</button>
+    </div>
+    <span class="pax-hint">
+      <span class="pulse"></span>
+      Recálculo en vivo · Tarifas para adultos
+    </span>
+  </div>
+
+  <div class="results-bar">
+    <div class="count">Mostrando <strong id="shown">0</strong> de <strong id="total-results">0</strong> paquetes</div>
+    <div class="right">
+      <button class="sort">
+        Orden: <strong>Relevancia</strong>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40%">Paquete</th>
+          <th class="col-tipo">Destino</th>
+          <th>Noches</th>
+          <th>Temporada</th>
+          <th class="col-precio">Total grupo</th>
+          <th style="width:80px"></th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div class="load-more-wrap" id="load-more-wrap" style="display:none">
+      <button class="load-more" id="load-more">Cargar 50 más</button>
+      <div class="skeleton-hint" id="load-hint" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <p class="footer-note">Mockup estático para validación · TravelOz Vendedores · 600+ paquetes simulados</p>
+</main>
+
+<!-- Comparison drawer (sticky bottom) -->
+<div class="compare-drawer" id="compare-drawer">
+  <div class="compare-inner">
+    <div class="compare-title">Comparando <strong id="compare-count">0</strong></div>
+    <div class="compare-cards" id="compare-cards"></div>
+    <div class="compare-actions">
+      <button class="clear" id="compare-clear">Limpiar</button>
+      <button class="open" id="compare-open">
+        Ver comparación
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison overlay -->
+<div class="overlay-bg" id="overlay-bg"></div>
+<div class="overlay-card" id="overlay-card" role="dialog" aria-modal="true">
+  <div class="overlay-header">
+    <h2>Comparar paquetes</h2>
+    <span class="pax-summary" id="overlay-pax-summary"></span>
+    <button class="overlay-close" id="overlay-close" aria-label="Cerrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="overlay-grid" id="overlay-grid"></div>
+</div>
+
+<script>
+// ─── Data: 12 templates × ~50 variants = ~600 packages ──────
+const TEMPLATES = [
+  { titulo: "Cancún Todo Incluido",        destino: "Cancún, México",            airline: "Copa",            ruta: "MVD → CUN (escala PTY)",       hotelBase: "Riu Caribe 5★",                tipoHab: "Todo Incluido", aeroNeto: 720,  hotelN: 77, traslado: 30, traslTipo: "Privado IN/OUT",            tem: "alta", noches: 7, thumb: "https://images.unsplash.com/photo-1552074284-5e88ef1aef18?w=200&h=200&fit=crop" },
+  { titulo: "Buzios Romántica",            destino: "Búzios, Brasil",            airline: "GOL",             ruta: "MVD → GIG (directo)",          hotelBase: "Insólito Boutique 4★",         tipoHab: "Desayuno",      aeroNeto: 410,  hotelN: 82, traslado: 50, traslTipo: "Privado GIG → Búzios",      tem: "alta", noches: 5, thumb: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&h=200&fit=crop" },
+  { titulo: "París Esencial",              destino: "París, Francia",            airline: "Iberia",          ruta: "MVD → CDG (vía MAD)",          hotelBase: "Hôtel des Grands Boulevards 4★", tipoHab: "Desayuno",    aeroNeto: 1180, hotelN: 120, traslado: 80, traslTipo: "Privado CDG IN/OUT",        tem: "alta", noches: 6, thumb: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=200&h=200&fit=crop" },
+  { titulo: "Punta Cana Familiar",         destino: "Punta Cana, Rep. Dominicana", airline: "Copa",          ruta: "MVD → PUJ (vía PTY)",          hotelBase: "Bahia Principe Grand 5★",      tipoHab: "TI",            aeroNeto: 690,  hotelN: 66, traslado: 40, traslTipo: "Compartido IN/OUT",         tem: "baja", noches: 7, thumb: "https://images.unsplash.com/photo-1540541338287-41700207dee6?w=200&h=200&fit=crop" },
+  { titulo: "Madrid + Barcelona",          destino: "España",                    airline: "Iberia",          ruta: "MVD → MAD → BCN",              hotelBase: "VP Plaza España 4★ + Catalonia BCN 4★", tipoHab: "Desayuno", aeroNeto: 1050, hotelN: 73, traslado: 60, traslTipo: "Tren AVE Madrid→Barcelona", tem: "alta", noches: 8, thumb: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=200&h=200&fit=crop" },
+  { titulo: "Bariloche Nieve",             destino: "Bariloche, Argentina",      airline: "Aerolíneas Argentinas", ruta: "MVD → BRC (vía AEP)",      hotelBase: "Llao Llao Resort 5★",          tipoHab: "Media pensión", aeroNeto: 520,  hotelN: 60, traslado: 40, traslTipo: "Privado IN/OUT + 1 forfait", tem: "baja", noches: 7, thumb: "https://images.unsplash.com/photo-1551524559-8af4e6624178?w=200&h=200&fit=crop" },
+  { titulo: "Cataratas + Río de Janeiro",  destino: "Foz + Río, Brasil",         airline: "LATAM",           ruta: "MVD → IGU + IGU → GIG",        hotelBase: "Recanto Cataratas 4★ + Windsor Excelsior 4★", tipoHab: "Desayuno", aeroNeto: 580, hotelN: 76, traslado: 60, traslTipo: "Privado IN/OUT en ambos destinos", tem: "alta", noches: 6, thumb: "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=200&h=200&fit=crop" },
+  { titulo: "Roma Eterna",                 destino: "Roma, Italia",              airline: "Alitalia",        ruta: "MVD → FCO (vía MAD)",          hotelBase: "Hotel Artemide 4★",            tipoHab: "Desayuno",      aeroNeto: 1240, hotelN: 110, traslado: 75, traslTipo: "Privado FCO IN/OUT",        tem: "alta", noches: 5, thumb: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=200&h=200&fit=crop" },
+  { titulo: "Nueva York Manhattan",        destino: "New York, USA",             airline: "American",        ruta: "MVD → JFK (vía MIA)",          hotelBase: "The Manhattan at Times Sq 4★", tipoHab: "Solo alojamiento", aeroNeto: 1380, hotelN: 165, traslado: 90, traslTipo: "Privado JFK IN/OUT",        tem: "alta", noches: 6, thumb: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=200&h=200&fit=crop" },
+  { titulo: "Tokio Tradicional",           destino: "Tokio, Japón",              airline: "ANA",             ruta: "MVD → NRT (vía SCL)",          hotelBase: "Park Hotel Tokyo 4★",          tipoHab: "Desayuno",      aeroNeto: 2100, hotelN: 140, traslado: 110, traslTipo: "Narita Express + Privado",  tem: "alta", noches: 6, thumb: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=200&h=200&fit=crop" },
+  { titulo: "Cusco + Machu Picchu",        destino: "Cusco, Perú",               airline: "LATAM",           ruta: "MVD → LIM → CUZ",              hotelBase: "Casa Andina Premium 4★",       tipoHab: "Desayuno",      aeroNeto: 880,  hotelN: 88, traslado: 120, traslTipo: "Tren PeruRail + privado",   tem: "alta", noches: 5, thumb: "https://images.unsplash.com/photo-1526392060635-9d6019884377?w=200&h=200&fit=crop" },
+  { titulo: "Dubai Luxury",                destino: "Dubai, EAU",                airline: "Emirates",        ruta: "MVD → DXB (vía GRU)",          hotelBase: "Atlantis The Palm 5★",         tipoHab: "Desayuno",      aeroNeto: 1850, hotelN: 280, traslado: 120, traslTipo: "Privado limusina",         tem: "alta", noches: 5, thumb: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=200&h=200&fit=crop" },
+];
+const VARIANTS_NOCHES = [4, 5, 6, 7, 8, 10, 14];
+const VARIANTS_LABEL = ["Promo", "Premium", "Familiar", "Pareja", "Especial", "Express", "Plus", "Light", "Deluxe", "Aventura"];
+const PAQUETES = [];
+let idCounter = 1;
+// Build OpcionHotelera per package — 1 to 3 alternatives. Mirrors the real
+// schema field where each Paquete can have multiple opciones, each with its
+// own hotel + factor. Vendor picks one to cotizar.
+const OPCION_LABELS = ["Standard", "Premium", "Deluxe"];
+const ALT_HOTELS = {
+  "Riu Caribe 5★": ["Krystal Cancún 4★", "Hard Rock Hotel Cancún 5★"],
+  "Insólito Boutique 4★": ["Vila d'Este 4★", "Casas Brancas 5★"],
+  "Hôtel des Grands Boulevards 4★": ["Hôtel Le Marquis 5★", "Hôtel Particulier 4★"],
+  "Bahia Principe Grand 5★": ["Iberostar Selection 5★", "Riu Republica 5★"],
+  "VP Plaza España 4★ + Catalonia BCN 4★": ["NH Collection 5★ + Hotel 1898 5★", "Riu Plaza 4★ + Catalonia Plaza 4★"],
+  "Llao Llao Resort 5★": ["Charming Hotel 4★", "Cacique Inacayal 4★"],
+  "Recanto Cataratas 4★ + Windsor Excelsior 4★": ["Belmond Cataratas 5★ + Belmond Copacabana 5★", "Bourbon Cataratas 4★ + Windsor Atlántica 4★"],
+  "Hotel Artemide 4★": ["Hotel Eden 5★", "Hotel Mediterraneo 4★"],
+  "The Manhattan at Times Sq 4★": ["The Plaza 5★", "Pod 51 3★"],
+  "Park Hotel Tokyo 4★": ["The Tokyo Station Hotel 5★", "Hotel Gracery 3★"],
+  "Casa Andina Premium 4★": ["Inkaterra La Casona 5★", "Tierra Viva 3★"],
+  "Atlantis The Palm 5★": ["Burj Al Arab 7★", "Rove Downtown 4★"],
+};
+function buildOpciones(tpl, hotelPerNight, noches) {
+  const baseHotel = tpl.hotelBase;
+  const alts = ALT_HOTELS[baseHotel] || [];
+  const factors = [1.0, 1.18, 1.42];
+  const count = 1 + Math.floor(Math.random() * 3); // 1, 2 or 3 opciones
+  const opciones = [];
+  for (let i = 0; i < count; i++) {
+    const hotel = i === 0 ? baseHotel : (alts[i - 1] || `${baseHotel} (alt ${i})`);
+    const factor = factors[i];
+    const ppNight = Math.round(hotelPerNight * factor);
+    opciones.push({
+      id: i,
+      nombre: OPCION_LABELS[i],
+      hotel,
+      factor,
+      hotelPerNight: ppNight,
+      hotelNeto: ppNight * noches,
+    });
+  }
+  return opciones;
+}
+
+for (const tpl of TEMPLATES) {
+  const opciones = buildOpciones(tpl, tpl.hotelN, tpl.noches);
+  PAQUETES.push({
+    ...tpl,
+    id: idCounter++,
+    hotel: tpl.hotelBase,
+    opciones,
+  });
+  for (let i = 0; i < 49; i++) {
+    const noches = VARIANTS_NOCHES[Math.floor(Math.random() * VARIANTS_NOCHES.length)];
+    const variant = VARIANTS_LABEL[Math.floor(Math.random() * VARIANTS_LABEL.length)];
+    const flexA = (Math.random() * 0.3 - 0.1);
+    const flexH = (Math.random() * 0.25 - 0.1);
+    const aeroNeto = Math.round(tpl.aeroNeto * (1 + flexA));
+    const hotelPerNight = Math.round(tpl.hotelN * (1 + flexH));
+    PAQUETES.push({
+      ...tpl,
+      id: idCounter++,
+      titulo: `${tpl.titulo} · ${variant}`,
+      noches, aeroNeto,
+      hotelN: hotelPerNight,
+      hotel: tpl.hotelBase,
+      opciones: buildOpciones(tpl, hotelPerNight, noches),
+    });
+  }
+}
+for (const p of PAQUETES) p.markup = 0.4 + Math.random() * 0.15;
+
+// ─── Pax state ───────────────────────────────────────────────
+const pax = { adultos: 2 };
+// Selected opción hotelera per paquete (defaults to opción 0 = Standard)
+const selectedOpcion = new Map();
+function getOpcion(p) { return p.opciones[selectedOpcion.get(p.id) ?? 0]; }
+
+// Cálculo alineado al schema real:
+//   - PrecioAereo.precioAdulto → cada adulto suma 1× aéreo
+//   - PrecioAlojamiento.precioPorNoche × noches × factor de OpcionHotelera
+//   - Traslado privado: fijo · compartido: × adultos
+//   - Markup global del paquete sobre la suma
+function priceFor(p) {
+  const opcion = getOpcion(p);
+  const aero = p.aeroNeto * pax.adultos;
+  const hotel = opcion.hotelNeto;
+  const isShared = /compart/i.test(p.traslTipo);
+  const traslado = isShared ? p.traslado * pax.adultos : p.traslado;
+  const neto = aero + hotel + traslado;
+  const total = Math.round(neto * (1 + p.markup));
+  const perAdulto = Math.round(total / Math.max(1, pax.adultos));
+  return {
+    aero: Math.round(aero),
+    hotel: Math.round(hotel),
+    traslado: Math.round(traslado),
+    neto: Math.round(neto),
+    total, perAdulto,
+    opcion,
+  };
+}
+function paxSummary() {
+  return `${pax.adultos} ${pax.adultos === 1 ? "adulto" : "adultos"}`;
+}
+
+// ─── Stats ───────────────────────────────────────────────────
+const fmt = (n) => n.toLocaleString("es-UY");
+document.getElementById("stat-total").textContent = fmt(PAQUETES.length);
+const destinos = new Set(PAQUETES.map((p) => p.destino));
+document.getElementById("stat-destinos").textContent = destinos.size;
+function refreshAvg() {
+  const avg = Math.round(PAQUETES.reduce((s, p) => s + priceFor(p).total, 0) / PAQUETES.length);
+  document.getElementById("stat-precio").textContent = "USD " + fmt(avg);
+}
+refreshAvg();
+
+// ─── Fuse ────────────────────────────────────────────────────
+const fuse = new Fuse(PAQUETES, {
+  keys: [
+    { name: "titulo", weight: 3 },
+    { name: "destino", weight: 2.5 },
+    { name: "hotel", weight: 2 },
+    { name: "airline", weight: 1.2 },
+    { name: "ruta", weight: 1 },
+  ],
+  includeScore: true, includeMatches: true,
+  threshold: 0.35, ignoreLocation: true, minMatchCharLength: 2,
+});
+
+// ─── Render ──────────────────────────────────────────────────
+const PAGE = 50;
+let currentList = PAQUETES.map((item) => ({ item, matches: null }));
+let visibleCount = PAGE;
+const starred = new Set();
+
+const tbody = document.getElementById("rows");
+const loadMoreWrap = document.getElementById("load-more-wrap");
+const loadMoreBtn = document.getElementById("load-more");
+const loadHint = document.getElementById("load-hint");
+const shownEl = document.getElementById("shown");
+const totalEl = document.getElementById("total-results");
+
+function highlightField(text, matches, key) {
+  if (!matches) return escapeHtml(text);
+  const m = matches.find((x) => x.key === key);
+  if (!m || !m.indices.length) return escapeHtml(text);
+  let out = ""; let last = 0;
+  for (const [s, e] of m.indices) {
+    out += escapeHtml(text.slice(last, s));
+    out += `<mark>${escapeHtml(text.slice(s, e + 1))}</mark>`;
+    last = e + 1;
+  }
+  out += escapeHtml(text.slice(last));
+  return out;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function rowHtml({ item: p, matches }) {
+  const pr = priceFor(p);
+  const isStarred = starred.has(p.id);
+  return `
+    <tr class="row${isStarred ? " starred" : ""}" data-id="${p.id}">
+      <td>
+        <div class="pkg">
+          <img src="${p.thumb}" class="pkg-thumb" alt="" loading="lazy" />
+          <div>
+            <div class="name">${highlightField(p.titulo, matches, "titulo")}</div>
+            <div class="meta">${highlightField(p.hotel, matches, "hotel")}</div>
+          </div>
+        </div>
+      </td>
+      <td class="col-tipo">${highlightField(p.destino, matches, "destino")}</td>
+      <td>${p.noches}n</td>
+      <td><span class="badge tem-${p.tem}">${p.tem === "alta" ? "Alta" : "Baja"}</span></td>
+      <td class="col-precio">
+        <div class="price" data-price-id="${p.id}">USD ${fmt(pr.total)}<small>USD ${fmt(pr.perAdulto)} / adulto · ${escapeHtml(pr.opcion.nombre)}</small></div>
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="star-btn${isStarred ? " active" : ""}" data-star="${p.id}" aria-label="Comparar" title="Agregar a comparación">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="${isStarred ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </button>
+          <div class="chev" data-chev="${p.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+      </td>
+    </tr>
+    <tr class="detail-row" data-detail="${p.id}">
+      <td colspan="6">
+        <div class="panel">
+          <div class="panel-inner" data-panel-id="${p.id}">
+            ${detailBlocksHtml(p, pr)}
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+function detailBlocksHtml(p, pr) {
+  const isShared = /compart/i.test(p.traslTipo);
+  const opcion = pr.opcion;
+  const opcionesPicker = p.opciones.length > 1 ? `
+    <div class="opcion-picker" data-picker-id="${p.id}">
+      ${p.opciones.map((o, idx) => `
+        <button data-pick="${p.id}:${idx}" class="${idx === (selectedOpcion.get(p.id) ?? 0) ? 'active' : ''}">
+          <span class="o-label">${escapeHtml(o.nombre)}</span>
+          <span class="o-hotel">${escapeHtml(o.hotel)}</span>
+          <span class="o-price">USD ${fmt(Math.round(o.hotelNeto))}</span>
+        </button>
+      `).join('')}
+    </div>
+  ` : '';
+  return `
+    <div class="block">
+      <h4><span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></span> Aéreo</h4>
+      <div class="row-line"><span class="l">Ruta</span><span class="v">${escapeHtml(p.ruta)}</span></div>
+      <div class="row-line"><span class="l">Aerolínea</span><span class="v">${escapeHtml(p.airline)}</span></div>
+      <div class="row-line"><span class="l">Adultos</span><span class="v">${pax.adultos} × USD ${fmt(p.aeroNeto)}</span></div>
+      <div class="row-line"><span class="l">Neto aéreo</span><span class="v usd">${fmt(pr.aero)}</span></div>
+    </div>
+    <div class="block">
+      <h4><span class="ico"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14"/><path d="M3 14h18"/><path d="M3 10h18"/><path d="M7 18h2"/><path d="M15 18h2"/></svg></span> Alojamiento + traslado</h4>
+      ${p.opciones.length > 1 ? `<div class="row-line"><span class="l">Opciones hoteleras</span><span class="v">${p.opciones.length}</span></div>` : ''}
+      ${opcionesPicker}
+      <div class="row-line"><span class="l">Hotel</span><span class="v">${escapeHtml(opcion.hotel)}</span></div>
+      <div class="row-line"><span class="l">Régimen</span><span class="v">${escapeHtml(p.tipoHab)}</span></div>
+      <div class="row-line"><span class="l">Noches</span><span class="v">${p.noches} (USD ${opcion.hotelPerNight}/n)</span></div>
+      <div class="row-line"><span class="l">Neto hotel</span><span class="v usd">${fmt(pr.hotel)}</span></div>
+      <div class="row-line"><span class="l">Traslado</span><span class="v">${escapeHtml(p.traslTipo)}${isShared ? ` × ${pax.adultos}` : ""}</span></div>
+      <div class="row-line"><span class="l">Neto traslado</span><span class="v usd">${fmt(pr.traslado)}</span></div>
+    </div>
+    <div class="block summary">
+      <h4>Cotización</h4>
+      <div class="row-line"><span class="l">Subtotal aéreo</span><span class="v usd">${fmt(pr.aero)}</span></div>
+      <div class="row-line"><span class="l">Subtotal hotel</span><span class="v usd">${fmt(pr.hotel)}</span></div>
+      <div class="row-line"><span class="l">Subtotal traslado</span><span class="v usd">${fmt(pr.traslado)}</span></div>
+      <div class="neto">Neto: USD ${fmt(pr.neto)}</div>
+      <div class="markup">Markup ${Math.round(p.markup * 100)}%</div>
+      <div class="total">USD ${fmt(pr.total)}</div>
+      <div class="pax-line">${paxSummary()} · USD ${fmt(pr.perAdulto)} / adulto · ${escapeHtml(opcion.nombre)}</div>
+      <div class="actions">
+        <button class="btn primary">Generar cotización</button>
+        <button class="btn ghost">Copiar</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderRows() {
+  const slice = currentList.slice(0, visibleCount);
+  if (currentList.length === 0) {
+    tbody.innerHTML = `
+      <tr><td colspan="6" class="empty">
+        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <div>No encontramos paquetes con ese término.</div>
+      </td></tr>`;
+    loadMoreWrap.style.display = "none";
+    return;
+  }
+  tbody.innerHTML = slice.map(rowHtml).join("");
+  shownEl.textContent = fmt(slice.length);
+  totalEl.textContent = fmt(currentList.length);
+  if (visibleCount < currentList.length) {
+    loadMoreWrap.style.display = "block";
+    const remaining = currentList.length - visibleCount;
+    loadMoreBtn.textContent = `Cargar ${Math.min(PAGE, remaining)} más`;
+    loadHint.textContent = `${fmt(remaining)} paquetes restantes`;
+  } else {
+    loadMoreWrap.style.display = "none";
+  }
+}
+
+// Recompute prices in-place (no full re-render) — keeps scroll & expanded state
+function recomputeVisiblePrices(flash = false) {
+  for (const { item: p } of currentList.slice(0, visibleCount)) {
+    const pr = priceFor(p);
+    const priceEl = document.querySelector(`[data-price-id="${p.id}"]`);
+    if (priceEl) {
+      priceEl.innerHTML = `USD ${fmt(pr.total)}<small>USD ${fmt(pr.perAdulto)} / adulto · ${escapeHtml(pr.opcion.nombre)}</small>`;
+      if (flash) {
+        priceEl.classList.remove("flash");
+        void priceEl.offsetWidth; // restart animation
+        priceEl.classList.add("flash");
+      }
+    }
+    const panelEl = document.querySelector(`[data-panel-id="${p.id}"]`);
+    if (panelEl) panelEl.innerHTML = detailBlocksHtml(p, pr);
+  }
+}
+
+// ─── Row click: toggle detail. Stars + opción picker handled separately ──
+tbody.addEventListener("click", (e) => {
+  const starBtn = e.target.closest("[data-star]");
+  if (starBtn) {
+    e.stopPropagation();
+    const id = Number(starBtn.dataset.star);
+    toggleStar(id);
+    return;
+  }
+  const pickBtn = e.target.closest("[data-pick]");
+  if (pickBtn) {
+    e.stopPropagation();
+    const [pid, idx] = pickBtn.dataset.pick.split(":").map(Number);
+    selectedOpcion.set(pid, idx);
+    // Recompute just this paquete's price + detail
+    const p = PAQUETES.find((x) => x.id === pid);
+    const pr = priceFor(p);
+    const priceEl = document.querySelector(`[data-price-id="${pid}"]`);
+    if (priceEl) {
+      priceEl.innerHTML = `USD ${fmt(pr.total)}<small>USD ${fmt(pr.perAdulto)} / adulto · ${escapeHtml(pr.opcion.nombre)}</small>`;
+      priceEl.classList.remove("flash"); void priceEl.offsetWidth; priceEl.classList.add("flash");
+    }
+    const panelEl = document.querySelector(`[data-panel-id="${pid}"]`);
+    if (panelEl) panelEl.innerHTML = detailBlocksHtml(p, pr);
+    refreshCompareDrawer();
+    return;
+  }
+  const row = e.target.closest("tr.row");
+  if (!row) return;
+  const id = row.dataset.id;
+  const detail = document.querySelector(`tr.detail-row[data-detail="${id}"]`);
+  const isOpen = row.classList.contains("open");
+  document.querySelectorAll("tr.row.open").forEach((r) => r.classList.remove("open"));
+  document.querySelectorAll("tr.detail-row.open").forEach((r) => r.classList.remove("open"));
+  if (!isOpen) { row.classList.add("open"); detail.classList.add("open"); }
+});
+
+// ─── Star / compare ──────────────────────────────────────────
+const drawer = document.getElementById("compare-drawer");
+const drawerCount = document.getElementById("compare-count");
+const drawerCards = document.getElementById("compare-cards");
+
+function toggleStar(id) {
+  if (starred.has(id)) starred.delete(id);
+  else {
+    if (starred.size >= 3) {
+      const first = starred.values().next().value;
+      starred.delete(first);
+    }
+    starred.add(id);
+  }
+  // Update only the affected rows (no full re-render)
+  for (const sid of [id, ...Array.from(starred)]) {
+    const row = document.querySelector(`tr.row[data-id="${sid}"]`);
+    const btn = document.querySelector(`[data-star="${sid}"]`);
+    if (row) row.classList.toggle("starred", starred.has(sid));
+    if (btn) {
+      btn.classList.toggle("active", starred.has(sid));
+      btn.querySelector("svg").setAttribute("fill", starred.has(sid) ? "currentColor" : "none");
+    }
+  }
+  refreshCompareDrawer();
+}
+
+function refreshCompareDrawer() {
+  const ids = Array.from(starred);
+  if (ids.length === 0) {
+    drawer.classList.remove("visible");
+    return;
+  }
+  drawer.classList.add("visible");
+  drawerCount.textContent = ids.length;
+  drawerCards.innerHTML = ids.map((id) => {
+    const p = PAQUETES.find((x) => x.id === id);
+    const pr = priceFor(p);
+    return `
+      <div class="compare-card">
+        <img src="${p.thumb}" alt="" />
+        <div class="info">
+          <div class="nm">${escapeHtml(p.titulo)}</div>
+          <div class="pr">USD ${fmt(pr.total)} · ${p.noches}n</div>
+        </div>
+        <button class="x" data-unstar="${id}" aria-label="Quitar"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+    `;
+  }).join("");
+}
+drawerCards.addEventListener("click", (e) => {
+  const x = e.target.closest("[data-unstar]");
+  if (x) toggleStar(Number(x.dataset.unstar));
+});
+document.getElementById("compare-clear").addEventListener("click", () => {
+  const ids = Array.from(starred);
+  starred.clear();
+  for (const id of ids) {
+    const row = document.querySelector(`tr.row[data-id="${id}"]`);
+    const btn = document.querySelector(`[data-star="${id}"]`);
+    if (row) row.classList.remove("starred");
+    if (btn) {
+      btn.classList.remove("active");
+      btn.querySelector("svg").setAttribute("fill", "none");
+    }
+  }
+  refreshCompareDrawer();
+});
+
+// ─── Compare overlay ────────────────────────────────────────
+const overlayBg = document.getElementById("overlay-bg");
+const overlayCard = document.getElementById("overlay-card");
+const overlayGrid = document.getElementById("overlay-grid");
+const overlayPaxSummary = document.getElementById("overlay-pax-summary");
+
+function openOverlay() {
+  const ids = Array.from(starred);
+  if (ids.length < 2) return;
+  overlayPaxSummary.textContent = paxSummary();
+  overlayGrid.className = `overlay-grid cols-${ids.length}`;
+  overlayGrid.innerHTML = ids.map((id) => {
+    const p = PAQUETES.find((x) => x.id === id);
+    const pr = priceFor(p);
+    const isShared = /compart/i.test(p.traslTipo);
+    return `
+      <div class="compare-col">
+        <div class="head">
+          <img src="${p.thumb}" alt="" />
+          <div>
+            <div class="name">${escapeHtml(p.titulo)}</div>
+            <div class="destino">${escapeHtml(p.destino)} · ${p.noches}n</div>
+          </div>
+        </div>
+        <div class="price-big">
+          <div class="total">USD ${fmt(pr.total)}</div>
+          <div class="perpax">USD ${fmt(pr.perAdulto)} por adulto · ${escapeHtml(pr.opcion.nombre)}</div>
+          <div class="neto">Neto: USD ${fmt(pr.neto)} · markup ${Math.round(p.markup * 100)}%</div>
+        </div>
+        <div class="block">
+          <h4>Aéreo</h4>
+          <div class="row-line"><span class="l">Ruta</span><span class="v">${escapeHtml(p.ruta)}</span></div>
+          <div class="row-line"><span class="l">Aerolínea</span><span class="v">${escapeHtml(p.airline)}</span></div>
+          <div class="row-line"><span class="l">Adultos</span><span class="v">${pax.adultos} × USD ${fmt(p.aeroNeto)}</span></div>
+          <div class="row-line"><span class="l">Neto aéreo</span><span class="v usd">${fmt(pr.aero)}</span></div>
+        </div>
+        <div class="block">
+          <h4>Alojamiento</h4>
+          <div class="row-line"><span class="l">Opción</span><span class="v">${escapeHtml(pr.opcion.nombre)}</span></div>
+          <div class="row-line"><span class="l">Hotel</span><span class="v">${escapeHtml(pr.opcion.hotel)}</span></div>
+          <div class="row-line"><span class="l">Régimen</span><span class="v">${escapeHtml(p.tipoHab)}</span></div>
+          <div class="row-line"><span class="l">Por noche</span><span class="v">USD ${pr.opcion.hotelPerNight}</span></div>
+          <div class="row-line"><span class="l">Neto hotel</span><span class="v usd">${fmt(pr.hotel)}</span></div>
+        </div>
+        <div class="block">
+          <h4>Traslado</h4>
+          <div class="row-line"><span class="l">Tipo</span><span class="v">${escapeHtml(p.traslTipo)}${isShared ? ` × ${pax.adultos}` : ""}</span></div>
+          <div class="row-line"><span class="l">Neto traslado</span><span class="v usd">${fmt(pr.traslado)}</span></div>
+        </div>
+        <div class="actions">
+          <button class="btn primary">Generar cotización</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+  overlayBg.classList.add("visible");
+  overlayCard.classList.add("visible");
+}
+function closeOverlay() {
+  overlayBg.classList.remove("visible");
+  overlayCard.classList.remove("visible");
+}
+document.getElementById("compare-open").addEventListener("click", openOverlay);
+document.getElementById("overlay-close").addEventListener("click", closeOverlay);
+overlayBg.addEventListener("click", closeOverlay);
+
+// ─── Pax controls (only adultos — schema doesn't track menores or room type) ──
+document.querySelectorAll(".stepper button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const key = btn.dataset.pax;
+    const delta = Number(btn.dataset.delta);
+    pax[key] = Math.min(9, Math.max(1, pax[key] + delta));
+    document.getElementById(`pax-${key}`).textContent = pax[key];
+    updatePaxButtonsDisabled();
+    recomputeVisiblePrices(true);
+    refreshCompareDrawer();
+    refreshAvg();
+  });
+});
+function updatePaxButtonsDisabled() {
+  document.querySelectorAll(".stepper button").forEach((b) => {
+    const key = b.dataset.pax;
+    const delta = Number(b.dataset.delta);
+    const min = key === "adultos" ? 1 : 0;
+    const max = key === "adultos" ? 9 : 6;
+    const next = pax[key] + delta;
+    b.disabled = next < min || next > max;
+  });
+}
+updatePaxButtonsDisabled();
+
+// ─── Search ──────────────────────────────────────────────────
+const q = document.getElementById("q");
+const clearBtn = document.getElementById("clear-btn");
+const searchBar = document.getElementById("search-bar");
+let debounceTimer = null;
+
+function runSearch(term) {
+  if (!term) {
+    currentList = PAQUETES.map((item) => ({ item, matches: null }));
+  } else {
+    const results = fuse.search(term, { limit: 500 });
+    currentList = results.map((r) => ({ item: r.item, matches: r.matches }));
+  }
+  visibleCount = PAGE;
+  renderRows();
+}
+q.addEventListener("input", () => {
+  const term = q.value.trim();
+  searchBar.classList.toggle("has-text", term.length > 0);
+  clearBtn.classList.toggle("visible", term.length > 0);
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => runSearch(term), 120);
+});
+clearBtn.addEventListener("click", () => {
+  q.value = "";
+  searchBar.classList.remove("has-text");
+  clearBtn.classList.remove("visible");
+  q.focus();
+  runSearch("");
+});
+
+loadMoreBtn.addEventListener("click", () => {
+  visibleCount += PAGE;
+  renderRows();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && document.activeElement !== q) {
+    e.preventDefault();
+    q.focus();
+  }
+  if (e.key === "Escape") {
+    if (overlayCard.classList.contains("visible")) {
+      closeOverlay();
+    } else if (document.activeElement === q) {
+      q.value = ""; searchBar.classList.remove("has-text"); clearBtn.classList.remove("visible");
+      runSearch(""); q.blur();
+    }
+  }
+});
+
+// initial render
+renderRows();
+</script>
+</body>
+</html>

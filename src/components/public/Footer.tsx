@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // Public site footer — server component reading SiteSettings groups
-// "footer" (columns + links + social + copyright) and "general"
-// (contact info reused across the site). Editable from /backend/web/footer
-// and /backend/web/general.
+// "footer" (col 1 about/social, col 3 links, copyright) and "general"
+// (col 2 contact data reused across the site). Matches the reference
+// markup in html_inicial/index.html: 4 col-lg-3 columns, no Legal section.
 // ---------------------------------------------------------------------------
 
 import { getSiteSettings } from "@/lib/public-data";
@@ -31,14 +31,11 @@ export async function Footer() {
     getSiteSettings("general"),
   ]);
 
-  const aboutTitulo = footer.footer_about_titulo ?? "Sobre TravelOz";
   const aboutTexto =
     footer.footer_about_texto ??
-    "Unimos agilidad, profesionalismo y tarifas competitivas.";
-  const linksTitulo = footer.footer_links_titulo ?? "Enlaces rápidos";
+    "Unimos agilidad, profesionalismo y tarifas competitivas para que vivas la mejor experiencia de viaje.";
+  const linksTitulo = footer.footer_links_titulo ?? "Información útil";
   const links = parseLinks(footer.footer_links_json);
-  const legalTitulo = footer.footer_legal_titulo ?? "Legal";
-  const legal = parseLinks(footer.footer_legal_json);
   const copyright =
     footer.footer_copyright ?? "© 2026 TravelOz. Todos los derechos reservados.";
 
@@ -57,7 +54,7 @@ export async function Footer() {
     <footer className="footer-area">
       <div className="container wide relative">
         <div className="row">
-          {/* Column 1 — about + social */}
+          {/* Column 1 — logo + about + social */}
           <div className="col-lg-3 col-sm-6">
             <div className="footer-left">
               <a className="footer-logo" href="/">
@@ -128,7 +125,7 @@ export async function Footer() {
             </div>
           </div>
 
-          {/* Column 3 — Enlaces rápidos + Legal */}
+          {/* Column 3 — Información útil (single link list) */}
           <div className="col-lg-3 col-sm-6">
             <div className="footer-link ps-lg-5">
               <h3 className="title">{linksTitulo}</h3>
@@ -138,31 +135,18 @@ export async function Footer() {
                     <a href={l.href}>{l.label}</a>
                   </li>
                 ))}
-                {/* AgenciaModal trigger stays as data-attribute so we don't break the modal pattern */}
+                {/* Agencia registrada modal trigger — kept hardcoded so the
+                    modal pattern (data-attribute) doesn't depend on JSON config */}
                 <li>
                   <a href="#" data-agencia-modal-open>
                     Agencia registrada
                   </a>
                 </li>
               </ul>
-              {legal.length > 0 && (
-                <>
-                  <h3 className="title" style={{ marginTop: 24 }}>
-                    {legalTitulo}
-                  </h3>
-                  <ul>
-                    {legal.map((l) => (
-                      <li key={l.href}>
-                        <a href={l.href}>{l.label}</a>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
             </div>
           </div>
 
-          {/* Column 4 — Brand logos (kept hardcoded; they're partner logos) */}
+          {/* Column 4 — partner brand logos (hardcoded) */}
           <div className="col-lg-3 col-sm-6">
             <ul className="footer-brand-logo">
               <li>

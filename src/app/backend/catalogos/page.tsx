@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus,
   Pencil,
@@ -1321,9 +1322,42 @@ function RegionesPaisesTab() {
 // CatalogosPage (default export)
 // ---------------------------------------------------------------------------
 
+const CATALOG_TAB_VALUES = [
+  "temporadas",
+  "tipos",
+  "etiquetas",
+  "regiones",
+  "regimenes",
+] as const;
+type CatalogTabValue = (typeof CATALOG_TAB_VALUES)[number];
+const DEFAULT_CATALOG_TAB: CatalogTabValue = "temporadas";
+
 export default function CatalogosPage() {
   const loading = useCatalogBaseLoading();
   const { hydratingGeography } = useCatalogProgress();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Deep-link support: ?tab=regiones (or any other tab value) opens that tab.
+  // Updating the tab also writes the param so the URL stays shareable.
+  const tabParam = searchParams.get("tab") as CatalogTabValue | null;
+  const activeTab: CatalogTabValue =
+    tabParam && CATALOG_TAB_VALUES.includes(tabParam)
+      ? tabParam
+      : DEFAULT_CATALOG_TAB;
+
+  const handleTabChange = (value: string) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (value === DEFAULT_CATALOG_TAB) {
+      next.delete("tab");
+    } else {
+      next.set("tab", value);
+    }
+    const qs = next.toString();
+    router.replace(qs ? `/backend/catalogos?${qs}` : "/backend/catalogos", {
+      scroll: false,
+    });
+  };
 
   if (loading) return <PageSkeleton variant="table" />;
 
@@ -1338,7 +1372,11 @@ export default function CatalogosPage() {
           El catalogo ya esta listo para usarse. Terminamos de cargar la parte geografica en segundo plano.
         </div>
       )}
-      <Tabs defaultValue="temporadas" layoutId="catalogos-tabs">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        layoutId="catalogos-tabs"
+      >
         <TabsList className="mb-0">
           <TabsTrigger value="temporadas">Temporadas</TabsTrigger>
           <TabsTrigger value="tipos">Tipos de Paquete</TabsTrigger>

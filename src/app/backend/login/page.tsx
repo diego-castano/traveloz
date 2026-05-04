@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import Image from "next/image";
@@ -44,16 +44,22 @@ export default function LoginPage() {
   const { activeBrand } = useBrand();
   const router = useRouter();
 
-  // Redirect if already authenticated
-  if (auth.isAuthenticated) {
-    router.push("/backend/dashboard");
-    return null;
-  }
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already authenticated. Must be in useEffect, not render —
+  // calling router.push during render schedules a state update on the Router
+  // component while LoginPage is still rendering, which React (correctly)
+  // warns about.
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      router.push("/backend/dashboard");
+    }
+  }, [auth.isAuthenticated, router]);
+
+  if (auth.isAuthenticated) return null;
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();

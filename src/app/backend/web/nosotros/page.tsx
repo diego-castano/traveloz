@@ -1,12 +1,5 @@
-import { SettingsForm } from "../_components/SettingsForm";
+import { NosotrosForm } from "./NosotrosForm";
 
 export default function WebNosotrosPage() {
-  return (
-    <SettingsForm
-      group="nosotros"
-      title="Página Nosotros"
-      blurb="Textos e imagen de la página /about."
-      publicHref="/about"
-    />
-  );
+  return <NosotrosForm />;
 }

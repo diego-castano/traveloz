@@ -7,8 +7,15 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Runtime queries go through PgBouncer (pool mode = transaction).
+  // Add `?pgbouncer=true&connection_limit=1` to DATABASE_URL so Prisma
+  // disables prepared statements and won't fight the bouncer.
+  url       = env("DATABASE_URL")
+  // Migrations and introspection bypass the bouncer because they need
+  // session-mode features (advisory locks, prepared DDL). Point DIRECT_URL
+  // at the raw Postgres URL (no `?pgbouncer=true`).
+  directUrl = env("DIRECT_URL")
 }
 
 // ──────────────────────────────────────────────

@@ -11,6 +11,36 @@ export const metadata = {
     "Conocé la historia de TravelOz. Somos una agencia de viajes uruguaya fundada en 2018, comprometida con brindar experiencias de viaje personalizadas y de excelencia.",
 };
 
+/**
+ * Render rich-text content from SiteSettings. The CMS now writes HTML (from
+ * the WYSIWYG in /backend/web/nosotros), but legacy plaintext rows still
+ * exist in prod — auto-paragraph those by splitting on blank or single
+ * newlines so they don't render as one giant block.
+ */
+function RichText({ html, className }: { html: string; className?: string }) {
+  if (!html) return null;
+  const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(html);
+  const finalHtml = looksLikeHtml
+    ? html
+    : html
+        .split(/\n{2,}/)
+        .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br/>")}</p>`)
+        .join("");
+  return (
+    <div
+      className={className}
+      dangerouslySetInnerHTML={{ __html: finalHtml }}
+    />
+  );
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 export default async function AboutPage() {
   const s = await getSiteSettings("nosotros");
 
@@ -47,11 +77,8 @@ export default async function AboutPage() {
             </div>
             <div className="col-sm-6 order-sm-1 order-2">
               <div className="content-text text_white pe-lg-5">
-                {historia &&
-                  historia
-                    .split(/\n\n+/)
-                    .map((para, i) => <p key={i}>{para}</p>)}
-                {mision && <p>{mision}</p>}
+                <RichText html={historia} className="rich-content" />
+                <RichText html={mision} className="rich-content" />
               </div>
             </div>
           </div>
@@ -67,8 +94,8 @@ export default async function AboutPage() {
               </div>
               <div className="col-sm-6">
                 <div className="content-text text_white ps-lg-5">
-                  {valores && <p>{valores}</p>}
-                  {proposito && <p>{proposito}</p>}
+                  <RichText html={valores} className="rich-content" />
+                  <RichText html={proposito} className="rich-content" />
                 </div>
               </div>
             </div>
@@ -79,7 +106,7 @@ export default async function AboutPage() {
           <div className="row">
             <div className="col-lg-6 mx-auto">
               <div className="about-notes text-center">
-                <p>{cierre}</p>
+                <RichText html={cierre} />
               </div>
             </div>
           </div>

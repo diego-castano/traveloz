@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Save, ExternalLink } from "lucide-react";
+import { Save, ExternalLink, Settings2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import {
   listRegionesForFrontend,
@@ -14,9 +13,16 @@ import { MediaPicker } from "../_components/MediaPicker";
 type Row = Awaited<ReturnType<typeof listRegionesForFrontend>>[number];
 type Edits = Record<
   string,
-  Partial<Pick<Row, "nombre" | "slug" | "orden" | "heroImage" | "descripcion">>
+  Partial<Pick<Row, "heroImage" | "descripcion">>
 >;
 
+// ---------------------------------------------------------------------------
+// Web → Destinos: visuals-only editor for catalog regions.
+//
+// Identity (nombre, slug, orden, paises, ciudades) is owned by Catalogos →
+// Regiones y Paises. Here you only edit the public-facing image and the
+// description that appears on /destinos and /destinos/<slug>.
+// ---------------------------------------------------------------------------
 export default function WebDestinosPage() {
   const { toast } = useToast();
   const [rows, setRows] = useState<Row[]>([]);
@@ -67,7 +73,7 @@ export default function WebDestinosPage() {
         <div>
           <h2 className="text-xl font-semibold text-neutral-900">Destinos</h2>
           <p className="text-sm text-neutral-500 mt-1">
-            Editá la foto, descripción y orden de cada región. Aparecen en{" "}
+            Foto y descripción de cada región para la página{" "}
             <a
               href="/destinos"
               target="_blank"
@@ -76,9 +82,22 @@ export default function WebDestinosPage() {
             >
               /destinos <ExternalLink className="w-3 h-3" />
             </a>
-            . Para crear regiones nuevas, usá <strong>Catálogos</strong>.
+            .
           </p>
         </div>
+        <a
+          href="/backend/catalogos?tab=regiones"
+          className="shrink-0 inline-flex items-center gap-1.5 text-sm text-violet-600 hover:underline"
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+          Administrar regiones en Catálogos
+        </a>
+      </div>
+
+      <div className="rounded-md border border-violet-100 bg-violet-50/50 px-4 py-3 text-xs text-violet-900/80">
+        Las regiones se crean, renombran y ordenan desde{" "}
+        <strong>Catálogos → Regiones y Países</strong>. Acá editás solo la
+        imagen y el texto que se muestran en el sitio público.
       </div>
 
       {loading && (
@@ -87,7 +106,7 @@ export default function WebDestinosPage() {
 
       {!loading && rows.length === 0 && (
         <div className="bg-white rounded-lg border border-neutral-200 p-12 text-center text-sm text-neutral-500">
-          No hay regiones cargadas todavía.
+          No hay regiones cargadas todavía. Agregalas desde Catálogos.
         </div>
       )}
 
@@ -95,56 +114,31 @@ export default function WebDestinosPage() {
         {rows.map((r) => {
           const e = edits[r.id] ?? {};
           const dirty = Object.keys(e).length > 0;
-          const value = (k: keyof typeof e) =>
-            (e[k] ?? r[k] ?? "") as string;
+          const heroImage = (e.heroImage ?? r.heroImage ?? "") as string;
+          const descripcion = (e.descripcion ?? r.descripcion ?? "") as string;
 
           return (
             <div
               key={r.id}
               className="bg-white rounded-lg border border-neutral-200 p-5"
             >
-              <div className="flex items-baseline gap-3 mb-4">
-                <h3 className="text-lg font-semibold text-neutral-900">
-                  {value("nombre")}
-                </h3>
-                <span className="text-xs text-neutral-400 font-mono">
-                  /destinos/{value("slug")}
+              <div className="flex items-baseline justify-between gap-3 mb-1">
+                <div className="flex items-baseline gap-3 min-w-0">
+                  <Globe className="w-4 h-4 text-neutral-400 shrink-0 self-center" />
+                  <h3 className="text-lg font-semibold text-neutral-900 truncate">
+                    {r.nombre}
+                  </h3>
+                  <span className="text-xs text-neutral-400 font-mono truncate">
+                    /destinos/{r.slug}
+                  </span>
+                </div>
+                <span className="text-[11px] text-neutral-400 shrink-0">
+                  orden {r.orden}
                 </span>
               </div>
-
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                    Nombre
-                  </label>
-                  <Input
-                    value={value("nombre")}
-                    onChange={(ev) =>
-                      patch(r.id, { nombre: ev.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                    Slug (URL)
-                  </label>
-                  <Input
-                    value={value("slug")}
-                    onChange={(ev) => patch(r.id, { slug: ev.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1.5">
-                    Orden
-                  </label>
-                  <Input
-                    type="number"
-                    value={String(e.orden ?? r.orden ?? 0)}
-                    onChange={(ev) =>
-                      patch(r.id, { orden: Number(ev.target.value) || 0 })
-                    }
-                  />
-                </div>
+              <div className="text-xs text-neutral-500 mb-4 ml-7">
+                {r.paisesCount} país{r.paisesCount === 1 ? "" : "es"} ·{" "}
+                {r.ciudadesCount} ciudad{r.ciudadesCount === 1 ? "" : "es"}
               </div>
 
               <div className="mb-4">
@@ -152,7 +146,7 @@ export default function WebDestinosPage() {
                   Foto principal
                 </label>
                 <MediaPicker
-                  value={value("heroImage")}
+                  value={heroImage}
                   onChange={(v) => patch(r.id, { heroImage: v })}
                   accept="image/*"
                 />
@@ -166,7 +160,7 @@ export default function WebDestinosPage() {
                   className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
                   rows={2}
                   placeholder="Texto que aparece en la cabecera de la página de la región"
-                  value={value("descripcion")}
+                  value={descripcion}
                   onChange={(ev) =>
                     patch(r.id, { descripcion: ev.target.value })
                   }

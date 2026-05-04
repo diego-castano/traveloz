@@ -1,10 +1,7 @@
 import { notFound } from "next/navigation";
 import { getPaqueteBySlug } from "@/lib/public-data";
-import { PackageHero } from "./_components/PackageHero";
-import { IncluyeTab } from "./_components/IncluyeTab";
-import { AlojamientosTab } from "./_components/AlojamientosTab";
-import { QuoteSidebar } from "./_components/QuoteSidebar";
-import { FormasDePago } from "./_components/FormasDePago";
+import { auth } from "@/lib/auth.config";
+import { PackageDetailView } from "./_components/PackageDetailView";
 
 export async function generateMetadata({
   params,
@@ -22,94 +19,98 @@ export async function generateMetadata({
 
 export default async function PackageDetailPage({
   params,
+  searchParams,
 }: {
   params: { region: string; slug: string };
+  searchParams: { preview?: string };
 }) {
   const paquete = await getPaqueteBySlug(params.slug);
-  if (!paquete || !paquete.publicado || paquete.deletedAt) notFound();
+  if (!paquete || paquete.deletedAt) notFound();
+
+  // Drafts are visible only when ?preview=1 is set AND the request comes from
+  // an authenticated admin session. Public visitors still get a 404 for
+  // unpublished packages.
+  const wantsPreview = searchParams.preview === "1";
+  let isPreview = false;
+  if (!paquete.publicado) {
+    if (!wantsPreview) notFound();
+    const session = await auth();
+    if (!session?.user) notFound();
+    isPreview = true;
+  }
 
   return (
     <>
-      <PackageHero paquete={paquete} />
-      <section className="content-area">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-8">
-              <div style={{ display: "flex", flexDirection: "column", gap: 40 }}>
-                {paquete.textoIntro && (
-                  <div
-                    style={{
-                      fontSize: 16,
-                      color: "#444",
-                      lineHeight: 1.7,
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {paquete.textoIntro}
-                  </div>
-                )}
-                <IncluyeTab
-                  textoIncluye={paquete.textoIncluye}
-                  servicios={paquete.serviciosIncluidos}
-                />
-                {paquete.textoNoIncluye && (
-                  <div>
-                    <h2 style={{ fontSize: 22, marginBottom: 12 }}>No incluye</h2>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        color: "#666",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {paquete.textoNoIncluye}
-                    </div>
-                  </div>
-                )}
-                {paquete.itinerarioPublico && (
-                  <div>
-                    <h2 style={{ fontSize: 22, marginBottom: 12 }}>Itinerario</h2>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        color: "#444",
-                        lineHeight: 1.7,
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {paquete.itinerarioPublico}
-                    </div>
-                  </div>
-                )}
-                <AlojamientosTab opciones={paquete.opcionesHoteleras} />
-                {paquete.textoCondiciones && (
-                  <div>
-                    <h2 style={{ fontSize: 22, marginBottom: 12 }}>
-                      Condiciones
-                    </h2>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: "#666",
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {paquete.textoCondiciones}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <FormasDePago />
-            </div>
-            <div className="col-lg-4">
-              <QuoteSidebar
-                paqueteId={paquete.id}
-                paqueteTitulo={paquete.titulo}
-              />
-            </div>
-          </div>
+      {isPreview && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 60,
+            background: "#785AE5",
+            color: "white",
+            textAlign: "center",
+            padding: "8px 16px",
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: 0.4,
+          }}
+        >
+          PREVIEW · Borrador no publicado
         </div>
-      </section>
+      )}
+      <PackageDetailView
+        paquete={{
+          id: paquete.id,
+          titulo: paquete.titulo,
+          salidas: paquete.salidas,
+          noches: paquete.noches,
+          precioDesde: paquete.precioDesde,
+          precioDesdeMoneda: paquete.precioDesdeMoneda,
+          heroImage: paquete.heroImage,
+          fotos: paquete.fotos.map((f) => ({
+            url: f.url,
+            alt: f.alt ?? paquete.titulo,
+          })),
+          textoIntro: paquete.textoIntro,
+          textoIncluye: paquete.textoIncluye,
+          textoNoIncluye: paquete.textoNoIncluye,
+          itinerarioPublico: paquete.itinerarioPublico,
+          textoCondiciones: paquete.textoCondiciones,
+          serviciosIncluidos: paquete.serviciosIncluidos.map((s) => ({
+            id: s.id,
+            textoCustom: s.textoCustom,
+            servicio: {
+              nombre: s.servicio.nombre,
+              icon: s.servicio.icon ?? null,
+            },
+          })),
+          opcionesHoteleras: paquete.opcionesHoteleras.map((opt) => ({
+            id: opt.id,
+            nombre: opt.nombre,
+            precioVenta: opt.precioVenta,
+            hoteles: opt.hoteles.map((h) => ({
+              id: h.id,
+              alojamiento: {
+                nombre: h.alojamiento.nombre,
+                categoria: h.alojamiento.categoria,
+                fotos: h.alojamiento.fotos?.map((ph) => ({
+                  url: ph.url,
+                  alt: ph.alt,
+                })),
+                precios: h.alojamiento.precios.map((p) => ({
+                  precioPorNoche: p.precioPorNoche,
+                  periodoDesde: p.periodoDesde.toString(),
+                  periodoHasta: p.periodoHasta.toString(),
+                  regimen: p.regimen
+                    ? { nombre: p.regimen.nombre, abrev: p.regimen.abrev }
+                    : null,
+                })),
+              },
+            })),
+          })),
+        }}
+      />
     </>
   );
 }

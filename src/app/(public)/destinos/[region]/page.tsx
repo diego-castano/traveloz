@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getRegionBySlug, getPaquetesByRegion } from "@/lib/public-data";
-import { PackageCard } from "@/components/public/PackageCard";
+import { RegionExplorer } from "@/components/public/RegionExplorer";
 
 export async function generateMetadata({
   params,
@@ -22,29 +22,47 @@ export default async function RegionListingPage({
 }) {
   const region = await getRegionBySlug(params.region);
   if (!region) notFound();
-  const paquetes = await getPaquetesByRegion(region.id);
+  const paquetesRaw = await getPaquetesByRegion(region.id);
+
+  // Project to the shape RegionExplorer expects. Strip destinos that are
+  // outside this region (stopovers) so package cards only list cities the
+  // user is actually buying as part of THIS region's listing.
+  const paquetes = paquetesRaw.map((p) => ({
+    id: p.id,
+    slug: p.slug,
+    titulo: p.titulo,
+    destino: p.destino,
+    noches: p.noches,
+    salidas: p.salidas,
+    precioDesde: p.precioDesde,
+    precioDesdeMoneda: p.precioDesdeMoneda,
+    heroImage: p.heroImage,
+    fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? "" })),
+    destinos: p.destinos
+      .filter((d) => d.ciudad?.pais?.regionId === region.id)
+      .map((d) => ({
+        ciudad: {
+          id: d.ciudad?.id ?? "",
+          nombre: d.ciudad?.nombre ?? "",
+          paisId: d.ciudad?.paisId ?? null,
+        },
+      })),
+  }));
 
   return (
-    <section className="content-area">
-      <div className="container">
-        <div className="banner-text mb_50">
-          <h1 className="h1">{region.nombre}</h1>
-          {region.descripcion && <p>{region.descripcion}</p>}
-        </div>
-        {paquetes.length === 0 ? (
-          <p className="text-center py-12">
-            Próximamente más destinos en esta región.
-          </p>
-        ) : (
-          <div className="row">
-            {paquetes.map((p) => (
-              <div className="col-lg-4 col-md-6 mb-4" key={p.id}>
-                <PackageCard paquete={p} regionSlug={region.slug} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+    <RegionExplorer
+      region={{
+        id: region.id,
+        slug: region.slug,
+        nombre: region.nombre,
+        descripcion: region.descripcion,
+      }}
+      paises={region.paises.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        ciudades: p.ciudades.map((c) => ({ id: c.id, nombre: c.nombre })),
+      }))}
+      paquetes={paquetes}
+    />
   );
 }

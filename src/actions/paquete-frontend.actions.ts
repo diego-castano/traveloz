@@ -4,6 +4,104 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 
+// ---------------------------------------------------------------------------
+// Preview URL resolver — used by the "Previsualizar" button in /backend/paquetes
+//
+// If the package lacks a slug we auto-generate one from the título (with
+// uniqueness suffix on collision) and persist it, so the user doesn't need
+// to interrupt their edit flow to type one. The only hard requirement for
+// preview is having at least one destino with a resolvable region.
+// The `?preview=1` flag is honored by the public page only for authenticated
+// users — draft packages stay invisible to the public.
+// ---------------------------------------------------------------------------
+
+function slugifyTitulo(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+}
+
+async function ensureUniqueSlug(
+  base: string,
+  paqueteId: string,
+): Promise<string> {
+  if (!base) base = "paquete";
+  const existing = await prisma.paquete.findMany({
+    where: { slug: { startsWith: base }, NOT: { id: paqueteId } },
+    select: { slug: true },
+  });
+  const taken = new Set(existing.map((e) => e.slug).filter(Boolean) as string[]);
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}
+
+export async function getPaquetePreviewUrl(
+  paqueteId: string,
+): Promise<
+  | { ok: true; url: string; publicado: boolean; slugGenerated?: string }
+  | { ok: false; reason: string }
+> {
+  await requireAuth();
+  const p = await prisma.paquete.findUnique({
+    where: { id: paqueteId },
+    select: {
+      slug: true,
+      titulo: true,
+      publicado: true,
+      destinos: {
+        orderBy: { orden: "asc" },
+        take: 1,
+        select: {
+          ciudad: {
+            select: { pais: { select: { region: { select: { slug: true } } } } },
+          },
+        },
+      },
+    },
+  });
+  if (!p) return { ok: false, reason: "Paquete no encontrado." };
+
+  // Region is informational in the URL — the public page resolves the package
+  // by slug, not by region. So when destinos are still empty (early-stage
+  // editing) we fall back to any region from the catalog. This way the user
+  // can preview as soon as they have a name + photos, before assigning a
+  // destination.
+  let regionSlug = p.destinos[0]?.ciudad?.pais?.region?.slug;
+  if (!regionSlug) {
+    const fallbackRegion = await prisma.region.findFirst({
+      orderBy: { orden: "asc" },
+      select: { slug: true },
+    });
+    regionSlug = fallbackRegion?.slug ?? "ver";
+  }
+
+  let slug = p.slug;
+  let slugGenerated: string | undefined;
+  if (!slug) {
+    const base = slugifyTitulo(p.titulo);
+    slug = await ensureUniqueSlug(base, paqueteId);
+    await prisma.paquete.update({
+      where: { id: paqueteId },
+      data: { slug },
+    });
+    revalidateTag("paquetes");
+    slugGenerated = slug;
+  }
+
+  return {
+    ok: true,
+    url: `/destinos/${regionSlug}/${slug}?preview=1`,
+    publicado: p.publicado,
+    slugGenerated,
+  };
+}
+
 export async function getPaqueteFrontendData(paqueteId: string) {
   return prisma.paquete.findUnique({
     where: { id: paqueteId },

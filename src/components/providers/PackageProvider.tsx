@@ -25,6 +25,12 @@ import { computeNochesTotales } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import * as packageActions from "@/actions/package.actions";
 import { useBrand } from "./BrandProvider";
+import { readSessionCache, writeSessionCache } from "@/lib/session-cache";
+
+// Session-cache TTL: 30 min. Long enough to make hard reloads instant during
+// a working session, short enough that someone returning after a coffee gets
+// fresh data instead of a stale snapshot.
+const SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // State
@@ -62,6 +68,16 @@ const initialState: PackageState = {
   destinos: [],
   opcionHoteles: [],
 };
+
+// Inflight server actions reject with `TypeError: Failed to fetch` when the
+// page unloads mid-navigation. That's expected — silence it so the console
+// only surfaces real failures.
+function isAbortError(err: unknown): boolean {
+  if (!err) return false;
+  if (err instanceof DOMException && err.name === "AbortError") return true;
+  const msg = err instanceof Error ? err.message : String(err);
+  return /Failed to fetch|aborted|NetworkError when attempting/i.test(msg);
+}
 
 function sortPaquetesByCreatedAtDesc(paquetes: Paquete[]): Paquete[] {
   return [...paquetes].sort((a, b) => {
@@ -493,16 +509,23 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Stale-while-revalidate: if we already have data from a previous mount,
-    // keep it on screen (loading: false) and only refresh in the background.
-    // Cold mounts still show skeleton via loading:true. This kills the
-    // "everything blanks out for 1-2 s on every navigation" jank.
+    // Try the per-tab session cache first. If we find a fresh snapshot for
+    // this brand, hydrate from it synchronously so the very first render
+    // after a hard reload is instant. We still revalidate in the background.
+    const cached = readSessionCache<PackageState>(
+      "package-state",
+      activeBrandId,
+      SESSION_CACHE_TTL_MS,
+    );
+
+    // Stale-while-revalidate: prefer cached, then in-memory, then loading.
+    const baseline = cached ?? state;
     dispatch({
       type: "SET_ALL",
       payload: {
-        ...state,
-        loading: state.paquetes.length === 0,
-        hydratingPaquetes: state.paquetes.length > 0,
+        ...baseline,
+        loading: baseline.paquetes.length === 0,
+        hydratingPaquetes: baseline.paquetes.length > 0,
       },
     });
 
@@ -542,8 +565,8 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
             });
           })
           .catch((err) => {
+            if (cancelled || isAbortError(err)) return;
             console.error("Error hydrating remaining packages:", err);
-            if (cancelled) return;
             dispatch({
               type: "APPEND_PAQUETES",
               payload: {
@@ -554,8 +577,8 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
           });
       })
       .catch((err) => {
+        if (cancelled || isAbortError(err)) return;
         console.error("Error fetching base packages:", err);
-        if (cancelled) return;
         dispatch({ type: "SET_ALL", payload: { ...initialState, loading: false } });
       });
 
@@ -587,6 +610,19 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
 
     return () => { cancelled = true; };
   }, [activeBrandId, sessionStatus]);
+
+  // Persist to sessionStorage whenever the state changes — but only after
+  // wave 2 has populated (so we don't snapshot a half-loaded state). The
+  // 800 ms debounce coalesces the burst of dispatches that fire during
+  // hydration and during bulk edits into one write per quiet period.
+  useEffect(() => {
+    if (state.loading) return;
+    if (sessionStatus !== "authenticated") return;
+    const handle = window.setTimeout(() => {
+      writeSessionCache("package-state", activeBrandId, state);
+    }, 800);
+    return () => window.clearTimeout(handle);
+  }, [state, activeBrandId, sessionStatus]);
 
   return (
     <PackageStateContext.Provider value={state}>
