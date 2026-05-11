@@ -233,7 +233,8 @@ export interface PrecioAlojamiento {
   periodoDesde: string;
   periodoHasta: string;
   precioPorNoche: number;
-  regimenId: string;
+  /** Optional FK to Regimen. `null` (or absent) when the price is regime-agnostic. */
+  regimenId: string | null;
 }
 
 /** Price period for a guided circuit. */

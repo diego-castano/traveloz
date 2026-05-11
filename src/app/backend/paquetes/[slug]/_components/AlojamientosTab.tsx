@@ -2201,7 +2201,7 @@ interface QuickEditHotelModalProps {
     periodoDesde: string;
     periodoHasta: string;
     precioPorNoche: number;
-    regimenId: string;
+    regimenId: string | null;
   }>;
   validezDesde: string;
   onUpdateHotel: (hotel: Alojamiento) => Promise<void> | void;
@@ -2210,7 +2210,7 @@ interface QuickEditHotelModalProps {
     periodoDesde: string;
     periodoHasta: string;
     precioPorNoche: number;
-    regimenId: string;
+    regimenId: string | null;
   }) => Promise<unknown> | unknown;
   onUpdatePrecio: (precio: {
     id: string;
@@ -2218,7 +2218,7 @@ interface QuickEditHotelModalProps {
     periodoDesde: string;
     periodoHasta: string;
     precioPorNoche: number;
-    regimenId: string;
+    regimenId: string | null;
   }) => Promise<void> | void;
   onSaved: (nombre: string) => void;
 }
@@ -2258,6 +2258,7 @@ function QuickEditHotelModal({
   const [sitioWeb, setSitioWeb] = useState("");
   const [precio, setPrecio] = useState<string>("");
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!hotel) return;
@@ -2271,12 +2272,16 @@ function QuickEditHotelModal({
 
   const handleSave = async () => {
     const trimmedNombre = nombre.trim();
-    if (!trimmedNombre) return;
+    if (!trimmedNombre) {
+      toast("warning", "Nombre requerido", "El hotel necesita un nombre.");
+      return;
+    }
     const parsedPrecio = precio === "" ? null : Number(precio);
     if (
       parsedPrecio !== null &&
       (Number.isNaN(parsedPrecio) || parsedPrecio < 0)
     ) {
+      toast("warning", "Precio invalido", "El precio por noche debe ser un numero positivo.");
       return;
     }
     setSaving(true);
@@ -2293,6 +2298,9 @@ function QuickEditHotelModal({
           if (precioActivo.precioPorNoche !== parsedPrecio) {
             await onUpdatePrecio({
               ...precioActivo,
+              // Coerce empty-string regimenId to null so Prisma doesn't try to
+              // satisfy the FK against a non-existent Regimen row.
+              regimenId: precioActivo.regimenId || null,
               precioPorNoche: parsedPrecio,
             });
           }
@@ -2305,12 +2313,18 @@ function QuickEditHotelModal({
             periodoDesde: `${year}-01-01`,
             periodoHasta: `${year}-12-31`,
             precioPorNoche: parsedPrecio,
-            regimenId: "",
+            regimenId: null,
           });
         }
       }
 
       onSaved(trimmedNombre);
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo guardar",
+        err instanceof Error ? err.message : "Intentá nuevamente.",
+      );
     } finally {
       setSaving(false);
     }

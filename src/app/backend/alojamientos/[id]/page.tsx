@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
@@ -21,6 +21,7 @@ import { SelectCascade } from "@/components/ui/form/SelectCascade";
 import {
   InlineEditTable,
   type InlineEditColumn,
+  type InlineEditTableHandle,
 } from "@/components/ui/form/InlineEditTable";
 import {
   useServiceState,
@@ -96,21 +97,44 @@ export default function AlojamientoDetailPage() {
   );
   const [sitioWeb, setSitioWeb] = useState(alojamiento?.sitioWeb ?? "");
 
-  function handleSaveHotel() {
+  // Ref to the inline price table so the page-level "Guardar Cambios" can
+  // flush any in-flight add/edit row before saving the hotel basics — users
+  // expect the global save to capture everything they typed.
+  const precioTableRef = useRef<InlineEditTableHandle | null>(null);
+
+  async function handleSaveHotel() {
     if (!alojamiento) return;
-    updateAlojamiento({
-      ...alojamiento,
-      nombre,
-      paisId,
-      ciudadId,
-      categoria: Number(categoria),
-      sitioWeb: sitioWeb.trim() || null,
-    });
-    toast(
-      "success",
-      "Alojamiento actualizado",
-      "Los cambios fueron guardados correctamente.",
-    );
+    try {
+      await precioTableRef.current?.commitPending();
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo guardar la tarifa pendiente",
+        err instanceof Error ? err.message : "Revisá el periodo y el precio.",
+      );
+      return;
+    }
+    try {
+      await updateAlojamiento({
+        ...alojamiento,
+        nombre,
+        paisId,
+        ciudadId,
+        categoria: Number(categoria),
+        sitioWeb: sitioWeb.trim() || null,
+      });
+      toast(
+        "success",
+        "Alojamiento actualizado",
+        "Los cambios fueron guardados correctamente.",
+      );
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo actualizar el alojamiento",
+        err instanceof Error ? err.message : "Intentá nuevamente.",
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -139,45 +163,44 @@ export default function AlojamientoDetailPage() {
       return;
     }
 
-    const normalizedRegimenId = row.regimenId?.trim() || "";
+    // Treat empty string as "no regimen" — Postgres rejects an FK against ""
+    // because no Regimen row has that id.
+    const normalizedRegimenId = row.regimenId?.trim() || null;
     const normalizedRow = {
       ...row,
       regimenId: normalizedRegimenId,
     };
 
-    const doSave = () => {
-      try {
-        if (normalizedRow.id) {
-          updatePrecioAlojamiento(normalizedRow);
-          toast(
-            "success",
-            "Precio actualizado",
-            "El periodo fue actualizado correctamente.",
-          );
-        } else {
-          createPrecioAlojamiento({
-            alojamientoId: alojamiento!.id,
-            periodoDesde: normalizedRow.periodoDesde ?? "",
-            periodoHasta: normalizedRow.periodoHasta ?? "",
-            precioPorNoche: Number(normalizedRow.precioPorNoche ?? 0),
-            regimenId: normalizedRegimenId,
-          });
-          toast(
-            "success",
-            "Periodo agregado",
-            "El periodo de precio fue agregado correctamente.",
-          );
-        }
-      } catch (err) {
+    try {
+      if (normalizedRow.id) {
+        await updatePrecioAlojamiento(normalizedRow);
         toast(
-          "error",
-          "Error al guardar",
-          err instanceof Error ? err.message : "Intenta nuevamente",
+          "success",
+          "Precio actualizado",
+          "El periodo fue actualizado correctamente.",
+        );
+      } else {
+        await createPrecioAlojamiento({
+          alojamientoId: alojamiento!.id,
+          periodoDesde: normalizedRow.periodoDesde ?? "",
+          periodoHasta: normalizedRow.periodoHasta ?? "",
+          precioPorNoche: Number(normalizedRow.precioPorNoche ?? 0),
+          regimenId: normalizedRegimenId,
+        });
+        toast(
+          "success",
+          "Periodo agregado",
+          "El periodo de precio fue agregado correctamente.",
         );
       }
-    };
-
-    doSave();
+    } catch (err) {
+      toast(
+        "error",
+        "Error al guardar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
+      throw err;
+    }
   }
 
   function handleDeletePrecio(row: PrecioAlojamiento) {
@@ -265,7 +288,7 @@ export default function AlojamientoDetailPage() {
       key: "regimenId",
       label: "Regimen",
       width: "210px",
-      render: (r) => regimenMap[r.regimenId] ?? "—",
+      render: (r) => (r.regimenId ? regimenMap[r.regimenId] : null) ?? "—",
       editor: (r, update) => (
         <Select
           value={r.regimenId ?? ""}
@@ -462,6 +485,7 @@ export default function AlojamientoDetailPage() {
             con el selector de fecha y el precio por noche.
           </FieldDescription>
           <InlineEditTable<PrecioAlojamiento>
+            ref={precioTableRef}
             columns={precioColumns}
             rows={precios}
             getRowId={(r) => r.id}
@@ -474,7 +498,7 @@ export default function AlojamientoDetailPage() {
                       periodoDesde: "",
                       periodoHasta: "",
                       precioPorNoche: 0,
-                      regimenId: "",
+                      regimenId: null,
                     }) as Partial<PrecioAlojamiento>
                   : undefined
             }

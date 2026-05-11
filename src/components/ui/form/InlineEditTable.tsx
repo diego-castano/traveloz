@@ -1,8 +1,18 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useImperativeHandle } from "react";
 import { Pencil, Check, X, Trash2, Plus } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+
+/** Imperative handle so a parent can flush in-flight edit/add rows before
+ * running its own save (e.g. a "Guardar Cambios" button at the page level). */
+export interface InlineEditTableHandle {
+  /** Commit the currently active draft or adding row, if any. Resolves once
+   * the row's onSave has settled. Throws if onSave rejects. */
+  commitPending: () => Promise<void>;
+  /** True when there's an unsaved adding/editing row. */
+  hasPending: () => boolean;
+}
 
 /**
  * InlineEditTable — generic inline-edit table primitive.
@@ -58,17 +68,20 @@ interface InlineEditTableProps<T> {
   className?: string;
 }
 
-export function InlineEditTable<T extends object>({
-  columns,
-  rows,
-  getRowId,
-  onSave,
-  onDelete,
-  onAdd,
-  addLabel = "Agregar",
-  emptyMessage = "Sin datos",
-  className,
-}: InlineEditTableProps<T>) {
+function InlineEditTableInner<T extends object>(
+  {
+    columns,
+    rows,
+    getRowId,
+    onSave,
+    onDelete,
+    onAdd,
+    addLabel = "Agregar",
+    emptyMessage = "Sin datos",
+    className,
+  }: InlineEditTableProps<T>,
+  ref: React.Ref<InlineEditTableHandle>,
+) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<T | null>(null);
   const [adding, setAdding] = useState<Partial<T> | null>(null);
@@ -113,6 +126,26 @@ export function InlineEditTable<T extends object>({
     await onSave(adding as T);
     setAdding(null);
   };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      commitPending: async () => {
+        if (adding) {
+          await onSave(adding as T);
+          setAdding(null);
+          return;
+        }
+        if (editingId && draft) {
+          await onSave(draft);
+          setEditingId(null);
+          setDraft(null);
+        }
+      },
+      hasPending: () => adding !== null || (editingId !== null && draft !== null),
+    }),
+    [adding, draft, editingId, onSave],
+  );
 
   return (
     <div
@@ -193,7 +226,7 @@ export function InlineEditTable<T extends object>({
                           ariaLabel="Guardar"
                           variant="confirm"
                         >
-                          <Check className="h-[15px] w-[15px]" strokeWidth={2} />
+                          <Check className="h-[18px] w-[18px]" strokeWidth={2.5} />
                         </IconButton>
                         <IconButton
                           onClick={cancelEdit}
@@ -252,7 +285,7 @@ export function InlineEditTable<T extends object>({
                     ariaLabel="Confirmar"
                     variant="confirm"
                   >
-                    <Check className="h-[15px] w-[15px]" strokeWidth={2} />
+                    <Check className="h-[18px] w-[18px]" strokeWidth={2.5} />
                   </IconButton>
                   <IconButton onClick={cancelAdd} ariaLabel="Descartar">
                     <X className="h-[15px] w-[15px]" strokeWidth={2} />
@@ -279,6 +312,14 @@ export function InlineEditTable<T extends object>({
   );
 }
 
+// Generic forwardRef wrapper. The cast preserves the <T> generic which plain
+// React.forwardRef erases.
+export const InlineEditTable = React.forwardRef(InlineEditTableInner) as <
+  T extends object,
+>(
+  props: InlineEditTableProps<T> & React.RefAttributes<InlineEditTableHandle>,
+) => React.ReactElement | null;
+
 // ---------------------------------------------------------------------------
 // IconButton — shared small icon button for inline edit rows
 // ---------------------------------------------------------------------------
@@ -304,10 +345,13 @@ function IconButton({
       aria-label={ariaLabel}
       title={ariaLabel}
       className={cn(
-        "inline-flex h-7 w-7 items-center justify-center rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-400/30",
+        "inline-flex items-center justify-center rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-400/30",
+        // Confirm gets a slightly larger size + filled background so the
+        // primary action on each row reads at a glance and is easier to hit.
+        variant === "confirm" ? "h-8 w-8" : "h-7 w-7",
         !variant && "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800",
         variant === "confirm" &&
-          "text-[#2A9E8E] hover:bg-[rgba(59,191,173,0.12)]",
+          "bg-[#3BBFAD] text-white shadow-sm hover:bg-[#2A9E8E] focus-visible:ring-[#3BBFAD]/40",
         variant === "danger" &&
           "text-neutral-500 hover:bg-brand-red-50 hover:text-[#CC2030]"
       )}
