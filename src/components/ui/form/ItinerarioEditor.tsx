@@ -158,18 +158,20 @@ export function ItinerarioEditor({
         await handleFiles(files);
         return;
       }
-      // For plain/rich text pastes, strip everything except the most basic
-      // inline formatting. Avoids dumping Word/Gmail junk HTML into the field.
+      // Always paste as plain text so Amadeus/terminal dumps keep their line
+      // breaks and column spacing. Rich-text sources lose their inline
+      // formatting on the way in — users re-apply bold/italic via the toolbar.
       e.preventDefault();
-      const html = e.clipboardData.getData("text/html");
-      const textOnly = e.clipboardData.getData("text/plain");
-      const cleaned = html
-        ? html
-            .replace(/<\/?(?!\/?(b|strong|i|em|u|h1|h2|h3|br|p)\b)[^>]+>/gi, "")
-            .replace(/\sstyle="[^"]*"/gi, "")
-            .replace(/\sclass="[^"]*"/gi, "")
-        : textOnly.replace(/\n/g, "<br>");
-      document.execCommand("insertHTML", false, cleaned);
+      const textOnly = e.clipboardData.getData("text/plain") ?? "";
+      const escaped = textOnly
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        // Preserve runs of 2+ spaces so Amadeus column alignment survives.
+        .replace(/ {2,}/g, (m) => "&nbsp;".repeat(m.length))
+        .replace(/\t/g, "&nbsp;&nbsp;&nbsp;&nbsp;")
+        .replace(/\r?\n/g, "<br>");
+      document.execCommand("insertHTML", false, escaped);
       if (editorRef.current) onTextChange(editorRef.current.innerHTML);
     },
     [handleFiles, onTextChange, readOnly],

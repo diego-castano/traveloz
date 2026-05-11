@@ -1,30 +1,8 @@
 import { NextResponse } from "next/server";
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getStorageBucket, getStorageClient } from "@/lib/storage";
 
 export const runtime = "nodejs";
-
-const endpoint = process.env.STORAGE_ENDPOINT;
-const region = process.env.STORAGE_REGION ?? "auto";
-const bucket = process.env.STORAGE_BUCKET;
-const accessKeyId = process.env.STORAGE_ACCESS_KEY_ID;
-const secretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY;
-
-let client: S3Client | null = null;
-
-function getClient(): S3Client {
-  if (!endpoint || !accessKeyId || !secretAccessKey || !bucket) {
-    throw new Error("Storage not configured");
-  }
-  if (!client) {
-    client = new S3Client({
-      endpoint,
-      region,
-      credentials: { accessKeyId, secretAccessKey },
-      forcePathStyle: true,
-    });
-  }
-  return client;
-}
 
 export async function GET(
   _req: Request,
@@ -34,8 +12,8 @@ export async function GET(
   if (!key) return NextResponse.json({ error: "Missing key" }, { status: 400 });
 
   try {
-    const res = await getClient().send(
-      new GetObjectCommand({ Bucket: bucket!, Key: key }),
+    const res = await getStorageClient().send(
+      new GetObjectCommand({ Bucket: getStorageBucket(), Key: key }),
     );
     const body = res.Body;
     if (!body) return NextResponse.json({ error: "Not found" }, { status: 404 });

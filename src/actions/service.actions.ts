@@ -170,16 +170,13 @@ export async function createAereo(data: {
 }, requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-    const parsed = AereoCreateSchema.parse(data);
+    const { precioInicial, ...aereoData } = AereoCreateSchema.parse(data);
     return await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "aereo");
-      const aereo = await tx.aereo.create({ data: { ...parsed, id, brandId } });
-      if (parsed.precioInicial) {
+      const aereo = await tx.aereo.create({ data: { ...aereoData, id, brandId } });
+      if (precioInicial) {
         await tx.precioAereo.create({
-          data: {
-            aereoId: aereo.id,
-            ...parsed.precioInicial,
-          },
+          data: { aereoId: aereo.id, ...precioInicial },
         });
       }
       return aereo;
