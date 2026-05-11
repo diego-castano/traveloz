@@ -91,10 +91,6 @@ export default function NuevoAereoPage() {
       toast("warning", "Tarifa requerida", "La tarifa inicial es obligatoria.");
       return;
     }
-    if (!itinerario.trim()) {
-      toast("warning", "Itinerario requerido", "Debes cargar el itinerario para poder crear el vuelo.");
-      return;
-    }
 
     setIsCreating(true);
     try {
@@ -256,7 +252,7 @@ export default function NuevoAereoPage() {
           >
             <FieldGroup>
               <Field>
-                <FieldLabel required>Itinerario</FieldLabel>
+                <FieldLabel>Itinerario</FieldLabel>
                 <ItinerarioEditor
                   text={itinerario}
                   onTextChange={setItinerario}
@@ -266,7 +262,7 @@ export default function NuevoAereoPage() {
                   rows={5}
                 />
                 <FieldDescription>
-                  Obligatorio. Sin itinerario el vuelo no se puede crear.
+                  Opcional. Podes dejarlo vacio o agregar solo imagenes.
                 </FieldDescription>
               </Field>
             </FieldGroup>

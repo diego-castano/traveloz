@@ -176,14 +176,6 @@ export default function AereoDetailPage() {
       );
       return;
     }
-    if (!itinerario.trim()) {
-      toast(
-        "warning",
-        "Itinerario requerido",
-        "Debes completar el itinerario para guardar.",
-      );
-      return;
-    }
     updateAereo({
       ...aereo,
       ruta,
@@ -218,17 +210,17 @@ export default function AereoDetailPage() {
       return;
     }
 
-    const doSave = () => {
+    const doSave = async () => {
       try {
         if (row.id) {
-          updatePrecioAereo(row);
+          await updatePrecioAereo(row);
           toast(
             "success",
             "Precio actualizado",
             "El periodo fue guardado correctamente.",
           );
         } else {
-          createPrecioAereo({
+          await createPrecioAereo({
             aereoId: aereo!.id,
             periodoDesde: row.periodoDesde ?? "",
             periodoHasta: row.periodoHasta ?? "",
@@ -253,7 +245,7 @@ export default function AereoDetailPage() {
       setPendingSaveAction(() => doSave);
       setImpactModalOpen(true);
     } else {
-      doSave();
+      await doSave();
     }
   }
 
@@ -417,11 +409,11 @@ export default function AereoDetailPage() {
         {/* ------------------------------------------------------------------ */}
         <FormSection
           title="Itinerario"
-          description="Notas libres con horarios, escalas y observaciones. Es obligatorio para poder guardar."
+          description="Notas libres con horarios, escalas y observaciones. Es opcional."
         >
           <FieldGroup>
             <Field>
-              <FieldLabel required>Itinerario</FieldLabel>
+              <FieldLabel>Itinerario</FieldLabel>
               <ItinerarioEditor
                 text={itinerario}
                 onTextChange={setItinerario}
@@ -432,7 +424,7 @@ export default function AereoDetailPage() {
                 rows={5}
               />
               <FieldDescription>
-                Sin itinerario no se puede guardar el vuelo.
+                Opcional. Podes dejarlo vacio o agregar solo imagenes.
               </FieldDescription>
             </Field>
           </FieldGroup>

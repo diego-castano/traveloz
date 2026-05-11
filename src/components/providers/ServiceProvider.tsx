@@ -610,7 +610,6 @@ const STRIP_KEYS = new Set([
   "precios",
   "paquetes",
   "fotos",
-  "itinerario",
   "dias",
   "pais",
   "ciudad",
@@ -618,10 +617,23 @@ const STRIP_KEYS = new Set([
   "regimen",
 ]);
 
-function stripForUpdate<T extends Record<string, any>>(entity: T): Partial<T> {
+// `itinerario` is a real String column on Aereo but a 1:N relation on Circuito.
+// We keep it OUT of the global STRIP_KEYS so Aereo updates persist, and pass
+// it as an extraStrip when updating Circuito.
+const CIRCUITO_EXTRA_STRIP = ["itinerario"] as const;
+
+function stripForUpdate<T extends Record<string, any>>(
+  entity: T,
+  extraStrip: readonly string[] = [],
+): Partial<T> {
+  let strip = STRIP_KEYS;
+  if (extraStrip.length > 0) {
+    strip = new Set(STRIP_KEYS);
+    for (const k of extraStrip) strip.add(k);
+  }
   const out: Record<string, any> = {};
   for (const key of Object.keys(entity)) {
-    if (!STRIP_KEYS.has(key)) out[key] = entity[key];
+    if (!strip.has(key)) out[key] = entity[key];
   }
   return out as Partial<T>;
 }
@@ -773,7 +785,10 @@ export function useServiceActions() {
         return entity as any;
       },
       updateCircuito: async (entity: Circuito) => {
-        await serviceActions.updateCircuito(entity.id, stripForUpdate(entity));
+        await serviceActions.updateCircuito(
+          entity.id,
+          stripForUpdate(entity, CIRCUITO_EXTRA_STRIP),
+        );
         dispatch({ type: "UPDATE_CIRCUITO", payload: entity });
       },
       deleteCircuito: async (id: string) => {
