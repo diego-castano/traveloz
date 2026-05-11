@@ -115,8 +115,6 @@ model Paquete {
   textoIntro          String? @db.Text
   // Texto introductorio de la lista "Incluye"
   textoIncluye        String? @db.Text
-  // Lista (markdown / texto libre) de qué NO incluye el paquete
-  textoNoIncluye      String? @db.Text
   // Itinerario día a día visible públicamente (distinto al itinerarioAmadeus interno)
   itinerarioPublico   String? @db.Text
   // Notas de condiciones/cancelación específicas del paquete

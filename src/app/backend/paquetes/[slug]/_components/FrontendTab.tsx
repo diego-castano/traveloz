@@ -69,7 +69,6 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
     heroImage: "",
     textoIntro: "",
     textoIncluye: "",
-    textoNoIncluye: "",
     itinerarioPublico: "",
     textoCondiciones: "",
   });
@@ -87,7 +86,6 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
             heroImage: d.heroImage ?? "",
             textoIntro: d.textoIntro ?? "",
             textoIncluye: d.textoIncluye ?? "",
-            textoNoIncluye: d.textoNoIncluye ?? "",
             itinerarioPublico: d.itinerarioPublico ?? "",
             textoCondiciones: d.textoCondiciones ?? "",
           });
@@ -350,10 +348,10 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
         </div>
       </Section>
 
-      {/* Section 4 — Incluye / No incluye */}
+      {/* Section 4 — Incluye */}
       <Section
-        title="Qué incluye / no incluye"
-        description="Servicios incluidos (con icono auto-detectado por palabra clave) y notas de lo que queda fuera. Una línea = un bullet."
+        title="Qué incluye"
+        description="Servicios incluidos (con icono auto-detectado por palabra clave). Una línea = un bullet."
       >
         <div>
           <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
@@ -417,23 +415,6 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           </p>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
-            No incluye
-            <span className="text-neutral-400 font-normal ml-2 text-xs">
-              (una línea = un bullet)
-            </span>
-          </label>
-          <textarea
-            value={form.textoNoIncluye}
-            onChange={(e) =>
-              setForm({ ...form, textoNoIncluye: e.target.value })
-            }
-            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
-            rows={6}
-            placeholder={`Excursiones opcionales\nGastos personales\nPropinas`}
-          />
-        </div>
       </Section>
 
       {/* Section 5 — Condiciones */}

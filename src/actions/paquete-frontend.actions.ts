@@ -115,7 +115,6 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       heroImage: true,
       textoIntro: true,
       textoIncluye: true,
-      textoNoIncluye: true,
       itinerarioPublico: true,
       textoCondiciones: true,
       precioDesde: true,
@@ -147,7 +146,6 @@ export async function updatePaqueteFrontend(
     heroImage?: string | null;
     textoIntro?: string | null;
     textoIncluye?: string | null;
-    textoNoIncluye?: string | null;
     itinerarioPublico?: string | null;
     textoCondiciones?: string | null;
   },

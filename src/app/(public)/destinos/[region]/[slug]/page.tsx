@@ -74,7 +74,6 @@ export default async function PackageDetailPage({
           })),
           textoIntro: paquete.textoIntro,
           textoIncluye: paquete.textoIncluye,
-          textoNoIncluye: paquete.textoNoIncluye,
           itinerarioPublico: paquete.itinerarioPublico,
           textoCondiciones: paquete.textoCondiciones,
           serviciosIncluidos: paquete.serviciosIncluidos.map((s) => ({

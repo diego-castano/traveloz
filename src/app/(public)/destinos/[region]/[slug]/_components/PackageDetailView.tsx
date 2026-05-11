@@ -55,7 +55,6 @@ type Props = {
     fotos: Foto[];
     textoIntro: string | null;
     textoIncluye: string | null;
-    textoNoIncluye: string | null;
     itinerarioPublico: string | null;
     textoCondiciones: string | null;
     serviciosIncluidos: Servicio[];
@@ -564,7 +563,6 @@ export function PackageDetailView({ paquete }: Props) {
             {/* Optional intro / itinerario / condiciones below the card */}
             {(paquete.textoIntro ||
               paquete.itinerarioPublico ||
-              paquete.textoNoIncluye ||
               paquete.textoCondiciones) && (
               <div
                 className="content-box style3 bg_white"
@@ -600,58 +598,6 @@ export function PackageDetailView({ paquete }: Props) {
                     >
                       {paquete.itinerarioPublico}
                     </div>
-                  </div>
-                )}
-                {paquete.textoNoIncluye && (
-                  <div style={{ marginBottom: 24 }}>
-                    <h2 className="h2" style={{ marginBottom: 12 }}>
-                      No incluye
-                    </h2>
-                    <ul
-                      style={{
-                        listStyle: "none",
-                        padding: 0,
-                        margin: 0,
-                        color: "#666",
-                      }}
-                    >
-                      {paquete.textoNoIncluye
-                        .split(/\r?\n/)
-                        .map((s) => s.trim())
-                        .filter(Boolean)
-                        .map((line, i) => (
-                          <li
-                            key={`ni-${i}`}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 12,
-                              padding: "8px 0",
-                              fontSize: 17,
-                              borderBottom: "1px solid rgba(0,0,0,0.05)",
-                            }}
-                          >
-                            <span
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                width: 28,
-                                height: 28,
-                                borderRadius: 999,
-                                background: "rgba(244,62,85,0.10)",
-                                color: "#F43E55",
-                                fontSize: 14,
-                                fontWeight: 700,
-                                flexShrink: 0,
-                              }}
-                            >
-                              ✕
-                            </span>
-                            {line}
-                          </li>
-                        ))}
-                    </ul>
                   </div>
                 )}
                 {paquete.textoCondiciones && (
