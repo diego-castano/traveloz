@@ -69,7 +69,7 @@ function PriceDisplay({
   return (
     <div
       className={cn(
-        'flex items-center rounded-clay',
+        'flex items-center rounded-xl',
         s.wrapper,
         className
       )}

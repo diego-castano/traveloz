@@ -181,3 +181,53 @@ export async function toggleNewsletterActive(id: string) {
   });
   revalidatePath("/backend/leads/newsletter");
 }
+
+// ---------------------------------------------------------------------------
+// Cotizacion assignment — pick the vendedor that owns the lead. Pass userId
+// null to unassign. Only Cotizacion supports this for now (it's the only
+// model with `asignadoAUserId` in the schema).
+// ---------------------------------------------------------------------------
+export async function listAssignableUsers() {
+  await requireAuth();
+  return prisma.user.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, email: true, role: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function assignCotizacion(
+  cotizacionId: string,
+  userId: string | null,
+) {
+  return assignLead("cotizaciones", cotizacionId, userId);
+}
+
+/**
+ * Assign or unassign any non-newsletter lead. Newsletter subscribers don't
+ * carry an assignee (operationally it's just an email list). For everything
+ * else: pass userId=null to unassign.
+ */
+export async function assignLead(
+  kind: Exclude<LeadKind, "newsletter">,
+  id: string,
+  userId: string | null,
+) {
+  await requireAuth();
+  const data = { asignadoAUserId: userId };
+  switch (kind) {
+    case "cotizaciones":
+      await prisma.cotizacion.update({ where: { id }, data });
+      break;
+    case "mensajes":
+      await prisma.mensajeContacto.update({ where: { id }, data });
+      break;
+    case "corporativo":
+      await prisma.contactoCorporativo.update({ where: { id }, data });
+      break;
+    case "postulaciones":
+      await prisma.postulacion.update({ where: { id }, data });
+      break;
+  }
+  revalidatePath(`/backend/leads/${kind}`);
+}

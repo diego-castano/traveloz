@@ -55,6 +55,16 @@ const estadoStyles = {
     text: "#ffffff",
     label: "Borrador",
   },
+  EN_REVISION: {
+    bg: "rgba(168,125,232,0.92)",
+    text: "#ffffff",
+    label: "En revisión",
+  },
+  ARCHIVADO: {
+    bg: "rgba(107,111,153,0.92)",
+    text: "#ffffff",
+    label: "Archivado",
+  },
   INACTIVO: {
     bg: "rgba(107,111,153,0.92)",
     text: "#ffffff",

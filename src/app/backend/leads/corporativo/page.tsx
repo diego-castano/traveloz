@@ -2,15 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Mail, Phone, Briefcase, ExternalLink } from "lucide-react";
-import { listContactosCorporativos } from "@/actions/leads.actions";
+import {
+  listContactosCorporativos,
+  listAssignableUsers,
+  assignLead,
+} from "@/actions/leads.actions";
 import { EstadoBadge } from "../_components/EstadoBadge";
 import { LeadsTable, relativeTime } from "../_components/LeadsTable";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
 
 type Row = Awaited<ReturnType<typeof listContactosCorporativos>>[number];
+type User = Awaited<ReturnType<typeof listAssignableUsers>>[number];
 
 export default function CorporativoLeadsPage() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Row | null>(null);
 
@@ -21,7 +27,16 @@ export default function CorporativoLeadsPage() {
 
   useEffect(() => {
     refresh();
+    listAssignableUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const fresh = rows.find((r) => r.id === open.id);
+    if (fresh && fresh.asignadoAUserId !== open.asignadoAUserId) {
+      setOpen(fresh);
+    }
+  }, [rows, open]);
 
   return (
     <div className="p-6 space-y-4">
@@ -117,6 +132,18 @@ export default function CorporativoLeadsPage() {
         onClose={() => setOpen(null)}
         onDeleted={refresh}
         onEstadoChange={refresh}
+        assignment={
+          open
+            ? {
+                current: open.asignadoAUserId,
+                options: users,
+                onAssign: async (userId) => {
+                  await assignLead("corporativo", open.id, userId);
+                  await refresh();
+                },
+              }
+            : undefined
+        }
         data={
           open
             ? {

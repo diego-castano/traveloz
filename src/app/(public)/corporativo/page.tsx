@@ -58,17 +58,20 @@ export default function CorporativoPage() {
   const heroVideo = s.corporativo_hero_video ?? "/site/video/Video-Traveloz-Corporativo.mp4";
   const cards = [
     {
-      icon: "hand-icon.webp",
+      icon:
+        s.corporativo_valores_icon_1?.trim() || "/site/img/hand-icon.webp",
       title: s.corporativo_valores_titulo_1 ?? "Nuestros valores",
       body: s.corporativo_valores_texto_1 ?? "Trabajamos con una premisa clara: generar valor real a través de la confianza, la eficiencia y el compromiso.",
     },
     {
-      icon: "flight-icon.webp",
+      icon:
+        s.corporativo_valores_icon_2?.trim() || "/site/img/flight-icon.webp",
       title: s.corporativo_valores_titulo_2 ?? "¿Cómo trabajamos?",
       body: s.corporativo_valores_texto_2 ?? "Identificamos las necesidades de cada organización y brindamos soluciones alineadas a sus objetivos, garantizando calidad y respaldo.",
     },
     {
-      icon: "clock-icon.webp",
+      icon:
+        s.corporativo_valores_icon_3?.trim() || "/site/img/clock-icon.webp",
       title: s.corporativo_valores_titulo_3 ?? "Atención 24/7",
       body: s.corporativo_valores_texto_3 ?? "Más de 35 profesionales brindan un servicio de excelencia, resolviendo cada solicitud de forma ágil y con la máxima calidad las 24 horas.",
     },
@@ -111,7 +114,7 @@ export default function CorporativoPage() {
               {cards.map((c) => (
                 <div className="col-md-4" key={c.icon}>
                   <div className="icon-teaser style1">
-                    <img src={`/site/img/${c.icon}`} alt="icon" />
+                    <img src={c.icon} alt="icon" />
                     <h3 className="title">{c.title}</h3>
                     <CardBody html={c.body} />
                   </div>

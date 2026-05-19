@@ -146,7 +146,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   ...toastGlassStyle,
                   borderLeft: `3px solid ${borderColor}`,
                 }}
-                className="max-w-[400px] rounded-glass p-4 shadow-elevation-16"
+                className="max-w-[400px] rounded-xl p-4 shadow-elevation-16"
                 initial={interactions.toastSlide.initial}
                 animate={interactions.toastSlide.animate}
                 exit={interactions.toastSlide.exit}
@@ -175,7 +175,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   {/* Close button */}
                   <button
                     onClick={() => removeToast(t.id)}
-                    className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-glass-sm text-neutral-400 transition-colors hover:bg-neutral-100/60 hover:text-neutral-600"
+                    className="shrink-0 inline-flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100/60 hover:text-neutral-600"
                     aria-label="Cerrar notificacion"
                   >
                     <X size={14} />

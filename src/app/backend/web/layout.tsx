@@ -18,6 +18,8 @@ import {
   Building2,
   UserCircle,
   Send,
+  UserPlus,
+  Package,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/components/lib/cn";
@@ -49,6 +51,7 @@ const GROUPS: Group[] = [
       { href: "/backend/web/cotizar", label: "Cotizar", icon: Send },
       { href: "/backend/web/faq", label: "FAQ", icon: HelpCircle },
       { href: "/backend/web/terms", label: "Términos", icon: FileText },
+      { href: "/backend/web/work-with-us", label: "Trabajá con nosotros", icon: UserPlus },
     ],
   },
   {
@@ -56,6 +59,12 @@ const GROUPS: Group[] = [
     items: [
       { href: "/backend/web/clientes", label: "Clientes", icon: Building2 },
       { href: "/backend/web/equipo", label: "Equipo", icon: UserCircle },
+    ],
+  },
+  {
+    label: "Servicios",
+    items: [
+      { href: "/backend/web/servicios-incluidos", label: "Servicios incluidos", icon: Package },
     ],
   },
   {

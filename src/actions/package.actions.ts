@@ -6,9 +6,23 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
+import {
+  recomputePaqueteOpciones,
+  recomputeForOpcionHotelera,
+} from "@/lib/recompute-prices";
 import type { EstadoPaquete, Prisma } from "@prisma/client";
 
 const log = logger.child({ module: "package.actions" });
+
+/** Best-effort price propagation. Swallows errors so the caller's mutation
+ *  always returns success — recompute failures are logged internally. */
+async function safePropagate(paqueteId: string): Promise<void> {
+  try {
+    await recomputePaqueteOpciones(paqueteId);
+  } catch (err) {
+    log.error("propagate failed", { paqueteId, err });
+  }
+}
 
 // Cache busters for dashboard, report, AND paquete listing aggregates. Called
 // after every paquete mutation so the UI stops serving stale counts/lists the
@@ -620,7 +634,9 @@ export async function assignAereo(data: {
 }) {
   try {
     await requireAuth();
-    return await prisma.paqueteAereo.create({ data });
+    const res = await prisma.paqueteAereo.create({ data });
+    await safePropagate(data.paqueteId);
+    return res;
   } catch (error) {
     log.error("assigning aereo", error);
     throw new Error("No se pudo asignar el aéreo al paquete.");
@@ -630,7 +646,13 @@ export async function assignAereo(data: {
 export async function removeAereo(id: string) {
   try {
     await requireAuth();
-    return await prisma.paqueteAereo.delete({ where: { id } });
+    const existing = await prisma.paqueteAereo.findUnique({
+      where: { id },
+      select: { paqueteId: true },
+    });
+    const res = await prisma.paqueteAereo.delete({ where: { id } });
+    if (existing) await safePropagate(existing.paqueteId);
+    return res;
   } catch (error) {
     log.error("removing aereo", error);
     throw new Error("No se pudo quitar el aéreo del paquete.");
@@ -663,7 +685,9 @@ export async function assignAlojamiento(data: {
 }) {
   try {
     await requireAuth();
-    return await prisma.paqueteAlojamiento.create({ data });
+    const res = await prisma.paqueteAlojamiento.create({ data });
+    await safePropagate(data.paqueteId);
+    return res;
   } catch (error) {
     log.error("assigning alojamiento", error);
     throw new Error("No se pudo asignar el alojamiento al paquete.");
@@ -673,7 +697,13 @@ export async function assignAlojamiento(data: {
 export async function removeAlojamiento(id: string) {
   try {
     await requireAuth();
-    return await prisma.paqueteAlojamiento.delete({ where: { id } });
+    const existing = await prisma.paqueteAlojamiento.findUnique({
+      where: { id },
+      select: { paqueteId: true },
+    });
+    const res = await prisma.paqueteAlojamiento.delete({ where: { id } });
+    if (existing) await safePropagate(existing.paqueteId);
+    return res;
   } catch (error) {
     log.error("removing alojamiento", error);
     throw new Error("No se pudo quitar el alojamiento del paquete.");
@@ -705,7 +735,9 @@ export async function assignTraslado(data: {
 }) {
   try {
     await requireAuth();
-    return await prisma.paqueteTraslado.create({ data });
+    const res = await prisma.paqueteTraslado.create({ data });
+    await safePropagate(data.paqueteId);
+    return res;
   } catch (error) {
     log.error("assigning traslado", error);
     throw new Error("No se pudo asignar el traslado al paquete.");
@@ -715,7 +747,13 @@ export async function assignTraslado(data: {
 export async function removeTraslado(id: string) {
   try {
     await requireAuth();
-    return await prisma.paqueteTraslado.delete({ where: { id } });
+    const existing = await prisma.paqueteTraslado.findUnique({
+      where: { id },
+      select: { paqueteId: true },
+    });
+    const res = await prisma.paqueteTraslado.delete({ where: { id } });
+    if (existing) await safePropagate(existing.paqueteId);
+    return res;
   } catch (error) {
     log.error("removing traslado", error);
     throw new Error("No se pudo quitar el traslado del paquete.");
@@ -748,7 +786,9 @@ export async function assignSeguro(data: {
 }) {
   try {
     await requireAuth();
-    return await prisma.paqueteSeguro.create({ data });
+    const res = await prisma.paqueteSeguro.create({ data });
+    await safePropagate(data.paqueteId);
+    return res;
   } catch (error) {
     log.error("assigning seguro", error);
     throw new Error("No se pudo asignar el seguro al paquete.");
@@ -758,7 +798,13 @@ export async function assignSeguro(data: {
 export async function removeSeguro(id: string) {
   try {
     await requireAuth();
-    return await prisma.paqueteSeguro.delete({ where: { id } });
+    const existing = await prisma.paqueteSeguro.findUnique({
+      where: { id },
+      select: { paqueteId: true },
+    });
+    const res = await prisma.paqueteSeguro.delete({ where: { id } });
+    if (existing) await safePropagate(existing.paqueteId);
+    return res;
   } catch (error) {
     log.error("removing seguro", error);
     throw new Error("No se pudo quitar el seguro del paquete.");
@@ -771,7 +817,12 @@ export async function updateSeguroAssignment(
 ) {
   try {
     await requireAuth();
-    return await prisma.paqueteSeguro.update({ where: { id }, data });
+    const res = await prisma.paqueteSeguro.update({ where: { id }, data });
+    // Only diasCobertura affects pricing — textoDisplay/orden are cosmetic.
+    if (data.diasCobertura !== undefined) {
+      await safePropagate(res.paqueteId);
+    }
+    return res;
   } catch (error) {
     log.error("updating seguro assignment", error);
     throw new Error("No se pudo actualizar la asignación del seguro.");
@@ -790,7 +841,9 @@ export async function assignCircuito(data: {
 }) {
   try {
     await requireAuth();
-    return await prisma.paqueteCircuito.create({ data });
+    const res = await prisma.paqueteCircuito.create({ data });
+    await safePropagate(data.paqueteId);
+    return res;
   } catch (error) {
     log.error("assigning circuito", error);
     throw new Error("No se pudo asignar el circuito al paquete.");
@@ -800,7 +853,13 @@ export async function assignCircuito(data: {
 export async function removeCircuito(id: string) {
   try {
     await requireAuth();
-    return await prisma.paqueteCircuito.delete({ where: { id } });
+    const existing = await prisma.paqueteCircuito.findUnique({
+      where: { id },
+      select: { paqueteId: true },
+    });
+    const res = await prisma.paqueteCircuito.delete({ where: { id } });
+    if (existing) await safePropagate(existing.paqueteId);
+    return res;
   } catch (error) {
     log.error("removing circuito", error);
     throw new Error("No se pudo quitar el circuito del paquete.");
@@ -900,6 +959,7 @@ export async function createOpcionHotelera(data: {
   precioVenta: number;
   orden?: number;
   proveedorId?: string | null;
+  textoDisplay?: string | null;
 }) {
   try {
     await requireAuth();
@@ -918,11 +978,17 @@ export async function updateOpcionHotelera(
     precioVenta?: number;
     orden?: number;
     proveedorId?: string | null;
+    textoDisplay?: string | null;
   },
 ) {
   try {
     await requireAuth();
-    return await prisma.opcionHotelera.update({ where: { id }, data });
+    const res = await prisma.opcionHotelera.update({ where: { id }, data });
+    // Recompute when the factor changes. We skip when only precioVenta was sent
+    // — that's a manual override the propagator would overwrite. nombre/orden/
+    // proveedorId are cosmetic.
+    if (data.factor !== undefined) await safePropagate(res.paqueteId);
+    return res;
   } catch (error) {
     log.error("updating opcion hotelera", error);
     throw new Error("No se pudo actualizar la opción hotelera.");
@@ -932,7 +998,13 @@ export async function updateOpcionHotelera(
 export async function deleteOpcionHotelera(id: string) {
   try {
     await requireAuth();
-    return await prisma.opcionHotelera.delete({ where: { id } });
+    const existing = await prisma.opcionHotelera.findUnique({
+      where: { id },
+      select: { paqueteId: true },
+    });
+    const res = await prisma.opcionHotelera.delete({ where: { id } });
+    if (existing) await safePropagate(existing.paqueteId);
+    return res;
   } catch (error) {
     log.error("deleting opcion hotelera", error);
     throw new Error("No se pudo eliminar la opción hotelera.");
@@ -958,7 +1030,9 @@ export async function createPaqueteDestino(data: {
       orden: z.number().int().nonnegative().optional(),
     });
     const parsed = schema.parse(data);
-    return await prisma.paqueteDestino.create({ data: parsed });
+    const res = await prisma.paqueteDestino.create({ data: parsed });
+    await safePropagate(parsed.paqueteId);
+    return res;
   } catch (error) {
     log.error("creating paquete destino", error);
     throw new Error("No se pudo crear el destino del paquete.");
@@ -971,7 +1045,12 @@ export async function updatePaqueteDestino(
 ) {
   try {
     await requireAuth();
-    return await prisma.paqueteDestino.update({ where: { id }, data });
+    const res = await prisma.paqueteDestino.update({ where: { id }, data });
+    // noches affects every opcion's alojamiento cost; ciudadId may change which
+    // hotels are valid but does not affect persisted prices directly. orden is
+    // cosmetic.
+    if (data.noches !== undefined) await safePropagate(res.paqueteId);
+    return res;
   } catch (error) {
     log.error("updating paquete destino", error);
     throw new Error("No se pudo actualizar el destino del paquete.");
@@ -981,7 +1060,13 @@ export async function updatePaqueteDestino(
 export async function deletePaqueteDestino(id: string) {
   try {
     await requireAuth();
-    return await prisma.paqueteDestino.delete({ where: { id } });
+    const existing = await prisma.paqueteDestino.findUnique({
+      where: { id },
+      select: { paqueteId: true },
+    });
+    const res = await prisma.paqueteDestino.delete({ where: { id } });
+    if (existing) await safePropagate(existing.paqueteId);
+    return res;
   } catch (error) {
     log.error("deleting paquete destino", error);
     throw new Error("No se pudo eliminar el destino del paquete.");
@@ -1025,7 +1110,11 @@ export async function createOpcionHotel(data: {
 }) {
   try {
     await requireAuth();
-    return await prisma.opcionHotel.create({ data });
+    const res = await prisma.opcionHotel.create({ data });
+    await recomputeForOpcionHotelera(data.opcionHoteleraId).catch((err) =>
+      log.error("propagate failed (createOpcionHotel)", { err })
+    );
+    return res;
   } catch (error) {
     log.error("creating opcion hotel", error);
     throw new Error("No se pudo asignar el hotel al destino.");
@@ -1038,7 +1127,13 @@ export async function updateOpcionHotel(
 ) {
   try {
     await requireAuth();
-    return await prisma.opcionHotel.update({ where: { id }, data });
+    const res = await prisma.opcionHotel.update({ where: { id }, data });
+    if (data.alojamientoId !== undefined) {
+      await recomputeForOpcionHotelera(res.opcionHoteleraId).catch((err) =>
+        log.error("propagate failed (updateOpcionHotel)", { err })
+      );
+    }
+    return res;
   } catch (error) {
     log.error("updating opcion hotel", error);
     throw new Error("No se pudo actualizar la asignación del hotel.");
@@ -1048,7 +1143,17 @@ export async function updateOpcionHotel(
 export async function deleteOpcionHotel(id: string) {
   try {
     await requireAuth();
-    return await prisma.opcionHotel.delete({ where: { id } });
+    const existing = await prisma.opcionHotel.findUnique({
+      where: { id },
+      select: { opcionHoteleraId: true },
+    });
+    const res = await prisma.opcionHotel.delete({ where: { id } });
+    if (existing) {
+      await recomputeForOpcionHotelera(existing.opcionHoteleraId).catch((err) =>
+        log.error("propagate failed (deleteOpcionHotel)", { err })
+      );
+    }
+    return res;
   } catch (error) {
     log.error("deleting opcion hotel", error);
     throw new Error("No se pudo eliminar la asignación del hotel.");
@@ -1067,13 +1172,17 @@ export async function upsertOpcionHotelPrincipal(
 ) {
   try {
     await requireAuth();
-    return await prisma.opcionHotel.upsert({
+    const res = await prisma.opcionHotel.upsert({
       where: {
         opcionHoteleraId_destinoId: { opcionHoteleraId, destinoId },
       },
       create: { opcionHoteleraId, destinoId, alojamientoId, orden: 0 },
       update: { alojamientoId },
     });
+    await recomputeForOpcionHotelera(opcionHoteleraId).catch((err) =>
+      log.error("propagate failed (upsertOpcionHotelPrincipal)", { err })
+    );
+    return res;
   } catch (error) {
     log.error("upserting opcion hotel", error);
     throw new Error("No se pudo asignar el hotel.");

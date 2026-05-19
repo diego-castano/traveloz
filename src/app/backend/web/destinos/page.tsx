@@ -9,6 +9,7 @@ import {
   updateRegionFrontend,
 } from "@/actions/region-frontend.actions";
 import { MediaPicker } from "../_components/MediaPicker";
+import { SettingsForm } from "../_components/SettingsForm";
 
 type Row = Awaited<ReturnType<typeof listRegionesForFrontend>>[number];
 type Edits = Record<
@@ -68,10 +69,17 @@ export default function WebDestinosPage() {
     });
 
   return (
-    <div className="p-8 max-w-4xl space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-neutral-900">Destinos</h2>
+    <div className="p-8 max-w-4xl space-y-8">
+      <SettingsForm
+        group="destinos"
+        title="Página /destinos — Cabecera y CTA"
+        blurb="Título, subtítulo y CTA inferior de la página índice de destinos. Las regiones se editan abajo."
+        publicHref="/destinos"
+      />
+
+      <div className="flex items-start justify-between gap-4 pt-2 border-t border-neutral-200/80">
+        <div className="pt-6">
+          <h2 className="text-xl font-semibold text-neutral-900">Regiones</h2>
           <p className="text-sm text-neutral-500 mt-1">
             Foto y descripción de cada región para la página{" "}
             <a

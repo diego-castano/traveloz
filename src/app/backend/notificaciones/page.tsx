@@ -30,7 +30,7 @@ import { usePackageLoading } from "@/components/providers/PackageProvider";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Modal, ModalBody, ModalFooter, ModalHeader } from "@/components/ui/Modal";
+import { Modal, ModalBody, ModalFooter, ModalHeader, ModalClose } from "@/components/ui/Modal";
 import {
   DataTable,
   DataTableHeader,
@@ -798,13 +798,11 @@ export default function NotificacionesPage() {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setTagModalOpen(false)}
-            >
-              Cancelar
-            </Button>
+            <ModalClose asChild>
+              <Button type="button" variant="ghost">
+                Cancelar
+              </Button>
+            </ModalClose>
             <Button
               type="submit"
               disabled={isCreatingTag || !tagForm.nombre.trim()}

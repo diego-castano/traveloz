@@ -29,7 +29,7 @@ import {
   FieldLabel,
   FieldError,
 } from "@/components/ui/form/Field";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { useUsers, useUserActions } from "@/components/providers/UserProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -576,13 +576,11 @@ export default function PerfilesPage() {
             </FieldGroup>
           </ModalBody>
           <ModalFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setModalOpen(false)}
-            >
-              Cancelar
-            </Button>
+            <ModalClose asChild>
+              <Button type="button" variant="ghost">
+                Cancelar
+              </Button>
+            </ModalClose>
             <Button
               type="submit"
               loading={saving}
@@ -647,13 +645,11 @@ export default function PerfilesPage() {
             </FieldGroup>
           </ModalBody>
           <ModalFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setPasswordModalOpen(false)}
-            >
-              Cancelar
-            </Button>
+            <ModalClose asChild>
+              <Button type="button" variant="ghost">
+                Cancelar
+              </Button>
+            </ModalClose>
             <Button
               type="submit"
               loading={saving}
@@ -704,9 +700,9 @@ export default function PerfilesPage() {
           </motion.div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar definitivamente
           </Button>

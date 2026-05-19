@@ -9,6 +9,7 @@ import {
 } from "@/actions/cms-content.actions";
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
+import { SettingsForm } from "../_components/SettingsForm";
 
 type Row = Awaited<ReturnType<typeof listFaqTopics>>[number];
 
@@ -48,14 +49,21 @@ export default function WebFaqPage() {
       : { label: "", bodyHtml: "", iconUrl: "" };
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
-      <div>
+    <div className="p-6 max-w-4xl space-y-8">
+      {/* Header chrome: title, subtitle, banners */}
+      <SettingsForm
+        group="faq"
+        title="Página /faq — Cabecera"
+        blurb="Título, subtítulo y banners (desktop + mobile) que se muestran arriba de los topics."
+        publicHref="/faq"
+      />
+
+      <div className="border-t border-neutral-200/80 pt-6">
         <h2 className="text-xl font-semibold text-neutral-900">
-          Preguntas frecuentes
+          Topics de FAQ
         </h2>
         <p className="text-sm text-neutral-500 mt-1">
-          Topics de <code>/faq</code>. Cada uno se ve como una tab en desktop y
-          como acordeón en mobile.
+          Cada topic aparece como una tab en desktop y como acordeón en mobile.
         </p>
       </div>
 

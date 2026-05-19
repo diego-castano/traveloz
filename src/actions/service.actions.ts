@@ -6,6 +6,13 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
+import {
+  recomputeForAereo,
+  recomputeForAlojamiento,
+  recomputeForTraslado,
+  recomputeForSeguro,
+  recomputeForCircuito,
+} from "@/lib/recompute-prices";
 const log = logger.child({ module: "service.actions" });
 
 /** Global service-cache tag. Lets every mutation invalidate without first
@@ -238,7 +245,10 @@ export async function createPrecioAereo(data: {
   try {
     await requireAuth();
     const parsed = PrecioAereoSchema.parse(data);
-    const __res = await prisma.precioAereo.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.precioAereo.create({ data: parsed });
+    bustServicesCacheGlobal();
+    await recomputeForAereo(parsed.aereoId);
+    return __res;
   } catch (error) {
     log.error("creating precio aereo", error);
     throw new Error("No se pudo crear el precio del aéreo.");
@@ -255,7 +265,10 @@ export async function updatePrecioAereo(
 ) {
   try {
     await requireAuth();
-    const __res = await prisma.precioAereo.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.precioAereo.update({ where: { id }, data });
+    bustServicesCacheGlobal();
+    await recomputeForAereo(__res.aereoId);
+    return __res;
   } catch (error) {
     log.error("updating precio aereo", error);
     throw new Error("No se pudo actualizar el precio del aéreo.");
@@ -265,7 +278,15 @@ export async function updatePrecioAereo(
 export async function deletePrecioAereo(id: string) {
   try {
     await requireAuth();
-    const __res = await prisma.precioAereo.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
+    // Capture aereoId BEFORE the delete so we can propagate.
+    const existing = await prisma.precioAereo.findUnique({
+      where: { id },
+      select: { aereoId: true },
+    });
+    const __res = await prisma.precioAereo.delete({ where: { id } });
+    bustServicesCacheGlobal();
+    if (existing) await recomputeForAereo(existing.aereoId);
+    return __res;
   } catch (error) {
     log.error("deleting precio aereo", error);
     throw new Error("No se pudo eliminar el precio del aéreo.");
@@ -356,7 +377,10 @@ export async function createPrecioAlojamiento(data: {
   try {
     await requireAuth();
     const parsed = PrecioAlojamientoSchema.parse(data);
-    const __res = await prisma.precioAlojamiento.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.precioAlojamiento.create({ data: parsed });
+    bustServicesCacheGlobal();
+    await recomputeForAlojamiento(parsed.alojamientoId);
+    return __res;
   } catch (error) {
     log.error("creating precio alojamiento", error);
     throw new Error("No se pudo crear el precio del alojamiento.");
@@ -374,7 +398,10 @@ export async function updatePrecioAlojamiento(
 ) {
   try {
     await requireAuth();
-    const __res = await prisma.precioAlojamiento.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.precioAlojamiento.update({ where: { id }, data });
+    bustServicesCacheGlobal();
+    await recomputeForAlojamiento(__res.alojamientoId);
+    return __res;
   } catch (error) {
     log.error("updating precio alojamiento", error);
     throw new Error("No se pudo actualizar el precio del alojamiento.");
@@ -384,7 +411,14 @@ export async function updatePrecioAlojamiento(
 export async function deletePrecioAlojamiento(id: string) {
   try {
     await requireAuth();
-    const __res = await prisma.precioAlojamiento.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
+    const existing = await prisma.precioAlojamiento.findUnique({
+      where: { id },
+      select: { alojamientoId: true },
+    });
+    const __res = await prisma.precioAlojamiento.delete({ where: { id } });
+    bustServicesCacheGlobal();
+    if (existing) await recomputeForAlojamiento(existing.alojamientoId);
+    return __res;
   } catch (error) {
     log.error("deleting precio alojamiento", error);
     throw new Error("No se pudo eliminar el precio del alojamiento.");
@@ -489,7 +523,10 @@ export async function updateTraslado(
 ) {
   try {
     await requireAuth();
-    const __res = await prisma.traslado.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.traslado.update({ where: { id }, data });
+    bustServicesCacheGlobal();
+    if (data.precio !== undefined) await recomputeForTraslado(id);
+    return __res;
   } catch (error) {
     log.error("updating traslado", error);
     throw new Error("No se pudo actualizar el traslado.");
@@ -556,7 +593,10 @@ export async function updateSeguro(
 ) {
   try {
     await requireAuth();
-    const __res = await prisma.seguro.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.seguro.update({ where: { id }, data });
+    bustServicesCacheGlobal();
+    if (data.costoPorDia !== undefined) await recomputeForSeguro(id);
+    return __res;
   } catch (error) {
     log.error("updating seguro", error);
     throw new Error("No se pudo actualizar el seguro.");
@@ -734,7 +774,10 @@ export async function createPrecioCircuito(data: {
   try {
     await requireAuth();
     const parsed = PrecioCircuitoSchema.parse(data);
-    const __res = await prisma.precioCircuito.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.precioCircuito.create({ data: parsed });
+    bustServicesCacheGlobal();
+    await recomputeForCircuito(parsed.circuitoId);
+    return __res;
   } catch (error) {
     log.error("creating precio circuito", error);
     throw new Error("No se pudo crear el precio del circuito.");
@@ -751,7 +794,10 @@ export async function updatePrecioCircuito(
 ) {
   try {
     await requireAuth();
-    const __res = await prisma.precioCircuito.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
+    const __res = await prisma.precioCircuito.update({ where: { id }, data });
+    bustServicesCacheGlobal();
+    await recomputeForCircuito(__res.circuitoId);
+    return __res;
   } catch (error) {
     log.error("updating precio circuito", error);
     throw new Error("No se pudo actualizar el precio del circuito.");
@@ -761,7 +807,14 @@ export async function updatePrecioCircuito(
 export async function deletePrecioCircuito(id: string) {
   try {
     await requireAuth();
-    const __res = await prisma.precioCircuito.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
+    const existing = await prisma.precioCircuito.findUnique({
+      where: { id },
+      select: { circuitoId: true },
+    });
+    const __res = await prisma.precioCircuito.delete({ where: { id } });
+    bustServicesCacheGlobal();
+    if (existing) await recomputeForCircuito(existing.circuitoId);
+    return __res;
   } catch (error) {
     log.error("deleting precio circuito", error);
     throw new Error("No se pudo eliminar el precio del circuito.");

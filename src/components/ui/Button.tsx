@@ -9,7 +9,7 @@ import { springs } from "@/components/lib/animations";
 import { glassMaterials } from "@/components/lib/glass";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 font-semibold rounded-clay transition-colors focus-visible:outline-none disabled:opacity-50 disabled:pointer-events-none",
+  "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-colors focus-visible:outline-none disabled:opacity-50 disabled:pointer-events-none",
   {
     variants: {
       variant: {
@@ -64,7 +64,7 @@ const clayStyles: Record<string, React.CSSProperties> = {
  * Uses CSS ::after with transform translateX animation (GPU composited).
  */
 const sheenClass =
-  "after:absolute after:inset-0 after:bg-[linear-gradient(105deg,transparent_40%,rgba(255,255,255,0.15)_45%,rgba(255,255,255,0.25)_50%,rgba(255,255,255,0.15)_55%,transparent_60%)] after:bg-[length:200%_100%] after:animate-sheen-slide after:rounded-clay";
+  "after:absolute after:inset-0 after:bg-[linear-gradient(105deg,transparent_40%,rgba(255,255,255,0.15)_45%,rgba(255,255,255,0.25)_50%,rgba(255,255,255,0.15)_55%,transparent_60%)] after:bg-[length:200%_100%] after:animate-sheen-slide after:rounded-xl";
 
 /** Omit conflicting drag event handlers between React HTML and Motion */
 type MotionSafeButtonProps = Omit<

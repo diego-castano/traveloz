@@ -12,8 +12,17 @@
 
 import { useEffect, useState } from "react";
 
-export function AgenciaModal() {
+interface AgenciaModalProps {
+  /** URL of the certificate image. Falls back to the bundled asset when not configured. */
+  certificadoUrl?: string;
+}
+
+export function AgenciaModal({ certificadoUrl }: AgenciaModalProps = {}) {
   const [open, setOpen] = useState(false);
+  const src =
+    certificadoUrl && certificadoUrl.trim().length > 0
+      ? certificadoUrl
+      : "/site/img/agencia.jpeg";
 
   useEffect(() => {
     const openHandler = () => setOpen(true);
@@ -57,7 +66,7 @@ export function AgenciaModal() {
       <div className="agencia-overlay" onClick={() => setOpen(false)}></div>
       <div className="agencia-box">
         <img
-          src="/site/img/agencia.jpeg"
+          src={src}
           alt="Certificado de agencia registrada - TravelOz"
         />
       </div>

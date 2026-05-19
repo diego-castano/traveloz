@@ -56,6 +56,7 @@ export default async function RegionListingPage({
         slug: region.slug,
         nombre: region.nombre,
         descripcion: region.descripcion,
+        heroImage: region.heroImage,
       }}
       paises={region.paises.map((p) => ({
         id: p.id,

@@ -302,7 +302,7 @@ export function CommandPalette() {
             <div className="fixed inset-0 z-[310] flex items-start justify-center px-4 pt-[12vh] pointer-events-none">
               <Dialog.Content forceMount asChild>
                 <motion.div
-                  className="pointer-events-auto w-full max-w-[640px] rounded-glass-lg overflow-hidden"
+                  className="pointer-events-auto w-full max-w-[640px] rounded-2xl overflow-hidden"
                   style={{
                     ...glassMaterials.liquidModal,
                     border: "1px solid rgba(139,92,246,0.2)",

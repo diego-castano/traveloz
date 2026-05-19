@@ -20,7 +20,7 @@ import {
 import { RowActions } from "@/components/ui/data/RowActions";
 import { EmptyState } from "@/components/ui/data/EmptyState";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
   useSeguros,
@@ -336,60 +336,70 @@ export default function SegurosPage() {
         <ModalHeader title={editTarget ? "Editar Seguro" : "Nuevo Seguro"}>
           {null}
         </ModalHeader>
-        <ModalBody>
-          <FieldGroup columns={2}>
-            <Field span={2}>
-              <FieldLabel>Proveedor</FieldLabel>
-              <Select
-                options={proveedoresSeguros.map((p) => ({ value: p.id, label: p.nombre }))}
-                value={form.proveedorId}
-                onValueChange={(v) => setForm((f) => ({ ...f, proveedorId: v }))}
-                placeholder="Seleccionar proveedor..."
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Plan</FieldLabel>
-              <Input
-                value={form.plan}
-                onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
-                placeholder="ej. Plan Clasico"
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Cobertura</FieldLabel>
-              <Input
-                value={form.cobertura}
-                onChange={(e) => setForm((f) => ({ ...f, cobertura: e.target.value }))}
-                placeholder="ej. USD 40.000"
-              />
-            </Field>
-            <Field span={2}>
-              <FieldLabel>Costo/Dia (USD)</FieldLabel>
-              <Input
-                type="number"
-                value={form.costoPorDia === 0 ? "" : String(form.costoPorDia)}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    costoPorDia: e.target.value === "" ? 0 : Number(e.target.value),
-                  }))
-                }
-                placeholder="0"
-              />
-            </Field>
-          </FieldGroup>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="ghost" onClick={() => setModalOpen(false)}>
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving || !form.plan.trim() || !form.proveedorId}
-          >
-            {saving ? "Guardando..." : editTarget ? "Guardar" : "Crear"}
-          </Button>
-        </ModalFooter>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!saving && form.plan.trim() && form.proveedorId) handleSave();
+          }}
+        >
+          <ModalBody>
+            <FieldGroup columns={2}>
+              <Field span={2}>
+                <FieldLabel>Proveedor</FieldLabel>
+                <Select
+                  options={proveedoresSeguros.map((p) => ({ value: p.id, label: p.nombre }))}
+                  value={form.proveedorId}
+                  onValueChange={(v) => setForm((f) => ({ ...f, proveedorId: v }))}
+                  placeholder="Seleccionar proveedor..."
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Plan</FieldLabel>
+                <Input
+                  autoFocus
+                  value={form.plan}
+                  onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
+                  placeholder="ej. Plan Clasico"
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Cobertura</FieldLabel>
+                <Input
+                  value={form.cobertura}
+                  onChange={(e) => setForm((f) => ({ ...f, cobertura: e.target.value }))}
+                  placeholder="ej. USD 40.000"
+                />
+              </Field>
+              <Field span={2}>
+                <FieldLabel>Costo/Dia (USD)</FieldLabel>
+                <Input
+                  type="number"
+                  value={form.costoPorDia === 0 ? "" : String(form.costoPorDia)}
+                  onChange={(e) =>
+                    setForm((f) => ({
+                      ...f,
+                      costoPorDia: e.target.value === "" ? 0 : Number(e.target.value),
+                    }))
+                  }
+                  placeholder="0"
+                />
+              </Field>
+            </FieldGroup>
+          </ModalBody>
+          <ModalFooter>
+            <ModalClose asChild>
+              <Button type="button" variant="ghost">
+                Cancelar
+              </Button>
+            </ModalClose>
+            <Button
+              type="submit"
+              disabled={saving || !form.plan.trim() || !form.proveedorId}
+            >
+              {saving ? "Guardando..." : editTarget ? "Guardar" : "Crear"}
+            </Button>
+          </ModalFooter>
+        </form>
       </Modal>
 
       {/* Delete confirmation modal */}
@@ -410,9 +420,9 @@ export default function SegurosPage() {
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar
           </Button>

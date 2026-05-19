@@ -40,6 +40,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  ModalClose,
 } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
@@ -69,6 +70,7 @@ const SERVICE_LABEL: Record<CategoriaServicio, string> = {
   TRASLADOS: "Traslados",
   SEGUROS: "Seguros",
   CIRCUITOS: "Circuitos",
+  HOTELES: "Hoteles",
 };
 
 // ---------------------------------------------------------------------------
@@ -459,13 +461,11 @@ export default function ProveedoresPage() {
             </FieldGroup>
           </ModalBody>
           <ModalFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setModalOpen(false)}
-            >
-              Cancelar
-            </Button>
+            <ModalClose asChild>
+              <Button type="button" variant="ghost">
+                Cancelar
+              </Button>
+            </ModalClose>
             <Button type="submit" disabled={saving || !form.nombre.trim()}>
               {saving
                 ? "Guardando..."
@@ -508,9 +508,9 @@ export default function ProveedoresPage() {
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar definitivamente
           </Button>

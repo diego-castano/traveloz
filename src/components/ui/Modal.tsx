@@ -245,3 +245,17 @@ export function ModalFooter({ children, className }: ModalFooterProps) {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// ModalClose — wrap a Cancel button to close the modal via Radix
+//
+// Usage:
+//   <ModalClose asChild>
+//     <Button variant="ghost">Cancelar</Button>
+//   </ModalClose>
+//
+// Avoids the boilerplate of `onClick={() => setOpen(false)}` on every footer
+// button and keeps the close behavior inside Radix's accessibility tree
+// (Escape, click-outside, etc all converge on the same handler).
+// ---------------------------------------------------------------------------
+export const ModalClose = Dialog.Close;

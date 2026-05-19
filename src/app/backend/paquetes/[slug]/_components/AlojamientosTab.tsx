@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -62,6 +61,7 @@ import {
   resolvePrecioAereo,
   resolvePrecioCircuito,
   formatCurrency,
+  deriveDestinoFromDestinos,
 } from "@/lib/utils";
 import type {
   Paquete,
@@ -253,8 +253,6 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   const regiones = useRegiones();
 
   const {
-    assignAlojamiento,
-    removeAlojamiento,
     createOpcionHotelera,
     updateOpcionHotelera,
     deleteOpcionHotelera,
@@ -264,6 +262,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
     reorderDestinos,
     upsertOpcionHotelPrincipal,
     deleteOpcionHotel,
+    updatePaquete,
   } = usePackageActions();
   const {
     updateAlojamiento,
@@ -273,17 +272,6 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   const { canEdit } = useAuth();
   const { toast } = useToast();
 
-  // Picker state. `pickerContext` is set only when the picker was opened from
-  // a specific destino slot ("Traer del catálogo"). When set, the picker
-  // (a) pre-filters hotels by ciudadId and (b) auto-assigns the pick to the
-  // opcion's destino (plus adding it to the pool if it wasn't already).
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerContext, setPickerContext] = useState<{
-    opcionId: string;
-    destinoId: string;
-    ciudadId: string;
-    ciudadNombre: string;
-  } | null>(null);
   const [quickEditHotelId, setQuickEditHotelId] = useState<string | null>(null);
 
   const nochesTotales = useNochesTotales(paquete.id);
@@ -293,66 +281,48 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
     [paquete.destino, paises, regiones],
   );
 
-  const destinoPickerOptions = useMemo(
-    () =>
-      destinos.map((destino) => {
-        let ciudadNombre = "(ciudad)";
-        for (const pais of paises) {
-          const found = pais.ciudades.find(
-            (ciudadItem) => ciudadItem.id === destino.ciudadId,
-          );
-          if (found) {
-            ciudadNombre = found.nombre;
-            break;
-          }
-        }
-
-        return {
-          destinoId: destino.id,
-          ciudadId: destino.ciudadId,
-          ciudadNombre,
-          noches: destino.noches,
-        };
-      }),
-    [destinos, paises],
-  );
-
   // -------------------------------------------------------------------------
-  // Pool (hoteles asignados al paquete, sin noches)
+  // Catálogo de hoteles por ciudad del paquete
+  //
+  // Diseño antiguo: existía un "Pool" — el operador agregaba hoteles al pool
+  // del paquete (PaqueteAlojamiento), y dentro de cada OpcionHotelera podía
+  // elegir un hotel del pool por destino. Era un paso intermedio innecesario.
+  //
+  // Diseño actual (refactor a pedido del cliente): el selector de hoteles
+  // dentro de cada destino lee directamente del catálogo global, filtrado por
+  // la ciudad del destino. Sin paso intermedio de "agregar al pool".
+  // PaqueteAlojamiento sigue existiendo en schema por compatibilidad histórica
+  // pero ya no se popula desde este flujo.
   // -------------------------------------------------------------------------
 
   const pool = useMemo(() => {
-    return services.alojamientos
-      .map((pa) => {
-        const alojamiento = serviceState.alojamientos.find(
-          (a) => a.id === pa.alojamientoId,
-        );
-        if (!alojamiento) return null;
+    const destinosCiudades = new Set(destinos.map((d) => d.ciudadId));
+    if (destinosCiudades.size === 0) return [];
+    return allAlojamientos
+      .filter((a) => a.ciudad?.id && destinosCiudades.has(a.ciudad.id))
+      .map((a) => {
         const precio = resolvePrecioAlojamiento(
           serviceState.preciosAlojamiento,
-          pa.alojamientoId,
+          a.id,
           paquete.validezDesde,
         );
         return {
-          pa,
-          alojamiento,
+          // synthetic id — there's no PaqueteAlojamiento row backing this
+          // entry under the new model. Kept so OpcionCard/DestinoSlot can
+          // keep the existing PoolEntry shape without further plumbing.
+          pa: { id: `cat-${a.id}` },
+          alojamiento: a,
           precio,
-          ciudadId: alojamiento.ciudad?.id ?? null,
-          ciudadNombre: alojamiento.ciudad?.nombre ?? null,
+          ciudadId: a.ciudad?.id ?? null,
+          ciudadNombre: a.ciudad?.nombre ?? null,
         };
-      })
-      .filter((x): x is NonNullable<typeof x> => x !== null);
+      });
   }, [
-    services.alojamientos,
-    serviceState.alojamientos,
+    allAlojamientos,
+    destinos,
     serviceState.preciosAlojamiento,
     paquete.validezDesde,
   ]);
-
-  const availableHotels = useMemo(() => {
-    const assignedIds = new Set(pool.map((p) => p.alojamiento.id));
-    return allAlojamientos.filter((a) => !assignedIds.has(a.id));
-  }, [allAlojamientos, pool]);
 
   // -------------------------------------------------------------------------
   // Costos fijos (read-only — vienen de Servicios)
@@ -449,61 +419,36 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   }, [services, serviceState, nochesTotales, paquete.validezDesde]);
 
   // -------------------------------------------------------------------------
+  // Auto-derive destino from itinerary when the paquete.destino field is empty
+  //
+  // The destino string drives listings, search, and the public site URL. Operators
+  // used to type it by hand; with the itinerary editor the city + country are
+  // already known, so derive it the first time an itinerary exists. We never
+  // overwrite a non-empty destino — operators can still customize it manually.
+  // Guarded by a ref to avoid retrying on every render.
+  // -------------------------------------------------------------------------
+  const autoDestinoTried = useRef(false);
+  const allCiudades = useMemo(
+    () => paises.flatMap((p) => p.ciudades),
+    [paises],
+  );
+
+  useEffect(() => {
+    if (autoDestinoTried.current) return;
+    if (paquete.destino?.trim()) return;
+    if (destinos.length === 0) return;
+    if (allCiudades.length === 0) return;
+
+    const derived = deriveDestinoFromDestinos(destinos, allCiudades, paises);
+    if (!derived || derived === paquete.destino) return;
+
+    autoDestinoTried.current = true;
+    void updatePaquete({ ...paquete, destino: derived });
+  }, [destinos, allCiudades, paises, paquete, updatePaquete]);
+
+  // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
-
-  const handleAddHotelToPool = useCallback(
-    async (aloj: Alojamiento) => {
-      const alreadyInPool = pool.some(
-        (p) => p.alojamiento.id === aloj.id,
-      );
-      if (!alreadyInPool) {
-        await assignAlojamiento({
-          paqueteId: paquete.id,
-          alojamientoId: aloj.id,
-          textoDisplay: null,
-          orden: pool.length,
-        });
-      }
-
-      // If the picker was opened from a destino slot, auto-assign the hotel
-      // to that destino in that opcion. User gets one-click "traer del
-      // catálogo y asignar" instead of picker → go back → choose again.
-      if (pickerContext) {
-        await upsertOpcionHotelPrincipal(
-          pickerContext.opcionId,
-          pickerContext.destinoId,
-          aloj.id,
-        );
-        toast(
-          "success",
-          "Hotel asignado",
-          `${aloj.nombre} agregado y asignado a ${pickerContext.ciudadNombre}`,
-        );
-      } else if (!alreadyInPool) {
-        toast("success", "Hotel agregado al paquete", aloj.nombre);
-      }
-
-      setPickerOpen(false);
-      setPickerContext(null);
-    },
-    [
-      assignAlojamiento,
-      paquete.id,
-      pool,
-      pickerContext,
-      upsertOpcionHotelPrincipal,
-      toast,
-    ],
-  );
-
-  const handleRemoveHotelFromPool = useCallback(
-    (paqueteAlojId: string) => {
-      removeAlojamiento(paqueteAlojId);
-      toast("success", "Hotel quitado del pool");
-    },
-    [removeAlojamiento, toast],
-  );
 
   // -- Destinos --
 
@@ -577,6 +522,17 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
     [updateOpcionHotelera],
   );
 
+  const handleUpdateOpcionTextoDisplay = useCallback(
+    (opcion: OpcionHotelera, value: string) => {
+      const trimmed = value.trim();
+      updateOpcionHotelera({
+        ...opcion,
+        textoDisplay: trimmed.length > 0 ? trimmed : null,
+      });
+    },
+    [updateOpcionHotelera],
+  );
+
   const handleDeleteOpcion = useCallback(
     (id: string) => {
       deleteOpcionHotelera(id);
@@ -632,142 +588,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
         />
       </motion.div>
 
-      {/* ── 2. Pool de hoteles del paquete ── */}
-      <motion.div variants={stagger.item.variants}>
-        <div className="rounded-2xl p-5" style={glassMaterials.frostedSubtle}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Hotel className="h-4 w-4 text-neutral-500" />
-              <h4 className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">
-                Pool de Hoteles
-              </h4>
-              <span className="text-xs text-neutral-400">
-                ({pool.length})
-              </span>
-            </div>
-            {canEdit && (
-              <Button
-                size="sm"
-                onClick={() => setPickerOpen(true)}
-                leftIcon={<Plus className="h-3.5 w-3.5" />}
-              >
-                Agregar hotel
-              </Button>
-            )}
-          </div>
-
-          {pool.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Hotel className="h-10 w-10 text-neutral-300 mb-2" />
-              <p className="text-sm text-neutral-500">
-                Aun no hay hoteles en el pool.
-              </p>
-            </div>
-          ) : (
-            (() => {
-              // Group pool hotels by their ciudad. Order follows the paquete's
-              // destinos list (so groups appear in itinerary order); any ciudad
-              // not present in destinos is appended after, then orphans last.
-              const byCiudad = new Map<string, typeof pool>();
-              const ORPHAN_KEY = "__sin_ciudad__";
-              for (const entry of pool) {
-                const key = entry.ciudadId ?? ORPHAN_KEY;
-                const list = byCiudad.get(key) ?? [];
-                list.push(entry);
-                byCiudad.set(key, list);
-              }
-              const orderedCiudadIds: string[] = [];
-              for (const d of destinos) {
-                if (d.ciudadId && byCiudad.has(d.ciudadId) && !orderedCiudadIds.includes(d.ciudadId)) {
-                  orderedCiudadIds.push(d.ciudadId);
-                }
-              }
-              for (const id of Array.from(byCiudad.keys())) {
-                if (id === ORPHAN_KEY) continue;
-                if (!orderedCiudadIds.includes(id)) orderedCiudadIds.push(id);
-              }
-              if (byCiudad.has(ORPHAN_KEY)) orderedCiudadIds.push(ORPHAN_KEY);
-
-              return (
-                <div className="space-y-4">
-                  {orderedCiudadIds.map((ciudadId) => {
-                    const entries = byCiudad.get(ciudadId) ?? [];
-                    const ciudadNombre =
-                      ciudadId === ORPHAN_KEY
-                        ? "Sin ciudad asignada"
-                        : (entries[0]?.ciudadNombre ?? "Sin ciudad asignada");
-                    return (
-                      <div key={ciudadId}>
-                        <div className="flex items-center gap-2 px-1 mb-2">
-                          <MapPin className="h-3.5 w-3.5 text-neutral-400" />
-                          <h5 className="text-[11px] uppercase tracking-wide text-neutral-500 font-semibold">
-                            {ciudadNombre}
-                          </h5>
-                          <span className="text-[11px] text-neutral-400">
-                            {entries.length}{" "}
-                            {entries.length === 1 ? "hotel" : "hoteles"}
-                          </span>
-                        </div>
-                        <div className="space-y-2">
-                          {entries.map((entry) => (
-                            <div
-                              key={entry.pa.id}
-                              className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/60 border border-white/40"
-                            >
-                              <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <div className="flex items-center gap-0.5 flex-shrink-0">
-                                  {Array.from({
-                                    length: entry.alojamiento.categoria ?? 0,
-                                  }).map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className="h-3 w-3 fill-amber-400 text-amber-400"
-                                    />
-                                  ))}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-sm font-medium text-neutral-800 truncate">
-                                    {entry.alojamiento.nombre}
-                                  </div>
-                                  {entry.precio && (
-                                    <div className="text-xs text-neutral-500 font-mono">
-                                      {formatCurrency(entry.precio.precioPorNoche)}/noche
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              {canEdit && (
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  <button
-                                    onClick={() => setQuickEditHotelId(entry.alojamiento.id)}
-                                    className="p-1 rounded hover:bg-teal-50 text-neutral-300 hover:text-teal-600 transition-colors"
-                                    title="Edición rápida"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleRemoveHotelFromPool(entry.pa.id)}
-                                    className="p-1 rounded hover:bg-red-50 text-neutral-300 hover:text-red-500 transition-colors"
-                                    title="Quitar del pool del paquete"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()
-          )}
-        </div>
-      </motion.div>
-
-      {/* ── 3. Costos fijos ── */}
+      {/* ── 2. Costos fijos ── */}
       <motion.div variants={stagger.item.variants}>
         <div className="rounded-2xl p-5" style={glassMaterials.frostedSubtle}>
           <div className="flex items-center justify-between mb-3">
@@ -813,7 +634,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
         </div>
       </motion.div>
 
-      {/* ── 4. Opciones hoteleras ── */}
+      {/* ── 3. Opciones hoteleras ── */}
       <motion.div variants={stagger.item.variants}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -856,34 +677,17 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
                 netoFijos={netoFijos}
                 canEdit={canEdit}
                 onUpdateName={handleUpdateOpcionName}
+                onUpdateTextoDisplay={handleUpdateOpcionTextoDisplay}
                 onDelete={handleDeleteOpcion}
                 onUpdateFactor={handleUpdateOpcionFactor}
                 onUpsertHotel={upsertOpcionHotelPrincipal}
                 onDeleteHotel={deleteOpcionHotel}
-                onOpenCatalogPicker={(ctx) => {
-                  if (ctx) setPickerContext(ctx);
-                  else setPickerContext(null);
-                  setPickerOpen(true);
-                }}
+                onQuickEditHotel={setQuickEditHotelId}
               />
             ))}
           </AnimatePresence>
         )}
       </motion.div>
-
-      {/* ── Modal: Agregar hotel al pool ── */}
-      <HotelPickerModal
-        open={pickerOpen}
-        onOpenChange={(open) => {
-          setPickerOpen(open);
-          if (!open) setPickerContext(null);
-        }}
-        hotels={availableHotels}
-        onPick={handleAddHotelToPool}
-        filterCiudadId={pickerContext?.ciudadId}
-        filterCiudadNombre={pickerContext?.ciudadNombre}
-        destinoOptions={pickerContext ? [] : destinoPickerOptions}
-      />
 
       {/* ── Modal: Edicion rapida ── */}
       <QuickEditHotelModal
@@ -1563,13 +1367,6 @@ interface PoolEntry {
   ciudadNombre: string | null;
 }
 
-interface PickerContext {
-  opcionId: string;
-  destinoId: string;
-  ciudadId: string;
-  ciudadNombre: string;
-}
-
 interface OpcionCardProps {
   opcion: OpcionHotelera;
   destinos: PaqueteDestino[];
@@ -1578,6 +1375,7 @@ interface OpcionCardProps {
   netoFijos: number;
   canEdit: boolean;
   onUpdateName: (opcion: OpcionHotelera, newName: string) => void;
+  onUpdateTextoDisplay: (opcion: OpcionHotelera, value: string) => void;
   onDelete: (id: string) => void;
   onUpdateFactor: (opcion: OpcionHotelera, newFactor: number) => void;
   onUpsertHotel: (
@@ -1586,9 +1384,8 @@ interface OpcionCardProps {
     alojamientoId: string,
   ) => Promise<OpcionHotel>;
   onDeleteHotel: (id: string) => Promise<void>;
-  /** Open the catalog picker. If ctx is provided, the picker pre-filters by
-   *  ciudadId and auto-assigns the picked hotel to the opcion/destino. */
-  onOpenCatalogPicker: (ctx: PickerContext | null) => void;
+  /** Open the quick-edit hotel modal for a specific hotel from a destino slot. */
+  onQuickEditHotel: (hotelId: string) => void;
 }
 
 function OpcionCard({
@@ -1599,11 +1396,12 @@ function OpcionCard({
   netoFijos,
   canEdit,
   onUpdateName,
+  onUpdateTextoDisplay,
   onDelete,
   onUpdateFactor,
   onUpsertHotel,
   onDeleteHotel,
-  onOpenCatalogPicker,
+  onQuickEditHotel,
 }: OpcionCardProps) {
   const opcionHoteles = useOpcionHoteles(opcion.id);
 
@@ -1672,25 +1470,42 @@ function OpcionCard({
     >
       <div className="rounded-2xl p-5" style={frostedAccent}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between mb-4 gap-3">
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              {canEdit ? (
+                <input
+                  type="text"
+                  value={opcion.nombre}
+                  onChange={(e) => onUpdateName(opcion, e.target.value)}
+                  className="text-base font-semibold text-neutral-800 bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-teal-500 focus:outline-none transition-colors px-0 py-0.5"
+                />
+              ) : (
+                <span className="text-base font-semibold text-neutral-800">
+                  {opcion.nombre}
+                </span>
+              )}
+              {destinos.length > 1 && (
+                <span className="text-[10px] uppercase tracking-wider text-teal-600 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5 font-semibold">
+                  Multi-destino · {destinos.length} ciudades
+                </span>
+              )}
+            </div>
             {canEdit ? (
               <input
                 type="text"
-                value={opcion.nombre}
-                onChange={(e) => onUpdateName(opcion, e.target.value)}
-                className="text-base font-semibold text-neutral-800 bg-transparent border-b border-transparent hover:border-neutral-300 focus:border-teal-500 focus:outline-none transition-colors px-0 py-0.5"
+                value={opcion.textoDisplay ?? ""}
+                placeholder="Texto público (ej. All Inclusive 5★)…"
+                onChange={(e) =>
+                  onUpdateTextoDisplay(opcion, e.target.value)
+                }
+                className="text-[12px] text-neutral-500 bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-teal-400 focus:outline-none transition-colors px-0 py-0.5 w-full max-w-[420px]"
               />
-            ) : (
-              <span className="text-base font-semibold text-neutral-800">
-                {opcion.nombre}
-              </span>
-            )}
-            {destinos.length > 1 && (
-              <span className="text-[10px] uppercase tracking-wider text-teal-600 bg-teal-50 border border-teal-200 rounded-full px-2 py-0.5 font-semibold">
-                Multi-destino · {destinos.length} ciudades
-              </span>
-            )}
+            ) : opcion.textoDisplay ? (
+              <p className="text-[12px] text-neutral-500">
+                {opcion.textoDisplay}
+              </p>
+            ) : null}
           </div>
           {canEdit && (
             <button
@@ -1716,7 +1531,7 @@ function OpcionCard({
               canEdit={canEdit}
               onUpsertHotel={onUpsertHotel}
               onDeleteHotel={onDeleteHotel}
-              onOpenCatalogPicker={onOpenCatalogPicker}
+              onQuickEditHotel={onQuickEditHotel}
             />
           ))}
         </div>
@@ -1824,7 +1639,7 @@ function DestinoSlot({
   canEdit,
   onUpsertHotel,
   onDeleteHotel,
-  onOpenCatalogPicker,
+  onQuickEditHotel,
 }: {
   destino: PaqueteDestino;
   opcionId: string;
@@ -1838,7 +1653,7 @@ function DestinoSlot({
     alojamientoId: string,
   ) => Promise<OpcionHotel>;
   onDeleteHotel: (id: string) => Promise<void>;
-  onOpenCatalogPicker: (ctx: PickerContext | null) => void;
+  onQuickEditHotel: (hotelId: string) => void;
 }) {
   const paises = usePaises();
   const ciudadNombre = useMemo(() => {
@@ -1849,7 +1664,10 @@ function DestinoSlot({
     return "(ciudad)";
   }, [paises, destino.ciudadId]);
 
-  // Hoteles del pool filtrados por la ciudad del destino.
+  // Catálogo completo de hoteles cuya ciudad === ciudad del destino.
+  // El "pool" del paquete fue eliminado: ahora el selector lee del catálogo
+  // global directamente. Si la ciudad no tiene hoteles, el operador debe
+  // cargarlos desde /backend/alojamientos/nuevo.
   const hotelesDisponibles = useMemo(
     () => pool.filter((p) => p.ciudadId === destino.ciudadId),
     [pool, destino.ciudadId],
@@ -1900,22 +1718,17 @@ function DestinoSlot({
 
       {hotelesDisponibles.length === 0 ? (
         <div className="flex items-center justify-between gap-2 text-xs text-neutral-400 italic px-2 py-1">
-          <span>Sin hoteles en el pool para esta ciudad.</span>
+          <span>Sin hoteles en el catálogo para {ciudadNombre}.</span>
           {canEdit && (
-            <button
-              onClick={() =>
-                onOpenCatalogPicker({
-                  opcionId,
-                  destinoId: destino.id,
-                  ciudadId: destino.ciudadId,
-                  ciudadNombre,
-                })
-              }
+            <a
+              href="/backend/alojamientos/nuevo"
+              target="_blank"
+              rel="noreferrer"
               className="flex items-center gap-1 text-teal-600 hover:text-teal-700 font-medium px-2 py-1 rounded hover:bg-teal-50 transition-colors whitespace-nowrap not-italic"
             >
               <Plus className="h-3 w-3" />
-              Traer del catálogo
-            </button>
+              Cargar hotel
+            </a>
           )}
         </div>
       ) : canEdit ? (
@@ -1936,6 +1749,17 @@ function DestinoSlot({
               </option>
             ))}
           </select>
+          {hotelAsignado && (
+            <button
+              type="button"
+              onClick={() => onQuickEditHotel(hotelAsignado.alojamientoId)}
+              className="p-1.5 rounded-md text-neutral-400 hover:text-teal-600 hover:bg-teal-50 transition-colors flex-shrink-0"
+              title="Edición rápida del hotel"
+              aria-label="Edición rápida del hotel"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+          )}
           {hotelAsignado && precioAsignado && (
             <span className="text-xs font-mono text-neutral-700 whitespace-nowrap flex-shrink-0">
               {formatCurrency(precioAsignado.precioPorNoche)}/n ×{" "}
@@ -1955,236 +1779,6 @@ function DestinoSlot({
   );
 }
 
-// ---------------------------------------------------------------------------
-// HotelPickerModal — Select2-style combobox for the pool
-// ---------------------------------------------------------------------------
-
-interface HotelPickerModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  hotels: Alojamiento[];
-  onPick: (hotel: Alojamiento) => void;
-  /** When set, the picker restricts the list to hotels whose ciudad.id matches. */
-  filterCiudadId?: string;
-  /** Human-readable name to show in the "filtering by ..." banner. */
-  filterCiudadNombre?: string;
-  destinoOptions?: Array<{
-    destinoId: string;
-    ciudadId: string;
-    ciudadNombre: string;
-    noches: number;
-  }>;
-}
-
-function HotelPickerModal({
-  open,
-  onOpenChange,
-  hotels,
-  onPick,
-  filterCiudadId,
-  filterCiudadNombre,
-  destinoOptions = [],
-}: HotelPickerModalProps) {
-  const [search, setSearch] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [selectedCiudadId, setSelectedCiudadId] = useState<string>("");
-
-  useEffect(() => {
-    if (open) {
-      setSearch("");
-      setActiveIndex(0);
-      setSelectedCiudadId(filterCiudadId ?? destinoOptions[0]?.ciudadId ?? "");
-    }
-  }, [open, filterCiudadId, destinoOptions]);
-
-  const effectiveCiudadId = filterCiudadId ?? selectedCiudadId;
-  const effectiveCiudadNombre =
-    filterCiudadNombre ??
-    destinoOptions.find((destino) => destino.ciudadId === selectedCiudadId)
-      ?.ciudadNombre;
-
-  // Base pool: pre-filter by ciudadId when context is set. Search then
-  // narrows further by text.
-  const cityFiltered = useMemo(
-    () =>
-      effectiveCiudadId
-        ? hotels.filter((h) => h.ciudad?.id === effectiveCiudadId)
-        : hotels,
-    [hotels, effectiveCiudadId],
-  );
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return cityFiltered;
-    return cityFiltered.filter((h) => {
-      const haystack = [h.nombre, h.ciudad?.nombre ?? ""]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [cityFiltered, search]);
-
-  useEffect(() => {
-    if (activeIndex >= filtered.length) setActiveIndex(0);
-  }, [filtered.length, activeIndex]);
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (filtered.length === 0) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActiveIndex((i) => (i + 1) % filtered.length);
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex((i) => (i - 1 + filtered.length) % filtered.length);
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      const target = filtered[activeIndex];
-      if (target) onPick(target);
-    }
-  };
-
-  return (
-    <Modal open={open} onOpenChange={onOpenChange} size="sm">
-      <ModalHeader
-        title={
-          effectiveCiudadNombre
-            ? `Agregar hotel — ${effectiveCiudadNombre}`
-            : "Agregar hotel"
-        }
-        description={
-          effectiveCiudadNombre
-            ? `Hoteles disponibles en ${effectiveCiudadNombre}.`
-            : "Buscá por nombre o ciudad."
-        }
-      />
-      <ModalBody>
-        <div className="space-y-2">
-          {!filterCiudadId && destinoOptions.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              {destinoOptions.map((destino) => {
-                const selected = destino.ciudadId === selectedCiudadId;
-                return (
-                  <button
-                    key={destino.destinoId}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCiudadId(destino.ciudadId);
-                      setActiveIndex(0);
-                    }}
-                    className={`rounded-md border px-2.5 py-1 text-[11.5px] font-medium transition-colors ${
-                      selected
-                        ? "border-teal-300 bg-teal-50 text-teal-700"
-                        : "border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-50"
-                    }`}
-                  >
-                    {destino.ciudadNombre}
-                    <span className="ml-1 font-mono text-[10.5px] opacity-70">
-                      {destino.noches}n
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {effectiveCiudadNombre && (
-            <div className="flex items-center justify-between gap-2 text-[11px] bg-teal-50 border border-teal-200/60 rounded-md px-2.5 py-1.5">
-              <div className="flex items-center gap-1.5 text-teal-700 font-medium">
-                <MapPin className="h-3 w-3" />
-                <span>Filtrando por {effectiveCiudadNombre}</span>
-              </div>
-              <span className="font-mono text-teal-700">
-                {cityFiltered.length} hotel{cityFiltered.length === 1 ? "" : "es"}
-              </span>
-            </div>
-          )}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
-            <Input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                effectiveCiudadNombre
-                  ? `Buscar en ${effectiveCiudadNombre}…`
-                  : "Escribí para buscar…"
-              }
-              className="pl-9"
-            />
-            {filtered.length > 0 && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-neutral-400 font-mono">
-                {filtered.length}
-              </span>
-            )}
-          </div>
-
-          <div className="max-h-[380px] overflow-y-auto -mx-1 px-1 rounded-lg">
-            {filtered.length === 0 ? (
-              <div className="text-sm text-neutral-400 text-center py-8 italic">
-                {search.trim()
-                  ? "Sin resultados."
-                  : effectiveCiudadNombre
-                    ? `No hay hoteles en ${effectiveCiudadNombre}.`
-                    : "No hay hoteles disponibles."}
-              </div>
-            ) : (
-              <ul className="divide-y divide-neutral-100">
-                {filtered.map((h, i) => {
-                  const active = i === activeIndex;
-                  return (
-                    <li key={h.id}>
-                      <button
-                        onClick={() => onPick(h)}
-                        onMouseEnter={() => setActiveIndex(i)}
-                        className={`w-full flex items-center gap-3 py-2 px-2.5 text-left transition-colors ${
-                          active ? "bg-teal-50/80" : "hover:bg-neutral-50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-0.5 flex-shrink-0 w-[52px]">
-                          {h.categoria && h.categoria > 0 ? (
-                            <>
-                              <span className="text-[11px] font-mono font-semibold text-amber-600">
-                                {h.categoria}
-                              </span>
-                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                            </>
-                          ) : (
-                            <span className="text-[11px] text-neutral-300">
-                              —
-                            </span>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-neutral-800 truncate">
-                            {h.nombre}
-                          </div>
-                          {h.ciudad?.nombre && (
-                            <div className="text-[11px] text-neutral-500 truncate">
-                              {h.ciudad.nombre}
-                            </div>
-                          )}
-                        </div>
-                        <Plus
-                          className={`h-4 w-4 flex-shrink-0 transition-colors ${
-                            active ? "text-teal-600" : "text-neutral-300"
-                          }`}
-                        />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-          <p className="text-[11px] text-neutral-400 text-center pt-1">
-            ↑/↓ para navegar · Enter para agregar · Esc para cerrar
-          </p>
-        </div>
-      </ModalBody>
-    </Modal>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // QuickEditHotelModal — inline editor for hotel basics + nightly price
@@ -2336,6 +1930,12 @@ function QuickEditHotelModal({
         title="Edición rápida del hotel"
         description="Cambios menores sin abandonar el paquete."
       />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!saving && nombre.trim()) void handleSave();
+        }}
+      >
       <ModalBody>
         <div className="space-y-3">
           <div>
@@ -2343,6 +1943,7 @@ function QuickEditHotelModal({
               Nombre
             </label>
             <Input
+              autoFocus
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               placeholder="Nombre del hotel"
@@ -2414,6 +2015,7 @@ function QuickEditHotelModal({
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-200/60">
             <Button
+              type="button"
               variant="ghost"
               size="sm"
               onClick={() => onOpenChange(false)}
@@ -2422,8 +2024,8 @@ function QuickEditHotelModal({
               Cancelar
             </Button>
             <Button
+              type="submit"
               size="sm"
-              onClick={handleSave}
               disabled={saving || !nombre.trim()}
               leftIcon={
                 saving ? (
@@ -2438,6 +2040,7 @@ function QuickEditHotelModal({
           </div>
         </div>
       </ModalBody>
+      </form>
     </Modal>
   );
 }

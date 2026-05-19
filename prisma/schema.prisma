@@ -564,13 +564,15 @@ model PaqueteEtiqueta {
 }
 
 model OpcionHotelera {
-  id          String  @id @default(cuid())
-  paqueteId   String
-  nombre      String
-  factor      Float
-  precioVenta Float
-  orden       Int     @default(0)
-  proveedorId String?
+  id           String  @id @default(cuid())
+  paqueteId    String
+  nombre       String
+  factor       Float
+  precioVenta  Float
+  orden        Int     @default(0)
+  proveedorId  String?
+  /** Optional custom blurb shown publicly with this option (e.g. "All Inclusive 5★"). */
+  textoDisplay String?
 
   paquete   Paquete       @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
   proveedor Proveedor?    @relation(fields: [proveedorId], references: [id])
@@ -742,46 +744,52 @@ model Cotizacion {
 }
 
 model MensajeContacto {
-  id          String        @id @default(cuid())
-  nombre      String
-  email       String
-  telefono    String?
-  comentarios String        @db.Text
-  estado      EstadoMensaje @default(NUEVO)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  nombre          String
+  email           String
+  telefono        String?
+  comentarios     String        @db.Text
+  estado          EstadoMensaje @default(NUEVO)
+  asignadoAUserId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([estado])
+  @@index([asignadoAUserId])
 }
 
 model ContactoCorporativo {
-  id          String        @id @default(cuid())
-  nombre      String
-  email       String
-  telefono    String?
-  cargo       String?
-  empresa     String
-  comentarios String?       @db.Text
-  estado      EstadoMensaje @default(NUEVO)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  nombre          String
+  email           String
+  telefono        String?
+  cargo           String?
+  empresa         String
+  comentarios     String?       @db.Text
+  estado          EstadoMensaje @default(NUEVO)
+  asignadoAUserId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([estado])
+  @@index([asignadoAUserId])
 }
 
 model Postulacion {
-  id         String        @id @default(cuid())
-  nombre     String
-  email      String
-  telefono   String?
-  motivacion String        @db.Text
-  cvUrl      String
-  cvFilename String
-  estado     EstadoMensaje @default(NUEVO)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id              String        @id @default(cuid())
+  nombre          String
+  email           String
+  telefono        String?
+  motivacion      String        @db.Text
+  cvUrl           String
+  cvFilename      String
+  estado          EstadoMensaje @default(NUEVO)
+  asignadoAUserId String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@index([estado])
+  @@index([asignadoAUserId])
 }
 
 model SuscripcionNewsletter {

@@ -31,7 +31,13 @@ type Paquete = {
 };
 
 type Props = {
-  region: { id: string; slug: string; nombre: string; descripcion: string | null };
+  region: {
+    id: string;
+    slug: string;
+    nombre: string;
+    descripcion: string | null;
+    heroImage?: string | null;
+  };
   paises: Pais[];
   paquetes: Paquete[];
 };
@@ -185,6 +191,24 @@ export function RegionExplorer({ region, paises, paquetes }: Props) {
               )}
             </AnimatePresence>
           </div>
+          {region.heroImage && (
+            <div
+              style={{
+                marginBottom: 20,
+                borderRadius: 16,
+                overflow: "hidden",
+                aspectRatio: "16 / 5",
+                background: "#eee",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={region.heroImage}
+                alt={region.nombre}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            </div>
+          )}
           <h1 className="h1" style={{ marginBottom: 8 }}>
             {region.nombre}
           </h1>

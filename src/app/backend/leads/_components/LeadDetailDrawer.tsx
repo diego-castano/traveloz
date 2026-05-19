@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   X,
   Mail,
@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Trash2,
   FileDown,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -27,12 +28,29 @@ type Field = {
   icon?: typeof Mail;
 };
 
+export interface AssignableUser {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface AssignmentControl {
+  /** Currently assigned userId, or null if unassigned. */
+  current: string | null;
+  /** Eligible users to assign — typically vendedor/admin. */
+  options: AssignableUser[];
+  /** Callback executed when the operator picks a different option. */
+  onAssign: (userId: string | null) => Promise<void> | void;
+}
+
 type Props = {
   kind: LeadKind;
   open: boolean;
   onClose: () => void;
   onDeleted?: () => void;
   onEstadoChange?: (next: EstadoMensaje) => void;
+  /** Optional — when present, shows an "Asignar a" picker in the drawer. */
+  assignment?: AssignmentControl;
   data: {
     id: string;
     title: string;
@@ -51,9 +69,11 @@ export function LeadDetailDrawer({
   onClose,
   onDeleted,
   onEstadoChange,
+  assignment,
   data,
 }: Props) {
   const { toast } = useToast();
+  const [assignSaving, setAssignSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -166,6 +186,46 @@ export function LeadDetailDrawer({
               </div>
               <p className="text-sm text-neutral-700 whitespace-pre-wrap leading-relaxed">
                 {data.longText.value}
+              </p>
+            </div>
+          )}
+
+          {assignment && (
+            <div className="border-t border-neutral-200 pt-5">
+              <div className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5" />
+                Asignado a
+              </div>
+              <select
+                className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 disabled:opacity-60"
+                disabled={assignSaving}
+                value={assignment.current ?? ""}
+                onChange={async (e) => {
+                  const next = e.target.value === "" ? null : e.target.value;
+                  setAssignSaving(true);
+                  try {
+                    await assignment.onAssign(next);
+                    toast(
+                      "success",
+                      next ? "Lead asignado" : "Asignación removida",
+                    );
+                  } catch (err) {
+                    toast("error", "No se pudo asignar", (err as Error).message);
+                  } finally {
+                    setAssignSaving(false);
+                  }
+                }}
+              >
+                <option value="">— Sin asignar —</option>
+                {assignment.options.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} · {u.role.toLowerCase()}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-neutral-500 mt-1.5">
+                El vendedor asignado verá esta cotización como propia y recibirá
+                las notificaciones.
               </p>
             </div>
           )}

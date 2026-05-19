@@ -17,6 +17,7 @@ import { Header } from "@/components/public/Header";
 import { Footer } from "@/components/public/Footer";
 import { AgenciaModal } from "@/components/public/AgenciaModal";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
+import { getSiteSettings } from "@/lib/public-data";
 import "./site.css";
 
 // Public site is data-driven from CMS (SiteSettings) and Postgres. Skip SSG
@@ -26,7 +27,8 @@ import "./site.css";
 // effective ISR-style caching at runtime.
 export const dynamic = "force-dynamic";
 
-export default function PublicLayout({ children }: { children: ReactNode }) {
+export default async function PublicLayout({ children }: { children: ReactNode }) {
+  const footerSettings = await getSiteSettings("footer");
   return (
     <>
       <div className="main-wrapper">
@@ -36,7 +38,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       </div>
 
       <WhatsAppButton />
-      <AgenciaModal />
+      <AgenciaModal certificadoUrl={footerSettings.agencia_certificado_url} />
     </>
   );
 }

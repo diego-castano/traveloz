@@ -18,7 +18,7 @@ import {
   DataTablePageHeader,
 } from "@/components/ui/data/DataTableToolbar";
 import { EmptyState } from "@/components/ui/data/EmptyState";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { Select } from "@/components/ui/Select";
@@ -479,6 +479,12 @@ export default function TrasladosPage() {
         >
           {null}
         </ModalHeader>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!saving) handleSave();
+          }}
+        >
         <ModalBody>
           <FieldGroup columns={1}>
             <Field>
@@ -561,17 +567,16 @@ export default function TrasladosPage() {
           </FieldGroup>
         </ModalBody>
         <ModalFooter>
-          <Button
-            variant="ghost"
-            onClick={() => setModalOpen(false)}
-            disabled={saving}
-          >
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} loading={saving}>
+          <ModalClose asChild>
+            <Button type="button" variant="ghost" disabled={saving}>
+              Cancelar
+            </Button>
+          </ModalClose>
+          <Button type="submit" loading={saving}>
             {editTarget ? "Guardar cambios" : "Crear traslado"}
           </Button>
         </ModalFooter>
+        </form>
       </Modal>
 
       {/* Delete confirmation modal */}
@@ -592,9 +597,9 @@ export default function TrasladosPage() {
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar
           </Button>

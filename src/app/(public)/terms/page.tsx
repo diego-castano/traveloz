@@ -3,7 +3,7 @@
 // via /backend/web/terms.
 // ---------------------------------------------------------------------------
 
-import { getTermSections } from "@/lib/public-data";
+import { getTermSections, getSiteSettings } from "@/lib/public-data";
 import {
   AccordionStatic,
   type AccordionItem,
@@ -16,29 +16,38 @@ export const metadata = {
 };
 
 export default async function TermsPage() {
-  const sections = await getTermSections();
+  const [sections, settings] = await Promise.all([
+    getTermSections(),
+    getSiteSettings("terms"),
+  ]);
   const items: AccordionItem[] = sections.map((s) => ({
     id: s.id,
     title: s.title,
     bodyHtml: s.bodyHtml,
   }));
 
+  const titulo =
+    settings.terms_titulo?.trim() || "Términos y condiciones de compra";
+  const subtitulo =
+    settings.terms_subtitulo?.trim() ||
+    "Todo lo que necesitás saber acerca de las contrataciones de tus servicios";
+  const bannerDesktop =
+    settings.terms_banner_desktop?.trim() || "/site/img/terms-banner.webp";
+  const bannerMobile =
+    settings.terms_banner_mobile?.trim() || "/site/img/terms-mobile-banner.png";
+
   return (
     <>
       <section className="terms-banner-area">
-        <img
-          className="bg_image d-md-none"
-          src="/site/img/faq-mobile-banner.png"
-          alt=""
-        />
+        <img className="bg_image d-md-none" src={bannerMobile} alt="" />
         <div className="container">
           <img
-            src="/site/img/terms-banner.webp"
+            src={bannerDesktop}
             alt=""
             className="terms_bg_img d-none d-md-block"
           />
           <img
-            src="/site/img/terms-mobile-banner.png"
+            src={bannerMobile}
             alt=""
             className="terms_bg_img d-md-none"
           />
@@ -46,13 +55,10 @@ export default async function TermsPage() {
             <div className="col-lg-10 col-10">
               <div className="banner-text text_white">
                 <h1 className="h1 text_white">
-                  <strong>Términos y condiciones de compra</strong>
+                  <strong>{titulo}</strong>
                 </h1>
                 <div className="inner-text">
-                  <p>
-                    Todo lo que necesitás saber acerca de las contrataciones de
-                    tus servicios
-                  </p>
+                  <p>{subtitulo}</p>
                 </div>
               </div>
             </div>

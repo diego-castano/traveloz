@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/data/DataTableToolbar";
 import { RowActions } from "@/components/ui/data/RowActions";
 import { EmptyState } from "@/components/ui/data/EmptyState";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import {
   useCircuitos,
@@ -432,9 +432,9 @@ export default function CircuitosPage() {
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar
           </Button>

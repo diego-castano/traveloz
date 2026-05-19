@@ -18,6 +18,13 @@ export default async function CotizarPage() {
     s.cotizar_lead ??
     "Contanos a dónde querés ir, cuándo y cuántos viajan. Diseñamos el itinerario y te respondemos en 24 horas.";
 
+  const porqueTitulo = s.cotizar_porque_titulo?.trim();
+  const porqueCards = [1, 2, 3].map((n) => ({
+    icon: s[`cotizar_porque_card_${n}_icon`]?.trim(),
+    titulo: s[`cotizar_porque_card_${n}_titulo`]?.trim(),
+    texto: s[`cotizar_porque_card_${n}_texto`]?.trim(),
+  })).filter((c) => c.titulo);
+
   return (
     <section className="content-area">
       <div className="container">
@@ -30,6 +37,25 @@ export default async function CotizarPage() {
             <CotizarForm />
           </div>
         </div>
+
+        {porqueTitulo && porqueCards.length > 0 && (
+          <div className="mt-5 pt-5">
+            <div className="text-center mb_50">
+              <h2 className="section-heading">{porqueTitulo}</h2>
+            </div>
+            <div className="row">
+              {porqueCards.map((c, i) => (
+                <div className="col-md-4" key={i}>
+                  <div className="icon-teaser style1 text-center">
+                    {c.icon && <img src={c.icon} alt="" />}
+                    <h3 className="title">{c.titulo}</h3>
+                    {c.texto && <p>{c.texto}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -3,6 +3,7 @@ import {
   getTipoPaqueteBySlug,
   getPaquetesByTipo,
   getRegionBySlug,
+  getSiteSettings,
 } from "@/lib/public-data";
 import { DestinosGrid } from "@/components/public/DestinosGrid";
 import { PackageCard } from "@/components/public/PackageCard";
@@ -59,6 +60,9 @@ export default async function DestinosPage({
   }
 
   // Modo default: grid de regiones
-  const regiones = await getRegionesPublicas();
-  return <DestinosGrid regiones={regiones} />;
+  const [regiones, settings] = await Promise.all([
+    getRegionesPublicas(),
+    getSiteSettings("destinos"),
+  ]);
+  return <DestinosGrid regiones={regiones} settings={settings} />;
 }

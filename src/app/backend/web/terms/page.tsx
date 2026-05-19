@@ -9,6 +9,7 @@ import {
 } from "@/actions/cms-content.actions";
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
+import { SettingsForm } from "../_components/SettingsForm";
 
 type Row = Awaited<ReturnType<typeof listTermSections>>[number];
 
@@ -42,13 +43,20 @@ export default function WebTermsPage() {
       : { title: "", bodyHtml: "" };
 
   return (
-    <div className="p-6 max-w-4xl space-y-4">
-      <div>
+    <div className="p-6 max-w-4xl space-y-8">
+      <SettingsForm
+        group="terms"
+        title="Página /terms — Cabecera"
+        blurb="Título, subtítulo y banners (desktop + mobile) que se muestran arriba de las secciones legales."
+        publicHref="/terms"
+      />
+
+      <div className="border-t border-neutral-200/80 pt-6">
         <h2 className="text-xl font-semibold text-neutral-900">
-          Términos y condiciones
+          Secciones legales
         </h2>
         <p className="text-sm text-neutral-500 mt-1">
-          Secciones de <code>/terms</code>. Se renderean como acordeón.
+          Cada sección se renderiza como acordeón en la página pública.
         </p>
       </div>
 

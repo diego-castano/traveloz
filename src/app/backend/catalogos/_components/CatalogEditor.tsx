@@ -9,6 +9,7 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  ModalClose,
 } from "@/components/ui/Modal";
 import {
   DataTable,
@@ -418,13 +419,11 @@ export function CatalogEditor<T extends { id: string }>({
             </FieldGroup>
           </ModalBody>
           <ModalFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setModalOpen(false)}
-            >
-              Cancelar
-            </Button>
+            <ModalClose asChild>
+              <Button type="button" variant="ghost">
+                Cancelar
+              </Button>
+            </ModalClose>
             <Button type="submit" disabled={saveDisabled}>
               {editTarget ? "Guardar cambios" : `Crear ${entityLabel.toLowerCase()}`}
             </Button>
@@ -466,9 +465,9 @@ export function CatalogEditor<T extends { id: string }>({
           </div>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar definitivamente
           </Button>

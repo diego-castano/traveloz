@@ -5,6 +5,19 @@
       <stop offset="55%" stop-color="#6C2BD9"/>
       <stop offset="100%" stop-color="#7C3AED"/>
     </linearGradient>
+    <!--
+      Stroke colors switch in dark mode so the silhouette stays visible against
+      the browser's dark tab bar (where rgba(17,17,36,0.22) basically disappears
+      and the white center stripe is the only visible accent).
+    -->
+    <style>
+      .outline { stroke: rgba(17,17,36,0.22); }
+      .stripe  { stroke: rgba(255,255,255,0.55); }
+      @media (prefers-color-scheme: dark) {
+        .outline { stroke: rgba(255,255,255,0.55); }
+        .stripe  { stroke: rgba(255,255,255,0.85); }
+      }
+    </style>
   </defs>
   <!--
     Airplane top-down silhouette: nose at top, wings mid, tail-plane at bottom.
@@ -30,7 +43,7 @@
          L 4 32
          L 28.5 22 Z"
       fill="url(#plane)"
-      stroke="rgba(17,17,36,0.22)"
+      class="outline"
       stroke-width="0.9"
       stroke-linejoin="round"
       stroke-linecap="round"
@@ -38,7 +51,7 @@
     <!-- Fuselage highlight stripe for a bit of depth -->
     <path
       d="M 32 7 L 33.2 22 L 33.2 34 L 33 50 L 32 56"
-      stroke="rgba(255,255,255,0.55)"
+      class="stripe"
       stroke-width="1.2"
       stroke-linecap="round"
       fill="none"

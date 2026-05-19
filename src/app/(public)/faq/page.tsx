@@ -4,7 +4,7 @@
 // both fed by the same data set.
 // ---------------------------------------------------------------------------
 
-import { getFaqTopics } from "@/lib/public-data";
+import { getFaqTopics, getSiteSettings } from "@/lib/public-data";
 import { FaqContent, type FaqTopic } from "./_components/FaqContent";
 
 export const metadata = {
@@ -14,7 +14,10 @@ export const metadata = {
 };
 
 export default async function FaqPage() {
-  const dbTopics = await getFaqTopics();
+  const [dbTopics, settings] = await Promise.all([
+    getFaqTopics(),
+    getSiteSettings("faq"),
+  ]);
   const TOPICS: FaqTopic[] = dbTopics.map((t) => ({
     id: t.id,
     label: t.label,
@@ -22,17 +25,26 @@ export default async function FaqPage() {
     bodyHtml: t.bodyHtml,
   }));
 
+  const titulo = settings.faq_titulo?.trim() || "Preguntas frecuentes";
+  const subtitulo =
+    settings.faq_subtitulo?.trim() ||
+    "Todo lo que necesitas saber, para viajar sin preocupaciones";
+  const bannerDesktop =
+    settings.faq_banner_desktop?.trim() || "/site/img/banner-desktop.png";
+  const bannerMobile =
+    settings.faq_banner_mobile?.trim() || "/site/img/banner-mobile.png";
+
   return (
     <>
       <section className="faq-banner-area">
         <img
           className="bg_image d-none d-md-block"
-          src="/site/img/banner-desktop.png"
+          src={bannerDesktop}
           alt=""
         />
         <img
           className="bg_image d-md-none"
-          src="/site/img/banner-mobile.png"
+          src={bannerMobile}
           alt=""
         />
         <div className="container">
@@ -40,12 +52,9 @@ export default async function FaqPage() {
             <div className="col-lg-7 col-8">
               <div className="banner-text text_white">
                 <h1 className="h1 text_white">
-                  <strong>Preguntas frecuentes</strong>
+                  <strong>{titulo}</strong>
                 </h1>
-                <p>
-                  Todo lo que necesitas saber, <br />
-                  para viajar sin preocupaciones
-                </p>
+                <p style={{ whiteSpace: "pre-line" }}>{subtitulo}</p>
               </div>
             </div>
           </div>

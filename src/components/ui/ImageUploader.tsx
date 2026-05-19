@@ -431,7 +431,7 @@ export function ImageUploader({
         animate={dragActive ? { scale: 1.02 } : { scale: 1 }}
         transition={springs.bouncy}
         className={cn(
-          "flex flex-col items-center justify-center gap-2 rounded-glass cursor-pointer transition-colors",
+          "flex flex-col items-center justify-center gap-2 rounded-xl cursor-pointer transition-colors",
           isEmpty ? "h-[180px]" : "h-[120px]",
           !canAddMore && "opacity-50 pointer-events-none",
         )}
@@ -747,7 +747,7 @@ function Thumbnail({
       style={style}
       {...attributes}
       className={cn(
-        "group relative aspect-square overflow-hidden rounded-clay border-2 transition-shadow",
+        "group relative aspect-square overflow-hidden rounded-xl border-2 transition-shadow",
         selected ? "border-[#8B5CF6]" : "border-transparent",
         isFirst && !selected && "ring-2 ring-amber-400 ring-offset-1",
       )}

@@ -11,7 +11,7 @@ import { springs } from "@/components/lib/animations";
 // Card variant classes (CVA)
 // ---------------------------------------------------------------------------
 
-const cardVariants = cva("rounded-glass-lg overflow-hidden relative", {
+const cardVariants = cva("rounded-2xl overflow-hidden relative", {
   variants: {
     variant: {
       default: "animate-breathe",
@@ -156,7 +156,7 @@ const StatIcon = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center w-10 h-10 rounded-glass-sm",
+      "inline-flex items-center justify-center w-10 h-10 rounded-md",
       className,
     )}
     style={{

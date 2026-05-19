@@ -98,7 +98,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
         <motion.button
           type="button"
           className={cn(
-            "h-9 w-9 inline-flex items-center justify-center rounded-clay text-sm",
+            "h-9 w-9 inline-flex items-center justify-center rounded-xl text-sm",
             currentPage <= 1
               ? "text-neutral-300 cursor-not-allowed"
               : "text-neutral-600 hover:bg-neutral-100/60",
@@ -133,7 +133,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
               key={page}
               type="button"
               className={cn(
-                "h-9 w-9 text-sm font-semibold inline-flex items-center justify-center rounded-clay",
+                "h-9 w-9 text-sm font-semibold inline-flex items-center justify-center rounded-xl",
                 !isActive && "bg-transparent hover:bg-neutral-100/60 text-neutral-600",
               )}
               style={isActive ? clayActiveStyle : undefined}
@@ -152,7 +152,7 @@ const Pagination = React.forwardRef<HTMLElement, PaginationProps>(
         <motion.button
           type="button"
           className={cn(
-            "h-9 w-9 inline-flex items-center justify-center rounded-clay text-sm",
+            "h-9 w-9 inline-flex items-center justify-center rounded-xl text-sm",
             currentPage >= totalPages
               ? "text-neutral-300 cursor-not-allowed"
               : "text-neutral-600 hover:bg-neutral-100/60",

@@ -100,12 +100,18 @@ const SETTINGS: Array<{
     group: "general",
     label: "Horario",
   },
+  { key: "header_logo", value: "/site/img/header-logo.webp", type: "image_url", group: "general", label: "Logo del header" },
+  { key: "footer_logo", value: "/site/img/footer-logo.webp", type: "image_url", group: "general", label: "Logo del footer" },
   // ─── Nosotros (página /about) ────────────────────────────────────────
   { key: "nosotros_titulo", value: "Quiénes somos", group: "nosotros", label: "Título principal" },
   { key: "nosotros_subtitulo", value: "Una agencia de viajes hecha por viajeros, para viajeros.", type: "textarea", group: "nosotros", label: "Subtítulo / lead" },
   { key: "nosotros_historia", value: "TravelOz nació en 2018 con la idea de cambiar la forma en que se diseñan los viajes en Uruguay. Combinamos la experiencia de un equipo de más de 35 profesionales con tecnología propia para crear experiencias únicas para cada cliente.", type: "textarea", group: "nosotros", label: "Texto historia" },
   { key: "nosotros_mision", value: "Diseñamos experiencias de viaje que generen valor real para cada cliente, con la confianza, eficiencia y compromiso como ejes fundamentales.", type: "textarea", group: "nosotros", label: "Misión" },
   { key: "nosotros_imagen", value: "/site/img/about-us.webp", group: "nosotros", label: "Imagen principal (URL)" },
+  { key: "nosotros_valores", value: "Trabajamos con compromiso, confianza y eficiencia. Nuestra prioridad es que cada cliente viva una experiencia que recuerde y elija contarnos.", type: "textarea", group: "nosotros", label: "Valores" },
+  { key: "nosotros_proposito", value: "Brindamos un servicio integral con atención personalizada, asesoramiento experto y respaldo en cada paso del viaje.", type: "textarea", group: "nosotros", label: "Propósito" },
+  { key: "nosotros_cierre", value: "Sumate a la #ExperienciaOZ y descubrí una nueva forma de viajar.", type: "textarea", group: "nosotros", label: "Frase de cierre" },
+  { key: "nosotros_imagen2", value: "/site/img/about-us-2.webp", group: "nosotros", label: "Imagen secundaria (URL)" },
   // ─── Contacto (página /contact) ──────────────────────────────────────
   { key: "contacto_titulo", value: "Hablemos", group: "contacto", label: "Título principal" },
   { key: "contacto_subtitulo", value: "Estamos para escucharte y ayudarte a planear tu próximo viaje.", type: "textarea", group: "contacto", label: "Subtítulo / lead" },
@@ -124,6 +130,9 @@ const SETTINGS: Array<{
   { key: "corporativo_valores_texto_2", value: "Identificamos las necesidades de cada organización y brindamos soluciones alineadas a sus objetivos, garantizando calidad y respaldo.", type: "textarea", group: "corporativo", label: "Card 2 — texto" },
   { key: "corporativo_valores_titulo_3", value: "Atención 24/7", group: "corporativo", label: "Card 3 — título" },
   { key: "corporativo_valores_texto_3", value: "Más de 35 profesionales brindan un servicio de excelencia, resolviendo cada solicitud de forma ágil y con la máxima calidad las 24 horas.", type: "textarea", group: "corporativo", label: "Card 3 — texto" },
+  { key: "corporativo_valores_icon_1", value: "/site/img/hand-icon.webp", type: "image_url", group: "corporativo", label: "Card 1 — icono" },
+  { key: "corporativo_valores_icon_2", value: "/site/img/flight-icon.webp", type: "image_url", group: "corporativo", label: "Card 2 — icono" },
+  { key: "corporativo_valores_icon_3", value: "/site/img/clock-icon.webp", type: "image_url", group: "corporativo", label: "Card 3 — icono" },
   { key: "corporativo_clientes_titulo", value: "Confían en nosotros", group: "corporativo", label: "Título sección clientes" },
   { key: "corporativo_form_titulo", value: "Contactanos", group: "corporativo", label: "Título del form" },
   // ─── Footer ──────────────────────────────────────────────────────────
@@ -138,6 +147,42 @@ const SETTINGS: Array<{
   { key: "footer_social_linkedin", value: "", group: "footer", label: "LinkedIn URL" },
   { key: "footer_social_youtube", value: "", group: "footer", label: "YouTube URL" },
   { key: "footer_copyright", value: "© 2026 TravelOz. Todos los derechos reservados.", group: "footer", label: "Texto de copyright" },
+  { key: "footer_partners_json", value: '[{"label":"Uruguay Natural","src":"/site/img/logouruguaynatural.png","href":""},{"label":"AUDAVI","src":"/site/img/footer-aud.webp","href":""}]', type: "textarea", group: "footer", label: "Logos partner (JSON [{label, src, href}])" },
+  { key: "footer_agencia_texto", value: "Agencia de viajes registrada Nº 1234", group: "footer", label: "Texto de agencia registrada" },
+  { key: "agencia_certificado_url", value: "/site/img/agencia.jpeg", type: "image_url", group: "footer", label: "Certificado de agencia (modal)" },
+  // ─── Destinos (página /destinos lista) ───────────────────────────────
+  { key: "destinos_titulo", value: "Elegí tu lugar en el mundo", group: "destinos", label: "Título principal" },
+  { key: "destinos_subtitulo", value: "Explorá nuestros destinos por región y dejá que te sorprendan.", type: "textarea", group: "destinos", label: "Subtítulo / lead" },
+  { key: "destinos_cta_titulo", value: "¿No encontrás lo que buscás?", group: "destinos", label: "CTA — título" },
+  { key: "destinos_cta_texto", value: "Diseñamos paquetes a medida. Contanos qué tenés en mente.", type: "textarea", group: "destinos", label: "CTA — texto" },
+  { key: "destinos_cta_link_label", value: "Cotizar a medida", group: "destinos", label: "CTA — texto del botón" },
+  { key: "destinos_cta_link_href", value: "/cotizar", group: "destinos", label: "CTA — destino del botón" },
+  // ─── FAQ (página /faq) ───────────────────────────────────────────────
+  { key: "faq_titulo", value: "Preguntas frecuentes", group: "faq", label: "Título principal" },
+  { key: "faq_subtitulo", value: "Todo lo que necesitás saber antes, durante y después de tu viaje.", type: "textarea", group: "faq", label: "Subtítulo / lead" },
+  { key: "faq_banner_desktop", value: "/site/img/banner-desktop.png", type: "image_url", group: "faq", label: "Banner desktop" },
+  { key: "faq_banner_mobile", value: "/site/img/banner-mobile.png", type: "image_url", group: "faq", label: "Banner mobile" },
+  // ─── Terms (página /terms) ───────────────────────────────────────────
+  { key: "terms_titulo", value: "Términos y condiciones de compra", group: "terms", label: "Título principal" },
+  { key: "terms_subtitulo", value: "Todo lo que necesitás saber para contratar con tranquilidad.", type: "textarea", group: "terms", label: "Subtítulo / lead" },
+  { key: "terms_banner_desktop", value: "/site/img/terms-banner.webp", type: "image_url", group: "terms", label: "Banner desktop" },
+  { key: "terms_banner_mobile", value: "/site/img/terms-mobile-banner.png", type: "image_url", group: "terms", label: "Banner mobile" },
+  // ─── Work With Us (página /work-with-us) ─────────────────────────────
+  { key: "workwithus_titulo", value: "¡Queremos conocerte!", group: "workwithus", label: "Título principal" },
+  { key: "workwithus_subtitulo", value: "Estamos transformando la forma en que se viaja desde Uruguay. Si querés sumarte al equipo, dejanos tu CV.", type: "textarea", group: "workwithus", label: "Subtítulo / lead" },
+  { key: "workwithus_imagen", value: "/site/img/work-with-us.webp", type: "image_url", group: "workwithus", label: "Imagen lateral" },
+  { key: "workwithus_video_url", value: "", type: "url", group: "workwithus", label: "Video opcional (URL)" },
+  // ─── Cotizar — bloque "¿Por qué elegirnos?" ─────────────────────────
+  { key: "cotizar_porque_titulo", value: "¿Por qué elegirnos?", group: "cotizar", label: "Bloque — título" },
+  { key: "cotizar_porque_card_1_titulo", value: "Agilidad", group: "cotizar", label: "Card 1 — título" },
+  { key: "cotizar_porque_card_1_texto", value: "Respondemos tu consulta en menos de 24 horas, con opciones reales para que decidas rápido.", type: "textarea", group: "cotizar", label: "Card 1 — texto" },
+  { key: "cotizar_porque_card_1_icon", value: "/site/img/clock-icon.webp", type: "image_url", group: "cotizar", label: "Card 1 — icono" },
+  { key: "cotizar_porque_card_2_titulo", value: "Profesionalismo", group: "cotizar", label: "Card 2 — título" },
+  { key: "cotizar_porque_card_2_texto", value: "Más de 35 profesionales con experiencia y respaldo armando tu próximo viaje.", type: "textarea", group: "cotizar", label: "Card 2 — texto" },
+  { key: "cotizar_porque_card_2_icon", value: "/site/img/hand-icon.webp", type: "image_url", group: "cotizar", label: "Card 2 — icono" },
+  { key: "cotizar_porque_card_3_titulo", value: "Precios competitivos", group: "cotizar", label: "Card 3 — título" },
+  { key: "cotizar_porque_card_3_texto", value: "Negociación directa con operadores y aerolíneas para garantizarte las mejores tarifas.", type: "textarea", group: "cotizar", label: "Card 3 — texto" },
+  { key: "cotizar_porque_card_3_icon", value: "/site/img/flight-icon.webp", type: "image_url", group: "cotizar", label: "Card 3 — icono" },
 ];
 
 const CATEGORIAS = [

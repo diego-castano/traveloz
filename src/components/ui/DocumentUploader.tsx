@@ -200,7 +200,7 @@ export function DocumentUploader({
         animate={dragActive ? { scale: 1.01 } : { scale: 1 }}
         transition={springs.bouncy}
         className={cn(
-          "flex h-[110px] cursor-pointer flex-col items-center justify-center gap-1 rounded-glass transition-colors",
+          "flex h-[110px] cursor-pointer flex-col items-center justify-center gap-1 rounded-xl transition-colors",
           !canAddMore && "opacity-50 pointer-events-none",
         )}
         style={{

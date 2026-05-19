@@ -11,15 +11,19 @@ import {
 } from "lucide-react";
 import {
   listCotizaciones,
+  listAssignableUsers,
+  assignCotizacion,
 } from "@/actions/leads.actions";
 import { EstadoBadge } from "../_components/EstadoBadge";
 import { LeadsTable, relativeTime } from "../_components/LeadsTable";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
 
 type Row = Awaited<ReturnType<typeof listCotizaciones>>[number];
+type User = Awaited<ReturnType<typeof listAssignableUsers>>[number];
 
 export default function CotizacionesPage() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Row | null>(null);
 
@@ -30,7 +34,18 @@ export default function CotizacionesPage() {
 
   useEffect(() => {
     refresh();
+    listAssignableUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
+
+  // Keep the open row in sync after a refresh so the assignment select
+  // reflects the latest persisted value without the operator reopening it.
+  useEffect(() => {
+    if (!open) return;
+    const fresh = rows.find((r) => r.id === open.id);
+    if (fresh && fresh.asignadoAUserId !== open.asignadoAUserId) {
+      setOpen(fresh);
+    }
+  }, [rows, open]);
 
   const total = (r: Row) => r.adultos + r.ninos + r.infantes;
 
@@ -155,6 +170,18 @@ export default function CotizacionesPage() {
         onClose={() => setOpen(null)}
         onDeleted={refresh}
         onEstadoChange={() => refresh()}
+        assignment={
+          open
+            ? {
+                current: open.asignadoAUserId,
+                options: users,
+                onAssign: async (userId) => {
+                  await assignCotizacion(open.id, userId);
+                  await refresh();
+                },
+              }
+            : undefined
+        }
         data={
           open
             ? {

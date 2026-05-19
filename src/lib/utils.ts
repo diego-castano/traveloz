@@ -365,6 +365,66 @@ export function computeNochesTotales(destinos: PaqueteDestino[]): number {
   return destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
 }
 
+// ---------------------------------------------------------------------------
+// deriveDestinoFromDestinos
+//
+// Derives a human-readable destino string for a Paquete from its itinerary
+// (ordered PaqueteDestino rows). The destino is what shows up in listings, in
+// search, and on the public site — historically the operator typed it by hand.
+// With the itinerary editor, the city + country are already known, so this
+// helper lets the form auto-suggest a destino when the field is empty.
+//
+// Rules:
+//   - 1 ciudad           → "Ciudad, País"           (e.g. "Búzios, Brasil")
+//   - 2 ciudades         → "Ciudad1 + Ciudad2"      (e.g. "Río + Búzios")
+//   - 3+ ciudades        → "Ciudad1 + N destinos"   (e.g. "Río + 3 destinos")
+//   - empty / missing    → ""                        (caller decides fallback)
+// ---------------------------------------------------------------------------
+
+interface CiudadResolverRow {
+  id: string;
+  nombre: string;
+  paisId: string;
+}
+
+interface PaisResolverRow {
+  id: string;
+  nombre: string;
+}
+
+/**
+ * Resolve a destino string from an ordered list of PaqueteDestino rows. Pass
+ * the same `paises` / `ciudades` arrays the rest of the admin reads from
+ * (e.g. usePaises() with its children).
+ */
+export function deriveDestinoFromDestinos(
+  destinos: PaqueteDestino[],
+  ciudades: CiudadResolverRow[],
+  paises: PaisResolverRow[],
+): string {
+  if (destinos.length === 0) return '';
+
+  const ordered = [...destinos].sort((a, b) => a.orden - b.orden);
+  const resolved = ordered
+    .map((d) => ciudades.find((c) => c.id === d.ciudadId) ?? null)
+    .filter((c): c is CiudadResolverRow => c !== null);
+
+  if (resolved.length === 0) return '';
+
+  if (resolved.length === 1) {
+    const ciudad = resolved[0];
+    const pais = paises.find((p) => p.id === ciudad.paisId);
+    return pais ? `${ciudad.nombre}, ${pais.nombre}` : ciudad.nombre;
+  }
+
+  if (resolved.length === 2) {
+    return `${resolved[0].nombre} + ${resolved[1].nombre}`;
+  }
+
+  // 3+ destinos: lead with first city + count, keeps the listing line short.
+  return `${resolved[0].nombre} + ${resolved.length - 1} destinos`;
+}
+
 /**
  * Effective nights for a hotel assignment within an opcion — equals the
  * destino nights since splits are no longer supported in the new model.

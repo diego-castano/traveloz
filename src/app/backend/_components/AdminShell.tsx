@@ -16,9 +16,12 @@ import { Topbar } from "@/components/layout/Topbar";
 import { AdminBackground } from "@/components/layout/AdminBackground";
 import { PageTransitionWrapper } from "@/components/layout/PageTransitionWrapper";
 import { DensityProvider } from "@/components/ui/data/Density";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { VendedorShell } from "./VendedorShell";
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const { status } = useSession();
+  const { isVendedor } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const mainRef = useRef<HTMLElement | null>(null);
@@ -76,6 +79,18 @@ export function AdminShell({ children }: { children: ReactNode }) {
   // Hold render until NextAuth has resolved the session one way or another
   if (status !== "authenticated") {
     return null;
+  }
+
+  // VENDEDOR role bypasses the admin chrome (sidebar + breadcrumb + command
+  // palette) entirely. The vendor only ever lands on the dashboard table and
+  // the mockup at /mockups/vendedor.html is the spec — no other navigation
+  // means no need for the broader admin shell.
+  if (isVendedor) {
+    return (
+      <DensityProvider>
+        <VendedorShell>{children}</VendedorShell>
+      </DensityProvider>
+    );
   }
 
   return (

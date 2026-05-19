@@ -8,6 +8,7 @@
 import { getSiteSettings } from "@/lib/public-data";
 
 type FooterLink = { label: string; href: string };
+type FooterPartner = { label: string; src: string; href?: string };
 
 function parseLinks(json: string | undefined): FooterLink[] {
   if (!json) return [];
@@ -25,6 +26,22 @@ function parseLinks(json: string | undefined): FooterLink[] {
   }
 }
 
+function parsePartners(json: string | undefined): FooterPartner[] {
+  if (!json) return [];
+  try {
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (x): x is FooterPartner =>
+        x &&
+        typeof x.label === "string" &&
+        typeof x.src === "string",
+    );
+  } catch {
+    return [];
+  }
+}
+
 export async function Footer() {
   const [footer, general] = await Promise.all([
     getSiteSettings("footer"),
@@ -36,8 +53,12 @@ export async function Footer() {
     "Unimos agilidad, profesionalismo y tarifas competitivas para que vivas la mejor experiencia de viaje.";
   const linksTitulo = footer.footer_links_titulo ?? "Información útil";
   const links = parseLinks(footer.footer_links_json);
+  const legalTitulo = footer.footer_legal_titulo ?? "Legal";
+  const legalLinks = parseLinks(footer.footer_legal_json);
+  const partners = parsePartners(footer.footer_partners_json);
   const copyright =
     footer.footer_copyright ?? "© 2026 TravelOz. Todos los derechos reservados.";
+  const logo = general.footer_logo?.trim() || "/site/img/footer-logo.webp";
 
   const SOCIAL: Array<{ url?: string; icon: string; label: string }> = [
     { url: footer.footer_social_instagram, icon: "fa-instagram", label: "Instagram" },
@@ -58,7 +79,7 @@ export async function Footer() {
           <div className="col-lg-3 col-sm-6">
             <div className="footer-left">
               <a className="footer-logo" href="/">
-                <img src="/site/img/footer-logo.webp" alt="TravelOz" />
+                <img src={logo} alt="TravelOz" />
               </a>
               <p>{aboutTexto}</p>
               {SOCIAL.length > 0 && (
@@ -125,7 +146,7 @@ export async function Footer() {
             </div>
           </div>
 
-          {/* Column 3 — Información útil (single link list) */}
+          {/* Column 3 — Información útil (links + opcional bloque Legal) */}
           <div className="col-lg-3 col-sm-6">
             <div className="footer-link ps-lg-5">
               <h3 className="title">{linksTitulo}</h3>
@@ -143,26 +164,36 @@ export async function Footer() {
                   </a>
                 </li>
               </ul>
+              {legalLinks.length > 0 && (
+                <>
+                  <h3 className="title" style={{ marginTop: 20 }}>
+                    {legalTitulo}
+                  </h3>
+                  <ul>
+                    {legalLinks.map((l) => (
+                      <li key={l.href}>
+                        <a href={l.href}>{l.label}</a>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Column 4 — partner brand logos (hardcoded) */}
+          {/* Column 4 — partner brand logos (CMS-editable via footer_partners_json) */}
           <div className="col-lg-3 col-sm-6">
-            <ul className="footer-brand-logo">
-              <li>
-                <a href="/">
-                  <img
-                    src="/site/img/logouruguaynatural.png"
-                    alt="Uruguay Natural"
-                  />
-                </a>
-              </li>
-              <li>
-                <a href="/">
-                  <img src="/site/img/footer-aud.webp" alt="AUD" />
-                </a>
-              </li>
-            </ul>
+            {partners.length > 0 && (
+              <ul className="footer-brand-logo">
+                {partners.map((p) => (
+                  <li key={p.label}>
+                    <a href={p.href && p.href.trim().length > 0 ? p.href : "/"}>
+                      <img src={p.src} alt={p.label} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 

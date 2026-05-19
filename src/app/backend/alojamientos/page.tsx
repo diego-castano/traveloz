@@ -24,7 +24,7 @@ import { useTableSort } from "@/components/ui/data/useTableSort";
 import { DensityToggle } from "@/components/ui/data/Density";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAlojamientosQueryState } from "./searchParams";
-import { Modal, ModalHeader, ModalBody, ModalFooter } from "@/components/ui/Modal";
+import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { Badge } from "@/components/ui/Badge";
 import {
@@ -603,9 +603,9 @@ export default function AlojamientosPage() {
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar
           </Button>

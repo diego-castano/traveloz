@@ -152,7 +152,12 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   // -- Validation data --
   const opciones = useOpcionesHoteleras(paquete.id);
   const assignedAereoCount = services.aereos.length;
-  const validation = validateForActivation(paquete, assignedAereoCount, opciones);
+  const validation = validateForActivation(
+    paquete,
+    assignedAereoCount,
+    opciones,
+    destinos,
+  );
 
   // -- Vigencia helper: warn if close to expiry --
   const now = startOfLocalDay(new Date()) ?? new Date();
@@ -570,6 +575,53 @@ export default function DatosTab({ paquete }: DatosTabProps) {
             </Field>
           </FieldGroup>
         </FormSection>
+
+        {/* ================================================================ */}
+        {/* Datos operativos (read-only — origen: Excel / sistema legacy)    */}
+        {/* ================================================================ */}
+        {(paquete.webId || paquete.campana || paquete.itinerarioAmadeus) && (
+          <FormSection
+            title="Datos operativos"
+            description="Información heredada del sistema legacy. Sólo lectura."
+          >
+            <FieldGroup columns={2}>
+              {paquete.webId && (
+                <Field>
+                  <FieldLabel>Web ID</FieldLabel>
+                  <Input
+                    value={paquete.webId}
+                    readOnly
+                    className="font-mono text-[12px] bg-neutral-50 text-neutral-600 cursor-default"
+                  />
+                </Field>
+              )}
+              {paquete.campana && (
+                <Field>
+                  <FieldLabel>Campaña</FieldLabel>
+                  <Input
+                    value={paquete.campana}
+                    readOnly
+                    className="bg-neutral-50 text-neutral-600 cursor-default"
+                  />
+                </Field>
+              )}
+              {paquete.itinerarioAmadeus && (
+                <Field span={2}>
+                  <FieldLabel>Itinerario Amadeus</FieldLabel>
+                  <textarea
+                    value={paquete.itinerarioAmadeus}
+                    readOnly
+                    rows={Math.min(
+                      10,
+                      paquete.itinerarioAmadeus.split("\n").length,
+                    )}
+                    className={`${textareaClassName} font-mono text-[12px] bg-neutral-50 text-neutral-600 whitespace-pre cursor-default`}
+                  />
+                </Field>
+              )}
+            </FieldGroup>
+          </FormSection>
+        )}
 
       </FormSections>
     </div>

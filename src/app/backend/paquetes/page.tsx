@@ -18,6 +18,10 @@ import { Tooltip } from "radix-ui";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/data/EmptyState";
+// Migrated from @/components/ui/Table (legacy glass-wrapped) to the new
+// DataTable primitive. The exports `Table/TableHeader/...` from data/DataTable
+// are stable aliases of DataTable/DataTableHeader/... so the rest of this
+// 1500-LOC file keeps the same JSX.
 import {
   Table,
   TableHeader,
@@ -25,13 +29,14 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "@/components/ui/Table";
+} from "@/components/ui/data/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import {
   Modal,
   ModalHeader,
   ModalBody,
   ModalFooter,
+  ModalClose,
 } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { MultiSelectFilter } from "@/components/ui/data/MultiSelectFilter";
@@ -1160,8 +1165,7 @@ export default function PaquetesPage() {
                     </TableHead>
                   )}
                   <TableHead
-                    variant="id"
-                    className="w-[96px] whitespace-nowrap text-center"
+                    className="w-[96px] whitespace-nowrap text-center font-mono text-xs"
                   >
                     <SortableHead
                       direction={sort.direction("id")}
@@ -1233,7 +1237,7 @@ export default function PaquetesPage() {
                   )}
                   {visibleColumns.precio &&
                     canSeePricing.venta !== false && (
-                      <TableHead variant="price" className="text-center">
+                      <TableHead className="text-center font-mono font-semibold">
                         <SortableHead
                           direction={sort.direction("precio")}
                           onSort={() => sort.toggle("precio")}
@@ -1468,9 +1472,9 @@ export default function PaquetesPage() {
             </p>
           </ModalBody>
           <ModalFooter>
-            <Button variant="ghost" onClick={() => setBulkDeleteOpen(false)}>
-              Cancelar
-            </Button>
+            <ModalClose asChild>
+              <Button variant="ghost">Cancelar</Button>
+            </ModalClose>
             <Button variant="danger" onClick={handleBulkDelete}>
               Eliminar {selected.size}
             </Button>
@@ -1496,9 +1500,9 @@ export default function PaquetesPage() {
           </p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" onClick={() => setDeleteTarget(null)}>
-            Cancelar
-          </Button>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
           <Button variant="danger" onClick={handleConfirmDelete}>
             Eliminar
           </Button>

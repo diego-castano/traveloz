@@ -12,9 +12,15 @@ export type { AuthUser as User } from './auth';
 // These match the Prisma enum values exactly.
 // ---------------------------------------------------------------------------
 
-export type EstadoPaquete = 'BORRADOR' | 'ACTIVO' | 'INACTIVO';
+export type EstadoPaquete =
+  | 'BORRADOR'
+  | 'EN_REVISION'
+  | 'ACTIVO'
+  | 'ARCHIVADO'
+  // Legacy — kept until backfill removes the last row using it.
+  | 'INACTIVO';
 export type TipoTraslado = 'REGULAR' | 'PRIVADO';
-export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS';
+export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS' | 'HOTELES';
 
 // ---------------------------------------------------------------------------
 // Primary Entities (14 interfaces)
@@ -42,6 +48,15 @@ export interface Paquete {
   precioVenta: number;
   moneda: string;
   ordenServicios: string[];
+  /** External id from the legacy web platform — useful for cross-referencing in reports. */
+  webId?: string | null;
+  /** Raw Amadeus itinerary text (operator-only — not shown publicly). */
+  itinerarioAmadeus?: string | null;
+  /** Campaign tag from the source spreadsheet (e.g. "Outlet de Playas | 2026"). */
+  campana?: string | null;
+  /** "Desde" price for the public site. Recomputed by the propagation hook. */
+  precioDesde?: number | null;
+  precioDesdeMoneda?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -132,6 +147,10 @@ export interface Proveedor {
   contacto: string | null;
   email: string | null;
   telefono: string | null;
+  /** Account executive at the provider (optional). */
+  ejecutivo?: string | null;
+  /** Direct WhatsApp number for the executive (optional). */
+  whatsapp?: string | null;
   notas: string | null;
   servicio: CategoriaServicio;
   createdAt: string;
@@ -290,6 +309,8 @@ export interface OpcionHotelera {
   precioVenta: number;
   orden: number;
   proveedorId?: string | null;
+  /** Optional custom blurb shown publicly with this option (e.g. "All Inclusive 5★"). */
+  textoDisplay?: string | null;
 }
 
 /** Ordered destination within a package itinerary — one row per city. Package total nights = sum of destinos.noches. */
