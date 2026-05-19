@@ -197,9 +197,15 @@ export async function updatePaqueteFrontend(
     }
 
     if (missing.length > 0) {
-      throw new Error(
-        `No se puede publicar todavía. Falta: ${missing.join("; ")}.`,
-      );
+      // Important: we return a structured result instead of throwing because
+      // Next.js production builds redact server-action error messages, so the
+      // user would otherwise see a generic "Error al guardar" with no clue
+      // about what's missing. The UI checks `ok` and shows `missing` in a toast.
+      return {
+        ok: false as const,
+        reason: "publish_blocked" as const,
+        missing,
+      };
     }
   }
 
@@ -210,7 +216,7 @@ export async function updatePaqueteFrontend(
   revalidatePath(`/backend/paquetes/${paqueteId}`);
   revalidatePath("/destinos", "layout");
   revalidateTag("paquetes");
-  return updated;
+  return { ok: true as const, updated };
 }
 
 export async function setPaqueteServicios(

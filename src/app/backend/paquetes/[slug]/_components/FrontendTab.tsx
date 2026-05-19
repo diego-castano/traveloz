@@ -118,7 +118,17 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
   const onSave = () =>
     start(async () => {
       try {
-        await updatePaqueteFrontend(paqueteId, form);
+        const res = await updatePaqueteFrontend(paqueteId, form);
+        if (!res.ok && res.reason === "publish_blocked") {
+          toast(
+            "warning",
+            "No se puede publicar todavía",
+            `Falta: ${res.missing.join("; ")}.`,
+          );
+          // Revert the publicado toggle locally so the UI matches DB state.
+          setForm((prev) => ({ ...prev, publicado: false }));
+          return;
+        }
         await setPaqueteServicios(
           paqueteId,
           selected.map((id, i) => ({ servicioId: id, orden: i })),
@@ -143,12 +153,22 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   const handleAutoSave = useCallback(async () => {
-    await updatePaqueteFrontend(paqueteId, formRef.current);
+    const res = await updatePaqueteFrontend(paqueteId, formRef.current);
+    if (!res.ok && res.reason === "publish_blocked") {
+      toast(
+        "warning",
+        "No se puede publicar todavía",
+        `Falta: ${res.missing.join("; ")}.`,
+      );
+      // Revert the publicado toggle so the UI reflects the persisted state.
+      setForm((prev) => ({ ...prev, publicado: false }));
+      return;
+    }
     await setPaqueteServicios(
       paqueteId,
       selectedRef.current.map((id, i) => ({ servicioId: id, orden: i })),
     );
-  }, [paqueteId]);
+  }, [paqueteId, toast]);
 
   const { status: autoSaveStatus, markDirty } = useAutoSave({
     onSave: handleAutoSave,

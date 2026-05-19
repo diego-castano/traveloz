@@ -135,7 +135,7 @@ export default function CorporativoPage() {
             >
               {cards.map((c) => (
                 <div className="icon-teaser style1" key={c.icon}>
-                  <img src={`/site/img/${c.icon}`} alt="icon" />
+                  <img src={c.icon} alt="icon" />
                   <h3 className="title">{c.title}</h3>
                   <CardBody html={c.body} />
                 </div>
