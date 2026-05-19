@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Save, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -19,6 +19,8 @@ import {
   createServicio,
 } from "@/actions/catalogo-servicios.actions";
 import { MediaPicker } from "@/app/backend/web/_components/MediaPicker";
+import { useAutoSave } from "@/hooks/useAutoSave";
+import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
 
 type Servicio = { id: string; nombre: string; icon: string; activo?: boolean };
 
@@ -131,6 +133,45 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
       }
     });
 
+  // ---------------------------------------------------------------------------
+  // Auto-save — refs let the debounced handler always read latest form/selected
+  // without re-creating the useAutoSave handler on every keystroke.
+  // ---------------------------------------------------------------------------
+  const formRef = useRef(form);
+  const selectedRef = useRef(selected);
+  useEffect(() => { formRef.current = form; }, [form]);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  const handleAutoSave = useCallback(async () => {
+    await updatePaqueteFrontend(paqueteId, formRef.current);
+    await setPaqueteServicios(
+      paqueteId,
+      selectedRef.current.map((id, i) => ({ servicioId: id, orden: i })),
+    );
+  }, [paqueteId]);
+
+  const { status: autoSaveStatus, markDirty } = useAutoSave({
+    onSave: handleAutoSave,
+    enabled: !!data,
+  });
+
+  // Patch helpers — replace `patch("key", v)` with `patch("key", v)`
+  // so every change pushes a dirty signal to the autosave hook.
+  const patch = useCallback(
+    <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
+      setForm((prev) => ({ ...prev, [key]: value }));
+      markDirty();
+    },
+    [markDirty],
+  );
+  const patchSelected = useCallback(
+    (next: string[]) => {
+      setSelected(next);
+      markDirty();
+    },
+    [markDirty],
+  );
+
   if (!data) {
     return <div className="p-6 text-sm text-neutral-500">Cargando datos…</div>;
   }
@@ -193,14 +234,14 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
               <Input
                 value={form.slug}
                 onChange={(e) =>
-                  setForm({ ...form, slug: slugify(e.target.value) })
+                  patch("slug", slugify(e.target.value))
                 }
                 placeholder="ej. buzios-7-noches"
                 className="flex-1"
               />
               <button
                 type="button"
-                onClick={() => setForm({ ...form, slug: slugify(data.titulo) })}
+                onClick={() => patch("slug", slugify(data.titulo))}
                 className="text-[11px] text-violet-600 hover:underline px-2"
                 title="Generar desde el título"
               >
@@ -217,7 +258,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
                 type="checkbox"
                 checked={form.publicado}
                 onChange={(e) =>
-                  setForm({ ...form, publicado: e.target.checked })
+                  patch("publicado", e.target.checked)
                 }
                 className="w-4 h-4 rounded text-violet-600"
               />
@@ -243,7 +284,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           </label>
           <MediaPicker
             value={form.heroImage}
-            onChange={(v) => setForm({ ...form, heroImage: v })}
+            onChange={(v) => patch("heroImage", v)}
             accept="image/*"
           />
         </div>
@@ -264,10 +305,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
                     key={f.url}
                     type="button"
                     onClick={() =>
-                      setForm({
-                        ...form,
-                        heroImage: active ? "" : f.url,
-                      })
+                      patch("heroImage", active ? "" : f.url)
                     }
                     title={
                       active ? "Foto principal" : "Marcar como principal"
@@ -322,7 +360,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           </label>
           <textarea
             value={form.textoIntro}
-            onChange={(e) => setForm({ ...form, textoIntro: e.target.value })}
+            onChange={(e) => patch("textoIntro", e.target.value)}
             className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
             rows={6}
             placeholder="Por qué este destino, qué lo hace especial, etc."
@@ -339,7 +377,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           <textarea
             value={form.itinerarioPublico}
             onChange={(e) =>
-              setForm({ ...form, itinerarioPublico: e.target.value })
+              patch("itinerarioPublico", e.target.value)
             }
             className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
             rows={10}
@@ -362,7 +400,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           </label>
           <textarea
             value={form.textoIncluye}
-            onChange={(e) => setForm({ ...form, textoIncluye: e.target.value })}
+            onChange={(e) => patch("textoIncluye", e.target.value)}
             className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
             rows={8}
             placeholder={`Pasaje aéreo Montevideo / Río de Janeiro / Montevideo\nCarry on de cabina\nTraslados aeropuerto / hotel / aeropuerto\n7 noches con régimen All Inclusive\nTasas e impuestos incluidos`}
@@ -379,7 +417,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           <MultiSelectCombobox
             options={options}
             value={selected}
-            onChange={setSelected}
+            onChange={patchSelected}
             placeholder="Agregar servicios del catálogo…"
             onCreate={async (name) => {
               const created = await createServicio({
@@ -425,7 +463,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
         <textarea
           value={form.textoCondiciones}
           onChange={(e) =>
-            setForm({ ...form, textoCondiciones: e.target.value })
+            patch("textoCondiciones", e.target.value)
           }
           className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
           rows={8}
@@ -444,7 +482,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           </label>
           <Input
             value={form.metaTitle}
-            onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
+            onChange={(e) => patch("metaTitle", e.target.value)}
             maxLength={60}
             placeholder={data.titulo}
           />
@@ -460,7 +498,7 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
           <textarea
             value={form.metaDescription}
             onChange={(e) =>
-              setForm({ ...form, metaDescription: e.target.value })
+              patch("metaDescription", e.target.value)
             }
             className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
             rows={2}
@@ -492,19 +530,20 @@ export function FrontendTab({ paqueteId }: { paqueteId: string }) {
         )}
       </Section>
 
-      {/* Sticky save bar */}
+      {/* Sticky autosave bar */}
       <div className="sticky bottom-4 bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-lg shadow-lg px-4 py-3 flex items-center justify-between">
-        <div className="text-xs text-neutral-500">
-          Los cambios se reflejan en el sitio público en &lt; 1 min.
+        <div className="flex items-center gap-3 text-xs text-neutral-500">
+          <AutoSaveIndicator status={autoSaveStatus} />
+          <span>Los cambios se autoguardan; el sitio se actualiza en &lt; 1 min.</span>
         </div>
         <Button
           onClick={onSave}
-          disabled={isPending}
-          variant="primary"
+          disabled={isPending || autoSaveStatus === "saving"}
+          variant="secondary"
           size="sm"
         >
           <Save className="w-4 h-4" />
-          {isPending ? "Guardando…" : "Guardar"}
+          {isPending ? "Guardando…" : "Forzar guardado"}
         </Button>
       </div>
     </div>

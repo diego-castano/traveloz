@@ -35,7 +35,7 @@ export default async function WorkWithUsPage() {
         </div>
         <div className="row gx-lg-5 gx-4">
           <div className="col-sm-6 order-sm-2 order-1">
-            <div className="content-box style3">
+            <div className="content-box style2">
               <WorkForm />
             </div>
           </div>

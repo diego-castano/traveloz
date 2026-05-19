@@ -151,6 +151,58 @@ export async function updatePaqueteFrontend(
   },
 ) {
   await requireAuth();
+
+  // Publishing gate: when the operator flips `publicado=true`, validate the
+  // paquete is actually ready. We block the publish (but still save the rest
+  // of the form) when essentials are missing — slug, at least 1 destino, at
+  // least 1 hotel option, and (when noches is declared) destinos summing
+  // correctly. Returning a structured error lets the UI show what's missing.
+  if (data.publicado === true) {
+    const current = await prisma.paquete.findUnique({
+      where: { id: paqueteId },
+      select: {
+        slug: true,
+        titulo: true,
+        noches: true,
+        heroImage: true,
+        destinos: { select: { noches: true } },
+        opcionesHoteleras: { select: { id: true } },
+        aereos: { select: { id: true } },
+      },
+    });
+    if (!current) throw new Error("Paquete no encontrado.");
+
+    const incomingSlug =
+      typeof data.slug === "string" ? data.slug.trim() : current.slug;
+    const heroImage =
+      typeof data.heroImage === "string" ? data.heroImage.trim() : current.heroImage;
+    const missing: string[] = [];
+
+    if (!incomingSlug) missing.push("slug (URL pública)");
+    if (!current.titulo?.trim()) missing.push("título");
+    if (current.destinos.length === 0) missing.push("al menos 1 destino en el itinerario");
+    if (current.opcionesHoteleras.length === 0) missing.push("al menos 1 opción hotelera");
+    if (current.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
+    if (!heroImage) missing.push("foto principal del slider");
+
+    const nochesPaquete = current.noches ?? 0;
+    const nochesDestinos = current.destinos.reduce(
+      (sum, d) => sum + (d.noches || 0),
+      0,
+    );
+    if (nochesPaquete > 0 && nochesDestinos !== nochesPaquete) {
+      missing.push(
+        `noches por destino suman ${nochesDestinos} (paquete declara ${nochesPaquete})`,
+      );
+    }
+
+    if (missing.length > 0) {
+      throw new Error(
+        `No se puede publicar todavía. Falta: ${missing.join("; ")}.`,
+      );
+    }
+  }
+
   const updated = await prisma.paquete.update({
     where: { id: paqueteId },
     data,

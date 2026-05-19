@@ -24,6 +24,30 @@ async function safePropagate(paqueteId: string): Promise<void> {
   }
 }
 
+/**
+ * Sync paquete.noches to the sum of its PaqueteDestino.noches. Called from
+ * every PaqueteDestino mutation so the validation checklist in DatosTab
+ * ("Noches por destino suman X") never falls out of sync with reality.
+ *
+ * The operator can still see/edit paquete.noches manually elsewhere, but the
+ * itinerary is the source of truth: any change there overrides the manual value.
+ */
+async function syncPaqueteNoches(paqueteId: string): Promise<void> {
+  try {
+    const destinos = await prisma.paqueteDestino.findMany({
+      where: { paqueteId },
+      select: { noches: true },
+    });
+    const total = destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
+    await prisma.paquete.update({
+      where: { id: paqueteId },
+      data: { noches: total },
+    });
+  } catch (err) {
+    log.error("syncPaqueteNoches failed", { paqueteId, err });
+  }
+}
+
 // Cache busters for dashboard, report, AND paquete listing aggregates. Called
 // after every paquete mutation so the UI stops serving stale counts/lists the
 // moment the user commits a change.
@@ -1031,6 +1055,7 @@ export async function createPaqueteDestino(data: {
     });
     const parsed = schema.parse(data);
     const res = await prisma.paqueteDestino.create({ data: parsed });
+    await syncPaqueteNoches(parsed.paqueteId);
     await safePropagate(parsed.paqueteId);
     return res;
   } catch (error) {
@@ -1049,7 +1074,10 @@ export async function updatePaqueteDestino(
     // noches affects every opcion's alojamiento cost; ciudadId may change which
     // hotels are valid but does not affect persisted prices directly. orden is
     // cosmetic.
-    if (data.noches !== undefined) await safePropagate(res.paqueteId);
+    if (data.noches !== undefined) {
+      await syncPaqueteNoches(res.paqueteId);
+      await safePropagate(res.paqueteId);
+    }
     return res;
   } catch (error) {
     log.error("updating paquete destino", error);
@@ -1065,7 +1093,10 @@ export async function deletePaqueteDestino(id: string) {
       select: { paqueteId: true },
     });
     const res = await prisma.paqueteDestino.delete({ where: { id } });
-    if (existing) await safePropagate(existing.paqueteId);
+    if (existing) {
+      await syncPaqueteNoches(existing.paqueteId);
+      await safePropagate(existing.paqueteId);
+    }
     return res;
   } catch (error) {
     log.error("deleting paquete destino", error);
