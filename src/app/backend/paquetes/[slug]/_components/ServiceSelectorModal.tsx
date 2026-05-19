@@ -23,6 +23,7 @@ import {
 } from "@/components/providers/CatalogProvider";
 import { useToast } from "@/components/ui/Toast";
 import { Plus, Plane, Bus, Shield, MapIcon, Search } from "lucide-react";
+import { AereoFullForm } from "@/app/backend/aereos/_components/AereoFullForm";
 import type {
   Aereo,
   Traslado,
@@ -142,6 +143,9 @@ export default function ServiceSelectorModal({
   } = usePackageActions();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  // Nested "Crear aéreo" modal — opens the full AereoFullForm so the operator
+  // can create + auto-assign a flight without leaving the package flow.
+  const [aereoCreateOpen, setAereoCreateOpen] = useState(false);
 
   // All available services
   const aereos = useAereos();
@@ -353,6 +357,21 @@ export default function ServiceSelectorModal({
                 </span>
               </div>
             )}
+            {/* Fast-add CTA — opens the full AereoFullForm in a nested modal
+                so the operator can create + auto-assign a flight in one go. */}
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-md border border-dashed border-violet-200 bg-violet-50/40 px-3 py-2 text-[12px]">
+              <span className="text-neutral-600">
+                ¿No encontrás el aéreo que necesitás?
+              </span>
+              <Button
+                variant="primary"
+                size="xs"
+                leftIcon={<Plus className="h-3 w-3" />}
+                onClick={() => setAereoCreateOpen(true)}
+              >
+                Crear aéreo
+              </Button>
+            </div>
             {availableAereos.length === 0 ? (
               <div className="flex items-center justify-center py-8 text-neutral-400 text-sm">
                 {sq
@@ -532,6 +551,50 @@ export default function ServiceSelectorModal({
           </TabsContent>
         </Tabs>
       </ModalBody>
+
+      {/* Nested modal: full "Nuevo Aéreo" form, embedded so the operator can
+          create + assign without leaving the package flow. After save the
+          handler assigns the new aereo to the paquete automatically. */}
+      <Modal open={aereoCreateOpen} onOpenChange={setAereoCreateOpen} size="lg">
+        <ModalHeader
+          title="Crear aéreo"
+          description={
+            paquete?.destino
+              ? `Nuevo vuelo para ${paquete.destino}. Se asigna al paquete automáticamente.`
+              : "Nuevo vuelo. Se asigna al paquete automáticamente."
+          }
+          icon={<Plane className="h-5 w-5" strokeWidth={2.4} />}
+        >
+          {null}
+        </ModalHeader>
+        <ModalBody>
+          <AereoFullForm
+            embedded
+            submitLabel="Crear y asignar"
+            defaults={{
+              destino: paquete?.destino ?? "",
+            }}
+            onCancel={() => setAereoCreateOpen(false)}
+            onCreated={async (created) => {
+              setAereoCreateOpen(false);
+              if (created.id) {
+                const nextOrden = services.aereos.length;
+                await assignAereo({
+                  paqueteId,
+                  aereoId: created.id,
+                  textoDisplay: null,
+                  orden: nextOrden,
+                });
+                toast(
+                  "success",
+                  "Aéreo creado y asignado",
+                  `${created.ruta} se agregó al paquete.`,
+                );
+              }
+            }}
+          />
+        </ModalBody>
+      </Modal>
     </Modal>
   );
 }
