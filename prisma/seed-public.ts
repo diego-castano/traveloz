@@ -172,6 +172,11 @@ const SETTINGS: Array<{
   { key: "workwithus_subtitulo", value: "Estamos transformando la forma en que se viaja desde Uruguay. Si querés sumarte al equipo, dejanos tu CV.", type: "textarea", group: "workwithus", label: "Subtítulo / lead" },
   { key: "workwithus_imagen", value: "/site/img/work-with-us.webp", type: "image_url", group: "workwithus", label: "Imagen lateral" },
   { key: "workwithus_video_url", value: "", type: "url", group: "workwithus", label: "Video opcional (URL)" },
+  // ─── Cotizar (página /cotizar) ───────────────────────────────────────
+  { key: "cotizar_titulo", value: "Cotizá tu viaje", group: "cotizar", label: "Título principal" },
+  { key: "cotizar_lead", value: "Contanos a dónde querés ir, cuándo y cuántos viajan. Diseñamos el itinerario y te respondemos en 24 horas.", type: "textarea", group: "cotizar", label: "Subtítulo / lead" },
+  { key: "cotizar_meta_title", value: "Cotizá tu viaje | TravelOz", group: "cotizar", label: "SEO — meta title" },
+  { key: "cotizar_meta_description", value: "Contanos a dónde querés ir y diseñamos un viaje a tu medida. Te respondemos en 24h.", type: "textarea", group: "cotizar", label: "SEO — meta description" },
   // ─── Cotizar — bloque "¿Por qué elegirnos?" ─────────────────────────
   { key: "cotizar_porque_titulo", value: "¿Por qué elegirnos?", group: "cotizar", label: "Bloque — título" },
   { key: "cotizar_porque_card_1_titulo", value: "Agilidad", group: "cotizar", label: "Card 1 — título" },
