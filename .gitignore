@@ -40,3 +40,6 @@ next-env.d.ts
 # claude code (internal state, not project)
 .claude/
 .playwright-mcp/
+
+# Playwright/debug screenshots (never commit)
+/*.png
