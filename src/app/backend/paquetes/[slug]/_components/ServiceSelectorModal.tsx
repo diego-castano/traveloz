@@ -228,7 +228,7 @@ export default function ServiceSelectorModal({
         .filter((s) => !assignedSeguroIds.has(s.id))
         .filter((s) => {
           if (!sq) return true;
-          const provNombre = proveedorMap.get(s.proveedorId) ?? "";
+          const provNombre = proveedorMap.get(s.proveedorId ?? "") ?? "";
           return (
             s.plan.toLowerCase().includes(sq) ||
             (s.cobertura ?? "").toLowerCase().includes(sq) ||
@@ -475,7 +475,7 @@ export default function ServiceSelectorModal({
               <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
                 <div className="divide-y divide-hairline">
                   {availableSeguros.map((seguro) => {
-                    const provNombre = proveedorMap.get(seguro.proveedorId) ?? "";
+                    const provNombre = proveedorMap.get(seguro.proveedorId ?? "") ?? "";
                     return (
                       <div
                         key={seguro.id}

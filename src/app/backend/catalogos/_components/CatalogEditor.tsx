@@ -76,6 +76,8 @@ export interface CatalogColumnDef<T> {
 export interface CatalogEditorProps<T extends { id: string }> {
   entityLabel: string;
   entityLabelPlural: string;
+  /** Grammatical gender of `entityLabel` — drives "Nuevo/Nueva" agreement. */
+  entityGenero?: "masculino" | "femenino";
   emptyIcon: LucideIcon;
   emptyTitle: string;
   emptyDescription?: string;
@@ -108,6 +110,7 @@ const DEFAULT_PAGE_SIZE = 10;
 export function CatalogEditor<T extends { id: string }>({
   entityLabel,
   entityLabelPlural: _entityLabelPlural,
+  entityGenero = "masculino",
   emptyIcon: EmptyIcon,
   emptyTitle,
   emptyDescription,
@@ -125,6 +128,10 @@ export function CatalogEditor<T extends { id: string }>({
   canEdit = true,
   pageSize = DEFAULT_PAGE_SIZE,
 }: CatalogEditorProps<T>) {
+  // Concordancia de género para los textos generados ("Nuevo"/"Nueva", etc).
+  const nuevo = entityGenero === "femenino" ? "Nueva" : "Nuevo";
+  const unNuevo = entityGenero === "femenino" ? "una nueva" : "un nuevo";
+
   // ---- Modal / form state ----
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<T | null>(null);
@@ -209,7 +216,7 @@ export function CatalogEditor<T extends { id: string }>({
       leftIcon={<Plus className="h-4 w-4" />}
       onClick={handleOpenCreate}
     >
-      Nuevo {entityLabel}
+      {nuevo} {entityLabel}
     </Button>
   ) : undefined;
 
@@ -312,12 +319,14 @@ export function CatalogEditor<T extends { id: string }>({
       <Modal open={modalOpen} onOpenChange={setModalOpen} size="md">
         <ModalHeader
           title={
-            editTarget ? `Editar ${entityLabel}` : `Nuevo ${entityLabel}`
+            editTarget ? `Editar ${entityLabel}` : `${nuevo} ${entityLabel}`
           }
           description={
             editTarget
-              ? `Actualiza los datos del ${entityLabel.toLowerCase()}.`
-              : `Crea un nuevo ${entityLabel.toLowerCase()}.`
+              ? `Actualizá los datos ${
+                  entityGenero === "femenino" ? "de la" : "del"
+                } ${entityLabel.toLowerCase()}.`
+              : `Creá ${unNuevo} ${entityLabel.toLowerCase()}.`
           }
           icon={
             editTarget ? (
@@ -441,7 +450,7 @@ export function CatalogEditor<T extends { id: string }>({
       >
         <ModalHeader
           title={`Eliminar ${entityLabel}`}
-          description="Esta accion no se puede deshacer."
+          description="Esta acción no se puede deshacer."
           icon={<Trash2 className="h-5 w-5" strokeWidth={2.2} />}
           variant="destructive"
         />

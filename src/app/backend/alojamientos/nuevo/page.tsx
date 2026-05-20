@@ -77,7 +77,7 @@ export default function NuevoAlojamientoPage() {
       return;
     }
     if (!paisId) {
-      toast("error", "Pais requerido", "Seleccione un pais");
+      toast("error", "País requerido", "Seleccioná un país");
       return;
     }
     if (!ciudadId) {
@@ -166,7 +166,7 @@ export default function NuevoAlojamientoPage() {
         <FormSections>
           <FormSection
             title="Datos del hotel"
-            description="Nombre, categoria y ubicacion principal del alojamiento."
+            description="Nombre, categoría y ubicación principal del alojamiento."
           >
             <FieldGroup columns={2}>
               <Field span={2}>
@@ -181,7 +181,7 @@ export default function NuevoAlojamientoPage() {
 
               <Field span={2}>
                 <SelectCascade
-                  parentLabel="Pais"
+                  parentLabel="País"
                   parentValue={paisId}
                   onParentChange={setPaisId}
                   parentOptions={paises.map((p) => ({
@@ -203,7 +203,7 @@ export default function NuevoAlojamientoPage() {
               </Field>
 
               <Field>
-                <FieldLabel>Categoria</FieldLabel>
+                <FieldLabel>Categoría</FieldLabel>
                 <Select
                   value={categoria}
                   onValueChange={setCategoria}

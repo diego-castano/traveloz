@@ -209,7 +209,7 @@ export default function CircuitosPage() {
     <>
       <DataTablePageHeader
         title="Circuitos"
-        subtitle="Gestion de circuitos y itinerarios"
+        subtitle="Gestión de circuitos y itinerarios"
         action={
           canEdit ? (
             <Button
@@ -306,7 +306,7 @@ export default function CircuitosPage() {
                       {circuito.noches}
                     </DataTableCell>
                     <DataTableCell variant="muted" align="center">
-                      {proveedorMap[circuito.proveedorId] ?? "--"}
+                      {proveedorMap[circuito.proveedorId ?? ""] ?? "--"}
                     </DataTableCell>
                     <DataTableCell align="right">
                       <RowActions

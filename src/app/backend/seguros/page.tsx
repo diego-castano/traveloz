@@ -117,7 +117,7 @@ export default function SegurosPage() {
   const filteredSeguros = useMemo(() => {
     if (!search.trim()) return seguros;
     return seguros.filter((s) =>
-      matchesSearch(search, s.plan, s.cobertura, proveedorMap[s.proveedorId]),
+      matchesSearch(search, s.plan, s.cobertura, proveedorMap[s.proveedorId ?? ""]),
     );
   }, [seguros, search, proveedorMap]);
 
@@ -146,7 +146,7 @@ export default function SegurosPage() {
   function handleOpenEdit(s: Seguro) {
     setEditTarget(s);
     setForm({
-      proveedorId: s.proveedorId,
+      proveedorId: s.proveedorId ?? "",
       plan: s.plan,
       cobertura: s.cobertura,
       costoPorDia: s.costoPorDia,
@@ -193,7 +193,7 @@ export default function SegurosPage() {
       cobertura: s.cobertura,
       costoPorDia: s.costoPorDia,
     });
-    toast("success", "Seguro clonado", `Se creo una copia de "${s.plan}"`);
+    toast("success", "Seguro clonado", `Se creó una copia de "${s.plan}"`);
   }
 
   function handleOpenDelete(s: Seguro) {
@@ -218,7 +218,7 @@ export default function SegurosPage() {
     <>
       <DataTablePageHeader
         title="Seguros"
-        subtitle="Gestion de seguros de viaje"
+        subtitle="Gestión de seguros de viaje"
         action={
           canEdit ? (
             <Button
@@ -264,7 +264,7 @@ export default function SegurosPage() {
                 <DataTableHead>Proveedor</DataTableHead>
                 <DataTableHead>Plan</DataTableHead>
                 <DataTableHead>Cobertura</DataTableHead>
-                <DataTableHead align="right">Costo/Dia (USD)</DataTableHead>
+                <DataTableHead align="right">Costo/Día (USD)</DataTableHead>
                 <DataTableHead align="right">Acciones</DataTableHead>
               </DataTableRow>
             </DataTableHeader>
@@ -276,7 +276,7 @@ export default function SegurosPage() {
                   interactive
                 >
                   <DataTableCell variant="muted">
-                    {proveedorMap[s.proveedorId] ?? "—"}
+                    {proveedorMap[s.proveedorId ?? ""] ?? "—"}
                   </DataTableCell>
                   <DataTableCell variant="muted">{s.plan}</DataTableCell>
                   <DataTableCell variant="primary">
@@ -371,7 +371,7 @@ export default function SegurosPage() {
                 />
               </Field>
               <Field span={2}>
-                <FieldLabel>Costo/Dia (USD)</FieldLabel>
+                <FieldLabel>Costo/Día (USD)</FieldLabel>
                 <Input
                   type="number"
                   value={form.costoPorDia === 0 ? "" : String(form.costoPorDia)}

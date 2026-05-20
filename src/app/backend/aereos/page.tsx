@@ -165,7 +165,7 @@ export default function AereosPage() {
       duracionIda: aereo.duracionIda,
       duracionVuelta: aereo.duracionVuelta,
     });
-    toast("success", "Aereo clonado", `Se creo una copia de "${aereo.ruta}"`);
+    toast("success", "Aéreo clonado", `Se creó una copia de "${aereo.ruta}"`);
   }
 
   function handleOpenDelete(aereo: Aereo) {
@@ -177,7 +177,7 @@ export default function AereosPage() {
     const { id, ruta } = deleteTarget;
     deleteAereo(id);
     setDeleteTarget(null);
-    toast("success", "Aereo eliminado", `"${ruta}" fue eliminado correctamente`);
+    toast("success", "Aéreo eliminado", `"${ruta}" fue eliminado correctamente`);
   }
 
   // ---------------------------------------------------------------------------
@@ -189,15 +189,15 @@ export default function AereosPage() {
   return (
     <>
       <DataTablePageHeader
-        title="Aereos"
-        subtitle="Gestion de vuelos y tarifas"
+        title="Aéreos"
+        subtitle="Gestión de vuelos y tarifas"
         action={
           canEdit ? (
             <Button
               leftIcon={<Plus className="h-4 w-4" />}
               onClick={() => router.push("/backend/aereos/nuevo")}
             >
-              Nuevo Aereo
+              Nuevo Aéreo
             </Button>
           ) : undefined
         }
@@ -207,7 +207,7 @@ export default function AereosPage() {
         search={{
           value: search,
           onChange: setSearch,
-          placeholder: "Buscar por ruta, destino o aerolinea...",
+          placeholder: "Buscar por ruta, destino o aerolínea...",
         }}
         className="mb-4"
       >
@@ -225,7 +225,7 @@ export default function AereosPage() {
                 leftIcon={<Plus className="h-4 w-4" />}
                 onClick={() => router.push("/backend/aereos/nuevo")}
               >
-                Nuevo Aereo
+                Nuevo Aéreo
               </Button>
             ) : undefined
           }
@@ -339,7 +339,7 @@ export default function AereosPage() {
         }}
         size="sm"
       >
-        <ModalHeader title="Eliminar Aereo">{null}</ModalHeader>
+        <ModalHeader title="Eliminar Aéreo">{null}</ModalHeader>
         <ModalBody>
           <p className="text-neutral-700">
             Esta seguro que desea eliminar &ldquo;{deleteTarget?.ruta}&rdquo;?

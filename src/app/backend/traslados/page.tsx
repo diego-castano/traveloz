@@ -190,9 +190,9 @@ export default function TrasladosPage() {
           search,
           traslado.id,
           traslado.nombre,
-          paisMap[traslado.paisId],
-          ciudadMap[traslado.ciudadId],
-          proveedorMap[traslado.proveedorId],
+          paisMap[traslado.paisId ?? ""],
+          ciudadMap[traslado.ciudadId ?? ""],
+          proveedorMap[traslado.proveedorId ?? ""],
         ),
       );
     }
@@ -319,7 +319,7 @@ export default function TrasladosPage() {
     <>
       <DataTablePageHeader
         title="Traslados"
-        subtitle="Gestion de transfers y traslados"
+        subtitle="Gestión de transfers y traslados"
         action={
           canEdit ? (
             <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => openCreate()}>
@@ -404,15 +404,15 @@ export default function TrasladosPage() {
                   </DataTableCell>
 
                   <DataTableCell variant="muted" align="center">
-                    {paisMap[traslado.paisId] ?? "--"}
+                    {paisMap[traslado.paisId ?? ""] ?? "--"}
                   </DataTableCell>
 
                   <DataTableCell variant="muted" align="center">
-                    {ciudadMap[traslado.ciudadId] ?? "--"}
+                    {ciudadMap[traslado.ciudadId ?? ""] ?? "--"}
                   </DataTableCell>
 
                   <DataTableCell variant="muted" align="center">
-                    {proveedorMap[traslado.proveedorId] ?? "--"}
+                    {proveedorMap[traslado.proveedorId ?? ""] ?? "--"}
                   </DataTableCell>
 
                   <DataTableCell variant="price" align="right">

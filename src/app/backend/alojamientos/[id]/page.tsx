@@ -330,7 +330,7 @@ function AlojamientoDetailForm({
     },
     {
       key: "regimenId",
-      label: "Regimen",
+      label: "Régimen",
       width: "210px",
       render: (r) => (r.regimenId ? regimenMap[r.regimenId] : null) ?? "—",
       editor: (r, update) => (
@@ -419,7 +419,7 @@ function AlojamientoDetailForm({
         {/* ------------------------------------------------------------------ */}
         <FormSection
           title="Datos del hotel"
-          description="Nombre, categoria y ubicacion del hotel."
+          description="Nombre, categoría y ubicación del hotel."
         >
           <FieldGroup columns={2}>
             <Field span={2}>
@@ -434,7 +434,7 @@ function AlojamientoDetailForm({
 
             <Field span={2}>
               <SelectCascade
-                parentLabel="Pais"
+                parentLabel="País"
                 parentValue={paisId}
                 onParentChange={setPaisId}
                 parentOptions={paises.map((p) => ({
@@ -457,7 +457,7 @@ function AlojamientoDetailForm({
             </Field>
 
             <Field>
-              <FieldLabel>Categoria (estrellas)</FieldLabel>
+              <FieldLabel>Categoría (estrellas)</FieldLabel>
               <Select
                 value={categoria}
                 onValueChange={setCategoria}

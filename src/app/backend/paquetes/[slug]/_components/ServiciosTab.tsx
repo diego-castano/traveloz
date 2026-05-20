@@ -167,7 +167,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
       case "seguros": {
         const seguro = seguroMap.get(assignment.seguroId as string);
         if (!seguro) return <span className="text-neutral-400">Seguro no encontrado</span>;
-        const provNombre = proveedorMap.get(seguro.proveedorId) ?? "";
+        const provNombre = proveedorMap.get(seguro.proveedorId ?? "") ?? "";
         return (
           <div className="flex flex-col">
             <span className="text-[13.5px] font-medium text-neutral-800">{seguro.plan}</span>

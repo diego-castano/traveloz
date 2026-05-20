@@ -104,9 +104,11 @@ export interface Traslado {
   brandId: string;
   nombre: string;
   tipo: TipoTraslado;
-  ciudadId: string;
-  paisId: string;
-  proveedorId: string;
+  // Schema-aligned: estas FKs son opcionales en Prisma (`String?`). Traslados
+  // importados pueden no traer ubicación ni proveedor todavía.
+  ciudadId: string | null;
+  paisId: string | null;
+  proveedorId: string | null;
   precio: number;
   createdAt: string;
   updatedAt: string;
@@ -117,7 +119,8 @@ export interface Traslado {
 export interface Seguro {
   id: string;
   brandId: string;
-  proveedorId: string;
+  /** Optional FK — schema is `String?`. */
+  proveedorId: string | null;
   plan: string;
   cobertura: string;
   costoPorDia: number;
@@ -132,7 +135,8 @@ export interface Circuito {
   brandId: string;
   nombre: string;
   noches: number;
-  proveedorId: string;
+  /** Optional FK — schema is `String?`. */
+  proveedorId: string | null;
   itinerario?: CircuitoDia[];
   createdAt: string;
   updatedAt: string;

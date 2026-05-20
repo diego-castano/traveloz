@@ -340,7 +340,7 @@ export default function AlojamientosPage() {
       categoria: alojamiento.categoria,
       sitioWeb: alojamiento.sitioWeb,
     });
-    toast("success", "Alojamiento clonado", `Se creo una copia de "${alojamiento.nombre}"`);
+    toast("success", "Alojamiento clonado", `Se creó una copia de "${alojamiento.nombre}"`);
   }
 
   function handleOpenDelete(alojamiento: Alojamiento) {
@@ -365,7 +365,7 @@ export default function AlojamientosPage() {
     <>
       <DataTablePageHeader
         title="Alojamientos"
-        subtitle="Gestion de hoteles y alojamientos"
+        subtitle="Gestión de hoteles y alojamientos"
         action={
           canEdit ? (
             <Button

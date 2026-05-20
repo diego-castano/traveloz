@@ -226,7 +226,7 @@ export default function ProveedoresPage() {
       notas: p.notas ?? "",
       servicio: p.servicio,
     });
-    toast("success", "Proveedor clonado", `Se creo una copia de "${p.nombre}"`);
+    toast("success", "Proveedor clonado", `Se creó una copia de "${p.nombre}"`);
   }
 
   function handleOpenDelete(p: Proveedor) {
@@ -441,7 +441,7 @@ export default function ProveedoresPage() {
                 />
               </Field>
               <Field>
-                <FieldLabel>Telefono</FieldLabel>
+                <FieldLabel>Teléfono</FieldLabel>
                 <Input
                   value={form.telefono}
                   onChange={(e) =>

@@ -102,6 +102,7 @@ function TemporadasTab() {
     <CatalogEditor<Temporada>
       entityLabel="Temporada"
       entityLabelPlural="Temporadas"
+      entityGenero="femenino"
       emptyIcon={Calendar}
       emptyTitle="No hay temporadas registradas"
       emptyDescription="Una temporada es un label administrable usado para clasificar paquetes por epoca del ano."
@@ -315,8 +316,8 @@ function RegimenesTab() {
 
   return (
     <CatalogEditor<Regimen>
-      entityLabel="Regimen"
-      entityLabelPlural="Regimenes"
+      entityLabel="Régimen"
+      entityLabelPlural="Regímenes"
       emptyIcon={Utensils}
       emptyTitle="No hay regimenes registrados"
       emptyDescription="Los regimenes definen el plan de comidas (All Inclusive, Desayuno, Media Pension...)."
@@ -365,7 +366,7 @@ function RegimenesTab() {
         });
         toast(
           "success",
-          "Regimen creado",
+          "Régimen creado",
           `"${form.nombre}" fue creado correctamente`,
         );
       }}
@@ -377,7 +378,7 @@ function RegimenesTab() {
         });
         toast(
           "success",
-          "Regimen actualizado",
+          "Régimen actualizado",
           `"${form.nombre}" fue actualizado correctamente`,
         );
       }}
@@ -385,7 +386,7 @@ function RegimenesTab() {
         await deleteRegimen(row.id);
         toast(
           "success",
-          "Regimen eliminado",
+          "Régimen eliminado",
           `"${row.nombre}" fue eliminado correctamente`,
         );
       }}
@@ -411,6 +412,7 @@ function EtiquetasTab() {
     <CatalogEditor<Etiqueta>
       entityLabel="Etiqueta"
       entityLabelPlural="Etiquetas"
+      entityGenero="femenino"
       emptyIcon={Tag}
       emptyTitle="No hay etiquetas registradas"
       emptyDescription="Las etiquetas se usan para campanas y slugs (Black Week, Promo Nordeste, etc)."
@@ -634,7 +636,7 @@ function RegionesPaisesTab() {
     const slug = regionForm.slug.trim() || slugifyRegion(nombre);
     if (editRegion) {
       await updateRegion({ ...editRegion, nombre, slug, orden: regionForm.orden });
-      toast("success", "Region actualizada", `"${nombre}" fue actualizada correctamente`);
+      toast("success", "Región actualizada", `"${nombre}" fue actualizada correctamente`);
     } else {
       await createRegion({
         brandId: activeBrandId,
@@ -642,7 +644,7 @@ function RegionesPaisesTab() {
         slug,
         orden: regionForm.orden,
       });
-      toast("success", "Region creada", `"${nombre}" fue creada correctamente`);
+      toast("success", "Región creada", `"${nombre}" fue creada correctamente`);
     }
     setRegionModalOpen(false);
   }
@@ -653,7 +655,7 @@ function RegionesPaisesTab() {
     setDeleteRegionTarget(null);
     try {
       await deleteRegion(target.id);
-      toast("success", "Region eliminada", `"${target.nombre}" fue eliminada correctamente`);
+      toast("success", "Región eliminada", `"${target.nombre}" fue eliminada correctamente`);
     } catch (err) {
       toast(
         "error",
@@ -693,7 +695,7 @@ function RegionesPaisesTab() {
         codigo: paisForm.codigo,
         regionId: paisForm.regionId,
       });
-      toast("success", "Pais actualizado", `"${paisForm.nombre}" fue actualizado correctamente`);
+      toast("success", "País actualizado", `"${paisForm.nombre}" fue actualizado correctamente`);
     } else {
       await createPais({
         brandId: activeBrandId,
@@ -701,7 +703,7 @@ function RegionesPaisesTab() {
         codigo: paisForm.codigo,
         regionId: paisForm.regionId,
       });
-      toast("success", "Pais creado", `"${paisForm.nombre}" fue creado correctamente`);
+      toast("success", "País creado", `"${paisForm.nombre}" fue creado correctamente`);
     }
     setPaisModalOpen(false);
   }
@@ -718,7 +720,7 @@ function RegionesPaisesTab() {
     });
     await Promise.all(target.ciudades.map((c) => deleteCiudad(c.id)));
     await deletePais(target.id);
-    toast("success", "Pais eliminado", `"${target.nombre}" fue eliminado correctamente`);
+    toast("success", "País eliminado", `"${target.nombre}" fue eliminado correctamente`);
   }
 
   // ---- Ciudad handlers ----
@@ -1096,11 +1098,11 @@ function RegionesPaisesTab() {
       {/* Region Create / Edit modal */}
       <Modal open={regionModalOpen} onOpenChange={setRegionModalOpen} size="md">
         <ModalHeader
-          title={editRegion ? "Editar Region" : "Nueva Region"}
+          title={editRegion ? "Editar Región" : "Nueva Región"}
           description={
             editRegion
-              ? "Actualiza los datos de la region. Los paises asignados se mantendran."
-              : "Agrupa paises bajo una region geografica (Europa, Caribe, etc)."
+              ? "Actualizá los datos de la región. Los países asignados se mantendrán."
+              : "Agrupá países bajo una región geográfica (Europa, Caribe, etc)."
           }
           icon={
             editRegion ? (
@@ -1159,7 +1161,7 @@ function RegionesPaisesTab() {
               Cancelar
             </Button>
             <Button type="submit" disabled={!regionForm.nombre.trim()}>
-              {editRegion ? "Guardar cambios" : "Crear region"}
+              {editRegion ? "Guardar cambios" : "Crear región"}
             </Button>
           </ModalFooter>
         </form>
@@ -1174,8 +1176,8 @@ function RegionesPaisesTab() {
         size="sm"
       >
         <ModalHeader
-          title="Eliminar Region"
-          description="Esta accion no se puede deshacer."
+          title="Eliminar Región"
+          description="Esta acción no se puede deshacer."
           icon={<Trash2 className="h-5 w-5" strokeWidth={2.2} />}
           variant="destructive"
         />
@@ -1206,11 +1208,11 @@ function RegionesPaisesTab() {
       {/* Pais Create / Edit modal */}
       <Modal open={paisModalOpen} onOpenChange={setPaisModalOpen} size="md">
         <ModalHeader
-          title={editPais ? "Editar Pais" : "Nuevo Pais"}
+          title={editPais ? "Editar País" : "Nuevo País"}
           description={
             editPais
-              ? "Actualiza los datos del pais. Las ciudades asociadas se mantendran."
-              : "Registra un pais dentro de una region."
+              ? "Actualizá los datos del país. Las ciudades asociadas se mantendrán."
+              : "Registrá un país dentro de una región."
           }
           icon={
             editPais ? (
@@ -1224,14 +1226,14 @@ function RegionesPaisesTab() {
           <ModalBody>
             <FieldGroup columns={2}>
               <Field span={2}>
-                <FieldLabel required>Region</FieldLabel>
+                <FieldLabel required>Región</FieldLabel>
                 <Select
                   value={paisForm.regionId}
                   onValueChange={(v) =>
                     setPaisForm((f) => ({ ...f, regionId: v }))
                   }
                   options={regionOptions}
-                  placeholder="Seleccionar region..."
+                  placeholder="Seleccionar región..."
                   disabled={!!createPaisInRegionId && !editPais}
                 />
               </Field>
@@ -1247,7 +1249,7 @@ function RegionesPaisesTab() {
                 />
               </Field>
               <Field span={2}>
-                <FieldLabel>Codigo</FieldLabel>
+                <FieldLabel>Código</FieldLabel>
                 <Input
                   value={paisForm.codigo}
                   onChange={(e) =>
@@ -1266,7 +1268,7 @@ function RegionesPaisesTab() {
               type="submit"
               disabled={!paisForm.nombre.trim() || !paisForm.regionId}
             >
-              {editPais ? "Guardar cambios" : "Crear pais"}
+              {editPais ? "Guardar cambios" : "Crear país"}
             </Button>
           </ModalFooter>
         </form>
@@ -1281,8 +1283,8 @@ function RegionesPaisesTab() {
         size="sm"
       >
         <ModalHeader
-          title="Eliminar Pais"
-          description="Esta accion no se puede deshacer."
+          title="Eliminar País"
+          description="Esta acción no se puede deshacer."
           icon={<Trash2 className="h-5 w-5" strokeWidth={2.2} />}
           variant="destructive"
         />
@@ -1364,12 +1366,12 @@ export default function CatalogosPage() {
   return (
     <>
       <DataTablePageHeader
-        title="Catalogos"
-        subtitle="Temporadas, tipos de paquete, etiquetas, regiones y regimenes"
+        title="Catálogos"
+        subtitle="Temporadas, tipos de paquete, etiquetas, regiones y regímenes"
       />
       {hydratingGeography && (
         <div className="mb-4 rounded-[12px] border border-[#45D4C0]/20 bg-[#45D4C0]/7 px-3.5 py-2.5 text-[12.5px] text-[#1A6D63]">
-          El catalogo ya esta listo para usarse. Terminamos de cargar la parte geografica en segundo plano.
+          El catálogo ya está listo para usarse. Terminamos de cargar la parte geográfica en segundo plano.
         </div>
       )}
       <Tabs
@@ -1381,8 +1383,8 @@ export default function CatalogosPage() {
           <TabsTrigger value="temporadas">Temporadas</TabsTrigger>
           <TabsTrigger value="tipos">Tipos de Paquete</TabsTrigger>
           <TabsTrigger value="etiquetas">Etiquetas</TabsTrigger>
-          <TabsTrigger value="regiones">Regiones y Paises</TabsTrigger>
-          <TabsTrigger value="regimenes">Regimenes</TabsTrigger>
+          <TabsTrigger value="regiones">Regiones y Países</TabsTrigger>
+          <TabsTrigger value="regimenes">Regímenes</TabsTrigger>
         </TabsList>
         <TabsContent value="temporadas">
           <TemporadasTab />

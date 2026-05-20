@@ -110,7 +110,7 @@ const navGroups: NavGroup[] = [
     group: "servicios",
     label: "Servicios",
     items: [
-      { id: "aereos", label: "Aereos", icon: Plane, href: "/backend/aereos" },
+      { id: "aereos", label: "Aéreos", icon: Plane, href: "/backend/aereos" },
       { id: "alojamientos", label: "Alojamientos", icon: Hotel, href: "/backend/alojamientos" },
       { id: "traslados", label: "Traslados", icon: Bus, href: "/backend/traslados" },
       { id: "circuitos", label: "Circuitos", icon: Ship, href: "/backend/circuitos" },
@@ -132,7 +132,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "proveedores", label: "Proveedores", icon: Truck, href: "/backend/proveedores" },
       { id: "perfiles", label: "Perfiles y Roles", icon: Users, href: "/backend/perfiles" },
-      { id: "catalogos", label: "Catalogos", icon: Settings, href: "/backend/catalogos" },
+      { id: "catalogos", label: "Catálogos", icon: Settings, href: "/backend/catalogos" },
       { id: "notificaciones", label: "Notificaciones", icon: Bell, href: "/backend/notificaciones" },
     ],
   },

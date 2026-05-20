@@ -96,7 +96,7 @@ export default function AereoDetailPage() {
   if (!aereo) {
     return (
       <DataTablePageHeader
-        title="Aereo no encontrado"
+        title="Aéreo no encontrado"
         subtitle="El vuelo solicitado no existe o fue eliminado"
         action={
           <Button
@@ -104,7 +104,7 @@ export default function AereoDetailPage() {
             onClick={() => router.push("/backend/aereos")}
             leftIcon={<ArrowLeft className="h-4 w-4" />}
           >
-            Volver a Aereos
+            Volver a Aéreos
           </Button>
         }
       />
@@ -346,7 +346,7 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
             onClick={() => router.push("/backend/aereos")}
             leftIcon={<ArrowLeft className="h-4 w-4" />}
           >
-            Volver a Aereos
+            Volver a Aéreos
           </Button>
         }
       />
@@ -357,7 +357,7 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
         {/* ------------------------------------------------------------------ */}
         <FormSection
           title="Datos del vuelo"
-          description="Ruta, destino y compania aerea principal del vuelo."
+          description="Ruta, destino y compañía aérea principal del vuelo."
         >
         <FieldGroup columns={2}>
           <Field span={2}>
@@ -379,7 +379,7 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
               />
             </Field>
             <Field span={2}>
-              <FieldLabel>Aerolinea</FieldLabel>
+              <FieldLabel>Aerolínea</FieldLabel>
               <Input
                 value={aerolinea}
                 onChange={(e) => setAerolinea(e.target.value)}
@@ -395,7 +395,7 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
         {/* ------------------------------------------------------------------ */}
         <FormSection
           title="Detalles del vuelo"
-          description="Equipaje incluido con la tarifa aerea. Este bloque es obligatorio para guardar cambios."
+          description="Equipaje incluido con la tarifa aérea. Este bloque es obligatorio para guardar cambios."
         >
           <FieldGroup>
             <Field>

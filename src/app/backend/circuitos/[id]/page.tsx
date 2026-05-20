@@ -166,14 +166,14 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
     const existing = dias.find((d) => d.id === editingDiaId);
     if (!existing) return;
     updateCircuitoDia({ ...existing, ...draftDia });
-    toast("success", "Dia actualizado", "El dia del itinerario fue guardado.");
+    toast("success", "Día actualizado", "El día del itinerario fue guardado.");
     setEditingDiaId(null);
     setDraftDia({});
   }
 
   function handleDeleteDia(diaId: string) {
     deleteCircuitoDia(diaId);
-    toast("success", "Dia eliminado", "El dia fue eliminado del itinerario.");
+    toast("success", "Día eliminado", "El día fue eliminado del itinerario.");
   }
 
   function handleSaveAddDia() {
@@ -184,7 +184,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
       descripcion: newDia.descripcion ?? "",
       orden: dias.length,
     });
-    toast("success", "Dia agregado", "Se agrego un nuevo dia al itinerario.");
+    toast("success", "Día agregado", "Se agregó un nuevo día al itinerario.");
     setAddingDia(false);
     setNewDia({});
   }
@@ -409,8 +409,8 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
         {/* Itinerario dia a dia                                               */}
         {/* ------------------------------------------------------------------ */}
         <FormSection
-          title="Itinerario dia a dia"
-          description="Arrastra las filas para reordenar los dias del itinerario."
+          title="Itinerario día a día"
+          description="Arrastrá las filas para reordenar los días del itinerario."
         >
           <div className="border-y border-hairline overflow-x-auto">
             <table className="w-full border-collapse">
@@ -474,7 +474,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                               titulo: e.target.value,
                             }))
                           }
-                          placeholder="Titulo del dia"
+                          placeholder="Título del día"
                         />
                       </td>
                       <td className="px-4 py-2">
@@ -487,7 +487,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                               descripcion: e.target.value,
                             }))
                           }
-                          placeholder="Descripcion del dia"
+                          placeholder="Descripción del día"
                           className="w-full resize-none rounded-[8px] border border-hairline bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-[#3BBFAD] focus:outline-none"
                         />
                       </td>
@@ -553,7 +553,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                               <button
                                 type="button"
                                 onClick={() => handleStartEditDia(dia)}
-                                aria-label="Editar dia"
+                                aria-label="Editar día"
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800"
                               >
                                 <Pencil className="h-[14px] w-[14px]" />
@@ -561,7 +561,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteDia(dia.id)}
-                                aria-label="Eliminar dia"
+                                aria-label="Eliminar día"
                                 className="inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-brand-red-50 hover:text-[#CC2030]"
                               >
                                 <Trash2 className="h-[14px] w-[14px]" />
@@ -596,7 +596,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                         onChange={(e) =>
                           setNewDia((d) => ({ ...d, titulo: e.target.value }))
                         }
-                        placeholder="Titulo del dia"
+                        placeholder="Título del día"
                         autoFocus
                       />
                     </td>
@@ -610,7 +610,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                             descripcion: e.target.value,
                           }))
                         }
-                        placeholder="Descripcion del dia"
+                        placeholder="Descripción del día"
                         className="w-full resize-none rounded-[8px] border border-hairline bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-[#3BBFAD] focus:outline-none"
                       />
                     </td>
@@ -619,7 +619,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                         <button
                           type="button"
                           onClick={handleSaveAddDia}
-                          aria-label="Guardar nuevo dia"
+                          aria-label="Guardar nuevo día"
                           className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#2A9E8E] hover:bg-[rgba(59,191,173,0.12)]"
                         >
                           <Check className="h-[15px] w-[15px]" />
