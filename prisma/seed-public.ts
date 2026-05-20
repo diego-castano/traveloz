@@ -66,6 +66,8 @@ const SETTINGS: Array<{
     group: "home",
     label: "Texto del botón newsletter",
   },
+  { key: "home_newsletter_bg", value: "/site/img/cta-bg.webp", type: "image_url", group: "home", label: "Fondo del bloque newsletter" },
+  { key: "home_newsletter_icon", value: "/site/img/newsletter-icon.svg", type: "image_url", group: "home", label: "Icono del input newsletter" },
   // ─── General (footer / contact info) ────────────────────────────────
   {
     key: "general_whatsapp",
@@ -157,6 +159,7 @@ const SETTINGS: Array<{
   { key: "destinos_cta_texto", value: "Diseñamos paquetes a medida. Contanos qué tenés en mente.", type: "textarea", group: "destinos", label: "CTA — texto" },
   { key: "destinos_cta_link_label", value: "Cotizar a medida", group: "destinos", label: "CTA — texto del botón" },
   { key: "destinos_cta_link_href", value: "/cotizar", group: "destinos", label: "CTA — destino del botón" },
+  { key: "destinos_categoria_subtitulo", value: "Paquetes de {tipo} disponibles.", type: "textarea", group: "destinos", label: "Subtítulo modo categoría (usá {tipo} como variable)" },
   // ─── FAQ (página /faq) ───────────────────────────────────────────────
   { key: "faq_titulo", value: "Preguntas frecuentes", group: "faq", label: "Título principal" },
   { key: "faq_subtitulo", value: "Todo lo que necesitás saber antes, durante y después de tu viaje.", type: "textarea", group: "faq", label: "Subtítulo / lead" },
@@ -188,6 +191,12 @@ const SETTINGS: Array<{
   { key: "cotizar_porque_card_3_titulo", value: "Precios competitivos", group: "cotizar", label: "Card 3 — título" },
   { key: "cotizar_porque_card_3_texto", value: "Negociación directa con operadores y aerolíneas para garantizarte las mejores tarifas.", type: "textarea", group: "cotizar", label: "Card 3 — texto" },
   { key: "cotizar_porque_card_3_icon", value: "/site/img/flight-icon.webp", type: "image_url", group: "cotizar", label: "Card 3 — icono" },
+  // ─── Formas de pago (bloque del detalle de paquete) ─────────────────
+  { key: "pagos_titulo", value: "Formas de pago", group: "pagos", label: "Título del bloque" },
+  { key: "pagos_tarjetas_titulo", value: "Tarjetas de crédito", group: "pagos", label: "Subtítulo — tarjetas" },
+  { key: "pagos_tarjetas_json", value: '[{"src":"/site/img/visa.png","alt":"Visa"},{"src":"/site/img/dca.png","alt":"Diners Club"},{"src":"/site/img/mastercard.png","alt":"Mastercard"},{"src":"/site/img/ae.png","alt":"American Express"}]', type: "textarea", group: "pagos", label: "Logos de tarjetas (JSON [{src, alt}])" },
+  { key: "pagos_bancos_titulo", value: "Transferencia bancaria", group: "pagos", label: "Subtítulo — bancos" },
+  { key: "pagos_bancos_json", value: '[{"src":"/site/img/santander.png","alt":"Santander"},{"src":"/site/img/itau.png","alt":"Itaú"},{"src":"/site/img/bbva.png","alt":"BBVA"},{"src":"/site/img/banco.png","alt":"Banco República"}]', type: "textarea", group: "pagos", label: "Logos de bancos (JSON [{src, alt}])" },
 ];
 
 const CATEGORIAS = [

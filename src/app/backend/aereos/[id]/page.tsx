@@ -29,7 +29,7 @@ import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import { formatStoredDate, parseStoredDate } from "@/lib/date";
 import { format } from "date-fns";
-import type { PrecioAereo } from "@/lib/types";
+import type { Aereo, PrecioAereo } from "@/lib/types";
 
 function formatPeriodLabel(value?: string | null) {
   const date = parseStoredDate(value);
@@ -83,54 +83,15 @@ const equipajeOptions: {
 export default function AereoDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { canEdit } = useAuth();
-  const { toast } = useToast();
-
-  // -- Service state --
   const serviceState = useServiceState();
-  const {
-    updateAereo,
-    createPrecioAereo,
-    updatePrecioAereo,
-    deletePrecioAereo,
-  } = useServiceActions();
-  const packageState = usePackageState();
   const loading = useServiceLoading();
 
-  // -- Find aereo --
   const aereo = serviceState.aereos.find((a) => a.id === id && !a.deletedAt);
 
-  // -- Count affected packages --
-  const affectedPackageCount = useMemo(() => {
-    const paqueteIds = new Set(
-      packageState.paqueteAereos
-        .filter((pa) => pa.aereoId === id)
-        .map((pa) => pa.paqueteId),
-    );
-    return paqueteIds.size;
-  }, [packageState.paqueteAereos, id]);
-
-  // -- Flight form state (initialized from aereo) --
-  const [ruta, setRuta] = useState(aereo?.ruta ?? "");
-  const [destino, setDestino] = useState(aereo?.destino ?? "");
-  const [aerolinea, setAerolinea] = useState(aereo?.aerolinea ?? "");
-  const [equipaje, setEquipaje] = useState(aereo?.equipaje ?? "");
-  const [itinerario, setItinerario] = useState(aereo?.itinerario ?? "");
-  const [itinerarioImagenes, setItinerarioImagenes] = useState<string[]>(
-    aereo?.itinerarioImagenes ?? [],
-  );
-
-  // -- Price impact modal state --
-  const [impactModalOpen, setImpactModalOpen] = useState(false);
-  const [pendingSaveAction, setPendingSaveAction] = useState<
-    (() => void) | null
-  >(null);
-
-  // ---------------------------------------------------------------------------
-  // Guard: loading / not found
-  // ---------------------------------------------------------------------------
-
-  if (loading) return <PageSkeleton variant="detail" />;
+  // On a cold load (direct URL / refresh) the service cache is still empty on
+  // the first render. Wait for it before deciding "not found" — and mount the
+  // form only once `aereo` exists so its useState seeds get the real values.
+  if (loading && !aereo) return <PageSkeleton variant="detail" />;
 
   if (!aereo) {
     return (
@@ -149,6 +110,55 @@ export default function AereoDetailPage() {
       />
     );
   }
+
+  return <AereoDetailForm key={aereo.id} aereo={aereo} />;
+}
+
+// ---------------------------------------------------------------------------
+// AereoDetailForm — mounted only once the aereo is loaded, so the form's
+// useState seeds always start from real data (no empty cold-load form).
+// ---------------------------------------------------------------------------
+
+function AereoDetailForm({ aereo }: { aereo: Aereo }) {
+  const router = useRouter();
+  const { canEdit } = useAuth();
+  const { toast } = useToast();
+
+  // -- Service state --
+  const serviceState = useServiceState();
+  const {
+    updateAereo,
+    createPrecioAereo,
+    updatePrecioAereo,
+    deletePrecioAereo,
+  } = useServiceActions();
+  const packageState = usePackageState();
+
+  // -- Count affected packages --
+  const affectedPackageCount = useMemo(() => {
+    const paqueteIds = new Set(
+      packageState.paqueteAereos
+        .filter((pa) => pa.aereoId === aereo.id)
+        .map((pa) => pa.paqueteId),
+    );
+    return paqueteIds.size;
+  }, [packageState.paqueteAereos, aereo.id]);
+
+  // -- Flight form state (seeded from the loaded aereo) --
+  const [ruta, setRuta] = useState(aereo.ruta);
+  const [destino, setDestino] = useState(aereo.destino);
+  const [aerolinea, setAerolinea] = useState(aereo.aerolinea);
+  const [equipaje, setEquipaje] = useState(aereo.equipaje);
+  const [itinerario, setItinerario] = useState(aereo.itinerario);
+  const [itinerarioImagenes, setItinerarioImagenes] = useState<string[]>(
+    aereo.itinerarioImagenes ?? [],
+  );
+
+  // -- Price impact modal state --
+  const [impactModalOpen, setImpactModalOpen] = useState(false);
+  const [pendingSaveAction, setPendingSaveAction] = useState<
+    (() => void) | null
+  >(null);
 
   // ---------------------------------------------------------------------------
   // Prices for this aereo

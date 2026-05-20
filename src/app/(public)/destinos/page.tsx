@@ -24,18 +24,30 @@ export default async function DestinosPage({
   if (tipoSlug) {
     const tipo = await getTipoPaqueteBySlug(tipoSlug);
     if (tipo) {
-      const paquetes = await getPaquetesByTipo(tipo.id);
-      // Resolver region slug para el href de cada paquete (toma la primera región
-      // disponible en sus destinos; cae a una región default si no tiene).
-      const regiones = await getRegionesPublicas();
+      const [paquetes, regiones, settings] = await Promise.all([
+        getPaquetesByTipo(tipo.id),
+        // Resolver region slug para el href de cada paquete (toma la primera
+        // región disponible; cae a una default si no tiene).
+        getRegionesPublicas(),
+        getSiteSettings("destinos"),
+      ]);
       const defaultRegionSlug = regiones[0]?.slug ?? "ver";
+      // Plantilla del subtítulo de categoría — {tipo} se reemplaza por el
+      // nombre de la categoría. Editable desde /backend/web/destinos.
+      const subtituloTpl =
+        settings.destinos_categoria_subtitulo?.trim() ||
+        "Paquetes de {tipo} disponibles.";
+      const subtitulo = subtituloTpl.replace(
+        /\{tipo\}/gi,
+        tipo.nombre.toLowerCase(),
+      );
 
       return (
         <section className="content-area">
           <div className="container">
             <div className="text-center mb_50">
               <h1 className="section-heading">{tipo.nombre}</h1>
-              <p>Paquetes de {tipo.nombre.toLowerCase()} disponibles.</p>
+              <p>{subtitulo}</p>
             </div>
             {paquetes.length === 0 ? (
               <p className="text-center py-12">

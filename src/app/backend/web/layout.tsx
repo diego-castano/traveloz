@@ -20,6 +20,7 @@ import {
   Send,
   UserPlus,
   Package,
+  CreditCard,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/components/lib/cn";
@@ -65,6 +66,7 @@ const GROUPS: Group[] = [
     label: "Servicios",
     items: [
       { href: "/backend/web/servicios-incluidos", label: "Servicios incluidos", icon: Package },
+      { href: "/backend/web/pagos", label: "Formas de pago", icon: CreditCard },
     ],
   },
   {

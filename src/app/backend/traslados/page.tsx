@@ -231,8 +231,8 @@ export default function TrasladosPage() {
     setForm({
       nombre: traslado.nombre,
       tipo: traslado.tipo,
-      paisId: traslado.paisId,
-      ciudadId: traslado.ciudadId,
+      paisId: traslado.paisId ?? "",
+      ciudadId: traslado.ciudadId ?? "",
       proveedorId: traslado.proveedorId ?? "",
       precio: String(traslado.precio ?? ""),
     });
@@ -244,17 +244,13 @@ export default function TrasladosPage() {
     const precio = normalizePrice(form.precio);
 
     if (!nombre) {
-      toast("warning", "Nombre requerido", "Ingresa un nombre para el traslado.");
+      toast("warning", "Nombre requerido", "Ingresá un nombre para el traslado.");
       return;
     }
-    if (!form.paisId) {
-      toast("warning", "Pais requerido", "Elegí un país antes de guardar.");
-      return;
-    }
-    if (!form.ciudadId) {
-      toast("warning", "Ciudad requerida", "Elegí una ciudad antes de guardar.");
-      return;
-    }
+    // País y ciudad son opcionales (el schema los permite nulos). Forzarlos
+    // aquí dejaba intocables los traslados importados sin ubicación: cualquier
+    // intento de guardar —incluso solo para asignar el proveedor— quedaba
+    // bloqueado por la validación.
     if (!Number.isFinite(precio) || precio <= 0) {
       toast("warning", "Precio requerido", "Ingresa un precio mayor a cero.");
       return;

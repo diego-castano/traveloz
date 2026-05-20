@@ -181,6 +181,57 @@ export const getPersonasContacto = unstable_cache(
   { revalidate: 300, tags: ["equipo"] },
 );
 
+/**
+ * Related packages for the "Descubrí más destinos" slider on a package detail
+ * page. Returns up to 6 published packages from the same region, excluding the
+ * current one. Falls back to any published packages when the region match is
+ * thin so the slider is never empty.
+ */
+export const getPaquetesRelacionados = unstable_cache(
+  async (paqueteId: string, regionId: string | null) => {
+    const base = {
+      publicado: true,
+      deletedAt: null,
+      brandId: PUBLIC_BRAND_ID,
+      NOT: { id: paqueteId },
+    } as const;
+    const include = {
+      fotos: { take: 1, orderBy: { orden: "asc" as const } },
+      destinos: {
+        orderBy: { orden: "asc" as const },
+        include: { ciudad: { include: { pais: true } } },
+      },
+    };
+    let rows = regionId
+      ? await prisma.paquete.findMany({
+          where: {
+            ...base,
+            destinos: { some: { ciudad: { pais: { regionId } } } },
+          },
+          orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
+          include,
+          take: 6,
+        })
+      : [];
+    if (rows.length < 3) {
+      const extra = await prisma.paquete.findMany({
+        where: base,
+        orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
+        include,
+        take: 6,
+      });
+      const seen = new Set(rows.map((r) => r.id));
+      for (const e of extra) {
+        if (rows.length >= 6) break;
+        if (!seen.has(e.id)) rows.push(e);
+      }
+    }
+    return rows;
+  },
+  ["paquetes-relacionados"],
+  { revalidate: 120, tags: ["paquetes"] },
+);
+
 export const getPaqueteBySlug = unstable_cache(
   async (slug: string) =>
     prisma.paquete.findUnique({

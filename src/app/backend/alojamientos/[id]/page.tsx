@@ -27,6 +27,7 @@ import {
   useServiceState,
   useServiceActions,
   useServiceLoading,
+  useServiceProgress,
 } from "@/components/providers/ServiceProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import {
@@ -37,7 +38,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import { formatStoredDate, parseStoredDate } from "@/lib/date";
-import type { PrecioAlojamiento } from "@/lib/types";
+import type { Alojamiento, PrecioAlojamiento } from "@/lib/types";
 
 function formatPeriodLabel(value?: string | null) {
   const date = parseStoredDate(value);
@@ -61,6 +62,55 @@ function isCurrentPeriod(periodoDesde?: string | null, periodoHasta?: string | n
 export default function AlojamientoDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const serviceState = useServiceState();
+  const loading = useServiceLoading();
+  const { hydratingAlojamientos } = useServiceProgress();
+
+  const alojamiento = serviceState.alojamientos.find(
+    (a) => a.id === params.id && !a.deletedAt,
+  );
+
+  // Cold load / progressive hydration: alojamientos arrive in waves, so keep
+  // the skeleton until the cache settles. Without this the page flashes an
+  // empty form (stale useState seeds) or a false "no encontrado".
+  if (!alojamiento && (loading || hydratingAlojamientos)) {
+    return <PageSkeleton variant="detail" />;
+  }
+
+  if (!alojamiento) {
+    return (
+      <DataTablePageHeader
+        title="Alojamiento no encontrado"
+        subtitle="El alojamiento solicitado no existe o fue eliminado."
+        action={
+          <Button
+            variant="ghost"
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
+            onClick={() => router.push("/backend/alojamientos")}
+          >
+            Volver
+          </Button>
+        }
+      />
+    );
+  }
+
+  return (
+    <AlojamientoDetailForm key={alojamiento.id} alojamiento={alojamiento} />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AlojamientoDetailForm — mounted only once the alojamiento is loaded, so the
+// form's useState seeds always start from real data (no empty cold-load form).
+// ---------------------------------------------------------------------------
+
+function AlojamientoDetailForm({
+  alojamiento,
+}: {
+  alojamiento: Alojamiento;
+}) {
+  const router = useRouter();
   const { canEdit } = useAuth();
   const { toast } = useToast();
 
@@ -78,12 +128,6 @@ export default function AlojamientoDetailPage() {
 
   const paises = usePaises();
   const regimenes = useRegimenes();
-  const loading = useServiceLoading();
-
-  // Look up alojamiento
-  const alojamiento = serviceState.alojamientos.find(
-    (a) => a.id === params.id && !a.deletedAt,
-  );
 
   // ---------------------------------------------------------------------------
   // Card 1: Hotel form state
@@ -142,7 +186,7 @@ export default function AlojamientoDetailPage() {
   // ---------------------------------------------------------------------------
 
   const precios = serviceState.preciosAlojamiento.filter(
-    (p) => p.alojamientoId === params.id,
+    (p) => p.alojamientoId === alojamiento.id,
   );
 
   async function handleSavePrecio(row: PrecioAlojamiento) {
@@ -305,7 +349,7 @@ export default function AlojamientoDetailPage() {
   // ---------------------------------------------------------------------------
 
   const fotos = serviceState.alojamientoFotos.filter(
-    (f) => f.alojamientoId === params.id,
+    (f) => f.alojamientoId === alojamiento.id,
   );
 
   const images: ImageItem[] = fotos.map((f) => ({
@@ -318,14 +362,14 @@ export default function AlojamientoDetailPage() {
     (urls: string[]) => {
       urls.forEach((url, i) => {
         createAlojamientoFoto({
-          alojamientoId: params.id,
+          alojamientoId: alojamiento.id,
           url,
           alt: `Foto ${fotos.length + i + 1}`,
           orden: fotos.length + i,
         });
       });
     },
-    [createAlojamientoFoto, params.id, fotos.length],
+    [createAlojamientoFoto, alojamiento.id, fotos.length],
   );
 
   const handleRemove = useCallback(
@@ -346,32 +390,6 @@ export default function AlojamientoDetailPage() {
     },
     [fotos, updateAlojamientoFoto],
   );
-
-  // ---------------------------------------------------------------------------
-  // Loading / Not found state
-  // ---------------------------------------------------------------------------
-
-  if (loading) return <PageSkeleton variant="detail" />;
-
-  if (!alojamiento) {
-    return (
-      <>
-        <DataTablePageHeader
-          title="Alojamiento no encontrado"
-          subtitle="El alojamiento solicitado no existe o fue eliminado."
-          action={
-            <Button
-              variant="ghost"
-              leftIcon={<ArrowLeft className="h-4 w-4" />}
-              onClick={() => router.push("/backend/alojamientos")}
-            >
-              Volver
-            </Button>
-          }
-        />
-      </>
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // Render

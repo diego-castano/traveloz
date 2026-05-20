@@ -64,6 +64,7 @@ const SERVICE_FILTERS = [
   { key: "TRASLADOS", label: "Traslados", icon: Bus },
   { key: "SEGUROS", label: "Seguros", icon: ShieldCheck },
   { key: "CIRCUITOS", label: "Circuitos", icon: Map },
+  { key: "HOTELES", label: "Hoteles", icon: Building2 },
 ];
 
 const SERVICE_LABEL: Record<CategoriaServicio, string> = {
@@ -414,6 +415,7 @@ export default function ProveedoresPage() {
                     { value: "TRASLADOS", label: "Traslados" },
                     { value: "SEGUROS", label: "Seguros" },
                     { value: "CIRCUITOS", label: "Circuitos" },
+                    { value: "HOTELES", label: "Hoteles" },
                   ]}
                 />
               </Field>

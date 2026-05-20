@@ -54,6 +54,8 @@ export default async function HomePage() {
       <HomeNewsletter
         label={settings.home_newsletter_label ?? "Unite al newsletter"}
         button={settings.home_newsletter_button ?? "Suscribirse"}
+        bgImage={settings.home_newsletter_bg}
+        iconImage={settings.home_newsletter_icon}
       />
     </>
   );

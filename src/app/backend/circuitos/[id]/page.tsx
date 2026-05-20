@@ -32,7 +32,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/components/lib/cn";
-import type { CircuitoDia, PrecioCircuito } from "@/lib/types";
+import type { Circuito, CircuitoDia, PrecioCircuito } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // CircuitoDetailPage
@@ -40,7 +40,47 @@ import type { CircuitoDia, PrecioCircuito } from "@/lib/types";
 
 export default function CircuitoDetailPage() {
   const params = useParams<{ id: string }>();
-  const id = params.id;
+  const router = useRouter();
+  const serviceState = useServiceState();
+  const loading = useServiceLoading();
+
+  const circuito = serviceState.circuitos.find(
+    (c) => c.id === params.id && !c.deletedAt,
+  );
+
+  // On a cold load (direct URL / refresh) the service cache is still empty on
+  // the first render. Wait for it before deciding "not found" — and mount the
+  // form only once `circuito` exists so its useState seeds get real data.
+  if (loading && !circuito) return <PageSkeleton variant="detail" />;
+
+  if (!circuito) {
+    return (
+      <DataTablePageHeader
+        title="Circuito no encontrado"
+        subtitle="El circuito solicitado no existe o fue eliminado"
+        action={
+          <Button
+            variant="ghost"
+            onClick={() => router.push("/backend/circuitos")}
+            leftIcon={<ArrowLeft className="h-4 w-4" />}
+          >
+            Volver a Circuitos
+          </Button>
+        }
+      />
+    );
+  }
+
+  return <CircuitoDetailForm key={circuito.id} circuito={circuito} />;
+}
+
+// ---------------------------------------------------------------------------
+// CircuitoDetailForm — mounted only once the circuito is loaded, so the form's
+// useState seeds always start from real data (no empty cold-load form).
+// ---------------------------------------------------------------------------
+
+function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
+  const id = circuito.id;
   const router = useRouter();
   const { canEdit } = useAuth();
   const { toast } = useToast();
@@ -57,7 +97,6 @@ export default function CircuitoDetailPage() {
     deletePrecioCircuito,
   } = useServiceActions();
 
-  const loading = useServiceLoading();
   const allProveedores = useProveedores();
   const proveedoresCircuitos = useMemo(
     () =>
@@ -68,10 +107,6 @@ export default function CircuitoDetailPage() {
   );
 
   // -- Derive data --
-  const circuito = serviceState.circuitos.find(
-    (c) => c.id === id && !c.deletedAt,
-  );
-
   const dias = useMemo(
     () =>
       [...serviceState.circuitoDias.filter((d) => d.circuitoId === id)].sort(
@@ -290,30 +325,6 @@ export default function CircuitoDetailPage() {
       ),
     },
   ];
-
-  // ---------------------------------------------------------------------------
-  // Guard: loading / not found
-  // ---------------------------------------------------------------------------
-
-  if (loading) return <PageSkeleton variant="detail" />;
-
-  if (!circuito) {
-    return (
-      <DataTablePageHeader
-        title="Circuito no encontrado"
-        subtitle="El circuito solicitado no existe o fue eliminado"
-        action={
-          <Button
-            variant="ghost"
-            onClick={() => router.push("/backend/circuitos")}
-            leftIcon={<ArrowLeft className="h-4 w-4" />}
-          >
-            Volver a Circuitos
-          </Button>
-        }
-      />
-    );
-  }
 
   // ---------------------------------------------------------------------------
   // Render

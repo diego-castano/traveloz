@@ -7,16 +7,24 @@ import { FormStatus } from "./FormStatus";
 export function HomeNewsletter({
   label,
   button,
+  bgImage,
+  iconImage,
 }: {
   label: string;
   button: string;
+  /** Background image of the newsletter band — SiteSetting home_newsletter_bg. */
+  bgImage?: string;
+  /** Icon shown inside the email input — SiteSetting home_newsletter_icon. */
+  iconImage?: string;
 }) {
   const [result, action] = useFormState(submitNewsletterForm, null);
+  const bg = bgImage?.trim() || "/site/img/cta-bg.webp";
+  const icon = iconImage?.trim() || "/site/img/newsletter-icon.svg";
   return (
     <section className="content-area relative cta-area">
       <img
         className="footer-cta-bg"
-        src="/site/img/cta-bg.webp"
+        src={bg}
         alt=""
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
@@ -26,7 +34,7 @@ export function HomeNewsletter({
         <div className="site-form style1">
           <form action={action}>
             <label htmlFor="newsletter-email">
-              <img src="/site/img/newsletter-icon.svg" alt="" />
+              <img src={icon} alt="" />
             </label>
             <input
               id="newsletter-email"

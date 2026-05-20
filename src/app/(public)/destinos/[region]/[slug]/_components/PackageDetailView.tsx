@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { QuoteSidebar } from "./QuoteSidebar";
-import { FormasDePago } from "./FormasDePago";
+import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
 
 // ---------------------------------------------------------------------------
 // PackageDetailView — public single-package layout that mirrors the reference
@@ -60,6 +60,8 @@ type Props = {
     serviciosIncluidos: Servicio[];
     opcionesHoteleras: Opcion[];
   };
+  /** Payment methods block — built from SiteSettings group="pagos". */
+  formasDePago?: FormasDePagoData;
 };
 
 const SERVICE_ICON_FALLBACK = "/site/img/p-exc-icon.png";
@@ -178,7 +180,7 @@ const SCOPED_STYLES = `
   .pkg-detail .payment-icon { height: 42px; padding: 6px; }
 `;
 
-export function PackageDetailView({ paquete }: Props) {
+export function PackageDetailView({ paquete, formasDePago }: Props) {
   const [tab, setTab] = useState<"incluye" | "alojamientos">("incluye");
 
   // Compose the slider photos (heroImage first if not already in the list)
@@ -621,7 +623,7 @@ export function PackageDetailView({ paquete }: Props) {
             )}
 
             {/* Payment methods (desktop, below the content card) */}
-            <FormasDePago variant="desktop" />
+            <FormasDePago variant="desktop" data={formasDePago} />
           </div>
 
           {/* Sidebar */}
@@ -632,7 +634,7 @@ export function PackageDetailView({ paquete }: Props) {
               precioDesde={paquete.precioDesde}
               precioDesdeMoneda={paquete.precioDesdeMoneda}
             />
-            <FormasDePago variant="mobile" />
+            <FormasDePago variant="mobile" data={formasDePago} />
           </div>
         </div>
       </div>
