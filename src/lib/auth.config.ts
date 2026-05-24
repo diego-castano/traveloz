@@ -80,29 +80,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return token;
     },
-    async session({ session, token }) {
-      if (!session.user) return session;
-
-      // Re-verify the user is still active on every session read. If the
-      // admin flipped isActive=false (or deleted the user) since the JWT was
-      // issued, kill the session right here.
-      const { prisma } = await import("@/lib/db");
-      const dbUser = await prisma.user.findUnique({
-        where: { id: token.id as string },
-        select: { id: true, isActive: true, role: true, brandId: true, name: true, email: true },
-      });
-
-      if (!dbUser || !dbUser.isActive) {
-        // Returning a session with no user.id forces middleware/guards to
-        // treat the request as unauthenticated.
-        return { ...session, user: undefined as any };
+    session({ session, token }) {
+      // CRITICAL: this callback runs in the edge runtime (middleware imports
+      // this config), so we CANNOT touch Prisma here — `prisma.user.findUnique`
+      // would throw `In order to run Prisma Client on edge runtime, either use
+      // Prisma Accelerate...`. The previous version of this callback re-checked
+      // isActive on every read by hitting the DB; that broke every request
+      // (login + every server-component fetch returned 500).
+      //
+      // Trade-off: deactivating a user no longer invalidates already-issued
+      // JWTs immediately. The server actions (`requireAuth()`) still hit the
+      // DB on every mutation, so a deactivated user can't write — they just
+      // remain able to *read* until their JWT expires (default 30 days).
+      // Acceptable for the team size; if we ever need instant revoke, do it
+      // from a dedicated non-edge route or shorten the JWT lifetime.
+      if (session.user) {
+        (session.user as any).id = token.id;
+        (session.user as any).role = token.role;
+        (session.user as any).brandId = token.brandId;
       }
-
-      (session.user as any).id = dbUser.id;
-      (session.user as any).role = dbUser.role;
-      (session.user as any).brandId = dbUser.brandId;
-      session.user.name = dbUser.name;
-      session.user.email = dbUser.email;
       return session;
     },
   },
