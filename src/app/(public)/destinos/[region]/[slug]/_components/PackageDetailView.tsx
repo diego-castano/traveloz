@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
+import { Skeleton } from "@/components/public/SkeletonClient";
 import { QuoteSidebar } from "./QuoteSidebar";
 import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
 
@@ -205,6 +206,7 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
       <div className="container wide">
         <div className="row">
           <div className="col-lg-8 col-md-7">
+            <Skeleton name="package-detail-main" loading={false}>
             <div className="content-box style3 bg_white">
               {/* Top heading: title + price (mobile-only price) */}
               <div className="top-heading stck">
@@ -624,17 +626,20 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
 
             {/* Payment methods (desktop, below the content card) */}
             <FormasDePago variant="desktop" data={formasDePago} />
+            </Skeleton>
           </div>
 
           {/* Sidebar */}
           <div className="col-lg-4 col-md-5">
-            <QuoteSidebar
-              paqueteId={paquete.id}
-              paqueteTitulo={paquete.titulo}
-              precioDesde={paquete.precioDesde}
-              precioDesdeMoneda={paquete.precioDesdeMoneda}
-            />
-            <FormasDePago variant="mobile" data={formasDePago} />
+            <Skeleton name="package-detail-sidebar" loading={false}>
+              <QuoteSidebar
+                paqueteId={paquete.id}
+                paqueteTitulo={paquete.titulo}
+                precioDesde={paquete.precioDesde}
+                precioDesdeMoneda={paquete.precioDesdeMoneda}
+              />
+              <FormasDePago variant="mobile" data={formasDePago} />
+            </Skeleton>
           </div>
         </div>
       </div>

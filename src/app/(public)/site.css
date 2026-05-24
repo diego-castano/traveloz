@@ -4250,3 +4250,22 @@ header.header-area.header-dark {
   --rdp-accent-color: #785AE5;
   --rdp-accent-background-color: rgba(120, 90, 229, 0.1);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Relatos de viajeros (image-text-slider) — el mockup usa una foto
+   apaisada que llena la columna. El admin puede subir imágenes de
+   cualquier proporción (cuadradas, verticales), así que forzamos el
+   recorte al aspecto del mockup (664x453) para que el diseño no se rompa.
+   ───────────────────────────────────────────────────────────────────────── */
+.image-text-slider .content-image {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.image-text-slider .content-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 664 / 453;
+  object-fit: cover;
+}

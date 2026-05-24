@@ -11,6 +11,13 @@ export interface AuthUser {
   email: string;
   role: Role;
   brandId: string;
+  // Optional admin / profile fields. Server actions populate these when
+  // returning a full user row; the session shape only fills the first 5.
+  isActive?: boolean;
+  isProtected?: boolean;
+  hasPin?: boolean;
+  lastLoginAt?: Date | string | null;
+  lockedUntil?: Date | string | null;
 }
 
 export interface RoleConfig {

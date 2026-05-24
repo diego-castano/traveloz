@@ -10,7 +10,7 @@ import {
 } from "react";
 import { useSession } from "next-auth/react";
 import type { AuthUser, Role } from "@/lib/auth";
-import * as userActions from '@/actions/user.actions';
+import * as userActions from "@/actions/user.actions";
 
 // ---------------------------------------------------------------------------
 // Actions (discriminated union)
@@ -34,9 +34,14 @@ function userReducer(state: UserState, action: UserAction): UserState {
     case "SET_ALL":
       return { users: action.payload, loading: false };
     case "ADD_USER":
-      return { ...state, users: [...state.users, action.payload] };
+      return { ...state, users: [action.payload, ...state.users] };
     case "UPDATE_USER":
-      return { ...state, users: state.users.map((u) => (u.id === action.payload.id ? action.payload : u)) };
+      return {
+        ...state,
+        users: state.users.map((u) =>
+          u.id === action.payload.id ? { ...u, ...action.payload } : u,
+        ),
+      };
     case "DELETE_USER":
       return { ...state, users: state.users.filter((u) => u.id !== action.payload) };
     default:
@@ -55,31 +60,42 @@ const UserDispatchContext = createContext<Dispatch<UserAction> | null>(null);
 // ---------------------------------------------------------------------------
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(userReducer, { users: [], loading: true });
-  const { status: sessionStatus } = useSession();
+  const { status: sessionStatus, data: session } = useSession();
+  const role = (session?.user as any)?.role;
 
   useEffect(() => {
     let cancelled = false;
 
-    // If not authenticated, clear loading and return empty state
     if (sessionStatus !== "authenticated") {
-      // Only clear loading after session is determined (not during "loading")
       if (sessionStatus === "unauthenticated") {
         dispatch({ type: "SET_ALL", payload: [] });
       }
       return;
     }
 
-    userActions.getUsers().then((users) => {
-      if (cancelled) return;
-      dispatch({ type: "SET_ALL", payload: users });
-    }).catch((err) => {
-      console.error("Error fetching users:", err);
-      if (cancelled) return;
-      // IMPORTANT: Always clear loading on error so UI doesn't hang
+    // Only ADMIN can list users — for VENDEDOR/MARKETING this action throws.
+    // Skip the fetch entirely so the provider doesn't error out on every
+    // non-admin session.
+    if (role !== "ADMIN") {
       dispatch({ type: "SET_ALL", payload: [] });
-    });
-    return () => { cancelled = true; };
-  }, [sessionStatus]);
+      return;
+    }
+
+    userActions
+      .getUsers()
+      .then((users) => {
+        if (cancelled) return;
+        dispatch({ type: "SET_ALL", payload: users as AuthUser[] });
+      })
+      .catch((err) => {
+        console.error("Error fetching users:", err);
+        if (cancelled) return;
+        dispatch({ type: "SET_ALL", payload: [] });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionStatus, role]);
 
   return (
     <UserStateContext.Provider value={state}>
@@ -113,10 +129,6 @@ function useUserDispatch(): Dispatch<UserAction> {
 // Public hooks
 // ---------------------------------------------------------------------------
 
-/**
- * Returns all users across all brands (not brand-filtered).
- * Only ADMIN users should call this from the Perfiles page.
- */
 export function useUsers(): AuthUser[] {
   return useUserState().users;
 }
@@ -130,17 +142,41 @@ export function useUserActions() {
 
   return useMemo(
     () => ({
-      createUser: async (data: Omit<AuthUser, "id"> & { password: string }) => {
-        const entity = await userActions.createUser({ ...data, password: data.password });
-        dispatch({ type: "ADD_USER", payload: entity as any });
-        return entity as any;
+      createUser: async (
+        data: Omit<AuthUser, "id"> & { password: string; pin?: string; sendInvite?: boolean },
+      ) => {
+        const entity = await userActions.createUser(data);
+        dispatch({ type: "ADD_USER", payload: entity as AuthUser });
+        return entity as AuthUser;
       },
-      updateUser: async (user: AuthUser & { isActive?: boolean }) => {
-        await userActions.updateUser(user.id, user);
+      updateUser: async (user: AuthUser) => {
+        await userActions.updateUser(user.id, {
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          brandId: user.brandId,
+          isActive: user.isActive,
+        });
         dispatch({ type: "UPDATE_USER", payload: user });
       },
       changePassword: async (userId: string, newPassword: string) => {
         await userActions.updateUserPassword(userId, newPassword);
+      },
+      setPin: async (userId: string, pin: string | null) => {
+        await userActions.adminSetUserPin(userId, pin);
+        // Patch the cached row so the "tiene PIN" indicator flips immediately.
+        // The reducer merges this partial onto the existing row.
+        dispatch({
+          type: "UPDATE_USER",
+          payload: { id: userId, hasPin: !!pin } as AuthUser,
+        });
+      },
+      unlockUser: async (userId: string) => {
+        await userActions.unlockUser(userId);
+        dispatch({
+          type: "UPDATE_USER",
+          payload: { id: userId, lockedUntil: null } as AuthUser,
+        });
       },
       deleteUser: async (id: string) => {
         await userActions.deleteUser(id);
@@ -154,5 +190,4 @@ export function useUserActions() {
   );
 }
 
-// Re-export Role type for convenience
 export type { Role };

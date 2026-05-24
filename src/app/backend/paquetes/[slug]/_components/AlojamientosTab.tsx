@@ -33,6 +33,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -1851,6 +1852,12 @@ function QuickEditHotelModal({
   const [categoria, setCategoria] = useState<number>(0);
   const [sitioWeb, setSitioWeb] = useState("");
   const [precio, setPrecio] = useState<string>("");
+  // Period for *new* prices — defaults to the paquete validez or today,
+  // but the operator can change it before saving so we don't silently create
+  // annual prices that collapse temporada alta/baja into one bucket.
+  const today = new Date().toISOString().slice(0, 10);
+  const [nuevoPeriodoDesde, setNuevoPeriodoDesde] = useState<string>("");
+  const [nuevoPeriodoHasta, setNuevoPeriodoHasta] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -1860,7 +1867,17 @@ function QuickEditHotelModal({
     setCategoria(hotel.categoria ?? 0);
     setSitioWeb(hotel.sitioWeb ?? "");
     setPrecio(precioActivo ? String(precioActivo.precioPorNoche) : "");
-  }, [hotel, precioActivo]);
+    // Seed the period inputs only for new-price flow; if a precioActivo
+    // already exists we update its period in place (no inputs shown).
+    if (!precioActivo) {
+      const baseDesde = validezDesde || today;
+      // Default ventana: 30 días desde la validez. El operador la ajusta.
+      const baseHasta = new Date(baseDesde);
+      baseHasta.setDate(baseHasta.getDate() + 30);
+      setNuevoPeriodoDesde(baseDesde);
+      setNuevoPeriodoHasta(baseHasta.toISOString().slice(0, 10));
+    }
+  }, [hotel, precioActivo, validezDesde, today]);
 
   if (!hotel) return null;
 
@@ -1899,13 +1916,31 @@ function QuickEditHotelModal({
             });
           }
         } else {
-          const year = new Date(
-            validezDesde || new Date().toISOString(),
-          ).getFullYear();
+          // Use the period the operator picked — defaults to a 30-day window
+          // from validezDesde, but they can adjust before saving. Avoids the
+          // legacy `${year}-01-01 → ${year}-12-31` that collapsed seasons.
+          if (!nuevoPeriodoDesde || !nuevoPeriodoHasta) {
+            toast(
+              "warning",
+              "Periodo requerido",
+              "Elegí desde/hasta para el nuevo precio.",
+            );
+            setSaving(false);
+            return;
+          }
+          if (nuevoPeriodoDesde > nuevoPeriodoHasta) {
+            toast(
+              "warning",
+              "Periodo inválido",
+              "El 'desde' debe ser anterior al 'hasta'.",
+            );
+            setSaving(false);
+            return;
+          }
           await onCreatePrecio({
             alojamientoId: hotel.id,
-            periodoDesde: `${year}-01-01`,
-            periodoHasta: `${year}-12-31`,
+            periodoDesde: nuevoPeriodoDesde,
+            periodoHasta: nuevoPeriodoHasta,
             precioPorNoche: parsedPrecio,
             regimenId: null,
           });
@@ -2009,9 +2044,30 @@ function QuickEditHotelModal({
             <p className="text-[11px] text-neutral-400 mt-1">
               {precioActivo
                 ? `Actualiza el precio del periodo ${precioActivo.periodoDesde} → ${precioActivo.periodoHasta}.`
-                : "No hay precio cargado — se creará uno anual."}
+                : "Sin precio cargado — elegí el período de validez del nuevo precio."}
             </p>
           </div>
+
+          {!precioActivo && (
+            <div>
+              <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wide mb-1">
+                Período del precio nuevo
+              </label>
+              <PeriodPicker
+                valueFrom={nuevoPeriodoDesde}
+                valueTo={nuevoPeriodoHasta}
+                onChange={(d, h) => {
+                  setNuevoPeriodoDesde(d);
+                  setNuevoPeriodoHasta(h);
+                }}
+                placeholder="Seleccionar período..."
+              />
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mt-1.5">
+                Si manejás temporada alta/baja, creá un precio por cada
+                ventana en vez de un único precio anual.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-200/60">
             <Button

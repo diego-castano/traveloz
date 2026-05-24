@@ -56,22 +56,25 @@ export default function NuevoPaquetePage() {
         const oneYearLater =
           formatStoredDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)) ?? "";
 
+        // Date stamp (no hour) — date-only is enough to disambiguate drafts
+        // in the list, and hides the embarrassing exact-minute leak when an
+        // operator forgets to rename their draft.
         const stamp = new Intl.DateTimeFormat("es-AR", {
           day: "2-digit",
           month: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-          .format(new Date())
-          .replace(",", "");
+        }).format(new Date());
 
         const newPaquete = await createPaquete({
           brandId: activeBrandId,
-          titulo: `Borrador ${stamp}`,
+          titulo: `Paquete sin título (${stamp})`,
           destino: "",
           descripcion: "",
           textoVisual: null,
-          noches: 7,
+          // Noches starts at 0 — the value gets auto-synced from
+          // sum(PaqueteDestino.noches) the moment the operator adds destinos.
+          // Starting at 7 used to trip the publish-gate validator before the
+          // itinerary was even built.
+          noches: 0,
           salidas: "Consultar",
           temporadaId: temporadas[0]?.id ?? undefined,
           tipoPaqueteId: tiposPaquete[0]?.id ?? undefined,

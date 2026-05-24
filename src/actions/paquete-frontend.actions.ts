@@ -110,6 +110,13 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       titulo: true,
       slug: true,
       publicado: true,
+      // Lifecycle fields — merged from former PublicacionTab so this is the
+      // single source of truth for everything the operator manages from the
+      // "Publicación" tab.
+      estado: true,
+      destacado: true,
+      validezDesde: true,
+      validezHasta: true,
       metaTitle: true,
       metaDescription: true,
       heroImage: true,
@@ -130,6 +137,12 @@ export async function getPaqueteFrontendData(paqueteId: string) {
           textoCustom: true,
           orden: true,
           servicio: { select: { id: true, nombre: true, icon: true } },
+        },
+      },
+      etiquetas: {
+        select: {
+          id: true,
+          etiqueta: { select: { id: true, nombre: true, slug: true, color: true } },
         },
       },
     },
@@ -157,6 +170,13 @@ export async function updatePaqueteFrontend(
   // of the form) when essentials are missing — slug, at least 1 destino, at
   // least 1 hotel option, and (when noches is declared) destinos summing
   // correctly. Returning a structured error lets the UI show what's missing.
+  // Track whether the publish toggle is being flipped on — if so, we also
+  // auto-bump `estado` to ACTIVO server-side so the operator doesn't need to
+  // change the lifecycle state in a separate UI control. Source of truth:
+  // `publicado` is the public-visibility flag; `estado` is the lifecycle
+  // pipeline. Going public implies the package is at least ACTIVO.
+  let bumpEstadoToActivo = false;
+
   if (data.publicado === true) {
     const current = await prisma.paquete.findUnique({
       where: { id: paqueteId },
@@ -165,12 +185,17 @@ export async function updatePaqueteFrontend(
         titulo: true,
         noches: true,
         heroImage: true,
+        estado: true,
         destinos: { select: { noches: true } },
         opcionesHoteleras: { select: { id: true } },
         aereos: { select: { id: true } },
       },
     });
     if (!current) throw new Error("Paquete no encontrado.");
+
+    if (current.estado === "BORRADOR" || current.estado === "EN_REVISION") {
+      bumpEstadoToActivo = true;
+    }
 
     const incomingSlug =
       typeof data.slug === "string" ? data.slug.trim() : current.slug;
@@ -211,12 +236,78 @@ export async function updatePaqueteFrontend(
 
   const updated = await prisma.paquete.update({
     where: { id: paqueteId },
-    data,
+    data: bumpEstadoToActivo ? { ...data, estado: "ACTIVO" } : data,
   });
   revalidatePath(`/backend/paquetes/${paqueteId}`);
   revalidatePath("/destinos", "layout");
   revalidateTag("paquetes");
   return { ok: true as const, updated };
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle fields — estado pipeline, destacado, validez. Separate from
+// updatePaqueteFrontend because publishing has its own validation gate and
+// because lifecycle changes don't trigger a re-publish-check.
+// ---------------------------------------------------------------------------
+export async function updatePaqueteLifecycle(
+  paqueteId: string,
+  data: {
+    estado?: "BORRADOR" | "EN_REVISION" | "ACTIVO" | "ARCHIVADO";
+    destacado?: boolean;
+    validezDesde?: string | null;
+    validezHasta?: string | null;
+  },
+) {
+  await requireAuth();
+
+  // Unpublishing rule: when the operator moves a published paquete OUT of
+  // ACTIVO (to BORRADOR/EN_REVISION/ARCHIVADO), we also flip `publicado=false`
+  // so the public site stops showing a paquete the operator considers
+  // not-yet-or-no-longer ready.
+  let alsoUnpublish = false;
+  if (data.estado && data.estado !== "ACTIVO") {
+    const current = await prisma.paquete.findUnique({
+      where: { id: paqueteId },
+      select: { publicado: true },
+    });
+    if (current?.publicado) alsoUnpublish = true;
+  }
+
+  await prisma.paquete.update({
+    where: { id: paqueteId },
+    data: alsoUnpublish ? { ...data, publicado: false } : data,
+  });
+  revalidatePath(`/backend/paquetes/${paqueteId}`);
+  revalidatePath("/destinos", "layout");
+  revalidateTag("paquetes");
+  return { unpublished: alsoUnpublish };
+}
+
+// ---------------------------------------------------------------------------
+// Etiquetas — assign/remove tags for a paquete. Replaces the old
+// PackageProvider hooks for the merged Publicación tab.
+// ---------------------------------------------------------------------------
+export async function assignPaqueteEtiqueta(
+  paqueteId: string,
+  etiquetaId: string,
+) {
+  await requireAuth();
+  const created = await prisma.paqueteEtiqueta.create({
+    data: { paqueteId, etiquetaId },
+  });
+  revalidatePath(`/backend/paquetes/${paqueteId}`);
+  revalidateTag("paquetes");
+  return created;
+}
+
+export async function removePaqueteEtiqueta(paqueteEtiquetaId: string) {
+  await requireAuth();
+  const row = await prisma.paqueteEtiqueta.delete({
+    where: { id: paqueteEtiquetaId },
+  });
+  revalidatePath(`/backend/paquetes/${row.paqueteId}`);
+  revalidateTag("paquetes");
+  return row;
 }
 
 export async function setPaqueteServicios(

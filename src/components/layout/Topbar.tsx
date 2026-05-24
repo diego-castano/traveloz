@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { glassMaterials } from "@/components/lib/glass";
 import { interactions } from "@/components/lib/animations";
-import { ChevronDown, LogOut, User, Search, Menu } from "lucide-react";
+import { ChevronDown, LogOut, User, UserCog, Search, Menu } from "lucide-react";
 import { useSidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/ui/CommandPalette";
 import { useEffect, useRef, useState } from "react";
@@ -237,6 +237,20 @@ export function Topbar() {
                   <p className="text-xs text-neutral-400">{user?.email}</p>
                 </div>
 
+                {/* Mi perfil */}
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setUserOpen(false);
+                    router.push("/backend/mi-perfil");
+                  }}
+                  className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100"
+                >
+                  <UserCog size={14} />
+                  Mi perfil
+                </button>
+
                 {/* Switch user */}
                 <button
                   type="button"
@@ -244,7 +258,7 @@ export function Topbar() {
                   onClick={() => {
                     void handleSwitchUser();
                   }}
-                  className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100"
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 outline-none transition-colors hover:bg-neutral-100 focus:bg-neutral-100"
                 >
                   <User size={14} />
                   Cambiar de usuario

@@ -185,7 +185,6 @@ function EstadoBadge({ estado }: { estado: string }) {
     EN_REVISION: { label: "En revisión", color: "#8B5CF6" },
     ACTIVO: { label: "Publicado", color: "#10B981" },
     ARCHIVADO: { label: "Archivado", color: "#5A5E7A" },
-    INACTIVO: { label: "Inactivo", color: "#6B7280" },
   };
   const m = map[estado] ?? { label: estado, color: "#6B7280" };
   return (

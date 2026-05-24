@@ -1,3 +1,5 @@
+import { Skeleton } from "./SkeletonClient";
+
 type Region = {
   id: string;
   slug: string;
@@ -37,13 +39,15 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
           <div className="row">
             {regiones.map((r) => (
               <div className="col-lg-4 col-sm-6 mb-4" key={r.id}>
-                <a href={`/destinos/${r.slug}`} className="image-box style1">
-                  <img
-                    src={r.heroImage ?? "/site/img/slider-1.webp"}
-                    alt={r.nombre}
-                  />
-                  <h3 className="title">{r.nombre}</h3>
-                </a>
+                <Skeleton name="region-card" loading={false}>
+                  <a href={`/destinos/${r.slug}`} className="image-box style1">
+                    <img
+                      src={r.heroImage ?? "/site/img/slider-1.webp"}
+                      alt={r.nombre}
+                    />
+                    <h3 className="title">{r.nombre}</h3>
+                  </a>
+                </Skeleton>
               </div>
             ))}
           </div>

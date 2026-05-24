@@ -19,6 +19,9 @@ import { AgenciaModal } from "@/components/public/AgenciaModal";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
 import { getSiteSettings } from "@/lib/public-data";
 import "./site.css";
+// Boneyard pre-generated bones. Built by `npm run bones` (local) and
+// committed to the repo so Railway doesn't need a headless browser at build.
+import "@/bones/registry";
 
 // Public site is data-driven from CMS (SiteSettings) and Postgres. Skip SSG
 // at build time so the build doesn't depend on a live DB inside Railway's

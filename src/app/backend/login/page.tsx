@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
+import { signIn } from "next-auth/react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { glassMaterials } from "@/components/lib/glass";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
+import { getPinLoginRoster } from "@/actions/auth.actions";
 
-// ---------------------------------------------------------------------------
-// Noise overlay SVG from design.json glass.noise.backgroundSvg
-// ---------------------------------------------------------------------------
 const NOISE_SVG =
   "data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E";
 
-// ---------------------------------------------------------------------------
-// Login page entrance animation from design.json patterns.loginPage.card.entranceAnimation
-// ---------------------------------------------------------------------------
 const cardEntrance = {
   initial: { opacity: 0, y: 40, scale: 0.9, filter: "blur(10px)" },
   animate: { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" },
@@ -30,71 +28,108 @@ const cardEntrance = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Elevation-32 shadow from design.json shadows
-// ---------------------------------------------------------------------------
 const ELEVATION_32 =
   "0 32px 64px -12px rgba(26,26,46,0.15), 0 12px 24px -8px rgba(26,26,46,0.08)";
 
-// ---------------------------------------------------------------------------
-// Login Page Component
-// ---------------------------------------------------------------------------
-export default function LoginPage() {
+type PinRosterUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+type Mode = "password" | "pin";
+
+function LoginPageInner() {
   const auth = useAuth();
   const { activeBrand } = useBrand();
   const router = useRouter();
+  const search = useSearchParams();
 
+  const justReset = search?.get("reset") === "success";
+
+  const [mode, setMode] = useState<Mode>("password");
+
+  // ── Password mode state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
 
-  // Redirect if already authenticated. Must be in useEffect, not render —
-  // calling router.push during render schedules a state update on the Router
-  // component while LoginPage is still rendering, which React (correctly)
-  // warns about.
+  // ── PIN mode state
+  const [roster, setRoster] = useState<PinRosterUser[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
+  const [pinTarget, setPinTarget] = useState<PinRosterUser | null>(null);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [pinLoading, setPinLoading] = useState(false);
+
   useEffect(() => {
     if (auth.isAuthenticated) {
       router.push("/backend/dashboard");
     }
   }, [auth.isAuthenticated, router]);
 
+  // Load PIN roster lazily — only when the user switches to the PIN tab.
+  const loadRoster = useCallback(async () => {
+    setRosterLoading(true);
+    try {
+      const r = await getPinLoginRoster();
+      setRoster(r);
+    } finally {
+      setRosterLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (mode === "pin" && roster.length === 0) loadRoster();
+  }, [mode, roster.length, loadRoster]);
+
   if (auth.isAuthenticated) return null;
 
-  const handleLogin = async (e: FormEvent) => {
+  const handlePasswordLogin = async (e: FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-
+    setPwError("");
+    setPwLoading(true);
     const success = await auth.login(email, password);
     if (success) {
       router.push("/backend/dashboard");
     } else {
-      setError("Email o contrasena incorrectos");
-      setLoading(false);
+      setPwError("Email o contraseña incorrectos");
+      setPwLoading(false);
     }
   };
 
-  /** Quick-select demo credential */
+  const handlePinLogin = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!pinTarget) return;
+    setPinError("");
+    setPinLoading(true);
+    const res = await signIn("pin", {
+      userId: pinTarget.id,
+      pin,
+      redirect: false,
+    });
+    if (res?.error) {
+      setPinError("PIN incorrecto");
+      setPinLoading(false);
+      return;
+    }
+    router.push("/backend/dashboard");
+  };
+
   const fillDemoUser = (demoEmail: string) => {
     setEmail(demoEmail);
     setPassword("admin");
-    setError("");
+    setPwError("");
   };
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      {/* ----------------------------------------------------------------- */}
-      {/* Mesh gradient background -- brand-specific from BrandProvider     */}
-      {/* ----------------------------------------------------------------- */}
       <div
         className="absolute inset-0 animate-mesh-float"
         style={{ background: activeBrand.loginBackground }}
       />
-
-      {/* ----------------------------------------------------------------- */}
-      {/* SVG noise overlay at 2.5% opacity                                 */}
-      {/* ----------------------------------------------------------------- */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
@@ -105,16 +140,12 @@ export default function LoginPage() {
         }}
       />
 
-      {/* ----------------------------------------------------------------- */}
-      {/* Login card -- liquid glass material with spring entrance          */}
-      {/* ----------------------------------------------------------------- */}
       <motion.div
         className="relative z-10 flex flex-col items-center"
         initial={cardEntrance.initial}
         animate={cardEntrance.animate}
         transition={cardEntrance.transition}
       >
-        {/* Logo -- outside the card, over the background */}
         <div className="mb-6">
           <Image
             src="/header-logo.webp"
@@ -126,9 +157,8 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Card */}
         <div
-          className="relative w-[420px]"
+          className="relative w-[440px]"
           style={{
             ...glassMaterials.liquid,
             padding: 40,
@@ -136,99 +166,244 @@ export default function LoginPage() {
             boxShadow: ELEVATION_32,
           }}
         >
-        {/* Top accent line */}
-        <div
-          className="absolute inset-x-0 top-0 h-[2px] rounded-t-[24px]"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent, rgba(139,92,246,0.2), rgba(59,191,173,0.15), transparent)",
-          }}
-        />
-
-        {/* Title */}
-        <h1 className="mt-2 text-center font-display text-[28px] font-bold text-neutral-900">
-          Bienvenido
-        </h1>
-
-        {/* Subtitle */}
-        <p className="mt-1 text-center text-sm text-neutral-600">
-          Ingresa tus credenciales para continuar
-        </p>
-
-        {/* Form */}
-        <form onSubmit={handleLogin} className="mt-8 flex flex-col gap-4">
-          <Input
-            label="Email"
-            type="email"
-            placeholder="tu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
+          <div
+            className="absolute inset-x-0 top-0 h-[2px] rounded-t-[24px]"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, rgba(139,92,246,0.2), rgba(59,191,173,0.15), transparent)",
+            }}
           />
 
-          <Input
-            label="Contrasena"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
+          <h1 className="mt-2 text-center font-display text-[28px] font-bold text-neutral-900">
+            Bienvenido
+          </h1>
+          <p className="mt-1 text-center text-sm text-neutral-600">
+            {mode === "password"
+              ? "Ingresá tus credenciales para continuar"
+              : pinTarget
+                ? `Hola ${pinTarget.name.split(" ")[0]}, ingresá tu PIN`
+                : "Elegí tu usuario para ingresar con PIN"}
+          </p>
 
-          {/* Error message */}
-          {error && (
-            <p className="text-sm text-brand-red-500 mt-2 text-center">
-              {error}
+          {justReset && (
+            <p className="mt-3 rounded-lg bg-emerald-50/80 px-3 py-2 text-center text-xs text-emerald-700">
+              Contraseña actualizada. Ingresá con tus nuevos datos.
             </p>
           )}
 
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full mt-6"
-            loading={loading}
-          >
-            Ingresar
-          </Button>
-        </form>
-
-        {/* Demo credential quick-select (dev only) */}
-        {process.env.NODE_ENV === 'development' && (
-        <div className="mt-6 border-t border-neutral-300/60 pt-4">
-          <p className="text-xs text-neutral-600 font-medium text-center mb-2">
-            Acceso rapido demo
-          </p>
-          <div className="flex flex-col gap-1.5">
+          {/* Mode switcher */}
+          <div className="mt-6 flex rounded-full bg-neutral-100/80 p-1 text-xs font-medium">
             <button
               type="button"
-              onClick={() => fillDemoUser("geronimo@traveloz.com.uy")}
-              className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
+              onClick={() => {
+                setMode("password");
+                setPinTarget(null);
+                setPin("");
+                setPinError("");
+              }}
+              className={`flex-1 rounded-full px-3 py-1.5 transition-colors ${
+                mode === "password"
+                  ? "bg-white text-neutral-800 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700"
+              }`}
             >
-              geronimo@traveloz.com.uy - Admin
+              Email + Contraseña
             </button>
             <button
               type="button"
-              onClick={() => fillDemoUser("ventas@traveloz.com.uy")}
-              className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
+              onClick={() => setMode("pin")}
+              className={`flex-1 rounded-full px-3 py-1.5 transition-colors ${
+                mode === "pin"
+                  ? "bg-white text-neutral-800 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-700"
+              }`}
             >
-              ventas@traveloz.com.uy - Vendedor
-            </button>
-            <button
-              type="button"
-              onClick={() => fillDemoUser("marketing@traveloz.com.uy")}
-              className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
-            >
-              marketing@traveloz.com.uy - Marketing
+              PIN rápido
             </button>
           </div>
-          <p className="text-[10px] text-white/40 text-center mt-2">
-            Password para todos: admin
-          </p>
-        </div>
-        )}
+
+          <AnimatePresence mode="wait">
+            {mode === "password" ? (
+              <motion.div
+                key="password"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                <form onSubmit={handlePasswordLogin} className="mt-6 flex flex-col gap-4">
+                  <Input
+                    label="Email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                  />
+                  <Input
+                    label="Contraseña"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                  {pwError && (
+                    <p className="text-sm text-brand-red-500 mt-2 text-center">{pwError}</p>
+                  )}
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    className="w-full mt-4"
+                    loading={pwLoading}
+                  >
+                    Ingresar
+                  </Button>
+                  <Link
+                    href="/backend/forgot-password"
+                    className="text-center text-xs text-neutral-500 hover:text-brand-violet-600"
+                  >
+                    Olvidé mi contraseña
+                  </Link>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="pin"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18 }}
+              >
+                {!pinTarget ? (
+                  <div className="mt-6 flex flex-col gap-2">
+                    {rosterLoading ? (
+                      <p className="py-6 text-center text-sm text-neutral-400">
+                        Cargando usuarios…
+                      </p>
+                    ) : roster.length === 0 ? (
+                      <p className="py-6 text-center text-sm text-neutral-500">
+                        Nadie configuró un PIN todavía.<br />
+                        <span className="text-xs text-neutral-400">
+                          Ingresá con email + contraseña y activá tu PIN desde <em>Mi perfil</em>.
+                        </span>
+                      </p>
+                    ) : (
+                      roster.map((u) => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => {
+                            setPinTarget(u);
+                            setPin("");
+                            setPinError("");
+                          }}
+                          className="flex items-center gap-3 rounded-xl border border-hairline bg-white/70 px-3 py-2 text-left transition-colors hover:bg-white"
+                        >
+                          <Avatar name={u.name} size="sm" />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-neutral-800">{u.name}</span>
+                            <span className="text-[11px] text-neutral-400">{u.role}</span>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  <form onSubmit={handlePinLogin} className="mt-6 flex flex-col gap-4">
+                    <div className="flex items-center gap-3 rounded-xl border border-hairline bg-white/70 px-3 py-2">
+                      <Avatar name={pinTarget.name} size="sm" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-neutral-800">{pinTarget.name}</p>
+                        <p className="text-[11px] text-neutral-400">{pinTarget.email}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPinTarget(null);
+                          setPin("");
+                          setPinError("");
+                        }}
+                        className="text-xs text-neutral-500 hover:text-brand-violet-600"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                    <Input
+                      label="PIN"
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="••••"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                      autoFocus
+                      autoComplete="off"
+                    />
+                    {pinError && (
+                      <p className="text-sm text-brand-red-500 text-center">{pinError}</p>
+                    )}
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="lg"
+                      className="w-full mt-2"
+                      loading={pinLoading}
+                      disabled={pin.length < 4}
+                    >
+                      Ingresar con PIN
+                    </Button>
+                  </form>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Demo credential quick-select (dev only) */}
+          {process.env.NODE_ENV === "development" && mode === "password" && (
+            <div className="mt-6 border-t border-neutral-300/60 pt-4">
+              <p className="text-xs text-neutral-600 font-medium text-center mb-2">
+                Acceso rápido demo
+              </p>
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => fillDemoUser("geronimo@traveloz.com.uy")}
+                  className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
+                >
+                  geronimo@traveloz.com.uy - Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoUser("ventas@traveloz.com.uy")}
+                  className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
+                >
+                  ventas@traveloz.com.uy - Vendedor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoUser("marketing@traveloz.com.uy")}
+                  className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
+                >
+                  marketing@traveloz.com.uy - Marketing
+                </button>
+              </div>
+              <p className="text-[10px] text-white/40 text-center mt-2">
+                Password para todos: admin
+              </p>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

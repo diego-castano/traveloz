@@ -21,14 +21,12 @@ import type { EstadoPaquete } from "@prisma/client";
  *   EN_REVISION → BORRADOR | ACTIVO | ARCHIVADO
  *   ACTIVO      → EN_REVISION | ARCHIVADO    (publish-only after re-review)
  *   ARCHIVADO   → BORRADOR                   (resurrect for editing)
- *   INACTIVO    → BORRADOR | ARCHIVADO       (legacy bridge for migrated rows)
  */
 export const TRANSITIONS: Record<EstadoPaquete, EstadoPaquete[]> = {
   BORRADOR: ["EN_REVISION", "ARCHIVADO"],
   EN_REVISION: ["BORRADOR", "ACTIVO", "ARCHIVADO"],
   ACTIVO: ["EN_REVISION", "ARCHIVADO"],
   ARCHIVADO: ["BORRADOR"],
-  INACTIVO: ["BORRADOR", "ARCHIVADO"],
 };
 
 export function canTransition(

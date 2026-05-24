@@ -151,6 +151,13 @@ type PackageAction =
   | { type: "UPDATE_DESTINO"; payload: PaqueteDestino }
   | { type: "DELETE_DESTINO"; payload: string }
   | { type: "REORDER_DESTINOS"; payload: { paqueteId: string; orderedIds: string[] } }
+  | {
+      type: "REORDER_ASSIGNMENTS";
+      payload: {
+        type: "aereos" | "traslados" | "seguros" | "circuitos";
+        orderedIds: string[];
+      };
+    }
   // OpcionHotel (hard delete)
   | { type: "ADD_OPCION_HOTEL"; payload: OpcionHotel }
   | { type: "UPDATE_OPCION_HOTEL"; payload: OpcionHotel }
@@ -441,6 +448,27 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
           d.paqueteId === paqueteId && orderMap.has(d.id)
             ? { ...d, orden: orderMap.get(d.id)! }
             : d,
+        ),
+      };
+    }
+    case "REORDER_ASSIGNMENTS": {
+      const { type, orderedIds } = action.payload;
+      const orderMap = new Map(orderedIds.map((id, idx) => [id, idx]));
+      const sliceKey = (
+        {
+          aereos: "paqueteAereos",
+          traslados: "paqueteTraslados",
+          seguros: "paqueteSeguros",
+          circuitos: "paqueteCircuitos",
+        } as const
+      )[type];
+      return {
+        ...state,
+        [sliceKey]: (state[sliceKey] as Array<{ id: string; orden: number }>).map(
+          (row) =>
+            orderMap.has(row.id)
+              ? { ...row, orden: orderMap.get(row.id)! }
+              : row,
         ),
       };
     }
@@ -827,6 +855,18 @@ export function usePackageActions() {
         dispatch({ type: "UPDATE_PAQUETE_CIRCUITO", payload: assignment });
       },
 
+      // -- Bulk reorder for the Servicios tab drag-and-drop --
+      reorderAssignments: async (
+        type: "aereos" | "traslados" | "seguros" | "circuitos",
+        orderedIds: string[],
+      ) => {
+        await packageActions.reorderPaqueteAssignments(type, orderedIds);
+        dispatch({
+          type: "REORDER_ASSIGNMENTS",
+          payload: { type, orderedIds },
+        });
+      },
+
       // -- Photo management --
       addFoto: async (data: Omit<PaqueteFoto, "id">) => {
         const entity = await packageActions.addPaqueteFoto(data);
@@ -1018,28 +1058,31 @@ export function useAllOpcionHoteles(): OpcionHotel[] {
 // ---------------------------------------------------------------------------
 export function usePaqueteServices(paqueteId: string) {
   const state = usePackageState();
-  return useMemo(
-    () => ({
-      aereos: state.paqueteAereos.filter((pa) => pa.paqueteId === paqueteId),
-      alojamientos: state.paqueteAlojamientos.filter(
-        (pa) => pa.paqueteId === paqueteId,
-      ),
-      traslados: state.paqueteTraslados.filter(
-        (pt) => pt.paqueteId === paqueteId,
-      ),
-      seguros: state.paqueteSeguros.filter(
-        (ps) => ps.paqueteId === paqueteId,
-      ),
-      circuitos: state.paqueteCircuitos.filter(
-        (pc) => pc.paqueteId === paqueteId,
-      ),
+  return useMemo(() => {
+    const byOrden = <T extends { orden: number }>(a: T, b: T) =>
+      a.orden - b.orden;
+    return {
+      aereos: state.paqueteAereos
+        .filter((pa) => pa.paqueteId === paqueteId)
+        .sort(byOrden),
+      alojamientos: state.paqueteAlojamientos
+        .filter((pa) => pa.paqueteId === paqueteId)
+        .sort(byOrden),
+      traslados: state.paqueteTraslados
+        .filter((pt) => pt.paqueteId === paqueteId)
+        .sort(byOrden),
+      seguros: state.paqueteSeguros
+        .filter((ps) => ps.paqueteId === paqueteId)
+        .sort(byOrden),
+      circuitos: state.paqueteCircuitos
+        .filter((pc) => pc.paqueteId === paqueteId)
+        .sort(byOrden),
       fotos: state.paqueteFotos
         .filter((pf) => pf.paqueteId === paqueteId)
-        .sort((a, b) => a.orden - b.orden),
+        .sort(byOrden),
       etiquetas: state.paqueteEtiquetas.filter(
         (pe) => pe.paqueteId === paqueteId,
       ),
-    }),
-    [state, paqueteId],
-  );
+    };
+  }, [state, paqueteId]);
 }

@@ -102,16 +102,14 @@ import { Send as SendIcon, Archive as ArchiveIcon } from "lucide-react";
 // Constants
 // ---------------------------------------------------------------------------
 
-// Lifecycle badges. INACTIVO is preserved for legacy rows that haven't been
-// migrated yet; new code/UX uses the four-state model BORRADOR / EN_REVISION /
-// ACTIVO / ARCHIVADO. Each entry maps to a Badge variant + color used in the
+// Lifecycle badges — four-state model BORRADOR / EN_REVISION / ACTIVO /
+// ARCHIVADO. Each entry maps to a Badge variant + color used in the
 // segmented control and chip rendering.
 const estadoBadge = {
   BORRADOR: { variant: "draft" as const, label: "Borrador", color: "#E8913A" },
   EN_REVISION: { variant: "review" as const, label: "En revisión", color: "#8B5CF6" },
-  ACTIVO: { variant: "active" as const, label: "Publicado", color: "#3BBFAD" },
+  ACTIVO: { variant: "active" as const, label: "Activo", color: "#3BBFAD" },
   ARCHIVADO: { variant: "archived" as const, label: "Archivado", color: "#5A5E7A" },
-  INACTIVO: { variant: "inactive" as const, label: "Inactivo", color: "#6B6F99" },
 } as const;
 
 const ITEMS_PER_PAGE_TABLE = 12;
@@ -122,8 +120,7 @@ type EstadoFilter =
   | "ACTIVO"
   | "BORRADOR"
   | "EN_REVISION"
-  | "ARCHIVADO"
-  | "INACTIVO";
+  | "ARCHIVADO";
 
 type ColKey =
   | "id"
@@ -351,7 +348,6 @@ export default function PaquetesPage() {
       BORRADOR: 0,
       EN_REVISION: 0,
       ARCHIVADO: 0,
-      INACTIVO: 0,
     };
     for (const p of paquetes) {
       const key = p.estado as keyof typeof counts;
@@ -960,8 +956,7 @@ export default function PaquetesPage() {
                   estadoCounts.ACTIVO +
                   estadoCounts.BORRADOR +
                   estadoCounts.EN_REVISION +
-                  estadoCounts.ARCHIVADO +
-                  estadoCounts.INACTIVO,
+                  estadoCounts.ARCHIVADO,
               },
               {
                 value: "BORRADOR",
@@ -977,7 +972,7 @@ export default function PaquetesPage() {
               },
               {
                 value: "ACTIVO",
-                label: "Publicados",
+                label: "Activos",
                 count: estadoCounts.ACTIVO,
                 color: "#3BBFAD",
               },
@@ -988,16 +983,6 @@ export default function PaquetesPage() {
                       label: "Archivados",
                       count: estadoCounts.ARCHIVADO,
                       color: "#5A5E7A",
-                    },
-                  ]
-                : []),
-              ...(estadoCounts.INACTIVO > 0
-                ? [
-                    {
-                      value: "INACTIVO" as const,
-                      label: "Inactivos (legado)",
-                      count: estadoCounts.INACTIVO,
-                      color: "#6B6F99",
                     },
                   ]
                 : []),

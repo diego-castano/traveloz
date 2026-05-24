@@ -36,14 +36,17 @@ const PublicacionTab = dynamic(
   () => import("./_components/PublicacionTab").then((m) => ({ default: m.PublicacionTab })),
   { loading: TabFallback, ssr: false },
 );
-const FrontendTab = dynamic(
-  () => import("./_components/FrontendTab").then((m) => ({ default: m.FrontendTab })),
-  { loading: TabFallback, ssr: false },
-);
 const PaquetePreviewButton = dynamic(
   () =>
     import("./_components/PaquetePreviewButton").then((m) => ({
       default: m.PaquetePreviewButton,
+    })),
+  { ssr: false },
+);
+const OnboardingProgress = dynamic(
+  () =>
+    import("./_components/OnboardingProgress").then((m) => ({
+      default: m.OnboardingProgress,
     })),
   { ssr: false },
 );
@@ -59,7 +62,6 @@ const TABS = [
   "precios",
   "fotos",
   "publicacion",
-  "frontend",
 ] as const;
 
 const TAB_LABELS: Record<(typeof TABS)[number], string> = {
@@ -68,18 +70,18 @@ const TAB_LABELS: Record<(typeof TABS)[number], string> = {
   alojamientos: "Alojamientos",
   precios: "Precios",
   fotos: "Fotos",
-  publicacion: "Publicacion",
-  frontend: "Frontend",
+  publicacion: "Publicación",
 };
 
 // ---------------------------------------------------------------------------
 // Estado badge variant mapping
 // ---------------------------------------------------------------------------
 
-const estadoBadgeVariant: Record<string, "active" | "draft" | "inactive"> = {
+const estadoBadgeVariant: Record<string, "active" | "draft" | "archived"> = {
   ACTIVO: "active",
   BORRADOR: "draft",
-  INACTIVO: "inactive",
+  EN_REVISION: "draft",
+  ARCHIVADO: "archived",
 };
 
 // ---------------------------------------------------------------------------
@@ -146,6 +148,9 @@ export default function PaqueteDetailPage() {
         }
       />
 
+      {/* Onboarding strip — hidden once paquete is fully published */}
+      <OnboardingProgress paquete={paquete} />
+
       {/* Tab layout */}
       <Tabs value={activeTab} onValueChange={handleTabChange} layoutId="paqueteDetailTab">
         <TabsList>
@@ -177,11 +182,7 @@ export default function PaqueteDetailPage() {
         </TabsContent>
 
         <TabsContent value="publicacion">
-          <PublicacionTab paquete={paquete} />
-        </TabsContent>
-
-        <TabsContent value="frontend">
-          <FrontendTab paqueteId={paquete.id} />
+          <PublicacionTab paqueteId={paquete.id} />
         </TabsContent>
       </Tabs>
     </div>

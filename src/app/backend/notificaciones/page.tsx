@@ -71,7 +71,7 @@ function slugify(str: string): string {
 
 function estadoDotVariant(estado: string): "active" | "pending" | "draft" {
   if (estado === "ACTIVO") return "active";
-  if (estado === "INACTIVO") return "pending";
+  if (estado === "EN_REVISION") return "pending";
   return "draft";
 }
 

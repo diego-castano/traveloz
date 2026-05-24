@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, LogOut, User } from "lucide-react";
+import { ChevronDown, LogOut, User, UserCog } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Avatar } from "@/components/ui/Avatar";
 import { interactions } from "@/components/lib/animations";
@@ -141,8 +141,20 @@ export function VendedorShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   role="menuitem"
-                  onClick={() => void handleLogout()}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    router.push("/backend/mi-perfil");
+                  }}
                   className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 outline-none transition-colors hover:bg-neutral-100"
+                >
+                  <UserCog size={14} />
+                  Mi perfil
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => void handleLogout()}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-neutral-700 outline-none transition-colors hover:bg-neutral-100"
                 >
                   <User size={14} />
                   Cambiar de usuario

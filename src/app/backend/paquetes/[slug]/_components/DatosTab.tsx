@@ -35,6 +35,7 @@ import {
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
 import { validateForActivation } from "@/lib/validation";
 import {
@@ -67,8 +68,9 @@ const textareaClassName =
 
 const estadoOptions = [
   { value: "BORRADOR", label: "Borrador" },
+  { value: "EN_REVISION", label: "En revisión" },
   { value: "ACTIVO", label: "Activo" },
-  { value: "INACTIVO", label: "Inactivo" },
+  { value: "ARCHIVADO", label: "Archivado" },
 ];
 
 const monedaOptions = [{ value: "USD", label: "USD" }];
@@ -262,6 +264,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     onSave: handleAutoSave,
     enabled: canEdit,
   });
+
+  // Block tab close while autosave is mid-flight or dirty.
+  useUnsavedWarn(autoSaveStatus);
 
   return (
     <div className="relative">

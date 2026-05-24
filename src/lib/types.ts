@@ -16,9 +16,7 @@ export type EstadoPaquete =
   | 'BORRADOR'
   | 'EN_REVISION'
   | 'ACTIVO'
-  | 'ARCHIVADO'
-  // Legacy — kept until backfill removes the last row using it.
-  | 'INACTIVO';
+  | 'ARCHIVADO';
 export type TipoTraslado = 'REGULAR' | 'PRIVADO';
 export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS' | 'HOTELES';
 

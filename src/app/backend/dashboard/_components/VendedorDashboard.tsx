@@ -584,8 +584,8 @@ function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: numbe
 // ---------------------------------------------------------------------------
 // Estado badge — compact pill rendered inline with the title. ACTIVO is the
 // default state so we omit its badge to keep the row clean; everything else
-// (borrador, en revisión, archivado, inactivo legacy) gets a coloured pill
-// so the vendor knows what's live vs in-flight before they quote it.
+// (borrador, en revisión, archivado) gets a coloured pill so the vendor
+// knows what's live vs in-flight before they quote it.
 // ---------------------------------------------------------------------------
 
 function EstadoBadge({ estado }: { estado: Paquete["estado"] }) {
@@ -594,7 +594,6 @@ function EstadoBadge({ estado }: { estado: Paquete["estado"] }) {
     BORRADOR: { label: "Borrador", bg: "#FEF3E5", fg: "#B45A0F" },
     EN_REVISION: { label: "En revisión", bg: "#F1EEFF", fg: "#6D40D4" },
     ARCHIVADO: { label: "Archivado", bg: "#F0F1F5", fg: "#5A5E7A" },
-    INACTIVO: { label: "Inactivo", bg: "#F5F5F7", fg: "#6B6F99" },
   } as const;
   const c = cfg[estado as keyof typeof cfg];
   if (!c) return null;

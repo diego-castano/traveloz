@@ -65,11 +65,6 @@ const estadoStyles = {
     text: "#ffffff",
     label: "Archivado",
   },
-  INACTIVO: {
-    bg: "rgba(107,111,153,0.92)",
-    text: "#ffffff",
-    label: "Inactivo",
-  },
 } as const;
 
 export function PaqueteGridCard({

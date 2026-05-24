@@ -27,9 +27,6 @@ enum EstadoPaquete {
   EN_REVISION
   ACTIVO
   ARCHIVADO
-  // Legacy value — kept until backfill removes the last row using it.
-  // New code should never assign INACTIVO; use ARCHIVADO instead.
-  INACTIVO
 }
 
 enum TipoTraslado {
@@ -68,17 +65,52 @@ enum CanalContacto {
 // ──────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         Role     @default(VENDEDOR)
-  brandId      String
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  passwordHash         String
+  // 4-6 digit numeric PIN (bcrypt-hashed). Null = user has no PIN configured yet.
+  pinHash              String?
+  name                 String
+  role                 Role      @default(VENDEDOR)
+  brandId              String
+  isActive             Boolean   @default(true)
+  // Brute-force protection. Reset on successful auth.
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+  lastLoginAt          DateTime?
+  // Self-service password reset (one-time token, 60-min TTL).
+  passwordResetToken   String?   @unique
+  passwordResetExpires DateTime?
+  // Permanent global admin — cannot be demoted, deactivated, or deleted via UI.
+  isProtected          Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   @@index([brandId])
+}
+
+// Append-only log of security-relevant events: user CRUD, role changes,
+// login success/failure, password / PIN changes, account lockouts.
+model AuditLog {
+  id         String   @id @default(cuid())
+  // Actor (may be null for failed logins where the email doesn't exist).
+  userId     String?
+  userEmail  String?
+  // Dotted-namespace event name, e.g. "user.create", "login.success",
+  // "login.fail.bad_password", "password.change.self", "pin.set", "user.lock".
+  action     String
+  // Optional target (e.g. when an admin edits another user).
+  targetType String?
+  targetId   String?
+  // Free-form JSON for event-specific fields (changed columns, IP, attempt #).
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt(sort: Desc)])
 }
 
 model Paquete {

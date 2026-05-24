@@ -16,6 +16,7 @@ import {
   useTraslados,
   useSeguros,
   useCircuitos,
+  useServiceState,
 } from "@/components/providers/ServiceProvider";
 import {
   usePaises,
@@ -152,6 +153,30 @@ export default function ServiceSelectorModal({
   const traslados = useTraslados();
   const seguros = useSeguros();
   const circuitos = useCircuitos();
+  // Lookup the cheapest "desde" price for each aereo/circuito so the row
+  // shows it next to the name (parity with traslados/seguros which already
+  // surface their price).
+  const serviceState = useServiceState();
+  const aereoPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of serviceState.preciosAereo) {
+      const prev = map.get(p.aereoId);
+      if (prev === undefined || p.precioAdulto < prev) {
+        map.set(p.aereoId, p.precioAdulto);
+      }
+    }
+    return map;
+  }, [serviceState.preciosAereo]);
+  const circuitoPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of serviceState.preciosCircuito) {
+      const prev = map.get(p.circuitoId);
+      if (prev === undefined || p.precio < prev) {
+        map.set(p.circuitoId, p.precio);
+      }
+    }
+    return map;
+  }, [serviceState.preciosCircuito]);
   const paises = usePaises();
   const proveedores = useProveedores();
 
@@ -383,29 +408,38 @@ export default function ServiceSelectorModal({
             ) : (
               <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
                 <div className="divide-y divide-hairline">
-                  {availableAereos.map((aereo) => (
-                    <div
-                      key={aereo.id}
-                      className="flex items-center justify-between px-4 py-3"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-neutral-800">
-                          {aereo.ruta}
-                        </span>
-                        <span className="text-xs text-neutral-500">
-                          {aereo.destino} &middot; {aereo.aerolinea}
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        leftIcon={<Plus className="h-3 w-3" />}
-                        onClick={() => handleAssignAereo(aereo)}
+                  {availableAereos.map((aereo) => {
+                    const desde = aereoPriceMap.get(aereo.id);
+                    return (
+                      <div
+                        key={aereo.id}
+                        className="flex items-center justify-between px-4 py-3"
                       >
-                        Agregar
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-neutral-800">
+                            {aereo.ruta}
+                          </span>
+                          <span className="text-xs text-neutral-500">
+                            {aereo.destino} &middot; {aereo.aerolinea}
+                            {desde !== undefined && (
+                              <>
+                                {" "}
+                                &middot; desde {formatCurrency(desde)}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          leftIcon={<Plus className="h-3 w-3" />}
+                          onClick={() => handleAssignAereo(aereo)}
+                        >
+                          Agregar
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -522,29 +556,38 @@ export default function ServiceSelectorModal({
             ) : (
               <div className="rounded-[12px] border border-hairline bg-white overflow-hidden">
                 <div className="divide-y divide-hairline">
-                  {availableCircuitos.map((circuito) => (
-                    <div
-                      key={circuito.id}
-                      className="flex items-center justify-between px-4 py-3"
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-neutral-800">
-                          {circuito.nombre}
-                        </span>
-                        <span className="text-xs text-neutral-500">
-                          {circuito.noches} noches
-                        </span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        leftIcon={<Plus className="h-3 w-3" />}
-                        onClick={() => handleAssignCircuito(circuito)}
+                  {availableCircuitos.map((circuito) => {
+                    const desde = circuitoPriceMap.get(circuito.id);
+                    return (
+                      <div
+                        key={circuito.id}
+                        className="flex items-center justify-between px-4 py-3"
                       >
-                        Agregar
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-neutral-800">
+                            {circuito.nombre}
+                          </span>
+                          <span className="text-xs text-neutral-500">
+                            {circuito.noches} noches
+                            {desde !== undefined && (
+                              <>
+                                {" "}
+                                &middot; desde {formatCurrency(desde)}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          leftIcon={<Plus className="h-3 w-3" />}
+                          onClick={() => handleAssignCircuito(circuito)}
+                        >
+                          Agregar
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

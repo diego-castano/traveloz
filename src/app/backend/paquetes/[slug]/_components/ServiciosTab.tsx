@@ -4,7 +4,17 @@ import { useState, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
+import {
+  Modal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalClose,
+} from "@/components/ui/Modal";
+import { useToast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/data/EmptyState";
+import type { AutoSaveStatus } from "@/hooks/useAutoSave";
+import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -61,10 +71,27 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     removeTraslado,
     removeSeguro,
     removeCircuito,
-    updatePaquete,
+    reorderAssignments,
   } = usePackageActions();
   const { canEdit } = useAuth();
+  const { toast } = useToast();
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Tracks the persistence status of reorder/remove actions so the indicator
+  // tells the truth instead of always showing "saved".
+  const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>("saved");
+
+  // Confirm-before-delete state — a single click on the X used to wipe the
+  // assignment silently. Now it opens a modal that names the service.
+  const [pendingRemoval, setPendingRemoval] = useState<{
+    type: "aereos" | "traslados" | "seguros" | "circuitos";
+    id: string;
+    label: string;
+  } | null>(null);
+
+  // Block tab close / nav-away while a save is in flight so the operator
+  // doesn't lose the reorder they just did.
+  useUnsavedWarn(saveStatus);
 
   // Lookup maps for service details
   const aereos = useAereos();
@@ -88,13 +115,61 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   const seguroMap = useMemo(() => new Map(seguros.map((s) => [s.id, s] as const)), [seguros]);
   const circuitoMap = useMemo(() => new Map(circuitos.map((c) => [c.id, c] as const)), [circuitos]);
 
-  // -- Remove handlers --
-  const removeHandlers: Record<string, (id: string) => void> = {
+  // -- Remove handlers — wrapped to track saving status. The UI opens a
+  // confirmation modal first; this is the actual deletion code path.
+  const removeHandlers: Record<
+    "aereos" | "traslados" | "seguros" | "circuitos",
+    (id: string) => Promise<void>
+  > = {
     aereos: removeAereo,
     traslados: removeTraslado,
     seguros: removeSeguro,
     circuitos: removeCircuito,
   };
+
+  const performRemove = useCallback(async () => {
+    if (!pendingRemoval) return;
+    const { type, id, label } = pendingRemoval;
+    setSaveStatus("saving");
+    try {
+      await removeHandlers[type](id);
+      setSaveStatus("saved");
+      toast("success", "Servicio quitado", label);
+    } catch (e) {
+      setSaveStatus("error");
+      toast("error", "Error al quitar", (e as Error).message);
+    } finally {
+      setPendingRemoval(null);
+    }
+  }, [pendingRemoval, removeHandlers, toast]);
+
+  // Helper to build the human label shown in the confirm modal for each type.
+  const labelForAssignment = useCallback(
+    (
+      type: "aereos" | "traslados" | "seguros" | "circuitos",
+      assignment: Record<string, unknown>,
+    ): string => {
+      switch (type) {
+        case "aereos": {
+          const a = aereoMap.get(assignment.aereoId as string);
+          return a ? `${a.ruta} (${a.destino})` : "Aéreo";
+        }
+        case "traslados": {
+          const t = trasladoMap.get(assignment.trasladoId as string);
+          return t ? t.nombre : "Traslado";
+        }
+        case "seguros": {
+          const s = seguroMap.get(assignment.seguroId as string);
+          return s ? s.plan : "Seguro";
+        }
+        case "circuitos": {
+          const c = circuitoMap.get(assignment.circuitoId as string);
+          return c ? c.nombre : "Circuito";
+        }
+      }
+    },
+    [aereoMap, trasladoMap, seguroMap, circuitoMap],
+  );
 
   // -- Drag and drop state --
   const dragSourceRef = useRef<{ type: string; index: number } | null>(null);
@@ -117,26 +192,35 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         dragSourceRef.current = null;
         return;
       }
+      // Only the four service-assignment buckets are reorderable here.
+      if (
+        type !== "aereos" &&
+        type !== "traslados" &&
+        type !== "seguros" &&
+        type !== "circuitos"
+      ) {
+        dragSourceRef.current = null;
+        return;
+      }
 
-      // Get the current items array for this type
       const items = [...(services[type as keyof typeof services] as { id: string }[])];
       const [moved] = items.splice(source.index, 1);
       items.splice(targetIndex, 0, moved);
 
-      // Update ordenServicios on the paquete
-      const otherTypeIds = Object.entries(services)
-        .filter(([key]) => key !== type && key !== "fotos" && key !== "etiquetas")
-        .flatMap(([, arr]) => (arr as { id: string }[]).map((item) => item.id));
-
-      const reorderedIds = items.map((item) => item.id);
-      updatePaquete({
-        ...paquete,
-        ordenServicios: [...otherTypeIds, ...reorderedIds],
-      });
+      const orderedIds = items.map((item) => item.id);
+      // Persist the new orden on each junction row in a single transaction.
+      // The reducer also patches local state optimistically.
+      setSaveStatus("saving");
+      reorderAssignments(type as any, orderedIds)
+        .then(() => setSaveStatus("saved"))
+        .catch((e) => {
+          setSaveStatus("error");
+          toast("error", "No se pudo reordenar", (e as Error).message);
+        });
 
       dragSourceRef.current = null;
     },
-    [services, paquete, updatePaquete],
+    [services, reorderAssignments, toast],
   );
 
   // -- Render helpers --
@@ -246,7 +330,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
           <h3 className="text-[15px] font-semibold text-neutral-800">
             Servicios Asignados
           </h3>
-          <AutoSaveIndicator status="saved" />
+          <AutoSaveIndicator status={saveStatus} />
         </div>
         {canEdit && (
           <Button
@@ -304,11 +388,21 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
                       {renderServiceDetails(key, assignment as unknown as Record<string, unknown>)}
                     </div>
 
-                    {/* Remove button */}
+                    {/* Remove button — opens confirmation modal to prevent
+                        accidental deletion (single click used to wipe silently). */}
                     {canEdit && (
                       <button
                         className="shrink-0 inline-flex items-center justify-center h-7 w-7 rounded-md text-neutral-400 hover:text-[#CC2030] hover:bg-brand-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                        onClick={() => removeHandlers[key](assignment.id)}
+                        onClick={() =>
+                          setPendingRemoval({
+                            type: key,
+                            id: assignment.id,
+                            label: labelForAssignment(
+                              key,
+                              assignment as unknown as Record<string, unknown>,
+                            ),
+                          })
+                        }
                         aria-label="Eliminar servicio"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -328,6 +422,42 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         open={modalOpen}
         onOpenChange={setModalOpen}
       />
+
+      {/* Confirm-remove dialog */}
+      <Modal
+        open={!!pendingRemoval}
+        onOpenChange={(o) => !o && setPendingRemoval(null)}
+        size="sm"
+      >
+        <ModalHeader
+          title="¿Quitar este servicio?"
+          description={
+            pendingRemoval
+              ? `Se eliminará del paquete: ${pendingRemoval.label}.`
+              : undefined
+          }
+          icon={<X className="h-5 w-5" strokeWidth={2.4} />}
+        />
+        <ModalBody>
+          <p className="text-sm text-neutral-600">
+            El servicio queda intacto en su catálogo; solo se quita la
+            asignación a este paquete. Podés volver a agregarlo cuando quieras.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <ModalClose asChild>
+            <Button variant="ghost">Cancelar</Button>
+          </ModalClose>
+          <Button
+            variant="primary"
+            onClick={performRemove}
+            disabled={saveStatus === "saving"}
+            loading={saveStatus === "saving"}
+          >
+            Quitar
+          </Button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

@@ -26,19 +26,21 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const mainRef = useRef<HTMLElement | null>(null);
 
-  // /backend/login renders its own self-contained UI -- no Sidebar/Topbar
-  // shell, no auth gate (the page itself handles "already authenticated"
-  // redirect to /backend/dashboard).
-  const isLoginRoute = pathname === "/backend/login";
+  // Public backend routes render their own self-contained UI — no Sidebar/
+  // Topbar shell, no auth gate. These match the middleware allow-list.
+  const isPublicBackendRoute =
+    pathname === "/backend/login" ||
+    pathname === "/backend/forgot-password" ||
+    pathname === "/backend/reset-password";
 
   // Only redirect once the session is definitively unauthenticated.
   // During "loading" we must stay put, otherwise a hard reload races with
   // hydration and punts the user to /login → / → /dashboard.
   useEffect(() => {
-    if (status === "unauthenticated" && !isLoginRoute) {
+    if (status === "unauthenticated" && !isPublicBackendRoute) {
       router.push("/backend/login");
     }
-  }, [status, router, isLoginRoute]);
+  }, [status, router, isPublicBackendRoute]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -71,8 +73,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     };
   }, [pathname]);
 
-  // Login route bypasses the admin shell entirely.
-  if (isLoginRoute) {
+  // Public routes (login / forgot-password / reset-password) bypass the
+  // admin shell entirely.
+  if (isPublicBackendRoute) {
     return <div className="font-body antialiased">{children}</div>;
   }
 

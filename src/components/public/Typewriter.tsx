@@ -11,10 +11,13 @@ type Props = {
 };
 
 /**
- * 1:1 port of the html_inicial/main.js .anim-text typewriter:
- *   speed = 80ms per char, single run on mount, removes the .anim-text
- *   class once the full text is shown (which the original CSS uses to
- *   strip a blinking-cursor style).
+ * Typewriter — 1:1 port of the html_inicial/main.js .anim-text effect.
+ *
+ * SSR / pre-hydration renders an EMPTY element with no `.anim-text` class,
+ * so there is no lone blinking cursor before JS runs (the cursor comes from
+ * `.anim-text::after`). On mount the typing animation kicks off: the class
+ * is added, characters appear one by one at `speedMs`, and once the full
+ * text is shown the class is removed (stops the blinking cursor).
  */
 export function Typewriter({
   text,
@@ -22,26 +25,28 @@ export function Typewriter({
   className = "",
   as: Tag = "span",
 }: Props) {
+  // Start "settled & empty" — this matches the SSR output exactly (no
+  // hydration mismatch) and avoids painting a cursor with no text.
   const [shown, setShown] = useState("");
-  const [done, setDone] = useState(false);
+  const [animating, setAnimating] = useState(false);
   const idxRef = useRef(0);
 
   useEffect(() => {
     setShown("");
-    setDone(false);
+    setAnimating(true);
     idxRef.current = 0;
     const id = setInterval(() => {
       idxRef.current += 1;
       setShown(text.slice(0, idxRef.current));
       if (idxRef.current >= text.length) {
         clearInterval(id);
-        setDone(true);
+        setAnimating(false);
       }
     }, speedMs);
     return () => clearInterval(id);
   }, [text, speedMs]);
 
-  const cls = `${className} ${done ? "" : "anim-text"}`.trim();
+  const cls = `${className} ${animating ? "anim-text" : ""}`.trim();
   const TagAny = Tag as React.ElementType;
   return <TagAny className={cls}>{shown}</TagAny>;
 }

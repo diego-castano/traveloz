@@ -697,6 +697,38 @@ export async function updateAereoAssignment(
 }
 
 // ──────────────────────────────────────────────
+// Bulk-reorder service assignments — used by the Servicios tab drag-and-drop.
+// Updates the `orden` column on each junction row inside a single transaction
+// so the reordering survives F5 (the old implementation wrote a flat array
+// on Paquete.ordenServicios which never round-tripped to the junction rows).
+// ──────────────────────────────────────────────
+type AssignmentType = "aereos" | "traslados" | "seguros" | "circuitos";
+export async function reorderPaqueteAssignments(
+  type: AssignmentType,
+  orderedIds: string[],
+) {
+  try {
+    await requireAuth();
+    const updates = orderedIds.map((id, orden) => {
+      switch (type) {
+        case "aereos":
+          return prisma.paqueteAereo.update({ where: { id }, data: { orden } });
+        case "traslados":
+          return prisma.paqueteTraslado.update({ where: { id }, data: { orden } });
+        case "seguros":
+          return prisma.paqueteSeguro.update({ where: { id }, data: { orden } });
+        case "circuitos":
+          return prisma.paqueteCircuito.update({ where: { id }, data: { orden } });
+      }
+    });
+    await prisma.$transaction(updates);
+  } catch (error) {
+    log.error("reordering assignments", error);
+    throw new Error("No se pudo guardar el nuevo orden de servicios.");
+  }
+}
+
+// ──────────────────────────────────────────────
 // PaqueteAlojamiento — Junction CRUD
 // ──────────────────────────────────────────────
 

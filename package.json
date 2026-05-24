@@ -12,7 +12,9 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
-    "seed:real": "tsx prisma/seed-from-json.ts"
+    "seed:real": "tsx prisma/seed-from-json.ts",
+    "bones": "boneyard-js build http://localhost:3000",
+    "bones:watch": "boneyard-js build http://localhost:3000 --watch"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -27,6 +29,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.24",
     "bcryptjs": "^2.4.3",
+    "boneyard-js": "^1.8.1",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

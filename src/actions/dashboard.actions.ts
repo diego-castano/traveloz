@@ -171,7 +171,6 @@ async function loadMetrics(brandId: string, range: RangeKey): Promise<DashboardM
     EN_REVISION: 0,
     ACTIVO: 0,
     ARCHIVADO: 0,
-    INACTIVO: 0,
   };
   for (const row of byEstadoRaw) paquetesPorEstado[row.estado] = row._count._all;
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Pencil, Trash2, ShieldCheck, Users, Key } from "lucide-react";
+import { Plus, Pencil, Trash2, ShieldCheck, Users, Key, Hash, Unlock, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
 import { Button } from "@/components/ui/Button";
@@ -33,10 +33,10 @@ import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/compon
 import { Pagination } from "@/components/ui/Pagination";
 import { useUsers, useUserActions } from "@/components/providers/UserProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { useBrand } from "@/components/providers/BrandProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useUserLoading } from "@/components/providers/UserProvider";
+import { BRAND_ID } from "@/lib/brand";
 import type { AuthUser, Role } from "@/lib/auth";
 
 // ---------------------------------------------------------------------------
@@ -73,16 +73,13 @@ const ROLE_FILTERS = [
 // PerfilesPage
 // ---------------------------------------------------------------------------
 
-const DEFAULT_BRAND_ID = "brand-1";
-
 export default function PerfilesPage() {
   const { isAdmin, canEdit } = useAuth();
   const { toast } = useToast();
-  const { brands } = useBrand();
 
   // Data hooks
   const users = useUsers();
-  const { createUser, updateUser, changePassword, deleteUser, checkEmailAvailable } = useUserActions();
+  const { createUser, updateUser, changePassword, setPin, unlockUser, deleteUser, checkEmailAvailable } = useUserActions();
   const loading = useUserLoading();
 
   // Modal state
@@ -90,6 +87,8 @@ export default function PerfilesPage() {
   const [editTarget, setEditTarget] = useState<AuthUser | null>(null);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordTarget, setPasswordTarget] = useState<AuthUser | null>(null);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [pinTarget, setPinTarget] = useState<AuthUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AuthUser | null>(null);
   const [isShaking, setIsShaking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -99,9 +98,9 @@ export default function PerfilesPage() {
     name: "",
     email: "",
     role: "VENDEDOR" as Role,
-    brandId: DEFAULT_BRAND_ID,
     password: "",
     confirmPassword: "",
+    pin: "",
     isActive: true,
   });
 
@@ -110,6 +109,9 @@ export default function PerfilesPage() {
     newPassword: "",
     confirmPassword: "",
   });
+
+  // PIN form state
+  const [pinForm, setPinForm] = useState({ pin: "", confirmPin: "" });
 
   // Validation state
   const [emailError, setEmailError] = useState("");
@@ -190,9 +192,9 @@ export default function PerfilesPage() {
       name: "",
       email: "",
       role: "VENDEDOR",
-      brandId: DEFAULT_BRAND_ID,
       password: "",
       confirmPassword: "",
+      pin: "",
       isActive: true,
     });
     setEmailError("");
@@ -205,10 +207,10 @@ export default function PerfilesPage() {
       name: u.name,
       email: u.email,
       role: u.role,
-      brandId: u.brandId,
       password: "",
       confirmPassword: "",
-      isActive: (u as any).isActive !== false,
+      pin: "",
+      isActive: u.isActive !== false,
     });
     setEmailError("");
     setModalOpen(true);
@@ -218,6 +220,30 @@ export default function PerfilesPage() {
     setPasswordTarget(u);
     setPasswordForm({ newPassword: "", confirmPassword: "" });
     setPasswordModalOpen(true);
+  }
+
+  function handleOpenPinChange(u: AuthUser) {
+    setPinTarget(u);
+    setPinForm({ pin: "", confirmPin: "" });
+    setPinModalOpen(true);
+  }
+
+  async function handleUnlock(u: AuthUser) {
+    try {
+      await unlockUser(u.id);
+      toast("success", "Usuario desbloqueado", `"${u.name}" puede volver a iniciar sesión.`);
+    } catch (err: any) {
+      toast("error", "Error", err?.message ?? "No se pudo desbloquear el usuario");
+    }
+  }
+
+  async function handleClearPin(u: AuthUser) {
+    try {
+      await setPin(u.id, null);
+      toast("success", "PIN eliminado", `"${u.name}" ya no podrá ingresar con PIN.`);
+    } catch (err: any) {
+      toast("error", "Error", err?.message ?? "No se pudo eliminar el PIN");
+    }
   }
 
   async function handleSave(e?: React.FormEvent) {
@@ -230,17 +256,18 @@ export default function PerfilesPage() {
           name: form.name,
           email: form.email,
           role: form.role,
-          brandId: form.brandId,
+          brandId: BRAND_ID,
           isActive: form.isActive,
-        } as any);
+        });
         toast("success", "Usuario actualizado", `"${form.name}" fue actualizado correctamente`);
       } else {
         await createUser({
           name: form.name,
           email: form.email,
           role: form.role,
-          brandId: form.brandId,
+          brandId: BRAND_ID,
           password: form.password,
+          ...(form.pin ? { pin: form.pin } : {}),
         });
         toast("success", "Usuario creado", `"${form.name}" fue creado correctamente`);
       }
@@ -262,6 +289,21 @@ export default function PerfilesPage() {
       setPasswordModalOpen(false);
     } catch (err: any) {
       toast("error", "Error", err?.message ?? "No se pudo cambiar la password");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePinSave(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!pinTarget) return;
+    setSaving(true);
+    try {
+      await setPin(pinTarget.id, pinForm.pin);
+      toast("success", "PIN actualizado", `"${pinTarget.name}" puede ingresar con su PIN.`);
+      setPinModalOpen(false);
+    } catch (err: any) {
+      toast("error", "Error", err?.message ?? "No se pudo actualizar el PIN");
     } finally {
       setSaving(false);
     }
@@ -293,12 +335,14 @@ export default function PerfilesPage() {
   const passwordMismatch =
     form.confirmPassword.length > 0 && form.password !== form.confirmPassword;
 
+  const pinValid = !form.pin || /^\d{4,6}$/.test(form.pin);
   const isCreateFormValid =
     form.name.trim().length > 0 &&
     form.email.trim().length > 0 &&
     !emailError &&
-    form.password.length >= 6 &&
-    form.password === form.confirmPassword;
+    form.password.length >= 8 &&
+    form.password === form.confirmPassword &&
+    pinValid;
 
   const isEditFormValid =
     form.name.trim().length > 0 &&
@@ -310,8 +354,14 @@ export default function PerfilesPage() {
     passwordForm.newPassword !== passwordForm.confirmPassword;
 
   const isPasswordFormValid =
-    passwordForm.newPassword.length >= 6 &&
+    passwordForm.newPassword.length >= 8 &&
     passwordForm.newPassword === passwordForm.confirmPassword;
+
+  const pinFormMismatch =
+    pinForm.confirmPin.length > 0 && pinForm.pin !== pinForm.confirmPin;
+
+  const isPinFormValid =
+    /^\d{4,6}$/.test(pinForm.pin) && pinForm.pin === pinForm.confirmPin;
 
   // ---------------------------------------------------------------------------
   // Loading guard
@@ -395,14 +445,33 @@ export default function PerfilesPage() {
             </DataTableHeader>
             <DataTableBody>
               {paginatedUsers.map((u) => {
-                const isActive = (u as any).isActive !== false;
+                const isActive = u.isActive !== false;
+                const locked = u.lockedUntil
+                  ? new Date(u.lockedUntil as any).getTime() > Date.now()
+                  : false;
                 return (
                   <DataTableRow
                     key={u.id}
                     onClick={() => handleOpenEdit(u)}
                     interactive
                   >
-                    <DataTableCell variant="primary">{u.name}</DataTableCell>
+                    <DataTableCell variant="primary">
+                      <span className="flex items-center gap-2">
+                        {u.name}
+                        {u.isProtected && (
+                          <ShieldCheck
+                            className="h-3.5 w-3.5 text-brand-violet-600"
+                            aria-label="Administrador protegido"
+                          />
+                        )}
+                        {u.hasPin && (
+                          <Hash
+                            className="h-3.5 w-3.5 text-neutral-400"
+                            aria-label="Tiene PIN configurado"
+                          />
+                        )}
+                      </span>
+                    </DataTableCell>
                     <DataTableCell variant="muted">{u.email}</DataTableCell>
                     <DataTableCell>
                       <StatusDot variant={roleDotVariant[u.role]}>
@@ -410,9 +479,13 @@ export default function PerfilesPage() {
                       </StatusDot>
                     </DataTableCell>
                     <DataTableCell>
-                      <StatusDot variant={isActive ? "active" : "inactive"}>
-                        {isActive ? "Activo" : "Inactivo"}
-                      </StatusDot>
+                      {locked ? (
+                        <StatusDot variant="inactive">Bloqueado</StatusDot>
+                      ) : (
+                        <StatusDot variant={isActive ? "active" : "inactive"}>
+                          {isActive ? "Activo" : "Inactivo"}
+                        </StatusDot>
+                      )}
                     </DataTableCell>
                     <DataTableCell align="right">
                       <RowActions
@@ -430,11 +503,38 @@ export default function PerfilesPage() {
                                   onClick: () => handleOpenPasswordChange(u),
                                 },
                                 {
-                                  icon: Trash2,
-                                  label: "Eliminar",
-                                  onClick: () => handleOpenDelete(u),
-                                  destructive: true,
+                                  icon: Hash,
+                                  label: u.hasPin ? "Cambiar PIN" : "Asignar PIN",
+                                  onClick: () => handleOpenPinChange(u),
                                 },
+                                ...(u.hasPin
+                                  ? [
+                                      {
+                                        icon: Lock,
+                                        label: "Quitar PIN",
+                                        onClick: () => handleClearPin(u),
+                                      },
+                                    ]
+                                  : []),
+                                ...(locked
+                                  ? [
+                                      {
+                                        icon: Unlock,
+                                        label: "Desbloquear",
+                                        onClick: () => handleUnlock(u),
+                                      },
+                                    ]
+                                  : []),
+                                ...(u.isProtected
+                                  ? []
+                                  : [
+                                      {
+                                        icon: Trash2,
+                                        label: "Eliminar",
+                                        onClick: () => handleOpenDelete(u),
+                                        destructive: true,
+                                      },
+                                    ]),
                               ]
                             : []
                         }
@@ -496,7 +596,7 @@ export default function PerfilesPage() {
                 <FieldError>{emailError}</FieldError>
               </Field>
 
-              <Field>
+              <Field span={2}>
                 <FieldLabel required>Rol</FieldLabel>
                 <Select
                   value={form.role}
@@ -504,19 +604,6 @@ export default function PerfilesPage() {
                     setForm((f) => ({ ...f, role: v as Role }))
                   }
                   options={ROLE_OPTIONS}
-                />
-              </Field>
-              <Field>
-                <FieldLabel required>Marca</FieldLabel>
-                <Select
-                  value={form.brandId}
-                  onValueChange={(v) =>
-                    setForm((f) => ({ ...f, brandId: v }))
-                  }
-                  options={brands.map((b) => ({
-                    value: b.id,
-                    label: b.name,
-                  }))}
                 />
               </Field>
 
@@ -530,7 +617,7 @@ export default function PerfilesPage() {
                       onChange={(e) =>
                         setForm((f) => ({ ...f, password: e.target.value }))
                       }
-                      placeholder="Minimo 6 caracteres"
+                      placeholder="Mínimo 8 caracteres"
                     />
                   </Field>
                   <Field invalid={passwordMismatch}>
@@ -550,6 +637,24 @@ export default function PerfilesPage() {
                       <FieldError>Las passwords no coinciden</FieldError>
                     )}
                   </Field>
+                  <Field span={2} invalid={!pinValid}>
+                    <FieldLabel>PIN (opcional, 4-6 dígitos)</FieldLabel>
+                    <Input
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={form.pin}
+                      onChange={(e) =>
+                        setForm((f) => ({
+                          ...f,
+                          pin: e.target.value.replace(/\D/g, ""),
+                        }))
+                      }
+                      placeholder="Permite ingreso rápido — el usuario puede cambiarlo desde su perfil"
+                    />
+                    {!pinValid && (
+                      <FieldError>El PIN debe tener entre 4 y 6 dígitos.</FieldError>
+                    )}
+                  </Field>
                 </>
               )}
 
@@ -561,11 +666,14 @@ export default function PerfilesPage() {
                         Usuario activo
                       </p>
                       <p className="text-xs text-neutral-400">
-                        Los usuarios inactivos no pueden iniciar sesion
+                        {editTarget.isProtected
+                          ? "Este usuario es un administrador protegido y no puede desactivarse."
+                          : "Los usuarios inactivos no pueden iniciar sesión."}
                       </p>
                     </div>
                     <Toggle
                       checked={form.isActive}
+                      disabled={!!editTarget.isProtected}
                       onCheckedChange={(checked) =>
                         setForm((f) => ({ ...f, isActive: checked }))
                       }
@@ -656,6 +764,69 @@ export default function PerfilesPage() {
               disabled={!isPasswordFormValid}
             >
               Cambiar Password
+            </Button>
+          </ModalFooter>
+        </form>
+      </Modal>
+
+      {/* PIN change modal */}
+      <Modal open={pinModalOpen} onOpenChange={setPinModalOpen} size="sm">
+        <ModalHeader
+          title={pinTarget?.hasPin ? "Cambiar PIN" : "Asignar PIN"}
+          description={
+            pinTarget
+              ? `PIN de acceso rápido (4-6 dígitos) para ${pinTarget.name}.`
+              : undefined
+          }
+          icon={<Hash className="h-5 w-5" strokeWidth={2.4} />}
+        />
+        <form onSubmit={handlePinSave}>
+          <ModalBody>
+            <FieldGroup columns={1}>
+              <Field>
+                <FieldLabel required>Nuevo PIN</FieldLabel>
+                <Input
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pinForm.pin}
+                  onChange={(e) =>
+                    setPinForm((f) => ({
+                      ...f,
+                      pin: e.target.value.replace(/\D/g, ""),
+                    }))
+                  }
+                  placeholder="4 a 6 dígitos"
+                  autoFocus
+                />
+              </Field>
+              <Field invalid={pinFormMismatch}>
+                <FieldLabel required>Confirmar PIN</FieldLabel>
+                <Input
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={pinForm.confirmPin}
+                  onChange={(e) =>
+                    setPinForm((f) => ({
+                      ...f,
+                      confirmPin: e.target.value.replace(/\D/g, ""),
+                    }))
+                  }
+                  placeholder="Repita el PIN"
+                />
+                {pinFormMismatch && (
+                  <FieldError>Los PIN no coinciden.</FieldError>
+                )}
+              </Field>
+            </FieldGroup>
+          </ModalBody>
+          <ModalFooter>
+            <ModalClose asChild>
+              <Button type="button" variant="ghost">
+                Cancelar
+              </Button>
+            </ModalClose>
+            <Button type="submit" loading={saving} disabled={!isPinFormValid}>
+              Guardar PIN
             </Button>
           </ModalFooter>
         </form>

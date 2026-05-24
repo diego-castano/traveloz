@@ -110,7 +110,17 @@ async function seedRegionHeroes() {
 // ---------------------------------------------------------------------------
 // 2. Testimonios
 // ---------------------------------------------------------------------------
-const avatar = (n: number) => [`https://i.pravatar.cc/300?img=${n}`, picsum(`avatar-${n}`)];
+// El mockup del Home ("Relatos de nuestros viajeros") usa una foto APAISADA
+// del destino, no un retrato del autor. Cada testimonio lleva una foto de
+// viaje acorde a su relato.
+const TESTI_IMAGES: Record<string, string[]> = {
+  "seed-testi-1": [uns("1505228395891-9a51e7e86bf6"), picsum("testi-1")], // atardecer playa
+  "seed-testi-2": [uns("1483729558449-99ef09a8c325"), picsum("testi-2")], // Rio / Brasil
+  "seed-testi-3": [uns("1473116763249-2faaef81ccda"), picsum("testi-3")], // costa / palmeras
+  "seed-testi-4": [uns("1571896349842-33c89424de2d"), picsum("testi-4")], // resort
+  "seed-testi-5": [uns("1507525428034-b723cf961d3e"), picsum("testi-5")], // playa caribe
+  "seed-testi-6": [uns("1582719508461-905c673771fd"), picsum("testi-6")], // piscina resort
+};
 
 interface TestimonioSeed {
   id: string;
@@ -119,7 +129,6 @@ interface TestimonioSeed {
   titulo: string;
   texto: string;
   rating: number;
-  avatarN: number;
   orden: number;
   linkPaqueteModelo?: boolean;
 }
@@ -132,7 +141,6 @@ const TESTIMONIOS: TestimonioSeed[] = [
     titulo: "Un viaje impecable de principio a fin",
     texto: "Reservamos nuestra luna de miel con TravelOz y superó todas las expectativas. La atención fue personalizada, nos respondieron cada duda en minutos y el itinerario estuvo perfecto. Volveríamos a elegirlos sin pensarlo.",
     rating: 5,
-    avatarN: 5,
     orden: 1,
   },
   {
@@ -142,7 +150,6 @@ const TESTIMONIOS: TestimonioSeed[] = [
     titulo: "Profesionalismo y trato cercano",
     texto: "Viajé con mi familia a Brasil y todo salió tal cual lo planeamos. Los traslados puntuales, el hotel tal como nos lo mostraron. Se nota la experiencia del equipo. Recomendado 100%.",
     rating: 5,
-    avatarN: 12,
     orden: 2,
   },
   {
@@ -152,7 +159,6 @@ const TESTIMONIOS: TestimonioSeed[] = [
     titulo: "Nos armaron el viaje a medida",
     texto: "Queríamos algo distinto y nos diseñaron un circuito que combinó playa y ciudad. Cada detalle pensado. El acompañamiento durante el viaje fue clave cuando tuvimos que reprogramar un vuelo.",
     rating: 5,
-    avatarN: 9,
     orden: 3,
   },
   {
@@ -162,7 +168,6 @@ const TESTIMONIOS: TestimonioSeed[] = [
     titulo: "Precios competitivos y sin sorpresas",
     texto: "Comparé con varias agencias y TravelOz tenía la mejor relación precio-calidad. Lo más importante: cero sorpresas, todo lo cotizado fue exactamente lo que pagamos. Transparencia total.",
     rating: 4,
-    avatarN: 33,
     orden: 4,
   },
   {
@@ -172,7 +177,6 @@ const TESTIMONIOS: TestimonioSeed[] = [
     titulo: "Punta Cana fue un sueño",
     texto: "El paquete a Punta Cana fue exactamente lo que necesitábamos para descansar. Resort all inclusive impecable, playa increíble y los traslados sin esperas. Gracias TravelOz por la #ExperienciaOZ.",
     rating: 5,
-    avatarN: 20,
     orden: 5,
     linkPaqueteModelo: true,
   },
@@ -183,7 +187,6 @@ const TESTIMONIOS: TestimonioSeed[] = [
     titulo: "Repetiríamos el viaje a Punta Cana",
     texto: "Segunda vez que viajamos con ellos al Caribe y otra vez nos sorprendieron. El hotel que nos recomendaron fue el punto justo entre precio y categoría. Atención de primera todo el tiempo.",
     rating: 5,
-    avatarN: 51,
     orden: 6,
     linkPaqueteModelo: true,
   },
@@ -196,7 +199,7 @@ async function seedTestimonios(paqueteModeloId: string | null) {
     let imageUrl = existing?.imageUrl ?? null;
     if (!imageUrl || !imageUrl.startsWith("/api/image/")) {
       imageUrl = await uploadFromWeb(
-        avatar(t.avatarN),
+        TESTI_IMAGES[t.id] ?? [picsum(t.id)],
         "testimonios",
         `${t.id}.jpg`,
       );
