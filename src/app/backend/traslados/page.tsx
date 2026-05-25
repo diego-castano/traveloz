@@ -84,7 +84,20 @@ function trasladoLabel(traslado: Traslado) {
 }
 
 function normalizePrice(value: string) {
-  return Number(value.replace(",", "."));
+  if (!value) return NaN;
+  // Acepta formatos uruguayos típicos: "1.500,00", "1500,50", "1500.50", "1500".
+  // Si hay coma y punto, asumimos miles "." + decimal ",". Si solo hay coma,
+  // tratamos coma como decimal. Si solo hay punto, lo usamos como decimal.
+  const trimmed = value.trim();
+  const hasComma = trimmed.includes(",");
+  const hasDot = trimmed.includes(".");
+  let normalized = trimmed;
+  if (hasComma && hasDot) {
+    normalized = trimmed.replace(/\./g, "").replace(",", ".");
+  } else if (hasComma) {
+    normalized = trimmed.replace(",", ".");
+  }
+  return Number(normalized);
 }
 
 // ---------------------------------------------------------------------------
@@ -568,7 +581,7 @@ export default function TrasladosPage() {
               Cancelar
             </Button>
           </ModalClose>
-          <Button type="submit" loading={saving}>
+          <Button type="submit" loading={saving} disabled={saving}>
             {editTarget ? "Guardar cambios" : "Crear traslado"}
           </Button>
         </ModalFooter>

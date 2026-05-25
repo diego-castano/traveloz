@@ -35,6 +35,34 @@ function bustServicesCacheGlobal() {
   revalidateTag(SERVICES_GLOBAL_TAG);
 }
 
+/**
+ * Turn a thrown error into a user-friendly Error preserving the original
+ * cause when it's actionable (zod field message, Prisma known error). The
+ * old pattern of always rethrowing a fixed string left the operator staring
+ * at a toast that didn't say what was wrong — which is exactly what locked
+ * the client when "no puedo guardar el traslado".
+ */
+function toUserError(err: unknown, fallback: string): Error {
+  // Zod: surface the first field error so the toast says e.g.
+  //   "Precio: El precio debe ser un número positivo".
+  if (err && typeof err === "object" && "issues" in err && Array.isArray((err as any).issues)) {
+    const first = (err as any).issues[0];
+    if (first?.message) {
+      const path = Array.isArray(first.path) && first.path.length > 0 ? `${first.path.join(".")}: ` : "";
+      return new Error(`${path}${first.message}`);
+    }
+  }
+  // Prisma known errors: foreign key, unique violation, etc.
+  if (err && typeof err === "object" && "code" in err && typeof (err as any).code === "string") {
+    const code = (err as any).code as string;
+    if (code === "P2002") return new Error("Ya existe un registro con esos datos.");
+    if (code === "P2003") return new Error("Una de las referencias (país, ciudad o proveedor) no existe.");
+    if (code === "P2025") return new Error("El registro no existe o ya fue eliminado.");
+  }
+  if (err instanceof Error && err.message) return new Error(`${fallback} (${err.message})`);
+  return new Error(fallback);
+}
+
 // ──────────────────────────────────────────────
 // Zod schemas
 // ──────────────────────────────────────────────
@@ -500,13 +528,16 @@ export async function createTraslado(data: {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
     const parsed = TrasladoSchema.parse(data);
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "traslado");
       return await tx.traslado.create({ data: { ...parsed, id, brandId } });
     });
+    // Sin esto la lista cacheada no muestra el alta hasta el próximo TTL.
+    bustServicesCacheGlobal();
+    return result;
   } catch (error) {
     log.error("creating traslado", error);
-    throw new Error("No se pudo crear el traslado.");
+    throw toUserError(error, "No se pudo crear el traslado.");
   }
 }
 
@@ -529,20 +560,22 @@ export async function updateTraslado(
     return __res;
   } catch (error) {
     log.error("updating traslado", error);
-    throw new Error("No se pudo actualizar el traslado.");
+    throw toUserError(error, "No se pudo actualizar el traslado.");
   }
 }
 
 export async function deleteTraslado(id: string) {
   try {
     await requireAuth();
-    return await prisma.traslado.update({
+    const __res = await prisma.traslado.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    bustServicesCacheGlobal();
+    return __res;
   } catch (error) {
     log.error("deleting traslado", error);
-    throw new Error("No se pudo eliminar el traslado.");
+    throw toUserError(error, "No se pudo eliminar el traslado.");
   }
 }
 
