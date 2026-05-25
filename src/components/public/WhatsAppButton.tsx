@@ -1,29 +1,37 @@
 // ---------------------------------------------------------------------------
 // Floating WhatsApp button -- ports <a class="footer-whatsapp"> from the HTML.
-// Server component: reads the WhatsApp number from SiteSettings group=general
+// Server component: reads the WhatsApp link from SiteSettings group=general
 // so the operator can change it from /backend/web/general without a redeploy.
+//
+// Accepts three input shapes so the operator can paste whatever the WhatsApp
+// share dialog gave them:
+//   • Full URL ("https://wa.me/..." or "https://wa.link/...")  → used as-is
+//   • Raw number with formatting ("+598 96 992 288")           → wa.me/digits
+//   • Bare digits ("59896992288")                              → wa.me/digits
 // ---------------------------------------------------------------------------
 
 import { getSiteSettings } from "@/lib/public-data";
 
-// Format `+59899000000` or `59899000000` → digits only for wa.me.
-function digitsOnly(raw: string): string {
-  return raw.replace(/[^0-9]/g, "");
+function resolveWhatsAppHref(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  const digits = v.replace(/[^0-9]/g, "");
+  if (!digits) return null;
+  return `https://wa.me/${digits}`;
 }
 
 export async function WhatsAppButton() {
   const settings = await getSiteSettings("general");
-  const rawNumber = settings.general_whatsapp?.trim() ?? "";
-  // Hide the button entirely when no number is configured rather than
-  // shipping a broken link that opens wa.me/0.
-  if (!rawNumber) return null;
-  const number = digitsOnly(rawNumber);
-  if (!number) return null;
+  // Hide the button entirely when no link is configured rather than
+  // shipping a broken `wa.me/`.
+  const href = resolveWhatsAppHref(settings.general_whatsapp ?? "");
+  if (!href) return null;
 
   return (
     <a
       className="footer-whatsapp"
-      href={`https://wa.me/${number}`}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Contactar por WhatsApp"

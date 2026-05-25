@@ -31,6 +31,7 @@ import {
   TableCell,
 } from "@/components/ui/data/DataTable";
 import { Badge } from "@/components/ui/Badge";
+import { EstadoBadgeTooltip, type EstadoKey } from "@/components/ui/EstadoHelp";
 import {
   Modal,
   ModalHeader,
@@ -1343,9 +1344,11 @@ export default function PaquetesPage() {
 
                     {visibleColumns.estado && (
                       <TableCell>
-                        <Badge variant={estadoBadge[paquete.estado].variant}>
-                          {estadoBadge[paquete.estado].label}
-                        </Badge>
+                        <EstadoBadgeTooltip estado={paquete.estado as EstadoKey}>
+                          <Badge variant={estadoBadge[paquete.estado].variant}>
+                            {estadoBadge[paquete.estado].label}
+                          </Badge>
+                        </EstadoBadgeTooltip>
                       </TableCell>
                     )}
 

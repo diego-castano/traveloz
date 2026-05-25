@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plane,
@@ -14,6 +14,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
+import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
+import type { AutoSaveStatus } from "@/hooks/useAutoSave";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -91,6 +94,26 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   const nochesTotales = useNochesTotales(paquete.id);
   const destinos = useDestinos(paquete.id);
   const allOpcionHoteles = useAllOpcionHoteles();
+
+  // Persistence-status indicator. PreciosTab writes immediately on every
+  // change (factor/venta/nombre), but the operator had no visual feedback —
+  // a precio edit looked identical whether or not it had been saved. Track
+  // the latest write so AutoSaveIndicator and beforeunload warning can react.
+  const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>("saved");
+  const trackSave = useCallback(
+    async (action: () => unknown | Promise<unknown>, errorLabel: string) => {
+      setSaveStatus("saving");
+      try {
+        await action();
+        setSaveStatus("saved");
+      } catch (e) {
+        setSaveStatus("error");
+        toast("error", errorLabel, (e as Error).message);
+      }
+    },
+    [toast],
+  );
+  useUnsavedWarn(saveStatus);
 
   // -------------------------------------------------------------------------
   // Resolve assigned services with period-aware pricing
@@ -278,9 +301,17 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
       const clamped = Math.max(0.01, Math.min(1, newFactor));
       const netoAloj = netoAlojPorOpcion.get(opcion.id) ?? 0;
       const newVenta = calcularVentaOpcion(netoFijos, netoAloj, clamped);
-      updateOpcionHotelera({ ...opcion, factor: clamped, precioVenta: newVenta });
+      void trackSave(
+        () =>
+          updateOpcionHotelera({
+            ...opcion,
+            factor: clamped,
+            precioVenta: newVenta,
+          }),
+        "No se pudo guardar el markup",
+      );
     },
-    [netoAlojPorOpcion, netoFijos, updateOpcionHotelera],
+    [netoAlojPorOpcion, netoFijos, updateOpcionHotelera, trackSave],
   );
 
   // Edit precio venta directly — back-calculates factor inversely so the user
@@ -294,16 +325,27 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         return;
       }
       const newFactor = Math.max(0.01, Math.min(1, Number((netoTotal / newVenta).toFixed(3))));
-      updateOpcionHotelera({ ...opcion, factor: newFactor, precioVenta: Math.round(newVenta) });
+      void trackSave(
+        () =>
+          updateOpcionHotelera({
+            ...opcion,
+            factor: newFactor,
+            precioVenta: Math.round(newVenta),
+          }),
+        "No se pudo guardar el precio",
+      );
     },
-    [netoAlojPorOpcion, netoFijos, updateOpcionHotelera, toast],
+    [netoAlojPorOpcion, netoFijos, updateOpcionHotelera, toast, trackSave],
   );
 
   const handleNameChange = useCallback(
     (opcion: OpcionHotelera, newName: string) => {
-      updateOpcionHotelera({ ...opcion, nombre: newName });
+      void trackSave(
+        () => updateOpcionHotelera({ ...opcion, nombre: newName }),
+        "No se pudo guardar el nombre",
+      );
     },
-    [updateOpcionHotelera],
+    [updateOpcionHotelera, trackSave],
   );
 
   // -------------------------------------------------------------------------
@@ -402,6 +444,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
             <h4 className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">
               Opciones Hoteleras
             </h4>
+            <AutoSaveIndicator status={saveStatus} />
           </div>
           <p className="text-xs text-neutral-400 italic">
             Las combinaciones se gestionan en Alojamientos

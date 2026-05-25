@@ -40,6 +40,7 @@ import {
   useOpcionesHoteleras,
   useDestinos,
   useOpcionHoteles,
+  useAllOpcionHoteles,
   useNochesTotales,
 } from "@/components/providers/PackageProvider";
 import {
@@ -77,6 +78,7 @@ import type {
 } from "@/lib/types";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs, stagger } from "@/components/lib/animations";
+import { QuickCreateHotelModal } from "./QuickCreateHotelModal";
 
 // ---------------------------------------------------------------------------
 // Props & helpers
@@ -250,8 +252,26 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   const allAlojamientos = useAlojamientos();
   const opciones = useOpcionesHoteleras(paquete.id);
   const destinos = useDestinos(paquete.id);
+  const allOpcionHoteles = useAllOpcionHoteles();
   const paises = usePaises();
   const regiones = useRegiones();
+
+  // Hotel-coverage per destino: how many opciones hoteleras have a hotel
+  // assigned for each destino. Surfaced as a small badge on each DestinoRow
+  // so the operator can spot a missing hotel without expanding each opción.
+  const hotelCoverageByDestino = useMemo(() => {
+    const opcionIds = new Set(opciones.map((o) => o.id));
+    const perDestino = new Map<string, Set<string>>();
+    for (const oh of allOpcionHoteles) {
+      if (!opcionIds.has(oh.opcionHoteleraId)) continue;
+      const set = perDestino.get(oh.destinoId) ?? new Set<string>();
+      set.add(oh.opcionHoteleraId);
+      perDestino.set(oh.destinoId, set);
+    }
+    const counts = new Map<string, number>();
+    perDestino.forEach((opcs, destinoId) => counts.set(destinoId, opcs.size));
+    return counts;
+  }, [opciones, allOpcionHoteles]);
 
   const {
     createOpcionHotelera,
@@ -586,6 +606,8 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
           onMove={handleMoveDestino}
           nochesTotales={nochesTotales}
           destinoFilter={destinoFilter}
+          hotelCoverageByDestino={hotelCoverageByDestino}
+          totalOpciones={opciones.length}
         />
       </motion.div>
 
@@ -721,6 +743,12 @@ interface ItinerarioEditorProps {
   canEdit: boolean;
   nochesTotales: number;
   destinoFilter: DestinoFilterScope | null;
+  /** Map destinoId → count of opciones hoteleras that have a hotel for it.
+   *  Used to render a coverage badge on each row so the operator can spot
+   *  destinos that nobody's loaded a hotel for at a glance. */
+  hotelCoverageByDestino: Map<string, number>;
+  /** Total opciones hoteleras count — denominator for the coverage badge. */
+  totalOpciones: number;
   onAdd: (ciudadId: string, noches: number) => Promise<void>;
   onUpdate: (
     destino: PaqueteDestino,
@@ -735,6 +763,8 @@ function ItinerarioEditor({
   canEdit,
   nochesTotales,
   destinoFilter,
+  hotelCoverageByDestino,
+  totalOpciones,
   onAdd,
   onUpdate,
   onDelete,
@@ -782,6 +812,8 @@ function ItinerarioEditor({
               onUpdate={onUpdate}
               onDelete={onDelete}
               onMove={onMove}
+              hotelCount={hotelCoverageByDestino.get(destino.id) ?? 0}
+              totalOpciones={totalOpciones}
             />
           ))}
         </div>
@@ -813,6 +845,8 @@ function DestinoRow({
   onUpdate,
   onDelete,
   onMove,
+  hotelCount,
+  totalOpciones,
 }: {
   destino: PaqueteDestino;
   index: number;
@@ -825,6 +859,11 @@ function DestinoRow({
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onMove: (id: string, direction: "up" | "down") => Promise<void>;
+  /** Number of opciones hoteleras that have a hotel for this destino. */
+  hotelCount: number;
+  /** Total opciones — denominator. When 0 we hide the badge entirely
+   *  (no opciones means hotel coverage is meaningless). */
+  totalOpciones: number;
 }) {
   const paises = usePaises();
   const ciudad = useMemo(() => {
@@ -880,12 +919,32 @@ function DestinoRow({
         {index + 1}
       </span>
 
-      {/* City name */}
+      {/* City name + hotel-coverage badge */}
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <MapPin className="h-3.5 w-3.5 text-neutral-400 flex-shrink-0" />
         <span className="text-sm font-medium text-neutral-800 truncate">
           {ciudad?.nombre ?? "(ciudad no encontrada)"}
         </span>
+        {totalOpciones > 0 && (
+          <span
+            className={`text-[10px] font-mono font-semibold rounded-full px-1.5 py-0.5 border flex-shrink-0 ${
+              hotelCount === 0
+                ? "bg-red-50 border-red-200 text-red-600"
+                : hotelCount < totalOpciones
+                ? "bg-amber-50 border-amber-200 text-amber-700"
+                : "bg-green-50 border-green-200 text-green-700"
+            }`}
+            title={
+              hotelCount === 0
+                ? `Ninguna opción hotelera tiene hotel cargado para este destino.`
+                : hotelCount < totalOpciones
+                ? `${hotelCount} de ${totalOpciones} opciones tienen hotel para este destino.`
+                : `Todas las opciones (${totalOpciones}) tienen hotel para este destino.`
+            }
+          >
+            {hotelCount}/{totalOpciones} hoteles
+          </span>
+        )}
       </div>
 
       {/* Nights input */}
@@ -1657,18 +1716,23 @@ function DestinoSlot({
   onQuickEditHotel: (hotelId: string) => void;
 }) {
   const paises = usePaises();
-  const ciudadNombre = useMemo(() => {
+  // Track open state for the inline "+ Nuevo hotel" modal. Lives at this
+  // level so each destino slot has its own independent modal instance — they
+  // wouldn't be visible at the same time anyway, but keeping them scoped per
+  // slot avoids a shared "which destino opened this?" prop on the parent.
+  const [createHotelOpen, setCreateHotelOpen] = useState(false);
+  const { ciudadNombre, paisNombre } = useMemo(() => {
     for (const pais of paises) {
       const found = pais.ciudades.find((ciudadItem) => ciudadItem.id === destino.ciudadId);
-      if (found) return found.nombre;
+      if (found) return { ciudadNombre: found.nombre, paisNombre: pais.nombre };
     }
-    return "(ciudad)";
+    return { ciudadNombre: "(ciudad)", paisNombre: "(país)" };
   }, [paises, destino.ciudadId]);
 
   // Catálogo completo de hoteles cuya ciudad === ciudad del destino.
   // El "pool" del paquete fue eliminado: ahora el selector lee del catálogo
-  // global directamente. Si la ciudad no tiene hoteles, el operador debe
-  // cargarlos desde /backend/alojamientos/nuevo.
+  // global directamente. Si la ciudad no tiene hoteles, el operador puede
+  // crear uno inline via QuickCreateHotelModal (sin salir del paquete).
   const hotelesDisponibles = useMemo(
     () => pool.filter((p) => p.ciudadId === destino.ciudadId),
     [pool, destino.ciudadId],
@@ -1721,15 +1785,14 @@ function DestinoSlot({
         <div className="flex items-center justify-between gap-2 text-xs text-neutral-400 italic px-2 py-1">
           <span>Sin hoteles en el catálogo para {ciudadNombre}.</span>
           {canEdit && (
-            <a
-              href="/backend/alojamientos/nuevo"
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={() => setCreateHotelOpen(true)}
               className="flex items-center gap-1 text-teal-600 hover:text-teal-700 font-medium px-2 py-1 rounded hover:bg-teal-50 transition-colors whitespace-nowrap not-italic"
             >
               <Plus className="h-3 w-3" />
-              Cargar hotel
-            </a>
+              Nuevo hotel
+            </button>
           )}
         </div>
       ) : canEdit ? (
@@ -1750,6 +1813,17 @@ function DestinoSlot({
               </option>
             ))}
           </select>
+          {/* Always-visible "+ new hotel" button so the operator can grow
+              the catalog from the same row that's missing the choice. */}
+          <button
+            type="button"
+            onClick={() => setCreateHotelOpen(true)}
+            className="p-1.5 rounded-md text-teal-600 hover:text-teal-700 hover:bg-teal-50 transition-colors flex-shrink-0"
+            title={`Crear un hotel nuevo en ${ciudadNombre}`}
+            aria-label="Nuevo hotel"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
           {hotelAsignado && (
             <button
               type="button"
@@ -1776,6 +1850,17 @@ function DestinoSlot({
             : "— sin hotel asignado —"}
         </div>
       )}
+
+      <QuickCreateHotelModal
+        open={createHotelOpen}
+        onOpenChange={setCreateHotelOpen}
+        ciudadId={destino.ciudadId}
+        ciudadNombre={ciudadNombre}
+        paisNombre={paisNombre}
+        onAssign={async (newAlojamientoId) => {
+          await onUpsertHotel(opcionId, destino.id, newAlojamientoId);
+        }}
+      />
     </div>
   );
 }

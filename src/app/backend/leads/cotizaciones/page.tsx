@@ -17,6 +17,7 @@ import {
 import { EstadoBadge } from "../_components/EstadoBadge";
 import { LeadsTable, relativeTime } from "../_components/LeadsTable";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
+import { ExportButton } from "../_components/ExportButton";
 
 type Row = Awaited<ReturnType<typeof listCotizaciones>>[number];
 type User = Awaited<ReturnType<typeof listAssignableUsers>>[number];
@@ -51,20 +52,23 @@ export default function CotizacionesPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h2 className="text-xl font-semibold text-neutral-900">Cotizaciones</h2>
-        <p className="text-sm text-neutral-500 mt-1">
-          Solicitudes desde el sidebar del paquete y desde{" "}
-          <a
-            href="/cotizar"
-            target="_blank"
-            rel="noreferrer"
-            className="text-violet-600 hover:underline inline-flex items-center gap-0.5"
-          >
-            /cotizar <ExternalLink className="w-3 h-3" />
-          </a>
-          .
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-neutral-900">Cotizaciones</h2>
+          <p className="text-sm text-neutral-500 mt-1">
+            Solicitudes desde el sidebar del paquete y desde{" "}
+            <a
+              href="/cotizar"
+              target="_blank"
+              rel="noreferrer"
+              className="text-violet-600 hover:underline inline-flex items-center gap-0.5"
+            >
+              /cotizar <ExternalLink className="w-3 h-3" />
+            </a>
+            .
+          </p>
+        </div>
+        <ExportButton kind="cotizaciones" disabled={rows.length === 0} />
       </div>
 
       {loading ? (

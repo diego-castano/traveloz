@@ -629,17 +629,18 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
             </Skeleton>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar — intentionally NOT wrapped in <Skeleton>. The wrapper
+              would shrink the sticky's travel range to 0 (wrapper height =
+              sidebar height) and the sidebar would scroll away with the page
+              instead of pinning to the top. */}
           <div className="col-lg-4 col-md-5">
-            <Skeleton name="package-detail-sidebar" loading={false}>
-              <QuoteSidebar
-                paqueteId={paquete.id}
-                paqueteTitulo={paquete.titulo}
-                precioDesde={paquete.precioDesde}
-                precioDesdeMoneda={paquete.precioDesdeMoneda}
-              />
-              <FormasDePago variant="mobile" data={formasDePago} />
-            </Skeleton>
+            <QuoteSidebar
+              paqueteId={paquete.id}
+              paqueteTitulo={paquete.titulo}
+              precioDesde={paquete.precioDesde}
+              precioDesdeMoneda={paquete.precioDesdeMoneda}
+            />
+            <FormasDePago variant="mobile" data={formasDePago} />
           </div>
         </div>
       </div>

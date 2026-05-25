@@ -17,7 +17,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Save, ExternalLink, Eye, EyeOff, Star } from "lucide-react";
+import { Save, ExternalLink, Eye, EyeOff, Star, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
@@ -45,6 +45,10 @@ import { MediaPicker } from "@/app/backend/web/_components/MediaPicker";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
+import {
+  EstadoHelpPanel,
+  type EstadoKey,
+} from "@/components/ui/EstadoHelp";
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { usePackageActions } from "@/components/providers/PackageProvider";
@@ -128,6 +132,19 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [assignedEtiquetas, setAssignedEtiquetas] = useState<EtiquetaAssignment[]>([]);
   const [isPending, start] = useTransition();
+
+  // Persisted list of blockers from the last publish attempt. Stays visible
+  // until cleared (either by re-trying publish or by patching a related
+  // field), so the operator can take their time to fix each one — much
+  // better than a transient toast that disappears.
+  const [publishBlockers, setPublishBlockers] = useState<string[]>([]);
+
+  // Refs to the form fields that are most commonly the cause of a publish
+  // gate failure. When the server returns "missing: slug" we scroll the
+  // corresponding field into view and flash a red ring around it.
+  const heroFieldRef = useRef<HTMLDivElement | null>(null);
+  const slugFieldRef = useRef<HTMLDivElement | null>(null);
+  const [flashField, setFlashField] = useState<"slug" | "hero" | null>(null);
 
   // Form: public-content fields (saved via updatePaqueteFrontend) + lifecycle
   // fields (saved via updatePaqueteLifecycle). Kept in one state object so the
@@ -235,19 +252,36 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     return { ok: true };
   }, [paqueteId, form, selected]);
 
+  // Surface a publish-blocker visually: scroll the relevant field into
+  // view + flash it. Picks the highest-priority issue from the missing list.
+  const focusBlockerField = useCallback((missing: string[]) => {
+    const inSlug = missing.some((m) => m.toLowerCase().includes("slug"));
+    const inHero = missing.some((m) => m.toLowerCase().includes("foto"));
+    const target = inSlug ? "slug" : inHero ? "hero" : null;
+    if (!target) return;
+    const node = target === "slug" ? slugFieldRef.current : heroFieldRef.current;
+    if (!node) return;
+    node.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlashField(target);
+    window.setTimeout(() => setFlashField(null), 2400);
+  }, []);
+
   const onForceSave = () =>
     start(async () => {
       try {
         const res = await saveFrontend();
         if (!res.ok && res.missing) {
+          setPublishBlockers(res.missing);
+          focusBlockerField(res.missing);
           toast(
             "warning",
             "No se puede publicar todavía",
-            `Falta: ${res.missing.join("; ")}.`,
+            `Revisá lo que falta más arriba.`,
           );
           setForm((prev) => ({ ...prev, publicado: false }));
           return;
         }
+        setPublishBlockers([]);
         toast(
           "success",
           "Cambios guardados",
@@ -285,14 +319,17 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       textoCondiciones: f.textoCondiciones,
     });
     if (!res.ok && res.reason === "publish_blocked") {
+      setPublishBlockers(res.missing);
+      focusBlockerField(res.missing);
       toast(
         "warning",
         "No se puede publicar todavía",
-        `Falta: ${res.missing.join("; ")}.`,
+        `Revisá lo que falta más arriba.`,
       );
       setForm((prev) => ({ ...prev, publicado: false }));
       return;
     }
+    setPublishBlockers([]);
     if (res.ok && formRef.current.publicado && formRef.current.estado !== "ACTIVO") {
       setForm((p) => ({ ...p, estado: "ACTIVO" }));
     }
@@ -300,7 +337,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       paqueteId,
       selectedRef.current.map((id, i) => ({ servicioId: id, orden: i })),
     );
-  }, [paqueteId, toast]);
+  }, [paqueteId, toast, focusBlockerField]);
 
   const { status: autoSaveStatus, markDirty } = useAutoSave({
     onSave: handleAutoSave,
@@ -459,13 +496,46 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         </div>
       </div>
 
+      {/* Publish blockers — visible until resolved (no transient toast). */}
+      {publishBlockers.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[12.5px] font-semibold text-amber-900 mb-1">
+              Para publicar este paquete todavía falta:
+            </p>
+            <ul className="space-y-0.5">
+              {publishBlockers.map((b) => (
+                <li key={b} className="text-[12px] text-amber-800 leading-snug">
+                  • {b}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => setPublishBlockers([])}
+              className="text-[11px] text-amber-700 hover:text-amber-900 underline mt-2"
+            >
+              Ocultar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Section 1 — Estado y visibilidad */}
       <Section
         title="Estado y visibilidad"
         description="El estado describe en qué etapa del flujo interno está el paquete. El toggle Publicar lo hace visible (o no) en el sitio público; al publicar, si está en Borrador o En revisión, se pasa automáticamente a Activo."
       >
         <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
+          <div
+            ref={slugFieldRef}
+            className={`col-span-2 rounded-md transition-shadow ${
+              flashField === "slug"
+                ? "ring-2 ring-red-400 ring-offset-2 ring-offset-white p-2 -m-2"
+                : ""
+            }`}
+          >
             <label className="block text-xs font-medium text-neutral-700 mb-1">
               Slug (URL pública)
             </label>
@@ -518,9 +588,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               options={ESTADO_OPTIONS}
               disabled={disabled}
             />
-            <p className="text-[11px] text-neutral-500 mt-1">
-              Workflow interno: Borrador → En revisión → Activo → Archivado.
-            </p>
+            <EstadoHelpPanel current={form.estado as EstadoKey} />
           </div>
           <div className="flex items-end">
             <div className="flex items-center gap-2">
@@ -596,7 +664,14 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         title="Slider de fotos"
         description="El paquete muestra un carrusel de fotos en su detalle público. La foto principal aparece primero. Las fotos extra se administran en la pestaña Fotos."
       >
-        <div>
+        <div
+          ref={heroFieldRef}
+          className={`rounded-md transition-shadow ${
+            flashField === "hero"
+              ? "ring-2 ring-red-400 ring-offset-2 ring-offset-white p-2 -m-2"
+              : ""
+          }`}
+        >
           <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
             Foto principal del slider
             <span className="text-neutral-400 font-normal ml-2 text-xs">
@@ -704,8 +779,8 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
 
       {/* Section 5 — Incluye */}
       <Section
-        title="Qué incluye"
-        description="Servicios incluidos (con icono auto-detectado por palabra clave). Una línea = un bullet."
+        title="Qué incluye (vista del cliente)"
+        description="Esta es la lista que ve el viajero en la ficha pública. Es independiente de los servicios internos que cargás en Servicios/Alojamientos (esos sirven para el costo, esto para mostrar). Una línea = un bullet."
       >
         <div>
           <label className="block text-sm font-semibold text-neutral-800 mb-1.5">

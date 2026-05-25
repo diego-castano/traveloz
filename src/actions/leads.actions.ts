@@ -231,3 +231,246 @@ export async function assignLead(
   }
   revalidatePath(`/backend/leads/${kind}`);
 }
+
+// ---------------------------------------------------------------------------
+// CSV export — one server action for all 5 lead types. Joins related
+// entities (paquete, asignado) so marketing gets readable names instead of
+// CUIDs. UTF-8 + BOM so Excel auto-detects encoding on Windows.
+// ---------------------------------------------------------------------------
+
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  let s: string;
+  if (value instanceof Date) {
+    s = value.toISOString();
+  } else if (typeof value === "boolean") {
+    s = value ? "Sí" : "No";
+  } else {
+    s = String(value);
+  }
+  // Strip control chars (including \r) that confuse Excel, normalize newlines
+  // inside a field to a literal space — multiline cells render fine but the
+  // first CSV reader the marketing team uses likely won't quote-aware-parse.
+  s = s.replace(/\r/g, "").replace(/\n+/g, " ").replace(/\t/g, " ").trim();
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+function buildCsv(headers: string[], rows: (unknown[])[]): string {
+  const lines = [headers.map(csvEscape).join(",")];
+  for (const row of rows) lines.push(row.map(csvEscape).join(","));
+  // BOM so Excel detects UTF-8 (acentos, ñ).
+  return "﻿" + lines.join("\r\n");
+}
+
+function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function exportLeads(
+  kind: LeadKind,
+): Promise<{ filename: string; csv: string }> {
+  await requireAuth();
+
+  // Pre-fetch user map once so every row resolves asignado without N+1.
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true },
+  });
+  const userMap = new Map(users.map((u) => [u.id, u]));
+  const userLabel = (id: string | null) => {
+    if (!id) return "";
+    const u = userMap.get(id);
+    return u ? `${u.name} <${u.email}>` : id;
+  };
+
+  switch (kind) {
+    case "cotizaciones": {
+      const rows = await prisma.cotizacion.findMany({
+        orderBy: { createdAt: "desc" },
+        include: { paquete: { select: { titulo: true, slug: true } } },
+      });
+      const headers = [
+        "ID",
+        "Fecha",
+        "Estado",
+        "Nombre",
+        "Email",
+        "Teléfono",
+        "País (código)",
+        "Paquete",
+        "Slug paquete",
+        "Origen",
+        "Fecha desde",
+        "Fecha hasta",
+        "Adultos",
+        "Niños",
+        "Infantes",
+        "Total pax",
+        "Preferencia contacto",
+        "Acepta promociones",
+        "Comentarios",
+        "Asignado a",
+        "Última actualización",
+      ];
+      const data = rows.map((r) => [
+        r.id,
+        r.createdAt,
+        r.estado,
+        r.nombre,
+        r.email,
+        r.telefono,
+        r.paisCodigo,
+        r.paquete?.titulo ?? "(standalone)",
+        r.paquete?.slug ?? "",
+        r.origen,
+        r.fechaDesde,
+        r.fechaHasta,
+        r.adultos,
+        r.ninos,
+        r.infantes,
+        r.adultos + r.ninos + r.infantes,
+        r.preferencia,
+        r.aceptaPromos,
+        r.comentarios,
+        userLabel(r.asignadoAUserId),
+        r.updatedAt,
+      ]);
+      return {
+        filename: `cotizaciones-${todayStamp()}.csv`,
+        csv: buildCsv(headers, data),
+      };
+    }
+
+    case "mensajes": {
+      const rows = await prisma.mensajeContacto.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      const headers = [
+        "ID",
+        "Fecha",
+        "Estado",
+        "Nombre",
+        "Email",
+        "Teléfono",
+        "Mensaje",
+        "Asignado a",
+        "Última actualización",
+      ];
+      const data = rows.map((r) => [
+        r.id,
+        r.createdAt,
+        r.estado,
+        r.nombre,
+        r.email,
+        r.telefono,
+        r.comentarios,
+        userLabel(r.asignadoAUserId),
+        r.updatedAt,
+      ]);
+      return {
+        filename: `mensajes-${todayStamp()}.csv`,
+        csv: buildCsv(headers, data),
+      };
+    }
+
+    case "corporativo": {
+      const rows = await prisma.contactoCorporativo.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      const headers = [
+        "ID",
+        "Fecha",
+        "Estado",
+        "Empresa",
+        "Nombre contacto",
+        "Cargo",
+        "Email",
+        "Teléfono",
+        "Comentarios",
+        "Asignado a",
+        "Última actualización",
+      ];
+      const data = rows.map((r) => [
+        r.id,
+        r.createdAt,
+        r.estado,
+        r.empresa,
+        r.nombre,
+        r.cargo,
+        r.email,
+        r.telefono,
+        r.comentarios,
+        userLabel(r.asignadoAUserId),
+        r.updatedAt,
+      ]);
+      return {
+        filename: `corporativo-${todayStamp()}.csv`,
+        csv: buildCsv(headers, data),
+      };
+    }
+
+    case "postulaciones": {
+      const rows = await prisma.postulacion.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      const headers = [
+        "ID",
+        "Fecha",
+        "Estado",
+        "Nombre",
+        "Email",
+        "Teléfono",
+        "Motivación",
+        "CV (archivo)",
+        "CV (URL)",
+        "Asignado a",
+        "Última actualización",
+      ];
+      const data = rows.map((r) => [
+        r.id,
+        r.createdAt,
+        r.estado,
+        r.nombre,
+        r.email,
+        r.telefono,
+        r.motivacion,
+        r.cvFilename,
+        r.cvUrl,
+        userLabel(r.asignadoAUserId),
+        r.updatedAt,
+      ]);
+      return {
+        filename: `postulaciones-${todayStamp()}.csv`,
+        csv: buildCsv(headers, data),
+      };
+    }
+
+    case "newsletter": {
+      const rows = await prisma.suscripcionNewsletter.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+      const headers = [
+        "ID",
+        "Fecha alta",
+        "Email",
+        "Activo",
+        "Origen",
+        "Fecha baja",
+      ];
+      const data = rows.map((r) => [
+        r.id,
+        r.createdAt,
+        r.email,
+        r.active,
+        r.source,
+        r.unsubscribedAt,
+      ]);
+      return {
+        filename: `newsletter-${todayStamp()}.csv`,
+        csv: buildCsv(headers, data),
+      };
+    }
+  }
+}

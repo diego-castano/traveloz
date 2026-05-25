@@ -67,6 +67,16 @@ const estadoStyles = {
   },
 } as const;
 
+// Hover tooltips for the estado pill on the card. Kept here (not imported
+// from EstadoHelp) because cards render inside Links and Radix Tooltip would
+// fight with the link click target — native title attribute is simpler.
+const estadoTitleHint: Record<string, string> = {
+  BORRADOR: "Borrador — en construcción, no visible al público.",
+  EN_REVISION: "En revisión — datos listos, esperando aprobación.",
+  ACTIVO: "Activo — listo para publicar (depende del toggle Publicar).",
+  ARCHIVADO: "Archivado — retirado del catálogo. Despublicado automáticamente.",
+};
+
 export function PaqueteGridCard({
   paquete,
   foto,
@@ -136,7 +146,9 @@ export function PaqueteGridCard({
             {/* Gradient for text contrast */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
 
-            {/* Estado badge — top right */}
+            {/* Estado badge — top right. Native title attr for tooltip (cards
+                are inside a Link, so wrapping with Radix Tooltip would conflict
+                with the click target). */}
             <div className="absolute right-3 top-3">
               <span
                 className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider backdrop-blur-sm"
@@ -144,6 +156,7 @@ export function PaqueteGridCard({
                   background: estadoStyle.bg,
                   color: estadoStyle.text,
                 }}
+                title={estadoTitleHint[paquete.estado] ?? ""}
               >
                 {estadoStyle.label}
               </span>

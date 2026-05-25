@@ -7,7 +7,6 @@ import _home_hero from './home-hero.bones.json'
 import _region_card from './region-card.bones.json'
 import _package_card from './package-card.bones.json'
 import _package_detail_main from './package-detail-main.bones.json'
-import _package_detail_sidebar from './package-detail-sidebar.bones.json'
 
 configureBoneyard({"color":"#ECECEC","darkColor":"#2A2A2A","animate":"shimmer","shimmerColor":"#F7F7F7","darkShimmerColor":"#333333","speed":"1.8s","shimmerAngle":110,"stagger":true,"transition":250})
 
@@ -16,5 +15,4 @@ registerBones({
   "region-card": _region_card,
   "package-card": _package_card,
   "package-detail-main": _package_detail_main,
-  "package-detail-sidebar": _package_detail_sidebar,
 })

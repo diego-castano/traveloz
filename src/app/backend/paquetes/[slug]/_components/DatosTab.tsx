@@ -24,7 +24,6 @@ import {
   usePackageActions,
   usePaqueteServices,
   useOpcionesHoteleras,
-  useNochesTotales,
   useDestinos,
 } from "@/components/providers/PackageProvider";
 import {
@@ -37,13 +36,15 @@ import { useToast } from "@/components/ui/Toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
+import { EstadoHelpPanel, type EstadoKey } from "@/components/ui/EstadoHelp";
 import { validateForActivation } from "@/lib/validation";
 import {
   formatStoredDate,
   parseStoredDate,
   startOfLocalDay,
 } from "@/lib/date";
-import { Star, Check, Circle } from "lucide-react";
+import { Star, Check, Circle, ChevronDown, ChevronRight } from "lucide-react";
+import { DestinosMiniEditor } from "./DestinosMiniEditor";
 import { springs } from "@/components/lib/animations";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
 
@@ -110,9 +111,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [destino, setDestino] = useState(paquete.destino ?? "");
   const [descripcion, setDescripcion] = useState(paquete.descripcion);
   const [textoVisual, setTextoVisual] = useState(paquete.textoVisual ?? "");
-  // `noches` comes from the itinerary when destinos exist and falls back to
-  // the initial value loaded from "Nuevo paquete" while the itinerary is empty.
-  const nochesTotales = useNochesTotales(paquete.id);
+  // `destinos` still needed for the publish-readiness validation below;
+  // the visible noches counter moved into DestinosMiniEditor.
   const destinos = useDestinos(paquete.id);
   const [salidas, setSalidas] = useState(paquete.salidas);
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);
@@ -126,6 +126,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [validezHastaDate, setValidezHastaDate] = useState<Date | undefined>(
     parseStoredDate(paquete.validezHasta),
   );
+
+  // Datos operativos (legacy fields) — collapsed by default to keep the
+  // Datos tab focused on what the operator edits day-to-day.
+  const [legacyOpen, setLegacyOpen] = useState(false);
 
   // -- Etiquetas --
   const assignedEtiquetaIds = useMemo(
@@ -299,6 +303,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 options={estadoOptions}
                 placeholder="Seleccionar estado..."
               />
+              <EstadoHelpPanel current={estado as EstadoKey} />
             </Field>
           </FieldGroup>
 
@@ -425,36 +430,36 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
             <Field span={2}>
               <FieldLabel>Etiquetas</FieldLabel>
-              <div className="flex flex-wrap gap-2 min-h-[32px]">
-                {assignedEtiquetasFull.length === 0 && (
+              <div className="flex flex-wrap items-center gap-2 min-h-[32px]">
+                {assignedEtiquetasFull.length === 0 ? (
                   <span className="text-[13px] text-neutral-400 italic">
                     Sin etiquetas asignadas
                   </span>
+                ) : (
+                  assignedEtiquetasFull.map((etq) => (
+                    // Read-only: removing/adding etiquetas lives in the
+                    // Publicación tab (single source of truth). Showing them
+                    // here keeps the operator informed when reviewing Datos
+                    // without giving two competing editors that can drift.
+                    <Tag
+                      key={etq.assignmentId}
+                      color={resolveTagColor(etq.color)}
+                    >
+                      {etq.nombre}
+                    </Tag>
+                  ))
                 )}
-                {assignedEtiquetasFull.map((etq) => (
-                  <Tag
-                    key={etq.assignmentId}
-                    color={resolveTagColor(etq.color)}
-                    removable={!isReadOnly}
-                    onRemove={() => handleRemoveEtiqueta(etq.assignmentId)}
-                  >
-                    {etq.nombre}
-                  </Tag>
-                ))}
               </div>
-              {!isReadOnly && availableEtiquetas.length > 0 && (
-                <div className="mt-2 max-w-xs">
-                  <Select
-                    value=""
-                    onValueChange={handleAddEtiqueta}
-                    options={availableEtiquetas.map((e) => ({
-                      value: e.id,
-                      label: e.nombre,
-                    }))}
-                    placeholder="Agregar etiqueta..."
-                  />
-                </div>
-              )}
+              <p className="text-[11px] text-neutral-400 mt-1.5">
+                Las etiquetas se administran desde la pestaña{" "}
+                <a
+                  href="?tab=publicacion"
+                  className="text-violet-600 hover:underline"
+                >
+                  Publicación
+                </a>
+                .
+              </p>
             </Field>
 
             <Field span={2} orientation="horizontal">
@@ -480,28 +485,17 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         </FormSection>
 
         {/* ================================================================ */}
-        {/* Duracion y salidas                                               */}
+        {/* Itinerario y salidas — destinos editable inline (mirror of       */}
+        {/* AlojamientosTab so the operator can build the itinerary from     */}
+        {/* the first tab without bouncing).                                 */}
         {/* ================================================================ */}
         <FormSection
-          title="Duracion y salidas"
-          description="Cantidad de noches y periodo de salidas del paquete."
+          title="Itinerario y salidas"
+          description="Destinos del paquete (las noches se suman automáticamente) y período en que el paquete está disponible para vender."
         >
-          <FieldGroup columns={2}>
-            <Field>
-              <FieldLabel>Noches</FieldLabel>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-mono font-bold text-neutral-800">
-                  {nochesTotales}
-                </span>
-                <span className="text-xs text-neutral-400">
-                  {destinos.length === 0
-                    ? nochesTotales > 0
-                      ? "Valor inicial cargado desde Nuevo paquete"
-                      : "Agregá destinos en la pestaña Alojamientos"
-                    : `Total de ${destinos.length} destino${destinos.length === 1 ? "" : "s"} — editable desde Alojamientos`}
-                </span>
-              </div>
-            </Field>
+          <DestinosMiniEditor paqueteId={paquete.id} canEdit={!isReadOnly} />
+
+          <FieldGroup columns={1}>
             <Field>
               <FieldLabel>Salidas</FieldLabel>
               <Input
@@ -582,50 +576,69 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         </FormSection>
 
         {/* ================================================================ */}
-        {/* Datos operativos (read-only — origen: Excel / sistema legacy)    */}
+        {/* Datos operativos (read-only legacy) — collapsed by default       */}
         {/* ================================================================ */}
         {(paquete.webId || paquete.campana || paquete.itinerarioAmadeus) && (
-          <FormSection
-            title="Datos operativos"
-            description="Información heredada del sistema legacy. Sólo lectura."
-          >
-            <FieldGroup columns={2}>
-              {paquete.webId && (
-                <Field>
-                  <FieldLabel>Web ID</FieldLabel>
-                  <Input
-                    value={paquete.webId}
-                    readOnly
-                    className="font-mono text-[12px] bg-neutral-50 text-neutral-600 cursor-default"
-                  />
-                </Field>
+          <div className="rounded-[12px] border border-neutral-200/80 bg-white">
+            <button
+              type="button"
+              onClick={() => setLegacyOpen((v) => !v)}
+              className="w-full flex items-center gap-2 px-5 py-3 text-left hover:bg-neutral-50/50 transition-colors rounded-t-[12px]"
+              aria-expanded={legacyOpen}
+            >
+              {legacyOpen ? (
+                <ChevronDown className="w-4 h-4 text-neutral-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-neutral-400" />
               )}
-              {paquete.campana && (
-                <Field>
-                  <FieldLabel>Campaña</FieldLabel>
-                  <Input
-                    value={paquete.campana}
-                    readOnly
-                    className="bg-neutral-50 text-neutral-600 cursor-default"
-                  />
-                </Field>
-              )}
-              {paquete.itinerarioAmadeus && (
-                <Field span={2}>
-                  <FieldLabel>Itinerario Amadeus</FieldLabel>
-                  <textarea
-                    value={paquete.itinerarioAmadeus}
-                    readOnly
-                    rows={Math.min(
-                      10,
-                      paquete.itinerarioAmadeus.split("\n").length,
-                    )}
-                    className={`${textareaClassName} font-mono text-[12px] bg-neutral-50 text-neutral-600 whitespace-pre cursor-default`}
-                  />
-                </Field>
-              )}
-            </FieldGroup>
-          </FormSection>
+              <span className="text-[13px] font-semibold text-neutral-700">
+                Datos operativos
+              </span>
+              <span className="text-[11px] text-neutral-400">
+                (sistema legacy · sólo lectura)
+              </span>
+            </button>
+            {legacyOpen && (
+              <div className="px-5 pb-5 pt-1 border-t border-neutral-100">
+                <FieldGroup columns={2}>
+                  {paquete.webId && (
+                    <Field>
+                      <FieldLabel>Web ID</FieldLabel>
+                      <Input
+                        value={paquete.webId}
+                        readOnly
+                        className="font-mono text-[12px] bg-neutral-50 text-neutral-600 cursor-default"
+                      />
+                    </Field>
+                  )}
+                  {paquete.campana && (
+                    <Field>
+                      <FieldLabel>Campaña</FieldLabel>
+                      <Input
+                        value={paquete.campana}
+                        readOnly
+                        className="bg-neutral-50 text-neutral-600 cursor-default"
+                      />
+                    </Field>
+                  )}
+                  {paquete.itinerarioAmadeus && (
+                    <Field span={2}>
+                      <FieldLabel>Itinerario Amadeus</FieldLabel>
+                      <textarea
+                        value={paquete.itinerarioAmadeus}
+                        readOnly
+                        rows={Math.min(
+                          10,
+                          paquete.itinerarioAmadeus.split("\n").length,
+                        )}
+                        className={`${textareaClassName} font-mono text-[12px] bg-neutral-50 text-neutral-600 whitespace-pre cursor-default`}
+                      />
+                    </Field>
+                  )}
+                </FieldGroup>
+              </div>
+            )}
+          </div>
         )}
 
       </FormSections>

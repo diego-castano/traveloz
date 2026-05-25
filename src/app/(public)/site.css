@@ -2151,7 +2151,12 @@ header.scrolled {
 /* Compensar espacio del header fixed */
 .main-wrapper {
     position: relative;
-    overflow-x: hidden;
+    /* `clip` instead of `hidden` — both prevent horizontal overflow, but `hidden`
+       implicitly turns overflow-y into `auto` (per CSS spec), which would create
+       a scrolling container inside .main-wrapper and break position:sticky of
+       descendants like QuoteSidebar (`.sidebar-form.sticky`). `clip` has no such
+       side effect. */
+    overflow-x: clip;
     padding-top: 90px;
 }
 

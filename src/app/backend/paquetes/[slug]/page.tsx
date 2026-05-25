@@ -2,10 +2,12 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
+import { Tooltip } from "radix-ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { EstadoBadgeTooltip, type EstadoKey } from "@/components/ui/EstadoHelp";
 import { usePaqueteById, usePackageLoading } from "@/components/providers/PackageProvider";
 import { DetailPageSkeleton } from "@/components/ui/Skeletons";
 import { EmptyState } from "@/components/ui/data/EmptyState";
@@ -126,6 +128,7 @@ export default function PaqueteDetailPage() {
   }
 
   return (
+    <Tooltip.Provider delayDuration={200}>
     <div className="space-y-6">
       {/* Header */}
       <DataTablePageHeader
@@ -133,9 +136,11 @@ export default function PaqueteDetailPage() {
         subtitle={paquete.estado}
         action={
           <div className="flex items-center gap-3">
-            <Badge variant={estadoBadgeVariant[paquete.estado] ?? "draft"} size="md">
-              {paquete.estado}
-            </Badge>
+            <EstadoBadgeTooltip estado={paquete.estado as EstadoKey}>
+              <Badge variant={estadoBadgeVariant[paquete.estado] ?? "draft"} size="md">
+                {paquete.estado}
+              </Badge>
+            </EstadoBadgeTooltip>
             <PaquetePreviewButton paqueteId={paquete.id} />
             <Button
               variant="ghost"
@@ -186,5 +191,6 @@ export default function PaqueteDetailPage() {
         </TabsContent>
       </Tabs>
     </div>
+    </Tooltip.Provider>
   );
 }

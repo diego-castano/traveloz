@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Trash2, Download } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import {
   listSuscripciones,
   toggleNewsletterActive,
@@ -9,6 +9,7 @@ import {
 } from "@/actions/leads.actions";
 import { useToast } from "@/components/ui/Toast";
 import { LeadsTable, relativeTime } from "../_components/LeadsTable";
+import { ExportButton } from "../_components/ExportButton";
 
 type Row = Awaited<ReturnType<typeof listSuscripciones>>[number];
 
@@ -27,29 +28,6 @@ export default function NewsletterPage() {
     refresh();
   }, []);
 
-  const exportCSV = () => {
-    const header = ["email", "active", "source", "createdAt", "unsubscribedAt"];
-    const lines = [header.join(",")];
-    rows.forEach((r) => {
-      lines.push(
-        [
-          `"${r.email}"`,
-          r.active,
-          `"${r.source ?? ""}"`,
-          r.createdAt.toISOString(),
-          r.unsubscribedAt?.toISOString() ?? "",
-        ].join(","),
-      );
-    });
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `newsletter-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -59,14 +37,7 @@ export default function NewsletterPage() {
             Suscriptores desde el form del footer / hero de la home.
           </p>
         </div>
-        <button
-          onClick={exportCSV}
-          disabled={rows.length === 0}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-violet-700 bg-violet-50 border border-violet-200 rounded-md hover:bg-violet-100 disabled:opacity-50"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Exportar CSV
-        </button>
+        <ExportButton kind="newsletter" disabled={rows.length === 0} />
       </div>
 
       {loading ? (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo } from "react";
+import { cn } from "@/components/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
@@ -172,22 +173,42 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   );
 
   // -- Drag and drop state --
+  // Track the currently dragged row + the hover target so the UI shows a
+  // ghosted source and a teal drop-zone outline. Without this, the only
+  // feedback was the browser's default ghost image, which made reorder feel
+  // jittery on slow networks.
   const dragSourceRef = useRef<{ type: string; index: number } | null>(null);
+  const [dragging, setDragging] = useState<{ type: string; index: number } | null>(null);
+  const [dragOver, setDragOver] = useState<{ type: string; index: number } | null>(null);
 
   const handleDragStart = useCallback(
     (type: string, index: number) => {
       dragSourceRef.current = { type, index };
+      setDragging({ type, index });
     },
     [],
   );
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, type: string, index: number) => {
+      e.preventDefault();
+      const src = dragSourceRef.current;
+      if (!src || src.type !== type || src.index === index) return;
+      setDragOver({ type, index });
+    },
+    [],
+  );
+
+  const handleDragEnd = useCallback(() => {
+    setDragging(null);
+    setDragOver(null);
   }, []);
 
   const handleDrop = useCallback(
     (type: string, targetIndex: number) => {
       const source = dragSourceRef.current;
+      setDragging(null);
+      setDragOver(null);
       if (!source || source.type !== type || source.index === targetIndex) {
         dragSourceRef.current = null;
         return;
@@ -363,13 +384,24 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
             {/* Items */}
             <div className="rounded-[12px] border border-hairline bg-white">
               <div className="divide-y divide-hairline">
-                {items.map((assignment, index) => (
+                {items.map((assignment, index) => {
+                  const isDragging =
+                    dragging?.type === key && dragging.index === index;
+                  const isDropTarget =
+                    dragOver?.type === key && dragOver.index === index;
+                  return (
                   <div
                     key={assignment.id}
-                    className="flex items-center gap-3 px-4 py-3 group"
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 group transition-all",
+                      isDragging && "opacity-40",
+                      isDropTarget &&
+                        "ring-2 ring-inset ring-[#3BBFAD]/60 bg-[#3BBFAD]/5",
+                    )}
                     draggable={canEdit}
                     onDragStart={() => handleDragStart(key, index)}
-                    onDragOver={handleDragOver}
+                    onDragOver={(e) => handleDragOver(e, key, index)}
+                    onDragEnd={handleDragEnd}
                     onDrop={() => handleDrop(key, index)}
                   >
                     {/* Drag handle */}
@@ -409,7 +441,8 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
                       </button>
                     )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

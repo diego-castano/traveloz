@@ -33,6 +33,10 @@ type Step = {
   label: string;
   tab: string;
   done: boolean;
+  /** Plain-language explanation of why this step is still pending — shown
+   * on hover so the operator knows exactly what to fix without having to
+   * navigate to the tab and figure it out. */
+  blocker?: string;
 };
 
 function buildSteps(args: {
@@ -43,30 +47,54 @@ function buildSteps(args: {
   nochesOk: boolean;
 }): Step[] {
   const { paquete, aereoCount, opcionCount, destinoCount, nochesOk } = args;
+  const missingTitulo = !paquete.titulo?.trim();
+  const missingDestino = !paquete.destino?.trim();
   return [
     {
       key: "titulo",
       label: "Título y datos básicos",
       tab: "datos",
-      done: !!paquete.titulo?.trim() && !!paquete.destino?.trim(),
+      done: !missingTitulo && !missingDestino,
+      blocker:
+        missingTitulo && missingDestino
+          ? "Falta cargar el título y el destino del paquete."
+          : missingTitulo
+          ? "Falta el título del paquete."
+          : missingDestino
+          ? "Falta el destino del paquete."
+          : undefined,
     },
     {
       key: "destinos",
       label: "Itinerario (al menos 1 destino)",
       tab: "alojamientos",
       done: destinoCount > 0 && nochesOk,
+      blocker:
+        destinoCount === 0
+          ? "No hay destinos en el itinerario. Agregá al menos uno desde la pestaña Alojamientos."
+          : !nochesOk
+          ? "Las noches por destino no coinciden con el total del paquete. Ajustalas desde Alojamientos."
+          : undefined,
     },
     {
       key: "aereo",
       label: "Al menos 1 aéreo",
       tab: "servicios",
       done: aereoCount > 0,
+      blocker:
+        aereoCount === 0
+          ? "Sin aéreos asignados. Asigná al menos uno desde la pestaña Servicios."
+          : undefined,
     },
     {
       key: "hotel",
       label: "Al menos 1 opción hotelera",
       tab: "alojamientos",
       done: opcionCount > 0,
+      blocker:
+        opcionCount === 0
+          ? "Sin opciones hoteleras. Creá una desde la pestaña Alojamientos asignando hoteles a cada destino."
+          : undefined,
     },
     {
       key: "publicar",
@@ -76,6 +104,10 @@ function buildSteps(args: {
       label: "Publicar en el sitio (foto, slug y toggle)",
       tab: "publicacion",
       done: paquete.estado === "ACTIVO",
+      blocker:
+        paquete.estado !== "ACTIVO"
+          ? "Cuando esté todo listo, andá a Publicación, completá foto principal + slug y prendé el toggle Publicar."
+          : undefined,
     },
   ];
 }
@@ -142,7 +174,7 @@ export function OnboardingProgress({ paquete }: { paquete: Paquete }) {
         />
       </div>
 
-      {/* Steps row */}
+      {/* Steps row — incomplete steps show their blocker on hover */}
       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
         {steps.map((s) => (
           <button
@@ -152,7 +184,13 @@ export function OnboardingProgress({ paquete }: { paquete: Paquete }) {
             className={`inline-flex items-center gap-1.5 text-[11.5px] transition-opacity ${
               s.done ? "text-neutral-400" : "text-amber-700 font-medium hover:text-amber-900"
             }`}
-            title={`Ir a la pestaña ${s.tab}`}
+            title={
+              s.done
+                ? `Ir a la pestaña ${s.tab}`
+                : s.blocker
+                ? `${s.blocker} (clic para ir a ${s.tab})`
+                : `Ir a la pestaña ${s.tab}`
+            }
           >
             {s.done ? (
               <Check className="w-3 h-3 text-green-500 shrink-0" />
@@ -163,6 +201,15 @@ export function OnboardingProgress({ paquete }: { paquete: Paquete }) {
           </button>
         ))}
       </div>
+
+      {/* Highlight the very next blocker in plain language so the operator
+          sees the actionable detail without having to hover step by step. */}
+      {nextStep.blocker && (
+        <p className="mt-2 text-[11.5px] text-amber-700/90 leading-snug">
+          <span className="font-semibold">Pendiente: </span>
+          {nextStep.blocker}
+        </p>
+      )}
     </div>
   );
 }
