@@ -139,12 +139,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [estado, setEstado] = useState<string>(paquete.estado);
   const [destacado, setDestacado] = useState(paquete.destacado);
   const [moneda, setMoneda] = useState(paquete.moneda);
-  const [validezDesdeDate, setValidezDesdeDate] = useState<Date | undefined>(
-    parseStoredDate(paquete.validezDesde),
-  );
-  const [validezHastaDate, setValidezHastaDate] = useState<Date | undefined>(
-    parseStoredDate(paquete.validezHasta),
-  );
 
   // Datos operativos (legacy fields) — collapsed by default to keep the
   // Datos tab focused on what the operator edits day-to-day.
@@ -187,14 +181,23 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   // -- Vigencia helper: warn if close to expiry --
   const now = startOfLocalDay(new Date()) ?? new Date();
   const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-  const hastaExpired = validezHastaDate ? validezHastaDate < now : false;
+  const hastaExpired = viajeHastaDate ? viajeHastaDate < now : false;
   const hastaWarning =
-    validezHastaDate && !hastaExpired
-      ? validezHastaDate.getTime() - now.getTime() < thirtyDaysMs
+    viajeHastaDate && !hastaExpired
+      ? viajeHastaDate.getTime() - now.getTime() < thirtyDaysMs
       : false;
 
   const persistPaquete = useCallback(
     (overrides: Partial<Paquete> = {}) => {
+      // Viaje y validez ahora son el mismo período: el operador edita uno
+      // solo y se replica en validez para que los filtros del frontend (lista
+      // por vencer, listing activo, etc.) sigan funcionando sin duplicar UI.
+      const viajeDesdeStr = viajeDesdeDate
+        ? formatStoredDate(viajeDesdeDate)
+        : null;
+      const viajeHastaStr = viajeHastaDate
+        ? formatStoredDate(viajeHastaDate)
+        : null;
       return updatePaquete({
         ...paquete,
         titulo,
@@ -206,18 +209,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         estado: estado as EstadoPaquete,
         destacado,
         moneda,
-        validezDesde: validezDesdeDate
-          ? (formatStoredDate(validezDesdeDate) ?? paquete.validezDesde)
-          : paquete.validezDesde,
-        validezHasta: validezHastaDate
-          ? (formatStoredDate(validezHastaDate) ?? paquete.validezHasta)
-          : paquete.validezHasta,
-        viajeDesde: viajeDesdeDate
-          ? formatStoredDate(viajeDesdeDate)
-          : null,
-        viajeHasta: viajeHastaDate
-          ? formatStoredDate(viajeHastaDate)
-          : null,
+        validezDesde: viajeDesdeStr ?? paquete.validezDesde,
+        validezHasta: viajeHastaStr ?? paquete.validezHasta,
+        viajeDesde: viajeDesdeStr,
+        viajeHasta: viajeHastaStr,
         updatedAt: new Date().toISOString(),
         ...overrides,
       });
@@ -233,8 +228,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       estado,
       destacado,
       moneda,
-      validezDesdeDate,
-      validezHastaDate,
       viajeDesdeDate,
       viajeHastaDate,
       updatePaquete,
@@ -285,8 +278,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setEstadoDirty = (v: string) => { setEstado(v); markDirty(); };
   const setDestacadoDirty = (v: boolean) => { setDestacado(v); markDirty(); };
   const setMonedaDirty = (v: string) => { setMoneda(v); markDirty(); };
-  const setValidezDesdeDateDirty = (v: Date | undefined) => { setValidezDesdeDate(v); markDirty(); };
-  const setValidezHastaDateDirty = (v: Date | undefined) => { setValidezHastaDate(v); markDirty(); };
   const setViajeDates = (desde: Date | undefined, hasta: Date | undefined) => {
     setViajeDesdeDate(desde);
     setViajeHastaDate(hasta);
@@ -474,7 +465,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         {/* ================================================================ */}
         <FormSection
           title="Período del viaje"
-          description="Fechas en las que el cliente realmente viaja. Los servicios (aéreos, alojamientos, circuitos) y sus tarifas se resuelven contra este rango."
+          description="Fechas en las que el cliente viaja. Define qué servicios y tarifas aplican, y también controla la vigencia del paquete en el frontend público."
         >
           <FieldGroup columns={1}>
             <Field>
@@ -488,36 +479,12 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 placeholder="Seleccionar período de viaje..."
                 disabled={isReadOnly}
               />
-            </Field>
-          </FieldGroup>
-        </FormSection>
-
-        {/* ================================================================ */}
-        {/* Validez                                                          */}
-        {/* ================================================================ */}
-        <FormSection
-          title="Validez"
-          description="El paquete se auto-desactiva al llegar a la fecha de validez hasta."
-        >
-          <FieldGroup columns={1}>
-            <Field>
-              <FieldLabel>Rango de validez</FieldLabel>
-              <PeriodPicker
-                valueFrom={formatStoredDate(validezDesdeDate) ?? null}
-                valueTo={formatStoredDate(validezHastaDate) ?? null}
-                onChange={(desde, hasta) => {
-                  setValidezDesdeDateDirty(parseStoredDate(desde));
-                  setValidezHastaDateDirty(parseStoredDate(hasta));
-                }}
-                placeholder="Seleccionar rango de validez..."
-                disabled={isReadOnly}
-              />
               {(hastaExpired || hastaWarning) && (
                 <p
                   className={`mt-1.5 text-[11.5px] font-medium ${hastaExpired ? "text-[#CC2030]" : "text-amber-600"}`}
                 >
                   {hastaExpired
-                    ? "Vigencia vencida"
+                    ? "Vigencia vencida — el paquete ya no se muestra en el frontend"
                     : "Vence en menos de 30 días"}
                 </p>
               )}

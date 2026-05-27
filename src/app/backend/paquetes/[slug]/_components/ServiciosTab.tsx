@@ -321,7 +321,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     return (
       <>
         {!hasTravelWindow && (
-          <MissingTravelWindowBanner paqueteSlug={paquete.slug ?? paquete.id} />
+          <MissingTravelWindowBanner paqueteSlug={paquete.id} />
         )}
         <EmptyState
           icon={Plane}
@@ -352,7 +352,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   return (
     <div className="space-y-4">
       {!hasTravelWindow && (
-        <MissingTravelWindowBanner paqueteSlug={paquete.slug ?? paquete.id} />
+        <MissingTravelWindowBanner paqueteSlug={paquete.id} />
       )}
       {/* Header with add button */}
       <div className="flex items-center justify-between">

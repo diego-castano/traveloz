@@ -607,7 +607,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
     >
       {!hasTravelWindow && (
         <motion.div variants={stagger.item.variants}>
-          <MissingTravelWindowBanner paqueteSlug={paquete.slug ?? paquete.id} />
+          <MissingTravelWindowBanner paqueteSlug={paquete.id} />
         </motion.div>
       )}
       {/* ── 1. Itinerario (destinos + noches) ── */}
