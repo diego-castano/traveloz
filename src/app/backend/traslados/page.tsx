@@ -574,7 +574,6 @@ export default function TrasladosPage() {
                   value={form.precio}
                   onChange={(e) => setForm((prev) => ({ ...prev, precio: e.target.value }))}
                   placeholder="0"
-                  className="text-right"
                 />
               </Field>
             </FieldGroup>
