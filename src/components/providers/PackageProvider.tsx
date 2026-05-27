@@ -781,10 +781,25 @@ export function usePackageActions() {
       },
 
       // -- Aereo assignment --
+      // Optimistic: insert a tmp row, swap for real on success, rollback on
+      // error. Lets the Servicios tab + the modal's "available" filter update
+      // before the server roundtrip — closes the window where a fast operator
+      // could double-click and hit a unique-constraint 500.
       assignAereo: async (data: Omit<PaqueteAereo, "id">) => {
-        const entity = await packageActions.assignAereo(data as any);
-        dispatch({ type: "ADD_PAQUETE_AEREO", payload: entity as any });
-        return entity as any;
+        const tmpId = `tmp-${crypto.randomUUID()}`;
+        dispatch({
+          type: "ADD_PAQUETE_AEREO",
+          payload: { id: tmpId, ...data } as PaqueteAereo,
+        });
+        try {
+          const entity = await packageActions.assignAereo(data as any);
+          dispatch({ type: "DELETE_PAQUETE_AEREO", payload: tmpId });
+          dispatch({ type: "ADD_PAQUETE_AEREO", payload: entity as any });
+          return entity as any;
+        } catch (e) {
+          dispatch({ type: "DELETE_PAQUETE_AEREO", payload: tmpId });
+          throw e;
+        }
       },
       removeAereo: async (id: string) => {
         await packageActions.removeAereo(id);
@@ -797,9 +812,20 @@ export function usePackageActions() {
 
       // -- Alojamiento assignment --
       assignAlojamiento: async (data: Omit<PaqueteAlojamiento, "id">) => {
-        const entity = await packageActions.assignAlojamiento(data as any);
-        dispatch({ type: "ADD_PAQUETE_ALOJAMIENTO", payload: entity as any });
-        return entity as any;
+        const tmpId = `tmp-${crypto.randomUUID()}`;
+        dispatch({
+          type: "ADD_PAQUETE_ALOJAMIENTO",
+          payload: { id: tmpId, ...data } as PaqueteAlojamiento,
+        });
+        try {
+          const entity = await packageActions.assignAlojamiento(data as any);
+          dispatch({ type: "DELETE_PAQUETE_ALOJAMIENTO", payload: tmpId });
+          dispatch({ type: "ADD_PAQUETE_ALOJAMIENTO", payload: entity as any });
+          return entity as any;
+        } catch (e) {
+          dispatch({ type: "DELETE_PAQUETE_ALOJAMIENTO", payload: tmpId });
+          throw e;
+        }
       },
       removeAlojamiento: async (id: string) => {
         await packageActions.removeAlojamiento(id);
@@ -812,9 +838,20 @@ export function usePackageActions() {
 
       // -- Traslado assignment --
       assignTraslado: async (data: Omit<PaqueteTraslado, "id">) => {
-        const entity = await packageActions.assignTraslado(data as any);
-        dispatch({ type: "ADD_PAQUETE_TRASLADO", payload: entity as any });
-        return entity as any;
+        const tmpId = `tmp-${crypto.randomUUID()}`;
+        dispatch({
+          type: "ADD_PAQUETE_TRASLADO",
+          payload: { id: tmpId, ...data } as PaqueteTraslado,
+        });
+        try {
+          const entity = await packageActions.assignTraslado(data as any);
+          dispatch({ type: "DELETE_PAQUETE_TRASLADO", payload: tmpId });
+          dispatch({ type: "ADD_PAQUETE_TRASLADO", payload: entity as any });
+          return entity as any;
+        } catch (e) {
+          dispatch({ type: "DELETE_PAQUETE_TRASLADO", payload: tmpId });
+          throw e;
+        }
       },
       removeTraslado: async (id: string) => {
         await packageActions.removeTraslado(id);
@@ -827,9 +864,20 @@ export function usePackageActions() {
 
       // -- Seguro assignment --
       assignSeguro: async (data: Omit<PaqueteSeguro, "id">) => {
-        const entity = await packageActions.assignSeguro(data as any);
-        dispatch({ type: "ADD_PAQUETE_SEGURO", payload: entity as any });
-        return entity as any;
+        const tmpId = `tmp-${crypto.randomUUID()}`;
+        dispatch({
+          type: "ADD_PAQUETE_SEGURO",
+          payload: { id: tmpId, ...data } as PaqueteSeguro,
+        });
+        try {
+          const entity = await packageActions.assignSeguro(data as any);
+          dispatch({ type: "DELETE_PAQUETE_SEGURO", payload: tmpId });
+          dispatch({ type: "ADD_PAQUETE_SEGURO", payload: entity as any });
+          return entity as any;
+        } catch (e) {
+          dispatch({ type: "DELETE_PAQUETE_SEGURO", payload: tmpId });
+          throw e;
+        }
       },
       removeSeguro: async (id: string) => {
         await packageActions.removeSeguro(id);
@@ -842,9 +890,20 @@ export function usePackageActions() {
 
       // -- Circuito assignment --
       assignCircuito: async (data: Omit<PaqueteCircuito, "id">) => {
-        const entity = await packageActions.assignCircuito(data as any);
-        dispatch({ type: "ADD_PAQUETE_CIRCUITO", payload: entity as any });
-        return entity as any;
+        const tmpId = `tmp-${crypto.randomUUID()}`;
+        dispatch({
+          type: "ADD_PAQUETE_CIRCUITO",
+          payload: { id: tmpId, ...data } as PaqueteCircuito,
+        });
+        try {
+          const entity = await packageActions.assignCircuito(data as any);
+          dispatch({ type: "DELETE_PAQUETE_CIRCUITO", payload: tmpId });
+          dispatch({ type: "ADD_PAQUETE_CIRCUITO", payload: entity as any });
+          return entity as any;
+        } catch (e) {
+          dispatch({ type: "DELETE_PAQUETE_CIRCUITO", payload: tmpId });
+          throw e;
+        }
       },
       removeCircuito: async (id: string) => {
         await packageActions.removeCircuito(id);

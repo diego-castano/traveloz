@@ -43,3 +43,8 @@ next-env.d.ts
 
 # Playwright/debug screenshots (never commit)
 /*.png
+/*.jpeg
+/*.jpg
+
+# QA / audit screenshots (kept locally, not in repo)
+audit/

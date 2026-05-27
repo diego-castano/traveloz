@@ -345,7 +345,7 @@ export default function SegurosPage() {
           <ModalBody>
             <FieldGroup columns={2}>
               <Field span={2}>
-                <FieldLabel>Proveedor</FieldLabel>
+                <FieldLabel required>Proveedor</FieldLabel>
                 <Select
                   options={proveedoresSeguros.map((p) => ({ value: p.id, label: p.nombre }))}
                   value={form.proveedorId}
@@ -354,7 +354,7 @@ export default function SegurosPage() {
                 />
               </Field>
               <Field>
-                <FieldLabel>Plan</FieldLabel>
+                <FieldLabel required>Plan</FieldLabel>
                 <Input
                   autoFocus
                   value={form.plan}

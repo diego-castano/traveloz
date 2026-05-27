@@ -11,6 +11,7 @@ import {
   updateCategoriaDestacada,
   deleteCategoriaDestacada,
 } from "@/actions/categorias-destacadas.actions";
+import { useWebEdit } from "../_components/web-edit-context";
 
 type Row = Awaited<ReturnType<typeof listCategoriasDestacadas>>[number];
 
@@ -18,13 +19,18 @@ const EMPTY = { titulo: "", imagen: "", link: "", orden: 0 };
 
 export default function WebCategoriasPage() {
   const { toast } = useToast();
+  const { refreshPreview } = useWebEdit();
   const [rows, setRows] = useState<Row[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const [, start] = useTransition();
   const [draft, setDraft] = useState(EMPTY);
 
-  const refresh = () => listCategoriasDestacadas().then(setRows);
+  const refresh = () =>
+    listCategoriasDestacadas().then((rs) => {
+      setRows(rs);
+      refreshPreview();
+    });
   useEffect(() => {
     refresh();
   }, []);

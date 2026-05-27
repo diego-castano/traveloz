@@ -32,17 +32,49 @@ export function PackageCard({
 
   return (
     <Skeleton name="package-card" loading={false}>
-      <a href={href} className="package-card image-box style1">
-        <img src={img} alt={paquete.titulo} />
-        <div className="content" style={{ padding: "16px" }}>
-          <h3 className="title">{paquete.titulo}</h3>
+      <a
+        href={href}
+        className="package-card"
+        style={{
+          display: "block",
+          margin: "0 10px",
+          borderRadius: 10,
+          overflow: "hidden",
+          background: "#fff",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+          color: "inherit",
+          textDecoration: "none",
+        }}
+      >
+        <img
+          src={img}
+          alt={paquete.titulo}
+          style={{
+            display: "block",
+            width: "100%",
+            height: 220,
+            objectFit: "cover",
+          }}
+        />
+        <div style={{ padding: 16 }}>
+          <h3
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "#222",
+              margin: "0 0 8px",
+              lineHeight: 1.25,
+            }}
+          >
+            {paquete.titulo}
+          </h3>
           {ciudades && (
-            <p style={{ fontSize: 13, color: "#666", marginBottom: 6 }}>
+            <p style={{ fontSize: 13, color: "#666", margin: "0 0 6px" }}>
               {ciudades}
             </p>
           )}
           {paquete.salidas && (
-            <p style={{ fontSize: 12, color: "#999", marginBottom: 6 }}>
+            <p style={{ fontSize: 12, color: "#999", margin: "0 0 6px" }}>
               {paquete.salidas}
             </p>
           )}
@@ -52,7 +84,7 @@ export function PackageCard({
               gap: 8,
               fontSize: 11,
               color: "#785AE5",
-              marginBottom: 10,
+              margin: "0 0 10px",
               padding: 0,
               listStyle: "none",
             }}

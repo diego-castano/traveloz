@@ -10,6 +10,7 @@ import {
 } from "@/actions/region-frontend.actions";
 import { MediaPicker } from "../_components/MediaPicker";
 import { SettingsForm } from "../_components/SettingsForm";
+import { useWebEdit } from "../_components/web-edit-context";
 
 type Row = Awaited<ReturnType<typeof listRegionesForFrontend>>[number];
 type Edits = Record<
@@ -26,6 +27,7 @@ type Edits = Record<
 // ---------------------------------------------------------------------------
 export default function WebDestinosPage() {
   const { toast } = useToast();
+  const { refreshPreview } = useWebEdit();
   const [rows, setRows] = useState<Row[]>([]);
   const [edits, setEdits] = useState<Edits>({});
   const [, start] = useTransition();
@@ -37,6 +39,7 @@ export default function WebDestinosPage() {
       .then((rs) => {
         setRows(rs);
         setLoading(false);
+        refreshPreview();
       })
       .catch(() => setLoading(false));
 

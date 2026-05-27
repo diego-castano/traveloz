@@ -7,11 +7,11 @@ import {
 } from "@/lib/public-data";
 import { DestinosGrid } from "@/components/public/DestinosGrid";
 import { PackageCard } from "@/components/public/PackageCard";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Destinos | TravelOz",
-  description: "Descubrí todos nuestros destinos por región.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("destinos");
+}
 
 export default async function DestinosPage({
   searchParams,

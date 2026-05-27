@@ -6,12 +6,11 @@
 
 import { getFaqTopics, getSiteSettings } from "@/lib/public-data";
 import { FaqContent, type FaqTopic } from "./_components/FaqContent";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Preguntas frecuentes | TravelOz",
-  description:
-    "Información sobre documentación, menores de edad, visados, requisitos sanitarios, mascotas y embarazadas para viajar tranquilo.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("faq");
+}
 
 export default async function FaqPage() {
   const [dbTopics, settings] = await Promise.all([
@@ -21,7 +20,7 @@ export default async function FaqPage() {
   const TOPICS: FaqTopic[] = dbTopics.map((t) => ({
     id: t.id,
     label: t.label,
-    iconBlue: t.iconUrl ?? "faq-icon-1-blue.webp",
+    iconBlue: t.iconUrl ?? "",
     bodyHtml: t.bodyHtml,
   }));
 

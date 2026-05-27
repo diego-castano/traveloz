@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth.config";
 import { PackageDetailView } from "./_components/PackageDetailView";
 import { buildFormasDePagoData } from "./_components/FormasDePago";
 import { RelatedPackages } from "./_components/RelatedPackages";
+import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -15,12 +16,14 @@ export async function generateMetadata({
   params: { region: string; slug: string };
 }) {
   const p = await getPaqueteBySlug(params.slug);
-  if (!p) return { title: "TravelOz" };
-  return {
-    title: p.metaTitle ?? `${p.titulo} | TravelOz`,
-    description:
-      p.metaDescription ?? `Conocé ${p.titulo}, ${p.noches} noches.`,
-  };
+  return buildSeoMetadata("default", {
+    title: p ? (p.metaTitle ?? `${p.titulo} | TravelOz`) : undefined,
+    description: p
+      ? (p.metaDescription ?? `Conocé ${p.titulo}, ${p.noches} noches.`)
+      : undefined,
+    image: p?.fotos?.[0]?.url ?? undefined,
+    noindex: !p,
+  });
 }
 
 export default async function PackageDetailPage({

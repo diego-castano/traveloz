@@ -649,11 +649,11 @@ export function useServiceActions() {
       // -- Aereo --
       createAereo: async (
         data: Omit<Aereo, "id" | "createdAt" | "updatedAt" | "deletedAt"> & {
-          precioInicial?: {
+          precios?: Array<{
             periodoDesde: string;
             periodoHasta: string;
             precioAdulto: number;
-          };
+          }>;
         },
       ) => {
         const entity = await serviceActions.createAereo(data);

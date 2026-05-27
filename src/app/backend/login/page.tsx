@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import Image from "next/image";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { glassMaterials } from "@/components/lib/glass";
@@ -40,6 +41,47 @@ type PinRosterUser = {
 
 type Mode = "password" | "pin";
 
+function LoginTransition({ background }: { background: string }) {
+  return (
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+      <div
+        className="absolute inset-0 animate-mesh-float"
+        style={{ background }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          opacity: 0.025,
+          mixBlendMode: "overlay",
+          backgroundImage: `url("${NOISE_SVG}")`,
+          backgroundRepeat: "repeat",
+        }}
+      />
+      <motion.div
+        className="relative z-10 flex flex-col items-center gap-5"
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.25, ease: "easeOut" }}
+      >
+        <div
+          className="flex items-center justify-center rounded-full"
+          style={{
+            ...glassMaterials.liquid,
+            width: 72,
+            height: 72,
+            boxShadow: ELEVATION_32,
+          }}
+        >
+          <Loader2 className="h-7 w-7 animate-spin text-brand-violet-600" />
+        </div>
+        <p className="text-sm font-medium text-white drop-shadow-sm">
+          Preparando tu panel…
+        </p>
+      </motion.div>
+    </div>
+  );
+}
+
 function LoginPageInner() {
   const auth = useAuth();
   const { activeBrand } = useBrand();
@@ -64,8 +106,13 @@ function LoginPageInner() {
   const [pinError, setPinError] = useState("");
   const [pinLoading, setPinLoading] = useState(false);
 
+  // True while we hand off to /backend/dashboard. Shown as a full-screen loader
+  // so the user doesn't see a blank page while the next segment compiles/mounts.
+  const [redirecting, setRedirecting] = useState(false);
+
   useEffect(() => {
     if (auth.isAuthenticated) {
+      setRedirecting(true);
       router.push("/backend/dashboard");
     }
   }, [auth.isAuthenticated, router]);
@@ -85,7 +132,9 @@ function LoginPageInner() {
     if (mode === "pin" && roster.length === 0) loadRoster();
   }, [mode, roster.length, loadRoster]);
 
-  if (auth.isAuthenticated) return null;
+  if (redirecting || auth.isAuthenticated) {
+    return <LoginTransition background={activeBrand.loginBackground} />;
+  }
 
   const handlePasswordLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -93,6 +142,7 @@ function LoginPageInner() {
     setPwLoading(true);
     const success = await auth.login(email, password);
     if (success) {
+      setRedirecting(true);
       router.push("/backend/dashboard");
     } else {
       setPwError("Email o contraseña incorrectos");
@@ -115,6 +165,7 @@ function LoginPageInner() {
       setPinLoading(false);
       return;
     }
+    setRedirecting(true);
     router.push("/backend/dashboard");
   };
 

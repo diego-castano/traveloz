@@ -18,14 +18,20 @@ import {
 import { AVAILABLE_ICONS } from "@/lib/servicio-icons";
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
+import { useWebEdit } from "../_components/web-edit-context";
 
 type Row = Awaited<ReturnType<typeof listServicios>>[number];
 
 export default function WebServiciosIncluidosPage() {
+  const { refreshPreview } = useWebEdit();
   const [items, setItems] = useState<Row[]>([]);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
 
-  const refresh = () => listServicios().then(setItems);
+  const refresh = () =>
+    listServicios().then((rows) => {
+      setItems(rows);
+      refreshPreview();
+    });
   useEffect(() => {
     refresh();
   }, []);

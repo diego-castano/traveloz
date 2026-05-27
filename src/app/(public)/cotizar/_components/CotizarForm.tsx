@@ -97,7 +97,20 @@ export function CotizarForm() {
             fontSize: 14,
           }}
         />
-        <button type="submit" className="hero-btn" style={{ marginTop: 8 }}>
+        <button
+          type="submit"
+          style={{
+            marginTop: 8,
+            padding: "12px 28px",
+            borderRadius: 50,
+            background: "#F43E55",
+            color: "#fff",
+            fontSize: 16,
+            fontWeight: 600,
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
           Enviar consulta
         </button>
         <FormStatus result={result} />

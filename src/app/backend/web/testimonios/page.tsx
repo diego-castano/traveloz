@@ -11,6 +11,7 @@ import {
   updateTestimonio,
   deleteTestimonio,
 } from "@/actions/testimonios.actions";
+import { useWebEdit } from "../_components/web-edit-context";
 
 type Row = Awaited<ReturnType<typeof listTestimonios>>[number];
 
@@ -25,13 +26,18 @@ const EMPTY = {
 
 export default function WebTestimoniosPage() {
   const { toast } = useToast();
+  const { refreshPreview } = useWebEdit();
   const [rows, setRows] = useState<Row[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Row | null>(null);
   const [, start] = useTransition();
   const [draft, setDraft] = useState(EMPTY);
 
-  const refresh = () => listTestimonios().then(setRows);
+  const refresh = () =>
+    listTestimonios().then((rs) => {
+      setRows(rs);
+      refreshPreview();
+    });
   useEffect(() => {
     refresh();
   }, []);

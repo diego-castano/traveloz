@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getRegionBySlug, getPaquetesByRegion } from "@/lib/public-data";
 import { RegionExplorer } from "@/components/public/RegionExplorer";
+import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -8,11 +9,14 @@ export async function generateMetadata({
   params: { region: string };
 }) {
   const region = await getRegionBySlug(params.region);
-  if (!region) return { title: "TravelOz" };
-  return {
-    title: `${region.nombre} | TravelOz`,
-    description: region.descripcion ?? `Paquetes de viaje a ${region.nombre}.`,
-  };
+  return buildSeoMetadata("destinos", {
+    title: region ? `${region.nombre} | TravelOz` : undefined,
+    description: region
+      ? (region.descripcion ?? `Paquetes de viaje a ${region.nombre}.`)
+      : undefined,
+    image: region?.heroImage ?? undefined,
+    noindex: !region,
+  });
 }
 
 export default async function RegionListingPage({

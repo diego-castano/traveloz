@@ -413,7 +413,8 @@ export async function deletePaquete(id: string) {
 export async function clonePaquete(sourceId: string) {
   try {
     await requireAuth();
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(
+      async (tx) => {
       // 1. Read source paquete
       const source = await tx.paquete.findUniqueOrThrow({
         where: { id: sourceId },
@@ -639,7 +640,9 @@ export async function clonePaquete(sourceId: string) {
         destinos: newDestinos,
         opcionHoteles: newOpcionHoteles,
       };
-    });
+      },
+      { timeout: 20_000, maxWait: 5_000 },
+    );
   } catch (error) {
     log.error("cloning paquete", error);
     throw new Error("No se pudo clonar el paquete.");
@@ -662,6 +665,16 @@ export async function assignAereo(data: {
     await safePropagate(data.paqueteId);
     return res;
   } catch (error) {
+    // P2002 = unique constraint violation: the aéreo is already on this paquete.
+    // The modal's "available" list is computed from cached client state and can
+    // briefly include something just-assigned in a parallel tab, so treat the
+    // duplicate as a no-op and return the existing row instead of 500-ing.
+    if ((error as { code?: string })?.code === "P2002") {
+      const existing = await prisma.paqueteAereo.findUnique({
+        where: { paqueteId_aereoId: { paqueteId: data.paqueteId, aereoId: data.aereoId } },
+      });
+      if (existing) return existing;
+    }
     log.error("assigning aereo", error);
     throw new Error("No se pudo asignar el aéreo al paquete.");
   }
@@ -745,6 +758,17 @@ export async function assignAlojamiento(data: {
     await safePropagate(data.paqueteId);
     return res;
   } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      const existing = await prisma.paqueteAlojamiento.findUnique({
+        where: {
+          paqueteId_alojamientoId: {
+            paqueteId: data.paqueteId,
+            alojamientoId: data.alojamientoId,
+          },
+        },
+      });
+      if (existing) return existing;
+    }
     log.error("assigning alojamiento", error);
     throw new Error("No se pudo asignar el alojamiento al paquete.");
   }
@@ -795,6 +819,14 @@ export async function assignTraslado(data: {
     await safePropagate(data.paqueteId);
     return res;
   } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      const existing = await prisma.paqueteTraslado.findUnique({
+        where: {
+          paqueteId_trasladoId: { paqueteId: data.paqueteId, trasladoId: data.trasladoId },
+        },
+      });
+      if (existing) return existing;
+    }
     log.error("assigning traslado", error);
     throw new Error("No se pudo asignar el traslado al paquete.");
   }
@@ -836,8 +868,8 @@ export async function updateTrasladoAssignment(
 export async function assignSeguro(data: {
   paqueteId: string;
   seguroId: string;
-  diasCobertura?: number;
-  textoDisplay?: string;
+  diasCobertura?: number | null;
+  textoDisplay?: string | null;
   orden?: number;
 }) {
   try {
@@ -846,6 +878,12 @@ export async function assignSeguro(data: {
     await safePropagate(data.paqueteId);
     return res;
   } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      const existing = await prisma.paqueteSeguro.findUnique({
+        where: { paqueteId_seguroId: { paqueteId: data.paqueteId, seguroId: data.seguroId } },
+      });
+      if (existing) return existing;
+    }
     log.error("assigning seguro", error);
     throw new Error("No se pudo asignar el seguro al paquete.");
   }
@@ -901,6 +939,14 @@ export async function assignCircuito(data: {
     await safePropagate(data.paqueteId);
     return res;
   } catch (error) {
+    if ((error as { code?: string })?.code === "P2002") {
+      const existing = await prisma.paqueteCircuito.findUnique({
+        where: {
+          paqueteId_circuitoId: { paqueteId: data.paqueteId, circuitoId: data.circuitoId },
+        },
+      });
+      if (existing) return existing;
+    }
     log.error("assigning circuito", error);
     throw new Error("No se pudo asignar el circuito al paquete.");
   }

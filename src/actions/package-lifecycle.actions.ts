@@ -189,7 +189,8 @@ export async function clonePaqueteAdvanced(sourceId: string, opts: CloneOptions 
     { sourceId, asTemplate: !!opts.asTemplate, hasNewSeason: !!opts.newSeason },
     async () => {
       const { brandId } = await requireAuth();
-      return prisma.$transaction(async (tx) => {
+      return prisma.$transaction(
+        async (tx) => {
         const source = await tx.paquete.findFirst({
           where: { id: sourceId, brandId, deletedAt: null },
         });
@@ -365,7 +366,9 @@ export async function clonePaqueteAdvanced(sourceId: string, opts: CloneOptions 
         }
 
         return { id: newPaquete.id };
-      });
+        },
+        { timeout: 20_000, maxWait: 5_000 },
+      );
     },
   );
 }

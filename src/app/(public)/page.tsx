@@ -13,12 +13,11 @@ import { HomeHero } from "@/components/public/HomeHero";
 import { HomeCategorias } from "@/components/public/HomeCategorias";
 import { HomeTestimonios } from "@/components/public/HomeTestimonios";
 import { HomeNewsletter } from "@/components/public/HomeNewsletter";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "TravelOz — Diseñamos tu viaje, creamos tu historia",
-  description:
-    "Agencia de viajes en Uruguay. Lunas de miel, salidas grupales, cruceros y más.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("home");
+}
 
 export default async function HomePage() {
   const [settings, categorias, testimonios] = await Promise.all([
@@ -44,7 +43,10 @@ export default async function HomePage() {
           "/site/video/video-banner-traveloz.mp4"
         }
       />
-      <HomeCategorias items={categorias} />
+      <HomeCategorias
+        items={categorias}
+        title={settings.home_categorias_title}
+      />
       <HomeTestimonios
         title={
           settings.home_testimonios_title ?? "Relatos de nuestros viajeros"

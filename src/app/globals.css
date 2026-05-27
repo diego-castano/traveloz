@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------- */
+/*  Focus-visible — keyboard navigation indicator                          */
+/*  Catch-all so any TAB-focusable element (sidebar links, buttons that    */
+/*  removed their default outline, custom interactive divs) shows a clear  */
+/*  ring. Inputs/Select/Checkbox/Toggle already paint their own box-shadow */
+/*  focus state; the outline coexists with those without visual conflict.  */
+/* ---------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid #3BBFAD;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---------------------------------------------------------------------- */
 /*  Floating UI layers                                                     */
 /*  Radix wraps popper content in an internal transformed element. Raising */
 /*  only the menu panel is not enough; the wrapper itself must sit on top. */

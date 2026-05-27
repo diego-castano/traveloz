@@ -197,6 +197,35 @@ const SETTINGS: Array<{
   { key: "pagos_tarjetas_json", value: '[{"src":"/site/img/visa.png","alt":"Visa"},{"src":"/site/img/dca.png","alt":"Diners Club"},{"src":"/site/img/mastercard.png","alt":"Mastercard"},{"src":"/site/img/ae.png","alt":"American Express"}]', type: "textarea", group: "pagos", label: "Logos de tarjetas (JSON [{src, alt}])" },
   { key: "pagos_bancos_titulo", value: "Transferencia bancaria", group: "pagos", label: "Subtítulo — bancos" },
   { key: "pagos_bancos_json", value: '[{"src":"/site/img/santander.png","alt":"Santander"},{"src":"/site/img/itau.png","alt":"Itaú"},{"src":"/site/img/bbva.png","alt":"BBVA"},{"src":"/site/img/banco.png","alt":"Banco República"}]', type: "textarea", group: "pagos", label: "Logos de bancos (JSON [{src, alt}])" },
+  // ─── SEO global (metadata por defecto + OG) ──────────────────────────
+  { key: "seo_site_name", value: "TravelOz", group: "seo", label: "Nombre del sitio (suffix de <title>)" },
+  { key: "seo_default_title", value: "TravelOz — Diseñamos tu viaje, creamos tu historia", group: "seo", label: "Título por defecto (home)" },
+  { key: "seo_default_description", value: "Agencia de viajes en Uruguay. Lunas de miel, salidas grupales, cruceros y viajes a medida.", type: "textarea", group: "seo", label: "Descripción por defecto" },
+  { key: "seo_default_og_image", value: "", type: "image_url", group: "seo", label: "OG image por defecto (1200×630, JPG/PNG)" },
+  { key: "seo_twitter_handle", value: "", group: "seo", label: "Handle de Twitter/X (sin @)" },
+  // Por-ruta — overridean home/destinos/etc cuando no están vacíos
+  { key: "seo_home_title", value: "", group: "seo", label: "Home — title (vacío = usa default)" },
+  { key: "seo_home_description", value: "", type: "textarea", group: "seo", label: "Home — description" },
+  { key: "seo_destinos_title", value: "Destinos | TravelOz", group: "seo", label: "/destinos — title" },
+  { key: "seo_destinos_description", value: "Explorá nuestros destinos por región: Europa, Caribe, Asia, Sudamérica y más.", type: "textarea", group: "seo", label: "/destinos — description" },
+  { key: "seo_about_title", value: "Nosotros | TravelOz", group: "seo", label: "/about — title" },
+  { key: "seo_about_description", value: "Una agencia de viajes hecha por viajeros, para viajeros.", type: "textarea", group: "seo", label: "/about — description" },
+  { key: "seo_contact_title", value: "Contacto | TravelOz", group: "seo", label: "/contact — title" },
+  { key: "seo_contact_description", value: "Hablemos. Estamos para escucharte y planear tu próximo viaje.", type: "textarea", group: "seo", label: "/contact — description" },
+  { key: "seo_corporativo_title", value: "Corporativo | TravelOz", group: "seo", label: "/corporativo — title" },
+  { key: "seo_corporativo_description", value: "Viajes corporativos para empresas — confianza, eficiencia y atención 24/7.", type: "textarea", group: "seo", label: "/corporativo — description" },
+  { key: "seo_cotizar_title", value: "Cotizá tu viaje | TravelOz", group: "seo", label: "/cotizar — title" },
+  { key: "seo_cotizar_description", value: "Contanos a dónde querés ir y diseñamos un viaje a tu medida. Te respondemos en 24h.", type: "textarea", group: "seo", label: "/cotizar — description" },
+  { key: "seo_faq_title", value: "Preguntas frecuentes | TravelOz", group: "seo", label: "/faq — title" },
+  { key: "seo_faq_description", value: "Documentación, menores, visados, requisitos sanitarios, mascotas y embarazadas.", type: "textarea", group: "seo", label: "/faq — description" },
+  { key: "seo_terms_title", value: "Términos y condiciones | TravelOz", group: "seo", label: "/terms — title" },
+  { key: "seo_terms_description", value: "Términos y condiciones de compra de paquetes turísticos.", type: "textarea", group: "seo", label: "/terms — description" },
+  { key: "seo_work_title", value: "Trabajá con nosotros | TravelOz", group: "seo", label: "/work-with-us — title" },
+  { key: "seo_work_description", value: "Sumate al equipo de TravelOz. Dejanos tu CV.", type: "textarea", group: "seo", label: "/work-with-us — description" },
+  // ─── Robots ──────────────────────────────────────────────────────────
+  { key: "robots_mode", value: "open", group: "robots", label: "Modo (open | maintenance | custom)" },
+  { key: "robots_custom_body", value: "", type: "textarea", group: "robots", label: "Body custom (solo si modo = custom)" },
+  { key: "robots_extra_disallow", value: "", type: "textarea", group: "robots", label: "Paths adicionales a Disallow (uno por línea)" },
 ];
 
 const CATEGORIAS = [

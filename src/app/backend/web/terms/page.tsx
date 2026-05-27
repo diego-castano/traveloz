@@ -10,14 +10,20 @@ import {
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
 import { SettingsForm } from "../_components/SettingsForm";
+import { useWebEdit } from "../_components/web-edit-context";
 
 type Row = Awaited<ReturnType<typeof listTermSections>>[number];
 
 export default function WebTermsPage() {
+  const { refreshPreview } = useWebEdit();
   const [items, setItems] = useState<Row[]>([]);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
 
-  const refresh = () => listTermSections().then(setItems);
+  const refresh = () =>
+    listTermSections().then((rows) => {
+      setItems(rows);
+      refreshPreview();
+    });
   useEffect(() => {
     refresh();
   }, []);

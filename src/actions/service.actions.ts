@@ -67,6 +67,14 @@ function toUserError(err: unknown, fallback: string): Error {
 // Zod schemas
 // ──────────────────────────────────────────────
 
+// Empty-string → null normalization for optional FK fields. The forms keep
+// a `""` placeholder for "no selection" but Prisma rejects that with P2003
+// because there's no row whose id is "". Shared by every schema with an
+// optional ciudadId/paisId/proveedorId/regimenId.
+const optionalIdStringEarly = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((v) => (v === "" || v == null ? null : v));
+
 const AereoSchema = z.object({
   ruta: z.string().min(1, "La ruta es requerida"),
   destino: z.string(),
@@ -88,7 +96,7 @@ const PrecioAereoCreateSchema = z.object({
 });
 
 const AereoCreateSchema = AereoSchema.extend({
-  precioInicial: PrecioAereoCreateSchema.optional(),
+  precios: z.array(PrecioAereoCreateSchema).optional(),
 });
 
 const PrecioAereoSchema = z.object({
@@ -100,8 +108,8 @@ const PrecioAereoSchema = z.object({
 
 const AlojamientoSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
-  ciudadId: z.string().nullable().optional(),
-  paisId: z.string().nullable().optional(),
+  ciudadId: optionalIdStringEarly,
+  paisId: optionalIdStringEarly,
   categoria: z.number().int().nullable().optional(),
   sitioWeb: z.string().nullable().optional(),
 });
@@ -111,7 +119,7 @@ const PrecioAlojamientoSchema = z.object({
   periodoDesde: z.string().min(1, "El período desde es requerido"),
   periodoHasta: z.string().min(1, "El período hasta es requerido"),
   precioPorNoche: z.number().positive("El precio por noche debe ser un número positivo"),
-  regimenId: z.string().nullable().optional(),
+  regimenId: optionalIdStringEarly,
 });
 
 const AlojamientoFotoSchema = z.object({
@@ -124,14 +132,14 @@ const AlojamientoFotoSchema = z.object({
 const TrasladoSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   tipo: z.enum(["REGULAR", "PRIVADO"]).optional(),
-  ciudadId: z.string().nullable().optional(),
-  paisId: z.string().nullable().optional(),
-  proveedorId: z.string().nullable().optional(),
+  ciudadId: optionalIdStringEarly,
+  paisId: optionalIdStringEarly,
+  proveedorId: optionalIdStringEarly,
   precio: z.number().positive("El precio debe ser un número positivo"),
 });
 
 const SeguroSchema = z.object({
-  proveedorId: z.string().nullable().optional(),
+  proveedorId: optionalIdStringEarly,
   plan: z.string().min(1, "El plan es requerido"),
   cobertura: z.string().nullable().optional(),
   costoPorDia: z.number().positive("El costo por día debe ser un número positivo"),
@@ -140,7 +148,7 @@ const SeguroSchema = z.object({
 const CircuitoSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   noches: z.number().int().nonnegative("Las noches deben ser un número no negativo"),
-  proveedorId: z.string().nullable().optional(),
+  proveedorId: optionalIdStringEarly,
 });
 
 const CircuitoDiaDraftSchema = z.object({
@@ -197,25 +205,30 @@ export async function createAereo(data: {
   codigoVueloVuelta?: string | null;
   duracionIda?: string | null;
   duracionVuelta?: string | null;
-  precioInicial?: {
+  precios?: Array<{
     periodoDesde: string;
     periodoHasta: string;
     precioAdulto: number;
-  };
+  }>;
 }, requestedBrandId?: string) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-    const { precioInicial, ...aereoData } = AereoCreateSchema.parse(data);
-    return await prisma.$transaction(async (tx) => {
+    const { precios, ...aereoData } = AereoCreateSchema.parse(data);
+    const aereo = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "aereo");
-      const aereo = await tx.aereo.create({ data: { ...aereoData, id, brandId } });
-      if (precioInicial) {
-        await tx.precioAereo.create({
-          data: { aereoId: aereo.id, ...precioInicial },
+      const created = await tx.aereo.create({ data: { ...aereoData, id, brandId } });
+      if (precios?.length) {
+        await tx.precioAereo.createMany({
+          data: precios.map((p) => ({ aereoId: created.id, ...p })),
         });
       }
-      return aereo;
+      return created;
     });
+    // Without this, the client cache still believes the aéreo has no precios
+    // when the operator immediately clicks Editar, showing "Sin periodos
+    // definidos" for ~1s until the next refetch.
+    bustServicesCacheGlobal();
+    return aereo;
   } catch (error) {
     log.error("creating aereo", error);
     throw new Error("No se pudo crear el aéreo.");

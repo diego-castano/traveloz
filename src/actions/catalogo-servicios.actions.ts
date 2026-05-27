@@ -17,7 +17,13 @@ export async function createServicio(input: {
   await requireAuth();
   const created = await prisma.catalogoServicio.create({ data: input });
   revalidatePath("/backend/catalogos/servicios");
+  revalidatePath("/backend/web/servicios-incluidos");
+  revalidatePath("/destinos", "layout");
   revalidateTag("servicios");
+  // Servicios are joined into getPaqueteBySlug (tag "paquetes"), so a rename
+  // or icon swap must bust that bucket too — otherwise public paquete detail
+  // pages show stale copy for up to 60s.
+  revalidateTag("paquetes");
   return created;
 }
 
@@ -37,7 +43,13 @@ export async function updateServicio(
     data: input,
   });
   revalidatePath("/backend/catalogos/servicios");
+  revalidatePath("/backend/web/servicios-incluidos");
+  revalidatePath("/destinos", "layout");
   revalidateTag("servicios");
+  // Servicios are joined into getPaqueteBySlug (tag "paquetes"), so a rename
+  // or icon swap must bust that bucket too — otherwise public paquete detail
+  // pages show stale copy for up to 60s.
+  revalidateTag("paquetes");
   return updated;
 }
 
@@ -45,5 +57,11 @@ export async function deleteServicio(id: string) {
   await requireAuth();
   await prisma.catalogoServicio.delete({ where: { id } });
   revalidatePath("/backend/catalogos/servicios");
+  revalidatePath("/backend/web/servicios-incluidos");
+  revalidatePath("/destinos", "layout");
   revalidateTag("servicios");
+  // Servicios are joined into getPaqueteBySlug (tag "paquetes"), so a rename
+  // or icon swap must bust that bucket too — otherwise public paquete detail
+  // pages show stale copy for up to 60s.
+  revalidateTag("paquetes");
 }

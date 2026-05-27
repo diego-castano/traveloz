@@ -10,14 +10,20 @@ import {
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
 import { SettingsForm } from "../_components/SettingsForm";
+import { useWebEdit } from "../_components/web-edit-context";
 
 type Row = Awaited<ReturnType<typeof listFaqTopics>>[number];
 
 export default function WebFaqPage() {
+  const { refreshPreview } = useWebEdit();
   const [items, setItems] = useState<Row[]>([]);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
 
-  const refresh = () => listFaqTopics().then(setItems);
+  const refresh = () =>
+    listFaqTopics().then((rows) => {
+      setItems(rows);
+      refreshPreview();
+    });
   useEffect(() => {
     refresh();
   }, []);

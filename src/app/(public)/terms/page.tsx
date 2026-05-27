@@ -8,12 +8,11 @@ import {
   AccordionStatic,
   type AccordionItem,
 } from "@/components/public/AccordionStatic";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Términos y condiciones | TravelOz",
-  description:
-    "Términos y condiciones de compra de TravelOz. Información sobre contratación de servicios, pagos, cancelaciones y responsabilidades.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("terms");
+}
 
 export default async function TermsPage() {
   const [sections, settings] = await Promise.all([

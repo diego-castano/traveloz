@@ -21,9 +21,13 @@ import {
   UserPlus,
   Package,
   CreditCard,
+  Search,
+  Bot,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/components/lib/cn";
+import { WebEditProvider } from "./_components/web-edit-context";
+import { WebEditShell } from "./_components/WebEditShell";
 
 type Section = {
   href: string;
@@ -74,6 +78,13 @@ const GROUPS: Group[] = [
     items: [
       { href: "/backend/web/footer", label: "Footer", icon: PanelBottom },
       { href: "/backend/web/general", label: "Datos generales", icon: Settings2 },
+    ],
+  },
+  {
+    label: "SEO",
+    items: [
+      { href: "/backend/web/seo", label: "Meta tags", icon: Search },
+      { href: "/backend/web/robots", label: "Robots / Indexación", icon: Bot },
     ],
   },
 ];
@@ -148,8 +159,10 @@ export default function WebLayout({ children }: { children: ReactNode }) {
           </nav>
         </aside>
 
-        <main className="flex-1 overflow-y-auto bg-neutral-50/40">
-          {children}
+        <main className="flex-1 min-w-0 bg-neutral-50/40">
+          <WebEditProvider>
+            <WebEditShell>{children}</WebEditShell>
+          </WebEditProvider>
         </main>
       </div>
     </div>

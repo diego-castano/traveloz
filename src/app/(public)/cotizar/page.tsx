@@ -1,14 +1,15 @@
 import { getSiteSettings } from "@/lib/public-data";
 import { CotizarForm } from "./_components/CotizarForm";
+import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
+  // Legacy `cotizar_meta_*` keys still win when set so we don't surprise the
+  // admin; otherwise the new `seo_cotizar_*` keys (group="seo") drive it.
   const s = await getSiteSettings("cotizar");
-  return {
-    title: s.cotizar_meta_title ?? "Cotizá tu viaje | TravelOz",
-    description:
-      s.cotizar_meta_description ??
-      "Contanos a dónde querés ir y diseñamos un viaje a tu medida. Te respondemos en 24h.",
-  };
+  return buildSeoMetadata("cotizar", {
+    title: s.cotizar_meta_title?.trim() || undefined,
+    description: s.cotizar_meta_description?.trim() || undefined,
+  });
 }
 
 export default async function CotizarPage() {

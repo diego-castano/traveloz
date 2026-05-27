@@ -4,12 +4,11 @@
 // ---------------------------------------------------------------------------
 
 import { getSiteSettings } from "@/lib/public-data";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Nosotros | TravelOz",
-  description:
-    "Conocé la historia de TravelOz. Somos una agencia de viajes uruguaya fundada en 2018, comprometida con brindar experiencias de viaje personalizadas y de excelencia.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("about");
+}
 
 /**
  * Render rich-text content from SiteSettings. The CMS now writes HTML (from

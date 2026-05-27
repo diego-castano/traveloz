@@ -6,12 +6,11 @@
 
 import { getSiteSettings } from "@/lib/public-data";
 import { WorkForm } from "./_components/WorkForm";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Trabajá con nosotros | TravelOz",
-  description:
-    "Sumate al equipo de TravelOz. Dejanos tu CV y nos pondremos en contacto.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("work");
+}
 
 export default async function WorkWithUsPage() {
   const settings = await getSiteSettings("workwithus");
@@ -23,7 +22,7 @@ export default async function WorkWithUsPage() {
   const videoUrl = settings.workwithus_video_url?.trim() || "";
 
   return (
-    <section className="content-area gradient-page-bg">
+    <section className="content-area gradient-page-bg work-with-us">
       <div className="container">
         <div className="content-box">
           <div className="text-center mb_50">

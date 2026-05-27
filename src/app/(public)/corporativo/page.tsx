@@ -8,19 +8,17 @@
 // client island.
 // ---------------------------------------------------------------------------
 
-import type { Metadata } from "next";
 import {
   getSiteSettings,
   getClientesCorporativos,
   getPersonasContacto,
 } from "@/lib/public-data";
 import { CorporativoView } from "./_components/CorporativoView";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Corporativo — TravelOz",
-  description:
-    "Soluciones de viajes corporativos: gestión ágil, atención 24/7 y respaldo profesional para tu organización.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("corporativo");
+}
 
 export default async function CorporativoPage() {
   const [settings, clientes, equipo] = await Promise.all([

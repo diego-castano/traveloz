@@ -9,7 +9,7 @@ import { springs } from "@/components/lib/animations";
 import { glassMaterials } from "@/components/lib/glass";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-colors focus-visible:outline-none disabled:opacity-50 disabled:pointer-events-none",
+  "inline-flex items-center justify-center gap-2 font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:pointer-events-none",
   {
     variants: {
       variant: {

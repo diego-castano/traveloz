@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { cn } from "@/components/lib/cn";
 
 /**
@@ -72,15 +72,16 @@ export function SelectCascade({
 
   return (
     <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2", className)}>
-      <Select
+      <SearchableSelect
         label={parentLabel}
         value={parentValue}
         onValueChange={onParentChange}
         options={parentOptions}
         placeholder={parentPlaceholder ?? "Seleccionar..."}
+        searchPlaceholder={`Buscar ${parentLabel.toLowerCase()}...`}
         disabled={disabled}
       />
-      <Select
+      <SearchableSelect
         label={childLabel}
         value={childValue}
         onValueChange={onChildChange}
@@ -90,6 +91,7 @@ export function SelectCascade({
             ? "Elegi un " + parentLabel.toLowerCase() + " primero"
             : childPlaceholder ?? "Seleccionar..."
         }
+        searchPlaceholder={`Buscar ${childLabel.toLowerCase()}...`}
         disabled={disabled || !parentValue}
       />
     </div>

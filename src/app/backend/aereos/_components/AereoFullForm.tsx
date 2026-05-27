@@ -14,7 +14,7 @@
 // (Lucha) gets the same UI in both places.
 // ---------------------------------------------------------------------------
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
@@ -22,10 +22,44 @@ import { FormSection, FormSections } from "@/components/ui/form/FormSection";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
 import { PillGroup } from "@/components/ui/form/PillGroup";
 import { ItinerarioEditor } from "@/components/ui/form/ItinerarioEditor";
+import {
+  InlineEditTable,
+  type InlineEditColumn,
+  type InlineEditTableHandle,
+} from "@/components/ui/form/InlineEditTable";
 import { useServiceActions } from "@/components/providers/ServiceProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useToast } from "@/components/ui/Toast";
-import { formatStoredDate } from "@/lib/date";
+import { formatStoredDate, parseStoredDate } from "@/lib/date";
+import { format } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
+
+function formatPeriodLabel(value?: string | null) {
+  const date = parseStoredDate(value);
+  return date ? format(date, "dd/MM/yyyy") : "—";
+}
+
+type PrecioDraft = {
+  tempId: string;
+  periodoDesde: string;
+  periodoHasta: string;
+  precioAdulto: number;
+};
+
+function makeEmptyPrecio(): PrecioDraft {
+  const start = formatStoredDate(new Date()) ?? "";
+  const end =
+    formatStoredDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)) ?? "";
+  return {
+    tempId:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    periodoDesde: start,
+    periodoHasta: end,
+    precioAdulto: 0,
+  };
+}
 
 export const equipajeOptions: {
   value: string;
@@ -96,13 +130,66 @@ export function AereoFullForm({
   const [equipaje, setEquipaje] = useState(
     defaults?.equipaje ?? "Equipaje de mano + Equipaje en bodega",
   );
-  const [precioAdulto, setPrecioAdulto] = useState("");
-  const [periodoDesde, setPeriodoDesde] = useState<string>(
-    formatStoredDate(new Date()) ?? "",
-  );
-  const [periodoHasta, setPeriodoHasta] = useState<string>(
-    formatStoredDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)) ?? "",
-  );
+  const [precios, setPrecios] = useState<PrecioDraft[]>([]);
+  // Mirror in a ref so handleCreate can read the post-commitPending value
+  // synchronously (setState updates aren't visible to the running closure).
+  const preciosRef = useRef<PrecioDraft[]>([]);
+  preciosRef.current = precios;
+  const preciosTableRef = useRef<InlineEditTableHandle>(null);
+
+  const setPreciosBoth = (next: PrecioDraft[] | ((prev: PrecioDraft[]) => PrecioDraft[])) => {
+    setPrecios((prev) => {
+      const computed = typeof next === "function" ? (next as (p: PrecioDraft[]) => PrecioDraft[])(prev) : next;
+      preciosRef.current = computed;
+      return computed;
+    });
+  };
+
+  const precioColumns: InlineEditColumn<PrecioDraft>[] = [
+    {
+      key: "periodo",
+      label: "Período",
+      width: "340px",
+      render: (r) => (
+        <span className="font-medium text-neutral-900">
+          {formatPeriodLabel(r.periodoDesde)} – {formatPeriodLabel(r.periodoHasta)}
+        </span>
+      ),
+      editor: (r, update) => (
+        <PeriodPicker
+          valueFrom={r.periodoDesde}
+          valueTo={r.periodoHasta}
+          onChange={(desde, hasta) => {
+            update("periodoDesde", desde);
+            update("periodoHasta", hasta);
+          }}
+          placeholder="Seleccionar período..."
+        />
+      ),
+    },
+    {
+      key: "precioAdulto",
+      label: "Neto Adulto USD",
+      align: "right",
+      width: "190px",
+      render: (r) => (
+        <span className="font-mono text-[13px] font-semibold text-neutral-900">
+          {formatCurrency(r.precioAdulto)}
+        </span>
+      ),
+      editor: (r, update) => (
+        <Input
+          type="number"
+          min={0}
+          value={String(r.precioAdulto ?? 0)}
+          onChange={(e) =>
+            update("precioAdulto", parseFloat(e.target.value) || 0)
+          }
+          className="text-right"
+        />
+      ),
+    },
+  ];
   const [itinerario, setItinerario] = useState("");
   const [itinerarioImagenes, setItinerarioImagenes] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -114,27 +201,47 @@ export function AereoFullForm({
       toast("warning", "Ruta requerida", "Ingresa una ruta para el vuelo.");
       return;
     }
-    if (!precioAdulto.trim() || Number(precioAdulto) <= 0) {
-      toast("warning", "Tarifa requerida", "La tarifa inicial es obligatoria.");
+
+    // Flush any row the user was still editing in the precios table so its
+    // draft value lands in `precios` before we validate.
+    if (preciosTableRef.current?.hasPending()) {
+      try {
+        await preciosTableRef.current.commitPending();
+      } catch {
+        return; // commitPending shows its own validation toast
+      }
+    }
+
+    // Read from the ref — setState updates from commitPending aren't visible
+    // to this closure yet.
+    const currentPrecios = preciosRef.current;
+
+    if (currentPrecios.length === 0) {
+      toast(
+        "warning",
+        "Falta una tarifa",
+        "Agregá al menos una tarifa antes de crear el vuelo.",
+      );
+      return;
+    }
+    const invalid = currentPrecios.find(
+      (p) =>
+        !p.periodoDesde ||
+        !p.periodoHasta ||
+        !Number.isFinite(p.precioAdulto) ||
+        p.precioAdulto <= 0,
+    );
+    if (invalid) {
+      toast(
+        "warning",
+        "Tarifa incompleta",
+        "Cada tarifa necesita período desde, hasta y precio mayor a cero.",
+      );
       return;
     }
 
     setIsCreating(true);
     try {
-      const precio = Number(precioAdulto);
-      const precioInicial =
-        Number.isFinite(precio) && precio > 0
-          ? {
-              periodoDesde:
-                periodoDesde || formatStoredDate(new Date()) || "",
-              periodoHasta:
-                periodoHasta ||
-                formatStoredDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)) ||
-                "",
-              precioAdulto: precio,
-            }
-          : undefined;
-
       const created = await createAereo({
         brandId: activeBrandId,
         ruta: ruta.trim(),
@@ -143,7 +250,11 @@ export function AereoFullForm({
         equipaje,
         itinerario: itinerario.trim(),
         itinerarioImagenes,
-        precioInicial,
+        precios: currentPrecios.map((p) => ({
+          periodoDesde: p.periodoDesde,
+          periodoHasta: p.periodoHasta,
+          precioAdulto: p.precioAdulto,
+        })),
       } as any);
 
       toast(
@@ -206,36 +317,30 @@ export function AereoFullForm({
         </FormSection>
 
         <FormSection
-          title="Tarifa inicial"
-          description="Carga el primer precio desde el alta, sin tener que ir al segundo paso."
+          title="Precios por periodo"
+          description="Tarifas netas por adulto según el período de viaje. Agregá todas las que necesites; cada una requiere desde, hasta y precio."
         >
-          <FieldGroup columns={3}>
-            <Field span={2}>
-              <PeriodPicker
-                label="Periodo de la tarifa"
-                valueFrom={periodoDesde}
-                valueTo={periodoHasta}
-                onChange={(desde, hasta) => {
-                  setPeriodoDesde(desde);
-                  setPeriodoHasta(hasta);
-                }}
-                placeholder="Seleccionar periodo..."
-              />
-            </Field>
-            <Field>
-              <FieldLabel required>Precio adulto USD</FieldLabel>
-              <Input
-                type="number"
-                min={0}
-                value={precioAdulto}
-                onChange={(e) => setPrecioAdulto(e.target.value)}
-                placeholder="0"
-              />
-              <FieldDescription>
-                Obligatorio. Es la tarifa inicial que activa el vuelo desde el alta.
-              </FieldDescription>
-            </Field>
-          </FieldGroup>
+          <InlineEditTable<PrecioDraft>
+            ref={preciosTableRef}
+            columns={precioColumns}
+            rows={precios}
+            getRowId={(r) => r.tempId}
+            onSave={(row) => {
+              setPreciosBoth((prev) => {
+                const i = prev.findIndex((p) => p.tempId === row.tempId);
+                if (i === -1) return [...prev, row];
+                const cp = [...prev];
+                cp[i] = row;
+                return cp;
+              });
+            }}
+            onDelete={(row) =>
+              setPreciosBoth((prev) => prev.filter((p) => p.tempId !== row.tempId))
+            }
+            onAdd={() => makeEmptyPrecio()}
+            addLabel="Agregar tarifa"
+            emptyMessage="Sin tarifas. Agregá al menos una."
+          />
         </FormSection>
 
         <FormSection

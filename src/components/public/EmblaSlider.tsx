@@ -6,8 +6,10 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 
 type Props = {
   children: ReactNode[];
-  /** Slides visible at the smallest breakpoint (default: 1) */
+  /** Slides visible on >=768px viewports (default: 1) */
   slidesToShow?: number;
+  /** Slides visible on <768px viewports (defaults to min(slidesToShow, 1.1)) */
+  slidesToShowMobile?: number;
   autoplay?: boolean;
   autoplayDelay?: number;
   showDots?: boolean;
@@ -20,6 +22,7 @@ type Props = {
 export function EmblaSlider({
   children,
   slidesToShow = 1,
+  slidesToShowMobile,
   autoplay = true,
   autoplayDelay = 3000,
   showDots = false,
@@ -27,6 +30,20 @@ export function EmblaSlider({
   loop = true,
   className = "",
 }: Props) {
+  // Responsive slidesToShow — defaults to 1.1 on mobile if desktop shows >1,
+  // matching the legacy Slick "peek the next card" behavior.
+  const mobileSlides =
+    slidesToShowMobile ?? (slidesToShow > 1 ? 1.1 : slidesToShow);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const effectiveSlides = isMobile ? mobileSlides : slidesToShow;
   const plugins = autoplay
     ? [Autoplay({ delay: autoplayDelay, stopOnInteraction: false })]
     : [];
@@ -49,16 +66,27 @@ export function EmblaSlider({
   useEffect(() => {
     if (!emblaApi) return;
     const onSelect = () => setSelectedIndex(emblaApi.selectedScrollSnap());
-    setScrollSnaps(emblaApi.scrollSnapList());
+    const sync = () => {
+      setScrollSnaps(emblaApi.scrollSnapList());
+      onSelect();
+    };
+    sync();
     emblaApi.on("select", onSelect);
-    onSelect();
+    emblaApi.on("reInit", sync);
     return () => {
       emblaApi.off("select", onSelect);
+      emblaApi.off("reInit", sync);
     };
   }, [emblaApi]);
 
+  // When the breakpoint flips, slide widths change in the DOM but Embla's
+  // internal scroll math is stale until we ask it to re-measure.
+  useEffect(() => {
+    emblaApi?.reInit();
+  }, [emblaApi, effectiveSlides]);
+
   const slideStyle = {
-    flex: `0 0 ${100 / slidesToShow}%`,
+    flex: `0 0 ${100 / effectiveSlides}%`,
     minWidth: 0,
   };
 

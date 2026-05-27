@@ -9,14 +9,20 @@ import {
 } from "@/actions/cms-content.actions";
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
+import { useWebEdit } from "../_components/web-edit-context";
 
 type Row = Awaited<ReturnType<typeof listPersonasContacto>>[number];
 
 export default function WebEquipoPage() {
+  const { refreshPreview } = useWebEdit();
   const [items, setItems] = useState<Row[]>([]);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
 
-  const refresh = () => listPersonasContacto().then(setItems);
+  const refresh = () =>
+    listPersonasContacto().then((rows) => {
+      setItems(rows);
+      refreshPreview();
+    });
   useEffect(() => {
     refresh();
   }, []);

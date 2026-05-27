@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useMemo,
@@ -1448,7 +1449,7 @@ interface OpcionCardProps {
   onQuickEditHotel: (hotelId: string) => void;
 }
 
-function OpcionCard({
+const OpcionCard = forwardRef<HTMLDivElement, OpcionCardProps>(function OpcionCard({
   opcion,
   destinos,
   pool,
@@ -1462,7 +1463,7 @@ function OpcionCard({
   onUpsertHotel,
   onDeleteHotel,
   onQuickEditHotel,
-}: OpcionCardProps) {
+}, ref) {
   const opcionHoteles = useOpcionHoteles(opcion.id);
 
   // Lookup: destinoId → OpcionHotel row (null if no hotel assigned yet)
@@ -1521,6 +1522,7 @@ function OpcionCard({
 
   return (
     <motion.div
+      ref={ref}
       layout
       initial={{ opacity: 0, y: 20, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -1684,7 +1686,7 @@ function OpcionCard({
       </div>
     </motion.div>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // DestinoSlot — single-click hotel picker for a destino inside an opcion

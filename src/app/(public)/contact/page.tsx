@@ -6,12 +6,11 @@
 import { Mail, Phone, MapPin, Clock, MessageCircle } from "lucide-react";
 import { getSiteSettings } from "@/lib/public-data";
 import { ContactForm } from "./_components/ContactForm";
+import { buildSeoMetadata } from "@/lib/seo";
 
-export const metadata = {
-  title: "Contacto | TravelOz",
-  description:
-    "Estamos para escucharte y ayudarte a planear tu próximo viaje.",
-};
+export async function generateMetadata() {
+  return buildSeoMetadata("contact");
+}
 
 export default async function ContactPage() {
   const s = await getSiteSettings("contacto");

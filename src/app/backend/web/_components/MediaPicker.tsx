@@ -1,9 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X, Loader2, Link2, ImageIcon, Film } from "lucide-react";
+import {
+  Upload,
+  X,
+  Loader2,
+  Link2,
+  ImageIcon,
+  Film,
+  Info,
+  AlertTriangle,
+} from "lucide-react";
 import { uploadFile } from "@/components/lib/upload";
 import { useToast } from "@/components/ui/Toast";
+import { getMediaHint } from "./media-hints";
 
 // ---------------------------------------------------------------------------
 // MediaPicker — modern drag-and-drop uploader for SiteSetting / package fields.
@@ -18,12 +28,15 @@ type Props = {
   value: string;
   onChange: (next: string) => void;
   accept?: string;
+  /** SiteSetting key; when set, MediaPicker looks up MEDIA_HINTS for size guidance. */
+  settingKey?: string;
 };
 
 export function MediaPicker({
   value,
   onChange,
   accept = "image/*",
+  settingKey,
 }: Props) {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -31,20 +44,63 @@ export function MediaPicker({
   const [progress, setProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
   const [showUrl, setShowUrl] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const hint = getMediaHint(settingKey);
 
   const isVideo =
     accept.startsWith("video/") || /\.(mp4|webm|mov|m4v)$/i.test(value);
 
+  /**
+   * Probe the dropped file against MEDIA_HINTS. Non-blocking — we only show a
+   * yellow warning so the admin can choose whether to re-export the asset.
+   * Returns the list of warnings to render under the field.
+   */
+  const computeWarnings = async (file: File): Promise<string[]> => {
+    const out: string[] = [];
+    if (hint?.maxKB && file.size > hint.maxKB * 1024) {
+      const kb = Math.round(file.size / 1024);
+      out.push(`Pesa ${kb} KB — recomendamos ≤ ${hint.maxKB} KB.`);
+    }
+    if (hint?.width && hint?.height && file.type.startsWith("image/")) {
+      const tolerance = hint.tolerance ?? 64;
+      const dims = await readImageDimensions(file);
+      if (dims) {
+        const dx = Math.abs(dims.width - hint.width);
+        const dy = Math.abs(dims.height - hint.height);
+        if (dx > tolerance || dy > tolerance) {
+          out.push(
+            `Es ${dims.width}×${dims.height} — recomendamos ${hint.width}×${hint.height}.`,
+          );
+        }
+      }
+    }
+    return out;
+  };
+
   const handleFile = async (file: File) => {
     setUploading(true);
     setProgress(0);
+    setWarnings([]);
     try {
-      const result = await uploadFile(file, {
-        folder: "site",
-        onProgress: (p) => setProgress(p),
-      });
+      // Compute warnings in parallel with the upload — they don't block.
+      const [result, computed] = await Promise.all([
+        uploadFile(file, {
+          folder: "site",
+          onProgress: (p) => setProgress(p),
+        }),
+        computeWarnings(file),
+      ]);
       onChange(result.url);
-      toast("success", "Archivo subido", file.name);
+      setWarnings(computed);
+      if (computed.length === 0) {
+        toast("success", "Archivo subido", file.name);
+      } else {
+        toast(
+          "info",
+          "Subido con advertencias",
+          computed.join(" "),
+        );
+      }
     } catch (err) {
       toast("error", "Error al subir", (err as Error).message);
     } finally {
@@ -77,6 +133,17 @@ export function MediaPicker({
 
   return (
     <div className="space-y-2">
+      {hint && (
+        <div className="flex items-start gap-1.5 text-[11px] text-neutral-600 bg-neutral-50 border border-neutral-200 rounded-md px-2.5 py-1.5">
+          <Info className="w-3 h-3 mt-0.5 shrink-0 text-violet-500" />
+          <div className="leading-snug">
+            <div className="text-neutral-800">{hint.label}</div>
+            {hint.usage && (
+              <div className="text-neutral-500 mt-0.5">{hint.usage}</div>
+            )}
+          </div>
+        </div>
+      )}
       {value ? (
         // ---- File present: thumbnail + actions ----
         <div className="relative group rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50">
@@ -193,6 +260,17 @@ export function MediaPicker({
         className="hidden"
       />
 
+      {warnings.length > 0 && (
+        <div className="flex items-start gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">
+          <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-amber-600" />
+          <ul className="leading-snug list-disc pl-3 space-y-0.5">
+            {warnings.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Power-user URL paste — collapsed by default */}
       <div>
         {showUrl ? (
@@ -226,4 +304,26 @@ export function MediaPicker({
       </div>
     </div>
   );
+}
+
+/**
+ * Read the natural dimensions of an image File without uploading it. Returns
+ * null for non-images / unreadable blobs.
+ */
+function readImageDimensions(
+  file: File,
+): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      resolve(null);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  });
 }

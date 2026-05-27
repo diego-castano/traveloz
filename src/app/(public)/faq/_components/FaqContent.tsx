@@ -41,7 +41,7 @@ export function FaqContent({ topics }: Props) {
                         <Tabs.Trigger value={t.id} asChild>
                           <button type="button" className="nav-link">
                             {t.label}{" "}
-                            <img src={`/site/img/${t.iconBlue}`} alt="" />
+                            {t.iconBlue ? <img src={t.iconBlue} alt="" /> : null}
                           </button>
                         </Tabs.Trigger>
                       </li>
