@@ -258,6 +258,11 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   const paises = usePaises();
   const regiones = useRegiones();
 
+  // Date the price resolvers anchor on: prefer the actual travel start over
+  // the listing-window start, falling back when older paquetes haven't been
+  // backfilled with viajeDesde yet.
+  const fechaPrecio = paquete.viajeDesde ?? paquete.validezDesde;
+
   // Hotel-coverage per destino: how many opciones hoteleras have a hotel
   // assigned for each destino. Surfaced as a small badge on each DestinoRow
   // so the operator can spot a missing hotel without expanding each opción.
@@ -327,7 +332,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
         const precio = resolvePrecioAlojamiento(
           serviceState.preciosAlojamiento,
           a.id,
-          paquete.validezDesde,
+          fechaPrecio,
         );
         return {
           // synthetic id — there's no PaqueteAlojamiento row backing this
@@ -344,7 +349,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
     allAlojamientos,
     destinos,
     serviceState.preciosAlojamiento,
-    paquete.validezDesde,
+    fechaPrecio,
   ]);
 
   // -------------------------------------------------------------------------
@@ -352,7 +357,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   // -------------------------------------------------------------------------
 
   const { netoFijos, fixedBreakdown } = useMemo(() => {
-    const fecha = paquete.validezDesde;
+    const fecha = fechaPrecio;
 
     const assignedAereos = services.aereos
       .map((pa) => {
@@ -439,7 +444,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
         circuitos: circuitosTotal,
       },
     };
-  }, [services, serviceState, nochesTotales, paquete.validezDesde]);
+  }, [services, serviceState, nochesTotales, fechaPrecio]);
 
   // -------------------------------------------------------------------------
   // Auto-derive destino from itinerary when the paquete.destino field is empty
@@ -572,7 +577,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
         [], // computed in OpcionCard; this call is just to persist the factor + venta.
         destinos,
         serviceState.preciosAlojamiento,
-        paquete.validezDesde,
+        fechaPrecio,
       );
       const precioVenta = calcularVentaOpcion(netoFijos, netoAloj, factor);
       updateOpcionHotelera({ ...opcion, factor, precioVenta });
@@ -581,7 +586,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
       destinos,
       netoFijos,
       serviceState.preciosAlojamiento,
-      paquete.validezDesde,
+      fechaPrecio,
       updateOpcionHotelera,
     ],
   );
@@ -723,7 +728,7 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
         hotelId={quickEditHotelId}
         hotels={allAlojamientos}
         preciosAlojamiento={serviceState.preciosAlojamiento}
-        validezDesde={paquete.validezDesde}
+        validezDesde={fechaPrecio}
         onUpdateHotel={updateAlojamiento}
         onCreatePrecio={createPrecioAlojamiento}
         onUpdatePrecio={updatePrecioAlojamiento}

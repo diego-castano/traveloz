@@ -231,7 +231,10 @@ export function computePaquetePrecios(
   packageState: PackageStateSlice,
   serviceState: ServiceStateSlice,
 ): PaquetePrecios {
-  const fecha = paquete.validezDesde;
+  // Prefer the actual travel start date (viajeDesde) over the listing window
+  // start (validezDesde). Older paquetes that haven't been backfilled with
+  // viajeDesde fall back to validezDesde so their pricing still resolves.
+  const fecha = paquete.viajeDesde ?? paquete.validezDesde;
 
   const paqueteAereos = packageState.paqueteAereos.filter((pa) => pa.paqueteId === paquete.id);
   const paqueteAlojamientos = packageState.paqueteAlojamientos.filter((pa) => pa.paqueteId === paquete.id);

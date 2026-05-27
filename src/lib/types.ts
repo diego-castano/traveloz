@@ -38,6 +38,11 @@ export interface Paquete {
   tipoPaqueteId: string;
   validezDesde: string;
   validezHasta: string;
+  /** Período de viaje real (cuándo viaja el cliente). Usado para matchear
+   * servicios y resolver sus precios. Distinto de validez (que controla el
+   * listing en el frontend). */
+  viajeDesde?: string | null;
+  viajeHasta?: string | null;
   estado: EstadoPaquete;
   destacado: boolean;
   netoCalculado: number;

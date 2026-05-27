@@ -128,7 +128,12 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   // `destinos` still needed for the publish-readiness validation below;
   // the visible noches counter moved into DestinosMiniEditor.
   const destinos = useDestinos(paquete.id);
-  const [salidas, setSalidas] = useState(paquete.salidas);
+  const [viajeDesdeDate, setViajeDesdeDate] = useState<Date | undefined>(
+    parseStoredDate(paquete.viajeDesde),
+  );
+  const [viajeHastaDate, setViajeHastaDate] = useState<Date | undefined>(
+    parseStoredDate(paquete.viajeHasta),
+  );
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);
   const [tipoPaqueteId, setTipoPaqueteId] = useState(paquete.tipoPaqueteId);
   const [estado, setEstado] = useState<string>(paquete.estado);
@@ -196,7 +201,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         destino,
         descripcion,
         textoVisual: textoVisual || null,
-        salidas,
         temporadaId,
         tipoPaqueteId,
         estado: estado as EstadoPaquete,
@@ -208,6 +212,12 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         validezHasta: validezHastaDate
           ? (formatStoredDate(validezHastaDate) ?? paquete.validezHasta)
           : paquete.validezHasta,
+        viajeDesde: viajeDesdeDate
+          ? formatStoredDate(viajeDesdeDate)
+          : null,
+        viajeHasta: viajeHastaDate
+          ? formatStoredDate(viajeHastaDate)
+          : null,
         updatedAt: new Date().toISOString(),
         ...overrides,
       });
@@ -218,7 +228,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       destino,
       descripcion,
       textoVisual,
-      salidas,
       temporadaId,
       tipoPaqueteId,
       estado,
@@ -226,6 +235,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       moneda,
       validezDesdeDate,
       validezHastaDate,
+      viajeDesdeDate,
+      viajeHastaDate,
       updatePaquete,
     ],
   );
@@ -269,7 +280,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setDescripcionDirty = (v: string) => { setDescripcion(v); markDirty(); };
   const setTextoVisualDirty = (v: string) => { setTextoVisual(v); markDirty(); };
   // (noches is derived from destinos — no dirty setter needed)
-  const setSalidasDirty = (v: string) => { setSalidas(v); markDirty(); };
   const setTemporadaIdDirty = (v: string) => { setTemporadaId(v); markDirty(); };
   const setTipoPaqueteIdDirty = (v: string) => { setTipoPaqueteId(v); markDirty(); };
   const setEstadoDirty = (v: string) => { setEstado(v); markDirty(); };
@@ -277,6 +287,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setMonedaDirty = (v: string) => { setMoneda(v); markDirty(); };
   const setValidezDesdeDateDirty = (v: Date | undefined) => { setValidezDesdeDate(v); markDirty(); };
   const setValidezHastaDateDirty = (v: Date | undefined) => { setValidezHastaDate(v); markDirty(); };
+  const setViajeDates = (desde: Date | undefined, hasta: Date | undefined) => {
+    setViajeDesdeDate(desde);
+    setViajeHastaDate(hasta);
+    markDirty();
+  };
 
   const { status: autoSaveStatus, markDirty, saveNow } = useAutoSave({
     onSave: handleAutoSave,
@@ -455,20 +470,23 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         </FormSection>
 
         {/* ================================================================ */}
-        {/* Salidas (texto libre — la lista de destinos vive en Alojamientos) */}
+        {/* Período del viaje — usado para matchear servicios y sus precios   */}
         {/* ================================================================ */}
         <FormSection
-          title="Salidas"
-          description="Período del año en que el paquete sale a la venta."
+          title="Período del viaje"
+          description="Fechas en las que el cliente realmente viaja. Los servicios (aéreos, alojamientos, circuitos) y sus tarifas se resuelven contra este rango."
         >
           <FieldGroup columns={1}>
             <Field>
-              <FieldLabel>Salidas</FieldLabel>
-              <Input
-                value={salidas}
-                onChange={(e) => setSalidasDirty(e.target.value)}
-                placeholder="Septiembre a noviembre"
-                readOnly={isReadOnly}
+              <FieldLabel>Desde y hasta</FieldLabel>
+              <PeriodPicker
+                valueFrom={formatStoredDate(viajeDesdeDate) ?? null}
+                valueTo={formatStoredDate(viajeHastaDate) ?? null}
+                onChange={(desde, hasta) => {
+                  setViajeDates(parseStoredDate(desde), parseStoredDate(hasta));
+                }}
+                placeholder="Seleccionar período de viaje..."
+                disabled={isReadOnly}
               />
             </Field>
           </FieldGroup>

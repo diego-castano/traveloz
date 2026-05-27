@@ -126,6 +126,11 @@ model Paquete {
   tipoPaqueteId     String?
   validezDesde      String?
   validezHasta      String?
+  // ── Período de viaje real (cuándo viaja el cliente). Distinto de validez
+  //    (que controla el listing en el frontend). Los servicios y precios se
+  //    matchean contra este rango.
+  viajeDesde        String?
+  viajeHasta        String?
   estado            EstadoPaquete @default(BORRADOR)
   destacado         Boolean       @default(false)
   netoCalculado     Float         @default(0)

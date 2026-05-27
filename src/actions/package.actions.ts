@@ -293,6 +293,8 @@ export async function createPaquete(data: {
   tipoPaqueteId?: string | null;
   validezDesde?: string;
   validezHasta?: string;
+  viajeDesde?: string | null;
+  viajeHasta?: string | null;
   estado?: EstadoPaquete;
   destacado?: boolean;
   netoCalculado?: number;
@@ -347,6 +349,8 @@ export async function updatePaquete(
     tipoPaqueteId?: string | null;
     validezDesde?: string | null;
     validezHasta?: string | null;
+    viajeDesde?: string | null;
+    viajeHasta?: string | null;
     estado?: EstadoPaquete;
     destacado?: boolean;
     netoCalculado?: number;
@@ -435,6 +439,8 @@ export async function clonePaquete(sourceId: string) {
           tipoPaqueteId: source.tipoPaqueteId,
           validezDesde: source.validezDesde,
           validezHasta: source.validezHasta,
+          viajeDesde: source.viajeDesde,
+          viajeHasta: source.viajeHasta,
           estado: "BORRADOR",
           destacado: false,
           netoCalculado: source.netoCalculado,

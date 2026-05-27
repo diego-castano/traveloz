@@ -177,6 +177,47 @@ export default function ServiceSelectorModal({
     }
     return map;
   }, [serviceState.preciosCircuito]);
+
+  // Travel window of the paquete — when both ends are set, we use them to
+  // flag services that don't cover the period so the operator sees which
+  // ones will land with $0 if assigned. Empty window means "don't check"
+  // (older paquetes that haven't been backfilled with viajeDesde/Hasta).
+  const travelFrom = paquete?.viajeDesde ?? null;
+  const travelTo = paquete?.viajeHasta ?? null;
+  const hasTravelWindow = Boolean(travelFrom && travelTo);
+
+  const aereoCoversTravelMap = useMemo(() => {
+    const set = new Set<string>();
+    if (!hasTravelWindow) return set;
+    for (const p of serviceState.preciosAereo) {
+      // A price "covers" the trip when it brackets at least one day of it.
+      if (
+        p.periodoDesde &&
+        p.periodoHasta &&
+        p.periodoDesde <= (travelTo as string) &&
+        p.periodoHasta >= (travelFrom as string)
+      ) {
+        set.add(p.aereoId);
+      }
+    }
+    return set;
+  }, [serviceState.preciosAereo, hasTravelWindow, travelFrom, travelTo]);
+
+  const circuitoCoversTravelMap = useMemo(() => {
+    const set = new Set<string>();
+    if (!hasTravelWindow) return set;
+    for (const p of serviceState.preciosCircuito) {
+      if (
+        p.periodoDesde &&
+        p.periodoHasta &&
+        p.periodoDesde <= (travelTo as string) &&
+        p.periodoHasta >= (travelFrom as string)
+      ) {
+        set.add(p.circuitoId);
+      }
+    }
+    return set;
+  }, [serviceState.preciosCircuito, hasTravelWindow, travelFrom, travelTo]);
   const paises = usePaises();
   const proveedores = useProveedores();
 
@@ -410,14 +451,24 @@ export default function ServiceSelectorModal({
                 <div className="divide-y divide-hairline">
                   {availableAereos.map((aereo) => {
                     const desde = aereoPriceMap.get(aereo.id);
+                    const missingPriceForTrip =
+                      hasTravelWindow && !aereoCoversTravelMap.has(aereo.id);
                     return (
                       <div
                         key={aereo.id}
                         className="flex items-center justify-between px-4 py-3"
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-800">
+                          <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-800">
                             {aereo.ruta}
+                            {missingPriceForTrip && (
+                              <span
+                                className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700"
+                                title="Sin tarifa cargada para el período del viaje"
+                              >
+                                Sin precio
+                              </span>
+                            )}
                           </span>
                           <span className="text-xs text-neutral-500">
                             {aereo.destino} &middot; {aereo.aerolinea}
@@ -558,14 +609,24 @@ export default function ServiceSelectorModal({
                 <div className="divide-y divide-hairline">
                   {availableCircuitos.map((circuito) => {
                     const desde = circuitoPriceMap.get(circuito.id);
+                    const missingPriceForTrip =
+                      hasTravelWindow && !circuitoCoversTravelMap.has(circuito.id);
                     return (
                       <div
                         key={circuito.id}
                         className="flex items-center justify-between px-4 py-3"
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-800">
+                          <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-800">
                             {circuito.nombre}
+                            {missingPriceForTrip && (
+                              <span
+                                className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700"
+                                title="Sin tarifa cargada para el período del viaje"
+                              >
+                                Sin precio
+                              </span>
+                            )}
                           </span>
                           <span className="text-xs text-neutral-500">
                             {circuito.noches} noches
