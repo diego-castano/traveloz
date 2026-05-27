@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Button } from "@/components/ui/Button";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { FormSection, FormSections } from "@/components/ui/form/FormSection";
@@ -170,10 +170,11 @@ export default function NuevoCircuitoPage() {
 
               <Field>
                 <FieldLabel>Proveedor</FieldLabel>
-                <Select
+                <SearchableSelect
                   value={proveedorId}
                   onValueChange={setProveedorId}
                   placeholder="Seleccionar proveedor..."
+                  searchPlaceholder="Buscar proveedor..."
                   options={proveedoresCircuitos.map((p) => ({
                     value: p.id,
                     label: p.nombre,

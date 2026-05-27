@@ -40,6 +40,8 @@ import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import type { Circuito } from "@/lib/types";
+import { sortByRecency } from "@/lib/recency";
+import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -106,9 +108,9 @@ export default function CircuitosPage() {
   // ---------------------------------------------------------------------------
 
   const filteredCircuitos = useMemo(() => {
-    if (!search.trim()) return circuitos;
-    const q = search.toLowerCase();
-    return circuitos.filter((c) => c.nombre.toLowerCase().includes(q));
+    const q = search.trim().toLowerCase();
+    const base = q ? circuitos.filter((c) => c.nombre.toLowerCase().includes(q)) : circuitos;
+    return sortByRecency(base);
   }, [circuitos, search]);
 
   // Reset page when search changes
@@ -288,8 +290,9 @@ export default function CircuitosPage() {
                         </button>
 
                         <div className="min-w-0">
-                          <div className="truncate">
+                          <div className="inline-flex items-center gap-2 truncate">
                             {circuito.nombre}
+                            <RecentBadge createdAt={circuito.createdAt} />
                             {(paqueteCountMap[circuito.id] ?? 0) > 0 && (
                               <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
                                 {paqueteCountMap[circuito.id]} paq.

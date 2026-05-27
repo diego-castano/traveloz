@@ -45,6 +45,8 @@ import { useBrand } from "@/components/providers/BrandProvider";
 import { formatCurrency } from "@/lib/utils";
 import { formatStoredDate } from "@/lib/date";
 import type { Alojamiento } from "@/lib/types";
+import { sortByRecency } from "@/lib/recency";
+import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -248,14 +250,16 @@ export default function AlojamientosPage() {
   // ---------------------------------------------------------------------------
 
   const filteredAlojamientos = useMemo(() => {
-    if (!search.trim()) return alojamientos;
-    const q = search.toLowerCase();
-    return alojamientos.filter((a) => {
-      const nombreMatch = a.nombre.toLowerCase().includes(q);
-      const ciudadMatch = (ciudadMap[a.ciudadId] ?? "").toLowerCase().includes(q);
-      const paisMatch = (paisMap[a.paisId] ?? "").toLowerCase().includes(q);
-      return nombreMatch || ciudadMatch || paisMatch;
-    });
+    const q = search.trim().toLowerCase();
+    const base = q
+      ? alojamientos.filter((a) => {
+          const nombreMatch = a.nombre.toLowerCase().includes(q);
+          const ciudadMatch = (ciudadMap[a.ciudadId] ?? "").toLowerCase().includes(q);
+          const paisMatch = (paisMap[a.paisId] ?? "").toLowerCase().includes(q);
+          return nombreMatch || ciudadMatch || paisMatch;
+        })
+      : alojamientos;
+    return sortByRecency(base);
   }, [alojamientos, search, ciudadMap, paisMap]);
 
   // search resets page inline through setSearch above; no extra effect needed.
@@ -481,7 +485,10 @@ export default function AlojamientosPage() {
                 >
                   <DataTableCell variant="id">{alojamiento.id.slice(-4)}</DataTableCell>
                   <DataTableCell variant="primary">
-                    {alojamiento.nombre}
+                    <span className="inline-flex items-center gap-2">
+                      {alojamiento.nombre}
+                      <RecentBadge createdAt={alojamiento.createdAt} />
+                    </span>
                     {(paqueteCountMap[alojamiento.id] ?? 0) > 0 && (
                       <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
                         {paqueteCountMap[alojamiento.id]} paq.

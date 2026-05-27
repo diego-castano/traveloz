@@ -16,6 +16,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useToast } from "@/components/ui/Toast";
 import { deleteLead, type LeadKind } from "@/actions/leads.actions";
 import { EstadoBadge } from "./EstadoBadge";
@@ -196,12 +197,20 @@ export function LeadDetailDrawer({
                 <UserCheck className="w-3.5 h-3.5" />
                 Asignado a
               </div>
-              <select
-                className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 disabled:opacity-60"
+              <SearchableSelect
                 disabled={assignSaving}
                 value={assignment.current ?? ""}
-                onChange={async (e) => {
-                  const next = e.target.value === "" ? null : e.target.value;
+                placeholder="— Sin asignar —"
+                searchPlaceholder="Buscar vendedor..."
+                options={[
+                  { value: "", label: "— Sin asignar —" },
+                  ...assignment.options.map((u) => ({
+                    value: u.id,
+                    label: `${u.name} · ${u.role.toLowerCase()}`,
+                  })),
+                ]}
+                onValueChange={async (v) => {
+                  const next = v === "" ? null : v;
                   setAssignSaving(true);
                   try {
                     await assignment.onAssign(next);
@@ -215,14 +224,7 @@ export function LeadDetailDrawer({
                     setAssignSaving(false);
                   }
                 }}
-              >
-                <option value="">— Sin asignar —</option>
-                {assignment.options.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} · {u.role.toLowerCase()}
-                  </option>
-                ))}
-              </select>
+              />
               <p className="text-[11px] text-neutral-500 mt-1.5">
                 El vendedor asignado verá esta cotización como propia y recibirá
                 las notificaciones.

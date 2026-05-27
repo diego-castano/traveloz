@@ -64,6 +64,26 @@ export function SearchableSelect({
     }
   }, [open]);
 
+  // Keyboard: while the trigger is focused (e.g. after TAB), a printable key
+  // opens the dropdown AND seeds the filter with that character — operators
+  // can land on the field and start typing the país/ciudad name without
+  // clicking. Arrow Down / Enter / Space also open it (without seeding).
+  const handleTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    if (open) return;
+    if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+      // Let Radix Popover handle these to open the popover.
+      return;
+    }
+    // Single printable character (letter / digit / accented char). Excludes
+    // modifier-prefixed shortcuts and navigation keys.
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      setQuery(e.key);
+      setOpen(true);
+    }
+  };
+
   const selected = options.find((o) => o.value === value);
   const hasError = !!error;
 
@@ -85,6 +105,7 @@ export function SearchableSelect({
           <button
             type="button"
             disabled={disabled}
+            onKeyDown={handleTriggerKeyDown}
             className={cn(
               "inline-flex h-9 w-full items-center justify-between px-3 text-[13.5px] text-neutral-900 outline-none transition-all",
               "focus:[box-shadow:0_0_0_3px_rgba(59,191,173,0.18)] focus:[border-color:#3BBFAD]",

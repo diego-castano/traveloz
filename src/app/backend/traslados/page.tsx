@@ -22,6 +22,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/compon
 import { Pagination } from "@/components/ui/Pagination";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { SelectCascade } from "@/components/ui/form/SelectCascade";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
 import { StatusDot } from "@/components/ui/data/StatusDot";
@@ -37,6 +38,8 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
+import { sortByRecency } from "@/lib/recency";
+import { RecentBadge } from "@/components/ui/data/RecentBadge";
 import type { Traslado, TipoTraslado } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -210,7 +213,7 @@ export default function TrasladosPage() {
       );
     }
 
-    return rows;
+    return sortByRecency(rows);
   }, [traslados, search, tipoFilter, paisMap, ciudadMap, proveedorMap]);
 
   useEffect(() => {
@@ -395,8 +398,9 @@ export default function TrasladosPage() {
                         ID {traslado.id}
                       </span>
                       <div className="min-w-0">
-                        <div className="truncate font-semibold text-neutral-900">
+                        <div className="inline-flex items-center gap-2 truncate font-semibold text-neutral-900">
                           {trasladoLabel(traslado)}
+                          <RecentBadge createdAt={traslado.createdAt} />
                         </div>
                         <div className="mt-0.5 text-[11px] font-normal text-neutral-400">
                           Toca para editar o usa las acciones rápidas
@@ -550,13 +554,14 @@ export default function TrasladosPage() {
             <FieldGroup columns={2}>
               <Field>
                 <FieldLabel>Proveedor</FieldLabel>
-                <Select
+                <SearchableSelect
                   value={form.proveedorId}
                   onValueChange={(value) =>
                     setForm((prev) => ({ ...prev, proveedorId: value }))
                   }
                   options={proveedorOptions}
                   placeholder="Seleccionar proveedor..."
+                  searchPlaceholder="Buscar proveedor..."
                 />
               </Field>
 

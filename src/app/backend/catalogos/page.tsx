@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
   DataTable,
   DataTableHeader,
@@ -1227,13 +1228,14 @@ function RegionesPaisesTab() {
             <FieldGroup columns={2}>
               <Field span={2}>
                 <FieldLabel required>Región</FieldLabel>
-                <Select
+                <SearchableSelect
                   value={paisForm.regionId}
                   onValueChange={(v) =>
                     setPaisForm((f) => ({ ...f, regionId: v }))
                   }
                   options={regionOptions}
                   placeholder="Seleccionar región..."
+                  searchPlaceholder="Buscar región..."
                   disabled={!!createPaisInRegionId && !editPais}
                 />
               </Field>

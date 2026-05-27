@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DatePicker } from "@/components/ui/DatePicker";
@@ -334,11 +335,12 @@ function AlojamientoDetailForm({
       width: "210px",
       render: (r) => (r.regimenId ? regimenMap[r.regimenId] : null) ?? "—",
       editor: (r, update) => (
-        <Select
+        <SearchableSelect
           value={r.regimenId ?? ""}
           onValueChange={(v) => update("regimenId", v)}
           options={regimenOptions}
           placeholder="Seleccionar regimen..."
+          searchPlaceholder="Buscar régimen..."
         />
       ),
     },

@@ -5,6 +5,7 @@ import { Plus, Pencil, Copy, Trash2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
   DataTable,
   DataTableHeader,
@@ -38,6 +39,8 @@ import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import { formatCurrency } from "@/lib/utils";
 import type { Seguro } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
+import { sortByRecency } from "@/lib/recency";
+import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -115,10 +118,12 @@ export default function SegurosPage() {
   // ---------------------------------------------------------------------------
 
   const filteredSeguros = useMemo(() => {
-    if (!search.trim()) return seguros;
-    return seguros.filter((s) =>
-      matchesSearch(search, s.plan, s.cobertura, proveedorMap[s.proveedorId ?? ""]),
-    );
+    const base = search.trim()
+      ? seguros.filter((s) =>
+          matchesSearch(search, s.plan, s.cobertura, proveedorMap[s.proveedorId ?? ""]),
+        )
+      : seguros;
+    return sortByRecency(base);
   }, [seguros, search, proveedorMap]);
 
   // Reset page when search changes
@@ -278,7 +283,12 @@ export default function SegurosPage() {
                   <DataTableCell variant="muted">
                     {proveedorMap[s.proveedorId ?? ""] ?? "—"}
                   </DataTableCell>
-                  <DataTableCell variant="muted">{s.plan}</DataTableCell>
+                  <DataTableCell variant="muted">
+                    <span className="inline-flex items-center gap-2">
+                      {s.plan}
+                      <RecentBadge createdAt={s.createdAt} />
+                    </span>
+                  </DataTableCell>
                   <DataTableCell variant="primary">
                     {s.cobertura}
                     {(paqueteCountMap[s.id] ?? 0) > 0 && (
@@ -346,11 +356,12 @@ export default function SegurosPage() {
             <FieldGroup columns={2}>
               <Field span={2}>
                 <FieldLabel required>Proveedor</FieldLabel>
-                <Select
+                <SearchableSelect
                   options={proveedoresSeguros.map((p) => ({ value: p.id, label: p.nombre }))}
                   value={form.proveedorId}
                   onValueChange={(v) => setForm((f) => ({ ...f, proveedorId: v }))}
                   placeholder="Seleccionar proveedor..."
+                  searchPlaceholder="Buscar proveedor..."
                 />
               </Field>
               <Field>

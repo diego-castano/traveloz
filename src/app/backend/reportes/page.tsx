@@ -34,6 +34,7 @@ import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { formatStoredDate, parseStoredDate } from "@/lib/date";
 import { Tag } from "@/components/ui/Tag";
@@ -682,11 +683,12 @@ function FiltersPanel({
           onValueChange={onProductFilterChange}
           options={PRODUCT_OPTIONS as unknown as Array<{ value: string; label: string }>}
         />
-        <Select
+        <SearchableSelect
           label="Destino / país"
           value={destinationFilter}
           onValueChange={onDestinationFilterChange}
           options={destinationOptions}
+          searchPlaceholder="Buscar destino..."
         />
         <Select
           label="Canal de venta"

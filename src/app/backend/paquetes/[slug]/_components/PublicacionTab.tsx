@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Tag, type TagColor } from "@/components/ui/Tag";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { useToast } from "@/components/ui/Toast";
@@ -646,7 +647,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
 
         {canEdit && availableEtiquetas.length > 0 && (
           <div className="max-w-xs">
-            <Select
+            <SearchableSelect
               value=""
               onValueChange={handleAddEtiqueta}
               options={availableEtiquetas.map((e) => ({
@@ -654,6 +655,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
                 label: e.nombre,
               }))}
               placeholder="Agregar etiqueta..."
+              searchPlaceholder="Buscar etiqueta..."
             />
           </div>
         )}

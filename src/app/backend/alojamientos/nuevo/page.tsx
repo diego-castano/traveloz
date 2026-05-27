@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Button } from "@/components/ui/Button";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
@@ -263,11 +264,12 @@ export default function NuevoAlojamientoPage() {
 
               <Field span={2}>
                 <FieldLabel>Régimen</FieldLabel>
-                <Select
+                <SearchableSelect
                   value={regimenId}
                   onValueChange={setRegimenId}
                   options={regimenOptions}
                   placeholder="Seleccionar régimen..."
+                  searchPlaceholder="Buscar régimen..."
                 />
               </Field>
             </FieldGroup>

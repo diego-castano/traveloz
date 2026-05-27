@@ -53,6 +53,8 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import type { Proveedor, CategoriaServicio } from "@/lib/types";
+import { sortByRecency } from "@/lib/recency";
+import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -115,7 +117,7 @@ export default function ProveedoresPage() {
   // ---------------------------------------------------------------------------
 
   const filteredProveedores = useMemo(() => {
-    return proveedores.filter((p) => {
+    const filtered = proveedores.filter((p) => {
       if (filtroServicio && p.servicio !== filtroServicio) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -128,6 +130,7 @@ export default function ProveedoresPage() {
       }
       return true;
     });
+    return sortByRecency(filtered);
   }, [proveedores, search, filtroServicio]);
 
   useEffect(() => {
@@ -315,7 +318,12 @@ export default function ProveedoresPage() {
                   onClick={() => handleOpenEdit(p)}
                   interactive
                 >
-                  <DataTableCell variant="primary">{p.nombre}</DataTableCell>
+                  <DataTableCell variant="primary">
+                    <span className="inline-flex items-center gap-2">
+                      {p.nombre}
+                      <RecentBadge createdAt={p.createdAt} />
+                    </span>
+                  </DataTableCell>
                   <DataTableCell>
                     <StatusDot
                       variant={

@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { DestinoAutocomplete } from "@/components/ui/form/DestinoAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
@@ -406,17 +407,18 @@ export default function DatosTab({ paquete }: DatosTabProps) {
           <FieldGroup columns={2}>
             <Field>
               <FieldLabel>Temporada</FieldLabel>
-              <Select
+              <SearchableSelect
                 value={temporadaId}
                 onValueChange={setTemporadaIdDirty}
                 disabled={isReadOnly}
                 options={temporadas.map((t) => ({ value: t.id, label: t.nombre }))}
                 placeholder="Seleccionar temporada..."
+                searchPlaceholder="Buscar temporada..."
               />
             </Field>
             <Field>
               <FieldLabel>Tipo de paquete</FieldLabel>
-              <Select
+              <SearchableSelect
                 value={tipoPaqueteId}
                 onValueChange={setTipoPaqueteIdDirty}
                 disabled={isReadOnly}
@@ -425,6 +427,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                   label: t.nombre,
                 }))}
                 placeholder="Seleccionar tipo..."
+                searchPlaceholder="Buscar tipo..."
               />
             </Field>
 

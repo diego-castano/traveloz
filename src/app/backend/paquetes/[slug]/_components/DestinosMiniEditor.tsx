@@ -28,6 +28,7 @@ import { useMemo, useState } from "react";
 import { MapPin, Plus, X, ArrowUp, ArrowDown, Route } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { useToast } from "@/components/ui/Toast";
 import {
   useDestinos,
@@ -171,22 +172,20 @@ export function DestinosMiniEditor({ paqueteId, canEdit }: Props) {
         <div className="border-t border-neutral-100 px-3 py-2.5 bg-neutral-50/40">
           <div className="flex items-center gap-2">
             <Plus className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
-            <select
-              value={nuevoCiudadId}
-              onChange={(e) => setNuevoCiudadId(e.target.value)}
-              className="flex-1 min-w-0 h-8 text-[12.5px] bg-white border border-neutral-200 rounded-[8px] px-2 focus:border-teal-500 focus:outline-none"
-            >
-              <option value="">— Elegí una ciudad —</option>
-              {ciudadesByPais.map((g) => (
-                <optgroup key={g.paisId} label={g.paisNombre}>
-                  {g.ciudades.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.nombre}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                value={nuevoCiudadId}
+                onValueChange={setNuevoCiudadId}
+                placeholder="— Elegí una ciudad —"
+                searchPlaceholder="Buscar ciudad..."
+                options={ciudadesByPais.flatMap((g) =>
+                  g.ciudades.map((c) => ({
+                    value: c.id,
+                    label: `${c.nombre} · ${g.paisNombre}`,
+                  })),
+                )}
+              />
+            </div>
             <Input
               type="number"
               min={0}

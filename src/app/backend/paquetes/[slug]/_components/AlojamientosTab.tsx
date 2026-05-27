@@ -34,6 +34,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import {
   usePaqueteServices,
@@ -1799,22 +1800,18 @@ function DestinoSlot({
         </div>
       ) : canEdit ? (
         <div className="flex items-center gap-2">
-          <select
-            value={hotelAsignado?.alojamientoId ?? ""}
-            onChange={(e) => handleSelectChange(e.target.value)}
-            className="flex-1 text-sm bg-white/80 rounded-md border border-neutral-200 px-2 py-1.5 focus:border-teal-500 focus:outline-none transition-colors"
-          >
-            <option value="">— Elegir hotel —</option>
-            {hotelesDisponibles.map((h) => (
-              <option key={h.alojamiento.id} value={h.alojamiento.id}>
-                {"★".repeat(h.alojamiento.categoria ?? 0)}{" "}
-                {h.alojamiento.nombre}
-                {h.precio
-                  ? ` · ${formatCurrency(h.precio.precioPorNoche)}/n`
-                  : ""}
-              </option>
-            ))}
-          </select>
+          <div className="flex-1">
+            <SearchableSelect
+              value={hotelAsignado?.alojamientoId ?? ""}
+              onValueChange={handleSelectChange}
+              placeholder="— Elegir hotel —"
+              searchPlaceholder="Buscar hotel..."
+              options={hotelesDisponibles.map((h) => ({
+                value: h.alojamiento.id,
+                label: `${"★".repeat(h.alojamiento.categoria ?? 0)} ${h.alojamiento.nombre}${h.precio ? ` · ${formatCurrency(h.precio.precioPorNoche)}/n` : ""}`,
+              }))}
+            />
+          </div>
           {/* Always-visible "+ new hotel" button so the operator can grow
               the catalog from the same row that's missing the choice. */}
           <button

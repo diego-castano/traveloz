@@ -90,6 +90,8 @@ import {
 } from "@/components/providers/PackageProvider";
 import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
+import { sortByRecency } from "@/lib/recency";
+import { RecentBadge } from "@/components/ui/data/RecentBadge";
 import type { Paquete, PaqueteFoto, Pais } from "@/lib/types";
 import { PaqueteGridCard } from "./_components/PaqueteGridCard";
 import {
@@ -464,7 +466,7 @@ export default function PaquetesPage() {
       });
     }
 
-    return result;
+    return sortByRecency(result);
   }, [
     paquetes,
     search,
@@ -1282,8 +1284,9 @@ export default function PaquetesPage() {
                     {/* Título (with destino sublabel when that column is hidden) */}
                     <TableCell className="max-w-[260px]">
                       <div className="flex flex-col">
-                        <span className="truncate font-medium text-neutral-900">
+                        <span className="inline-flex items-center gap-2 truncate font-medium text-neutral-900">
                           {paquete.titulo}
+                          <RecentBadge createdAt={paquete.createdAt} />
                         </span>
                         {!visibleColumns.destino && (
                           <span className="mt-0.5 flex items-center gap-1 truncate text-[11px] text-neutral-400">
