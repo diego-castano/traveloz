@@ -89,7 +89,9 @@ export default function NuevoPaquetePage() {
           ordenServicios: [],
         });
 
-        router.replace(`/backend/paquetes/${newPaquete.id}?tab=datos`);
+        // `new=1` lets DatosTab focus + select the auto-generated title so the
+        // operator can overwrite it without clicking — fastest path to rename.
+        router.replace(`/backend/paquetes/${newPaquete.id}?tab=datos&new=1`);
       } catch (error) {
         console.error("Error creating paquete:", error);
         toast(

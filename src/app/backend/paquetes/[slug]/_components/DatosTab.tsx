@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -37,15 +38,13 @@ import { useToast } from "@/components/ui/Toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
-import { EstadoHelpPanel, type EstadoKey } from "@/components/ui/EstadoHelp";
 import { validateForActivation } from "@/lib/validation";
 import {
   formatStoredDate,
   parseStoredDate,
   startOfLocalDay,
 } from "@/lib/date";
-import { Star, Check, Circle, ChevronDown, ChevronRight } from "lucide-react";
-import { DestinosMiniEditor } from "./DestinosMiniEditor";
+import { Star, ChevronDown, ChevronRight } from "lucide-react";
 import { springs } from "@/components/lib/animations";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
 
@@ -106,6 +105,20 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const services = usePaqueteServices(paquete.id);
   const { canEdit } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const isNew = searchParams?.get("new") === "1";
+  const tituloRef = useRef<HTMLInputElement>(null);
+
+  // When the operator just created a paquete and lands here, focus + select
+  // the auto-generated title so they can overwrite it without clicking.
+  useEffect(() => {
+    if (!isNew) return;
+    const id = requestAnimationFrame(() => {
+      tituloRef.current?.focus();
+      tituloRef.current?.select();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [isNew]);
 
   // -- Local form state initialized from paquete prop --
   const [titulo, setTitulo] = useState(paquete.titulo);
@@ -288,11 +301,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
       <FormSections>
         {/* ================================================================ */}
-        {/* Estado y completitud (moved to top per client feedback)          */}
+        {/* Estado                                                           */}
         {/* ================================================================ */}
         <FormSection
           title="Estado"
-          description="Controla la visibilidad del paquete en el frontend publico. El checklist muestra los datos pendientes para activar."
+          description="Controla la visibilidad del paquete en el frontend público."
         >
           <FieldGroup columns={2}>
             <Field>
@@ -304,54 +317,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 options={estadoOptions}
                 placeholder="Seleccionar estado..."
               />
-              <EstadoHelpPanel current={estado as EstadoKey} />
             </Field>
           </FieldGroup>
-
-          {/* Validation checklist (shown when BORRADOR and incomplete) */}
-          {estado === "BORRADOR" && !validation.valid && (
-            <div
-              className="mt-4 rounded-[12px] border border-hairline bg-white p-4"
-              style={{
-                background: "rgba(232,168,56,0.05)",
-                borderColor: "rgba(232,168,56,0.25)",
-              }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <div className="text-[12px] font-medium text-amber-700">
-                  Completitud para activar: {validation.completionPercent}%
-                </div>
-                <div className="flex-1 h-1.5 rounded-full bg-amber-100 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-amber-400"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${validation.completionPercent}%` }}
-                    transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                {validation.missing.map((item) => (
-                  <div key={item.key} className="flex items-center gap-2 text-[12px]">
-                    {item.completed ? (
-                      <Check className="w-3.5 h-3.5 text-green-500" />
-                    ) : (
-                      <Circle className="w-3.5 h-3.5 text-amber-400" />
-                    )}
-                    <span
-                      className={
-                        item.completed
-                          ? "text-neutral-400 line-through"
-                          : "text-amber-700"
-                      }
-                    >
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </FormSection>
 
         {/* ================================================================ */}
@@ -365,11 +332,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
             <Field span={2}>
               <FieldLabel required>Titulo</FieldLabel>
               <Input
+                ref={tituloRef}
                 value={titulo}
                 onChange={(e) => setTituloDirty(e.target.value)}
                 placeholder="Nombre del paquete"
                 readOnly={isReadOnly}
-                autoFocus
               />
             </Field>
 
@@ -488,16 +455,12 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         </FormSection>
 
         {/* ================================================================ */}
-        {/* Itinerario y salidas — destinos editable inline (mirror of       */}
-        {/* AlojamientosTab so the operator can build the itinerary from     */}
-        {/* the first tab without bouncing).                                 */}
+        {/* Salidas (texto libre — la lista de destinos vive en Alojamientos) */}
         {/* ================================================================ */}
         <FormSection
-          title="Itinerario y salidas"
-          description="Destinos del paquete (las noches se suman automáticamente) y período en que el paquete está disponible para vender."
+          title="Salidas"
+          description="Período del año en que el paquete sale a la venta."
         >
-          <DestinosMiniEditor paqueteId={paquete.id} canEdit={!isReadOnly} />
-
           <FieldGroup columns={1}>
             <Field>
               <FieldLabel>Salidas</FieldLabel>

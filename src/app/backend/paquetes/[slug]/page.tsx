@@ -7,7 +7,6 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { EstadoBadgeTooltip, type EstadoKey } from "@/components/ui/EstadoHelp";
 import { usePaqueteById, usePackageLoading } from "@/components/providers/PackageProvider";
 import { DetailPageSkeleton } from "@/components/ui/Skeletons";
 import { EmptyState } from "@/components/ui/data/EmptyState";
@@ -45,14 +44,6 @@ const PaquetePreviewButton = dynamic(
     })),
   { ssr: false },
 );
-const OnboardingProgress = dynamic(
-  () =>
-    import("./_components/OnboardingProgress").then((m) => ({
-      default: m.OnboardingProgress,
-    })),
-  { ssr: false },
-);
-
 // ---------------------------------------------------------------------------
 // Tab constants
 // ---------------------------------------------------------------------------
@@ -136,11 +127,9 @@ export default function PaqueteDetailPage() {
         subtitle={paquete.estado}
         action={
           <div className="flex items-center gap-3">
-            <EstadoBadgeTooltip estado={paquete.estado as EstadoKey}>
-              <Badge variant={estadoBadgeVariant[paquete.estado] ?? "draft"} size="md">
-                {paquete.estado}
-              </Badge>
-            </EstadoBadgeTooltip>
+            <Badge variant={estadoBadgeVariant[paquete.estado] ?? "draft"} size="md">
+              {paquete.estado}
+            </Badge>
             <PaquetePreviewButton paqueteId={paquete.id} />
             <Button
               variant="ghost"
@@ -152,9 +141,6 @@ export default function PaqueteDetailPage() {
           </div>
         }
       />
-
-      {/* Onboarding strip — hidden once paquete is fully published */}
-      <OnboardingProgress paquete={paquete} />
 
       {/* Tab layout */}
       <Tabs value={activeTab} onValueChange={handleTabChange} layoutId="paqueteDetailTab">
