@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/Toast";
 import { EmptyState } from "@/components/ui/data/EmptyState";
 import type { AutoSaveStatus } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
+import { MissingTravelWindowBanner } from "./MissingTravelWindowBanner";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -313,10 +314,15 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     return <Icon className="h-4 w-4 text-brand-teal-500" />;
   };
 
+  const hasTravelWindow = Boolean(paquete.viajeDesde && paquete.viajeHasta);
+
   // -- Empty state --
   if (totalCount === 0) {
     return (
       <>
+        {!hasTravelWindow && (
+          <MissingTravelWindowBanner paqueteSlug={paquete.slug ?? paquete.id} />
+        )}
         <EmptyState
           icon={Plane}
           title="No hay servicios asignados"
@@ -345,6 +351,9 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
 
   return (
     <div className="space-y-4">
+      {!hasTravelWindow && (
+        <MissingTravelWindowBanner paqueteSlug={paquete.slug ?? paquete.id} />
+      )}
       {/* Header with add button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

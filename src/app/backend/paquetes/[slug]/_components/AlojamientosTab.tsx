@@ -36,6 +36,7 @@ import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
+import { MissingTravelWindowBanner } from "./MissingTravelWindowBanner";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -595,6 +596,8 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
   // Render
   // -------------------------------------------------------------------------
 
+  const hasTravelWindow = Boolean(paquete.viajeDesde && paquete.viajeHasta);
+
   return (
     <motion.div
       className="space-y-6"
@@ -602,6 +605,11 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
       initial="hidden"
       animate="show"
     >
+      {!hasTravelWindow && (
+        <motion.div variants={stagger.item.variants}>
+          <MissingTravelWindowBanner paqueteSlug={paquete.slug ?? paquete.id} />
+        </motion.div>
+      )}
       {/* ── 1. Itinerario (destinos + noches) ── */}
       <motion.div variants={stagger.item.variants}>
         <ItinerarioEditor
