@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Skeleton } from "@/components/public/SkeletonClient";
+import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import { QuoteSidebar } from "./QuoteSidebar";
 import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
 
@@ -59,6 +60,10 @@ type Props = {
     itinerarioPublico: string | null;
     textoCondiciones: string | null;
     serviciosIncluidos: Servicio[];
+    /** Fallback de la lista "Incluye": servicios estructurados cargados al
+     * crear el paquete (aéreos, traslados, noches, circuitos, seguros). Se
+     * muestran sólo cuando no hay lista pública curada. */
+    serviciosDerivados: { texto: string; icon: string }[];
     opcionesHoteleras: Opcion[];
   };
   /** Payment methods block — built from SiteSettings group="pagos". */
@@ -89,6 +94,58 @@ function detectIconForBullet(text: string): string {
   return "exc";
 }
 
+// Los textos del paquete pueden venir como HTML (editados con el editor
+// enriquecido del backend) o como texto plano legacy. Estos helpers permiten
+// renderizar ambos casos sin romper el contenido viejo.
+function looksLikeHtml(s: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(s);
+}
+
+// Quita tags para detectar el ícono del bullet a partir del texto visible.
+function stripTags(s: string): string {
+  return s
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Convierte "Lo que incluye" en items para la lista de bullets. Cada item
+// conserva su HTML inline (negrita/cursiva/links) y expone su texto plano
+// para resolver el ícono. Soporta tanto HTML como texto plano legacy.
+function parseIncludeItems(raw: string): { html: string; text: string }[] {
+  if (!raw) return [];
+  if (!looksLikeHtml(raw)) {
+    return raw
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((t) => ({ html: escapeHtml(t), text: t }));
+  }
+  // HTML: separamos por bloques (div/p/li) y saltos <br>, descartando los
+  // wrappers de lista para quedarnos con una línea = un bullet.
+  const normalized = raw
+    .replace(/<\/(div|p|li)\s*>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<(div|p|li)[^>]*>/gi, "")
+    .replace(/<\/?(ul|ol)[^>]*>/gi, "");
+  return normalized
+    .split(/\n/)
+    .map((s) => s.trim())
+    .filter((s) => stripTags(s).length > 0)
+    .map((html) => ({ html, text: stripTags(html) }));
+}
+
 function formatPeriodo(desde: string, hasta: string): string {
   // Strings come as ISO; render as MM/YYYY range. Defensive against empty.
   try {
@@ -108,6 +165,7 @@ function formatPeriodo(desde: string, hasta: string): string {
 const SCOPED_STYLES = `
   .pkg-detail .container.wide { max-width: 1200px; }
   .pkg-detail .content-box.style3 .top-heading { padding: 24px 28px 16px; }
+  .pkg-detail .pkg-title { font-size: 36px; line-height: 1.1; margin-bottom: 8px; }
   .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 14px 28px 0; gap: 0; }
   .pkg-detail .box-tab-content.style1 .nav-link { font-size: 16px; padding: 8px 0; }
   .pkg-detail .box-tab-content.style1 .content-inner {
@@ -164,6 +222,49 @@ const SCOPED_STYLES = `
   .pkg-detail .opcion-block .text-box.style1 .h4 {
     margin-bottom: 2px;
   }
+
+  /* Opción hotelera — header con número, nombre y precio. Clases (en vez de
+     estilos inline) para poder compactarlo en mobile via media query. */
+  .pkg-detail .opcion-group { margin-top: 36px; }
+  .pkg-detail .opcion-group:first-child { margin-top: 0; }
+  .pkg-detail .opcion-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(160,94,211,0.10), rgba(244,62,85,0.08));
+    border: 1px solid rgba(160,94,211,0.18);
+  }
+  .pkg-detail .opcion-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #A05ED3, #F43E55);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .pkg-detail .opcion-head-main { flex: 1; min-width: 0; }
+  .pkg-detail .opcion-name {
+    margin: 0;
+    font-size: 18px;
+    color: #A05ED3;
+    font-weight: 700;
+    font-family: 'Clarika Geometric', inherit;
+    line-height: 1.2;
+  }
+  .pkg-detail .opcion-price { text-align: right; flex-shrink: 0; }
+  .pkg-detail .opcion-price-label { font-size: 11px; color: #888; letter-spacing: 0.4px; }
+  .pkg-detail .opcion-price-amount { font-size: 22px; font-weight: 800; color: #F43E55; line-height: 1; }
+  .pkg-detail .opcion-price-note { font-size: 10.5px; color: #999; margin-top: 2px; }
+  .pkg-detail .opcion-price-consult { font-size: 13px; color: #888; font-style: italic; }
+
   .pkg-detail .sidebar-form { padding: 28px; }
   .pkg-detail .sidebar-form .main-price { font-size: 56px; }
   .pkg-detail .sidebar-form .price-left .title { font-size: 14px; }
@@ -179,7 +280,110 @@ const SCOPED_STYLES = `
   .pkg-detail .payment-box .content { padding: 20px 24px; }
   .pkg-detail .payment-box .content .title { font-size: 14px; margin-bottom: 10px; }
   .pkg-detail .payment-icon { height: 42px; padding: 6px; }
+
+  /* Texto enriquecido (intro / itinerario / condiciones) — restaura listas y
+     resaltados que site.css resetea, y da un ritmo de párrafo legible. */
+  .pkg-detail .pkg-richtext p { margin: 0 0 0.8em; }
+  .pkg-detail .pkg-richtext p:last-child { margin-bottom: 0; }
+  .pkg-detail .pkg-richtext ul,
+  .pkg-detail .pkg-richtext ol {
+    margin: 0 0 0.8em;
+    padding-left: 1.5em;
+  }
+  .pkg-detail .pkg-richtext ul { list-style: disc; }
+  .pkg-detail .pkg-richtext ol { list-style: decimal; }
+  .pkg-detail .pkg-richtext li { margin-bottom: 0.3em; }
+  .pkg-detail .pkg-richtext b,
+  .pkg-detail .pkg-richtext strong { font-weight: 700; }
+  .pkg-detail .pkg-richtext i,
+  .pkg-detail .pkg-richtext em { font-style: italic; }
+  .pkg-detail .pkg-richtext u { text-decoration: underline; }
+  .pkg-detail .pkg-richtext a { color: #A05ED3; text-decoration: underline; }
+
+  /* ---------------------------------------------------------------------
+     Mobile — versión compacta y "escueta": tipografías e íconos más chicos,
+     menos padding, para que la ficha (sobre todo Alojamientos) no se vea
+     sobredimensionada en celular.
+  --------------------------------------------------------------------- */
+  @media (max-width: 767px) {
+    .pkg-detail .content-box.style3 .top-heading { padding: 18px 18px 12px; }
+
+    /* Header: título más delicado y apilado sobre el precio, así usa todo el
+       ancho y no se parte en 3 renglones. */
+    .pkg-detail .top-heading .row > [class*="col-"] {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+    .pkg-detail .pkg-title { font-size: 22px; line-height: 1.18; margin-bottom: 6px; }
+    .pkg-detail .top-heading .large-price {
+      justify-content: flex-start;
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+    .pkg-detail .top-heading .pr_notes {
+      text-align: left !important;
+      margin-top: 4px;
+    }
+    .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 10px 18px 0; }
+    .pkg-detail .box-tab-content.style1 .nav-link { font-size: 15px; }
+    .pkg-detail .box-tab-content.style1 .content-inner { padding: 16px 18px; }
+    .pkg-detail .box-tab-content.style1 .content-inner li {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .pkg-detail .box-tab-content.style1 .content-inner li img {
+      width: 26px;
+      height: 26px;
+      margin-right: 10px;
+    }
+
+    /* Header de opción */
+    .pkg-detail .opcion-group { margin-top: 20px; }
+    .pkg-detail .opcion-header {
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+    }
+    .pkg-detail .opcion-num { width: 26px; height: 26px; font-size: 13px; }
+    .pkg-detail .opcion-name { font-size: 15px; }
+    .pkg-detail .opcion-price-label { font-size: 9.5px; }
+    .pkg-detail .opcion-price-amount { font-size: 17px; }
+    .pkg-detail .opcion-price-note { font-size: 9px; margin-top: 1px; }
+    .pkg-detail .opcion-price-consult { font-size: 12px; }
+
+    /* Tarjeta de hotel dentro de la opción */
+    .pkg-detail .opcion-block { padding: 12px 14px 2px; border-radius: 12px; }
+    .pkg-detail .opcion-block .text-box.style1 { padding: 10px 0 11px; }
+    .pkg-detail .text-box.style1 .h4 { font-size: 15px; }
+    .pkg-detail .text-box.style1 .h4 ul li i { font-size: 11px; }
+    .pkg-detail .text-box.style1 > span { font-size: 12px; }
+  }
 `;
+
+// Bloque de texto del paquete. Renderiza HTML cuando el contenido fue editado
+// con formato; para texto plano legacy preserva los saltos con pre-wrap.
+function RichBlock({
+  content,
+  style,
+}: {
+  content: string;
+  style?: React.CSSProperties;
+}) {
+  if (looksLikeHtml(content)) {
+    return (
+      <div
+        className="pkg-richtext"
+        style={style}
+        // Sanitizado con whitelist: aunque el contenido lo cargan admins, esto
+        // bloquea scripts/estilos inyectados por pegado y fuerza target/rel en
+        // los links externos.
+        dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(content) }}
+      />
+    );
+  }
+  return <div style={{ ...style, whiteSpace: "pre-wrap" }}>{content}</div>;
+}
 
 export function PackageDetailView({ paquete, formasDePago }: Props) {
   const [tab, setTab] = useState<"incluye" | "alojamientos">("incluye");
@@ -194,11 +398,14 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
         : [{ url: "/site/img/slider-1.webp", alt: paquete.titulo }];
 
   // Items rendered inside the Incluye list — services first, then any extra
-  // bullets parsed from textoIncluye (one per non-empty line).
-  const includeBullets = (paquete.textoIncluye ?? "")
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // bullets parsed from textoIncluye (one per non-empty line/bloque). Cada
+  // item conserva su HTML inline y su texto plano para resolver el ícono.
+  const includeBullets = parseIncludeItems(paquete.textoIncluye ?? "");
+
+  // ¿El operador curó una lista pública "Incluye" (catálogo o texto libre)?
+  // Si no, caemos a los servicios estructurados que cargó al crear el paquete.
+  const hasManualIncluye =
+    paquete.serviciosIncluidos.length > 0 || includeBullets.length > 0;
 
   return (
     <section className="content-area gradient-page-bg ver2 pkg-detail">
@@ -213,14 +420,7 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                 <div className="row">
                   <div className="col-7">
                     <div>
-                      <h2
-                        className="title"
-                        style={{
-                          fontSize: 36,
-                          lineHeight: 1.1,
-                          marginBottom: 8,
-                        }}
-                      >
+                      <h2 className="title pkg-title">
                         <strong>{paquete.titulo}</strong>
                       </h2>
                       {paquete.salidas && (
@@ -338,11 +538,28 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                     role="tabpanel"
                     className={`tab-pane fade${tab === "incluye" ? " show active" : ""}`}
                   >
-                    {paquete.serviciosIncluidos.length === 0 &&
-                    includeBullets.length === 0 ? (
+                    {!hasManualIncluye &&
+                    paquete.serviciosDerivados.length === 0 ? (
                       <div style={{ padding: 30, color: "#999" }}>
                         Próximamente cargaremos los servicios incluidos.
                       </div>
+                    ) : !hasManualIncluye ? (
+                      // Fallback: servicios estructurados cargados en la creación.
+                      <ul className="content-inner">
+                        {paquete.serviciosDerivados.map((s, i) => (
+                          <li key={`d-${i}`}>
+                            <img
+                              src={`/site/img/p-${s.icon}-icon.png`}
+                              alt=""
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src =
+                                  SERVICE_ICON_FALLBACK;
+                              }}
+                            />
+                            {s.texto}
+                          </li>
+                        ))}
+                      </ul>
                     ) : (
                       <ul className="content-inner">
                         {paquete.serviciosIncluidos.map((s) => (
@@ -361,14 +578,18 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                         {includeBullets.map((b, i) => (
                           <li key={`b-${i}`}>
                             <img
-                              src={`/site/img/p-${detectIconForBullet(b)}-icon.png`}
+                              src={`/site/img/p-${detectIconForBullet(b.text)}-icon.png`}
                               alt=""
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src =
                                   SERVICE_ICON_FALLBACK;
                               }}
                             />
-                            {b}
+                            <span
+                              dangerouslySetInnerHTML={{
+                                __html: sanitizeRichHtml(b.html),
+                              }}
+                            />
                           </li>
                         ))}
                       </ul>
@@ -395,115 +616,29 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                           const moneda = paquete.precioDesdeMoneda ?? "USD";
                           const hasPrice = opt.precioVenta > 0;
                           return (
-                            <div
-                              key={opt.id}
-                              style={{
-                                marginTop: optIdx === 0 ? 0 : 36,
-                              }}
-                            >
+                            <div key={opt.id} className="opcion-group">
                               {/* Option header: name + customer-facing price */}
-                              <div
-                                style={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 14,
-                                  marginBottom: 16,
-                                  padding: "14px 18px",
-                                  borderRadius: 12,
-                                  background:
-                                    "linear-gradient(135deg, rgba(160,94,211,0.10), rgba(244,62,85,0.08))",
-                                  border:
-                                    "1px solid rgba(160,94,211,0.18)",
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    width: 32,
-                                    height: 32,
-                                    borderRadius: 999,
-                                    background:
-                                      "linear-gradient(135deg, #A05ED3, #F43E55)",
-                                    color: "white",
-                                    fontSize: 14,
-                                    fontWeight: 700,
-                                    flexShrink: 0,
-                                  }}
-                                >
-                                  {optIdx + 1}
-                                </span>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <h3
-                                    style={{
-                                      margin: 0,
-                                      fontSize: 18,
-                                      color: "#A05ED3",
-                                      fontWeight: 700,
-                                      fontFamily:
-                                        "'Clarika Geometric', inherit",
-                                      lineHeight: 1.2,
-                                    }}
-                                  >
-                                    {opt.nombre}
-                                  </h3>
-                                  <p
-                                    style={{
-                                      margin: "2px 0 0",
-                                      fontSize: 12,
-                                      color: "#888",
-                                    }}
-                                  >
-                                    {opt.hoteles.length} hotel
-                                    {opt.hoteles.length === 1 ? "" : "es"}{" "}
-                                    incluido
-                                    {opt.hoteles.length === 1 ? "" : "s"}
-                                  </p>
+                              <div className="opcion-header">
+                                <span className="opcion-num">{optIdx + 1}</span>
+                                <div className="opcion-head-main">
+                                  <h3 className="opcion-name">{opt.nombre}</h3>
                                 </div>
-                                <div style={{ textAlign: "right" }}>
+                                <div className="opcion-price">
                                   {hasPrice ? (
                                     <>
-                                      <div
-                                        style={{
-                                          fontSize: 11,
-                                          color: "#888",
-                                          letterSpacing: 0.4,
-                                        }}
-                                      >
+                                      <div className="opcion-price-label">
                                         DESDE
                                       </div>
-                                      <div
-                                        style={{
-                                          fontSize: 22,
-                                          fontWeight: 800,
-                                          color: "#F43E55",
-                                          lineHeight: 1,
-                                        }}
-                                      >
+                                      <div className="opcion-price-amount">
                                         {moneda}{" "}
-                                        {opt.precioVenta.toLocaleString(
-                                          "es-UY",
-                                        )}
+                                        {opt.precioVenta.toLocaleString("es-UY")}
                                       </div>
-                                      <div
-                                        style={{
-                                          fontSize: 10.5,
-                                          color: "#999",
-                                          marginTop: 2,
-                                        }}
-                                      >
+                                      <div className="opcion-price-note">
                                         Por persona en base doble
                                       </div>
                                     </>
                                   ) : (
-                                    <div
-                                      style={{
-                                        fontSize: 13,
-                                        color: "#888",
-                                        fontStyle: "italic",
-                                      }}
-                                    >
+                                    <div className="opcion-price-consult">
                                       Consultar precio
                                     </div>
                                   )}
@@ -577,15 +712,10 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                     <h2 className="h2" style={{ marginBottom: 12 }}>
                       Sobre el destino
                     </h2>
-                    <div
-                      style={{
-                        color: "#444",
-                        lineHeight: 1.7,
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {paquete.textoIntro}
-                    </div>
+                    <RichBlock
+                      content={paquete.textoIntro}
+                      style={{ color: "#444", lineHeight: 1.7 }}
+                    />
                   </div>
                 )}
                 {paquete.itinerarioPublico && (
@@ -593,15 +723,10 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                     <h2 className="h2" style={{ marginBottom: 12 }}>
                       Itinerario
                     </h2>
-                    <div
-                      style={{
-                        color: "#444",
-                        lineHeight: 1.7,
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {paquete.itinerarioPublico}
-                    </div>
+                    <RichBlock
+                      content={paquete.itinerarioPublico}
+                      style={{ color: "#444", lineHeight: 1.7 }}
+                    />
                   </div>
                 )}
                 {paquete.textoCondiciones && (
@@ -609,16 +734,10 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                     <h2 className="h2" style={{ marginBottom: 12 }}>
                       Condiciones
                     </h2>
-                    <div
-                      style={{
-                        fontSize: 13,
-                        color: "#777",
-                        lineHeight: 1.7,
-                        whiteSpace: "pre-wrap",
-                      }}
-                    >
-                      {paquete.textoCondiciones}
-                    </div>
+                    <RichBlock
+                      content={paquete.textoCondiciones}
+                      style={{ fontSize: 13, color: "#777", lineHeight: 1.7 }}
+                    />
                   </div>
                 )}
               </div>

@@ -120,6 +120,9 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       metaTitle: true,
       metaDescription: true,
       heroImage: true,
+      // descripcion: breve resumen interno (alimenta el buscador del backend);
+      // editable desde la pestaña Publicación junto al resto del contenido.
+      descripcion: true,
       textoIntro: true,
       textoIncluye: true,
       itinerarioPublico: true,
@@ -157,6 +160,7 @@ export async function updatePaqueteFrontend(
     metaTitle?: string | null;
     metaDescription?: string | null;
     heroImage?: string | null;
+    descripcion?: string | null;
     textoIntro?: string | null;
     textoIncluye?: string | null;
     itinerarioPublico?: string | null;

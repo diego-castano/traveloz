@@ -43,6 +43,7 @@ import {
   createServicio,
 } from "@/actions/catalogo-servicios.actions";
 import { MediaPicker } from "@/app/backend/web/_components/MediaPicker";
+import { RichTextEditor } from "@/app/backend/web/_components/RichTextEditor";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
@@ -52,7 +53,10 @@ import {
 } from "@/components/ui/EstadoHelp";
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { usePackageActions } from "@/components/providers/PackageProvider";
+import {
+  usePackageDispatch,
+  usePaqueteById,
+} from "@/components/providers/PackageProvider";
 import type { EstadoPaquete } from "@/lib/types";
 
 type Servicio = { id: string; nombre: string; icon: string; activo?: boolean };
@@ -98,6 +102,62 @@ function slugify(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+// Detecta si un string ya viene como HTML (editado con el editor enriquecido)
+// o como texto plano legacy guardado antes de tener formato.
+function looksLikeHtml(s: string): boolean {
+  return /<[a-z][\s\S]*>/i.test(s);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// Texto plano legacy → HTML, para que al cargarlo en el editor enriquecido
+// los saltos de línea se preserven (contenteditable ignora los "\n" crudos).
+// Si el valor ya es HTML lo dejamos intacto.
+function toEditorHtml(value: string | null | undefined): string {
+  const v = value ?? "";
+  if (!v) return "";
+  if (looksLikeHtml(v)) return v;
+  return escapeHtml(v).replace(/\r?\n/g, "<br>");
+}
+
+// Campo de texto enriquecido. Para operadores sin permiso de edición
+// renderiza el HTML en modo lectura (el editor en sí no tiene estado disabled).
+function RichField({
+  value,
+  onChange,
+  rows,
+  placeholder,
+  disabled,
+}: {
+  value: string;
+  onChange: (html: string) => void;
+  rows?: number;
+  placeholder?: string;
+  disabled?: boolean;
+}) {
+  if (disabled) {
+    return (
+      <div
+        className="w-full border border-neutral-200 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-neutral-50 text-neutral-600 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
+        dangerouslySetInnerHTML={{ __html: value || "<span class='text-neutral-400'>—</span>" }}
+      />
+    );
+  }
+  return (
+    <RichTextEditor
+      value={value}
+      onChange={onChange}
+      rows={rows}
+      placeholder={placeholder}
+    />
+  );
+}
+
 function Section({
   title,
   description,
@@ -123,8 +183,28 @@ function Section({
 export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   const { toast } = useToast();
   const { canEdit } = useAuth();
-  const { updatePaquete: updatePaqueteCache } = usePackageActions();
   const allEtiquetas = useEtiquetas();
+  // Cache sync: descripcion también vive en DatosTab (via el spread de
+  // `paquete`). Cuando la editamos acá actualizamos la cache compartida para
+  // que un guardado posterior de DatosTab no reescriba el valor viejo.
+  const dispatch = usePackageDispatch();
+  const cachedPaquete = usePaqueteById(paqueteId);
+  const cachedPaqueteRef = useRef(cachedPaquete);
+  useEffect(() => {
+    cachedPaqueteRef.current = cachedPaquete;
+  }, [cachedPaquete]);
+  const syncDescripcionToCache = useCallback(
+    (descripcion: string) => {
+      const cached = cachedPaqueteRef.current;
+      if (cached && cached.descripcion !== descripcion) {
+        dispatch({
+          type: "UPDATE_PAQUETE",
+          payload: { ...cached, descripcion },
+        });
+      }
+    },
+    [dispatch],
+  );
 
   const [data, setData] = useState<Awaited<
     ReturnType<typeof getPaqueteFrontendData>
@@ -156,6 +236,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     metaTitle: "",
     metaDescription: "",
     heroImage: "",
+    descripcion: "",
     textoIntro: "",
     textoIncluye: "",
     itinerarioPublico: "",
@@ -178,10 +259,11 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             metaTitle: d.metaTitle ?? "",
             metaDescription: d.metaDescription ?? "",
             heroImage: d.heroImage ?? "",
-            textoIntro: d.textoIntro ?? "",
-            textoIncluye: d.textoIncluye ?? "",
-            itinerarioPublico: d.itinerarioPublico ?? "",
-            textoCondiciones: d.textoCondiciones ?? "",
+            descripcion: d.descripcion ?? "",
+            textoIntro: toEditorHtml(d.textoIntro),
+            textoIncluye: toEditorHtml(d.textoIncluye),
+            itinerarioPublico: toEditorHtml(d.itinerarioPublico),
+            textoCondiciones: toEditorHtml(d.textoCondiciones),
             estado: d.estado,
             destacado: d.destacado,
             validezDesde: d.validezDesde ?? "",
@@ -234,6 +316,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       metaTitle: form.metaTitle,
       metaDescription: form.metaDescription,
       heroImage: form.heroImage,
+      descripcion: form.descripcion,
       textoIntro: form.textoIntro,
       textoIncluye: form.textoIncluye,
       itinerarioPublico: form.itinerarioPublico,
@@ -250,8 +333,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       paqueteId,
       selected.map((id, i) => ({ servicioId: id, orden: i })),
     );
+    syncDescripcionToCache(form.descripcion);
     return { ok: true };
-  }, [paqueteId, form, selected]);
+  }, [paqueteId, form, selected, syncDescripcionToCache]);
 
   // Surface a publish-blocker visually: scroll the relevant field into
   // view + flash it. Picks the highest-priority issue from the missing list.
@@ -314,6 +398,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       metaTitle: f.metaTitle,
       metaDescription: f.metaDescription,
       heroImage: f.heroImage,
+      descripcion: f.descripcion,
       textoIntro: f.textoIntro,
       textoIncluye: f.textoIncluye,
       itinerarioPublico: f.itinerarioPublico,
@@ -338,7 +423,8 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       paqueteId,
       selectedRef.current.map((id, i) => ({ servicioId: id, orden: i })),
     );
-  }, [paqueteId, toast, focusBlockerField]);
+    syncDescripcionToCache(formRef.current.descripcion);
+  }, [paqueteId, toast, focusBlockerField, syncDescripcionToCache]);
 
   const { status: autoSaveStatus, markDirty } = useAutoSave({
     onSave: handleAutoSave,
@@ -742,19 +828,36 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       {/* Section 4 — Texto principal */}
       <Section
         title="Textos del paquete"
-        description="Lo que el viajero ve al entrar al detalle."
+        description="Lo que el viajero ve al entrar al detalle. Usá la barra de formato para resaltar (negrita, cursiva, subrayado, listas y links)."
       >
+        <div>
+          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
+            Descripción breve
+            <span className="text-neutral-400 font-normal ml-2 text-xs">
+              (no se muestra tal cual en el detalle; alimenta el buscador interno
+              y, si no completás el SEO, se usa como meta description en Google)
+            </span>
+          </label>
+          <textarea
+            value={form.descripcion}
+            onChange={(e) => patch("descripcion", e.target.value)}
+            className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            rows={2}
+            placeholder="Resumen corto del paquete para uso interno y búsquedas."
+            disabled={disabled}
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
             Texto introductorio
             <span className="text-neutral-400 font-normal ml-2 text-xs">
-              (sobre el destino, aparece arriba del itinerario)
+              (es el bloque «Sobre el destino» que ve el viajero, arriba del itinerario)
             </span>
           </label>
-          <textarea
+          <RichField
             value={form.textoIntro}
-            onChange={(e) => patch("textoIntro", e.target.value)}
-            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            onChange={(html) => patch("textoIntro", html)}
             rows={6}
             placeholder="Por qué este destino, qué lo hace especial, etc."
             disabled={disabled}
@@ -768,12 +871,11 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               (día a día — distinto al itinerario interno Amadeus)
             </span>
           </label>
-          <textarea
+          <RichField
             value={form.itinerarioPublico}
-            onChange={(e) => patch("itinerarioPublico", e.target.value)}
-            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            onChange={(html) => patch("itinerarioPublico", html)}
             rows={10}
-            placeholder={`Día 1 — Llegada y traslado al hotel.\nDía 2 — City tour por el centro histórico.\nDía 3 — Excursión a las playas…`}
+            placeholder="Día 1 — Llegada y traslado al hotel."
             disabled={disabled}
           />
         </div>
@@ -788,15 +890,14 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
             Lo que incluye
             <span className="text-neutral-400 font-normal ml-2 text-xs">
-              (cada línea es un bullet — el icono se elige automáticamente: ✈ pasaje, 🧳 equipaje, 🚌 traslado, 🏨 alojamiento)
+              (cada línea es un bullet — el icono se elige automáticamente: ✈ pasaje, 🧳 equipaje, 🚌 traslado, 🏨 alojamiento. Podés resaltar en negrita/cursiva dentro de cada línea)
             </span>
           </label>
-          <textarea
+          <RichField
             value={form.textoIncluye}
-            onChange={(e) => patch("textoIncluye", e.target.value)}
-            className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+            onChange={(html) => patch("textoIncluye", html)}
             rows={8}
-            placeholder={`Pasaje aéreo Montevideo / Río de Janeiro / Montevideo\nCarry on de cabina\nTraslados aeropuerto / hotel / aeropuerto\n7 noches con régimen All Inclusive\nTasas e impuestos incluidos`}
+            placeholder="Pasaje aéreo Montevideo / Río de Janeiro / Montevideo"
             disabled={disabled}
           />
         </div>
@@ -853,10 +954,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         title="Condiciones específicas"
         description="Política de cancelación, pagos, requisitos especiales."
       >
-        <textarea
+        <RichField
           value={form.textoCondiciones}
-          onChange={(e) => patch("textoCondiciones", e.target.value)}
-          className="w-full border border-neutral-300 rounded-md px-3 py-2.5 text-sm leading-relaxed bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+          onChange={(html) => patch("textoCondiciones", html)}
           rows={8}
           placeholder="Notas que aparecen al final del detalle. Si lo dejás vacío se muestran las condiciones generales del sitio."
           disabled={disabled}
@@ -899,10 +999,15 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           />
           <p className="text-[10px] text-neutral-400 mt-0.5">
             {form.metaDescription.length}/160
+            {!form.metaDescription.trim() && form.descripcion.trim() && (
+              <span className="ml-1 text-neutral-500">
+                · vacío → se usa la “Descripción breve”
+              </span>
+            )}
           </p>
         </div>
 
-        {(form.metaTitle || form.metaDescription) && (
+        {(form.metaTitle || form.metaDescription || form.descripcion) && (
           <div className="bg-neutral-50 border border-neutral-200 rounded-md p-3 mt-3">
             <p className="text-[10px] uppercase tracking-wider text-neutral-400 mb-1.5">
               Vista previa SERP
@@ -913,9 +1018,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             <div className="text-green-800 text-[11px] mt-0.5">
               traveloz.com.uy/destinos/.../{form.slug || "<slug>"}
             </div>
-            {form.metaDescription && (
+            {(form.metaDescription || form.descripcion) && (
               <div className="text-neutral-600 text-[12px] mt-1 line-clamp-2">
-                {form.metaDescription}
+                {form.metaDescription || form.descripcion}
               </div>
             )}
           </div>

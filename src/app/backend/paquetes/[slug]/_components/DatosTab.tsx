@@ -123,8 +123,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   // -- Local form state initialized from paquete prop --
   const [titulo, setTitulo] = useState(paquete.titulo);
   const [destino, setDestino] = useState(paquete.destino ?? "");
-  const [descripcion, setDescripcion] = useState(paquete.descripcion);
-  const [textoVisual, setTextoVisual] = useState(paquete.textoVisual ?? "");
+  // descripcion y textoVisual ya NO se editan acá: el contenido del frontend
+  // (incluida la descripción interna) se administra desde la pestaña
+  // Publicación. Sus valores actuales se preservan via el spread de `paquete`
+  // en persistPaquete para no pisarlos al guardar otros campos.
   // `destinos` still needed for the publish-readiness validation below;
   // the visible noches counter moved into DestinosMiniEditor.
   const destinos = useDestinos(paquete.id);
@@ -134,6 +136,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [viajeHastaDate, setViajeHastaDate] = useState<Date | undefined>(
     parseStoredDate(paquete.viajeHasta),
   );
+  // Salidas: leyenda libre que se muestra bajo el título en el frontend
+  // (ej. "Salidas semanales todo el año"). Vive junto al período del viaje.
+  const [salidas, setSalidas] = useState(paquete.salidas ?? "");
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);
   const [tipoPaqueteId, setTipoPaqueteId] = useState(paquete.tipoPaqueteId);
   const [estado, setEstado] = useState<string>(paquete.estado);
@@ -202,8 +207,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         ...paquete,
         titulo,
         destino,
-        descripcion,
-        textoVisual: textoVisual || null,
+        salidas,
+        // descripcion / textoVisual: se conservan tal cual vienen en `paquete`
+        // (cache mantenida en sync por la pestaña Publicación).
         temporadaId,
         tipoPaqueteId,
         estado: estado as EstadoPaquete,
@@ -221,8 +227,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       paquete,
       titulo,
       destino,
-      descripcion,
-      textoVisual,
+      salidas,
       temporadaId,
       tipoPaqueteId,
       estado,
@@ -270,8 +275,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   // -- Wrapped setters that also mark dirty --
   const setTituloDirty = (v: string) => { setTitulo(v); markDirty(); };
   const setDestinoDirty = (v: string) => { setDestino(v); markDirty(); };
-  const setDescripcionDirty = (v: string) => { setDescripcion(v); markDirty(); };
-  const setTextoVisualDirty = (v: string) => { setTextoVisual(v); markDirty(); };
+  const setSalidasDirty = (v: string) => { setSalidas(v); markDirty(); };
   // (noches is derived from destinos — no dirty setter needed)
   const setTemporadaIdDirty = (v: string) => { setTemporadaId(v); markDirty(); };
   const setTipoPaqueteIdDirty = (v: string) => { setTipoPaqueteId(v); markDirty(); };
@@ -489,39 +493,19 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 </p>
               )}
             </Field>
-          </FieldGroup>
-        </FormSection>
-
-        {/* ================================================================ */}
-        {/* Contenido visual                                                 */}
-        {/* ================================================================ */}
-        <FormSection
-          title="Contenido visual"
-          description="Lo que ve el cliente en el frontend publico."
-        >
-          <FieldGroup columns={1}>
-            <Field>
-              <FieldLabel>Descripcion</FieldLabel>
-              <textarea
-                value={descripcion}
-                onChange={(e) => setDescripcionDirty(e.target.value)}
-                placeholder="Descripcion detallada del paquete..."
-                rows={3}
-                readOnly={isReadOnly}
-                className={textareaClassName}
-              />
-            </Field>
 
             <Field>
-              <FieldLabel>Texto visual</FieldLabel>
-              <textarea
-                value={textoVisual}
-                onChange={(e) => setTextoVisualDirty(e.target.value)}
-                placeholder="Texto destacado para la ficha visual..."
-                rows={2}
+              <FieldLabel>Salidas</FieldLabel>
+              <Input
+                value={salidas}
+                onChange={(e) => setSalidasDirty(e.target.value)}
+                placeholder="Ej. Salidas semanales todo el año / Consultar"
                 readOnly={isReadOnly}
-                className={textareaClassName}
               />
+              <p className="text-[11px] text-neutral-400 mt-1">
+                Leyenda que se muestra bajo el título en el frontend, junto al
+                ícono de calendario.
+              </p>
             </Field>
           </FieldGroup>
         </FormSection>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Bold, Italic, Underline, Link as LinkIcon, List, Eraser } from "lucide-react";
+import { sanitizeRichHtml } from "@/lib/sanitize-html";
 
 type Props = {
   value: string;
@@ -40,6 +41,25 @@ export function RichTextEditor({ value, onChange, rows = 6, placeholder }: Props
     exec("createLink", url);
   };
 
+  // Pegado limpio: el HTML del portapapeles (Word, Docs, webs) trae estilos,
+  // spans y clases que ensuciarían el contenido publicado. Lo pasamos por el
+  // whitelist antes de insertarlo; si no hay HTML, insertamos el texto plano
+  // conservando los saltos de línea.
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData("text/html");
+    const text = e.clipboardData.getData("text/plain");
+    const clean = html
+      ? sanitizeRichHtml(html)
+      : text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/\r?\n/g, "<br>");
+    document.execCommand("insertHTML", false, clean);
+    if (ref.current) onChange(ref.current.innerHTML);
+  };
+
   return (
     <div className="border border-neutral-300 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-violet-500/20 focus-within:border-violet-400">
       <div className="flex items-center gap-0.5 bg-neutral-50 border-b border-neutral-200 px-1.5 py-1">
@@ -68,6 +88,7 @@ export function RichTextEditor({ value, onChange, rows = 6, placeholder }: Props
         ref={ref}
         contentEditable
         suppressContentEditableWarning
+        onPaste={handlePaste}
         onInput={(e) => onChange((e.target as HTMLDivElement).innerHTML)}
         onBlur={(e) => onChange((e.target as HTMLDivElement).innerHTML)}
         data-placeholder={placeholder}

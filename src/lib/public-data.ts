@@ -242,6 +242,13 @@ export const getPaqueteBySlug = unstable_cache(
           orderBy: { orden: "asc" },
           include: { servicio: true },
         },
+        // Servicios estructurados cargados en las pestañas Servicios/Alojamientos.
+        // Se usan como fallback de la lista pública "Incluye" cuando el operador
+        // no curó una lista manual (serviciosIncluidos / textoIncluye).
+        aereos: { orderBy: { orden: "asc" }, include: { aereo: true } },
+        traslados: { orderBy: { orden: "asc" }, include: { traslado: true } },
+        seguros: { orderBy: { orden: "asc" }, include: { seguro: true } },
+        circuitos: { orderBy: { orden: "asc" }, include: { circuito: true } },
         destinos: {
           orderBy: { orden: "asc" },
           include: {

@@ -527,16 +527,29 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
 
   // -- Opciones --
 
-  const handleCreateOpcion = useCallback(() => {
+  // Id de la opción recién creada → dispara un highlight de entrada una sola vez.
+  const [justCreatedOpcionId, setJustCreatedOpcionId] = useState<string | null>(
+    null,
+  );
+
+  const handleCreateOpcion = useCallback(async () => {
     const nextOrden = opciones.length + 1;
     const defaultName = `Opcion ${nextOrden}`;
-    createOpcionHotelera({
+    const created = await createOpcionHotelera({
       paqueteId: paquete.id,
       nombre: defaultName,
       factor: 0.9,
       precioVenta: 0,
       orden: nextOrden,
     });
+    if (created?.id) {
+      setJustCreatedOpcionId(created.id);
+      window.setTimeout(
+        () =>
+          setJustCreatedOpcionId((cur) => (cur === created.id ? null : cur)),
+        1800,
+      );
+    }
     toast(
       "success",
       "Opcion hotelera creada",
@@ -717,6 +730,8 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
                 onUpdateName={handleUpdateOpcionName}
                 onUpdateTextoDisplay={handleUpdateOpcionTextoDisplay}
                 onDelete={handleDeleteOpcion}
+                onAddOpcion={handleCreateOpcion}
+                isNew={opcion.id === justCreatedOpcionId}
                 onUpdateFactor={handleUpdateOpcionFactor}
                 onUpsertHotel={upsertOpcionHotelPrincipal}
                 onDeleteHotel={deleteOpcionHotel}
@@ -1452,6 +1467,10 @@ interface OpcionCardProps {
   onUpdateName: (opcion: OpcionHotelera, newName: string) => void;
   onUpdateTextoDisplay: (opcion: OpcionHotelera, value: string) => void;
   onDelete: (id: string) => void;
+  /** Crea una nueva opción hotelera (mismo handler que "Agregar opción"). */
+  onAddOpcion: () => void;
+  /** True para la opción recién creada → highlight de entrada una sola vez. */
+  isNew?: boolean;
   onUpdateFactor: (opcion: OpcionHotelera, newFactor: number) => void;
   onUpsertHotel: (
     opcionHoteleraId: string,
@@ -1473,6 +1492,8 @@ const OpcionCard = forwardRef<HTMLDivElement, OpcionCardProps>(function OpcionCa
   onUpdateName,
   onUpdateTextoDisplay,
   onDelete,
+  onAddOpcion,
+  isNew,
   onUpdateFactor,
   onUpsertHotel,
   onDeleteHotel,
@@ -1544,7 +1565,17 @@ const OpcionCard = forwardRef<HTMLDivElement, OpcionCardProps>(function OpcionCa
       transition={springs.gentle}
       className="mb-4"
     >
-      <div className="rounded-2xl p-5" style={frostedAccent}>
+      <div className="relative rounded-2xl p-5" style={frostedAccent}>
+        {/* Highlight de entrada para la opción recién creada */}
+        {isNew && (
+          <motion.span
+            aria-hidden
+            initial={{ opacity: 1 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 1.6, ease: "easeOut" }}
+            className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-teal-400/70"
+          />
+        )}
         {/* Header */}
         <div className="flex items-start justify-between mb-4 gap-3">
           <div className="flex-1 min-w-0 space-y-1">
@@ -1584,13 +1615,25 @@ const OpcionCard = forwardRef<HTMLDivElement, OpcionCardProps>(function OpcionCa
             ) : null}
           </div>
           {canEdit && (
-            <button
-              onClick={() => onDelete(opcion.id)}
-              className="p-1 rounded hover:bg-red-50 text-neutral-300 hover:text-red-500 transition-colors"
-              title="Eliminar opcion"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <button
+                onClick={() => onDelete(opcion.id)}
+                className="p-1 rounded hover:bg-red-50 text-neutral-300 hover:text-red-500 transition-colors"
+                title="Eliminar opcion"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <motion.button
+                type="button"
+                onClick={onAddOpcion}
+                whileHover={{ scale: 1.12 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-1 rounded text-teal-500 hover:bg-teal-50 hover:text-teal-600 transition-colors"
+                title="Agregar otra opción"
+              >
+                <Plus className="h-4 w-4" />
+              </motion.button>
+            </div>
           )}
         </div>
 

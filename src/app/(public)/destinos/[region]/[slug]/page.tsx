@@ -18,8 +18,11 @@ export async function generateMetadata({
   const p = await getPaqueteBySlug(params.slug);
   return buildSeoMetadata("default", {
     title: p ? (p.metaTitle ?? `${p.titulo} | TravelOz`) : undefined,
+    // Fallback en cascada: meta propia → descripción interna → genérico.
     description: p
-      ? (p.metaDescription ?? `Conocé ${p.titulo}, ${p.noches} noches.`)
+      ? (p.metaDescription?.trim() ||
+        p.descripcion?.trim() ||
+        `Conocé ${p.titulo}, ${p.noches} noches.`)
       : undefined,
     image: p?.fotos?.[0]?.url ?? undefined,
     noindex: !p,
@@ -74,6 +77,40 @@ export default async function PackageDetailPage({
     isPreview = true;
   }
 
+  // Lista "Incluye" derivada de los servicios estructurados que el operador
+  // cargó al crear el paquete. Se usa como fallback cuando no hay una lista
+  // pública curada (serviciosIncluidos del catálogo / textoIncluye). Cada
+  // servicio usa su `textoDisplay` si fue personalizado, o el nombre/ruta base.
+  const nochesTotales =
+    paquete.noches ??
+    paquete.destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
+  const serviciosDerivados: { texto: string; icon: string }[] = [
+    ...paquete.aereos.map((pa) => ({
+      texto: pa.textoDisplay ?? pa.aereo.ruta,
+      icon: "flight",
+    })),
+    ...paquete.traslados.map((pt) => ({
+      texto: pt.textoDisplay ?? pt.traslado.nombre,
+      icon: "bus",
+    })),
+    ...(nochesTotales > 0
+      ? [
+          {
+            texto: `${nochesTotales} noche${nochesTotales === 1 ? "" : "s"} de alojamiento`,
+            icon: "bed",
+          },
+        ]
+      : []),
+    ...paquete.circuitos.map((pc) => ({
+      texto: pc.textoDisplay ?? pc.circuito.nombre,
+      icon: "exc",
+    })),
+    ...paquete.seguros.map((ps) => ({
+      texto: ps.textoDisplay ?? ps.seguro.plan,
+      icon: "exc",
+    })),
+  ].filter((s) => s.texto && s.texto.trim());
+
   return (
     <>
       {isPreview && (
@@ -111,6 +148,7 @@ export default async function PackageDetailPage({
           textoIncluye: paquete.textoIncluye,
           itinerarioPublico: paquete.itinerarioPublico,
           textoCondiciones: paquete.textoCondiciones,
+          serviciosDerivados,
           serviciosIncluidos: paquete.serviciosIncluidos.map((s) => ({
             id: s.id,
             textoCustom: s.textoCustom,
