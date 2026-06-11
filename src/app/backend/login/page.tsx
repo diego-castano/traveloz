@@ -12,8 +12,6 @@ import { useBrand } from "@/components/providers/BrandProvider";
 import { glassMaterials } from "@/components/lib/glass";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Avatar } from "@/components/ui/Avatar";
-import { getPinLoginRoster } from "@/actions/auth.actions";
 
 const NOISE_SVG =
   "data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E";
@@ -31,13 +29,6 @@ const cardEntrance = {
 
 const ELEVATION_32 =
   "0 32px 64px -12px rgba(26,26,46,0.15), 0 12px 24px -8px rgba(26,26,46,0.08)";
-
-type PinRosterUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-};
 
 type Mode = "password" | "pin";
 
@@ -98,10 +89,7 @@ function LoginPageInner() {
   const [pwError, setPwError] = useState("");
   const [pwLoading, setPwLoading] = useState(false);
 
-  // ── PIN mode state
-  const [roster, setRoster] = useState<PinRosterUser[]>([]);
-  const [rosterLoading, setRosterLoading] = useState(false);
-  const [pinTarget, setPinTarget] = useState<PinRosterUser | null>(null);
+  // ── PIN mode state (PIN-only: el sistema identifica al usuario por su PIN)
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState("");
   const [pinLoading, setPinLoading] = useState(false);
@@ -116,21 +104,6 @@ function LoginPageInner() {
       router.push("/backend/dashboard");
     }
   }, [auth.isAuthenticated, router]);
-
-  // Load PIN roster lazily — only when the user switches to the PIN tab.
-  const loadRoster = useCallback(async () => {
-    setRosterLoading(true);
-    try {
-      const r = await getPinLoginRoster();
-      setRoster(r);
-    } finally {
-      setRosterLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (mode === "pin" && roster.length === 0) loadRoster();
-  }, [mode, roster.length, loadRoster]);
 
   if (redirecting || auth.isAuthenticated) {
     return <LoginTransition background={activeBrand.loginBackground} />;
@@ -152,11 +125,9 @@ function LoginPageInner() {
 
   const handlePinLogin = async (e: FormEvent) => {
     e.preventDefault();
-    if (!pinTarget) return;
     setPinError("");
     setPinLoading(true);
     const res = await signIn("pin", {
-      userId: pinTarget.id,
       pin,
       redirect: false,
     });
@@ -231,9 +202,7 @@ function LoginPageInner() {
           <p className="mt-1 text-center text-sm text-neutral-600">
             {mode === "password"
               ? "Ingresá tus credenciales para continuar"
-              : pinTarget
-                ? `Hola ${pinTarget.name.split(" ")[0]}, ingresá tu PIN`
-                : "Elegí tu usuario para ingresar con PIN"}
+              : "Ingresá tu PIN para entrar"}
           </p>
 
           {justReset && (
@@ -248,7 +217,6 @@ function LoginPageInner() {
               type="button"
               onClick={() => {
                 setMode("password");
-                setPinTarget(null);
                 setPin("");
                 setPinError("");
               }}
@@ -327,86 +295,39 @@ function LoginPageInner() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.18 }}
               >
-                {!pinTarget ? (
-                  <div className="mt-6 flex flex-col gap-2">
-                    {rosterLoading ? (
-                      <p className="py-6 text-center text-sm text-neutral-400">
-                        Cargando usuarios…
-                      </p>
-                    ) : roster.length === 0 ? (
-                      <p className="py-6 text-center text-sm text-neutral-500">
-                        Nadie configuró un PIN todavía.<br />
-                        <span className="text-xs text-neutral-400">
-                          Ingresá con email + contraseña y activá tu PIN desde <em>Mi perfil</em>.
-                        </span>
-                      </p>
-                    ) : (
-                      roster.map((u) => (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => {
-                            setPinTarget(u);
-                            setPin("");
-                            setPinError("");
-                          }}
-                          className="flex items-center gap-3 rounded-xl border border-hairline bg-white/70 px-3 py-2 text-left transition-colors hover:bg-white"
-                        >
-                          <Avatar name={u.name} size="sm" />
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-neutral-800">{u.name}</span>
-                            <span className="text-[11px] text-neutral-400">{u.role}</span>
-                          </div>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                ) : (
-                  <form onSubmit={handlePinLogin} className="mt-6 flex flex-col gap-4">
-                    <div className="flex items-center gap-3 rounded-xl border border-hairline bg-white/70 px-3 py-2">
-                      <Avatar name={pinTarget.name} size="sm" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-neutral-800">{pinTarget.name}</p>
-                        <p className="text-[11px] text-neutral-400">{pinTarget.email}</p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPinTarget(null);
-                          setPin("");
-                          setPinError("");
-                        }}
-                        className="text-xs text-neutral-500 hover:text-brand-violet-600"
-                      >
-                        Cambiar
-                      </button>
-                    </div>
-                    <Input
-                      label="PIN"
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="••••"
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-                      autoFocus
-                      autoComplete="off"
-                    />
-                    {pinError && (
-                      <p className="text-sm text-brand-red-500 text-center">{pinError}</p>
-                    )}
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      size="lg"
-                      className="w-full mt-2"
-                      loading={pinLoading}
-                      disabled={pin.length < 4}
-                    >
-                      Ingresar con PIN
-                    </Button>
-                  </form>
-                )}
+                <form onSubmit={handlePinLogin} className="mt-6 flex flex-col gap-4">
+                  <Input
+                    label="PIN"
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={6}
+                    placeholder="••••"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                    autoFocus
+                    autoComplete="off"
+                  />
+                  <p className="text-center text-xs text-neutral-400">
+                    Tu PIN te identifica — no hace falta elegir usuario.
+                  </p>
+                  {pinError && (
+                    <p className="text-sm text-brand-red-500 text-center">{pinError}</p>
+                  )}
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="lg"
+                    className="w-full mt-2"
+                    loading={pinLoading}
+                    disabled={pin.length < 4}
+                  >
+                    Ingresar con PIN
+                  </Button>
+                  <p className="text-center text-[11px] text-neutral-400">
+                    ¿Sin PIN? Ingresá con email + contraseña y activalo desde{" "}
+                    <em>Mi perfil</em>.
+                  </p>
+                </form>
               </motion.div>
             )}
           </AnimatePresence>

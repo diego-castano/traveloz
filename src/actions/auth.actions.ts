@@ -116,17 +116,21 @@ export async function authenticateUserByPassword(email: string, password: string
 }
 
 // ──────────────────────────────────────────────
-// Login: userId + PIN
+// Login: PIN-only — el sistema identifica al usuario por su PIN.
+// No se selecciona usuario (ni se expone quién tiene PIN configurado).
+// Unicidad de PINs garantizada al asignarlos (ver isPinInUse / user.actions);
+// si por datos legacy hubiera duplicados, el login se niega y se audita.
+// Nota: al no conocer el usuario antes de validar, el lockout por usuario no
+// aplica a PINs incorrectos — la fuerza bruta la frena el rate-limit por IP.
 // ──────────────────────────────────────────────
 
-export async function authenticateUserByPin(userId: string, pin: string) {
+export async function authenticateUserByPin(pin: string) {
   const { ip, userAgent } = await getRequestMeta();
 
   const rate = checkLoginRate(ip);
   if (!rate.allowed) {
     await logAudit({
       action: "login.fail.rate_limited",
-      userId,
       ipAddress: ip,
       userAgent,
       metadata: { retryAfterSeconds: rate.retryAfterSeconds, method: "pin" },
@@ -135,12 +139,21 @@ export async function authenticateUserByPin(userId: string, pin: string) {
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const candidates = await prisma.user.findMany({
+      where: { pinHash: { not: null } },
+      select: {
+        id: true, email: true, name: true, role: true, brandId: true,
+        isActive: true, lockedUntil: true, pinHash: true,
+      },
+    });
 
-    if (!user) {
+    const matches = candidates.filter(
+      (u) => u.pinHash && compareSync(pin, u.pinHash),
+    );
+
+    if (matches.length === 0) {
       await logAudit({
-        action: "login.fail.no_user",
-        userId,
+        action: "login.fail.bad_pin",
         ipAddress: ip,
         userAgent,
         metadata: { method: "pin" },
@@ -148,16 +161,18 @@ export async function authenticateUserByPin(userId: string, pin: string) {
       return null;
     }
 
-    if (!user.pinHash) {
+    if (matches.length > 1) {
+      // Duplicados legacy: imposible saber quién es — negar y avisar por audit.
       await logAudit({
-        action: "login.fail.no_pin",
-        userId: user.id,
-        userEmail: user.email,
+        action: "login.fail.ambiguous_pin",
         ipAddress: ip,
         userAgent,
+        metadata: { method: "pin", matchedUsers: matches.map((m) => m.id) },
       });
       return null;
     }
+
+    const user = matches[0];
 
     if (!user.isActive) {
       await logAudit({
@@ -183,12 +198,6 @@ export async function authenticateUserByPin(userId: string, pin: string) {
       return null;
     }
 
-    const isValid = compareSync(pin, user.pinHash);
-    if (!isValid) {
-      await recordFailedAttempt(user.id, user.email, "login.fail.bad_pin", ip, userAgent);
-      return null;
-    }
-
     await onLoginSuccess(user.id, user.email, "pin", ip, userAgent);
     resetLoginRate(ip);
 
@@ -207,22 +216,22 @@ export async function authenticateUserByPin(userId: string, pin: string) {
 }
 
 // ──────────────────────────────────────────────
-// Public roster for the login PIN tab
-// (returns only id/name/email/role — no PIN/password material).
+// Unicidad de PIN: ¿este PIN ya pertenece a otro usuario?
+// (bcrypt no permite lookup directo — se compara contra cada hash).
 // ──────────────────────────────────────────────
 
-export async function getPinLoginRoster() {
-  try {
-    const users = await prisma.user.findMany({
-      where: { isActive: true, pinHash: { not: null } },
-      select: { id: true, name: true, email: true, role: true },
-      orderBy: { name: "asc" },
-    });
-    return users;
-  } catch (error) {
-    log.error("loading pin roster", error);
-    return [];
-  }
+export async function isPinInUse(
+  pin: string,
+  excludeUserId?: string,
+): Promise<boolean> {
+  const users = await prisma.user.findMany({
+    where: {
+      pinHash: { not: null },
+      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+    },
+    select: { pinHash: true },
+  });
+  return users.some((u) => u.pinHash && compareSync(pin, u.pinHash));
 }
 
 // ──────────────────────────────────────────────

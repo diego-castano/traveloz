@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { logAudit } from "@/lib/audit";
 import { headers } from "next/headers";
 import { sendEmail, invitationEmail } from "@/lib/email";
+import { isPinInUse } from "./auth.actions";
 
 const log = logger.child({ module: "user.actions" });
 
@@ -91,6 +92,11 @@ export async function createUser(data: {
     role: data.role,
     ...(data.pin ? { pin: data.pin } : {}),
   });
+
+  // El login por PIN identifica al usuario por su PIN → no puede repetirse.
+  if (data.pin && (await isPinInUse(data.pin))) {
+    throw new Error("Ese PIN ya está en uso por otro usuario. Elegí uno diferente.");
+  }
 
   try {
     const created = await prisma.user.create({
@@ -284,6 +290,10 @@ export async function adminSetUserPin(id: string, pin: string | null) {
 
   if (pin !== null) {
     z.object({ pin: z.string().regex(PIN_REGEX, "El PIN debe tener 4-6 dígitos") }).parse({ pin });
+    // El login por PIN identifica al usuario por su PIN → no puede repetirse.
+    if (await isPinInUse(pin, id)) {
+      throw new Error("Ese PIN ya está en uso por otro usuario. Elegí uno diferente.");
+    }
   }
 
   try {
@@ -518,6 +528,11 @@ export async function setMyPin(input: { pin: string | null; currentPin?: string;
       });
       throw new Error("Para cambiar tu PIN necesitás ingresar tu PIN actual o tu contraseña.");
     }
+  }
+
+  // El login por PIN identifica al usuario por su PIN → no puede repetirse.
+  if (input.pin && (await isPinInUse(input.pin, ctx.userId))) {
+    throw new Error("Ese PIN ya está en uso por otro usuario. Elegí uno diferente.");
   }
 
   await prisma.user.update({

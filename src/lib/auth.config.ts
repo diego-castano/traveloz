@@ -12,12 +12,11 @@ import {
 // app doesn't need to know how the user arrived:
 //
 //   • "credentials"  → email + password
-//   • "pin"          → userId + PIN (4-6 dígitos)
+//   • "pin"          → PIN solo (4-6 dígitos)
 //
-// The PIN provider takes userId (not email) because the login UI shows a
-// roster of users to tap before asking for the PIN — that lookup is cheaper
-// and lets us scope lockouts/audit per known user even when only the PIN was
-// entered.
+// The PIN provider takes ONLY the pin: the server identifies the user by
+// comparing against every stored pinHash (PINs are unique — enforced at
+// assignment time via isPinInUse). No user roster is exposed in the login UI.
 //
 // `isActive` is re-checked on every session() callback so deactivating a
 // user takes effect immediately, even on currently-issued JWTs.
@@ -47,15 +46,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       id: "pin",
       name: "PIN",
       credentials: {
-        userId: { label: "User ID", type: "text" },
         pin: { label: "PIN", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.userId || !credentials?.pin) return null;
-        const user = await authenticateUserByPin(
-          String(credentials.userId),
-          String(credentials.pin),
-        );
+        if (!credentials?.pin) return null;
+        const user = await authenticateUserByPin(String(credentials.pin));
         if (!user) return null;
         return toSessionUser(user);
       },
