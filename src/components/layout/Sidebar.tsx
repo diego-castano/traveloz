@@ -9,7 +9,7 @@ import {
   useContext,
 } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -25,7 +25,6 @@ import {
   Bell,
   Truck,
   ChevronsLeft,
-  ChevronsRight,
   X,
   Globe,
   ListChecks,
@@ -36,6 +35,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { springs } from "@/components/lib/animations";
 import { cn } from "@/components/lib/cn";
+import { Avatar } from "@/components/ui/Avatar";
 import type { LucideIcon } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -138,17 +138,29 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+// Etiquetas legibles por rol (footer de usuario)
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Administrador",
+  VENDEDOR: "Vendedor",
+  MARKETING: "Marketing",
+};
+
+// Ancho expandido / colapsado (px)
+const W_EXPANDED = 256;
+const W_COLLAPSED = 68;
+
 // ---------------------------------------------------------------------------
 // Sidebar component
 // ---------------------------------------------------------------------------
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { visibleModules } = useAuth();
+  const { visibleModules, user } = useAuth();
   const { activeBrand } = useBrand();
   const pathname = usePathname();
   const router = useRouter();
   const { isMobile, mobileOpen, setMobileOpen } = useSidebar();
   const prefetchedRoutesRef = useRef<Set<string>>(new Set());
+  const reduceMotion = useReducedMotion();
 
   // Filter nav groups by role-visible modules
   const filteredGroups = useMemo(
@@ -170,8 +182,8 @@ export function Sidebar() {
   // On mobile, the sidebar is always "expanded" when open (never collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;
   const effectiveWidth = isMobile
-    ? mobileOpen ? 252 : 0
-    : collapsed ? 64 : 252;
+    ? mobileOpen ? W_EXPANDED : 0
+    : collapsed ? W_COLLAPSED : W_EXPANDED;
 
   const prefetchRoute = (href: string) => {
     if (href === pathname || prefetchedRoutesRef.current.has(href)) return;
@@ -203,11 +215,11 @@ export function Sidebar() {
       <motion.aside
         animate={{
           width: effectiveWidth,
-          x: isMobile && !mobileOpen ? -252 : 0,
+          x: isMobile && !mobileOpen ? -W_EXPANDED : 0,
         }}
-        transition={springs.gentle}
+        transition={reduceMotion ? { duration: 0 } : springs.gentle}
         className={cn(
-          "h-screen flex-shrink-0 overflow-hidden flex flex-col",
+          "h-dvh flex-shrink-0 overflow-hidden flex flex-col",
           isMobile ? "fixed left-0 top-0 z-[100]" : "relative z-[100]",
         )}
         style={{
@@ -229,26 +241,29 @@ export function Sidebar() {
         {/* ----------------------------------------------------------------- */}
         {/* Logo area */}
         {/* ----------------------------------------------------------------- */}
-        <div className="relative flex h-[60px] flex-shrink-0 items-center px-4 justify-between">
+        <div
+          className={cn(
+            "relative flex h-16 flex-shrink-0 items-center justify-between",
+            effectiveCollapsed ? "px-3 justify-center" : "px-5",
+          )}
+        >
           {effectiveCollapsed ? (
             /* Collapsed: isotipo cuadrado */
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center">
-              <Image
-                src="/header-logo.webp"
-                alt="Traveloz"
-                width={36}
-                height={36}
-                className="object-contain"
-                unoptimized
-              />
-            </div>
+            <Image
+              src="/site/img/isotipo.png"
+              alt="TravelOz"
+              width={34}
+              height={34}
+              className="rounded-lg object-contain"
+              unoptimized
+            />
           ) : (
             /* Expanded: logo completo */
             <Image
               src="/header-logo.webp"
-              alt="Traveloz"
-              width={140}
-              height={36}
+              alt="TravelOz"
+              width={148}
+              height={20}
               className="object-contain"
               unoptimized
             />
@@ -258,8 +273,7 @@ export function Sidebar() {
           {isMobile && mobileOpen && (
             <button
               onClick={() => setMobileOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
-              style={{ color: "rgba(255,255,255,0.5)" }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/90"
             >
               <X size={18} strokeWidth={1.75} />
             </button>
@@ -269,137 +283,167 @@ export function Sidebar() {
         {/* ----------------------------------------------------------------- */}
         {/* Nav section (scrollable) */}
         {/* ----------------------------------------------------------------- */}
-        <nav className="relative flex-1 overflow-y-auto py-3 px-3">
+        <nav className="relative flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3 pt-1">
           {filteredGroups.map((group, groupIndex) => (
-            <div key={group.group} className={groupIndex > 0 ? "mt-4" : ""}>
-              {/* Group label (only when expanded) */}
-              {!effectiveCollapsed && (
+            <div key={group.group}>
+              {/* Group separation: label when expanded, hairline when collapsed */}
+              {effectiveCollapsed ? (
+                groupIndex > 0 && (
+                  <div className="mx-auto my-3 h-px w-7 bg-white/10" />
+                )
+              ) : (
                 <div
-                  className="mb-1.5 px-3 text-[10px] font-semibold uppercase"
-                  style={{
-                    letterSpacing: "1.4px",
-                    color: "rgba(255,255,255,0.35)",
-                  }}
+                  className={cn(
+                    "mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/45",
+                    groupIndex === 0 ? "mt-2" : "mt-6",
+                  )}
                 >
                   {group.label}
                 </div>
               )}
 
               {/* Nav items */}
-              {group.items.map((item) => {
-                const active = isActive(item.href);
-                const Icon = item.icon;
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.href);
+                  const Icon = item.icon;
 
-                const linkContent = (
-                  <Link
-                    href={item.href}
-                    prefetch={false}
-                    className={cn(
-                      "flex items-center gap-2.5 rounded-md text-[12.5px] transition-colors duration-150 cursor-pointer group",
-                      effectiveCollapsed
-                        ? "justify-center px-0 py-2"
-                        : "px-3 py-1.5",
-                    )}
-                    style={{
-                      color: active
-                        ? "rgba(255,255,255,1)"
-                        : "rgba(255,255,255,0.6)",
-                      background: active
-                        ? "rgba(255,255,255,0.08)"
-                        : undefined,
-                      borderLeft: active
-                        ? "2px solid rgba(167,139,250,0.85)"
-                        : "2px solid transparent",
-                      paddingLeft: effectiveCollapsed
-                        ? undefined
-                        : active
-                          ? "10px"
-                          : "12px",
-                    }}
-                    onMouseEnter={(e) => {
-                      prefetchRoute(item.href);
-                      if (!active) {
-                        e.currentTarget.style.background =
-                          "rgba(255,255,255,0.04)";
-                        e.currentTarget.style.color =
-                          "rgba(255,255,255,0.9)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!active) {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color =
-                          "rgba(255,255,255,0.6)";
-                      }
-                    }}
-                    onFocus={() => prefetchRoute(item.href)}
-                  >
-                    <Icon size={16} strokeWidth={1.75} className="flex-shrink-0" />
-                    {!effectiveCollapsed && (
-                      <span className="truncate">{item.label}</span>
-                    )}
-                  </Link>
-                );
-
-                // When collapsed, wrap in Tooltip
-                if (effectiveCollapsed) {
-                  return (
-                    <Tooltip.Root key={item.id}>
-                      <Tooltip.Trigger asChild>
-                        {linkContent}
-                      </Tooltip.Trigger>
-                      <Tooltip.Portal>
-                        <Tooltip.Content
-                          side="right"
-                          sideOffset={8}
-                          className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                  const linkContent = (
+                    <Link
+                      href={item.href}
+                      prefetch={false}
+                      className={cn(
+                        "group relative flex items-center rounded-lg text-[13.5px] font-medium transition-colors duration-150",
+                        effectiveCollapsed
+                          ? "justify-center px-0 py-2.5"
+                          : "gap-3 px-3 py-2",
+                        active
+                          ? "text-white"
+                          : "text-white/60 hover:bg-white/[0.05] hover:text-white/95",
+                      )}
+                      onMouseEnter={() => prefetchRoute(item.href)}
+                      onFocus={() => prefetchRoute(item.href)}
+                    >
+                      {/* Active pill: glides between items on route change */}
+                      {active && (
+                        <motion.span
+                          layoutId="sidebar-active-pill"
+                          transition={
+                            reduceMotion ? { duration: 0 } : springs.snappy
+                          }
+                          className="absolute inset-0 rounded-lg bg-white/[0.09]"
                           style={{
-                            background: "rgba(26,26,46,0.92)",
-                            backdropFilter: "blur(12px)",
-                            WebkitBackdropFilter: "blur(12px)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            boxShadow:
-                              "0 8px 24px rgba(0,0,0,0.3)",
+                            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
                           }}
                         >
-                          {item.label}
-                          <Tooltip.Arrow
-                            style={{ fill: "rgba(26,26,46,0.92)" }}
+                          {/* Rail de acento de marca */}
+                          <span
+                            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full"
+                            style={{ background: "#A78BFA" }}
                           />
-                        </Tooltip.Content>
-                      </Tooltip.Portal>
-                    </Tooltip.Root>
+                        </motion.span>
+                      )}
+                      <Icon
+                        size={17}
+                        strokeWidth={1.75}
+                        className={cn(
+                          "relative flex-shrink-0 transition-transform duration-150",
+                          !reduceMotion && "group-hover:scale-[1.08]",
+                        )}
+                      />
+                      {!effectiveCollapsed && (
+                        <span className="relative truncate">{item.label}</span>
+                      )}
+                    </Link>
                   );
-                }
 
-                return <div key={item.id}>{linkContent}</div>;
-              })}
+                  // When collapsed, wrap in Tooltip
+                  if (effectiveCollapsed) {
+                    return (
+                      <Tooltip.Root key={item.id}>
+                        <Tooltip.Trigger asChild>{linkContent}</Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            side="right"
+                            sideOffset={8}
+                            className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                            style={{
+                              background: "rgba(26,26,46,0.94)",
+                              backdropFilter: "blur(12px)",
+                              WebkitBackdropFilter: "blur(12px)",
+                              border: "1px solid rgba(255,255,255,0.08)",
+                              boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                            }}
+                          >
+                            {item.label}
+                            <Tooltip.Arrow
+                              style={{ fill: "rgba(26,26,46,0.94)" }}
+                            />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    );
+                  }
+
+                  return <div key={item.id}>{linkContent}</div>;
+                })}
+              </div>
             </div>
           ))}
         </nav>
 
         {/* ----------------------------------------------------------------- */}
-        {/* Collapse toggle button (hidden on mobile) */}
+        {/* Footer: usuario + colapso — ancla el fondo del sidebar             */}
         {/* ----------------------------------------------------------------- */}
-        {!isMobile && (
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="relative flex h-12 w-full items-center justify-center transition-colors duration-200"
-            style={{ color: "rgba(255,255,255,0.2)" }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "rgba(255,255,255,0.5)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "rgba(255,255,255,0.2)";
-            }}
-          >
-            {collapsed ? (
-              <ChevronsRight size={18} strokeWidth={1.75} />
-            ) : (
-              <ChevronsLeft size={18} strokeWidth={1.75} />
-            )}
-          </button>
-        )}
+        <div className="relative flex-shrink-0 border-t border-white/[0.07] px-3 py-3">
+          {effectiveCollapsed ? (
+            <div className="flex flex-col items-center gap-2">
+              <Avatar name={user?.name} size="sm" />
+              {!isMobile && (
+                <button
+                  onClick={() => setCollapsed(false)}
+                  aria-label="Expandir menú"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/90"
+                >
+                  <motion.span
+                    animate={{ rotate: 180 }}
+                    transition={reduceMotion ? { duration: 0 } : springs.snappy}
+                    className="flex"
+                  >
+                    <ChevronsLeft size={17} strokeWidth={1.75} />
+                  </motion.span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <Avatar name={user?.name} size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13px] font-medium leading-tight text-white/90">
+                  {user?.name ?? "Usuario"}
+                </p>
+                <p className="truncate text-[11px] leading-tight text-white/45">
+                  {ROLE_LABELS[user?.role ?? ""] ?? user?.role ?? ""}
+                </p>
+              </div>
+              {!isMobile && (
+                <button
+                  onClick={() => setCollapsed(true)}
+                  aria-label="Colapsar menú"
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/90"
+                >
+                  <motion.span
+                    animate={{ rotate: 0 }}
+                    transition={reduceMotion ? { duration: 0 } : springs.snappy}
+                    className="flex"
+                  >
+                    <ChevronsLeft size={17} strokeWidth={1.75} />
+                  </motion.span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </motion.aside>
     </Tooltip.Provider>
   );
