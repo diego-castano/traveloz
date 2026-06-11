@@ -12,9 +12,14 @@ docs/
 ├── arquitectura/         Stack tecnico, infra, modulos, decisiones
 ├── design/               Sistema de diseno (tokens, colores, UI)
 ├── especificaciones/     Requerimientos y feedback del cliente
+├── auditorias/           Auditorias de QA, readiness y funcionalidad
+├── planning/             Planes, briefs y prompts historicos
 ├── changelog/            Historial de cambios por version
 └── sesiones/             Log de sesiones de trabajo
 ```
+
+> El estado vivo de pendientes para el go-live se mantiene en
+> [/PRODUCTION-PENDING.md](../PRODUCTION-PENDING.md) (raiz del repo).
 
 ---
 
@@ -58,6 +63,28 @@ Requerimientos del cliente y feedback de reuniones.
 | Archivo | Contenido |
 |---------|-----------|
 | [cambios-cliente-v1.5.md](especificaciones/cambios-cliente-v1.5.md) | 34 cambios identificados en call del 25/03/2026 (opciones hoteleras, markup, campos) |
+
+---
+
+## Auditorias
+
+Snapshots de QA y auditorias pre-release. El doc vivo de pendientes es
+[/PRODUCTION-PENDING.md](../PRODUCTION-PENDING.md).
+
+| Archivo | Contenido |
+|---------|-----------|
+| [auditoria-2026-06-10.md](auditorias/auditoria-2026-06-10.md) | Auditoria funcional completa pre-produccion: paquetes, servicios, frontend, backend/seguridad, CMS e imagenes |
+| [readiness-report-2026-05-27.md](auditorias/readiness-report-2026-05-27.md) | Reporte de readiness del 27/05 |
+| [qa-report-2026-05-26.md](auditorias/qa-report-2026-05-26.md) | QA visual del 24-26/05 (fixes ya aplicados) |
+
+---
+
+## Planning
+
+| Archivo | Contenido |
+|---------|-----------|
+| [frontend.md](planning/frontend.md) | Plan del frontend publico |
+| [prompt-inicial-2026-05-18.md](planning/prompt-inicial-2026-05-18.md) | Brief/prompt original del proyecto (historico) |
 
 ---
 

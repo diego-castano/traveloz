@@ -3,7 +3,11 @@
 Documento vivo. Lista todo lo que falta cerrar antes (o poco después) del
 go-live. Lo que ya quedó implementado se mueve al final, en "Hecho recientemente".
 
-Última actualización: **2026-05-27**.
+Última actualización: **2026-06-10** — re-verificado item por item en la
+auditoría completa pre-producción
+([docs/auditorias/auditoria-2026-06-10.md](docs/auditorias/auditoria-2026-06-10.md)).
+Estado general: la funcionalidad operativa (paquetes, servicios, CMS, imágenes,
+frontend) está completa; los bloqueantes reales son los de seguridad (S1-S3, R1).
 
 ---
 
@@ -99,18 +103,22 @@ Acumulado del audit del 26-may. Ordenado por riesgo.
 
 | # | Issue | Evidencia | Estado |
 |---|---|---|---|
-| S1 | **Sin `headers()` en `next.config.mjs`** — falta CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. | `next.config.mjs` | Pendiente |
-| S2 | **SSRF en `/api/upload/by-url`** — `fetch(userUrl)` sin blocklist; permite golpear `169.254.169.254/...` o `*.railway.internal`. | `src/app/api/upload/by-url/route.ts:55` | Pendiente |
-| S3 | **CV de postulantes accesible sin auth** — `cvUrl` apunta a `/api/image/leads/cv/...` que es ruta pública. Cualquiera con el link descarga el PDF. | `src/lib/storage.ts:103`, `src/app/api/image/[...path]/route.ts` | Pendiente |
-| S4 | **Upload de CV sin sniff de magic bytes** — confía en el `cv.type` declarado por el cliente. Se puede subir `.exe` con MIME `application/pdf`. | `src/actions/public-forms.actions.ts:115-130` | Pendiente |
-| S5 | **`/api/image/[...path]` devuelve `err.message` literal en 500** → leak de paths/keys S3. | `src/app/api/image/[...path]/route.ts:36` | Pendiente |
-| S6 | **`error.tsx` muestra `error.message` literal al usuario** — potencial leak de PII / SQL fragments. | `src/app/error.tsx:26`, `src/app/backend/error.tsx:32` | Pendiente |
-| S7 | **No existe `app/global-error.tsx`** — pantalla en blanco si `RootLayout` crashea. | `src/app/` | Pendiente |
+| S1 | **Sin `headers()` en `next.config.mjs`** — falta CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. | `next.config.mjs` | ✅ Arreglado (10-jun) — CSP + HSTS + XFO + nosniff + Referrer/Permissions-Policy |
+| S2 | **SSRF en `/api/upload/by-url`** — `fetch(userUrl)` sin blocklist; permite golpear `169.254.169.254/...` o `*.railway.internal`. | `src/lib/safe-fetch.ts` | ✅ Arreglado (10-jun) — DNS lookup + blocklist de rangos privados, redirects re-validados |
+| S3 | **CV de postulantes accesible sin auth** — `cvUrl` apunta a `/api/image/leads/cv/...` que es ruta pública. Cualquiera con el link descarga el PDF. | `src/app/api/image/[...path]/route.ts` | ✅ Arreglado (10-jun) — `leads/**` exige sesión + Cache-Control private |
+| S4 | **Upload de CV sin sniff de magic bytes** — confía en el `cv.type` declarado por el cliente. Se puede subir `.exe` con MIME `application/pdf`. | `src/lib/file-pipeline.ts:85-91` usa `fileTypeFromBuffer` (file-type) | ✅ Arreglado (verificado 10-jun) |
+| S5 | **`/api/image/[...path]` devuelve `err.message` literal en 500** → leak de paths/keys S3. | idem | ✅ Arreglado (10-jun) — mensajes genéricos en todas las rutas de upload/image |
+| S6 | **`error.tsx` muestra `error.message` literal al usuario** — potencial leak de PII / SQL fragments. | idem | ✅ Arreglado (10-jun) — mensaje genérico + digest |
+| S7 | **No existe `app/global-error.tsx`** — pantalla en blanco si `RootLayout` crashea. | `src/app/global-error.tsx` | ✅ Arreglado (10-jun) |
 | S8 | **`contacto_mapa_embed` se rendea con `dangerouslySetInnerHTML` sin sanitizar** — solo admin lo edita pero defensa en profundidad: sanitizar a `<iframe>` whitelist. | `src/app/(public)/contact/page.tsx:131-140` | Pendiente |
 
 ---
 
-## 🟡 Anti-spam (recomendado pre-launch)
+## 🟡 Anti-spam — ✅ Implementado (10-jun)
+
+Honeypot (`HoneypotField`, rechazo silencioso) + rate-limit 5/hora/IP por form
+(`checkFormRate` en `src/lib/rate-limit.ts`) + validación zod server-side en las
+5 actions de `public-forms.actions.ts`. Turnstile queda como fallback si no alcanza.
 
 Estrategia confirmada con el owner el 27-may:
 
@@ -141,10 +149,19 @@ action en `src/actions/public-forms.actions.ts`:
 
 | # | Issue | Evidencia | Fix |
 |---|---|---|---|
-| F1 | **`telefonoCodigo` se descarta en form sticky de detalle** — el select del prefijo país nunca llega a DB → lead pierde +598. | `src/app/(public)/destinos/[region]/[slug]/_components/QuoteSidebar.tsx:121` vs `src/actions/public-forms.actions.ts:247` | Renombrar select a `name="paisCodigo"` o aceptar ambos en el action. |
-| F2 | **`/cotizar` standalone ignora el campo `destino`** — el campo principal del form no se persiste. | `src/app/(public)/cotizar/_components/CotizarForm.tsx:24`, `submitQuoteForm` no lo lee | Agregar `destino: s(formData,"destino")` al `comentarios` (concatenar) o columna `destinoTexto` en `Cotizacion`. |
-| F3 | **`paqueteId` no se valida antes del INSERT** — si llega un ID inválido, Prisma tira P2003 y el lead se pierde. | `src/actions/public-forms.actions.ts:243` | Validar contra `prisma.paquete.findUnique` antes; si no existe, `paqueteId = null`. |
+| F1 | **`telefonoCodigo` se descarta en form sticky de detalle** — el select del prefijo país nunca llega a DB → lead pierde +598. | `src/app/(public)/destinos/[region]/[slug]/_components/QuoteSidebar.tsx:121` vs `src/actions/public-forms.actions.ts:247` | ✅ Arreglado (10-jun) — la action acepta `paisCodigo` y `telefonoCodigo`. |
+| F2 | **`/cotizar` standalone ignora el campo `destino`** — el campo principal del form no se persiste. | `src/app/(public)/cotizar/_components/CotizarForm.tsx:24`, `submitQuoteForm` no lo lee | ✅ Arreglado (10-jun) — `destino` se antepone a `comentarios`. |
+| F3 | **`paqueteId` no se valida antes del INSERT** — si llega un ID inválido, Prisma tira P2003 y el lead se pierde. | `src/actions/public-forms.actions.ts:243` | ✅ Arreglado (10-jun) — FK validado antes del insert. |
 | F4 | **Newsletter sin double opt-in** — cualquiera suscribe email ajeno. Riesgo de spam complaints cuando enchufemos campaigns. | `src/actions/public-forms.actions.ts:199` | Crear con `active:false` + token + email "confirmá tu suscripción". |
+
+### Nuevos — encontrados en la auditoría del 10-jun
+
+| # | Issue | Evidencia | Fix |
+|---|---|---|---|
+| F5 | **Publish gate no exige período del viaje** — se puede publicar un paquete sin `viajeDesde/viajeHasta` y el resolver de precios cae al fallback (precios $0 posibles en el sitio público). | `src/actions/paquete-frontend.actions.ts:184-226` | Agregar `if (!current.viajeDesde \|\| !current.viajeHasta) missing.push("período del viaje")`. |
+| F6 | **`recalcPaquetePrecioDesde()` nunca se llama** — el "Desde $X" de los listados puede quedar stale al cambiar opciones hoteleras. | `src/actions/paquete-frontend.actions.ts:346-371` | Invocarla tras upsert/update/delete de OpcionHotel y al recomputar opciones. |
+| F7 | **Deletes de servicios sin cache-bust** — `deleteAlojamiento`, `deleteTraslado`, `deleteSeguro` y `deleteCircuito` no llaman `bustServicesCacheGlobal()` → el servicio borrado sigue visible hasta 60s. | `src/actions/service.actions.ts:587,593,662,758` | Agregar el bust después del soft-delete. |
+| F8 | **Deletes de servicios sin chequeo "en uso"** — se puede soft-borrar un aéreo/hotel asignado a paquetes activos (los catálogos sí protegen, los servicios no). | `src/actions/service.actions.ts` (deleteAereo y hermanos) | Contar asignaciones (PaqueteAereo, etc.) y bloquear con mensaje, como hace `deleteTemporada`. |
 
 ---
 
@@ -152,7 +169,7 @@ action en `src/actions/public-forms.actions.ts`:
 
 | # | Issue | Evidencia | Estado |
 |---|---|---|---|
-| R1 | **RBAC server-side ausente en mutaciones de catálogo/paquetes/servicios/leads/notif**. VENDEDOR y MARKETING tienen `canEdit:false` en la UI, pero las server actions usan solo `requireAuth()` → pueden mutar todo vía DevTools. | `src/lib/require-auth.ts:25`; afecta ~150 call sites en `package`/`service`/`catalog`/`catalogo-servicios`/`categorias-destacadas`/`site-settings`/`testimonios`/`cms-content`/`leads`/`notificacion`/`package-lifecycle` `.actions.ts` | Pendiente |
+| R1 | **RBAC server-side ausente en mutaciones de catálogo/paquetes/servicios/leads/notif**. VENDEDOR y MARKETING tienen `canEdit:false` en la UI, pero las server actions usan solo `requireAuth()` → pueden mutar todo vía DevTools. | `src/lib/require-auth.ts:25`; afecta ~150 call sites en `package`/`service`/`catalog`/`catalogo-servicios`/`categorias-destacadas`/`site-settings`/`testimonios`/`cms-content`/`leads`/`notificacion`/`package-lifecycle` `.actions.ts` | ✅ Arreglado (10-jun) — `requireCanEdit()` en 129 mutaciones de 13 archivos |
 | R2 | **Audit log se escribe pero no se puede leer** — 40+ `prisma.auditLog.create` en código, 0 `findMany`. El cliente pagó esta feature en el commit `7fcb841` y no tiene cómo verla. | `grep prisma.auditLog.findMany src` → vacío | Pendiente |
 | R3 | **Dashboard de MARKETING usa la vista de VENDEDOR** — visualmente confuso para ese rol. | `src/app/backend/dashboard/page.tsx:33` | Pendiente |
 
@@ -252,7 +269,7 @@ Lista de lo que ya cerramos en los últimos dos sprints.
 
 ### Sprint QA visual (24-26 may) — fixes ya aplicados
 
-Detalles en `QA-REPORT.md`. Resumen:
+Detalles en [docs/auditorias/qa-report-2026-05-26.md](docs/auditorias/qa-report-2026-05-26.md). Resumen:
 - FAQ icons 404 (`/site/img/site/img/...` duplicado) → arreglado
 - PackageCard text overlap (heredaba `image-box.style1` absolute title) → reescrito
 - Mobile slider de categorías (fixed 3 cols) → responsive con `slidesToShowMobile`
