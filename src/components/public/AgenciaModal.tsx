@@ -68,6 +68,8 @@ export function AgenciaModal({ certificadoUrl }: AgenciaModalProps = {}) {
         <img
           src={src}
           alt="Certificado de agencia registrada - TravelOz"
+          loading="lazy"
+          decoding="async"
         />
       </div>
     </div>

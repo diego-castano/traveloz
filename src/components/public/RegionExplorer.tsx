@@ -205,6 +205,8 @@ export function RegionExplorer({ region, paises, paquetes }: Props) {
               <img
                 src={region.heroImage}
                 alt={region.nombre}
+                loading="lazy"
+                decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             </div>

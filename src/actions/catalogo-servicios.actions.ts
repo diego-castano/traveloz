@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireCanEdit } from "@/lib/require-auth";
 
 export async function listServicios() {
   return prisma.catalogoServicio.findMany({ orderBy: { orden: "asc" } });
@@ -14,7 +14,7 @@ export async function createServicio(input: {
   descripcion?: string | null;
   orden?: number;
 }) {
-  await requireAuth();
+  await requireCanEdit();
   const created = await prisma.catalogoServicio.create({ data: input });
   revalidatePath("/backend/catalogos/servicios");
   revalidatePath("/backend/web/servicios-incluidos");
@@ -37,7 +37,7 @@ export async function updateServicio(
     activo: boolean;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.catalogoServicio.update({
     where: { id },
     data: input,
@@ -54,7 +54,7 @@ export async function updateServicio(
 }
 
 export async function deleteServicio(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.catalogoServicio.delete({ where: { id } });
   revalidatePath("/backend/catalogos/servicios");
   revalidatePath("/backend/web/servicios-incluidos");

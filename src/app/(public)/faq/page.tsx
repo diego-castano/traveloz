@@ -40,11 +40,15 @@ export default async function FaqPage() {
           className="bg_image d-none d-md-block"
           src={bannerDesktop}
           alt=""
+          fetchPriority="high"
+          decoding="async"
         />
         <img
           className="bg_image d-md-none"
           src={bannerMobile}
           alt=""
+          fetchPriority="high"
+          decoding="async"
         />
         <div className="container">
           <div className="row">

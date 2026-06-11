@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 
 // ---------------------------------------------------------------------------
 // Preview URL resolver — used by the "Previsualizar" button in /backend/paquetes
@@ -167,7 +167,7 @@ export async function updatePaqueteFrontend(
     textoCondiciones?: string | null;
   },
 ) {
-  await requireAuth();
+  await requireCanEdit();
 
   // Publishing gate: when the operator flips `publicado=true`, validate the
   // paquete is actually ready. We block the publish (but still save the rest
@@ -262,7 +262,7 @@ export async function updatePaqueteLifecycle(
     validezHasta?: string | null;
   },
 ) {
-  await requireAuth();
+  await requireCanEdit();
 
   // Unpublishing rule: when the operator moves a published paquete OUT of
   // ACTIVO (to BORRADOR/EN_REVISION/ARCHIVADO), we also flip `publicado=false`
@@ -295,7 +295,7 @@ export async function assignPaqueteEtiqueta(
   paqueteId: string,
   etiquetaId: string,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const created = await prisma.paqueteEtiqueta.create({
     data: { paqueteId, etiquetaId },
   });
@@ -305,7 +305,7 @@ export async function assignPaqueteEtiqueta(
 }
 
 export async function removePaqueteEtiqueta(paqueteEtiquetaId: string) {
-  await requireAuth();
+  await requireCanEdit();
   const row = await prisma.paqueteEtiqueta.delete({
     where: { id: paqueteEtiquetaId },
   });
@@ -322,7 +322,7 @@ export async function setPaqueteServicios(
     orden: number;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.$transaction([
     prisma.paqueteServicio.deleteMany({ where: { paqueteId } }),
     ...(servicios.length > 0
@@ -348,7 +348,7 @@ export async function setPaqueteServicios(
  * there are no priced hotels yet.
  */
 export async function recalcPaquetePrecioDesde(paqueteId: string) {
-  await requireAuth();
+  await requireCanEdit();
   const opciones = await prisma.opcionHotel.findMany({
     where: { destino: { paqueteId } },
     include: {

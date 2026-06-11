@@ -36,7 +36,7 @@ export async function WhatsAppButton() {
       rel="noopener noreferrer"
       aria-label="Contactar por WhatsApp"
     >
-      <img src="/site/img/whatsapp.webp" alt="WhatsApp" />
+      <img src="/site/img/whatsapp.webp" alt="WhatsApp" loading="lazy" decoding="async" />
     </a>
   );
 }

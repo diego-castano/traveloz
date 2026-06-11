@@ -79,7 +79,7 @@ export async function Footer() {
           <div className="col-lg-3 col-sm-6">
             <div className="footer-left">
               <a className="footer-logo" href="/">
-                <img src={logo} alt="TravelOz" />
+                <img src={logo} alt="TravelOz" loading="lazy" decoding="async" />
               </a>
               <p>{aboutTexto}</p>
               {SOCIAL.length > 0 && (
@@ -188,7 +188,7 @@ export async function Footer() {
                 {partners.map((p) => (
                   <li key={p.label}>
                     <a href={p.href && p.href.trim().length > 0 ? p.href : "/"}>
-                      <img src={p.src} alt={p.label} />
+                      <img src={p.src} alt={p.label} loading="lazy" decoding="async" />
                     </a>
                   </li>
                 ))}

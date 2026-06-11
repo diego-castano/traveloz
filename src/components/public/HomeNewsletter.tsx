@@ -3,6 +3,7 @@
 import { useFormState } from "react-dom";
 import { submitNewsletterForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "./FormStatus";
+import HoneypotField from "./HoneypotField";
 
 export function HomeNewsletter({
   label,
@@ -26,6 +27,8 @@ export function HomeNewsletter({
         className="footer-cta-bg"
         src={bg}
         alt=""
+        loading="lazy"
+        decoding="async"
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
         }}
@@ -33,8 +36,9 @@ export function HomeNewsletter({
       <div className="container z-99">
         <div className="site-form style1">
           <form action={action}>
+            <HoneypotField />
             <label htmlFor="newsletter-email">
-              <img src={icon} alt="" />
+              <img src={icon} alt="" loading="lazy" decoding="async" />
             </label>
             <input
               id="newsletter-email"

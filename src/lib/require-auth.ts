@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth.config";
 import { BRAND_ID } from "@/lib/brand";
+import { roleConfig, type Role } from "@/lib/auth";
 
 // ---------------------------------------------------------------------------
 // Auth enforcement helpers for server actions.
@@ -31,6 +32,26 @@ export async function requireAuth(
   }
   const user = session.user as { id: string; role: string };
   return { userId: user.id, role: user.role, brandId: BRAND_ID };
+}
+
+/**
+ * Require a role with edit permissions (roleConfig[role].canEdit). Today
+ * that's only ADMIN — VENDEDOR y MARKETING son read-only en la UI y este
+ * check lo hace cumplir también del lado del servidor (la UI sola se puede
+ * esquivar llamando la server action desde DevTools).
+ *
+ * Usar en TODA server action que mute datos del negocio. Las lecturas y las
+ * acciones de perfil propio (password/PIN) siguen con requireAuth().
+ */
+export async function requireCanEdit(
+  _ignoredBrandId?: string,
+): Promise<AuthContext> {
+  const ctx = await requireAuth();
+  const config = roleConfig[ctx.role as Role];
+  if (!config?.canEdit) {
+    throw new Error("Tu rol no tiene permisos de edición.");
+  }
+  return ctx;
 }
 
 /**

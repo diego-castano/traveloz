@@ -472,7 +472,7 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                   showArrows
                   showDots
                 >
-                  {fotos.map((f) => (
+                  {fotos.map((f, fotoIdx) => (
                     <div
                       className="slide"
                       key={f.url}
@@ -488,6 +488,10 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                       <img
                         src={f.url}
                         alt={f.alt}
+                        decoding="async"
+                        {...(fotoIdx === 0
+                          ? { fetchPriority: "high" as const }
+                          : { loading: "lazy" as const })}
                         style={{
                           position: "absolute",
                           inset: 0,
@@ -551,6 +555,8 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                             <img
                               src={`/site/img/p-${s.icon}-icon.png`}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src =
                                   SERVICE_ICON_FALLBACK;
@@ -567,6 +573,8 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                             <img
                               src={serviceIconUrl(s.servicio.icon)}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src =
                                   SERVICE_ICON_FALLBACK;
@@ -580,6 +588,8 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                             <img
                               src={`/site/img/p-${detectIconForBullet(b.text)}-icon.png`}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
                               onError={(e) => {
                                 (e.currentTarget as HTMLImageElement).src =
                                   SERVICE_ICON_FALLBACK;

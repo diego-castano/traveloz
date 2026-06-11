@@ -29,7 +29,12 @@ export default function AdminError({
             Algo salio mal
           </h2>
           <p className="text-sm text-neutral-500 mb-6">
-            {error.message || "Ocurrio un error inesperado. Por favor, intenta de nuevo."}
+            Ocurrió un error inesperado. Por favor, intentá de nuevo.
+            {error.digest ? (
+              <span className="block mt-2 text-xs text-neutral-400">
+                Ref: {error.digest}
+              </span>
+            ) : null}
           </p>
           <Button
             onClick={reset}

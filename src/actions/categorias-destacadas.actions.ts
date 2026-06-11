@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireCanEdit } from "@/lib/require-auth";
 
 export async function listCategoriasDestacadas() {
   return prisma.categoriaDestacada.findMany({ orderBy: { orden: "asc" } });
@@ -14,7 +14,7 @@ export async function createCategoriaDestacada(input: {
   link: string;
   orden?: number;
 }) {
-  await requireAuth();
+  await requireCanEdit();
   const created = await prisma.categoriaDestacada.create({ data: input });
   revalidatePath("/backend/web/categorias");
   revalidatePath("/", "layout");
@@ -32,7 +32,7 @@ export async function updateCategoriaDestacada(
     activa: boolean;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.categoriaDestacada.update({
     where: { id },
     data: input,
@@ -44,7 +44,7 @@ export async function updateCategoriaDestacada(
 }
 
 export async function deleteCategoriaDestacada(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.categoriaDestacada.delete({ where: { id } });
   revalidatePath("/backend/web/categorias");
   revalidatePath("/", "layout");

@@ -36,7 +36,7 @@ export function FileUploadField({
       />
       <span className="placeholder-title">{placeholderTitle}</span>
       <div className="inner">
-        <img src={iconSrc} alt="" />
+        <img src={iconSrc} alt="" loading="lazy" decoding="async" />
         <span className="file-label">{fileName ?? defaultLabel}</span>
       </div>
     </div>

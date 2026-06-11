@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireCanEdit } from "@/lib/require-auth";
 
 export async function listTestimonios() {
   return prisma.testimonio.findMany({ orderBy: { orden: "asc" } });
@@ -18,7 +18,7 @@ export async function createTestimonio(input: {
   paqueteId?: string | null;
   orden?: number;
 }) {
-  await requireAuth();
+  await requireCanEdit();
   const created = await prisma.testimonio.create({ data: input });
   revalidatePath("/backend/web/testimonios");
   revalidatePath("/", "layout");
@@ -40,7 +40,7 @@ export async function updateTestimonio(
     paqueteId: string | null;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.testimonio.update({
     where: { id },
     data: input,
@@ -52,7 +52,7 @@ export async function updateTestimonio(
 }
 
 export async function deleteTestimonio(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.testimonio.delete({ where: { id } });
   revalidatePath("/backend/web/testimonios");
   revalidatePath("/", "layout");

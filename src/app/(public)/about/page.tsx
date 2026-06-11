@@ -71,7 +71,7 @@ export default async function AboutPage() {
           <div className="row align-items-lg-center">
             <div className="col-sm-6 order-sm-2 order-1">
               <div className="content-img">
-                <img src={imagen1} alt="TravelOz" />
+                <img src={imagen1} alt="TravelOz" loading="lazy" decoding="async" />
               </div>
             </div>
             <div className="col-sm-6 order-sm-1 order-2">
@@ -88,7 +88,7 @@ export default async function AboutPage() {
             <div className="row align-items-lg-center">
               <div className="col-sm-6">
                 <div className="content-img">
-                  <img src={imagen2} alt="TravelOz equipo" />
+                  <img src={imagen2} alt="TravelOz equipo" loading="lazy" decoding="async" />
                 </div>
               </div>
               <div className="col-sm-6">

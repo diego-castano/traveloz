@@ -5,6 +5,7 @@ import {
   processAndUpload,
   MAX_BYTES,
 } from "@/lib/file-pipeline";
+import { safeFetch, UnsafeUrlError } from "@/lib/safe-fetch";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,9 @@ export const runtime = "nodejs";
  *
  * Safety guards:
  *   - Auth required (admin only).
- *   - Only http(s) URLs.
+ *   - Only http(s) URLs resolving to PUBLIC IPs (SSRF blocklist en safe-fetch:
+ *     metadata cloud, *.railway.internal, localhost, rangos privados; los
+ *     redirects se re-validan salto a salto).
  *   - Hard timeout + size cap to prevent abuse.
  */
 export async function POST(req: Request) {
@@ -52,9 +55,8 @@ export async function POST(req: Request) {
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       signal: controller.signal,
-      redirect: "follow",
       headers: { "User-Agent": "TravelozUploader/1.0" },
     });
     if (!res.ok) {
@@ -102,16 +104,21 @@ export async function POST(req: Request) {
     if (err instanceof PipelineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
+    if (err instanceof UnsafeUrlError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     if (err instanceof DOMException && err.name === "AbortError") {
       return NextResponse.json(
         { error: "Tiempo de espera agotado" },
         { status: 504 },
       );
     }
-    const message =
-      err instanceof Error ? err.message : "Error fetcheando el origen";
-    console.error("[upload/by-url] failed:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    // No filtrar err.message al cliente: puede contener paths/keys internos.
+    console.error("[upload/by-url] failed:", err);
+    return NextResponse.json(
+      { error: "No se pudo importar el archivo desde esa URL." },
+      { status: 500 },
+    );
   } finally {
     clearTimeout(timeout);
   }

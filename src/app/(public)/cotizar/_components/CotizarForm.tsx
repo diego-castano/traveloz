@@ -5,6 +5,7 @@ import { submitQuoteForm } from "@/actions/public-forms.actions";
 import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
 import { FormStatus } from "@/components/public/FormStatus";
+import HoneypotField from "@/components/public/HoneypotField";
 
 export function CotizarForm() {
   const [result, action] = useFormState(submitQuoteForm, null);
@@ -21,6 +22,7 @@ export function CotizarForm() {
         action={action}
         style={{ display: "flex", flexDirection: "column", gap: 14 }}
       >
+        <HoneypotField />
         <input
           name="destino"
           placeholder="¿A dónde querés ir? *"

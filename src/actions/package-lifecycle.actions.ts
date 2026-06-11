@@ -19,7 +19,7 @@
 
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireCanEdit } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger, withLogging } from "@/lib/logger";
 import type { EstadoPaquete } from "@prisma/client";
@@ -29,7 +29,7 @@ const log = logger.child({ module: "package-lifecycle.actions" });
 
 export async function transitionEstado(id: string, next: EstadoPaquete) {
   return withLogging("paquete.transitionEstado", { id, next }, async (innerLog) => {
-    const { brandId, userId } = await requireAuth();
+    const { brandId, userId } = await requireCanEdit();
     const current = await prisma.paquete.findFirst({
       where: { id, brandId, deletedAt: null },
       select: { id: true, estado: true },
@@ -74,7 +74,7 @@ async function bulkSetEstado(
   ids: string[],
   target: EstadoPaquete,
 ): Promise<BulkResult> {
-  const { brandId } = await requireAuth();
+  const { brandId } = await requireCanEdit();
   BulkIdsSchema.parse({ ids });
 
   // Read current estados so we can enforce the transition matrix per row.
@@ -115,7 +115,7 @@ export async function bulkArchive(ids: string[]) {
 }
 
 export async function bulkSoftDelete(ids: string[]): Promise<BulkResult> {
-  const { brandId } = await requireAuth();
+  const { brandId } = await requireCanEdit();
   BulkIdsSchema.parse({ ids });
   const res = await prisma.paquete.updateMany({
     where: { id: { in: ids }, brandId, deletedAt: null },
@@ -143,7 +143,7 @@ export async function bulkUpdateMarkup(input: {
   recomputeVenta?: boolean;
 }): Promise<BulkResult> {
   return withLogging("paquete.bulkUpdateMarkup", { count: input.ids.length, factor: input.factor }, async () => {
-    const { brandId } = await requireAuth();
+    const { brandId } = await requireCanEdit();
     const parsed = MarkupChangeSchema.parse(input);
 
     const rows = await prisma.paquete.findMany({
@@ -188,7 +188,7 @@ export async function clonePaqueteAdvanced(sourceId: string, opts: CloneOptions 
     "paquete.cloneAdvanced",
     { sourceId, asTemplate: !!opts.asTemplate, hasNewSeason: !!opts.newSeason },
     async () => {
-      const { brandId } = await requireAuth();
+      const { brandId } = await requireCanEdit();
       return prisma.$transaction(
         async (tx) => {
         const source = await tx.paquete.findFirst({

@@ -38,17 +38,27 @@ export default async function TermsPage() {
   return (
     <>
       <section className="terms-banner-area">
-        <img className="bg_image d-md-none" src={bannerMobile} alt="" />
+        <img
+          className="bg_image d-md-none"
+          src={bannerMobile}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+        />
         <div className="container">
           <img
             src={bannerDesktop}
             alt=""
             className="terms_bg_img d-none d-md-block"
+            fetchPriority="high"
+            decoding="async"
           />
           <img
             src={bannerMobile}
             alt=""
             className="terms_bg_img d-md-none"
+            fetchPriority="high"
+            decoding="async"
           />
           <div className="row align-items-lg-center">
             <div className="col-lg-10 col-10">

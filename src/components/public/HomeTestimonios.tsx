@@ -43,13 +43,15 @@ export function HomeTestimonios({
                     <img
                       src={t.imageUrl ?? "/site/img/slider-4.webp"}
                       alt=""
+                      loading="lazy"
+                      decoding="async"
                     />
                   </div>
                 </div>
                 <div className="col-lg-6">
                   <div className="content-text style1 ps-lg-5">
                     <span className="loacation">
-                      <img src="/site/img/map-marker.webp" alt="" />
+                      <img src="/site/img/map-marker.webp" alt="" loading="lazy" decoding="async" />
                       {t.ubicacion}
                     </span>
                     <h3 className="title">{t.titulo}</h3>

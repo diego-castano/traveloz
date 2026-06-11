@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import type { EstadoMensaje } from "@prisma/client";
 
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ export async function updateLeadEstado(
   id: string,
   estado: EstadoMensaje,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const data = { estado };
   switch (kind) {
     case "cotizaciones":
@@ -144,7 +144,7 @@ export async function deleteLead(
   kind: LeadKind,
   id: string,
 ): Promise<void> {
-  await requireAuth();
+  await requireCanEdit();
   switch (kind) {
     case "cotizaciones":
       await prisma.cotizacion.delete({ where: { id } });
@@ -166,7 +166,7 @@ export async function deleteLead(
 }
 
 export async function toggleNewsletterActive(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   const current = await prisma.suscripcionNewsletter.findUnique({
     where: { id },
     select: { active: true },
@@ -213,7 +213,7 @@ export async function assignLead(
   id: string,
   userId: string | null,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const data = { asignadoAUserId: userId };
   switch (kind) {
     case "cotizaciones":

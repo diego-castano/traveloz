@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import type { CategoriaServicio } from "@prisma/client";
 import { logger } from "@/lib/logger";
 const log = logger.child({ module: "catalog.actions" });
@@ -102,7 +102,7 @@ export async function createTemporada(data: {
   activa?: boolean;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = TemporadaSchema.parse(data);
     const __res = await prisma.temporada.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
@@ -116,7 +116,7 @@ export async function updateTemporada(
   data: { nombre?: string; orden?: number; activa?: boolean }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.temporada.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating temporada", error);
@@ -126,7 +126,7 @@ export async function updateTemporada(
 
 export async function deleteTemporada(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const count = await prisma.paquete.count({ where: { temporadaId: id } });
     if (count > 0) {
       throw new Error(
@@ -165,7 +165,7 @@ export async function createTipoPaquete(data: {
   activo?: boolean;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = TipoPaqueteSchema.parse(data);
     const __res = await prisma.tipoPaquete.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
@@ -179,7 +179,7 @@ export async function updateTipoPaquete(
   data: { nombre?: string; orden?: number; activo?: boolean }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.tipoPaquete.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating tipo de paquete", error);
@@ -189,7 +189,7 @@ export async function updateTipoPaquete(
 
 export async function deleteTipoPaquete(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const count = await prisma.paquete.count({ where: { tipoPaqueteId: id } });
     if (count > 0) {
       throw new Error(
@@ -228,7 +228,7 @@ export async function createEtiqueta(data: {
   color: string;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = EtiquetaSchema.parse(data);
     const __res = await prisma.etiqueta.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
@@ -242,7 +242,7 @@ export async function updateEtiqueta(
   data: { nombre?: string; slug?: string; color?: string }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.etiqueta.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating etiqueta", error);
@@ -252,7 +252,7 @@ export async function updateEtiqueta(
 
 export async function deleteEtiqueta(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.etiqueta.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting etiqueta", error);
@@ -282,7 +282,7 @@ export async function createRegimen(data: {
   abrev: string;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = RegimenSchema.parse(data);
     const __res = await prisma.regimen.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
@@ -296,7 +296,7 @@ export async function updateRegimen(
   data: { nombre?: string; abrev?: string }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.regimen.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating regimen", error);
@@ -306,7 +306,7 @@ export async function updateRegimen(
 
 export async function deleteRegimen(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const count = await prisma.precioAlojamiento.count({ where: { regimenId: id } });
     if (count > 0) {
       throw new Error(
@@ -345,7 +345,7 @@ export async function createRegion(data: {
   orden?: number;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = RegionSchema.parse(data);
     const __res = await prisma.region.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
@@ -359,7 +359,7 @@ export async function updateRegion(
   data: { nombre?: string; slug?: string; orden?: number }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.region.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating region", error);
@@ -369,7 +369,7 @@ export async function updateRegion(
 
 export async function deleteRegion(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const count = await prisma.pais.count({ where: { regionId: id } });
     if (count > 0) {
       throw new Error(
@@ -409,7 +409,7 @@ export async function createPais(data: {
   regionId?: string | null;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = PaisSchema.parse(data);
     const __res = await prisma.pais.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
@@ -423,7 +423,7 @@ export async function updatePais(
   data: { nombre?: string; codigo?: string; regionId?: string | null }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.pais.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating pais", error);
@@ -433,7 +433,7 @@ export async function updatePais(
 
 export async function deletePais(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.pais.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting pais", error);
@@ -460,7 +460,7 @@ export async function getCiudades(paisId: string) {
 
 export async function createCiudad(data: { paisId: string; nombre: string }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const parsed = CiudadSchema.parse(data);
     const __res = await prisma.ciudad.create({ data: parsed }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
@@ -474,7 +474,7 @@ export async function updateCiudad(
   data: { nombre?: string }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.ciudad.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating ciudad", error);
@@ -484,7 +484,7 @@ export async function updateCiudad(
 
 export async function deleteCiudad(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.ciudad.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting ciudad", error);
@@ -518,7 +518,7 @@ export async function createProveedor(data: {
   servicio: CategoriaServicio;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = ProveedorSchema.parse(data);
     return await prisma.proveedor.create({
       data: { ...parsed, servicio: data.servicio, brandId },
@@ -541,7 +541,7 @@ export async function updateProveedor(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.proveedor.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating proveedor", error);
@@ -551,7 +551,7 @@ export async function updateProveedor(
 
 export async function deleteProveedor(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.proveedor.update({
       where: { id },
       data: { deletedAt: new Date() },

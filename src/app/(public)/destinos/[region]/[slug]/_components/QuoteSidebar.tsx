@@ -5,6 +5,7 @@ import { submitQuoteForm } from "@/actions/public-forms.actions";
 import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
 import { FormStatus } from "@/components/public/FormStatus";
+import HoneypotField from "@/components/public/HoneypotField";
 
 // ---------------------------------------------------------------------------
 // QuoteSidebar — right column form using the `sidebar-form sticky` markup
@@ -67,8 +68,8 @@ export function QuoteSidebar({
       <span className="d-block form-title">Contactate con nosotros</span>
 
       <form action={action}>
+        <HoneypotField />
         <input type="hidden" name="paqueteId" value={paqueteId} />
-        <input type="hidden" name="paqueteTitulo" value={paqueteTitulo} />
         <ul>
           <li>
             <label htmlFor="dateRange">Fecha de viaje*</label>

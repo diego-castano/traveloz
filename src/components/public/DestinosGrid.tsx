@@ -44,6 +44,8 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
                     <img
                       src={r.heroImage ?? "/site/img/slider-1.webp"}
                       alt={r.nombre}
+                      loading="lazy"
+                      decoding="async"
                     />
                     <h3 className="title">{r.nombre}</h3>
                   </a>

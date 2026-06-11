@@ -3,6 +3,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { submitContactForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "@/components/public/FormStatus";
+import HoneypotField from "@/components/public/HoneypotField";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -17,6 +18,7 @@ export function ContactForm() {
   const [result, formAction] = useFormState(submitContactForm, null);
   return (
     <form id="contact-form" action={formAction}>
+      <HoneypotField />
       <ul className="row">
         <li className="col-sm-12">
           <label htmlFor="f_name">Nombre Completo</label>

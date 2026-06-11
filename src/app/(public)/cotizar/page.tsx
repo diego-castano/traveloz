@@ -48,7 +48,7 @@ export default async function CotizarPage() {
               {porqueCards.map((c, i) => (
                 <div className="col-md-4" key={i}>
                   <div className="icon-teaser style1 text-center">
-                    {c.icon && <img src={c.icon} alt="" />}
+                    {c.icon && <img src={c.icon} alt="" loading="lazy" decoding="async" />}
                     <h3 className="title">{c.titulo}</h3>
                     {c.texto && <p>{c.texto}</p>}
                   </div>

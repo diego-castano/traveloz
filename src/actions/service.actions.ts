@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
 import {
@@ -212,7 +212,7 @@ export async function createAereo(data: {
   }>;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const { precios, ...aereoData } = AereoCreateSchema.parse(data);
     const aereo = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "aereo");
@@ -252,7 +252,7 @@ export async function updateAereo(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.aereo.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating aereo", error);
@@ -262,7 +262,7 @@ export async function updateAereo(
 
 export async function deleteAereo(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.aereo.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -284,7 +284,7 @@ export async function createPrecioAereo(data: {
   precioAdulto: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const parsed = PrecioAereoSchema.parse(data);
     const __res = await prisma.precioAereo.create({ data: parsed });
     bustServicesCacheGlobal();
@@ -305,7 +305,7 @@ export async function updatePrecioAereo(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.precioAereo.update({ where: { id }, data });
     bustServicesCacheGlobal();
     await recomputeForAereo(__res.aereoId);
@@ -318,7 +318,7 @@ export async function updatePrecioAereo(
 
 export async function deletePrecioAereo(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     // Capture aereoId BEFORE the delete so we can propagate.
     const existing = await prisma.precioAereo.findUnique({
       where: { id },
@@ -360,7 +360,7 @@ export async function createAlojamiento(data: {
   sitioWeb?: string | null;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = AlojamientoSchema.parse(data);
     return await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "alojamiento");
@@ -383,7 +383,7 @@ export async function updateAlojamiento(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.alojamiento.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating alojamiento", error);
@@ -393,7 +393,7 @@ export async function updateAlojamiento(
 
 export async function deleteAlojamiento(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.alojamiento.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -416,7 +416,7 @@ export async function createPrecioAlojamiento(data: {
   regimenId?: string | null;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const parsed = PrecioAlojamientoSchema.parse(data);
     const __res = await prisma.precioAlojamiento.create({ data: parsed });
     bustServicesCacheGlobal();
@@ -438,7 +438,7 @@ export async function updatePrecioAlojamiento(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.precioAlojamiento.update({ where: { id }, data });
     bustServicesCacheGlobal();
     await recomputeForAlojamiento(__res.alojamientoId);
@@ -451,7 +451,7 @@ export async function updatePrecioAlojamiento(
 
 export async function deletePrecioAlojamiento(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.precioAlojamiento.findUnique({
       where: { id },
       select: { alojamientoId: true },
@@ -477,7 +477,7 @@ export async function createAlojamientoFoto(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const parsed = AlojamientoFotoSchema.parse(data);
     const __res = await prisma.alojamientoFoto.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
@@ -495,7 +495,7 @@ export async function updateAlojamientoFoto(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.alojamientoFoto.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating alojamiento foto", error);
@@ -505,7 +505,7 @@ export async function updateAlojamientoFoto(
 
 export async function deleteAlojamientoFoto(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.alojamientoFoto.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting alojamiento foto", error);
@@ -539,7 +539,7 @@ export async function createTraslado(data: {
   precio: number;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = TrasladoSchema.parse(data);
     const result = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "traslado");
@@ -566,7 +566,7 @@ export async function updateTraslado(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.traslado.update({ where: { id }, data });
     bustServicesCacheGlobal();
     if (data.precio !== undefined) await recomputeForTraslado(id);
@@ -579,7 +579,7 @@ export async function updateTraslado(
 
 export async function deleteTraslado(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.traslado.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -616,7 +616,7 @@ export async function createSeguro(data: {
   costoPorDia: number;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = SeguroSchema.parse(data);
     return await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "seguro");
@@ -638,7 +638,7 @@ export async function updateSeguro(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.seguro.update({ where: { id }, data });
     bustServicesCacheGlobal();
     if (data.costoPorDia !== undefined) await recomputeForSeguro(id);
@@ -651,7 +651,7 @@ export async function updateSeguro(
 
 export async function deleteSeguro(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.seguro.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -693,7 +693,7 @@ export async function createCircuito(data: {
   }>;
 }, requestedBrandId?: string) {
   try {
-    const { brandId } = await requireAuth(requestedBrandId);
+    const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = CircuitoCreateSchema.parse(data);
     return await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "circuito");
@@ -737,7 +737,7 @@ export async function updateCircuito(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.circuito.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating circuito", error);
@@ -747,7 +747,7 @@ export async function updateCircuito(
 
 export async function deleteCircuito(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.circuito.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -770,7 +770,7 @@ export async function createCircuitoDia(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const parsed = CircuitoDiaSchema.parse(data);
     const __res = await prisma.circuitoDia.create({ data: parsed }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
@@ -789,7 +789,7 @@ export async function updateCircuitoDia(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.circuitoDia.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating circuito dia", error);
@@ -799,7 +799,7 @@ export async function updateCircuitoDia(
 
 export async function deleteCircuitoDia(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.circuitoDia.delete({ where: { id } }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting circuito dia", error);
@@ -818,7 +818,7 @@ export async function createPrecioCircuito(data: {
   precio: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const parsed = PrecioCircuitoSchema.parse(data);
     const __res = await prisma.precioCircuito.create({ data: parsed });
     bustServicesCacheGlobal();
@@ -839,7 +839,7 @@ export async function updatePrecioCircuito(
   }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const __res = await prisma.precioCircuito.update({ where: { id }, data });
     bustServicesCacheGlobal();
     await recomputeForCircuito(__res.circuitoId);
@@ -852,7 +852,7 @@ export async function updatePrecioCircuito(
 
 export async function deletePrecioCircuito(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.precioCircuito.findUnique({
       where: { id },
       select: { circuitoId: true },

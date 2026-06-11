@@ -13,6 +13,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { submitCorporateForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "@/components/public/FormStatus";
+import HoneypotField from "@/components/public/HoneypotField";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Typewriter } from "@/components/public/Typewriter";
 
@@ -119,7 +120,7 @@ export function CorporativoView({
               {cards.map((c) => (
                 <div className="col-md-4" key={c.icon}>
                   <div className="icon-teaser style1">
-                    <img src={c.icon} alt="icon" />
+                    <img src={c.icon} alt="icon" loading="lazy" decoding="async" />
                     <h3 className="title">{c.title}</h3>
                     <CardBody html={c.body} />
                   </div>
@@ -140,7 +141,7 @@ export function CorporativoView({
             >
               {cards.map((c) => (
                 <div className="icon-teaser style1" key={c.icon}>
-                  <img src={c.icon} alt="icon" />
+                  <img src={c.icon} alt="icon" loading="lazy" decoding="async" />
                   <h3 className="title">{c.title}</h3>
                   <CardBody html={c.body} />
                 </div>
@@ -168,7 +169,7 @@ export function CorporativoView({
                           target={c.link ? "_blank" : undefined}
                           rel={c.link ? "noopener noreferrer" : undefined}
                         >
-                          <img src={c.logoUrl} alt={c.nombre} />
+                          <img src={c.logoUrl} alt={c.nombre} loading="lazy" decoding="async" />
                         </a>
                       </li>
                     ))}
@@ -193,7 +194,7 @@ export function CorporativoView({
                           rel={c.link ? "noopener noreferrer" : undefined}
                           key={c.id}
                         >
-                          <img src={c.logoUrl} alt={c.nombre} />
+                          <img src={c.logoUrl} alt={c.nombre} loading="lazy" decoding="async" />
                         </a>
                       ))}
                     </EmblaSlider>
@@ -215,6 +216,7 @@ export function CorporativoView({
                   <h2 className="section-heading">{formTitulo}</h2>
                 </div>
                 <form action={formAction}>
+                  <HoneypotField />
                   <ul className="row">
                     <li className="col-sm-12">
                       <label htmlFor="f_name">Nombre Completo</label>
@@ -289,6 +291,8 @@ export function CorporativoView({
                         <img
                           src={p.photoUrl ?? "/site/img/agencia.jpeg"}
                           alt={p.nombre}
+                          loading="lazy"
+                          decoding="async"
                         />
                       </div>
                       <div className="text">

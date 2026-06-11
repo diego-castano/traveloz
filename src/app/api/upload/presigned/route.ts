@@ -71,9 +71,10 @@ export async function POST(req: Request) {
       publicUrl: `/api/image/${result.key}`,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Error generando presigned URL";
-    console.error("[upload/presigned] failed:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[upload/presigned] failed:", err);
+    return NextResponse.json(
+      { error: "No se pudo generar la URL de subida." },
+      { status: 500 },
+    );
   }
 }

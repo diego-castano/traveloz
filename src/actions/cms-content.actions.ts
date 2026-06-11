@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireCanEdit } from "@/lib/require-auth";
 
 // ---------------------------------------------------------------------------
 // CMS content CRUD — FaqTopic, TermSection, ClienteCorporativo, PersonaContacto
@@ -30,7 +30,7 @@ export async function createFaqTopic(input: {
   iconUrl?: string | null;
   orden?: number;
 }) {
-  await requireAuth();
+  await requireCanEdit();
   const slug = slugify(input.label) || `topic-${Date.now()}`;
   const created = await prisma.faqTopic.create({
     data: { ...input, slug },
@@ -52,7 +52,7 @@ export async function updateFaqTopic(
     slug: string;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.faqTopic.update({ where: { id }, data: input });
   revalidatePath("/backend/web/faq");
   revalidatePath("/faq");
@@ -61,7 +61,7 @@ export async function updateFaqTopic(
 }
 
 export async function deleteFaqTopic(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.faqTopic.delete({ where: { id } });
   revalidatePath("/backend/web/faq");
   revalidatePath("/faq");
@@ -78,7 +78,7 @@ export async function createTermSection(input: {
   bodyHtml: string;
   orden?: number;
 }) {
-  await requireAuth();
+  await requireCanEdit();
   const slug = slugify(input.title) || `section-${Date.now()}`;
   const created = await prisma.termSection.create({
     data: { ...input, slug },
@@ -99,7 +99,7 @@ export async function updateTermSection(
     slug: string;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.termSection.update({
     where: { id },
     data: input,
@@ -111,7 +111,7 @@ export async function updateTermSection(
 }
 
 export async function deleteTermSection(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.termSection.delete({ where: { id } });
   revalidatePath("/backend/web/terms");
   revalidatePath("/terms");
@@ -129,7 +129,7 @@ export async function createClienteCorporativo(input: {
   link?: string | null;
   orden?: number;
 }) {
-  await requireAuth();
+  await requireCanEdit();
   const created = await prisma.clienteCorporativo.create({ data: input });
   revalidatePath("/backend/web/clientes");
   revalidatePath("/corporativo");
@@ -147,7 +147,7 @@ export async function updateClienteCorporativo(
     activo: boolean;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.clienteCorporativo.update({
     where: { id },
     data: input,
@@ -159,7 +159,7 @@ export async function updateClienteCorporativo(
 }
 
 export async function deleteClienteCorporativo(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.clienteCorporativo.delete({ where: { id } });
   revalidatePath("/backend/web/clientes");
   revalidatePath("/corporativo");
@@ -178,7 +178,7 @@ export async function createPersonaContacto(input: {
   photoUrl?: string | null;
   orden?: number;
 }) {
-  await requireAuth();
+  await requireCanEdit();
   const created = await prisma.personaContacto.create({ data: input });
   revalidatePath("/backend/web/equipo");
   revalidatePath("/corporativo");
@@ -197,7 +197,7 @@ export async function updatePersonaContacto(
     activo: boolean;
   }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.personaContacto.update({
     where: { id },
     data: input,
@@ -209,7 +209,7 @@ export async function updatePersonaContacto(
 }
 
 export async function deletePersonaContacto(id: string) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.personaContacto.delete({ where: { id } });
   revalidatePath("/backend/web/equipo");
   revalidatePath("/corporativo");

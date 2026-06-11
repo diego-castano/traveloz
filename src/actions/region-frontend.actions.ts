@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireCanEdit } from "@/lib/require-auth";
 import { BRAND_ID } from "@/lib/brand";
 
 // ---------------------------------------------------------------------------
@@ -44,7 +44,7 @@ export async function updateRegionFrontend(
   id: string,
   data: { heroImage?: string | null; descripcion?: string | null },
 ) {
-  await requireAuth();
+  await requireCanEdit();
   const updated = await prisma.region.update({
     where: { id },
     data: {

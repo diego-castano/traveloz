@@ -65,7 +65,7 @@ export function FormasDePago({
               {d.tarjetas.map((t) => (
                 <div className="col-lg-3 col-3" key={t.alt}>
                   <div className="payment-icon">
-                    <img src={t.src} alt={t.alt} />
+                    <img src={t.src} alt={t.alt} loading="lazy" decoding="async" />
                   </div>
                 </div>
               ))}
@@ -77,7 +77,7 @@ export function FormasDePago({
               {d.bancos.map((b) => (
                 <div className="col-lg-3 col-3" key={b.alt}>
                   <div className="payment-icon">
-                    <img src={b.src} alt={b.alt} />
+                    <img src={b.src} alt={b.alt} loading="lazy" decoding="async" />
                   </div>
                 </div>
               ))}

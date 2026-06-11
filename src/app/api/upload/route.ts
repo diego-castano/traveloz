@@ -54,9 +54,11 @@ export async function POST(req: Request) {
     if (err instanceof PipelineError) {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
-    const message = err instanceof Error ? err.message : "Error de almacenamiento";
-    console.error("[upload] failed:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[upload] failed:", err);
+    return NextResponse.json(
+      { error: "No se pudo subir el archivo." },
+      { status: 500 },
+    );
   }
 }
 
@@ -103,7 +105,10 @@ export async function DELETE(req: Request) {
     await deleteObject(rawKey);
     return new Response(null, { status: 204 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error al eliminar";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[upload:delete] failed:", err);
+    return NextResponse.json(
+      { error: "No se pudo eliminar el archivo." },
+      { status: 500 },
+    );
   }
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireCanEdit } from "@/lib/require-auth";
 
 export async function getSettingsByGroup(group: string) {
   return prisma.siteSetting.findMany({
@@ -18,7 +18,7 @@ export async function getSetting(key: string) {
 export async function updateSettings(
   updates: Array<{ key: string; value: string }>,
 ) {
-  await requireAuth();
+  await requireCanEdit();
   await prisma.$transaction(
     updates.map((u) =>
       prisma.siteSetting.upsert({

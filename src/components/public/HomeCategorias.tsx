@@ -34,7 +34,7 @@ export function HomeCategorias({
         >
           {shownItems.map((c) => (
             <a href={c.link} className="image-box style1" key={c.id}>
-              <img src={c.imagen} alt={c.titulo} />
+              <img src={c.imagen} alt={c.titulo} loading="lazy" decoding="async" />
               <h3 className="title">{c.titulo}</h3>
             </a>
           ))}

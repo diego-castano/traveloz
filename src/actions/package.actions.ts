@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
 import {
@@ -304,7 +304,7 @@ export async function createPaquete(data: {
   ordenServicios?: string[];
 }) {
   try {
-    const { brandId } = await requireAuth();
+    const { brandId } = await requireCanEdit();
 
     const schema = z.object({
       titulo: z.string().min(1),
@@ -361,7 +361,7 @@ export async function updatePaquete(
   }
 ) {
   try {
-    const { brandId } = await requireAuth();
+    const { brandId } = await requireCanEdit();
 
     // Brand-ownership check: prevent users from editing paquetes of other brands
     // even if they happen to know the ID. Cheap (indexed by id) and stops the
@@ -395,7 +395,7 @@ export async function updatePaquete(
 
 export async function deletePaquete(id: string) {
   try {
-    const { brandId } = await requireAuth();
+    const { brandId } = await requireCanEdit();
     const owner = await prisma.paquete.findFirst({
       where: { id, brandId, deletedAt: null },
       select: { id: true },
@@ -416,7 +416,7 @@ export async function deletePaquete(id: string) {
 
 export async function clonePaquete(sourceId: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.$transaction(
       async (tx) => {
       // 1. Read source paquete
@@ -666,7 +666,7 @@ export async function assignAereo(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.paqueteAereo.create({ data });
     await safePropagate(data.paqueteId);
     return res;
@@ -688,7 +688,7 @@ export async function assignAereo(data: {
 
 export async function removeAereo(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.paqueteAereo.findUnique({
       where: { id },
       select: { paqueteId: true },
@@ -707,7 +707,7 @@ export async function updateAereoAssignment(
   data: { textoDisplay?: string; orden?: number }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteAereo.update({ where: { id }, data });
   } catch (error) {
     log.error("updating aereo assignment", error);
@@ -727,7 +727,7 @@ export async function reorderPaqueteAssignments(
   orderedIds: string[],
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const updates = orderedIds.map((id, orden) => {
       switch (type) {
         case "aereos":
@@ -759,7 +759,7 @@ export async function assignAlojamiento(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.paqueteAlojamiento.create({ data });
     await safePropagate(data.paqueteId);
     return res;
@@ -782,7 +782,7 @@ export async function assignAlojamiento(data: {
 
 export async function removeAlojamiento(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.paqueteAlojamiento.findUnique({
       where: { id },
       select: { paqueteId: true },
@@ -801,7 +801,7 @@ export async function updateAlojamientoAssignment(
   data: { nochesEnEste?: number; textoDisplay?: string; orden?: number }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteAlojamiento.update({ where: { id }, data });
   } catch (error) {
     log.error("updating alojamiento assignment", error);
@@ -820,7 +820,7 @@ export async function assignTraslado(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.paqueteTraslado.create({ data });
     await safePropagate(data.paqueteId);
     return res;
@@ -840,7 +840,7 @@ export async function assignTraslado(data: {
 
 export async function removeTraslado(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.paqueteTraslado.findUnique({
       where: { id },
       select: { paqueteId: true },
@@ -859,7 +859,7 @@ export async function updateTrasladoAssignment(
   data: { textoDisplay?: string; orden?: number }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteTraslado.update({ where: { id }, data });
   } catch (error) {
     log.error("updating traslado assignment", error);
@@ -879,7 +879,7 @@ export async function assignSeguro(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.paqueteSeguro.create({ data });
     await safePropagate(data.paqueteId);
     return res;
@@ -897,7 +897,7 @@ export async function assignSeguro(data: {
 
 export async function removeSeguro(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.paqueteSeguro.findUnique({
       where: { id },
       select: { paqueteId: true },
@@ -916,7 +916,7 @@ export async function updateSeguroAssignment(
   data: { diasCobertura?: number; textoDisplay?: string; orden?: number }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.paqueteSeguro.update({ where: { id }, data });
     // Only diasCobertura affects pricing — textoDisplay/orden are cosmetic.
     if (data.diasCobertura !== undefined) {
@@ -940,7 +940,7 @@ export async function assignCircuito(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.paqueteCircuito.create({ data });
     await safePropagate(data.paqueteId);
     return res;
@@ -960,7 +960,7 @@ export async function assignCircuito(data: {
 
 export async function removeCircuito(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.paqueteCircuito.findUnique({
       where: { id },
       select: { paqueteId: true },
@@ -979,7 +979,7 @@ export async function updateCircuitoAssignment(
   data: { textoDisplay?: string; orden?: number }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteCircuito.update({ where: { id }, data });
   } catch (error) {
     log.error("updating circuito assignment", error);
@@ -998,7 +998,7 @@ export async function addPaqueteFoto(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteFoto.create({ data });
   } catch (error) {
     log.error("adding paquete foto", error);
@@ -1008,7 +1008,7 @@ export async function addPaqueteFoto(data: {
 
 export async function removePaqueteFoto(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteFoto.delete({ where: { id } });
   } catch (error) {
     log.error("removing paquete foto", error);
@@ -1021,7 +1021,7 @@ export async function updatePaqueteFoto(
   data: { url?: string; alt?: string; orden?: number }
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteFoto.update({ where: { id }, data });
   } catch (error) {
     log.error("updating paquete foto", error);
@@ -1038,7 +1038,7 @@ export async function assignEtiqueta(data: {
   etiquetaId: string;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteEtiqueta.create({ data });
   } catch (error) {
     log.error("assigning etiqueta", error);
@@ -1048,7 +1048,7 @@ export async function assignEtiqueta(data: {
 
 export async function removeEtiqueta(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.paqueteEtiqueta.delete({ where: { id } });
   } catch (error) {
     log.error("removing etiqueta", error);
@@ -1070,7 +1070,7 @@ export async function createOpcionHotelera(data: {
   textoDisplay?: string | null;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     return await prisma.opcionHotelera.create({ data });
   } catch (error) {
     log.error("creating opcion hotelera", error);
@@ -1090,7 +1090,7 @@ export async function updateOpcionHotelera(
   },
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.opcionHotelera.update({ where: { id }, data });
     // Recompute when the factor changes. We skip when only precioVenta was sent
     // — that's a manual override the propagator would overwrite. nombre/orden/
@@ -1105,7 +1105,7 @@ export async function updateOpcionHotelera(
 
 export async function deleteOpcionHotelera(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.opcionHotelera.findUnique({
       where: { id },
       select: { paqueteId: true },
@@ -1130,7 +1130,7 @@ export async function createPaqueteDestino(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const schema = z.object({
       paqueteId: z.string().min(1),
       ciudadId: z.string().min(1),
@@ -1153,7 +1153,7 @@ export async function updatePaqueteDestino(
   data: { ciudadId?: string; noches?: number; orden?: number },
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.paqueteDestino.update({ where: { id }, data });
     // noches affects every opcion's alojamiento cost; ciudadId may change which
     // hotels are valid but does not affect persisted prices directly. orden is
@@ -1171,7 +1171,7 @@ export async function updatePaqueteDestino(
 
 export async function deletePaqueteDestino(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.paqueteDestino.findUnique({
       where: { id },
       select: { paqueteId: true },
@@ -1198,7 +1198,7 @@ export async function reorderPaqueteDestinos(
   orderedIds: string[],
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     await prisma.$transaction(
       orderedIds.map((id, idx) =>
         prisma.paqueteDestino.update({
@@ -1224,7 +1224,7 @@ export async function createOpcionHotel(data: {
   orden?: number;
 }) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.opcionHotel.create({ data });
     await recomputeForOpcionHotelera(data.opcionHoteleraId).catch((err) =>
       log.error("propagate failed (createOpcionHotel)", { err })
@@ -1241,7 +1241,7 @@ export async function updateOpcionHotel(
   data: { alojamientoId?: string; orden?: number },
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.opcionHotel.update({ where: { id }, data });
     if (data.alojamientoId !== undefined) {
       await recomputeForOpcionHotelera(res.opcionHoteleraId).catch((err) =>
@@ -1257,7 +1257,7 @@ export async function updateOpcionHotel(
 
 export async function deleteOpcionHotel(id: string) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const existing = await prisma.opcionHotel.findUnique({
       where: { id },
       select: { opcionHoteleraId: true },
@@ -1286,7 +1286,7 @@ export async function upsertOpcionHotelPrincipal(
   alojamientoId: string,
 ) {
   try {
-    await requireAuth();
+    await requireCanEdit();
     const res = await prisma.opcionHotel.upsert({
       where: {
         opcionHoteleraId_destinoId: { opcionHoteleraId, destinoId },

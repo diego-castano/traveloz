@@ -65,6 +65,60 @@ export function resetLoginRate(ip: string | null | undefined): void {
 }
 
 // ──────────────────────────────────────────────
+// Generic limiter for public form submissions
+// ──────────────────────────────────────────────
+
+const FORM_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const FORM_MAX_HITS = 5; // 5 envíos por form por IP por hora
+
+const formBuckets = new Map<string, Bucket>();
+
+/**
+ * Rate limit para los formularios públicos (cotizar, contacto, newsletter,
+ * corporativo, work-with-us). Misma estrategia process-local que el login:
+ * suficiente para una sola instancia de Railway; si escalamos horizontal,
+ * cambiar por Redis manteniendo esta firma.
+ *
+ * `scope` separa los buckets por formulario para que llenar el límite de
+ * newsletter no bloquee un pedido de cotización legítimo.
+ */
+export function checkFormRate(
+  scope: string,
+  ip: string | null | undefined,
+): RateLimitResult {
+  const key = `${scope}:${ip || "unknown"}`;
+  const now = Date.now();
+  const existing = formBuckets.get(key);
+
+  // GC oportunista para que el Map no crezca sin límite.
+  if (formBuckets.size > 5000) {
+    formBuckets.forEach((b, k) => {
+      if (b.resetAt < now) formBuckets.delete(k);
+    });
+  }
+
+  if (!existing || existing.resetAt < now) {
+    formBuckets.set(key, { count: 1, resetAt: now + FORM_WINDOW_MS });
+    return { allowed: true, remaining: FORM_MAX_HITS - 1, retryAfterSeconds: 0 };
+  }
+
+  existing.count += 1;
+  if (existing.count > FORM_MAX_HITS) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: Math.ceil((existing.resetAt - now) / 1000),
+    };
+  }
+
+  return {
+    allowed: true,
+    remaining: Math.max(0, FORM_MAX_HITS - existing.count),
+    retryAfterSeconds: 0,
+  };
+}
+
+// ──────────────────────────────────────────────
 // Per-user lockout policy (driven by DB columns)
 // ──────────────────────────────────────────────
 

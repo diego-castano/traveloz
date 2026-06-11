@@ -7,6 +7,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { submitWorkWithUsForm } from "@/actions/public-forms.actions";
 import { FormStatus } from "@/components/public/FormStatus";
 import { FileUploadField } from "@/components/public/FileUploadField";
+import HoneypotField from "@/components/public/HoneypotField";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -37,6 +38,7 @@ export function WorkForm() {
 
   return (
     <form action={formAction} encType="multipart/form-data">
+      <HoneypotField />
       <ul className="row">
         <li className="col-sm-12">
           <label htmlFor="f_name">Nombre Completo</label>

@@ -46,7 +46,7 @@ export async function Header() {
           <div className="header-inn d-flex align-items-center justify-content-between">
             <div className="header-logo">
               <a href="/">
-                <img src={logo} alt="TravelOz" />
+                <img src={logo} alt="TravelOz" decoding="async" />
               </a>
             </div>
             <div className="header-menu">

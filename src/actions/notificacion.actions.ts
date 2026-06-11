@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
+import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { logger } from "@/lib/logger";
 const log = logger.child({ module: "notificacion.actions" });
 
@@ -16,7 +16,7 @@ export async function createNotificacion(data: {
   mensaje?: string | null;
 }) {
   try {
-    const { brandId } = await requireAuth();
+    const { brandId } = await requireCanEdit();
 
     const schema = z.object({
       etiquetaId: z.string().min(1),

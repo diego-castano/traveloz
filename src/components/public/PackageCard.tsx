@@ -49,6 +49,8 @@ export function PackageCard({
         <img
           src={img}
           alt={paquete.titulo}
+          loading="lazy"
+          decoding="async"
           style={{
             display: "block",
             width: "100%",

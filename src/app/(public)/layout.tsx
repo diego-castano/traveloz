@@ -13,6 +13,7 @@
 // ---------------------------------------------------------------------------
 
 import type { ReactNode } from "react";
+import { preload } from "react-dom";
 import { Header } from "@/components/public/Header";
 import { Footer } from "@/components/public/Footer";
 import { AgenciaModal } from "@/components/public/AgenciaModal";
@@ -31,6 +32,18 @@ import "@/bones/registry";
 export const dynamic = "force-dynamic";
 
 export default async function PublicLayout({ children }: { children: ReactNode }) {
+  // Las fuentes viven detrás de dos saltos render-blocking (layout.css →
+  // @import fonts.css → .woff2). El preload las baja en paralelo desde el
+  // primer byte del HTML y evita el swap tardío en el texto del hero.
+  const fontOpts = {
+    as: "font",
+    type: "font/woff2",
+    crossOrigin: "anonymous",
+  } as const;
+  preload("/site/fonts/ClarikaGeometric-Light.woff2", fontOpts);
+  preload("/site/fonts/ClarikaGeometric-Bold.woff2", fontOpts);
+  preload("/site/fonts/Rufina-Bold.woff2", fontOpts);
+
   const footerSettings = await getSiteSettings("footer");
   return (
     <>

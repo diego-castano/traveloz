@@ -45,6 +45,7 @@ export default async function WorkWithUsPage() {
                   src={videoUrl}
                   controls
                   playsInline
+                  preload="metadata"
                   poster={imagen}
                   style={{ width: "100%", borderRadius: 12 }}
                 >
@@ -53,7 +54,7 @@ export default async function WorkWithUsPage() {
               </div>
             ) : (
               <div className="content-img work-with-img video-placeholder">
-                <img src={imagen} alt="Equipo TravelOz" />
+                <img src={imagen} alt="Equipo TravelOz" decoding="async" />
               </div>
             )}
           </div>
