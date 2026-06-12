@@ -307,7 +307,7 @@ function LoginPageInner() {
                     autoFocus
                     autoComplete="off"
                   />
-                  <p className="text-center text-xs text-neutral-400">
+                  <p className="text-center text-xs font-medium text-neutral-600">
                     Tu PIN te identifica — no hace falta elegir usuario.
                   </p>
                   {pinError && (
@@ -317,13 +317,13 @@ function LoginPageInner() {
                     type="submit"
                     variant="primary"
                     size="lg"
-                    className="w-full mt-2"
+                    className="w-full mt-2 disabled:!opacity-80 disabled:saturate-[0.85]"
                     loading={pinLoading}
                     disabled={pin.length < 4}
                   >
                     Ingresar con PIN
                   </Button>
-                  <p className="text-center text-[11px] text-neutral-400">
+                  <p className="text-center text-[11px] font-medium text-neutral-600">
                     ¿Sin PIN? Ingresá con email + contraseña y activalo desde{" "}
                     <em>Mi perfil</em>.
                   </p>
