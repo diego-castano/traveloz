@@ -75,6 +75,53 @@ body[data-density="spacious"] table th {
   padding-bottom: 0.95rem;
 }
 
+/* Los calendarios (react-day-picker) NO son data tables: ni la densidad ni
+   ninguna regla global de <table> debe inflar sus celdas — el contenido
+   desbordaba el popover blanco del PeriodPicker/DatePicker. Se fuerza la
+   geometría compacta que espera el stylesheet de rdp. */
+.rdp-month_grid {
+  width: auto;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+.rdp-month_grid td,
+.rdp-month_grid th {
+  padding: 0 !important;
+}
+.rdp-month_grid tr {
+  height: auto !important;
+}
+
+/* react-day-picker v9 define los defaults de sus variables directamente en
+   .rdp-root, así que los overrides que PeriodPicker pone en el wrapper
+   (.rdp-period) nunca llegaban: el calendario salía con celdas de 44px y
+   colores default, desbordando el popover de 700px. Forzamos a .rdp-root a
+   heredar exactamente las variables que el wrapper declara. */
+.rdp-period .rdp-root {
+  --rdp-accent-color: inherit;
+  --rdp-accent-background-color: inherit;
+  --rdp-today-color: inherit;
+  --rdp-day-width: inherit;
+  --rdp-day-height: inherit;
+  --rdp-day_button-width: inherit;
+  --rdp-day_button-height: inherit;
+  --rdp-day_button-border: inherit;
+  --rdp-day_button-border-radius: inherit;
+  --rdp-months-gap: inherit;
+  --rdp-nav-height: inherit;
+  --rdp-nav_button-width: inherit;
+  --rdp-nav_button-height: inherit;
+  --rdp-range_start-color: inherit;
+  --rdp-range_end-color: inherit;
+  --rdp-range_start-date-background-color: inherit;
+  --rdp-range_end-date-background-color: inherit;
+  --rdp-range_middle-background-color: inherit;
+  --rdp-range_middle-color: inherit;
+  --rdp-weekday-text-transform: inherit;
+  --rdp-weekday-opacity: inherit;
+  --rdp-weekday-padding: inherit;
+}
+
 /* ---------------------------------------------------------------------- */
 /*  Select dropdown CSS animations (Radix Select does not support        */
 /*  forceMount on popper Content, so we use data-state CSS animations)    */
