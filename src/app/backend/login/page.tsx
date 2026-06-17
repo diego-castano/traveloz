@@ -140,12 +140,6 @@ function LoginPageInner() {
     router.push("/backend/dashboard");
   };
 
-  const fillDemoUser = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword("admin");
-    setPwError("");
-  };
-
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
       <div
@@ -331,41 +325,6 @@ function LoginPageInner() {
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Demo credential quick-select (dev only) */}
-          {process.env.NODE_ENV === "development" && mode === "password" && (
-            <div className="mt-6 border-t border-neutral-300/60 pt-4">
-              <p className="text-xs text-neutral-600 font-medium text-center mb-2">
-                Acceso rápido demo
-              </p>
-              <div className="flex flex-col gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => fillDemoUser("geronimo@traveloz.com.uy")}
-                  className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
-                >
-                  geronimo@traveloz.com.uy - Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillDemoUser("ventas@traveloz.com.uy")}
-                  className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
-                >
-                  ventas@traveloz.com.uy - Vendedor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => fillDemoUser("marketing@traveloz.com.uy")}
-                  className="text-xs text-neutral-700 hover:text-brand-violet-600 transition-colors text-left px-2 py-1 rounded hover:bg-neutral-100/60"
-                >
-                  marketing@traveloz.com.uy - Marketing
-                </button>
-              </div>
-              <p className="text-[10px] text-white/40 text-center mt-2">
-                Password para todos: admin
-              </p>
-            </div>
-          )}
         </div>
       </motion.div>
     </div>
