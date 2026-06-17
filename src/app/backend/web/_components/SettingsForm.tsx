@@ -26,6 +26,9 @@ type Props = {
   title: string;
   blurb: string;
   publicHref?: string;
+  /** Keys del grupo que NO se editan acá (ej. coming_soon_activo, que tiene su
+   *  propio toggle arriba de la página). */
+  excludeKeys?: string[];
 };
 
 const AUTOSAVE_DEBOUNCE_MS = 1500;
@@ -41,7 +44,7 @@ const AUTOSAVE_DEBOUNCE_MS = 1500;
  *   - "textarea" or value > 80 chars → textarea
  *   - default → text input
  */
-export function SettingsForm({ group, title, blurb }: Props) {
+export function SettingsForm({ group, title, blurb, excludeKeys }: Props) {
   const { toast } = useToast();
   const { devMode, refreshPreview } = useWebEdit();
 
@@ -66,7 +69,14 @@ export function SettingsForm({ group, title, blurb }: Props) {
   useEffect(() => {
     setLoading(true);
     getSettingsByGroup(group)
-      .then((res) => setItems(Array.isArray(res) ? res : []))
+      .then((res) => {
+        const list = Array.isArray(res) ? res : [];
+        setItems(
+          excludeKeys?.length
+            ? list.filter((s) => !excludeKeys.includes(s.key))
+            : list,
+        );
+      })
       .catch((e) => {
         setItems([]);
         toast("error", "No se pudieron cargar los settings", (e as Error).message);

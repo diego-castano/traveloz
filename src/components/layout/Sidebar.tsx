@@ -89,6 +89,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 interface NavItem {
   id: string;
   label: string;
+  /** Segunda línea chica bajo el label (ej. "por marca" en Cotizadores). */
+  sublabel?: string;
   icon: LucideIcon;
   href: string;
 }
@@ -126,7 +128,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "web", label: "Frontend", icon: Globe, href: "/backend/web" },
       { id: "leads", label: "Leads", icon: Inbox, href: "/backend/leads" },
-      { id: "cotizadores", label: "Cotizadores por marca", icon: Calculator, href: "/backend/cotizadores" },
+      { id: "cotizadores", label: "Cotizadores", sublabel: "por marca", icon: Calculator, href: "/backend/cotizadores" },
     ],
   },
   {
@@ -356,7 +358,14 @@ export function Sidebar() {
                         )}
                       />
                       {!effectiveCollapsed && (
-                        <span className="relative truncate">{item.label}</span>
+                        <span className="relative flex min-w-0 flex-col leading-tight">
+                          <span className="truncate">{item.label}</span>
+                          {item.sublabel && (
+                            <span className="truncate text-[10px] font-normal opacity-55">
+                              {item.sublabel}
+                            </span>
+                          )}
+                        </span>
                       )}
                     </Link>
                   );
@@ -379,7 +388,7 @@ export function Sidebar() {
                               boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
                             }}
                           >
-                            {item.label}
+                            {item.sublabel ? `${item.label} ${item.sublabel}` : item.label}
                             <Tooltip.Arrow
                               style={{ fill: "rgba(26,26,46,0.94)" }}
                             />

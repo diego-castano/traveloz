@@ -3,6 +3,8 @@
 import { useState, useTransition } from "react";
 import { setComingSoon } from "@/actions/cotizador.actions";
 
+// Toggle de visibilidad del sitio principal (SiteSetting coming_soon_activo).
+// Vive en Frontend → Datos generales.
 export function ComingSoonToggle({ initial }: { initial: boolean }) {
   const [active, setActive] = useState(initial);
   const [pending, startTransition] = useTransition();
@@ -20,7 +22,7 @@ export function ComingSoonToggle({ initial }: { initial: boolean }) {
   }
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-4">
+    <div className="mb-6 flex items-center justify-between rounded-xl border border-neutral-200 bg-white p-4">
       <div>
         <p className="text-sm font-semibold text-neutral-900">
           Sitio principal en “Próximamente”

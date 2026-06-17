@@ -46,6 +46,8 @@ const leadSchema = z.object({
     .trim()
     .regex(/^\+?\d{1,6}$/, "Código de país inválido.")
     .nullable(),
+  destino: z.string().trim().max(200).nullable(),
+  preferencia: z.enum(["LLAMADA", "EMAIL", "WHATSAPP"]).nullable(),
   comentarios: z.string().trim().max(5000).nullable(),
 });
 
@@ -54,6 +56,23 @@ function field(formData: FormData, key: string): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
   return t.length === 0 ? null : t;
+}
+
+function intField(formData: FormData, key: string): number {
+  const v = Number(field(formData, key));
+  return Number.isFinite(v) && v >= 0 && v < 100 ? Math.floor(v) : 0;
+}
+
+function dateField(formData: FormData, key: string): Date | null {
+  const v = field(formData, key);
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function prefField(formData: FormData, key: string): "LLAMADA" | "EMAIL" | "WHATSAPP" | null {
+  const v = field(formData, key);
+  return v === "LLAMADA" || v === "EMAIL" || v === "WHATSAPP" ? v : null;
 }
 
 function clientIp(): string | null {
@@ -90,6 +109,8 @@ export async function submitCotizadorLead(
       email: field(formData, "email"),
       telefono: field(formData, "telefono"),
       paisCodigo: field(formData, "paisCodigo"),
+      destino: field(formData, "destino"),
+      preferencia: prefField(formData, "preferencia"),
       comentarios: field(formData, "comentarios"),
     });
     if (!parsed.success) {
@@ -105,7 +126,15 @@ export async function submitCotizadorLead(
     if (!landing) return { ok: false, message: "Este formulario ya no está disponible." };
 
     await prisma.cotizadorLead.create({
-      data: { landingId, ...parsed.data },
+      data: {
+        landingId,
+        ...parsed.data,
+        fechaDesde: dateField(formData, "fechaDesde"),
+        fechaHasta: dateField(formData, "fechaHasta"),
+        adultos: intField(formData, "adultos"),
+        ninos: intField(formData, "ninos"),
+        infantes: intField(formData, "infantes"),
+      },
     });
     return { ok: true, message: SUCCESS };
   } catch (err) {
