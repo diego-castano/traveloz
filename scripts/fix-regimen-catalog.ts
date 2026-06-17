@@ -21,6 +21,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { assertSeedAllowed } from '../prisma/seed-guard';
+assertSeedAllowed('fix-regimen-catalog');
 
 const prisma = new PrismaClient();
 

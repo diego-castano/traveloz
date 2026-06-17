@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import { assertSeedAllowed } from "../prisma/seed-guard";
+assertSeedAllowed("backfill-regions");
 
 const prisma = new PrismaClient();
 

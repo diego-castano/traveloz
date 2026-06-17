@@ -18,7 +18,9 @@ import { Header } from "@/components/public/Header";
 import { Footer } from "@/components/public/Footer";
 import { AgenciaModal } from "@/components/public/AgenciaModal";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
+import { ComingSoon } from "@/components/public/ComingSoon";
 import { getSiteSettings } from "@/lib/public-data";
+import { auth } from "@/lib/auth.config";
 import "./site.css";
 // Boneyard pre-generated bones. Built by `npm run bones` (local) and
 // committed to the repo so Railway doesn't need a headless browser at build.
@@ -44,7 +46,25 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   preload("/site/fonts/ClarikaGeometric-Bold.woff2", fontOpts);
   preload("/site/fonts/Rufina-Bold.woff2", fontOpts);
 
-  const footerSettings = await getSiteSettings("footer");
+  // Coming Soon gate: el sitio principal arranca en "Próximamente". El público
+  // anónimo ve el placeholder; el equipo logueado ve el sitio real (y así el
+  // live-preview del admin, que corre con la sesión del usuario, sigue
+  // funcionando). El toggle vive en /backend/cotizadores. Ausente → activo.
+  const [footerSettings, generalSettings, session] = await Promise.all([
+    getSiteSettings("footer"),
+    getSiteSettings("general"),
+    auth(),
+  ]);
+  const comingSoon = generalSettings.coming_soon_activo !== "false";
+  if (comingSoon && !session?.user) {
+    return (
+      <ComingSoon
+        titulo={generalSettings.coming_soon_titulo}
+        mensaje={generalSettings.coming_soon_mensaje}
+      />
+    );
+  }
+
   return (
     <>
       <div className="main-wrapper">

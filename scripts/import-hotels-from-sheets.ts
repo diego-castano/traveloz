@@ -17,6 +17,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { assertSeedAllowed } from '../prisma/seed-guard';
+assertSeedAllowed('import-hotels-from-sheets');
 import { writeFileSync } from 'fs';
 import { generateSequentialId } from '../src/lib/sequential-id';
 

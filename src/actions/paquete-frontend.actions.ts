@@ -190,6 +190,8 @@ export async function updatePaqueteFrontend(
         noches: true,
         heroImage: true,
         estado: true,
+        viajeDesde: true,
+        viajeHasta: true,
         destinos: { select: { noches: true } },
         opcionesHoteleras: { select: { id: true } },
         aereos: { select: { id: true } },
@@ -213,6 +215,10 @@ export async function updatePaqueteFrontend(
     if (current.opcionesHoteleras.length === 0) missing.push("al menos 1 opción hotelera");
     if (current.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
     if (!heroImage) missing.push("foto principal del slider");
+    // Sin período de viaje el resolver de precios cae al fallback y el sitio
+    // público puede mostrar "Desde $0". Exigirlo antes de publicar.
+    if (!current.viajeDesde || !current.viajeHasta)
+      missing.push("período del viaje (desde / hasta)");
 
     const nochesPaquete = current.noches ?? 0;
     const nochesDestinos = current.destinos.reduce(
@@ -341,31 +347,11 @@ export async function setPaqueteServicios(
   revalidatePath(`/backend/paquetes/${paqueteId}`);
   revalidateTag("paquetes");
 }
-
-/**
- * Recompute Paquete.precioDesde from min(OpcionHotel × PrecioAlojamiento.precioPorNoche).
- * Called after package edits that touch hotels or prices. Falls back to null if
- * there are no priced hotels yet.
- */
-export async function recalcPaquetePrecioDesde(paqueteId: string) {
-  await requireCanEdit();
-  const opciones = await prisma.opcionHotel.findMany({
-    where: { destino: { paqueteId } },
-    include: {
-      alojamiento: {
-        include: { precios: { select: { precioPorNoche: true } } },
-      },
-    },
-  });
-  const allPrices = opciones.flatMap((o) =>
-    o.alojamiento.precios.map((p) => p.precioPorNoche),
-  );
-  const min = allPrices.length > 0 ? Math.min(...allPrices) : null;
-  await prisma.paquete.update({
-    where: { id: paqueteId },
-    data: { precioDesde: min },
-  });
-  revalidatePath(`/backend/paquetes/${paqueteId}`);
-  revalidateTag("paquetes");
-  return min;
-}
+// NOTE (F6): aquí vivía `recalcPaquetePrecioDesde`, una función sin callers que
+// recalculaba `precioDesde` como min(precioPorNoche) crudo. El valor autoritativo
+// de `precioDesde` lo mantiene el motor de `recompute-prices.ts` (precio de
+// opción ya ajustado por factor), invocado en cada mutación de precios de
+// servicio (`recomputeForAlojamiento`/etc.) y de opciones hoteleras
+// (`recomputeForOpcionHotelera` / `safePropagate`). Enchufar la función vieja
+// habría pisado ese valor correcto con el min por noche sin factor. Se eliminó
+// para evitar esa regresión.

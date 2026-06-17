@@ -27,6 +27,8 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { assertSeedAllowed } from "../prisma/seed-guard";
+assertSeedAllowed("seed-modelo");
 import { processAndUpload } from "../src/lib/file-pipeline";
 import { generateSequentialId } from "../src/lib/sequential-id";
 

@@ -48,6 +48,7 @@ import {
   usePaises,
   useRegiones,
 } from "@/components/providers/CatalogProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 import {
   buildPaisResolver,
   countNuevosEstaSemana,
@@ -623,6 +624,11 @@ const fmtFecha = (iso: string) => {
 // ---------------------------------------------------------------------------
 
 export default function VendedorDashboard() {
+  // El dashboard de paquetes lo comparten VENDEDOR y MARKETING. El único ajuste
+  // por rol es el rótulo del panel (R3): MARKETING veía "Panel Vendedor", que
+  // confundía. El resto de la vista (browse de paquetes) aplica igual a ambos.
+  const { user } = useAuth();
+  const panelLabel = user?.role === "MARKETING" ? "Panel Marketing" : "Panel Vendedor";
   const paquetes = usePaquetes();
   const packageState = usePackageState();
   const serviceState = useServiceState();
@@ -1053,7 +1059,7 @@ export default function VendedorDashboard() {
         <div className="flex items-center gap-2 rounded-full border border-hairline bg-white px-3 py-1">
           <Sparkles size={12} className="text-[#3BBFAD]" />
           <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
-            Panel Vendedor
+            {panelLabel}
           </span>
         </div>
       </motion.div>

@@ -21,11 +21,14 @@
 // ---------------------------------------------------------------------------
 
 import { headers } from "next/headers";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { uploadBuffer } from "@/lib/storage";
 import { checkFormRate } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
+import { sendEmail, newsletterConfirmEmail } from "@/lib/email";
+import { getBaseUrl } from "@/lib/seo";
 
 const log = logger.child({ module: "public-forms.actions" });
 
@@ -293,9 +296,15 @@ export async function submitCorporateForm(
 }
 
 // ---------------------------------------------------------------------------
-// Newsletter (home hero) → SuscripcionNewsletter (idempotent on email)
+// Newsletter (home hero) → SuscripcionNewsletter (double opt-in, F4)
 // ---------------------------------------------------------------------------
-const NEWSLETTER_SUCCESS_MSG = "¡Suscripción confirmada!";
+// El alta nace inactiva con un token y mandamos un email "confirmá tu
+// suscripción". Así nadie puede suscribir un email ajeno (evita spam complaints
+// al enchufar campañas). Recién queda active=true cuando abre el link de
+// confirmación (ver /newsletter/confirm). El mensaje de éxito refleja eso.
+const NEWSLETTER_SUCCESS_MSG =
+  "¡Casi listo! Te enviamos un email para confirmar tu suscripción.";
+const NEWSLETTER_ALREADY_MSG = "Ya estabas suscripto. ¡Gracias!";
 
 export async function submitNewsletterForm(
   _prev: FormResult | null,
@@ -311,12 +320,30 @@ export async function submitNewsletterForm(
     }
     const email = parsed.data;
 
-    // Idempotent — re-subscribing reactivates the row instead of erroring.
+    const existing = await prisma.suscripcionNewsletter.findUnique({
+      where: { email },
+      select: { active: true },
+    });
+    // Ya confirmado y activo — no reenviamos nada.
+    if (existing?.active) {
+      return { ok: true, message: NEWSLETTER_ALREADY_MSG };
+    }
+
+    // Alta nueva o re-suscripción de una baja: (re)generamos token y dejamos
+    // la fila inactiva hasta que confirme.
+    const confirmToken = randomUUID();
     await prisma.suscripcionNewsletter.upsert({
       where: { email },
-      update: { active: true, unsubscribedAt: null },
-      create: { email, source: captureOrigen(), active: true },
+      update: { active: false, confirmToken, confirmedAt: null, unsubscribedAt: null },
+      create: { email, source: captureOrigen(), active: false, confirmToken },
     });
+
+    const confirmUrl = `${getBaseUrl().replace(/\/$/, "")}/newsletter/confirm?token=${confirmToken}`;
+    const tpl = newsletterConfirmEmail({ confirmUrl });
+    // No bloqueamos al usuario si el envío falla (Resend puede no estar
+    // configurado todavía) — el token queda persistido igual.
+    await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+
     return { ok: true, message: NEWSLETTER_SUCCESS_MSG };
   } catch (err) {
     log.error("submitNewsletterForm failed", err);

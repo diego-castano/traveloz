@@ -8,6 +8,8 @@
 // ---------------------------------------------------------------------------
 
 import { PrismaClient } from "@prisma/client";
+import { assertSeedAllowed } from "./seed-guard";
+assertSeedAllowed("seed-fase9");
 
 const prisma = new PrismaClient();
 

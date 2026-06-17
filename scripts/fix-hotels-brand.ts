@@ -7,6 +7,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { assertSeedAllowed } from '../prisma/seed-guard';
+assertSeedAllowed('fix-hotels-brand');
 
 const prisma = new PrismaClient();
 const BRAND_ID = 'brand-1';

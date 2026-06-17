@@ -35,6 +35,22 @@ function bustServicesCacheGlobal() {
   revalidateTag(SERVICES_GLOBAL_TAG);
 }
 
+/** Block soft-deleting a service that is still assigned to a live (non-deleted)
+ *  package. Mirrors the catalog guards (deleteTemporada): the catalogs were
+ *  protected but the services weren't, so an operator could pull a hotel/flight
+ *  out from under a published paquete and break its price resolver. The thrown
+ *  error carries a distinct `name` so the catch blocks can re-surface this
+ *  message instead of collapsing it into the generic "No se pudo eliminar". */
+function assertServiceNotInUse(label: string, count: number) {
+  if (count > 0) {
+    const err = new Error(
+      `No se puede eliminar: hay ${count} paquete${count === 1 ? "" : "s"} usando este ${label}.`,
+    );
+    err.name = "ServiceInUseError";
+    throw err;
+  }
+}
+
 /**
  * Turn a thrown error into a user-friendly Error preserving the original
  * cause when it's actionable (zod field message, Prisma known error). The
@@ -263,13 +279,23 @@ export async function updateAereo(
 export async function deleteAereo(id: string) {
   try {
     await requireCanEdit();
-    return await prisma.aereo.update({
+    await assertServiceNotInUse(
+      "aéreo",
+      await prisma.paqueteAereo.count({
+        where: { aereoId: id, paquete: { deletedAt: null } },
+      }),
+    );
+    const __res = await prisma.aereo.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    bustServicesCacheGlobal();
+    return __res;
   } catch (error) {
     log.error("deleting aereo", error);
-    throw new Error("No se pudo eliminar el aéreo.");
+    throw error instanceof Error && error.name === "ServiceInUseError"
+      ? error
+      : new Error("No se pudo eliminar el aéreo.");
   }
 }
 
@@ -394,13 +420,28 @@ export async function updateAlojamiento(
 export async function deleteAlojamiento(id: string) {
   try {
     await requireCanEdit();
-    return await prisma.alojamiento.update({
+    // Counts both legacy direct assignments (PaqueteAlojamiento) and the new
+    // per-destino hotel options (OpcionHotel) — either keeps the hotel live.
+    const [directas, enOpciones] = await Promise.all([
+      prisma.paqueteAlojamiento.count({
+        where: { alojamientoId: id, paquete: { deletedAt: null } },
+      }),
+      prisma.opcionHotel.count({
+        where: { alojamientoId: id, opcion: { paquete: { deletedAt: null } } },
+      }),
+    ]);
+    await assertServiceNotInUse("alojamiento", directas + enOpciones);
+    const __res = await prisma.alojamiento.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    bustServicesCacheGlobal();
+    return __res;
   } catch (error) {
     log.error("deleting alojamiento", error);
-    throw new Error("No se pudo eliminar el alojamiento.");
+    throw error instanceof Error && error.name === "ServiceInUseError"
+      ? error
+      : new Error("No se pudo eliminar el alojamiento.");
   }
 }
 
@@ -580,6 +621,12 @@ export async function updateTraslado(
 export async function deleteTraslado(id: string) {
   try {
     await requireCanEdit();
+    await assertServiceNotInUse(
+      "traslado",
+      await prisma.paqueteTraslado.count({
+        where: { trasladoId: id, paquete: { deletedAt: null } },
+      }),
+    );
     const __res = await prisma.traslado.update({
       where: { id },
       data: { deletedAt: new Date() },
@@ -588,6 +635,7 @@ export async function deleteTraslado(id: string) {
     return __res;
   } catch (error) {
     log.error("deleting traslado", error);
+    if (error instanceof Error && error.name === "ServiceInUseError") throw error;
     throw toUserError(error, "No se pudo eliminar el traslado.");
   }
 }
@@ -652,13 +700,23 @@ export async function updateSeguro(
 export async function deleteSeguro(id: string) {
   try {
     await requireCanEdit();
-    return await prisma.seguro.update({
+    await assertServiceNotInUse(
+      "seguro",
+      await prisma.paqueteSeguro.count({
+        where: { seguroId: id, paquete: { deletedAt: null } },
+      }),
+    );
+    const __res = await prisma.seguro.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    bustServicesCacheGlobal();
+    return __res;
   } catch (error) {
     log.error("deleting seguro", error);
-    throw new Error("No se pudo eliminar el seguro.");
+    throw error instanceof Error && error.name === "ServiceInUseError"
+      ? error
+      : new Error("No se pudo eliminar el seguro.");
   }
 }
 
@@ -748,13 +806,23 @@ export async function updateCircuito(
 export async function deleteCircuito(id: string) {
   try {
     await requireCanEdit();
-    return await prisma.circuito.update({
+    await assertServiceNotInUse(
+      "circuito",
+      await prisma.paqueteCircuito.count({
+        where: { circuitoId: id, paquete: { deletedAt: null } },
+      }),
+    );
+    const __res = await prisma.circuito.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
+    bustServicesCacheGlobal();
+    return __res;
   } catch (error) {
     log.error("deleting circuito", error);
-    throw new Error("No se pudo eliminar el circuito.");
+    throw error instanceof Error && error.name === "ServiceInUseError"
+      ? error
+      : new Error("No se pudo eliminar el circuito.");
   }
 }
 

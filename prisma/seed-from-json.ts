@@ -11,6 +11,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { assertSeedAllowed } from './seed-guard';
+assertSeedAllowed('seed-from-json');
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { generateSequentialId, type IdEntity } from '../src/lib/sequential-id';
