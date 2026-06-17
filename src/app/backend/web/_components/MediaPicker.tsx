@@ -30,6 +30,8 @@ type Props = {
   accept?: string;
   /** SiteSetting key; when set, MediaPicker looks up MEDIA_HINTS for size guidance. */
   settingKey?: string;
+  /** Oculta el escape hatch "Pegar URL externa" — fuerza subir un archivo. */
+  hideUrl?: boolean;
 };
 
 export function MediaPicker({
@@ -37,6 +39,7 @@ export function MediaPicker({
   onChange,
   accept = "image/*",
   settingKey,
+  hideUrl = false,
 }: Props) {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -271,7 +274,8 @@ export function MediaPicker({
         </div>
       )}
 
-      {/* Power-user URL paste — collapsed by default */}
+      {/* Power-user URL paste — collapsed by default. Se oculta con hideUrl. */}
+      {!hideUrl && (
       <div>
         {showUrl ? (
           <div className="flex gap-2 items-center">
@@ -302,6 +306,7 @@ export function MediaPicker({
           </button>
         )}
       </div>
+      )}
     </div>
   );
 }

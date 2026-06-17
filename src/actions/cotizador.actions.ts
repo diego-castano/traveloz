@@ -23,6 +23,7 @@ export async function getPublishedLanding(slug: string) {
       slug: true,
       nombreMarca: true,
       logoUrl: true,
+      tituloHero: true,
       textoInstitucional: true,
       colorPrimario: true,
     },
@@ -149,6 +150,7 @@ export async function submitCotizadorLead(
 const upsertSchema = z.object({
   nombreMarca: z.string().trim().min(1, "El nombre de la marca es requerido.").max(120),
   slug: z.string().trim().min(1).max(60),
+  tituloHero: z.string().trim().max(120).nullable(),
   logoUrl: z.string().trim().max(500).nullable(),
   textoInstitucional: z.string().trim().max(2000).nullable(),
   colorPrimario: z
@@ -163,6 +165,7 @@ const upsertSchema = z.object({
 export type CotizadorUpsertInput = {
   nombreMarca: string;
   slug: string;
+  tituloHero?: string | null;
   logoUrl?: string | null;
   textoInstitucional?: string | null;
   colorPrimario?: string | null;
@@ -203,6 +206,7 @@ function normalizeUpsert(input: CotizadorUpsertInput) {
   const parsed = upsertSchema.parse({
     nombreMarca: input.nombreMarca,
     slug,
+    tituloHero: input.tituloHero ?? null,
     logoUrl: input.logoUrl ?? null,
     textoInstitucional: input.textoInstitucional ?? null,
     colorPrimario: input.colorPrimario ?? null,
