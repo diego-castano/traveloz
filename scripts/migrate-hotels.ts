@@ -22,6 +22,8 @@
  */
 
 import { PrismaClient, Prisma } from '@prisma/client';
+import { assertSeedAllowed } from '../prisma/seed-guard';
+assertSeedAllowed('migrate-hotels');
 import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 

@@ -8,6 +8,8 @@
  * Dry-run:   npx tsx prisma/seed-catalogs-and-link.ts
  */
 import { PrismaClient } from '@prisma/client';
+import { assertSeedAllowed } from './seed-guard';
+assertSeedAllowed('seed-catalogs-and-link');
 
 const prisma = new PrismaClient();
 const CONFIRM = process.argv.includes('--confirm');

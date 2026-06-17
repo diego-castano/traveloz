@@ -143,21 +143,21 @@ model Paquete {
   campana           String?
 
   // ── Public-site copy (Fase 5C/8: edited from /backend/paquetes/[slug]?tab=frontend) ──
-  slug                String? @unique
-  publicado           Boolean @default(false)
-  metaTitle           String?
-  metaDescription     String? @db.Text
-  heroImage           String?
+  slug              String? @unique
+  publicado         Boolean @default(false)
+  metaTitle         String?
+  metaDescription   String? @db.Text
+  heroImage         String?
   // Texto introductorio del paquete (aparece arriba/al lado del título en el detalle público)
-  textoIntro          String? @db.Text
+  textoIntro        String? @db.Text
   // Texto introductorio de la lista "Incluye"
-  textoIncluye        String? @db.Text
+  textoIncluye      String? @db.Text
   // Itinerario día a día visible públicamente (distinto al itinerarioAmadeus interno)
-  itinerarioPublico   String? @db.Text
+  itinerarioPublico String? @db.Text
   // Notas de condiciones/cancelación específicas del paquete
-  textoCondiciones    String? @db.Text
-  precioDesde         Float?
-  precioDesdeMoneda   String? @default("USD")
+  textoCondiciones  String? @db.Text
+  precioDesde       Float?
+  precioDesdeMoneda String? @default("USD")
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -608,7 +608,9 @@ model OpcionHotelera {
   precioVenta  Float
   orden        Int     @default(0)
   proveedorId  String?
-  /** Optional custom blurb shown publicly with this option (e.g. "All Inclusive 5★"). */
+  /**
+   * Optional custom blurb shown publicly with this option (e.g. "All Inclusive 5★").
+   */
   textoDisplay String?
 
   paquete   Paquete       @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
@@ -777,7 +779,8 @@ model Cotizacion {
   paquete Paquete? @relation(fields: [paqueteId], references: [id])
 
   @@index([estado])
-  @@index([createdAt])
+  @@index([createdAt(sort: Desc)])
+  @@index([email])
 }
 
 model MensajeContacto {
@@ -793,6 +796,8 @@ model MensajeContacto {
 
   @@index([estado])
   @@index([asignadoAUserId])
+  @@index([createdAt(sort: Desc)])
+  @@index([email])
 }
 
 model ContactoCorporativo {
@@ -810,6 +815,8 @@ model ContactoCorporativo {
 
   @@index([estado])
   @@index([asignadoAUserId])
+  @@index([createdAt(sort: Desc)])
+  @@index([email])
 }
 
 model Postulacion {
@@ -827,17 +834,73 @@ model Postulacion {
 
   @@index([estado])
   @@index([asignadoAUserId])
+  @@index([createdAt(sort: Desc)])
+  @@index([email])
 }
 
 model SuscripcionNewsletter {
   id             String    @id @default(cuid())
   email          String    @unique
   source         String?
-  active         Boolean   @default(true)
+  // Double opt-in (F4): los altas nuevas nacen con active=false + un token de
+  // confirmación. Recién quedan active=true (y confirmedAt seteado) cuando el
+  // suscriptor abre el link "confirmá tu suscripción". Evita que alguien
+  // suscriba un email ajeno y nos genere spam complaints al enchufar campañas.
+  active         Boolean   @default(false)
+  confirmToken   String?   @unique
+  confirmedAt    DateTime?
   createdAt      DateTime  @default(now())
   unsubscribedAt DateTime?
 
   @@index([active])
+}
+
+// ──────────────────────────────────────────────
+// Cotizadores por marca — landings de cotización independientes del sitio
+// principal. Cada uno vive en /[slug], con branding propio y sin links de
+// navegación (no se puede salir del landing). Se usan para que el cliente
+// empiece a captar leads aunque el sitio de TravelOz siga en "Próximamente".
+// ──────────────────────────────────────────────
+model CotizadorLanding {
+  id                 String    @id @default(cuid())
+  // Slug público en la raíz: traveloz.com.uy/<slug>. Único y reservado contra
+  // las rutas existentes del sitio (contact, faq, destinos, etc.).
+  slug               String    @unique
+  nombreMarca        String
+  logoUrl            String?
+  // Dato institucional breve mostrado arriba del formulario (lean).
+  textoInstitucional String?   @db.Text
+  // Color para teñir el CTA / acentos del landing (hex). Opcional.
+  colorPrimario      String?
+  // Emails a los que se notifica cada envío. El envío real se cablea cuando
+  // Resend esté configurado; por ahora los leads quedan en DB.
+  emailsDestino      String[]  @default([])
+  publicado          Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  deletedAt          DateTime?
+
+  leads CotizadorLead[]
+
+  @@index([publicado])
+  @@index([deletedAt])
+}
+
+model CotizadorLead {
+  id          String        @id @default(cuid())
+  landingId   String
+  nombre      String
+  email       String
+  telefono    String?
+  paisCodigo  String?
+  comentarios String?       @db.Text
+  estado      EstadoMensaje @default(NUEVO)
+  createdAt   DateTime      @default(now())
+
+  landing CotizadorLanding @relation(fields: [landingId], references: [id], onDelete: Cascade)
+
+  @@index([landingId, createdAt(sort: Desc)])
+  @@index([email])
 }
 
 // ──────────────────────────────────────────────

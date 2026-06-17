@@ -16,6 +16,8 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { assertSeedAllowed } from '../prisma/seed-guard';
+assertSeedAllowed('cleanup-legacy-seed-duplicates');
 
 const prisma = new PrismaClient();
 

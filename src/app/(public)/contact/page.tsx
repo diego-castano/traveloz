@@ -7,6 +7,7 @@ import { Mail, Phone, MapPin, Clock, MessageCircle } from "lucide-react";
 import { getSiteSettings } from "@/lib/public-data";
 import { ContactForm } from "./_components/ContactForm";
 import { buildSeoMetadata } from "@/lib/seo";
+import { sanitizeMapEmbed } from "@/lib/sanitize-embed";
 
 export async function generateMetadata() {
   return buildSeoMetadata("contact");
@@ -127,16 +128,19 @@ export default async function ContactPage() {
                 )}
               </ul>
 
-              {s.contacto_mapa_embed && (
-                <div
-                  style={{
-                    marginTop: 24,
-                    borderRadius: 8,
-                    overflow: "hidden",
-                  }}
-                  dangerouslySetInnerHTML={{ __html: s.contacto_mapa_embed }}
-                />
-              )}
+              {(() => {
+                const mapa = sanitizeMapEmbed(s.contacto_mapa_embed);
+                return mapa ? (
+                  <div
+                    style={{
+                      marginTop: 24,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                    }}
+                    dangerouslySetInnerHTML={{ __html: mapa }}
+                  />
+                ) : null;
+              })()}
             </div>
 
             <div className="col-lg-5 col-md-7">

@@ -29,6 +29,8 @@ import {
   Globe,
   ListChecks,
   Inbox,
+  ScrollText,
+  Calculator,
 } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -124,6 +126,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "web", label: "Frontend", icon: Globe, href: "/backend/web" },
       { id: "leads", label: "Leads", icon: Inbox, href: "/backend/leads" },
+      { id: "cotizadores", label: "Cotizadores por marca", icon: Calculator, href: "/backend/cotizadores" },
     ],
   },
   {
@@ -132,6 +135,7 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "proveedores", label: "Proveedores", icon: Truck, href: "/backend/proveedores" },
       { id: "perfiles", label: "Perfiles y Roles", icon: Users, href: "/backend/perfiles" },
+      { id: "auditoria", label: "Auditoría", icon: ScrollText, href: "/backend/perfiles/auditoria" },
       { id: "catalogos", label: "Catálogos", icon: Settings, href: "/backend/catalogos" },
       { id: "notificaciones", label: "Notificaciones", icon: Bell, href: "/backend/notificaciones" },
     ],

@@ -145,6 +145,27 @@ export function passwordResetEmail(opts: {
   };
 }
 
+export function newsletterConfirmEmail(opts: {
+  confirmUrl: string;
+}): { subject: string; html: string; text: string } {
+  return {
+    subject: "Confirmá tu suscripción a TravelOz",
+    text: `¡Gracias por suscribirte!\n\nPara confirmar tu suscripción al newsletter de TravelOz, abrí este link:\n${opts.confirmUrl}\n\nSi no fuiste vos, ignorá este email — no te vamos a escribir.`,
+    html: `
+      <div style="font-family:system-ui,sans-serif;max-width:520px;margin:auto;padding:24px;color:#1a1a2e">
+        <h2 style="margin:0 0 16px">Confirmá tu suscripción</h2>
+        <p>¡Gracias por suscribirte al newsletter de TravelOz! Falta un paso.</p>
+        <p>
+          <a href="${opts.confirmUrl}"
+             style="display:inline-block;background:#8b5cf6;color:white;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">
+            Confirmar suscripción
+          </a>
+        </p>
+        <p style="color:#888;font-size:12px;margin-top:24px">Si no fuiste vos, ignorá este email — no te vamos a escribir.</p>
+      </div>`,
+  };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

@@ -46,6 +46,13 @@ const nextConfig = {
     // pool on server boot and avoid a slow first-query penalty.
     instrumentationHook: true,
   },
+  eslint: {
+    // Ahora existe `.eslintrc.json`, así que `npm run lint` corre. Pero el
+    // código nunca se linteó (291 archivos), así que dejamos que `next build`
+    // NO falle por lint para no bloquear el deploy. Quitar este flag cuando se
+    // limpien los hallazgos de `npm run lint`.
+    ignoreDuringBuilds: true,
+  },
   async headers() {
     return [
       {

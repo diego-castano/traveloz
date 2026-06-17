@@ -6,6 +6,8 @@
  * Run once: npx tsx prisma/cleanup-demo-data.ts --confirm
  */
 import { PrismaClient } from '@prisma/client';
+import { assertSeedAllowed } from './seed-guard';
+assertSeedAllowed('cleanup-demo-data');
 
 const prisma = new PrismaClient();
 
