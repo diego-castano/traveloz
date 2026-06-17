@@ -28,6 +28,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/components/lib/cn";
 import { WebEditProvider } from "./_components/web-edit-context";
 import { WebEditShell } from "./_components/WebEditShell";
+import { ComingSoonToggle } from "./_components/ComingSoonToggle";
 
 type Section = {
   href: string;
@@ -105,15 +106,18 @@ export default function WebLayout({ children }: { children: ReactNode }) {
               Editá los contenidos del sitio público.
             </p>
           </div>
-          <a
-            href="/"
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-violet-600 hover:underline inline-flex items-center gap-1 shrink-0"
-          >
-            traveloz.com.uy
-            <ExternalLink className="w-3 h-3" />
-          </a>
+          <div className="flex items-center gap-4 shrink-0">
+            <ComingSoonToggle />
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-violet-600 hover:underline inline-flex items-center gap-1"
+            >
+              traveloz.com.uy
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
         </div>
       </div>
 

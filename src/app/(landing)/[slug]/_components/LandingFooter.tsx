@@ -38,9 +38,10 @@ export async function LandingFooter() {
   return (
     <footer className="mt-16 border-t border-neutral-200 bg-neutral-900 text-neutral-300">
       <div className="mx-auto max-w-2xl px-5 py-10">
-        <p className="mb-5 text-center text-xs font-semibold uppercase tracking-wider text-neutral-400">
-          Contacto
-        </p>
+        <div className="mb-7 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/site/img/white-logo.webp" alt="TravelOz" className="h-8 w-auto" />
+        </div>
         <ul className="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6">
           {items.map((it, i) => {
             const Icon = it.icon;

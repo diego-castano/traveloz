@@ -868,6 +868,8 @@ model CotizadorLanding {
   slug               String    @unique
   nombreMarca        String
   logoUrl            String?
+  // Título del hero del landing (editable). Default "Cotizá tu viaje".
+  tituloHero         String?
   // Dato institucional breve mostrado arriba del formulario (lean).
   textoInstitucional String?   @db.Text
   // Color para teñir el CTA / acentos del landing (hex). Opcional.

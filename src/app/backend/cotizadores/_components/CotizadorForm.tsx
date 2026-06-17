@@ -1,47 +1,59 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
+import { MediaPicker } from "@/app/backend/web/_components/MediaPicker";
+import { normalizeSlug } from "@/lib/cotizador";
 import {
   createCotizadorLanding,
   updateCotizadorLanding,
   type CotizadorUpsertInput,
 } from "@/actions/cotizador.actions";
+import { EmailChips } from "./EmailChips";
 
 type Initial = Partial<CotizadorUpsertInput> & { id?: string };
 
 export function CotizadorForm({ initial }: { initial?: Initial }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   const [nombreMarca, setNombreMarca] = useState(initial?.nombreMarca ?? "");
+  const [tituloHero, setTituloHero] = useState(initial?.tituloHero ?? "");
   const [slug, setSlug] = useState(initial?.slug ?? "");
+  // WordPress-style: el slug se deriva del nombre hasta que el usuario lo edita.
+  const [slugEdited, setSlugEdited] = useState(Boolean(initial?.slug));
   const [logoUrl, setLogoUrl] = useState(initial?.logoUrl ?? "");
   const [textoInstitucional, setTextoInstitucional] = useState(
     initial?.textoInstitucional ?? "",
   );
   const [colorPrimario, setColorPrimario] = useState(initial?.colorPrimario ?? "#1a1a2e");
-  const [emailsRaw, setEmailsRaw] = useState((initial?.emailsDestino ?? []).join(", "));
+  const [emails, setEmails] = useState<string[]>(initial?.emailsDestino ?? []);
   const [publicado, setPublicado] = useState(initial?.publicado ?? false);
 
   const isEdit = Boolean(initial?.id);
 
+  // Auto-derivar el slug del nombre mientras el usuario no lo haya tocado.
+  useEffect(() => {
+    if (!slugEdited) setSlug(normalizeSlug(nombreMarca));
+  }, [nombreMarca, slugEdited]);
+
+  const slugPreview = normalizeSlug(slug) || "tu-marca";
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const emailsDestino = emailsRaw
-      .split(/[,\n;]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
 
     const payload: CotizadorUpsertInput = {
       nombreMarca,
       slug: slug || nombreMarca,
+      tituloHero: tituloHero || null,
       logoUrl: logoUrl || null,
       textoInstitucional: textoInstitucional || null,
       colorPrimario: colorPrimario || null,
-      emailsDestino,
+      emailsDestino: emails,
       publicado,
     };
 
@@ -49,14 +61,17 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
       try {
         if (isEdit && initial?.id) {
           await updateCotizadorLanding(initial.id, payload);
+          toast("success", "Cambios guardados", "El cotizador se actualizó.");
+          router.refresh();
         } else {
           const created = await createCotizadorLanding(payload);
+          toast("success", "Cotizador creado", `Disponible en /${created.slug}`);
           router.push(`/backend/cotizadores/${created.id}`);
-          return;
         }
-        router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "No se pudo guardar.");
+        const msg = err instanceof Error ? err.message : "No se pudo guardar.";
+        setError(msg);
+        toast("error", "No se pudo guardar", msg);
       }
     });
   }
@@ -73,29 +88,38 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
         />
       </Field>
 
-      <Field
-        label="Slug público"
-        hint="El landing queda en traveloz.com.uy/<slug>. Solo minúsculas, números y guiones."
-      >
+      <Field label="Título del landing" hint="El encabezado grande del landing. Por defecto: “Cotizá tu viaje”.">
+        <input
+          value={tituloHero}
+          onChange={(e) => setTituloHero(e.target.value)}
+          placeholder="Cotizá tu viaje"
+          maxLength={120}
+          className={inputClass}
+        />
+      </Field>
+
+      <Field label="URL del landing">
         <input
           value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          placeholder="se genera del nombre si lo dejás vacío"
-          maxLength={60}
+          onChange={(e) => {
+            setSlug(e.target.value);
+            setSlugEdited(true);
+          }}
+          placeholder="Se genera del nombre"
+          maxLength={80}
           className={inputClass}
         />
+        <p className="mt-1.5 text-xs text-neutral-500">
+          Escribí lo que quieras, lo convertimos en una dirección. Tu landing:{" "}
+          <span className="font-mono text-neutral-700">traveloz.com.uy/{slugPreview}</span>
+        </p>
       </Field>
 
-      <Field label="URL del logo" hint="Opcional. Si no hay logo se muestra el nombre.">
-        <input
-          value={logoUrl}
-          onChange={(e) => setLogoUrl(e.target.value)}
-          maxLength={500}
-          className={inputClass}
-        />
+      <Field label="Logo de la marca" hint="Subí un archivo. Se guarda en el bucket.">
+        <MediaPicker value={logoUrl} onChange={setLogoUrl} accept="image/*" hideUrl />
       </Field>
 
-      <Field label="Texto institucional" hint="Opcional. Una línea breve arriba del formulario.">
+      <Field label="Texto institucional" hint="Opcional. Aparece bajo el título del landing.">
         <textarea
           value={textoInstitucional}
           onChange={(e) => setTextoInstitucional(e.target.value)}
@@ -105,7 +129,7 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
         />
       </Field>
 
-      <Field label="Color principal" hint="Hex #RRGGBB para el botón del landing.">
+      <Field label="Color principal" hint="Tiñe el botón y los acentos del landing.">
         <div className="flex items-center gap-3">
           <input
             type="color"
@@ -124,14 +148,9 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
 
       <Field
         label="Emails destino"
-        hint="A dónde se notifican los envíos (separá con comas). El envío real se activa cuando Resend esté configurado."
+        hint="A dónde se notifican los envíos. Escribí uno y Enter (o coma), o pegá varios separados por coma."
       >
-        <input
-          value={emailsRaw}
-          onChange={(e) => setEmailsRaw(e.target.value)}
-          placeholder="ventas@marca.com, otra@marca.com"
-          className={inputClass}
-        />
+        <EmailChips value={emails} onChange={setEmails} />
       </Field>
 
       <label className="flex items-center gap-3">

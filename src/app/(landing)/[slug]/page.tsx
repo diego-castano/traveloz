@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
 // /[slug] — landing público de cotizador por marca (route group aislado).
-// Diseño inspirado en /cotizar: branding de la marca + hero "Cotizá tu viaje"
-// con texto institucional editable + formulario de cotización moderno + footer
-// de TravelOz solo-contacto. Sin links de navegación: el visitante no sale del
-// landing.
+// App-bar con el logo de TravelOz arriba, hero "Cotizá tu viaje" con el logo de
+// la marca de forma no invasiva + texto institucional editable, formulario
+// moderno (se siente como app en mobile) y footer de TravelOz solo-contacto.
+// Sin links de navegación: el visitante no sale del landing.
 // ---------------------------------------------------------------------------
 
 import { notFound } from "next/navigation";
@@ -25,46 +25,40 @@ export default async function CotizadorLandingPage({
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
-      {/* Barra de marca (sin navegación) */}
-      <header className="border-b border-neutral-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-center px-5 py-4">
-          {landing.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={landing.logoUrl}
-              alt={landing.nombreMarca}
-              className="h-10 w-auto object-contain"
-            />
-          ) : (
-            <span className="text-lg font-bold tracking-tight" style={{ color }}>
-              {landing.nombreMarca}
-            </span>
-          )}
+      {/* App-bar TravelOz (plataforma) */}
+      <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/85 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-2xl items-center justify-center px-5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/header-logo.webp" alt="TravelOz" className="h-10 w-auto" />
         </div>
       </header>
 
       <main className="flex-1">
         {/* Hero */}
-        <section
-          className="px-5 pb-2 pt-12 text-center"
-          style={{
-            background: `linear-gradient(180deg, ${color}0f 0%, transparent 100%)`,
-          }}
-        >
-          <div className="mx-auto max-w-2xl">
-            <h1 className="text-4xl font-bold tracking-tight text-neutral-900 sm:text-5xl">
-              Cotizá tu viaje
+        <section className="px-5 pb-2 pt-10 text-center sm:pt-14">
+          <div className="mx-auto max-w-xl">
+            <h1 className="text-[34px] font-bold leading-tight tracking-tight text-neutral-900 sm:text-5xl">
+              {landing.tituloHero?.trim() || "Cotizá tu viaje"}
             </h1>
-            <p className="mx-auto mt-4 max-w-xl text-[17px] leading-relaxed text-neutral-600">
+            <p className="mx-auto mt-3.5 max-w-lg text-[16px] leading-relaxed text-neutral-600">
               {landing.textoInstitucional?.trim() ||
                 "Contanos a dónde querés ir, cuándo y cuántos viajan. Diseñamos el itinerario a tu medida y te respondemos a la brevedad."}
             </p>
           </div>
         </section>
 
-        {/* Formulario */}
-        <section className="px-5 py-10">
-          <div className="mx-auto max-w-2xl rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm sm:p-9">
+        {/* Formulario — tarjeta tipo app */}
+        <section className="px-4 pb-10 pt-4 sm:px-5">
+          <div className="relative mx-auto max-w-xl rounded-3xl border border-neutral-200/80 bg-white p-5 shadow-[0_8px_40px_rgba(15,23,42,0.06)] sm:p-8">
+            {/* Logo de la marca, sutil y discreto en la esquina (no protagonista). */}
+            {landing.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={landing.logoUrl}
+                alt={landing.nombreMarca}
+                className="pointer-events-none absolute right-5 top-5 h-6 w-auto object-contain opacity-35 grayscale sm:right-7 sm:top-7"
+              />
+            )}
             <CotizadorLeadForm landingId={landing.id} color={color} />
           </div>
         </section>

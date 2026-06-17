@@ -74,6 +74,7 @@ export default async function EditarCotizadorPage({
           id: landing.id,
           nombreMarca: landing.nombreMarca,
           slug: landing.slug,
+          tituloHero: landing.tituloHero,
           logoUrl: landing.logoUrl,
           textoInstitucional: landing.textoInstitucional,
           colorPrimario: landing.colorPrimario,

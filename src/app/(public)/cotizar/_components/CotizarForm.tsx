@@ -31,7 +31,7 @@ export function CotizarForm() {
             padding: 12,
             border: "1px solid #ddd",
             borderRadius: 4,
-            fontSize: 14,
+            fontSize: 16,
           }}
         />
         <DateRangePicker
@@ -48,7 +48,7 @@ export function CotizarForm() {
             padding: 12,
             border: "1px solid #ddd",
             borderRadius: 4,
-            fontSize: 14,
+            fontSize: 16,
           }}
         />
         <input
@@ -60,7 +60,7 @@ export function CotizarForm() {
             padding: 12,
             border: "1px solid #ddd",
             borderRadius: 4,
-            fontSize: 14,
+            fontSize: 16,
           }}
         />
         <input
@@ -70,7 +70,7 @@ export function CotizarForm() {
             padding: 12,
             border: "1px solid #ddd",
             borderRadius: 4,
-            fontSize: 14,
+            fontSize: 16,
           }}
         />
         <select
@@ -80,7 +80,7 @@ export function CotizarForm() {
             padding: 12,
             border: "1px solid #ddd",
             borderRadius: 4,
-            fontSize: 14,
+            fontSize: 16,
           }}
         >
           <option value="">Preferencia de contacto</option>
@@ -96,7 +96,7 @@ export function CotizarForm() {
             padding: 12,
             border: "1px solid #ddd",
             borderRadius: 4,
-            fontSize: 14,
+            fontSize: 16,
           }}
         />
         <button

@@ -2,18 +2,24 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Check } from "lucide-react";
 import { submitCotizadorLead, type FormResult } from "@/actions/cotizador.actions";
+import { PhoneField } from "./PhoneField";
+import { DateRangeField } from "./DateRangeField";
 
+// font-size 16px (text-base): por debajo de eso iOS hace auto-zoom al enfocar.
 const inputClass =
-  "w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-[15px] text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10";
+  "w-full rounded-xl border border-neutral-300 bg-white px-4 py-3.5 text-base text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10";
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <label className="mb-1.5 block text-sm font-medium text-neutral-700">{children}</label>;
+  return <label className="mb-1.5 block text-[13px] font-medium text-neutral-600">{children}</label>;
 }
 
-function Stepper({
+// Fila de stepper full-width (va dentro de un contenedor agrupado con divide-y).
+// Full-width evita que los controles se pisen como pasaba con el grid de 3 cols.
+function StepperRow({
   label,
+  sublabel,
   name,
   value,
   setValue,
@@ -21,6 +27,7 @@ function Stepper({
   color,
 }: {
   label: string;
+  sublabel?: string;
   name: string;
   value: number;
   setValue: (n: number) => void;
@@ -28,28 +35,31 @@ function Stepper({
   color: string;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-neutral-300 px-3 py-2">
-      <span className="text-sm text-neutral-700">{label}</span>
-      <div className="flex items-center gap-2">
+    <div className="flex items-center justify-between px-4 py-3.5">
+      <div className="leading-tight">
+        <div className="text-[15px] font-medium text-neutral-800">{label}</div>
+        {sublabel && <div className="text-xs text-neutral-400">{sublabel}</div>}
+      </div>
+      <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={() => setValue(Math.max(min, value - 1))}
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition hover:border-neutral-500 disabled:opacity-40"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition active:scale-95 hover:border-neutral-500 disabled:opacity-30"
           disabled={value <= min}
           aria-label={`Menos ${label}`}
         >
-          <Minus className="h-3.5 w-3.5" />
+          <Minus className="h-4 w-4" />
         </button>
-        <span className="w-5 text-center text-sm font-semibold tabular-nums" style={{ color }}>
+        <span className="w-4 text-center text-base font-semibold tabular-nums" style={{ color }}>
           {value}
         </span>
         <button
           type="button"
           onClick={() => setValue(Math.min(20, value + 1))}
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition hover:border-neutral-500"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition active:scale-95 hover:border-neutral-500"
           aria-label={`Más ${label}`}
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-4 w-4" />
         </button>
       </div>
       <input type="hidden" name={name} value={value} />
@@ -64,7 +74,7 @@ function SubmitButton({ color }: { color: string }) {
       type="submit"
       disabled={pending}
       style={{ background: color }}
-      className="mt-1 w-full rounded-full px-6 py-3.5 text-[15px] font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-60"
+      className="mt-1 w-full rounded-full px-6 py-4 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] hover:brightness-110 disabled:opacity-60"
     >
       {pending ? "Enviando…" : "Solicitar cotización"}
     </button>
@@ -84,22 +94,26 @@ export function CotizadorLeadForm({
 
   const [adultos, setAdultos] = useState(2);
   const [ninos, setNinos] = useState(0);
-  const [infantes, setInfantes] = useState(0);
 
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
       setAdultos(2);
       setNinos(0);
-      setInfantes(0);
     }
   }, [state]);
 
   if (state?.ok) {
     return (
-      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-8 text-center">
-        <p className="text-lg font-semibold text-emerald-800">{state.message}</p>
-        <p className="mt-1 text-sm text-emerald-700">Te vamos a contactar a la brevedad.</p>
+      <div className="flex flex-col items-center rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-10 text-center">
+        <div
+          className="mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+          style={{ background: color }}
+        >
+          <Check className="h-7 w-7 text-white" />
+        </div>
+        <p className="text-lg font-semibold text-neutral-900">{state.message}</p>
+        <p className="mt-1 text-sm text-neutral-500">Te vamos a contactar a la brevedad.</p>
       </div>
     );
   }
@@ -121,25 +135,34 @@ export function CotizadorLeadForm({
         <input name="destino" required maxLength={200} placeholder="Ej. Caribe, Europa, Brasil…" className={inputClass} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <Label>Desde</Label>
-          <input type="date" name="fechaDesde" className={inputClass} />
-        </div>
-        <div>
-          <Label>Hasta</Label>
-          <input type="date" name="fechaHasta" className={inputClass} />
-        </div>
+      <div>
+        <Label>Fechas del viaje</Label>
+        <DateRangeField color={color} />
       </div>
 
       <div>
         <Label>Pasajeros</Label>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <Stepper label="Adultos" name="adultos" value={adultos} setValue={setAdultos} min={1} color={color} />
-          <Stepper label="Niños" name="ninos" value={ninos} setValue={setNinos} color={color} />
-          <Stepper label="Infantes" name="infantes" value={infantes} setValue={setInfantes} color={color} />
+        <div className="divide-y divide-neutral-200 overflow-hidden rounded-xl border border-neutral-300">
+          <StepperRow
+            label="Adultos"
+            name="adultos"
+            value={adultos}
+            setValue={setAdultos}
+            min={1}
+            color={color}
+          />
+          <StepperRow
+            label="Niños"
+            sublabel="2 a 11 años"
+            name="ninos"
+            value={ninos}
+            setValue={setNinos}
+            color={color}
+          />
         </div>
       </div>
+
+      <div className="h-px bg-neutral-100" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -152,23 +175,19 @@ export function CotizadorLeadForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <Label>Teléfono</Label>
-          <div className="flex gap-2">
-            <input name="paisCodigo" placeholder="+598" maxLength={6} className={`${inputClass} w-24`} />
-            <input name="telefono" maxLength={50} className={`${inputClass} flex-1`} />
-          </div>
-        </div>
-        <div>
-          <Label>Preferencia de contacto</Label>
-          <select name="preferencia" defaultValue="" className={inputClass}>
-            <option value="">Sin preferencia</option>
-            <option value="WHATSAPP">WhatsApp</option>
-            <option value="LLAMADA">Llamada</option>
-            <option value="EMAIL">Email</option>
-          </select>
-        </div>
+      <div>
+        <Label>Teléfono / WhatsApp</Label>
+        <PhoneField />
+      </div>
+
+      <div>
+        <Label>¿Cómo preferís que te contactemos?</Label>
+        <select name="preferencia" defaultValue="" className={inputClass}>
+          <option value="">Sin preferencia</option>
+          <option value="WHATSAPP">WhatsApp</option>
+          <option value="LLAMADA">Llamada</option>
+          <option value="EMAIL">Email</option>
+        </select>
       </div>
 
       <div>
@@ -187,6 +206,9 @@ export function CotizadorLeadForm({
       )}
 
       <SubmitButton color={color} />
+      <p className="text-center text-xs text-neutral-400">
+        Tus datos se usan solo para responder tu consulta.
+      </p>
     </form>
   );
 }
