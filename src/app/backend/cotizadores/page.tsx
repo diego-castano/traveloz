@@ -1,23 +1,18 @@
 // ---------------------------------------------------------------------------
 // /backend/cotizadores — módulo de Cotizadores por marca (solo ADMIN).
-// Lista de landings + toggle de Coming Soon del sitio principal.
+// El toggle de Coming Soon vive en Frontend → Datos generales.
 // ---------------------------------------------------------------------------
 
 import Link from "next/link";
-import { getCotizadorLandings, getComingSoonState } from "@/actions/cotizador.actions";
-import { ComingSoonToggle } from "./_components/ComingSoonToggle";
+import { getCotizadorLandings } from "@/actions/cotizador.actions";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Cotizadores por marca — TravelOz" };
 
 export default async function CotizadoresPage() {
   let landings: Awaited<ReturnType<typeof getCotizadorLandings>> = [];
-  let comingSoon = true;
   try {
-    [landings, comingSoon] = await Promise.all([
-      getCotizadorLandings(),
-      getComingSoonState(),
-    ]);
+    landings = await getCotizadorLandings();
   } catch {
     return (
       <div className="p-6">
@@ -42,10 +37,6 @@ export default async function CotizadoresPage() {
         >
           + Nuevo cotizador
         </Link>
-      </div>
-
-      <div className="mb-6">
-        <ComingSoonToggle initial={comingSoon} />
       </div>
 
       {landings.length === 0 ? (

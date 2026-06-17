@@ -20,6 +20,14 @@ function fmt(d: Date): string {
   }).format(new Date(d));
 }
 
+function fmtDay(d: Date): string {
+  return new Intl.DateTimeFormat("es-UY", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(new Date(d));
+}
+
 export default async function EditarCotizadorPage({
   params,
 }: {
@@ -90,27 +98,52 @@ export default async function EditarCotizadorPage({
                 <tr className="bg-neutral-50 text-left text-neutral-500">
                   <th className="px-4 py-3 font-medium">Fecha</th>
                   <th className="px-4 py-3 font-medium">Nombre</th>
-                  <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Teléfono</th>
+                  <th className="px-4 py-3 font-medium">Contacto</th>
+                  <th className="px-4 py-3 font-medium">Destino</th>
+                  <th className="px-4 py-3 font-medium">Viaje</th>
+                  <th className="px-4 py-3 font-medium">Pax</th>
+                  <th className="px-4 py-3 font-medium">Pref.</th>
                   <th className="px-4 py-3 font-medium">Consulta</th>
                 </tr>
               </thead>
               <tbody>
-                {landing.leads.map((lead) => (
-                  <tr key={lead.id} className="border-t border-neutral-100 align-top">
-                    <td className="whitespace-nowrap px-4 py-3 text-neutral-500">
-                      {fmt(lead.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 text-neutral-900">{lead.nombre}</td>
-                    <td className="px-4 py-3 text-neutral-600">{lead.email}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-neutral-600">
-                      {[lead.paisCodigo, lead.telefono].filter(Boolean).join(" ") || "—"}
-                    </td>
-                    <td className="max-w-xs px-4 py-3 text-neutral-600">
-                      {lead.comentarios || "—"}
-                    </td>
-                  </tr>
-                ))}
+                {landing.leads.map((lead) => {
+                  const tel = [lead.paisCodigo, lead.telefono].filter(Boolean).join(" ");
+                  const fechas = [lead.fechaDesde, lead.fechaHasta]
+                    .filter(Boolean)
+                    .map((d) => fmtDay(d as Date))
+                    .join(" → ");
+                  const pax = [
+                    lead.adultos ? `${lead.adultos}A` : "",
+                    lead.ninos ? `${lead.ninos}N` : "",
+                    lead.infantes ? `${lead.infantes}I` : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  return (
+                    <tr key={lead.id} className="border-t border-neutral-100 align-top">
+                      <td className="whitespace-nowrap px-4 py-3 text-neutral-500">
+                        {fmt(lead.createdAt)}
+                      </td>
+                      <td className="px-4 py-3 text-neutral-900">{lead.nombre}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-neutral-600">
+                        <div>{lead.email}</div>
+                        {tel && <div className="text-xs text-neutral-400">{tel}</div>}
+                      </td>
+                      <td className="px-4 py-3 text-neutral-600">{lead.destino || "—"}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-neutral-600">
+                        {fechas || "—"}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-neutral-600">{pax || "—"}</td>
+                      <td className="px-4 py-3 text-neutral-600">
+                        {lead.preferencia ? lead.preferencia.toLowerCase() : "—"}
+                      </td>
+                      <td className="max-w-xs px-4 py-3 text-neutral-600">
+                        {lead.comentarios || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

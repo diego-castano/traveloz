@@ -887,15 +887,23 @@ model CotizadorLanding {
 }
 
 model CotizadorLead {
-  id          String        @id @default(cuid())
+  id          String         @id @default(cuid())
   landingId   String
   nombre      String
   email       String
   telefono    String?
   paisCodigo  String?
-  comentarios String?       @db.Text
-  estado      EstadoMensaje @default(NUEVO)
-  createdAt   DateTime      @default(now())
+  // Campos del formulario de cotización (espejo del form público /cotizar).
+  destino     String?
+  fechaDesde  DateTime?
+  fechaHasta  DateTime?
+  adultos     Int            @default(0)
+  ninos       Int            @default(0)
+  infantes    Int            @default(0)
+  preferencia CanalContacto?
+  comentarios String?        @db.Text
+  estado      EstadoMensaje  @default(NUEVO)
+  createdAt   DateTime       @default(now())
 
   landing CotizadorLanding @relation(fields: [landingId], references: [id], onDelete: Cascade)
 
