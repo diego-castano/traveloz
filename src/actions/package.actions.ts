@@ -22,6 +22,10 @@ async function safePropagate(paqueteId: string): Promise<void> {
   } catch (err) {
     log.error("propagate failed", { paqueteId, err });
   }
+  // Toda mutación que propaga pasa por acá (asignar/quitar servicios, destinos,
+  // opciones): invalidamos la caché de servidor de paquetes para que una
+  // pestaña nueva no lea datos viejos.
+  bustPackagesGlobal();
 }
 
 /**
@@ -48,6 +52,18 @@ async function syncPaqueteNoches(paqueteId: string): Promise<void> {
   }
 }
 
+// Tag global de paquetes: presente en las dos lecturas cacheadas
+// (getBasePackages / getPackageSubEntities). Las mutaciones de asignación de
+// servicios a un paquete no conocen el brandId, así que invalidan por acá en
+// vez de por el tag por marca. Cubre todas las marcas de una (las asignaciones
+// son mucho menos frecuentes que las lecturas, así que es barato).
+const PACKAGES_GLOBAL_TAG = "paquetes-global";
+
+/** Invalida la caché de servidor de paquetes y sus sub-entidades (todas las marcas). */
+function bustPackagesGlobal() {
+  revalidateTag(PACKAGES_GLOBAL_TAG);
+}
+
 // Cache busters for dashboard, report, AND paquete listing aggregates. Called
 // after every paquete mutation so the UI stops serving stale counts/lists the
 // moment the user commits a change.
@@ -57,6 +73,7 @@ function bustDashboardCache(brandId: string) {
   revalidateTag(`reports:${brandId}`);
   revalidateTag(`paquetes:${brandId}`);
   revalidateTag(`paquete-sub:${brandId}`);
+  revalidateTag(PACKAGES_GLOBAL_TAG);
 }
 
 // ──────────────────────────────────────────────
@@ -204,7 +221,7 @@ export async function getBasePackages(
           sortCreated,
         }),
       cacheKey,
-      { revalidate: 60, tags: [`paquetes:${brandId}`] },
+      { revalidate: 60, tags: [`paquetes:${brandId}`, PACKAGES_GLOBAL_TAG] },
     );
     return await cached();
   } catch (error) {
@@ -264,7 +281,7 @@ export async function getPackageSubEntities(requestedBrandId?: string) {
     const cached = unstable_cache(
       () => fetchPackageSubEntitiesUncached(brandId),
       ["paquete-sub", brandId],
-      { revalidate: 60, tags: [`paquete-sub:${brandId}`, `paquetes:${brandId}`] },
+      { revalidate: 60, tags: [`paquete-sub:${brandId}`, `paquetes:${brandId}`, PACKAGES_GLOBAL_TAG] },
     );
     return await cached();
   } catch (error) {
@@ -417,7 +434,7 @@ export async function deletePaquete(id: string) {
 export async function clonePaquete(sourceId: string) {
   try {
     await requireCanEdit();
-    return await prisma.$transaction(
+    const cloned = await prisma.$transaction(
       async (tx) => {
       // 1. Read source paquete
       const source = await tx.paquete.findUniqueOrThrow({
@@ -649,6 +666,8 @@ export async function clonePaquete(sourceId: string) {
       },
       { timeout: 20_000, maxWait: 5_000 },
     );
+    bustPackagesGlobal();
+    return cloned;
   } catch (error) {
     log.error("cloning paquete", error);
     throw new Error("No se pudo clonar el paquete.");
@@ -708,7 +727,9 @@ export async function updateAereoAssignment(
 ) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteAereo.update({ where: { id }, data });
+    const res = await prisma.paqueteAereo.update({ where: { id }, data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("updating aereo assignment", error);
     throw new Error("No se pudo actualizar la asignación del aéreo.");
@@ -741,6 +762,7 @@ export async function reorderPaqueteAssignments(
       }
     });
     await prisma.$transaction(updates);
+    bustPackagesGlobal();
   } catch (error) {
     log.error("reordering assignments", error);
     throw new Error("No se pudo guardar el nuevo orden de servicios.");
@@ -802,7 +824,9 @@ export async function updateAlojamientoAssignment(
 ) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteAlojamiento.update({ where: { id }, data });
+    const res = await prisma.paqueteAlojamiento.update({ where: { id }, data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("updating alojamiento assignment", error);
     throw new Error("No se pudo actualizar la asignación del alojamiento.");
@@ -860,7 +884,9 @@ export async function updateTrasladoAssignment(
 ) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteTraslado.update({ where: { id }, data });
+    const res = await prisma.paqueteTraslado.update({ where: { id }, data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("updating traslado assignment", error);
     throw new Error("No se pudo actualizar la asignación del traslado.");
@@ -922,6 +948,7 @@ export async function updateSeguroAssignment(
     if (data.diasCobertura !== undefined) {
       await safePropagate(res.paqueteId);
     }
+    bustPackagesGlobal();
     return res;
   } catch (error) {
     log.error("updating seguro assignment", error);
@@ -980,7 +1007,9 @@ export async function updateCircuitoAssignment(
 ) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteCircuito.update({ where: { id }, data });
+    const res = await prisma.paqueteCircuito.update({ where: { id }, data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("updating circuito assignment", error);
     throw new Error("No se pudo actualizar la asignación del circuito.");
@@ -999,7 +1028,9 @@ export async function addPaqueteFoto(data: {
 }) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteFoto.create({ data });
+    const res = await prisma.paqueteFoto.create({ data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("adding paquete foto", error);
     throw new Error("No se pudo agregar la foto al paquete.");
@@ -1009,7 +1040,9 @@ export async function addPaqueteFoto(data: {
 export async function removePaqueteFoto(id: string) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteFoto.delete({ where: { id } });
+    const res = await prisma.paqueteFoto.delete({ where: { id } });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("removing paquete foto", error);
     throw new Error("No se pudo eliminar la foto del paquete.");
@@ -1022,7 +1055,9 @@ export async function updatePaqueteFoto(
 ) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteFoto.update({ where: { id }, data });
+    const res = await prisma.paqueteFoto.update({ where: { id }, data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("updating paquete foto", error);
     throw new Error("No se pudo actualizar la foto del paquete.");
@@ -1039,7 +1074,9 @@ export async function assignEtiqueta(data: {
 }) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteEtiqueta.create({ data });
+    const res = await prisma.paqueteEtiqueta.create({ data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("assigning etiqueta", error);
     throw new Error("No se pudo asignar la etiqueta al paquete.");
@@ -1049,7 +1086,9 @@ export async function assignEtiqueta(data: {
 export async function removeEtiqueta(id: string) {
   try {
     await requireCanEdit();
-    return await prisma.paqueteEtiqueta.delete({ where: { id } });
+    const res = await prisma.paqueteEtiqueta.delete({ where: { id } });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("removing etiqueta", error);
     throw new Error("No se pudo quitar la etiqueta del paquete.");
@@ -1071,7 +1110,9 @@ export async function createOpcionHotelera(data: {
 }) {
   try {
     await requireCanEdit();
-    return await prisma.opcionHotelera.create({ data });
+    const res = await prisma.opcionHotelera.create({ data });
+    bustPackagesGlobal();
+    return res;
   } catch (error) {
     log.error("creating opcion hotelera", error);
     throw new Error("No se pudo crear la opción hotelera.");
@@ -1096,6 +1137,7 @@ export async function updateOpcionHotelera(
     // — that's a manual override the propagator would overwrite. nombre/orden/
     // proveedorId are cosmetic.
     if (data.factor !== undefined) await safePropagate(res.paqueteId);
+    bustPackagesGlobal();
     return res;
   } catch (error) {
     log.error("updating opcion hotelera", error);
@@ -1162,6 +1204,7 @@ export async function updatePaqueteDestino(
       await syncPaqueteNoches(res.paqueteId);
       await safePropagate(res.paqueteId);
     }
+    bustPackagesGlobal();
     return res;
   } catch (error) {
     log.error("updating paquete destino", error);
@@ -1207,6 +1250,7 @@ export async function reorderPaqueteDestinos(
         }),
       ),
     );
+    bustPackagesGlobal();
   } catch (error) {
     log.error("reordering paquete destinos", error);
     throw new Error("No se pudo reordenar los destinos.");
@@ -1229,6 +1273,7 @@ export async function createOpcionHotel(data: {
     await recomputeForOpcionHotelera(data.opcionHoteleraId).catch((err) =>
       log.error("propagate failed (createOpcionHotel)", { err })
     );
+    bustPackagesGlobal();
     return res;
   } catch (error) {
     log.error("creating opcion hotel", error);
@@ -1248,6 +1293,7 @@ export async function updateOpcionHotel(
         log.error("propagate failed (updateOpcionHotel)", { err })
       );
     }
+    bustPackagesGlobal();
     return res;
   } catch (error) {
     log.error("updating opcion hotel", error);
@@ -1268,6 +1314,7 @@ export async function deleteOpcionHotel(id: string) {
         log.error("propagate failed (deleteOpcionHotel)", { err })
       );
     }
+    bustPackagesGlobal();
     return res;
   } catch (error) {
     log.error("deleting opcion hotel", error);
@@ -1297,6 +1344,7 @@ export async function upsertOpcionHotelPrincipal(
     await recomputeForOpcionHotelera(opcionHoteleraId).catch((err) =>
       log.error("propagate failed (upsertOpcionHotelPrincipal)", { err })
     );
+    bustPackagesGlobal();
     return res;
   } catch (error) {
     log.error("upserting opcion hotel", error);
