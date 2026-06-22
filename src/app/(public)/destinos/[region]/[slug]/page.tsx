@@ -125,10 +125,12 @@ export default async function PackageDetailPage({
           ]
         : [];
   const serviciosDerivados: { texto: string; icon: string }[] = [
-    ...paquete.aereos.map((pa) => ({
-      texto: pa.textoDisplay ?? pa.aereo.ruta,
-      icon: "vuelo",
-    })),
+    ...paquete.aereos.flatMap((pa) => [
+      { texto: pa.textoDisplay ?? pa.aereo.ruta, icon: "vuelo" },
+      ...(pa.aereo.equipaje?.trim()
+        ? [{ texto: pa.aereo.equipaje, icon: "equipaje" }]
+        : []),
+    ]),
     ...paquete.traslados.map((pt) => ({
       texto: pt.textoDisplay ?? pt.traslado.nombre,
       icon: "traslado",
@@ -138,10 +140,10 @@ export default async function PackageDetailPage({
       texto: pc.textoDisplay ?? pc.circuito.nombre,
       icon: "excursion",
     })),
-    ...paquete.seguros.map((ps) => ({
-      texto: ps.textoDisplay ?? ps.seguro.plan,
-      icon: "seguro",
-    })),
+    // Seguro: texto fijo, una sola línea si hay al menos un seguro cargado.
+    ...(paquete.seguros.length > 0
+      ? [{ texto: "Seguro de asistencia al viajero", icon: "seguro" }]
+      : []),
   ].filter((s) => s.texto && s.texto.trim());
 
   return (

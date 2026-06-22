@@ -406,7 +406,13 @@ export async function getSugerenciasIncluye(
     if (t) items.push({ id: newIncluyeId(), icon, texto: t });
   };
 
-  for (const pa of paquete.aereos) push("vuelo", pa.textoDisplay ?? pa.aereo.ruta);
+  for (const pa of paquete.aereos) {
+    push("vuelo", pa.textoDisplay ?? pa.aereo.ruta);
+    // El equipaje es una propiedad del aéreo (no un servicio de catálogo): si el
+    // aéreo lo trae cargado, lo agregamos como su propio renglón ("Carry on",
+    // "1 valija 23kg", etc.) con el ícono de equipaje.
+    push("equipaje", pa.aereo.equipaje);
+  }
   for (const pt of paquete.traslados)
     push("traslado", pt.textoDisplay ?? pt.traslado.nombre);
 
@@ -432,7 +438,10 @@ export async function getSugerenciasIncluye(
 
   for (const pc of paquete.circuitos)
     push("excursion", pc.textoDisplay ?? pc.circuito.nombre);
-  for (const ps of paquete.seguros) push("seguro", ps.textoDisplay ?? ps.seguro.plan);
+  // Seguro: texto fijo "Seguro de asistencia al viajero" (no el nombre del plan
+  // tipo "Master"). Una sola línea si el paquete tiene al menos un seguro.
+  if (paquete.seguros.length > 0)
+    push("seguro", "Seguro de asistencia al viajero");
 
   return items;
 }

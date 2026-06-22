@@ -155,6 +155,16 @@ function formatPeriodo(desde: string, hasta: string): string {
   }
 }
 
+// Split a package title like "Rio de Janeiro - 07 Noches" into the destination
+// ("Rio de Janeiro") and the nights tail ("07 Noches"), so the detail header
+// can render the nights on a second line. Falls back to the whole title when
+// there's no "- NN Noche(s)" tail.
+function splitTitulo(titulo: string): { main: string; nights: string | null } {
+  const m = titulo.match(/^(.*\S)\s*[-–—]\s*(\d+\s*noches?)\s*$/i);
+  if (m) return { main: m[1].trim(), nights: m[2].trim() };
+  return { main: titulo, nights: null };
+}
+
 // Scoped style overrides — tighten font sizes that site.css inherited from
 // the reference to match a more polished feel: smaller Incluye bullets +
 // icons, tighter text-box padding, and a sane container width.
@@ -162,6 +172,14 @@ const SCOPED_STYLES = `
   .pkg-detail .container.wide { max-width: 1200px; }
   .pkg-detail .content-box.style3 .top-heading { padding: 24px 28px 16px; }
   .pkg-detail .pkg-title { font-size: clamp(22px, 2.6vw, 34px); line-height: 1.12; margin-bottom: 8px; white-space: nowrap; }
+  /* Nights ("07 Noches") drop to a second line, lighter than the destination. */
+  .pkg-detail .pkg-title .pkg-title-nights {
+    display: block;
+    font-size: 0.62em;
+    font-weight: 600;
+    color: #7a7a7a;
+    margin-top: 2px;
+  }
   .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 14px 28px 0; gap: 0; }
   /* Bootstrap le pone margin-bottom:-1px a los .nav-link (efecto "tab pegado")
      y los botones traen fondo blanco: el tab activo se monta sobre el
@@ -434,7 +452,12 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                   <div className="col-7">
                     <div>
                       <h2 className="title pkg-title">
-                        <strong>{paquete.titulo}</strong>
+                        <strong>{splitTitulo(paquete.titulo).main}</strong>
+                        {splitTitulo(paquete.titulo).nights && (
+                          <span className="pkg-title-nights">
+                            {splitTitulo(paquete.titulo).nights}
+                          </span>
+                        )}
                       </h2>
                       {paquete.salidas && (
                         <p className="date" style={{ marginBottom: 0 }}>
