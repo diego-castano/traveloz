@@ -14,6 +14,8 @@ import {
   parseCampos,
   type FormField,
 } from "@/lib/cotizador-form";
+import { sendEmail } from "@/lib/email";
+import { cotizadorLeadEmail, cotizadorFrom } from "@/lib/cotizador-email";
 import { logger } from "@/lib/logger";
 
 const log = logger.child({ module: "cotizador.actions" });
@@ -106,7 +108,14 @@ export async function submitCotizadorLead(
     // el validador desde la misma definición que generó el formulario.
     const landing = await prisma.cotizadorLanding.findFirst({
       where: { id: landingId, publicado: true, deletedAt: null },
-      select: { id: true, campos: true },
+      select: {
+        id: true,
+        slug: true,
+        nombreMarca: true,
+        logoUrl: true,
+        emailsDestino: true,
+        campos: true,
+      },
     });
     if (!landing) return { ok: false, message: "Este formulario ya no está disponible." };
 
@@ -121,6 +130,35 @@ export async function submitCotizadorLead(
         respuestas: built.respuestas,
       },
     });
+
+    // Notificación a los vendedores (best-effort: el lead ya quedó guardado).
+    if (landing.emailsDestino.length > 0) {
+      try {
+        const tmpl = cotizadorLeadEmail({
+          marca: landing.nombreMarca,
+          slug: landing.slug,
+          logoUrl: landing.logoUrl,
+          nombre: contacto.data.nombre,
+          email: contacto.data.email,
+          respuestas: built.respuestas,
+          fecha: new Intl.DateTimeFormat("es-UY", {
+            dateStyle: "long",
+            timeStyle: "short",
+          }).format(new Date()),
+        });
+        await sendEmail({
+          to: landing.emailsDestino,
+          from: cotizadorFrom(landing.nombreMarca),
+          replyTo: contacto.data.email,
+          subject: tmpl.subject,
+          html: tmpl.html,
+          text: tmpl.text,
+        });
+      } catch (err) {
+        log.error("cotizador.email failed", err);
+      }
+    }
+
     return { ok: true, message: SUCCESS };
   } catch (err) {
     log.error("submitCotizadorLead failed", err);

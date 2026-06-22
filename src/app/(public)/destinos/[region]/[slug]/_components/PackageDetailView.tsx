@@ -180,23 +180,32 @@ const SCOPED_STYLES = `
      El '> li' evita que esto se filtre a los <li> de las estrellas, que viven
      anidados dentro de .content-inner.style2 en el tab Alojamientos. */
   .pkg-detail .box-tab-content.style1 .content-inner > li {
+    display: flex;
+    align-items: center;
     font-size: 16px;
-    line-height: 1.4;
-    margin-bottom: 14px;
+    line-height: 1.35;
+    margin-bottom: 18px;
     color: #2b2b2b;
   }
-  .pkg-detail .box-tab-content.style1 .content-inner > li img,
+  /* Icon sits inside a soft violet circle ("redondel"), reference brand violet. */
   .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-    margin-right: 14px;
+    width: 42px;
+    height: 42px;
+    padding: 10px;
+    box-sizing: border-box;
+    border-radius: 9999px;
+    background: #f2e9fa;
+    color: #a05ed3;
+    stroke-width: 2;
+    margin-right: 16px;
     flex-shrink: 0;
   }
-  /* Lucide icons (line style) read better with the brand teal at this size. */
-  .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
-    color: #1f9b8e;
-    stroke-width: 1.9;
+  .pkg-detail .box-tab-content.style1 .content-inner > li img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    margin-right: 16px;
+    flex-shrink: 0;
   }
   /* Alojamientos — cada OPCIÓN es un contenedor gris (como el PDF), que agrupa
      sus hoteles. El gris + el orden por precio hacen evidente que son opciones
@@ -325,13 +334,18 @@ const SCOPED_STYLES = `
     .pkg-detail .box-tab-content.style1 .content-inner { padding: 16px 18px; }
     .pkg-detail .box-tab-content.style1 .content-inner > li {
       font-size: 14px;
-      margin-bottom: 10px;
+      margin-bottom: 14px;
     }
-    .pkg-detail .box-tab-content.style1 .content-inner > li img,
     .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
-      width: 24px;
-      height: 24px;
-      margin-right: 10px;
+      width: 36px;
+      height: 36px;
+      padding: 8px;
+      margin-right: 12px;
+    }
+    .pkg-detail .box-tab-content.style1 .content-inner > li img {
+      width: 26px;
+      height: 26px;
+      margin-right: 12px;
     }
 
     /* Contenedor de opción y hoteles en mobile — más compacto. */
@@ -641,13 +655,10 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                                           (idx > 0 ? " hotel-item-divided" : "")
                                         }
                                       >
-                                        {/* Nombre con la ciudad adelante:
-                                            "Búzios - Posada Kybalion". Estrellas
+                                        {/* Orden: nombre del hotel + estrellas
                                             inline a la derecha (ver CSS). */}
                                         <h3 className="h4">
-                                          {ciudadNombre
-                                            ? `${ciudadNombre} - ${h.alojamiento.nombre}`
-                                            : h.alojamiento.nombre}
+                                          {h.alojamiento.nombre}
                                           {stars > 0 && (
                                             <ul>
                                               {Array.from({
@@ -660,8 +671,13 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                                             </ul>
                                           )}
                                         </h3>
-                                        {/* Régimen en una sola línea, como el PDF:
-                                            "Habitación Estándar con Desayuno". */}
+                                        {/* Debajo: la ciudad y luego el régimen,
+                                            ambos con el estilo gris de detalle. */}
+                                        {ciudadNombre && (
+                                          <span className="hotel-detail">
+                                            {ciudadNombre}
+                                          </span>
+                                        )}
                                         <span className="hotel-detail">
                                           {regimenNombre
                                             ? `Habitación Estándar con ${regimenNombre}`

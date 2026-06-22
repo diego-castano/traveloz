@@ -24,11 +24,12 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 const DEFAULT_FROM = "TravelOz <no-reply@traveloz.com.uy>";
 
 export interface SendEmailInput {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   text?: string;
   from?: string;
+  replyTo?: string;
 }
 
 export interface SendEmailResult {
@@ -68,6 +69,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         subject: input.subject,
         html: input.html,
         text: input.text,
+        reply_to: input.replyTo,
       }),
     });
 
