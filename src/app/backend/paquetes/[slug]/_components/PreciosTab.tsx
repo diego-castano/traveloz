@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Plane,
@@ -77,6 +77,68 @@ function getMarginGradient(factor: number): string {
   if (margin < 0.2)
     return "linear-gradient(90deg, #F59E0B 0%, #E74C5F 100%)";
   return "linear-gradient(90deg, #3BBFAD 0%, #F59E0B 100%)";
+}
+
+// ---------------------------------------------------------------------------
+// Number input that commits ONLY on blur / Enter (not on every keystroke).
+//
+// The price/markup fields are derived from `factor` and re-rendered on save,
+// so a per-keystroke onChange fought the user's typing (each digit triggered a
+// save + recompute that reset the displayed value mid-type → "garbage"). With a
+// local draft committed on blur, the operator types freely and we persist once.
+// ---------------------------------------------------------------------------
+function CommitNumberInput({
+  value,
+  onCommit,
+  decimals,
+  className,
+  min,
+  max,
+  step,
+}: {
+  value: number;
+  onCommit: (n: number) => void;
+  decimals?: number;
+  className?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+}) {
+  const text = (n: number) => (decimals != null ? n.toFixed(decimals) : String(n));
+  const [draft, setDraft] = useState<string>(text(value));
+  const [focused, setFocused] = useState(false);
+
+  // Sync from the external value when not actively editing.
+  useEffect(() => {
+    if (!focused) setDraft(text(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, focused, decimals]);
+
+  const commit = () => {
+    const n = parseFloat(draft);
+    if (Number.isFinite(n)) onCommit(n);
+    else setDraft(text(value));
+  };
+
+  return (
+    <input
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        commit();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+      }}
+      className={className}
+    />
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -551,15 +613,13 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-neutral-500 uppercase">Markup:</span>
                         {canEdit ? (
-                          <input
-                            type="number"
+                          <CommitNumberInput
                             min={0.01}
                             max={1}
                             step={0.01}
-                            value={Number(opcion.factor.toFixed(2))}
-                            onChange={(e) =>
-                              handleFactorChange(opcion, parseFloat(e.target.value) || 0.8)
-                            }
+                            decimals={2}
+                            value={opcion.factor}
+                            onCommit={(n) => handleFactorChange(opcion, n || 0.8)}
                             className="w-16 text-sm font-mono font-bold text-neutral-800 bg-white/60 rounded-md border border-neutral-200 px-2 py-1 focus:border-teal-500 focus:outline-none transition-colors text-center"
                           />
                         ) : (
@@ -598,14 +658,11 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                     {canEdit ? (
                       <div className="flex items-center gap-1">
                         <span className="text-xl font-mono font-bold text-teal-700">$</span>
-                        <input
-                          type="number"
+                        <CommitNumberInput
                           min={0}
                           step={1}
                           value={ventaCalc}
-                          onChange={(e) =>
-                            handleVentaChange(opcion, parseFloat(e.target.value) || 0)
-                          }
+                          onCommit={(n) => handleVentaChange(opcion, n || 0)}
                           className="w-28 text-xl font-mono font-bold text-teal-700 bg-transparent border-b-2 border-teal-200 hover:border-teal-400 focus:border-teal-500 focus:outline-none text-right px-1"
                         />
                       </div>
