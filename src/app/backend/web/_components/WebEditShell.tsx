@@ -225,6 +225,17 @@ export function WebEditShell({ children }: { children: React.ReactNode }) {
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+            {/* Cerrar la previsualización — disponible en todas las páginas del
+                Frontend que tienen preview. */}
+            <button
+              type="button"
+              onClick={togglePreview}
+              className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-neutral-200 bg-white text-neutral-500 hover:text-neutral-800"
+              title="Ocultar previsualización"
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+              <span className="text-[11px]">Ocultar</span>
+            </button>
           </div>
         </div>
 

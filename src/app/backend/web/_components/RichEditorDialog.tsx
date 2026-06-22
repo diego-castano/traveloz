@@ -10,7 +10,7 @@ export type RichField =
   | { type: "text"; key: string; label: string; placeholder?: string; required?: boolean }
   | { type: "email"; key: string; label: string; required?: boolean }
   | { type: "url"; key: string; label: string }
-  | { type: "image"; key: string; label: string }
+  | { type: "image"; key: string; label: string; hideUrl?: boolean }
   | { type: "html"; key: string; label: string; placeholder?: string; rows?: number }
   | { type: "textarea"; key: string; label: string; rows?: number };
 
@@ -122,6 +122,7 @@ export function RichEditorDialog({
                     value={values[f.key] ?? ""}
                     onChange={(v) => set(f.key, v)}
                     accept="image/*"
+                    hideUrl={f.hideUrl}
                   />
                 )}
                 {f.type === "textarea" && (

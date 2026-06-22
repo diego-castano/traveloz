@@ -146,6 +146,17 @@ export default async function PackageDetailPage({
       : []),
   ].filter((s) => s.texto && s.texto.trim());
 
+  // Precio "DESDE" robusto: el menor precioVenta entre las opciones hoteleras.
+  // `paquete.precioDesde` es un campo denormalizado que puede quedar
+  // desincronizado si un recompute falló; las opciones hoteleras son la fuente
+  // real del precio que ve el cliente, así que leemos el mínimo directo de ahí.
+  const ventasOpciones = paquete.opcionesHoteleras
+    .map((o) => o.precioVenta)
+    .filter((v) => v > 0);
+  const precioDesdeReal = ventasOpciones.length
+    ? Math.min(...ventasOpciones)
+    : paquete.precioDesde;
+
   return (
     <>
       {isPreview && (
@@ -172,7 +183,7 @@ export default async function PackageDetailPage({
           titulo: paquete.titulo,
           salidas: paquete.salidas,
           noches: paquete.noches,
-          precioDesde: paquete.precioDesde,
+          precioDesde: precioDesdeReal,
           precioDesdeMoneda: paquete.precioDesdeMoneda,
           heroImage: paquete.heroImage,
           fotos: paquete.fotos.map((f) => ({
