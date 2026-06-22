@@ -4,7 +4,8 @@ import { useState } from "react";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Skeleton } from "@/components/public/SkeletonClient";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
-import { parseIncluyeItems, incluyeIconUrl } from "@/lib/incluye";
+import { parseIncluyeItems } from "@/lib/incluye";
+import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { QuoteSidebar } from "./QuoteSidebar";
 import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
 
@@ -71,13 +72,6 @@ type Props = {
   /** Payment methods block — built from SiteSettings group="pagos". */
   formasDePago?: FormasDePagoData;
 };
-
-const SERVICE_ICON_FALLBACK = "/site/img/p-exc-icon.png";
-
-function serviceIconUrl(icon: string | null): string {
-  if (!icon) return SERVICE_ICON_FALLBACK;
-  return `/site/img/p-${icon}-icon.png`;
-}
 
 // Match a free-text bullet to one of the 5 reference icons (flight/bag/bus/
 // bed/exc) by detecting Spanish travel keywords. Falls back to "exc" so every
@@ -191,12 +185,18 @@ const SCOPED_STYLES = `
     margin-bottom: 14px;
     color: #2b2b2b;
   }
-  .pkg-detail .box-tab-content.style1 .content-inner > li img {
-    width: 32px;
-    height: 32px;
+  .pkg-detail .box-tab-content.style1 .content-inner > li img,
+  .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
+    width: 28px;
+    height: 28px;
     object-fit: contain;
     margin-right: 14px;
     flex-shrink: 0;
+  }
+  /* Lucide icons (line style) read better with the brand teal at this size. */
+  .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
+    color: #1f9b8e;
+    stroke-width: 1.9;
   }
   /* Alojamientos — cada OPCIÓN es un contenedor gris (como el PDF), que agrupa
      sus hoteles. El gris + el orden por precio hacen evidente que son opciones
@@ -327,9 +327,10 @@ const SCOPED_STYLES = `
       font-size: 14px;
       margin-bottom: 10px;
     }
-    .pkg-detail .box-tab-content.style1 .content-inner > li img {
-      width: 26px;
-      height: 26px;
+    .pkg-detail .box-tab-content.style1 .content-inner > li img,
+    .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
+      width: 24px;
+      height: 24px;
       margin-right: 10px;
     }
 
@@ -542,16 +543,7 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                       <ul className="content-inner">
                         {incluyeItems!.map((it) => (
                           <li key={it.id}>
-                            <img
-                              src={incluyeIconUrl(it.icon)}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src =
-                                  SERVICE_ICON_FALLBACK;
-                              }}
-                            />
+                            <ServiceIcon icon={it.icon} />
                             {it.texto}
                           </li>
                         ))}
@@ -566,16 +558,7 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                       <ul className="content-inner">
                         {paquete.serviciosDerivados.map((s, i) => (
                           <li key={`d-${i}`}>
-                            <img
-                              src={`/site/img/p-${s.icon}-icon.png`}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src =
-                                  SERVICE_ICON_FALLBACK;
-                              }}
-                            />
+                            <ServiceIcon icon={s.icon} />
                             {s.texto}
                           </li>
                         ))}
@@ -584,31 +567,13 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                       <ul className="content-inner">
                         {paquete.serviciosIncluidos.map((s) => (
                           <li key={s.id}>
-                            <img
-                              src={serviceIconUrl(s.servicio.icon)}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src =
-                                  SERVICE_ICON_FALLBACK;
-                              }}
-                            />
+                            <ServiceIcon icon={s.servicio.icon} />
                             {s.textoCustom ?? s.servicio.nombre}
                           </li>
                         ))}
                         {includeBullets.map((b, i) => (
                           <li key={`b-${i}`}>
-                            <img
-                              src={`/site/img/p-${detectIconForBullet(b.text)}-icon.png`}
-                              alt=""
-                              loading="lazy"
-                              decoding="async"
-                              onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src =
-                                  SERVICE_ICON_FALLBACK;
-                              }}
-                            />
+                            <ServiceIcon icon={detectIconForBullet(b.text)} />
                             <span
                               dangerouslySetInnerHTML={{
                                 __html: sanitizeRichHtml(b.html),

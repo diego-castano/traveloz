@@ -87,40 +87,32 @@ export function nuevoId(): string {
 // estos campos (sin nombre/email, que son fijos). El cliente edita desde acá.
 // ---------------------------------------------------------------------------
 export function camposEstandar(): FormField[] {
+  // Espejo de los campos del formulario de referencia (html_inicial/cotizacion.html),
+  // sin nombre/email (que son contacto fijo arriba de todo).
   return [
+    { id: "telefono", tipo: "telefono", etiqueta: "Teléfono", requerido: true },
     {
       id: "destino",
       tipo: "texto",
-      etiqueta: "¿A dónde querés ir?",
-      placeholder: "Ej. Caribe, Europa, Brasil…",
+      etiqueta: "Ciudad de destino",
+      placeholder: "¿A dónde querés viajar?",
       requerido: true,
     },
-    { id: "fechas", tipo: "rango_fechas", etiqueta: "Fechas del viaje", requerido: false },
-    { id: "adultos", tipo: "numero", etiqueta: "Adultos", requerido: false },
+    { id: "fechas", tipo: "rango_fechas", etiqueta: "Fechas (salida y regreso)", requerido: false },
+    { id: "adultos", tipo: "numero", etiqueta: "Adultos", ayuda: "Mayores de 18", requerido: false },
+    { id: "ninos", tipo: "numero", etiqueta: "Niños", ayuda: "Mayores de 2 años", requerido: false },
+    { id: "infantes", tipo: "numero", etiqueta: "Menores de 2 años", requerido: false },
     {
-      id: "ninos",
-      tipo: "numero",
-      etiqueta: "Niños",
-      ayuda: "2 a 11 años",
-      requerido: false,
-    },
-    { id: "telefono", tipo: "telefono", etiqueta: "Teléfono / WhatsApp", requerido: false },
-    {
-      id: "preferencia",
-      tipo: "seleccion",
-      etiqueta: "¿Cómo preferís que te contactemos?",
-      requerido: false,
-      opciones: [
-        { id: "whatsapp", label: "WhatsApp" },
-        { id: "llamada", label: "Llamada" },
-        { id: "email", label: "Email" },
-      ],
-    },
-    {
-      id: "comentarios",
+      id: "observaciones",
       tipo: "parrafo",
-      etiqueta: "Contanos más sobre tu viaje",
-      placeholder: "Presupuesto, intereses, fechas flexibles…",
+      etiqueta: "Observaciones",
+      placeholder: "Flexibilidad de fechas, otros destinos a cotizar, etc.",
+      requerido: false,
+    },
+    {
+      id: "promos",
+      tipo: "casilla",
+      etiqueta: "Deseo recibir promociones y ofertas",
       requerido: false,
     },
   ];

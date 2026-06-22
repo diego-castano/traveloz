@@ -15,7 +15,7 @@ import {
   updateServicio,
   deleteServicio,
 } from "@/actions/catalogo-servicios.actions";
-import { AVAILABLE_ICONS } from "@/lib/servicio-icons";
+import { ICON_OPTIONS } from "@/components/ui/ServiceIcon";
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
 import { useWebEdit } from "../_components/web-edit-context";
@@ -121,8 +121,8 @@ export default function WebServiciosIncluidosPage() {
             {
               type: "text",
               key: "icon",
-              label: `Icono — uno de: ${AVAILABLE_ICONS.join(", ")}`,
-              placeholder: "flight",
+              label: `Icono — uno de: ${ICON_OPTIONS.map((o) => o.key).join(", ")}`,
+              placeholder: "vuelo",
               required: true,
             },
             {

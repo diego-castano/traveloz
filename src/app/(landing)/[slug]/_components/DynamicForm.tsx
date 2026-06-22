@@ -31,23 +31,23 @@ function Stepper({
   color: string;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-neutral-300 px-4 py-2.5">
+    <div className="flex items-center justify-between rounded-xl border border-neutral-300 px-2.5 py-2 sm:px-3">
       <button
         type="button"
         onClick={() => setValue(Math.max(0, value - 1))}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition active:scale-95 hover:border-neutral-500 disabled:opacity-30"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition active:scale-95 hover:border-neutral-500 disabled:opacity-30"
         disabled={value <= 0}
         aria-label="Menos"
       >
         <Minus className="h-4 w-4" />
       </button>
-      <span className="w-6 text-center text-base font-semibold tabular-nums" style={{ color }}>
+      <span className="min-w-[1.25rem] text-center text-base font-semibold tabular-nums" style={{ color }}>
         {value}
       </span>
       <button
         type="button"
         onClick={() => setValue(Math.min(20, value + 1))}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition active:scale-95 hover:border-neutral-500"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-neutral-300 text-neutral-600 transition active:scale-95 hover:border-neutral-500"
         aria-label="Más"
       >
         <Plus className="h-4 w-4" />
@@ -297,6 +297,31 @@ export function DynamicForm({
     }
   }
 
+  // Agrupa campos de número consecutivos en una fila de 2 columnas: un número
+  // suelto no debe ocupar el 100% del ancho (adultos/niños quedan 50/50).
+  const visibles = campos.filter(visible);
+  const filas: JSX.Element[] = [];
+  for (let i = 0; i < visibles.length; ) {
+    const c = visibles[i];
+    if (c.tipo === "numero") {
+      const grupo: FormField[] = [];
+      while (i < visibles.length && visibles[i].tipo === "numero") {
+        grupo.push(visibles[i]);
+        i++;
+      }
+      filas.push(
+        <div key={`num-${grupo[0].id}`} className="grid grid-cols-2 gap-3 sm:gap-4">
+          {grupo.map((g) => (
+            <div key={g.id}>{renderField(g)}</div>
+          ))}
+        </div>,
+      );
+    } else {
+      filas.push(<div key={c.id}>{renderField(c)}</div>);
+      i++;
+    }
+  }
+
   const body = (
     <>
       {/* Honeypot */}
@@ -309,12 +334,7 @@ export function DynamicForm({
         style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
       />
 
-      {campos.filter(visible).map((c) => (
-        <div key={c.id}>{renderField(c)}</div>
-      ))}
-
-      {/* Contacto fijo */}
-      <div className="h-px bg-neutral-100" />
+      {/* Contacto fijo: siempre arriba de todo, en todas las marcas. */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <Label requerido>Nombre completo</Label>
@@ -325,6 +345,9 @@ export function DynamicForm({
           <input name="email" type="email" required maxLength={254} className={inputClass} />
         </div>
       </div>
+      <div className="h-px bg-neutral-100" />
+
+      {filas}
     </>
   );
 

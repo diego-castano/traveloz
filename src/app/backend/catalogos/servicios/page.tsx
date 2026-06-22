@@ -4,14 +4,14 @@ import { useEffect, useState, useTransition } from "react";
 import { Plus, Trash2, Save } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
+import { IconPicker } from "@/components/ui/IconPicker";
+import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import {
   listServicios,
   createServicio,
   updateServicio,
   deleteServicio,
 } from "@/actions/catalogo-servicios.actions";
-import { AVAILABLE_ICONS } from "@/lib/servicio-icons";
 import { useToast } from "@/components/ui/Toast";
 
 type Row = Awaited<ReturnType<typeof listServicios>>[number];
@@ -21,7 +21,7 @@ export default function ServiciosCatalogPage() {
   const [isPending, start] = useTransition();
   const [draft, setDraft] = useState({
     nombre: "",
-    icon: "flight",
+    icon: "vuelo",
     descripcion: "",
   });
   const { toast } = useToast();
@@ -36,7 +36,7 @@ export default function ServiciosCatalogPage() {
     start(async () => {
       try {
         await createServicio(draft);
-        setDraft({ nombre: "", icon: "flight", descripcion: "" });
+        setDraft({ nombre: "", icon: "vuelo", descripcion: "" });
         await refresh();
         toast("success", "Servicio creado");
       } catch (e) {
@@ -96,10 +96,9 @@ export default function ServiciosCatalogPage() {
           <label className="block text-xs font-medium text-neutral-600 mb-1">
             Icono
           </label>
-          <Select
+          <IconPicker
             value={draft.icon}
-            onValueChange={(v) => setDraft({ ...draft, icon: v })}
-            options={AVAILABLE_ICONS.map((i) => ({ value: i, label: i }))}
+            onChange={(v) => setDraft({ ...draft, icon: v })}
           />
         </div>
         <Button
@@ -137,15 +136,8 @@ export default function ServiciosCatalogPage() {
                 key={r.id}
                 className="border-t border-neutral-100 hover:bg-neutral-50/50"
               >
-                <td className="px-4 py-3">
-                  <img
-                    src={`/site/img/p-${r.icon}-icon.png`}
-                    alt={r.icon}
-                    className="w-6 h-6"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = "none";
-                    }}
-                  />
+                <td className="px-4 py-3 text-neutral-700">
+                  <ServiceIcon icon={r.icon} size={22} />
                 </td>
                 <td className="px-4 py-3 text-neutral-900">{r.nombre}</td>
                 <td className="px-4 py-3">

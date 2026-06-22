@@ -25,10 +25,14 @@ export default async function CotizadorLandingPage({
   // configurable por landing a propósito.
   const color = "#F43E55";
 
+  // Fondo de la referencia de diseño (html_inicial/cotizacion.html): degradado
+  // violeta → fucsia. El formulario queda en una tarjeta blanca encima.
+  const pageBg = "linear-gradient(180deg, #7a5cd1 0%, #ad5285 100%)";
+
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-50">
-      {/* App-bar TravelOz (plataforma) */}
-      <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/85 backdrop-blur">
+    <div className="flex min-h-screen flex-col" style={{ background: pageBg }}>
+      {/* App-bar TravelOz (plataforma) — barra blanca frosteada sobre el fondo. */}
+      <header className="sticky top-0 z-10 border-b border-neutral-200/60 bg-white/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-center px-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/header-logo.webp" alt="TravelOz" className="h-10 w-auto" />
@@ -39,10 +43,13 @@ export default async function CotizadorLandingPage({
         {/* Hero */}
         <section className="px-5 pb-2 pt-10 text-center sm:pt-14">
           <div className="mx-auto max-w-xl">
-            <h1 className="landing-title text-[34px] leading-tight tracking-tight sm:text-5xl">
+            <h1
+              className="landing-title text-[34px] leading-tight tracking-tight sm:text-5xl"
+              style={{ color: "#fff" }}
+            >
               {landing.tituloHero?.trim() || "Cotizá tu viaje"}
             </h1>
-            <p className="mx-auto mt-3.5 max-w-lg text-[16px] leading-relaxed text-neutral-600">
+            <p className="mx-auto mt-3.5 max-w-lg text-[16px] leading-relaxed text-white/90">
               {landing.textoInstitucional?.trim() ||
                 "Contanos a dónde querés ir, cuándo y cuántos viajan. Diseñamos el itinerario a tu medida y te respondemos a la brevedad."}
             </p>

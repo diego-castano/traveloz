@@ -22,22 +22,9 @@ export interface IncluyeItem {
   texto: string;
 }
 
-// Icons that actually have a PNG under /public/site/img/p-*-icon.png, with
-// friendly labels for the picker. Keep in sync with the files on disk so the
-// grid never shows a broken image. Add a new PNG + entry here to grow the set.
-export const INCLUYE_ICONS = [
-  { key: "flight", label: "Aéreo" },
-  { key: "bus", label: "Traslado" },
-  { key: "bed", label: "Alojamiento" },
-  { key: "bag", label: "Equipaje" },
-  { key: "exc", label: "Excursión / General" },
-] as const;
-
-export const DEFAULT_INCLUYE_ICON = "exc";
-
-export function incluyeIconUrl(icon: string): string {
-  return `/site/img/p-${icon}-icon.png`;
-}
+// Default icon key for items that don't specify one. Icon keys map to Lucide
+// components via the registry in components/ui/ServiceIcon.
+export const DEFAULT_INCLUYE_ICON = "check";
 
 // Marker wrapper so we can distinguish a serialized Incluye list from the
 // legacy rich-text the column used to hold. Bumping `v` lets us evolve later.

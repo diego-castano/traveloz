@@ -406,9 +406,9 @@ export async function getSugerenciasIncluye(
     if (t) items.push({ id: newIncluyeId(), icon, texto: t });
   };
 
-  for (const pa of paquete.aereos) push("flight", pa.textoDisplay ?? pa.aereo.ruta);
+  for (const pa of paquete.aereos) push("vuelo", pa.textoDisplay ?? pa.aereo.ruta);
   for (const pt of paquete.traslados)
-    push("bus", pt.textoDisplay ?? pt.traslado.nombre);
+    push("traslado", pt.textoDisplay ?? pt.traslado.nombre);
 
   for (const d of paquete.destinos) {
     if (!d.noches || d.noches <= 0) continue;
@@ -427,12 +427,12 @@ export async function getSugerenciasIncluye(
     const plural = d.noches === 1 ? "noche" : "noches";
     const lugar = ciudad ? ` en ${ciudad}` : "";
     const reg = regimen ? ` con ${regimen.toLowerCase()}` : "";
-    push("bed", `${d.noches} ${plural} de alojamiento${lugar}${reg}`);
+    push("alojamiento", `${d.noches} ${plural} de alojamiento${lugar}${reg}`);
   }
 
   for (const pc of paquete.circuitos)
-    push("exc", pc.textoDisplay ?? pc.circuito.nombre);
-  for (const ps of paquete.seguros) push("exc", ps.textoDisplay ?? ps.seguro.plan);
+    push("excursion", pc.textoDisplay ?? pc.circuito.nombre);
+  for (const ps of paquete.seguros) push("seguro", ps.textoDisplay ?? ps.seguro.plan);
 
   return items;
 }

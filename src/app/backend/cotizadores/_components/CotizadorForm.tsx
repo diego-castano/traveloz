@@ -194,13 +194,16 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">
           Vista previa
         </p>
-        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
+        <div
+          className="overflow-hidden rounded-2xl border border-neutral-200"
+          style={{ background: "linear-gradient(180deg, #7a5cd1 0%, #ad5285 100%)" }}
+        >
           <div className="px-5 pb-2 pt-6 text-center">
-            <h2 className="text-xl font-bold tracking-tight text-neutral-900">
+            <h2 className="text-xl font-bold tracking-tight text-white">
               {tituloHero.trim() || "Cotizá tu viaje"}
             </h2>
             {textoInstitucional.trim() && (
-              <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-neutral-500">
+              <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-white/90">
                 {textoInstitucional.trim()}
               </p>
             )}

@@ -106,7 +106,7 @@ export default async function PackageDetailPage({
         : "";
       return {
         texto: `${d.noches} ${plural} de alojamiento${lugar}${reg}`,
-        icon: "bed",
+        icon: "alojamiento",
       };
     });
   // Fallback: si no hay destinos cargados pero sí noches totales, una sola línea.
@@ -127,20 +127,20 @@ export default async function PackageDetailPage({
   const serviciosDerivados: { texto: string; icon: string }[] = [
     ...paquete.aereos.map((pa) => ({
       texto: pa.textoDisplay ?? pa.aereo.ruta,
-      icon: "flight",
+      icon: "vuelo",
     })),
     ...paquete.traslados.map((pt) => ({
       texto: pt.textoDisplay ?? pt.traslado.nombre,
-      icon: "bus",
+      icon: "traslado",
     })),
     ...nochesBullets,
     ...paquete.circuitos.map((pc) => ({
       texto: pc.textoDisplay ?? pc.circuito.nombre,
-      icon: "exc",
+      icon: "excursion",
     })),
     ...paquete.seguros.map((ps) => ({
       texto: ps.textoDisplay ?? ps.seguro.plan,
-      icon: "exc",
+      icon: "seguro",
     })),
   ].filter((s) => s.texto && s.texto.trim());
 
