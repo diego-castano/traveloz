@@ -71,8 +71,11 @@ export const KEY_VALIDATORS: Record<string, Validator> = {
   contacto_telefono: phone,
   contacto_whatsapp: optionalUrlV,
 
-  // Notificaciones de leads (destino interno de los formularios del sitio)
-  notificaciones_leads_emails: optionalEmailListV,
+  // Notificaciones de leads — un destino por formulario (separá varios con comas)
+  notificaciones_email_contacto: optionalEmailListV,
+  notificaciones_email_corporativo: optionalEmailListV,
+  notificaciones_email_cotizacion: optionalEmailListV,
+  notificaciones_email_trabaja: optionalEmailListV,
 
   // Destinos CTA
   destinos_cta_link_href: internalOrExternalUrl,

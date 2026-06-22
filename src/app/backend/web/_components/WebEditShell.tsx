@@ -35,6 +35,13 @@ const DESKTOP_VW = 1280;
 const MOBILE_VW = 390;
 const MOBILE_VH = 844;
 
+// Preferencia de mostrar/ocultar el preview, recordada entre páginas y recargas.
+const PREVIEW_HIDDEN_KEY = "web-preview-hidden";
+
+// Rutas del panel web que no tienen un preview útil (no mapean a una página
+// pública). Ahí el preview arranca oculto para no apretar la columna del form.
+const NO_PREVIEW_ROUTES = ["/backend/web/notificaciones"];
+
 export function WebEditShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { previewRef, refreshPreview, lastRefreshAt, devMode, setDevMode } =
@@ -42,6 +49,34 @@ export function WebEditShell({ children }: { children: React.ReactNode }) {
   const [device, setDevice] = useState<Device>("desktop");
   const [hidden, setHidden] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+
+  const routeHasNoPreview = useMemo(
+    () => NO_PREVIEW_ROUTES.some((r) => pathname.startsWith(r)),
+    [pathname],
+  );
+
+  // La preferencia manual (localStorage) manda en todo el panel. Si no hay
+  // preferencia guardada, ocultamos sólo donde el preview no aporta.
+  useEffect(() => {
+    const saved =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(PREVIEW_HIDDEN_KEY)
+        : null;
+    if (saved === "1") setHidden(true);
+    else if (saved === "0") setHidden(false);
+    else setHidden(routeHasNoPreview);
+  }, [routeHasNoPreview]);
+
+  const togglePreview = () =>
+    setHidden((h) => {
+      const next = !h;
+      try {
+        window.localStorage.setItem(PREVIEW_HIDDEN_KEY, next ? "1" : "0");
+      } catch {
+        // localStorage no disponible (modo privado): la preferencia dura la sesión.
+      }
+      return next;
+    });
 
   // Track the available preview canvas so we can scale the iframe to fit.
   // The parent backend layout uses `overflow-y-auto`, so we can't rely on
@@ -247,7 +282,7 @@ export function WebEditShell({ children }: { children: React.ReactNode }) {
       {/* ── Floating hide/show toggle (desktop only) ─────────────────── */}
       <button
         type="button"
-        onClick={() => setHidden((h) => !h)}
+        onClick={togglePreview}
         className="hidden lg:flex fixed bottom-4 right-4 items-center gap-1.5 px-3 py-2 bg-neutral-900 text-white text-xs rounded-full shadow-lg hover:bg-neutral-800 z-50"
         title={hidden ? "Mostrar preview" : "Ocultar preview"}
       >

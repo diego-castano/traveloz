@@ -173,6 +173,8 @@ function parseEmails(raw: string | null | undefined): string[] {
 }
 
 async function notifyLead(opts: {
+  /** Key de SiteSetting con el/los email(s) destino de este formulario. */
+  settingKey: string;
   tipo: string;
   campos: { label: string; value: string }[];
   replyTo?: string | null;
@@ -180,7 +182,7 @@ async function notifyLead(opts: {
 }): Promise<void> {
   try {
     const setting = await prisma.siteSetting.findUnique({
-      where: { key: "notificaciones_leads_emails" },
+      where: { key: opts.settingKey },
       select: { value: true },
     });
     const destinos = parseEmails(setting?.value);
@@ -235,6 +237,7 @@ export async function submitContactForm(
 
     await prisma.mensajeContacto.create({ data: parsed.data });
     await notifyLead({
+      settingKey: "notificaciones_email_contacto",
       tipo: "Contacto",
       replyTo: parsed.data.email,
       origen: captureOrigen(),
@@ -310,6 +313,7 @@ export async function submitWorkWithUsForm(
       },
     });
     await notifyLead({
+      settingKey: "notificaciones_email_trabaja",
       tipo: "Trabajá con nosotros",
       replyTo: parsed.data.email,
       origen: captureOrigen(),
@@ -364,6 +368,7 @@ export async function submitCorporateForm(
 
     await prisma.contactoCorporativo.create({ data: parsed.data });
     await notifyLead({
+      settingKey: "notificaciones_email_corporativo",
       tipo: "Corporativo",
       replyTo: parsed.data.email,
       origen: captureOrigen(),
@@ -531,6 +536,7 @@ export async function submitQuoteForm(
 
     const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
     await notifyLead({
+      settingKey: "notificaciones_email_cotizacion",
       tipo: "Cotización",
       replyTo: data.email,
       origen: s(formData, "origen") ?? captureOrigen(),

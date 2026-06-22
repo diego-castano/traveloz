@@ -5,7 +5,7 @@ export default function WebNotificacionesPage() {
     <SettingsForm
       group="notificaciones"
       title="Notificaciones de leads"
-      blurb="Email(es) que reciben los formularios del sitio: Contacto, Corporativo, Trabajá con nosotros y Cotización. Separá varias casillas con comas. Los leads del cotizador por marca se configuran aparte, en cada cotizador."
+      blurb="Definí a qué casilla llega cada formulario del sitio. Cada uno puede tener su propio destino (por ejemplo, RRHH para “Trabajá con nosotros”). Separá varias casillas con comas; dejá un campo vacío para no notificar ese formulario. Los leads del cotizador por marca se configuran aparte, en cada cotizador."
     />
   );
 }

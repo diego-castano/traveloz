@@ -123,8 +123,11 @@ const SETTINGS: Array<{
   { key: "contacto_direccion", value: "Av. Dr. Luis Alberto de Herrera 1343 Of. 301 - Edificio Trade Plaza", type: "textarea", group: "contacto", label: "Dirección" },
   { key: "contacto_horario", value: "Lunes a Viernes 09:30 a 18:30", group: "contacto", label: "Horario de atención" },
   { key: "contacto_mapa_embed", value: "", type: "textarea", group: "contacto", label: "URL del iframe de Google Maps (opcional)" },
-  // ─── Notificaciones de leads (destino interno de los formularios) ─────
-  { key: "notificaciones_leads_emails", value: "", group: "notificaciones", label: "Emails que reciben los leads (separá varios con comas)" },
+  // ─── Notificaciones de leads — un destino por formulario ──────────────
+  { key: "notificaciones_email_contacto", value: "", group: "notificaciones", label: "Contacto general — emails que reciben /contact (separá varios con comas)" },
+  { key: "notificaciones_email_corporativo", value: "", group: "notificaciones", label: "Corporativo — emails que reciben /corporativo" },
+  { key: "notificaciones_email_cotizacion", value: "", group: "notificaciones", label: "Cotización — emails que reciben /cotizar y el formulario de paquetes" },
+  { key: "notificaciones_email_trabaja", value: "", group: "notificaciones", label: "Trabajá con nosotros (RRHH) — emails que reciben /work-with-us" },
   // ─── Corporativo (página /corporativo) ───────────────────────────────
   { key: "corporativo_hero_titulo", value: "Viajes que impulsan negocios.", group: "corporativo", label: "Título del hero" },
   { key: "corporativo_hero_video", value: "/site/video/Video-Traveloz-Corporativo.mp4", type: "url", group: "corporativo", label: "Video de fondo del hero" },
