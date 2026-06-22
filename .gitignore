@@ -48,3 +48,12 @@ next-env.d.ts
 
 # QA / audit screenshots (kept locally, not in repo)
 audit/
+
+# Artefactos locales y PDFs de diseño (no versionar)
+/*.pdf
+
+# El proyecto usa npm (Railway/nixpacks corre `npm run build`). Estos archivos
+# pnpm quedaron de un experimento local; versionarlos haría que nixpacks
+# cambie a pnpm y rompa el build de producción.
+pnpm-lock.yaml
+pnpm-workspace.yaml

@@ -161,7 +161,7 @@ function formatPeriodo(desde: string, hasta: string): string {
 const SCOPED_STYLES = `
   .pkg-detail .container.wide { max-width: 1200px; }
   .pkg-detail .content-box.style3 .top-heading { padding: 24px 28px 16px; }
-  .pkg-detail .pkg-title { font-size: 36px; line-height: 1.1; margin-bottom: 8px; }
+  .pkg-detail .pkg-title { font-size: clamp(22px, 2.6vw, 34px); line-height: 1.12; margin-bottom: 8px; white-space: nowrap; }
   .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 14px 28px 0; gap: 0; }
   /* Bootstrap le pone margin-bottom:-1px a los .nav-link (efecto "tab pegado")
      y los botones traen fondo blanco: el tab activo se monta sobre el
@@ -187,14 +187,16 @@ const SCOPED_STYLES = `
     margin-bottom: 18px;
     color: #2b2b2b;
   }
-  /* Icon sits inside a soft violet circle ("redondel"), reference brand violet. */
+  /* Icon sits inside a white circle with a violet ring ("redondel"), as in the
+     reference: white background, round violet border, nothing else. */
   .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     padding: 10px;
     box-sizing: border-box;
     border-radius: 9999px;
-    background: #f2e9fa;
+    background: #ffffff;
+    border: 2px solid #a05ed3;
     color: #a05ed3;
     stroke-width: 2;
     margin-right: 16px;
@@ -319,7 +321,7 @@ const SCOPED_STYLES = `
       flex: 0 0 100%;
       max-width: 100%;
     }
-    .pkg-detail .pkg-title { font-size: 22px; line-height: 1.18; margin-bottom: 6px; }
+    .pkg-detail .pkg-title { font-size: 22px; line-height: 1.18; margin-bottom: 6px; white-space: normal; }
     .pkg-detail .top-heading .large-price {
       justify-content: flex-start;
       margin-top: 10px;
@@ -337,9 +339,9 @@ const SCOPED_STYLES = `
       margin-bottom: 14px;
     }
     .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
-      width: 36px;
-      height: 36px;
-      padding: 8px;
+      width: 38px;
+      height: 38px;
+      padding: 9px;
       margin-right: 12px;
     }
     .pkg-detail .box-tab-content.style1 .content-inner > li img {

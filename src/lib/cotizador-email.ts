@@ -29,10 +29,11 @@ export interface CotizadorLeadEmailOpts {
   fecha?: string;
 }
 
-// Logo de la plataforma (TravelOz). Va en el dominio de Railway porque el
-// custom domain todavía no sirve el asset; cambiar a traveloz.com.uy cuando lo haga.
-export const TRAVELOZ_LOGO_URL =
-  "https://traveloz-production.up.railway.app/header-logo.webp";
+// Dominio del servicio (el mismo que Railway/Resend). Cambiar acá si migra.
+export const SITE_BASE_URL = "https://app.traveloz.com.uy";
+
+// Logo de la plataforma (TravelOz).
+export const TRAVELOZ_LOGO_URL = `${SITE_BASE_URL}/header-logo.webp`;
 
 export function cotizadorLeadEmail(opts: CotizadorLeadEmailOpts): {
   subject: string;
@@ -43,7 +44,8 @@ export function cotizadorLeadEmail(opts: CotizadorLeadEmailOpts): {
   const ink = "#23232b";
   const muted = "#8a8f98";
   const marca = escapeHtml(opts.marca);
-  const landingUrl = `https://traveloz.com.uy/${opts.slug}`;
+  const landingUrl = `${SITE_BASE_URL}/${opts.slug}`;
+  const landingLabel = escapeHtml(landingUrl.replace(/^https?:\/\//, ""));
 
   // Marca: logo propio si lo cargaron, si no el nombre en un chip claro.
   const brand = opts.logoUrl
@@ -101,6 +103,10 @@ export function cotizadorLeadEmail(opts: CotizadorLeadEmailOpts): {
                 opts.email,
               )}</a>
               ${opts.fecha ? `<div style="color:${muted};font-size:12px;margin-top:4px">${escapeHtml(opts.fecha)}</div>` : ""}
+              <div style="margin-top:8px;font-size:13px;line-height:1.5">
+                <span style="color:${muted}">Enviado desde:</span>
+                <a href="${landingUrl}" style="color:${accent};text-decoration:none">${landingLabel}</a>
+              </div>
             </td></tr>
           </table>
         </td></tr>
@@ -111,7 +117,7 @@ export function cotizadorLeadEmail(opts: CotizadorLeadEmailOpts): {
         <!-- Footer -->
         <tr><td style="padding:16px 28px;background-color:#f7f8fa;border-top:1px solid #e6e8ee;text-align:center;color:${muted};font-size:12px;line-height:1.6">
           Cotizador <strong style="color:${ink}">${marca}</strong> · TravelOz<br/>
-          <a href="${landingUrl}" style="color:${muted};text-decoration:underline">${escapeHtml(`traveloz.com.uy/${opts.slug}`)}</a>
+          <a href="${landingUrl}" style="color:${muted};text-decoration:underline">${landingLabel}</a>
         </td></tr>
       </table>
     </td></tr>
@@ -128,7 +134,7 @@ export function cotizadorLeadEmail(opts: CotizadorLeadEmailOpts): {
     "",
     ...opts.respuestas.map((r) => `${r.etiqueta}: ${r.valor}`),
     "",
-    landingUrl,
+    `Enviado desde el formulario: ${landingUrl}`,
   ]
     .filter(Boolean)
     .join("\n");
