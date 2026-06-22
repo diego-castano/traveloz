@@ -2,14 +2,14 @@
 // /[slug] — landing público de cotizador por marca (route group aislado).
 // App-bar con el logo de TravelOz arriba, hero "Cotizá tu viaje" con el logo de
 // la marca de forma no invasiva + texto institucional editable, formulario
-// moderno (se siente como app en mobile) y footer de TravelOz solo-contacto.
-// Sin links de navegación: el visitante no sale del landing.
+// moderno (se siente como app en mobile) y el footer completo de TravelOz
+// (mismo componente que el sitio público).
 // ---------------------------------------------------------------------------
 
 import { notFound } from "next/navigation";
 import { getPublishedLanding } from "@/actions/cotizador.actions";
-import { CotizadorLeadForm } from "./_components/CotizadorLeadForm";
-import { LandingFooter } from "./_components/LandingFooter";
+import { DynamicForm } from "./_components/DynamicForm";
+import { Footer } from "@/components/public/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,9 @@ export default async function CotizadorLandingPage({
   const landing = await getPublishedLanding(params.slug);
   if (!landing) notFound();
 
-  const color = landing.colorPrimario || "#1a1a2e";
+  // Color de marca fijo, igual al formulario de referencia (/cotizar). No es
+  // configurable por landing a propósito.
+  const color = "#F43E55";
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
@@ -37,7 +39,7 @@ export default async function CotizadorLandingPage({
         {/* Hero */}
         <section className="px-5 pb-2 pt-10 text-center sm:pt-14">
           <div className="mx-auto max-w-xl">
-            <h1 className="text-[34px] font-bold leading-tight tracking-tight text-neutral-900 sm:text-5xl">
+            <h1 className="landing-title text-[34px] leading-tight tracking-tight sm:text-5xl">
               {landing.tituloHero?.trim() || "Cotizá tu viaje"}
             </h1>
             <p className="mx-auto mt-3.5 max-w-lg text-[16px] leading-relaxed text-neutral-600">
@@ -59,12 +61,12 @@ export default async function CotizadorLandingPage({
                 className="pointer-events-none absolute right-5 top-5 h-6 w-auto object-contain opacity-35 grayscale sm:right-7 sm:top-7"
               />
             )}
-            <CotizadorLeadForm landingId={landing.id} color={color} />
+            <DynamicForm landingId={landing.id} campos={landing.campos} color={color} />
           </div>
         </section>
       </main>
 
-      <LandingFooter />
+      <Footer />
     </div>
   );
 }

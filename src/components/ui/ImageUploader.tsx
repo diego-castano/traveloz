@@ -81,6 +81,13 @@ export interface ImageUploaderProps {
   onRemove?: (id: string) => void;
   onReorder?: (images: ImageItem[]) => void;
   onSetPrincipal?: (id: string) => void;
+  /**
+   * Marks the "principal" image by id instead of by position. When set (even to
+   * an empty string), the principal badge/star follow this id rather than the
+   * first item — so the featured photo can be any photo, independent of order.
+   * Leave undefined to keep the default "first image is principal" behavior.
+   */
+  principalId?: string;
   /** Optional: persist alt text edits from the lightbox. */
   onUpdateAlt?: (id: string, alt: string) => void;
   /** Optional: replace the URL of an existing item with a freshly uploaded one. */
@@ -123,6 +130,7 @@ export function ImageUploader({
   onRemove,
   onReorder,
   onSetPrincipal,
+  principalId,
   onUpdateAlt,
   onReplace,
   maxImages = 10,
@@ -541,7 +549,11 @@ export function ImageUploader({
                   key={image.id}
                   image={image}
                   index={index}
-                  isFirst={index === 0}
+                  isFirst={
+                    principalId !== undefined
+                      ? image.id === principalId
+                      : index === 0
+                  }
                   selected={selected.has(image.id)}
                   enableBulkSelect={enableBulkSelect}
                   onToggleSelect={() => toggleSelected(image.id)}
@@ -690,6 +702,7 @@ export function ImageUploader({
           onRemove={(item) => handleRemoveImage(item)}
           onReplace={onReplace ? (id) => handleReplace(id) : undefined}
           onSetPrincipal={onSetPrincipal}
+          principalId={principalId}
         />
       )}
     </div>
@@ -896,6 +909,7 @@ interface LightboxProps {
   onRemove: (item: ImageItem) => void;
   onReplace?: (id: string) => void;
   onSetPrincipal?: (id: string) => void;
+  principalId?: string;
 }
 
 function Lightbox({
@@ -907,6 +921,7 @@ function Lightbox({
   onRemove,
   onReplace,
   onSetPrincipal,
+  principalId,
 }: LightboxProps) {
   const item = images[index];
   const [draftAlt, setDraftAlt] = React.useState(item.alt ?? "");
@@ -981,13 +996,16 @@ function Lightbox({
                   a.remove();
                 }}
               />
-              {onSetPrincipal && index !== 0 && (
-                <LightboxAction
-                  icon={Star}
-                  label="Marcar principal"
-                  onClick={() => onSetPrincipal(item.id)}
-                />
-              )}
+              {onSetPrincipal &&
+                (principalId !== undefined
+                  ? item.id !== principalId
+                  : index !== 0) && (
+                  <LightboxAction
+                    icon={Star}
+                    label="Marcar principal"
+                    onClick={() => onSetPrincipal(item.id)}
+                  />
+                )}
               {onReplace && (
                 <LightboxAction
                   icon={Replace}

@@ -2221,8 +2221,42 @@ strong {
     width: 100%
 }
 
+/* Las imágenes de región vienen de la DB con cualquier relación de aspecto.
+   Forzamos el formato vertical del template original (400×487) recortando con
+   cover, solo en el slider de /destinos. */
+.image-box-slider.v2 .image-box.style1 img {
+    aspect-ratio: 400 / 487;
+    object-fit: cover;
+    display: block;
+}
+
 .image-box-slider.v2 .slick-list {
     padding-right: 150px
+}
+
+/* Peek de la 4ª tarjeta en /destinos (equivale al padding-right del slick-list
+   del template). Embla clipea en el viewport, así que el padding deja asomar la
+   slide siguiente. Solo en escritorio; en mobile manda el centerMode. */
+@media (min-width: 768px) {
+    .image-box-slider.v2 .embla__viewport {
+        padding-right: 150px;
+    }
+}
+
+/* centerMode móvil: la tarjeta activa queda a escala 1 y las vecinas, que
+   asoman a los lados, se achican. Reemplaza los transforms hardcodeados de
+   slick del template original. */
+@media (max-width: 767px) {
+    .image-box-slider .embla__slide {
+        transition: transform 0.4s;
+        transform: scale(0.82);
+    }
+
+    .image-box-slider .embla__slide.is-center {
+        transform: scale(1);
+        position: relative;
+        z-index: 2;
+    }
 }
 
 .main-wrapper.alt {

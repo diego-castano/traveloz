@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
+import { type IncluyeItem, newIncluyeId } from "@/lib/incluye";
 
 // ---------------------------------------------------------------------------
 // Preview URL resolver — used by the "Previsualizar" button in /backend/paquetes
@@ -355,3 +356,83 @@ export async function setPaqueteServicios(
 // (`recomputeForOpcionHotelera` / `safePropagate`). Enchufar la función vieja
 // habría pisado ese valor correcto con el min por noche sin factor. Se eliminó
 // para evitar esa regresión.
+
+// ---------------------------------------------------------------------------
+// Sugerencias para la lista "Incluye" — arma renglones editables a partir de
+// los servicios estructurados que el operador ya cargó: un aéreo/traslado/
+// circuito/seguro por línea, y UNA línea por destino con sus noches y el
+// régimen del alojamiento de esa ciudad ("3 noches de alojamiento en Río con
+// desayuno"). El front lo usa en el botón "Generar incluido"; el operador
+// después edita, reordena o borra a gusto.
+// ---------------------------------------------------------------------------
+export async function getSugerenciasIncluye(
+  paqueteId: string,
+): Promise<IncluyeItem[]> {
+  await requireAuth();
+
+  const paquete = await prisma.paquete.findUnique({
+    where: { id: paqueteId },
+    include: {
+      aereos: { orderBy: { orden: "asc" }, include: { aereo: true } },
+      traslados: { orderBy: { orden: "asc" }, include: { traslado: true } },
+      circuitos: { orderBy: { orden: "asc" }, include: { circuito: true } },
+      seguros: { orderBy: { orden: "asc" }, include: { seguro: true } },
+      destinos: {
+        orderBy: { orden: "asc" },
+        include: {
+          ciudad: { select: { nombre: true } },
+          opcionHoteles: {
+            orderBy: { orden: "asc" },
+            include: {
+              alojamiento: {
+                include: {
+                  precios: {
+                    where: { deletedAt: null },
+                    include: { regimen: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!paquete) return [];
+
+  const items: IncluyeItem[] = [];
+  const push = (icon: string, texto: string | null | undefined) => {
+    const t = (texto ?? "").trim();
+    if (t) items.push({ id: newIncluyeId(), icon, texto: t });
+  };
+
+  for (const pa of paquete.aereos) push("flight", pa.textoDisplay ?? pa.aereo.ruta);
+  for (const pt of paquete.traslados)
+    push("bus", pt.textoDisplay ?? pt.traslado.nombre);
+
+  for (const d of paquete.destinos) {
+    if (!d.noches || d.noches <= 0) continue;
+    const ciudad = d.ciudad?.nombre?.trim();
+    // Régimen del destino: el primero que encontremos entre los hoteles
+    // asignados a ese destino (suele ser el mismo para todos).
+    let regimen: string | null = null;
+    for (const oh of d.opcionHoteles) {
+      const reg = oh.alojamiento?.precios.find((p) => p.regimen?.nombre)
+        ?.regimen?.nombre;
+      if (reg) {
+        regimen = reg;
+        break;
+      }
+    }
+    const plural = d.noches === 1 ? "noche" : "noches";
+    const lugar = ciudad ? ` en ${ciudad}` : "";
+    const reg = regimen ? ` con ${regimen.toLowerCase()}` : "";
+    push("bed", `${d.noches} ${plural} de alojamiento${lugar}${reg}`);
+  }
+
+  for (const pc of paquete.circuitos)
+    push("exc", pc.textoDisplay ?? pc.circuito.nombre);
+  for (const ps of paquete.seguros) push("exc", ps.textoDisplay ?? ps.seguro.plan);
+
+  return items;
+}

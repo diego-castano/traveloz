@@ -32,7 +32,6 @@ export function HomeTestimonios({
           autoplayDelay={5000}
           loop
           showArrows
-          showDots
           className="image-text-slider"
         >
           {items.map((t) => (

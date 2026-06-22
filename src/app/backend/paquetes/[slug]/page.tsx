@@ -32,7 +32,6 @@ const DatosTab = dynamic(() => import("./_components/DatosTab"), { loading: TabF
 const ServiciosTab = dynamic(() => import("./_components/ServiciosTab"), { loading: TabFallback, ssr: false });
 const AlojamientosTab = dynamic(() => import("./_components/AlojamientosTab"), { loading: TabFallback, ssr: false });
 const PreciosTab = dynamic(() => import("./_components/PreciosTab"), { loading: TabFallback, ssr: false });
-const FotosTab = dynamic(() => import("./_components/FotosTab"), { loading: TabFallback, ssr: false });
 const PublicacionTab = dynamic(
   () => import("./_components/PublicacionTab").then((m) => ({ default: m.PublicacionTab })),
   { loading: TabFallback, ssr: false },
@@ -53,7 +52,6 @@ const TABS = [
   "servicios",
   "alojamientos",
   "precios",
-  "fotos",
   "publicacion",
 ] as const;
 
@@ -62,7 +60,6 @@ const TAB_LABELS: Record<(typeof TABS)[number], string> = {
   servicios: "Servicios",
   alojamientos: "Alojamientos",
   precios: "Precios",
-  fotos: "Fotos",
   publicacion: "Publicación",
 };
 
@@ -166,10 +163,6 @@ export default function PaqueteDetailPage() {
 
         <TabsContent value="precios">
           <PreciosTab paquete={paquete} />
-        </TabsContent>
-
-        <TabsContent value="fotos">
-          <FotosTab paquete={paquete} />
         </TabsContent>
 
         <TabsContent value="publicacion">

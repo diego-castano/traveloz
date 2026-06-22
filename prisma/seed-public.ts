@@ -115,8 +115,8 @@ const SETTINGS: Array<{
   { key: "nosotros_cierre", value: "En TravelOz no solo planificamos itinerarios de viaje, acompañamos sueños, creamos momentos y dejamos huellas que perduran para siempre.", type: "textarea", group: "nosotros", label: "Frase de cierre" },
   { key: "nosotros_imagen2", value: "/site/img/about-us-2.webp", group: "nosotros", label: "Imagen secundaria (URL)" },
   // ─── Contacto (página /contact) ──────────────────────────────────────
-  { key: "contacto_titulo", value: "Hablemos", group: "contacto", label: "Título principal" },
-  { key: "contacto_subtitulo", value: "Estamos para escucharte y ayudarte a planear tu próximo viaje.", type: "textarea", group: "contacto", label: "Subtítulo / lead" },
+  { key: "contacto_titulo", value: "¡Conversemos!", group: "contacto", label: "Título principal" },
+  { key: "contacto_subtitulo", value: 'Ideas, comentarios, preguntas... Todo lo que quieras compartir <br class="d-none d-md-block">es bienvenido, ¡queremos escucharte!', type: "textarea", group: "contacto", label: "Subtítulo / lead" },
   { key: "contacto_email", value: "info@traveloz.com.uy", group: "contacto", label: "Email de contacto" },
   { key: "contacto_telefono", value: "+598 2628 1717", group: "contacto", label: "Teléfono" },
   { key: "contacto_whatsapp", value: "https://wa.me/59899000000", group: "contacto", label: "WhatsApp (URL)" },
@@ -157,8 +157,8 @@ const SETTINGS: Array<{
   { key: "destinos_subtitulo", value: "Explorá nuestros destinos por región y dejá que te sorprendan.", type: "textarea", group: "destinos", label: "Subtítulo / lead" },
   { key: "destinos_cta_titulo", value: "¿No encontrás lo que buscás?", group: "destinos", label: "CTA — título" },
   { key: "destinos_cta_texto", value: "Diseñamos paquetes a medida. Contanos qué tenés en mente.", type: "textarea", group: "destinos", label: "CTA — texto" },
-  { key: "destinos_cta_link_label", value: "Cotizar a medida", group: "destinos", label: "CTA — texto del botón" },
-  { key: "destinos_cta_link_href", value: "/cotizar", group: "destinos", label: "CTA — destino del botón" },
+  { key: "destinos_cta_link_label", value: "Explorá todos los destinos", group: "destinos", label: "CTA — texto del botón" },
+  { key: "destinos_cta_link_href", value: "/destinos", group: "destinos", label: "CTA — destino del botón" },
   { key: "destinos_categoria_subtitulo", value: "Paquetes de {tipo} disponibles.", type: "textarea", group: "destinos", label: "Subtítulo modo categoría (usá {tipo} como variable)" },
   // ─── FAQ (página /faq) ───────────────────────────────────────────────
   { key: "faq_titulo", value: "Preguntas frecuentes", group: "faq", label: "Título principal" },

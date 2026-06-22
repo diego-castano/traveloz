@@ -7,6 +7,13 @@ import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/require-auth";
 import { checkFormRate } from "@/lib/rate-limit";
 import { validateSlug, normalizeSlug } from "@/lib/cotizador";
+import {
+  buildRespuestas,
+  camposEstandar,
+  camposSchema,
+  parseCampos,
+  type FormField,
+} from "@/lib/cotizador-form";
 import { logger } from "@/lib/logger";
 
 const log = logger.child({ module: "cotizador.actions" });
@@ -16,7 +23,7 @@ const log = logger.child({ module: "cotizador.actions" });
 // /[slug] del route group aislado.
 // ---------------------------------------------------------------------------
 export async function getPublishedLanding(slug: string) {
-  return prisma.cotizadorLanding.findFirst({
+  const landing = await prisma.cotizadorLanding.findFirst({
     where: { slug, publicado: true, deletedAt: null },
     select: {
       id: true,
@@ -26,8 +33,13 @@ export async function getPublishedLanding(slug: string) {
       tituloHero: true,
       textoInstitucional: true,
       colorPrimario: true,
+      campos: true,
     },
   });
+  if (!landing) return null;
+  // Una landing sin campos (caso borde) cae al formulario de cotización estándar.
+  const campos = parseCampos(landing.campos);
+  return { ...landing, campos: campos.length ? campos : camposEstandar() };
 }
 
 // ---------------------------------------------------------------------------
@@ -38,18 +50,11 @@ export async function getPublishedLanding(slug: string) {
 // ---------------------------------------------------------------------------
 export type FormResult = { ok: boolean; message: string };
 
-const leadSchema = z.object({
+// Contacto fijo: nombre + email se piden siempre, el resto del formulario es
+// dinámico (definido por `campos`).
+const contactoSchema = z.object({
   nombre: z.string().trim().min(1, "Ingresá tu nombre.").max(200),
   email: z.string().trim().min(1, "Ingresá tu email.").max(254).email("Email inválido."),
-  telefono: z.string().trim().max(50).nullable(),
-  paisCodigo: z
-    .string()
-    .trim()
-    .regex(/^\+?\d{1,6}$/, "Código de país inválido.")
-    .nullable(),
-  destino: z.string().trim().max(200).nullable(),
-  preferencia: z.enum(["LLAMADA", "EMAIL", "WHATSAPP"]).nullable(),
-  comentarios: z.string().trim().max(5000).nullable(),
 });
 
 function field(formData: FormData, key: string): string | null {
@@ -57,23 +62,6 @@ function field(formData: FormData, key: string): string | null {
   if (typeof v !== "string") return null;
   const t = v.trim();
   return t.length === 0 ? null : t;
-}
-
-function intField(formData: FormData, key: string): number {
-  const v = Number(field(formData, key));
-  return Number.isFinite(v) && v >= 0 && v < 100 ? Math.floor(v) : 0;
-}
-
-function dateField(formData: FormData, key: string): Date | null {
-  const v = field(formData, key);
-  if (!v) return null;
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function prefField(formData: FormData, key: string): "LLAMADA" | "EMAIL" | "WHATSAPP" | null {
-  const v = field(formData, key);
-  return v === "LLAMADA" || v === "EMAIL" || v === "WHATSAPP" ? v : null;
 }
 
 function clientIp(): string | null {
@@ -105,36 +93,32 @@ export async function submitCotizadorLead(
       };
     }
 
-    const parsed = leadSchema.safeParse({
+    const contacto = contactoSchema.safeParse({
       nombre: field(formData, "nombre"),
       email: field(formData, "email"),
-      telefono: field(formData, "telefono"),
-      paisCodigo: field(formData, "paisCodigo"),
-      destino: field(formData, "destino"),
-      preferencia: prefField(formData, "preferencia"),
-      comentarios: field(formData, "comentarios"),
     });
-    if (!parsed.success) {
-      return { ok: false, message: parsed.error.issues[0]?.message ?? "Revisá los datos." };
+    if (!contacto.success) {
+      return { ok: false, message: contacto.error.issues[0]?.message ?? "Revisá los datos." };
     }
 
     // Validamos que el landing exista y esté publicado antes del insert (evita
-    // P2003 y que un id viejo pierda el lead).
+    // P2003 y que un id viejo pierda el lead). Traemos `campos` para reconstruir
+    // el validador desde la misma definición que generó el formulario.
     const landing = await prisma.cotizadorLanding.findFirst({
       where: { id: landingId, publicado: true, deletedAt: null },
-      select: { id: true },
+      select: { id: true, campos: true },
     });
     if (!landing) return { ok: false, message: "Este formulario ya no está disponible." };
+
+    const built = buildRespuestas(parseCampos(landing.campos), formData);
+    if (!built.ok) return { ok: false, message: built.message };
 
     await prisma.cotizadorLead.create({
       data: {
         landingId,
-        ...parsed.data,
-        fechaDesde: dateField(formData, "fechaDesde"),
-        fechaHasta: dateField(formData, "fechaHasta"),
-        adultos: intField(formData, "adultos"),
-        ninos: intField(formData, "ninos"),
-        infantes: intField(formData, "infantes"),
+        nombre: contacto.data.nombre,
+        email: contacto.data.email,
+        respuestas: built.respuestas,
       },
     });
     return { ok: true, message: SUCCESS };
@@ -159,6 +143,7 @@ const upsertSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usá #RRGGBB).")
     .nullable(),
   emailsDestino: z.array(z.string().trim().email()).max(20),
+  campos: camposSchema,
   publicado: z.boolean(),
 });
 
@@ -170,6 +155,7 @@ export type CotizadorUpsertInput = {
   textoInstitucional?: string | null;
   colorPrimario?: string | null;
   emailsDestino: string[];
+  campos: FormField[];
   publicado: boolean;
 };
 
@@ -211,6 +197,8 @@ function normalizeUpsert(input: CotizadorUpsertInput) {
     textoInstitucional: input.textoInstitucional ?? null,
     colorPrimario: input.colorPrimario ?? null,
     emailsDestino: input.emailsDestino ?? [],
+    // Un landing siempre tiene formulario: si llega vacío, sembramos el estándar.
+    campos: input.campos?.length ? input.campos : camposEstandar(),
     publicado: input.publicado,
   });
   return parsed;

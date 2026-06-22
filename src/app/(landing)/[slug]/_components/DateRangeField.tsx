@@ -15,8 +15,9 @@ function toISO(d: Date): string {
 }
 
 // Selector de rango de fechas (Desde → Hasta) tipo check-in/check-out.
-// Popover en desktop, sheet full-screen en mobile. Submite fechaDesde/fechaHasta.
-export function DateRangeField({ color }: { color: string }) {
+// Popover en desktop, sheet full-screen en mobile. Submite `${name}__desde` y
+// `${name}__hasta` (el id del campo dinámico).
+export function DateRangeField({ name, color }: { name: string; color: string }) {
   const [range, setRange] = useState<DateRange | undefined>();
   const [open, setOpen] = useState(false);
 
@@ -53,8 +54,8 @@ export function DateRangeField({ color }: { color: string }) {
         <span className={range?.from ? "text-neutral-900" : "text-neutral-400"}>{label}</span>
       </button>
 
-      <input type="hidden" name="fechaDesde" value={range?.from ? toISO(range.from) : ""} />
-      <input type="hidden" name="fechaHasta" value={range?.to ? toISO(range.to) : ""} />
+      <input type="hidden" name={`${name}__desde`} value={range?.from ? toISO(range.from) : ""} />
+      <input type="hidden" name={`${name}__hasta`} value={range?.to ? toISO(range.to) : ""} />
 
       {open && (
         <div

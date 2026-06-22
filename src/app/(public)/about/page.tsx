@@ -11,26 +11,25 @@ export async function generateMetadata() {
 }
 
 /**
- * Render rich-text content from SiteSettings. The CMS now writes HTML (from
- * the WYSIWYG in /backend/web/nosotros), but legacy plaintext rows still
- * exist in prod — auto-paragraph those by splitting on blank or single
- * newlines so they don't render as one giant block.
+ * Normalize rich-text content from SiteSettings into an HTML string. The CMS
+ * now writes HTML (from the WYSIWYG in /backend/web/nosotros), but legacy
+ * plaintext rows still exist in prod — auto-paragraph those by splitting on
+ * blank or single newlines so they don't render as one giant block.
+ *
+ * Returns an HTML string so callers can inject it directly into the existing
+ * container (.content-text / .about-notes) via dangerouslySetInnerHTML,
+ * matching the reference markup which has <p> as a direct child with no extra
+ * wrapper div.
  */
-function RichText({ html, className }: { html: string; className?: string }) {
-  if (!html) return null;
+function richTextHtml(html: string): string {
+  if (!html) return "";
   const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(html);
-  const finalHtml = looksLikeHtml
+  return looksLikeHtml
     ? html
     : html
         .split(/\n{2,}/)
         .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br/>")}</p>`)
         .join("");
-  return (
-    <div
-      className={className}
-      dangerouslySetInnerHTML={{ __html: finalHtml }}
-    />
-  );
 }
 
 function escapeHtml(s: string) {
@@ -44,7 +43,6 @@ export default async function AboutPage() {
   const s = await getSiteSettings("nosotros");
 
   const titulo = s.nosotros_titulo ?? "El viaje que nos hizo agencia";
-  const subtitulo = s.nosotros_subtitulo ?? "";
   const historia = s.nosotros_historia ?? "";
   const mision = s.nosotros_mision ?? "";
   const valores = s.nosotros_valores ?? "";
@@ -60,14 +58,6 @@ export default async function AboutPage() {
           <h1 className="h2 text_white mb-4 font_clarik">
             <strong>{titulo}</strong>
           </h1>
-          {subtitulo && (
-            <p
-              className="text_white mb-4"
-              style={{ fontSize: 18, opacity: 0.9 }}
-            >
-              {subtitulo}
-            </p>
-          )}
           <div className="row align-items-lg-center">
             <div className="col-sm-6 order-sm-2 order-1">
               <div className="content-img">
@@ -75,10 +65,12 @@ export default async function AboutPage() {
               </div>
             </div>
             <div className="col-sm-6 order-sm-1 order-2">
-              <div className="content-text text_white pe-lg-5">
-                <RichText html={historia} className="rich-content" />
-                <RichText html={mision} className="rich-content" />
-              </div>
+              <div
+                className="content-text text_white pe-lg-5"
+                dangerouslySetInnerHTML={{
+                  __html: richTextHtml(historia) + richTextHtml(mision),
+                }}
+              />
             </div>
           </div>
         </div>
@@ -92,10 +84,12 @@ export default async function AboutPage() {
                 </div>
               </div>
               <div className="col-sm-6">
-                <div className="content-text text_white ps-lg-5">
-                  <RichText html={valores} className="rich-content" />
-                  <RichText html={proposito} className="rich-content" />
-                </div>
+                <div
+                  className="content-text text_white ps-lg-5"
+                  dangerouslySetInnerHTML={{
+                    __html: richTextHtml(valores) + richTextHtml(proposito),
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -104,9 +98,10 @@ export default async function AboutPage() {
         {cierre && (
           <div className="row">
             <div className="col-lg-6 mx-auto">
-              <div className="about-notes text-center">
-                <RichText html={cierre} />
-              </div>
+              <div
+                className="about-notes text-center"
+                dangerouslySetInnerHTML={{ __html: richTextHtml(cierre) }}
+              />
             </div>
           </div>
         )}

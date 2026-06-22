@@ -1,0 +1,69 @@
+/* Estilos del modal "Agencia registrada" — portados de site.css y colocados con
+   el componente para que funcione en cualquier route group (incluido (landing),
+   que no carga site.css). Solo las reglas que usa el markup actual. */
+
+#agenciaModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+#agenciaModal.is-open {
+  display: flex;
+}
+
+#agenciaModal .agencia-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  cursor: pointer;
+  animation: agenciaFadeIn 0.3s ease forwards;
+}
+
+#agenciaModal .agencia-box {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: agenciaSlideUp 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+}
+
+#agenciaModal .agencia-box img {
+  display: block;
+  max-width: 100%;
+}
+
+@keyframes agenciaFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes agenciaSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 575px) {
+  #agenciaModal .agencia-box {
+    max-width: 90%;
+  }
+}

@@ -877,6 +877,10 @@ model CotizadorLanding {
   // Emails a los que se notifica cada envío. El envío real se cablea cuando
   // Resend esté configurado; por ahora los leads quedan en DB.
   emailsDestino      String[]  @default([])
+  // Definición del formulario, configurable por el admin (constructor sin
+  // código). Array de FormField (ver src/lib/cotizador-form.ts). El núcleo de
+  // cotización se siembra al crear el landing; cada marca lo edita a su gusto.
+  campos             Json      @default("[]")
   publicado          Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -891,11 +895,18 @@ model CotizadorLanding {
 model CotizadorLead {
   id          String         @id @default(cuid())
   landingId   String
+  // Contacto: siempre presentes (no configurables). El resto del formulario es
+  // dinámico y vive en `respuestas`.
   nombre      String
   email       String
+  // Respuestas del formulario dinámico: [{ id, etiqueta, valor }] con snapshot
+  // de la etiqueta, así los leads viejos se leen aunque el form cambie después.
+  respuestas  Json           @default("[]")
+  // ── Columnas legacy del formulario fijo previo. El flujo nuevo escribe todo
+  // en `respuestas`; quedan por compatibilidad con leads viejos y se dropean
+  // en una migración futura una vez confirmado que no se usan.
   telefono    String?
   paisCodigo  String?
-  // Campos del formulario de cotización (espejo del form público /cotizar).
   destino     String?
   fechaDesde  DateTime?
   fechaHasta  DateTime?

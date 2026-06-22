@@ -262,6 +262,7 @@ export const getPaqueteBySlug = unstable_cache(
               include: {
                 alojamiento: {
                   include: {
+                    ciudad: { select: { nombre: true } },
                     fotos: { orderBy: { orden: "asc" } },
                     precios: { include: { regimen: true } },
                   },

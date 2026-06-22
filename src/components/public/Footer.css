@@ -1,0 +1,262 @@
+/* ---------------------------------------------------------------------------
+   Estilos del footer público — portados 1:1 del template original
+   (html_inicial / site.css .footer-area). Van colocados con el componente para
+   que el footer se vea idéntico en cualquier route group, incluido (landing),
+   que NO carga site.css. Se usa un namespace propio (.tvz-footer ...) en vez de
+   las clases de Bootstrap/template, así no depende del grid ni del reset global.
+   Los íconos (Font Awesome) los provee cada layout: site.css en (public),
+   landing.css en (landing).
+   --------------------------------------------------------------------------- */
+
+.tvz-footer {
+  padding: 60px 0;
+  background: #282828;
+  /* Misma tipografía que el template en cualquier route group (no depender de
+     la font heredada del body/.landing-root). El template usa Clarika Light (300)
+     para el texto del footer; los títulos van en 700. */
+  font-family: "Clarika Geometric", system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+}
+
+.tvz-footer-inner {
+  position: relative;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.tvz-footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -15px;
+}
+
+.tvz-footer-col {
+  width: 100%;
+  padding: 0 15px;
+}
+
+@media (min-width: 576px) {
+  .tvz-footer-col {
+    width: 50%;
+  }
+}
+
+@media (min-width: 992px) {
+  .tvz-footer-col {
+    width: 25%;
+  }
+}
+
+/* Columna 1 — logo + about + redes */
+.tvz-footer .footer-left p {
+  font-size: 16px;
+  line-height: 24px;
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+.tvz-footer .footer-logo {
+  display: inline-block;
+  width: 140px;
+  margin-bottom: 30px;
+}
+
+.tvz-footer .footer-logo img {
+  width: 100%;
+  height: auto;
+}
+
+.tvz-footer .footer-social {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tvz-footer .footer-social li {
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.tvz-footer .footer-social li:last-child {
+  margin-right: 0;
+}
+
+.tvz-footer .footer-social a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #f43e55;
+  color: #282828;
+  font-size: 16px;
+  transition: opacity 0.3s;
+}
+
+.tvz-footer .footer-social a:hover {
+  opacity: 0.85;
+  color: #282828;
+}
+
+/* Títulos de columna — tamaños siguen los breakpoints del template:
+   22px (>1400) · 24px (≤1400) · 20px (≤575).
+   font-family explícito a propósito: en (public), site.css aplica
+   `h1..h6 { font-family: Rufina }` directamente sobre el <h3>, lo que GANA a la
+   herencia de .tvz-footer. Sin esta línea, el título sale en Rufina (serif) en
+   vez de Clarika, distinto al template. */
+.tvz-footer .footer-col-title {
+  font-family: "Clarika Geometric", system-ui, -apple-system, sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #f43e55;
+  margin-bottom: 20px;
+}
+
+/* Columna 2 — contacto */
+.tvz-footer .footer-contact {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tvz-footer .footer-contact li {
+  display: flex;
+  align-items: flex-start;
+  line-height: 120%;
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: #fff;
+}
+
+.tvz-footer .footer-contact li:last-child {
+  margin-bottom: 0;
+}
+
+.tvz-footer .footer-contact .icon {
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+.tvz-footer .footer-contact a {
+  color: #fff;
+}
+
+.tvz-footer .footer-contact a:hover {
+  color: #f43e55;
+}
+
+/* Columna 3 — links */
+.tvz-footer .footer-links {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tvz-footer .footer-links li {
+  margin-bottom: 12px;
+  line-height: 100%;
+  font-size: 16px;
+  color: #fff;
+}
+
+.tvz-footer .footer-links li:last-child {
+  margin-bottom: 0;
+}
+
+.tvz-footer .footer-links a {
+  color: #fff;
+  cursor: pointer;
+}
+
+.tvz-footer .footer-links a:hover {
+  color: #f43e55;
+}
+
+/* Columna 4 — logos partner (en una sola línea, como el template) */
+.tvz-footer .footer-brand-logo {
+  display: flex;
+  align-items: center;
+  padding: 30px 0 0;
+  margin: 0;
+  list-style: none;
+}
+
+.tvz-footer .footer-brand-logo li {
+  display: inline-block;
+  min-width: 0;
+  margin-right: 30px;
+}
+
+.tvz-footer .footer-brand-logo li:last-child {
+  margin-right: 0;
+}
+
+.tvz-footer .footer-brand-logo img {
+  max-height: 100px;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+}
+
+@media (max-width: 991px) {
+  .tvz-footer {
+    padding: 50px 0;
+  }
+
+  .tvz-footer-col {
+    margin-bottom: 40px;
+  }
+
+  .tvz-footer-col:last-child {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 1400px) {
+  .tvz-footer .footer-col-title {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 575px) {
+  .tvz-footer {
+    padding: 40px 0;
+    text-align: center;
+  }
+
+  .tvz-footer .footer-logo {
+    display: block;
+    width: 120px;
+    margin: 0 auto 20px;
+  }
+
+  .tvz-footer .footer-social {
+    justify-content: center;
+  }
+
+  .tvz-footer .footer-contact li {
+    justify-content: center;
+  }
+
+  .tvz-footer .footer-col-title {
+    font-size: 20px;
+  }
+
+  .tvz-footer .footer-brand-logo {
+    justify-content: center;
+    margin-top: 30px;
+  }
+
+  .tvz-footer .footer-brand-logo li {
+    margin: 0;
+    padding: 0 20px;
+  }
+
+  .tvz-footer .footer-brand-logo img {
+    max-height: 58px;
+  }
+}

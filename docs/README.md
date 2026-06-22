@@ -19,7 +19,7 @@ docs/
 ```
 
 > El estado vivo de pendientes para el go-live se mantiene en
-> [/PRODUCTION-PENDING.md](../PRODUCTION-PENDING.md) (raiz del repo).
+> [PRODUCTION-PENDING.md](./PRODUCTION-PENDING.md).
 
 ---
 
@@ -69,7 +69,7 @@ Requerimientos del cliente y feedback de reuniones.
 ## Auditorias
 
 Snapshots de QA y auditorias pre-release. El doc vivo de pendientes es
-[/PRODUCTION-PENDING.md](../PRODUCTION-PENDING.md).
+[PRODUCTION-PENDING.md](./PRODUCTION-PENDING.md).
 
 | Archivo | Contenido |
 |---------|-----------|

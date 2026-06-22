@@ -57,6 +57,13 @@ export function ContactForm() {
       <div className="text-center">
         <SubmitButton />
       </div>
+      <p
+        id="success-msg"
+        style={{ display: "none", color: "white", marginTop: 15 }}
+        className="text-center"
+      >
+        ¡Mensaje enviado con éxito!
+      </p>
       <FormStatus result={result} />
     </form>
   );

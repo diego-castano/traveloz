@@ -14,8 +14,8 @@ import { Search, X, ChevronDown } from "lucide-react";
 const PREFERRED: CountryIso2[] = ["uy", "ar", "br", "cl", "py", "us", "es"];
 
 // Teléfono internacional con selector de país full-screen (tipo app) + buscador.
-// Submite el número completo (E.164) en `telefono` y el código en `paisCodigo`.
-export function PhoneField() {
+// Submite el número completo (E.164) en el input `name` (el id del campo).
+export function PhoneField({ name = "telefono" }: { name?: string }) {
   const [value, setValue] = useState("");
   const { inputValue, phone, country, setCountry, handlePhoneValueChange, inputRef } =
     usePhoneInput({
@@ -93,8 +93,7 @@ export function PhoneField() {
           className="min-w-0 flex-1 bg-transparent px-3.5 py-3.5 text-base text-neutral-900 outline-none placeholder:text-neutral-400"
         />
       </div>
-      <input type="hidden" name="telefono" value={hasNumber ? phone : ""} />
-      <input type="hidden" name="paisCodigo" value={hasNumber ? `+${country.dialCode}` : ""} />
+      <input type="hidden" name={name} value={hasNumber ? phone : ""} />
 
       {open && (
         <div

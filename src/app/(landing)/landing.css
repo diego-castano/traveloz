@@ -1,0 +1,49 @@
+/* Tipografía del landing de cotizador — iguala el sitio público (/cotizar):
+   body en Clarika Geometric, títulos en Rufina. Las fonts viven en
+   /public/site/fonts (mismas que usa el template). */
+
+@font-face {
+  font-family: "Clarika Geometric";
+  src: url("/site/fonts/ClarikaGeometric-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarika Geometric";
+  src: url("/site/fonts/ClarikaGeometric-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarika Geometric";
+  src: url("/site/fonts/ClarikaGeometric-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Rufina";
+  src: url("/site/fonts/Rufina-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Todo el landing (incluidos inputs/labels/botones) usa Clarika como el sitio.
+   Los form controls no heredan font-family por defecto, por eso van explícitos. */
+.landing-root,
+.landing-root input,
+.landing-root textarea,
+.landing-root select,
+.landing-root button {
+  font-family: "Clarika Geometric", system-ui, -apple-system, sans-serif;
+}
+
+/* Títulos del hero en Rufina, como las .section-heading del sitio. */
+.landing-title {
+  font-family: "Rufina", Georgia, serif;
+  color: #3c3c3c;
+  font-weight: 700;
+}

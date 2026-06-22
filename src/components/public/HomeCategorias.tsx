@@ -25,11 +25,12 @@ export function HomeCategorias({
         ) : null}
         <EmblaSlider
           slidesToShow={3}
-          slidesToShowMobile={1.1}
           autoplay
           autoplayDelay={3000}
           loop
           showArrows={false}
+          showDots
+          centerModeMobile
           className="image-box-slider"
         >
           {shownItems.map((c) => (

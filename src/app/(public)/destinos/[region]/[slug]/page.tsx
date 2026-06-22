@@ -81,9 +81,49 @@ export default async function PackageDetailPage({
   // cargó al crear el paquete. Se usa como fallback cuando no hay una lista
   // pública curada (serviciosIncluidos del catálogo / textoIncluye). Cada
   // servicio usa su `textoDisplay` si fue personalizado, o el nombre/ruta base.
+  // Régimen por ciudad: lo tomamos del primer hotel (de cualquier opción) que
+  // esté en esa ciudad y tenga régimen cargado. Sirve para armar la línea
+  // "N noches de alojamiento en {ciudad} con {régimen}" por destino.
+  const regimenPorCiudad = new Map<string, string>();
+  for (const opt of paquete.opcionesHoteleras) {
+    for (const h of opt.hoteles) {
+      const ciudad = h.alojamiento.ciudad?.nombre;
+      if (!ciudad || regimenPorCiudad.has(ciudad)) continue;
+      const reg = h.alojamiento.precios.find((p) => p.regimen?.nombre)?.regimen
+        ?.nombre;
+      if (reg) regimenPorCiudad.set(ciudad, reg);
+    }
+  }
+  // Una línea por destino con sus noches y, si lo tenemos, el régimen.
+  const nochesDerivadas = paquete.destinos
+    .filter((d) => (d.noches || 0) > 0)
+    .map((d) => {
+      const ciudad = d.ciudad?.nombre;
+      const plural = d.noches === 1 ? "noche" : "noches";
+      const lugar = ciudad ? ` en ${ciudad}` : "";
+      const reg = ciudad && regimenPorCiudad.has(ciudad)
+        ? ` con ${regimenPorCiudad.get(ciudad)!.toLowerCase()}`
+        : "";
+      return {
+        texto: `${d.noches} ${plural} de alojamiento${lugar}${reg}`,
+        icon: "bed",
+      };
+    });
+  // Fallback: si no hay destinos cargados pero sí noches totales, una sola línea.
   const nochesTotales =
     paquete.noches ??
     paquete.destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
+  const nochesBullets =
+    nochesDerivadas.length > 0
+      ? nochesDerivadas
+      : nochesTotales > 0
+        ? [
+            {
+              texto: `${nochesTotales} noche${nochesTotales === 1 ? "" : "s"} de alojamiento`,
+              icon: "bed",
+            },
+          ]
+        : [];
   const serviciosDerivados: { texto: string; icon: string }[] = [
     ...paquete.aereos.map((pa) => ({
       texto: pa.textoDisplay ?? pa.aereo.ruta,
@@ -93,14 +133,7 @@ export default async function PackageDetailPage({
       texto: pt.textoDisplay ?? pt.traslado.nombre,
       icon: "bus",
     })),
-    ...(nochesTotales > 0
-      ? [
-          {
-            texto: `${nochesTotales} noche${nochesTotales === 1 ? "" : "s"} de alojamiento`,
-            icon: "bed",
-          },
-        ]
-      : []),
+    ...nochesBullets,
     ...paquete.circuitos.map((pc) => ({
       texto: pc.textoDisplay ?? pc.circuito.nombre,
       icon: "exc",
@@ -166,6 +199,7 @@ export default async function PackageDetailPage({
               alojamiento: {
                 nombre: h.alojamiento.nombre,
                 categoria: h.alojamiento.categoria,
+                ciudad: h.alojamiento.ciudad?.nombre ?? null,
                 fotos: h.alojamiento.fotos?.map((ph) => ({
                   url: ph.url,
                   alt: ph.alt,

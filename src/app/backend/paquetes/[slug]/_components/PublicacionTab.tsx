@@ -27,22 +27,25 @@ import { Tag, type TagColor } from "@/components/ui/Tag";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { useToast } from "@/components/ui/Toast";
 import {
-  MultiSelectCombobox,
-  type Option,
-} from "@/components/ui/MultiSelectCombobox";
-import {
   getPaqueteFrontendData,
   updatePaqueteFrontend,
   updatePaqueteLifecycle,
   assignPaqueteEtiqueta,
   removePaqueteEtiqueta,
   setPaqueteServicios,
+  getSugerenciasIncluye,
 } from "@/actions/paquete-frontend.actions";
+import { listServicios } from "@/actions/catalogo-servicios.actions";
+import { IncluyeEditor } from "./IncluyeEditor";
 import {
-  listServicios,
-  createServicio,
-} from "@/actions/catalogo-servicios.actions";
-import { MediaPicker } from "@/app/backend/web/_components/MediaPicker";
+  type IncluyeItem,
+  parseIncluyeItems,
+  serializeIncluyeItems,
+  legacyTextToIncluye,
+  newIncluyeId,
+  DEFAULT_INCLUYE_ICON,
+} from "@/lib/incluye";
+import { ImageUploader, type ImageItem } from "@/components/ui/ImageUploader";
 import { RichTextEditor } from "@/app/backend/web/_components/RichTextEditor";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
@@ -56,6 +59,8 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import {
   usePackageDispatch,
   usePaqueteById,
+  usePaqueteServices,
+  usePackageActions,
 } from "@/components/providers/PackageProvider";
 import type { EstadoPaquete } from "@/lib/types";
 
@@ -210,7 +215,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     ReturnType<typeof getPaqueteFrontendData>
   > | null>(null);
   const [catalog, setCatalog] = useState<Servicio[]>([]);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [incluyeItems, setIncluyeItems] = useState<IncluyeItem[]>([]);
   const [assignedEtiquetas, setAssignedEtiquetas] = useState<EtiquetaAssignment[]>([]);
   const [isPending, start] = useTransition();
 
@@ -269,7 +274,24 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             validezDesde: d.validezDesde ?? "",
             validezHasta: d.validezHasta ?? "",
           });
-          setSelected(d.serviciosIncluidos.map((x) => x.servicio.id));
+          // Build the Incluye list: the canonical JSON list if present, else
+          // migrate legacy content (catalog services + free-text bullets) into
+          // editable items. Nothing is persisted until the operator saves.
+          const parsedIncluye = parseIncluyeItems(d.textoIncluye);
+          if (parsedIncluye) {
+            setIncluyeItems(parsedIncluye);
+          } else {
+            const fromCatalog: IncluyeItem[] = d.serviciosIncluidos.map((x) => ({
+              id: newIncluyeId(),
+              servicioId: x.servicio.id,
+              icon: x.servicio.icon || DEFAULT_INCLUYE_ICON,
+              texto: x.textoCustom ?? x.servicio.nombre,
+            }));
+            setIncluyeItems([
+              ...fromCatalog,
+              ...legacyTextToIncluye(d.textoIncluye),
+            ]);
+          }
           setAssignedEtiquetas(d.etiquetas);
         }
         setCatalog(s);
@@ -287,22 +309,29 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     [allEtiquetas, assignedEtiquetaIds],
   );
 
-  const options: Option[] = catalog
-    .filter((s) => s.activo !== false)
-    .map((s) => ({
-      value: s.id,
-      label: s.nombre,
-      icon: (
-        <img
-          src={`/site/img/p-${s.icon}-icon.png`}
-          alt=""
-          className="w-4 h-4"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
-        />
-      ),
-    }));
+  // Catalog services available to add as Incluye items (active ones only).
+  const catalogServicios = useMemo(
+    () =>
+      catalog
+        .filter((s) => s.activo !== false)
+        .map((s) => ({ id: s.id, nombre: s.nombre, icon: s.icon })),
+    [catalog],
+  );
+
+  // The Incluye list persists as JSON in `textoIncluye`; the catalog-backed
+  // subset is mirrored into `serviciosIncluidos` so that relation stays in
+  // sync for any other consumer (publish gate, reporting).
+  const serviciosFromIncluye = useCallback(
+    (its: IncluyeItem[]) =>
+      its
+        .filter((it) => it.servicioId)
+        .map((it, i) => ({
+          servicioId: it.servicioId as string,
+          textoCustom: it.texto,
+          orden: i,
+        })),
+    [],
+  );
 
   // ---------------------------------------------------------------------------
   // Save — frontend fields (slug/publicado/textos/SEO) + servicios. Lifecycle
@@ -318,7 +347,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       heroImage: form.heroImage,
       descripcion: form.descripcion,
       textoIntro: form.textoIntro,
-      textoIncluye: form.textoIncluye,
+      textoIncluye: serializeIncluyeItems(incluyeItems),
       itinerarioPublico: form.itinerarioPublico,
       textoCondiciones: form.textoCondiciones,
     });
@@ -329,13 +358,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     if (res.ok && form.publicado && form.estado !== "ACTIVO") {
       setForm((p) => ({ ...p, estado: "ACTIVO" }));
     }
-    await setPaqueteServicios(
-      paqueteId,
-      selected.map((id, i) => ({ servicioId: id, orden: i })),
-    );
+    await setPaqueteServicios(paqueteId, serviciosFromIncluye(incluyeItems));
     syncDescripcionToCache(form.descripcion);
     return { ok: true };
-  }, [paqueteId, form, selected, syncDescripcionToCache]);
+  }, [paqueteId, form, incluyeItems, serviciosFromIncluye, syncDescripcionToCache]);
 
   // Surface a publish-blocker visually: scroll the relevant field into
   // view + flash it. Picks the highest-priority issue from the missing list.
@@ -382,13 +408,13 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   // without re-creating the useAutoSave handler on every keystroke.
   // ---------------------------------------------------------------------------
   const formRef = useRef(form);
-  const selectedRef = useRef(selected);
+  const incluyeItemsRef = useRef(incluyeItems);
   useEffect(() => {
     formRef.current = form;
   }, [form]);
   useEffect(() => {
-    selectedRef.current = selected;
-  }, [selected]);
+    incluyeItemsRef.current = incluyeItems;
+  }, [incluyeItems]);
 
   const handleAutoSave = useCallback(async () => {
     const f = formRef.current;
@@ -400,7 +426,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       heroImage: f.heroImage,
       descripcion: f.descripcion,
       textoIntro: f.textoIntro,
-      textoIncluye: f.textoIncluye,
+      textoIncluye: serializeIncluyeItems(incluyeItemsRef.current),
       itinerarioPublico: f.itinerarioPublico,
       textoCondiciones: f.textoCondiciones,
     });
@@ -421,10 +447,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     }
     await setPaqueteServicios(
       paqueteId,
-      selectedRef.current.map((id, i) => ({ servicioId: id, orden: i })),
+      serviciosFromIncluye(incluyeItemsRef.current),
     );
     syncDescripcionToCache(formRef.current.descripcion);
-  }, [paqueteId, toast, focusBlockerField, syncDescripcionToCache]);
+  }, [paqueteId, toast, focusBlockerField, serviciosFromIncluye, syncDescripcionToCache]);
 
   const { status: autoSaveStatus, markDirty } = useAutoSave({
     onSave: handleAutoSave,
@@ -442,12 +468,81 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     },
     [markDirty],
   );
-  const patchSelected = useCallback(
-    (next: string[]) => {
-      setSelected(next);
+  const handleIncluyeChange = useCallback(
+    (next: IncluyeItem[]) => {
+      setIncluyeItems(next);
       markDirty();
     },
     [markDirty],
+  );
+
+  const handleGenerarIncluye = useCallback(
+    () => getSugerenciasIncluye(paqueteId),
+    [paqueteId],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Slider gallery — managed in-place (replaces the old "Fotos" tab). Photos
+  // persist immediately through the package provider; the featured photo is the
+  // Paquete's heroImage URL, picked from the gallery via the star (any photo,
+  // independent of order) and saved with the rest of the publish form.
+  // ---------------------------------------------------------------------------
+  const { fotos } = usePaqueteServices(paqueteId);
+  const { addFoto, removeFoto, updateFoto } = usePackageActions();
+
+  const galleryImages: ImageItem[] = fotos.map((f) => ({
+    id: f.id,
+    url: f.url,
+    alt: f.alt,
+  }));
+
+  // The featured photo, resolved from heroImage. Empty string keeps the
+  // ImageUploader in "pick by id" mode with nothing selected yet.
+  const principalFotoId = fotos.find((f) => f.url === form.heroImage)?.id ?? "";
+
+  const handleAddFotos = useCallback(
+    (urls: string[]) => {
+      urls.forEach((url, i) => {
+        addFoto({
+          paqueteId,
+          url,
+          alt: `Foto ${fotos.length + i + 1}`,
+          orden: fotos.length + i,
+        });
+      });
+    },
+    [addFoto, paqueteId, fotos.length],
+  );
+
+  const handleRemoveFoto = useCallback(
+    (id: string) => {
+      const target = fotos.find((f) => f.id === id);
+      removeFoto(id);
+      // Removing the featured photo clears the slider hero so we don't keep a
+      // dangling heroImage URL that no longer exists in the gallery.
+      if (target && target.url === form.heroImage) patch("heroImage", "");
+    },
+    [removeFoto, fotos, form.heroImage, patch],
+  );
+
+  const handleReorderFotos = useCallback(
+    (reordered: ImageItem[]) => {
+      reordered.forEach((img, newIndex) => {
+        const original = fotos.find((f) => f.id === img.id);
+        if (original && original.orden !== newIndex) {
+          updateFoto({ ...original, orden: newIndex });
+        }
+      });
+    },
+    [fotos, updateFoto],
+  );
+
+  const handleSetPrincipalFoto = useCallback(
+    (id: string) => {
+      const target = fotos.find((f) => f.id === id);
+      if (target) patch("heroImage", target.url);
+    },
+    [fotos, patch],
   );
 
   // ---------------------------------------------------------------------------
@@ -747,10 +842,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         )}
       </Section>
 
-      {/* Section 3 — Slider de fotos (hero + galería) */}
+      {/* Section 3 — Slider de fotos (galería + destacada, todo acá) */}
       <Section
         title="Slider de fotos"
-        description="El paquete muestra un carrusel de fotos en su detalle público. La foto principal aparece primero. Las fotos extra se administran en la pestaña Fotos."
+        description="El carrusel del detalle público. Subí, ordená y borrá las fotos acá mismo, y marcá con la estrella cuál es la destacada — esa aparece primera, sin importar el orden."
       >
         <div
           ref={heroFieldRef}
@@ -760,69 +855,28 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               : ""
           }`}
         >
-          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
-            Foto principal del slider
-            <span className="text-neutral-400 font-normal ml-2 text-xs">
-              (primera diapositiva del carrusel)
-            </span>
-          </label>
-          <MediaPicker
-            value={form.heroImage}
-            onChange={(v) => patch("heroImage", v)}
-            accept="image/*"
+          <ImageUploader
+            images={galleryImages}
+            principalId={principalFotoId}
+            onAdd={canEdit ? handleAddFotos : undefined}
+            onRemove={canEdit ? handleRemoveFoto : undefined}
+            onReorder={canEdit ? handleReorderFotos : undefined}
+            onSetPrincipal={canEdit ? handleSetPrincipalFoto : undefined}
+            folder="paquetes"
+            maxImages={20}
           />
-        </div>
-
-        {data.fotos.length > 0 ? (
-          <div>
-            <p className="text-xs font-medium text-neutral-700 mb-2">
-              Fotos del slider ({data.fotos.length})
-              <span className="text-neutral-400 font-normal ml-1">
-                — ya cargadas en la pestaña Fotos
-              </span>
+          {galleryImages.length > 0 && !principalFotoId && (
+            <p className="mt-2 text-xs text-amber-700">
+              Elegí una foto destacada con la estrella — es la que abre el
+              slider y se usa como portada del paquete.
             </p>
-            <div className="grid grid-cols-6 gap-2">
-              {data.fotos.map((f) => {
-                const active = form.heroImage === f.url;
-                return (
-                  <button
-                    key={f.url}
-                    type="button"
-                    onClick={() => patch("heroImage", active ? "" : f.url)}
-                    title={
-                      active ? "Foto principal" : "Marcar como principal"
-                    }
-                    className={`relative aspect-[4/3] rounded-md border-2 overflow-hidden transition ${
-                      active
-                        ? "border-violet-500 ring-2 ring-violet-200"
-                        : "border-transparent hover:border-neutral-300"
-                    }`}
-                  >
-                    <img
-                      src={f.url}
-                      alt={f.alt}
-                      className="w-full h-full object-cover"
-                    />
-                    {active && (
-                      <span className="absolute top-1 right-1 bg-violet-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
-                        PRINCIPAL
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            Este paquete no tiene fotos en el slider todavía. Agregalas en la
-            pestaña{" "}
-            <a href={`?tab=fotos`} className="font-semibold underline">
-              Fotos
-            </a>{" "}
-            y volvé acá para elegir la principal.
-          </div>
-        )}
+          )}
+          {galleryImages.length === 0 && !canEdit && (
+            <p className="mt-2 text-center text-[13px] text-neutral-400">
+              No hay fotos para este paquete
+            </p>
+          )}
+        </div>
       </Section>
 
       {/* Section 4 — Texto principal */}
@@ -884,69 +938,25 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       {/* Section 5 — Incluye */}
       <Section
         title="Qué incluye (vista del cliente)"
-        description="Esta es la lista que ve el viajero en la ficha pública. Es independiente de los servicios internos que cargás en Servicios/Alojamientos (esos sirven para el costo, esto para mostrar). Una línea = un bullet."
+        description="La lista que ve el viajero en la ficha pública. Tocá «Generar incluido» para armarla desde los servicios del paquete (aéreos, traslados, noches por destino con régimen, circuitos, seguros), después reordená arrastrando, editá el texto, cambiá el ícono o agregá items a mano."
       >
-        <div>
-          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
-            Lo que incluye
-            <span className="text-neutral-400 font-normal ml-2 text-xs">
-              (cada línea es un bullet — el icono se elige automáticamente: ✈ pasaje, 🧳 equipaje, 🚌 traslado, 🏨 alojamiento. Podés resaltar en negrita/cursiva dentro de cada línea)
-            </span>
-          </label>
-          <RichField
-            value={form.textoIncluye}
-            onChange={(html) => patch("textoIncluye", html)}
-            rows={8}
-            placeholder="Pasaje aéreo Montevideo / Río de Janeiro / Montevideo"
-            disabled={disabled}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-neutral-800 mb-1.5">
-            Servicios estructurados (catálogo)
-            <span className="text-neutral-400 font-normal ml-2 text-xs">
-              (opcional — para reusar servicios entre paquetes con icono fijo)
-            </span>
-          </label>
-          <MultiSelectCombobox
-            options={options}
-            value={selected}
-            onChange={patchSelected}
-            placeholder="Agregar servicios del catálogo…"
-            onCreate={async (name) => {
-              const created = await createServicio({
-                nombre: name,
-                icon: "flight",
-              });
-              setCatalog((c) => [
-                ...c,
-                { id: created.id, nombre: created.nombre, icon: created.icon },
-              ]);
-              return {
-                value: created.id,
-                label: created.nombre,
-                icon: (
-                  <img
-                    src={`/site/img/p-${created.icon}-icon.png`}
-                    alt=""
-                    className="w-4 h-4"
-                  />
-                ),
-              };
-            }}
-          />
-          <p className="text-[11px] text-neutral-400 mt-1">
-            Si dejás esto vacío se usan los bullets del textarea de arriba. Gestioná el catálogo en{" "}
-            <a
-              href="/backend/catalogos/servicios"
-              className="text-violet-600 hover:underline"
-            >
-              Catálogo de servicios
-            </a>
-            .
-          </p>
-        </div>
+        <IncluyeEditor
+          items={incluyeItems}
+          onChange={handleIncluyeChange}
+          catalog={catalogServicios}
+          onGenerate={handleGenerarIncluye}
+          disabled={disabled}
+        />
+        <p className="text-[11px] text-neutral-400 mt-2">
+          Gestioná el catálogo de servicios reutilizables en{" "}
+          <a
+            href="/backend/catalogos/servicios"
+            className="text-violet-600 hover:underline"
+          >
+            Catálogo de servicios
+          </a>
+          .
+        </p>
       </Section>
 
       {/* Section 6 — Condiciones */}

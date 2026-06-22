@@ -8,7 +8,7 @@ export const metadata = { title: "Nuevo cotizador — TravelOz" };
 
 export default function NuevoCotizadorPage() {
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className="mx-auto max-w-6xl p-6">
       <Link
         href="/backend/cotizadores"
         className="text-sm text-neutral-500 hover:underline"

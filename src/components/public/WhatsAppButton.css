@@ -1,0 +1,19 @@
+/* Botón flotante de WhatsApp — portado de site.css y colocado con el componente
+   para que funcione fuera de (public) (p. ej. en (landing), sin site.css). */
+
+.footer-whatsapp {
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+  width: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  z-index: 111;
+}
+
+@media (max-width: 767px) {
+  .footer-whatsapp {
+    right: 10px;
+    bottom: 10px;
+  }
+}

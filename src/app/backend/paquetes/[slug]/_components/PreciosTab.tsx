@@ -324,7 +324,10 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         toast("warning", "Precio invalido", "Revisa los netos antes de cambiar el precio");
         return;
       }
-      const newFactor = Math.max(0.01, Math.min(1, Number((netoTotal / newVenta).toFixed(3))));
+      // Full-precision inverse factor: rounding it (e.g. to 3 decimals) makes the
+      // recomputed `round(netoTotal / factor)` drift away from the price the user
+      // typed — so we keep every digit and the manual price survives the round-trip.
+      const newFactor = Math.max(0.01, Math.min(1, netoTotal / newVenta));
       void trackSave(
         () =>
           updateOpcionHotelera({
@@ -553,7 +556,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                             min={0.01}
                             max={1}
                             step={0.01}
-                            value={opcion.factor}
+                            value={Number(opcion.factor.toFixed(2))}
                             onChange={(e) =>
                               handleFactorChange(opcion, parseFloat(e.target.value) || 0.8)
                             }
@@ -561,7 +564,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                           />
                         ) : (
                           <span className="text-sm font-mono font-bold text-neutral-800">
-                            {opcion.factor}
+                            {opcion.factor.toFixed(2)}
                           </span>
                         )}
                       </div>

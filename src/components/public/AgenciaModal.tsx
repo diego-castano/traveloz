@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
+import "./AgenciaModal.css";
 
 interface AgenciaModalProps {
   /** URL of the certificate image. Falls back to the bundled asset when not configured. */

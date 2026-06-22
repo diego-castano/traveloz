@@ -11,6 +11,7 @@
 // ---------------------------------------------------------------------------
 
 import { getSiteSettings } from "@/lib/public-data";
+import "./WhatsAppButton.css";
 
 function resolveWhatsAppHref(raw: string): string | null {
   const v = raw.trim();

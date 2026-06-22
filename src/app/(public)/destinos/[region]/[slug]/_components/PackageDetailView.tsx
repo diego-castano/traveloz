@@ -4,6 +4,7 @@ import { useState } from "react";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Skeleton } from "@/components/public/SkeletonClient";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
+import { parseIncluyeItems, incluyeIconUrl } from "@/lib/incluye";
 import { QuoteSidebar } from "./QuoteSidebar";
 import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
 
@@ -26,6 +27,7 @@ type Hotel = {
   alojamiento: {
     nombre: string;
     categoria: number | null;
+    ciudad: string | null;
     fotos?: { url: string; alt: string | null }[];
     precios: {
       precioPorNoche: number;
@@ -167,103 +169,97 @@ const SCOPED_STYLES = `
   .pkg-detail .content-box.style3 .top-heading { padding: 24px 28px 16px; }
   .pkg-detail .pkg-title { font-size: 36px; line-height: 1.1; margin-bottom: 8px; }
   .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 14px 28px 0; gap: 0; }
-  .pkg-detail .box-tab-content.style1 .nav-link { font-size: 16px; padding: 8px 0; }
+  /* Bootstrap le pone margin-bottom:-1px a los .nav-link (efecto "tab pegado")
+     y los botones traen fondo blanco: el tab activo se monta sobre el
+     border-bottom de .nav-tabs y tapa la línea separadora justo debajo. Lo
+     neutralizamos para que la línea quede continua. */
+  .pkg-detail .box-tab-content.style1 .nav-link {
+    font-size: 16px;
+    padding: 8px 0;
+    margin-bottom: 0;
+    background: transparent;
+  }
   .pkg-detail .box-tab-content.style1 .content-inner {
     padding: 24px 28px;
   }
-  .pkg-detail .box-tab-content.style1 .content-inner li {
+  /* Solo los bullets de "Incluye" (hijos directos del <ul.content-inner>).
+     El '> li' evita que esto se filtre a los <li> de las estrellas, que viven
+     anidados dentro de .content-inner.style2 en el tab Alojamientos. */
+  .pkg-detail .box-tab-content.style1 .content-inner > li {
     font-size: 16px;
     line-height: 1.4;
     margin-bottom: 14px;
     color: #2b2b2b;
   }
-  .pkg-detail .box-tab-content.style1 .content-inner li img {
+  .pkg-detail .box-tab-content.style1 .content-inner > li img {
     width: 32px;
     height: 32px;
     object-fit: contain;
     margin-right: 14px;
     flex-shrink: 0;
   }
-  .pkg-detail .text-box.style1 {
-    padding: 20px 22px;
-    margin-top: 16px;
-  }
-  .pkg-detail .text-box.style1 .h4 {
-    font-size: 18px;
-  }
-  .pkg-detail .text-box.style1 .h4 ul li i { font-size: 13px; }
-  .pkg-detail .text-box.style1 .meta .price { font-size: 18px; }
-  .pkg-detail .text-box.style1 .meta p { font-size: 12px; color: #888; }
-  .pkg-detail .text-box.style1 > span {
-    font-size: 13px; color: #666;
-  }
-
-  /* Opción Hotelera grouping — wrap hotels of the same option inside one
-     visual card with subtle dividers, so the user reads "Opción 2 with these
-     hotels" instead of seeing each hotel as its own floating module. */
-  .pkg-detail .opcion-block {
-    background: #fff;
-    border: 1px solid #ece2f5;
-    border-radius: 14px;
-    padding: 16px 18px 6px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-  }
-  .pkg-detail .opcion-block .text-box.style1 {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 12px 0 14px;
-    margin-top: 0;
-    border-bottom: 1px solid #f0e9f8;
-  }
-  .pkg-detail .opcion-block .text-box.style1:last-child {
-    border-bottom: none;
-  }
-  .pkg-detail .opcion-block .text-box.style1 .h4 {
-    margin-bottom: 2px;
-  }
-
-  /* Opción hotelera — header con número, nombre y precio. Clases (en vez de
-     estilos inline) para poder compactarlo en mobile via media query. */
-  .pkg-detail .opcion-group { margin-top: 36px; }
-  .pkg-detail .opcion-group:first-child { margin-top: 0; }
-  .pkg-detail .opcion-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 16px;
-    padding: 14px 18px;
+  /* Alojamientos — cada OPCIÓN es un contenedor gris (como el PDF), que agrupa
+     sus hoteles. El gris + el orden por precio hacen evidente que son opciones
+     distintas, sin necesidad de etiqueta "Opción N". */
+  .pkg-detail .opcion-card.text-box.style1 {
+    background: #f6f4f9;
+    border: 1px solid #ebe5f2;
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(160,94,211,0.10), rgba(244,62,85,0.08));
-    border: 1px solid rgba(160,94,211,0.18);
+    padding: 22px 24px;
+    margin-top: 18px;
   }
-  .pkg-detail .opcion-num {
-    display: inline-flex;
+  /* Estrellas inline a la derecha del nombre (PDF: "Astoria Copacabana ★★★"),
+     anulando el column-reverse del template que las pone arriba.
+     font-family explícito: site.css aplica una regla h1..h6 con font-family
+     Rufina sobre el h3, que gana por herencia. El PDF usa Clarika (sans) para
+     el nombre del hotel, no la serif Rufina; lo forzamos acá. */
+  .pkg-detail .opcion-card .h4 {
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    background: linear-gradient(135deg, #A05ED3, #F43E55);
-    color: #fff;
+    gap: 10px;
+    margin-bottom: 4px;
+    font-family: "Clarika Geometric", system-ui, -apple-system, sans-serif;
+    font-weight: 700;
+  }
+  .pkg-detail .opcion-card .h4 ul li i { font-size: 14px; }
+
+  /* Hoteles dentro de la opción: a partir del 2.º, divisor sutil para leer
+     "estos hoteles van juntos en esta opción". */
+  .pkg-detail .hotel-item-divided {
+    border-top: 1px solid #e3d9ef;
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  /* Régimen en una sola línea gris, igual que el PDF. */
+  .pkg-detail .opcion-card .hotel-detail {
+    display: block;
     font-size: 14px;
-    font-weight: 700;
-    flex-shrink: 0;
+    color: #8a8a8a;
+    line-height: 1.4;
   }
-  .pkg-detail .opcion-head-main { flex: 1; min-width: 0; }
-  .pkg-detail .opcion-name {
-    margin: 0;
-    font-size: 18px;
+
+  /* Fila de precio de la opción — sin borde superior (como el PDF), apenas
+     separada de los hoteles. */
+  .pkg-detail .opcion-card .meta {
+    margin-top: 16px;
+    align-items: flex-end;
+  }
+  .pkg-detail .opcion-card .meta .left .date {
+    margin-bottom: 0;
     color: #A05ED3;
-    font-weight: 700;
-    font-family: 'Clarika Geometric', inherit;
-    line-height: 1.2;
   }
-  .pkg-detail .opcion-price { text-align: right; flex-shrink: 0; }
-  .pkg-detail .opcion-price-label { font-size: 11px; color: #888; letter-spacing: 0.4px; }
-  .pkg-detail .opcion-price-amount { font-size: 22px; font-weight: 800; color: #F43E55; line-height: 1; }
-  .pkg-detail .opcion-price-note { font-size: 10.5px; color: #999; margin-top: 2px; }
-  .pkg-detail .opcion-price-consult { font-size: 13px; color: #888; font-style: italic; }
+  .pkg-detail .opcion-card .meta .left .icon {
+    color: #A05ED3;
+    margin-right: 6px;
+  }
+  .pkg-detail .opcion-card .price-consult {
+    font-size: 15px;
+    font-style: italic;
+    font-weight: 400;
+    color: #888;
+  }
 
   .pkg-detail .sidebar-form { padding: 28px; }
   .pkg-detail .sidebar-form .main-price { font-size: 56px; }
@@ -327,37 +323,24 @@ const SCOPED_STYLES = `
     .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 10px 18px 0; }
     .pkg-detail .box-tab-content.style1 .nav-link { font-size: 15px; }
     .pkg-detail .box-tab-content.style1 .content-inner { padding: 16px 18px; }
-    .pkg-detail .box-tab-content.style1 .content-inner li {
+    .pkg-detail .box-tab-content.style1 .content-inner > li {
       font-size: 14px;
       margin-bottom: 10px;
     }
-    .pkg-detail .box-tab-content.style1 .content-inner li img {
+    .pkg-detail .box-tab-content.style1 .content-inner > li img {
       width: 26px;
       height: 26px;
       margin-right: 10px;
     }
 
-    /* Header de opción */
-    .pkg-detail .opcion-group { margin-top: 20px; }
-    .pkg-detail .opcion-header {
-      gap: 10px;
-      margin-bottom: 12px;
-      padding: 10px 12px;
-      border-radius: 10px;
-    }
-    .pkg-detail .opcion-num { width: 26px; height: 26px; font-size: 13px; }
-    .pkg-detail .opcion-name { font-size: 15px; }
-    .pkg-detail .opcion-price-label { font-size: 9.5px; }
-    .pkg-detail .opcion-price-amount { font-size: 17px; }
-    .pkg-detail .opcion-price-note { font-size: 9px; margin-top: 1px; }
-    .pkg-detail .opcion-price-consult { font-size: 12px; }
-
-    /* Tarjeta de hotel dentro de la opción */
-    .pkg-detail .opcion-block { padding: 12px 14px 2px; border-radius: 12px; }
-    .pkg-detail .opcion-block .text-box.style1 { padding: 10px 0 11px; }
-    .pkg-detail .text-box.style1 .h4 { font-size: 15px; }
-    .pkg-detail .text-box.style1 .h4 ul li i { font-size: 11px; }
-    .pkg-detail .text-box.style1 > span { font-size: 12px; }
+    /* Contenedor de opción y hoteles en mobile — más compacto. */
+    .pkg-detail .opcion-card.text-box.style1 { padding: 16px 16px; margin-top: 14px; }
+    .pkg-detail .opcion-card .h4 { font-size: 18px; gap: 8px; }
+    .pkg-detail .opcion-card .h4 ul li i { font-size: 12px; }
+    .pkg-detail .opcion-card .hotel-detail { font-size: 13px; }
+    .pkg-detail .hotel-item-divided { margin-top: 12px; padding-top: 12px; }
+    .pkg-detail .opcion-card .meta { margin-top: 14px; }
+    .pkg-detail .opcion-card .meta .price { font-size: 18px; }
   }
 `;
 
@@ -388,19 +371,32 @@ function RichBlock({
 export function PackageDetailView({ paquete, formasDePago }: Props) {
   const [tab, setTab] = useState<"incluye" | "alojamientos">("incluye");
 
-  // Compose the slider photos (heroImage first if not already in the list)
-  const fotos: Foto[] =
-    paquete.heroImage &&
-    !paquete.fotos.some((f) => f.url === paquete.heroImage)
-      ? [{ url: paquete.heroImage, alt: paquete.titulo }, ...paquete.fotos]
-      : paquete.fotos.length > 0
-        ? paquete.fotos
-        : [{ url: "/site/img/slider-1.webp", alt: paquete.titulo }];
+  // Compose the slider photos. The featured photo (heroImage) always opens the
+  // carousel, whether it lives in the gallery or is a standalone hero URL — so
+  // the operator can feature any photo without having to reorder the gallery.
+  const fotos: Foto[] = (() => {
+    const hero = paquete.heroImage;
+    if (hero) {
+      const inGallery = paquete.fotos.find((f) => f.url === hero);
+      return inGallery
+        ? [inGallery, ...paquete.fotos.filter((f) => f.url !== hero)]
+        : [{ url: hero, alt: paquete.titulo }, ...paquete.fotos];
+    }
+    return paquete.fotos.length > 0
+      ? paquete.fotos
+      : [{ url: "/site/img/slider-1.webp", alt: paquete.titulo }];
+  })();
 
   // Items rendered inside the Incluye list — services first, then any extra
   // bullets parsed from textoIncluye (one per non-empty line/bloque). Cada
   // item conserva su HTML inline y su texto plano para resolver el ícono.
   const includeBullets = parseIncludeItems(paquete.textoIncluye ?? "");
+
+  // Lista "Incluye" nueva: renglones ordenados (ícono + texto) que el operador
+  // armó en el módulo drag-and-drop, serializados como JSON en textoIncluye.
+  // Cuando existe, es la única fuente y reemplaza las ramas legacy de abajo.
+  const incluyeItems = parseIncluyeItems(paquete.textoIncluye);
+  const hasIncluyeModule = !!incluyeItems && incluyeItems.length > 0;
 
   // ¿El operador curó una lista pública "Incluye" (catálogo o texto libre)?
   // Si no, caemos a los servicios estructurados que cargó al crear el paquete.
@@ -542,8 +538,26 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                     role="tabpanel"
                     className={`tab-pane fade${tab === "incluye" ? " show active" : ""}`}
                   >
-                    {!hasManualIncluye &&
-                    paquete.serviciosDerivados.length === 0 ? (
+                    {hasIncluyeModule ? (
+                      <ul className="content-inner">
+                        {incluyeItems!.map((it) => (
+                          <li key={it.id}>
+                            <img
+                              src={incluyeIconUrl(it.icon)}
+                              alt=""
+                              loading="lazy"
+                              decoding="async"
+                              onError={(e) => {
+                                (e.currentTarget as HTMLImageElement).src =
+                                  SERVICE_ICON_FALLBACK;
+                              }}
+                            />
+                            {it.texto}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : !hasManualIncluye &&
+                      paquete.serviciosDerivados.length === 0 ? (
                       <div style={{ padding: 30, color: "#999" }}>
                         Próximamente cargaremos los servicios incluidos.
                       </div>
@@ -622,61 +636,53 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                       </div>
                     ) : (
                       <div className="content-inner style2">
-                        {paquete.opcionesHoteleras.map((opt, optIdx) => {
-                          const moneda = paquete.precioDesdeMoneda ?? "USD";
-                          const hasPrice = opt.precioVenta > 0;
-                          return (
-                            <div key={opt.id} className="opcion-group">
-                              {/* Option header: name + customer-facing price */}
-                              <div className="opcion-header">
-                                <span className="opcion-num">{optIdx + 1}</span>
-                                <div className="opcion-head-main">
-                                  <h3 className="opcion-name">{opt.nombre}</h3>
-                                </div>
-                                <div className="opcion-price">
-                                  {hasPrice ? (
-                                    <>
-                                      <div className="opcion-price-label">
-                                        DESDE
-                                      </div>
-                                      <div className="opcion-price-amount">
-                                        {moneda}{" "}
-                                        {opt.precioVenta.toLocaleString("es-UY")}
-                                      </div>
-                                      <div className="opcion-price-note">
-                                        Por persona en base doble
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <div className="opcion-price-consult">
-                                      Consultar precio
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              {opt.hoteles.length === 0 ? (
-                                <p style={{ color: "#999", fontSize: 14 }}>
-                                  Sin hoteles asignados a esta opción.
-                                </p>
-                              ) : (
-                                <div className="opcion-block">
-                                  {opt.hoteles.map((h, idx) => {
-                                    const stars =
-                                      h.alojamiento.categoria ?? 0;
+                        {/* Opciones ordenadas de menor a mayor precio: así se
+                            entienden como alternativas distintas sin necesidad de
+                            etiqueta "Opción N". Las que van "a consultar" (sin
+                            precio) quedan al final. */}
+                        {[...paquete.opcionesHoteleras]
+                          .sort(
+                            (a, b) =>
+                              (a.precioVenta || Infinity) -
+                              (b.precioVenta || Infinity),
+                          )
+                          .map((opt, optIdx) => {
+                            const moneda = paquete.precioDesdeMoneda ?? "USD";
+                            const hasPrice = opt.precioVenta > 0;
+                            return (
+                              <div
+                                key={opt.id}
+                                className={
+                                  "text-box style1 opcion-card" +
+                                  (optIdx === 0 ? " mt-0" : "")
+                                }
+                              >
+                                {opt.hoteles.length === 0 ? (
+                                  <p style={{ color: "#999", fontSize: 14 }}>
+                                    Sin hoteles asignados a esta opción.
+                                  </p>
+                                ) : (
+                                  opt.hoteles.map((h, idx) => {
+                                    const stars = h.alojamiento.categoria ?? 0;
+                                    const ciudadNombre =
+                                      h.alojamiento.ciudad?.trim();
                                     const regimenNombre =
-                                      h.alojamiento.precios[0]?.regimen
-                                        ?.nombre;
+                                      h.alojamiento.precios[0]?.regimen?.nombre;
                                     return (
                                       <div
                                         key={h.id}
                                         className={
-                                          "text-box style1" +
-                                          (idx === 0 ? " mt-0" : "")
+                                          "hotel-item" +
+                                          (idx > 0 ? " hotel-item-divided" : "")
                                         }
                                       >
+                                        {/* Nombre con la ciudad adelante:
+                                            "Búzios - Posada Kybalion". Estrellas
+                                            inline a la derecha (ver CSS). */}
                                         <h3 className="h4">
-                                          {h.alojamiento.nombre}
+                                          {ciudadNombre
+                                            ? `${ciudadNombre} - ${h.alojamiento.nombre}`
+                                            : h.alojamiento.nombre}
                                           {stars > 0 && (
                                             <ul>
                                               {Array.from({
@@ -689,19 +695,53 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
                                             </ul>
                                           )}
                                         </h3>
-                                        <span>
+                                        {/* Régimen en una sola línea, como el PDF:
+                                            "Habitación Estándar con Desayuno". */}
+                                        <span className="hotel-detail">
                                           {regimenNombre
-                                            ? `Régimen ${regimenNombre}`
-                                            : "Habitación estándar"}
+                                            ? `Habitación Estándar con ${regimenNombre}`
+                                            : "Habitación Estándar"}
                                         </span>
                                       </div>
                                     );
-                                  })}
+                                  })
+                                )}
+
+                                {/* Meta: salidas (izq) + precio de la OPCIÓN
+                                    (der). El precio es del bundle, nunca el
+                                    interno por hotel. */}
+                                <div className="meta">
+                                  <div className="left">
+                                    {paquete.salidas && (
+                                      <p className="date">
+                                        <span className="icon">
+                                          <i className="fa-regular fa-calendar-check"></i>
+                                        </span>
+                                        {paquete.salidas}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="right text-end">
+                                    {hasPrice ? (
+                                      <>
+                                        <span className="price">
+                                          {moneda}{" "}
+                                          {opt.precioVenta.toLocaleString(
+                                            "es-UY",
+                                          )}
+                                        </span>
+                                        <p>Por persona en base doble</p>
+                                      </>
+                                    ) : (
+                                      <span className="price price-consult">
+                                        Consultar precio
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                              </div>
+                            );
+                          })}
                       </div>
                     )}
                   </div>
