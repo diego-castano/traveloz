@@ -13,7 +13,7 @@ import {
   MAX_FAILED_ATTEMPTS,
   LOCKOUT_DURATION_MS,
 } from "@/lib/rate-limit";
-import { sendEmail, passwordResetEmail } from "@/lib/email";
+import { sendEmail, passwordResetEmail, passwordChangedEmail } from "@/lib/email";
 import { z } from "zod";
 
 const log = logger.child({ module: "auth.actions" });
@@ -413,6 +413,12 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
     ipAddress: ip,
     userAgent,
   });
+
+  // Confirmación de seguridad: la contraseña quedó cambiada vía link de reset.
+  const tpl = passwordChangedEmail({ name: user.name, byAdmin: false });
+  sendEmail({ to: user.email, ...tpl }).catch((err) =>
+    log.error("password.reset.complete email failed", err),
+  );
 
   return { ok: true };
 }

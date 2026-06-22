@@ -17,7 +17,10 @@
 //
 // File uploads (work-with-us CV) go to the S3 bucket via uploadBuffer.
 //
-// Email notifications to admins are NOT wired yet — explicit user request.
+// Cada envío dispara además un aviso por email a las casillas configuradas en
+// el setting `notificaciones_leads_emails` (panel /backend/web/notificaciones).
+// El envío es best-effort: si falla o no hay destinos, el lead igual queda
+// guardado. Los leads del cotizador por marca tienen su propia notificación.
 // ---------------------------------------------------------------------------
 
 import { headers } from "next/headers";
@@ -27,7 +30,7 @@ import { prisma } from "@/lib/db";
 import { uploadBuffer } from "@/lib/storage";
 import { checkFormRate } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
-import { sendEmail, newsletterConfirmEmail } from "@/lib/email";
+import { sendEmail, newsletterConfirmEmail, leadNotificationEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/seo";
 
 const log = logger.child({ module: "public-forms.actions" });
@@ -152,6 +155,55 @@ function zodError(error: z.ZodError): FormResult {
 }
 
 // ---------------------------------------------------------------------------
+// Notificación de lead a las casillas internas configuradas en SiteSetting
+// `notificaciones_leads_emails` (lista separada por comas/espacios). Best-effort:
+// nunca propaga errores ni bloquea el guardado del lead.
+// ---------------------------------------------------------------------------
+
+function parseEmails(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return Array.from(
+    new Set(
+      raw
+        .split(/[,;\s]+/)
+        .map((e) => e.trim().toLowerCase())
+        .filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)),
+    ),
+  );
+}
+
+async function notifyLead(opts: {
+  tipo: string;
+  campos: { label: string; value: string }[];
+  replyTo?: string | null;
+  origen?: string | null;
+}): Promise<void> {
+  try {
+    const setting = await prisma.siteSetting.findUnique({
+      where: { key: "notificaciones_leads_emails" },
+      select: { value: true },
+    });
+    const destinos = parseEmails(setting?.value);
+    if (destinos.length === 0) return;
+
+    const tpl = leadNotificationEmail({
+      tipo: opts.tipo,
+      campos: opts.campos,
+      origen: opts.origen ?? null,
+    });
+    await sendEmail({
+      to: destinos,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+      replyTo: opts.replyTo ?? undefined,
+    });
+  } catch (err) {
+    log.error(`notifyLead (${opts.tipo}) failed`, err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // /contact form → MensajeContacto
 // ---------------------------------------------------------------------------
 const contactSchema = z.object({
@@ -182,6 +234,17 @@ export async function submitContactForm(
     if (!parsed.success) return zodError(parsed.error);
 
     await prisma.mensajeContacto.create({ data: parsed.data });
+    await notifyLead({
+      tipo: "Contacto",
+      replyTo: parsed.data.email,
+      origen: captureOrigen(),
+      campos: [
+        { label: "Nombre", value: parsed.data.nombre },
+        { label: "Email", value: parsed.data.email },
+        { label: "Teléfono", value: parsed.data.telefono ?? "" },
+        { label: "Mensaje", value: parsed.data.comentarios },
+      ],
+    });
     return { ok: true, message: SUCCESS_MSG };
   } catch (err) {
     log.error("submitContactForm failed", err);
@@ -246,6 +309,18 @@ export async function submitWorkWithUsForm(
         cvFilename: cv.name,
       },
     });
+    await notifyLead({
+      tipo: "Trabajá con nosotros",
+      replyTo: parsed.data.email,
+      origen: captureOrigen(),
+      campos: [
+        { label: "Nombre", value: parsed.data.nombre },
+        { label: "Email", value: parsed.data.email },
+        { label: "Teléfono", value: parsed.data.telefono ?? "" },
+        { label: "Motivación", value: parsed.data.motivacion },
+        { label: "CV", value: uploaded.url },
+      ],
+    });
     return { ok: true, message: WORK_SUCCESS_MSG };
   } catch (err) {
     log.error("submitWorkWithUsForm failed", err);
@@ -288,6 +363,19 @@ export async function submitCorporateForm(
     if (!parsed.success) return zodError(parsed.error);
 
     await prisma.contactoCorporativo.create({ data: parsed.data });
+    await notifyLead({
+      tipo: "Corporativo",
+      replyTo: parsed.data.email,
+      origen: captureOrigen(),
+      campos: [
+        { label: "Nombre", value: parsed.data.nombre },
+        { label: "Empresa", value: parsed.data.empresa },
+        { label: "Cargo", value: parsed.data.cargo ?? "" },
+        { label: "Email", value: parsed.data.email },
+        { label: "Teléfono", value: parsed.data.telefono ?? "" },
+        { label: "Comentarios", value: parsed.data.comentarios ?? "" },
+      ],
+    });
     return { ok: true, message: SUCCESS_MSG };
   } catch (err) {
     log.error("submitCorporateForm failed", err);
@@ -439,6 +527,34 @@ export async function submitQuoteForm(
         origen: s(formData, "origen") ?? (captureOrigen()),
         aceptaPromos: formData.get("aceptaPromos") === "on",
       },
+    });
+
+    const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+    await notifyLead({
+      tipo: "Cotización",
+      replyTo: data.email,
+      origen: s(formData, "origen") ?? captureOrigen(),
+      campos: [
+        { label: "Nombre", value: data.nombre },
+        { label: "Email", value: data.email },
+        {
+          label: "Teléfono",
+          value: [data.paisCodigo, data.telefono].filter(Boolean).join(" "),
+        },
+        { label: "Destino", value: data.destino ?? "" },
+        {
+          label: "Fechas",
+          value: [fmtDate(date(formData, "fechaDesde")), fmtDate(date(formData, "fechaHasta"))]
+            .filter(Boolean)
+            .join(" → "),
+        },
+        {
+          label: "Pasajeros",
+          value: `${m("adultos")} adultos · ${m("ninos")} niños · ${m("infantes")} infantes`,
+        },
+        { label: "Preferencia de contacto", value: validPref ?? "" },
+        { label: "Comentarios", value: data.comentarios ?? "" },
+      ],
     });
     return { ok: true, message: SUCCESS_MSG };
   } catch (err) {

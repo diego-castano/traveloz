@@ -23,6 +23,7 @@ import {
   CreditCard,
   Search,
   Bot,
+  Bell,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/components/lib/cn";
@@ -86,6 +87,12 @@ const GROUPS: Group[] = [
     items: [
       { href: "/backend/web/seo", label: "Meta tags", icon: Search },
       { href: "/backend/web/robots", label: "Robots / Indexación", icon: Bot },
+    ],
+  },
+  {
+    label: "Sistema",
+    items: [
+      { href: "/backend/web/notificaciones", label: "Notificaciones", icon: Bell },
     ],
   },
 ];

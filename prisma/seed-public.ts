@@ -123,6 +123,8 @@ const SETTINGS: Array<{
   { key: "contacto_direccion", value: "Av. Dr. Luis Alberto de Herrera 1343 Of. 301 - Edificio Trade Plaza", type: "textarea", group: "contacto", label: "Dirección" },
   { key: "contacto_horario", value: "Lunes a Viernes 09:30 a 18:30", group: "contacto", label: "Horario de atención" },
   { key: "contacto_mapa_embed", value: "", type: "textarea", group: "contacto", label: "URL del iframe de Google Maps (opcional)" },
+  // ─── Notificaciones de leads (destino interno de los formularios) ─────
+  { key: "notificaciones_leads_emails", value: "", group: "notificaciones", label: "Emails que reciben los leads (separá varios con comas)" },
   // ─── Corporativo (página /corporativo) ───────────────────────────────
   { key: "corporativo_hero_titulo", value: "Viajes que impulsan negocios.", group: "corporativo", label: "Título del hero" },
   { key: "corporativo_hero_video", value: "/site/video/Video-Traveloz-Corporativo.mp4", type: "url", group: "corporativo", label: "Video de fondo del hero" },

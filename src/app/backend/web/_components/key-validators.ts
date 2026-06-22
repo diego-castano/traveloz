@@ -34,6 +34,14 @@ const optionalEmailV: Validator = (v) =>
   optionalEmail.safeParse(v).success
     ? null
     : "Si lo completás, tiene que ser un email válido.";
+// Lista de emails separados por comas/espacios (vacío = sin destinatarios).
+const optionalEmailListV: Validator = (v) => {
+  const trimmed = v.trim();
+  if (!trimmed) return null;
+  const parts = trimmed.split(/[,;\s]+/).filter(Boolean);
+  const bad = parts.find((p) => !email.safeParse(p).success);
+  return bad ? `"${bad}" no es un email válido.` : null;
+};
 const phone: Validator = (v) =>
   !v.trim() || /^[\d+()\-\s]{6,}$/.test(v.trim())
     ? null
@@ -62,6 +70,9 @@ export const KEY_VALIDATORS: Record<string, Validator> = {
   contacto_email: optionalEmailV,
   contacto_telefono: phone,
   contacto_whatsapp: optionalUrlV,
+
+  // Notificaciones de leads (destino interno de los formularios del sitio)
+  notificaciones_leads_emails: optionalEmailListV,
 
   // Destinos CTA
   destinos_cta_link_href: internalOrExternalUrl,

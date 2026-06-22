@@ -8,7 +8,12 @@ import type { Role } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { logAudit } from "@/lib/audit";
 import { headers } from "next/headers";
-import { sendEmail, invitationEmail } from "@/lib/email";
+import {
+  sendEmail,
+  invitationEmail,
+  passwordChangedEmail,
+  pinChangedEmail,
+} from "@/lib/email";
 import { isPinInUse } from "./auth.actions";
 
 const log = logger.child({ module: "user.actions" });
@@ -257,13 +262,14 @@ export async function updateUserPassword(id: string, newPassword: string) {
   z.object({ newPassword: z.string().min(8, "La contraseña debe tener al menos 8 caracteres") }).parse({ newPassword });
 
   try {
-    await prisma.user.update({
+    const target = await prisma.user.update({
       where: { id },
       data: {
         passwordHash: hashSync(newPassword, 10),
         failedLoginAttempts: 0,
         lockedUntil: null,
       },
+      select: { email: true, name: true },
     });
     await logAudit({
       action: "password.change.admin",
@@ -273,6 +279,11 @@ export async function updateUserPassword(id: string, newPassword: string) {
       ipAddress: ip,
       userAgent,
     });
+    // Aviso de seguridad al usuario afectado (no bloquea la acción).
+    const tpl = passwordChangedEmail({ name: target.name, byAdmin: true });
+    sendEmail({ to: target.email, ...tpl }).catch((err) =>
+      log.error("password.change.admin email failed", err),
+    );
     return { ok: true };
   } catch (error) {
     log.error("updating user password", error);
@@ -297,9 +308,10 @@ export async function adminSetUserPin(id: string, pin: string | null) {
   }
 
   try {
-    await prisma.user.update({
+    const target = await prisma.user.update({
       where: { id },
       data: { pinHash: pin ? hashSync(pin, 10) : null },
+      select: { email: true, name: true },
     });
     await logAudit({
       action: pin ? "pin.set.admin" : "pin.clear.admin",
@@ -309,6 +321,15 @@ export async function adminSetUserPin(id: string, pin: string | null) {
       ipAddress: ip,
       userAgent,
     });
+    // Aviso de seguridad al usuario afectado (no bloquea la acción).
+    const tpl = pinChangedEmail({
+      name: target.name,
+      action: pin ? "set" : "clear",
+      byAdmin: true,
+    });
+    sendEmail({ to: target.email, ...tpl }).catch((err) =>
+      log.error("pin.change.admin email failed", err),
+    );
     return { ok: true };
   } catch (error) {
     log.error("admin setting pin", error);
@@ -488,6 +509,11 @@ export async function changeMyPassword(currentPassword: string, newPassword: str
     ipAddress: ip,
     userAgent,
   });
+  // Aviso de seguridad: confirmamos el cambio al propio usuario.
+  const tpl = passwordChangedEmail({ name: user.name, byAdmin: false });
+  sendEmail({ to: user.email, ...tpl }).catch((err) =>
+    log.error("password.change.self email failed", err),
+  );
   return { ok: true };
 }
 
@@ -547,5 +573,14 @@ export async function setMyPin(input: { pin: string | null; currentPin?: string;
     ipAddress: ip,
     userAgent,
   });
+  // Aviso de seguridad: confirmamos el cambio de PIN al propio usuario.
+  const tpl = pinChangedEmail({
+    name: user.name,
+    action: input.pin ? "set" : "clear",
+    byAdmin: false,
+  });
+  sendEmail({ to: user.email, ...tpl }).catch((err) =>
+    log.error("pin.change.self email failed", err),
+  );
   return { ok: true };
 }
