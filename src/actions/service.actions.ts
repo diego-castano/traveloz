@@ -388,10 +388,12 @@ export async function createAlojamiento(data: {
   try {
     const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = AlojamientoSchema.parse(data);
-    return await prisma.$transaction(async (tx) => {
+    const created = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "alojamiento");
       return await tx.alojamiento.create({ data: { ...parsed, id, brandId } });
     });
+    bustServicesCacheGlobal();
+    return created;
   } catch (error) {
     log.error("creating alojamiento", error);
     throw new Error("No se pudo crear el alojamiento.");
@@ -666,10 +668,12 @@ export async function createSeguro(data: {
   try {
     const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = SeguroSchema.parse(data);
-    return await prisma.$transaction(async (tx) => {
+    const created = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "seguro");
       return await tx.seguro.create({ data: { ...parsed, id, brandId } });
     });
+    bustServicesCacheGlobal();
+    return created;
   } catch (error) {
     log.error("creating seguro", error);
     throw new Error("No se pudo crear el seguro.");
@@ -753,7 +757,7 @@ export async function createCircuito(data: {
   try {
     const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = CircuitoCreateSchema.parse(data);
-    return await prisma.$transaction(async (tx) => {
+    const created = await prisma.$transaction(async (tx) => {
       const id = await generateSequentialId(tx, "circuito");
       const circuito = await tx.circuito.create({
         data: {
@@ -780,6 +784,8 @@ export async function createCircuito(data: {
 
       return circuito;
     });
+    bustServicesCacheGlobal();
+    return created;
   } catch (error) {
     log.error("creating circuito", error);
     throw new Error("No se pudo crear el circuito.");

@@ -6,6 +6,8 @@ import {
   useEffect,
   useReducer,
   useMemo,
+  useState,
+  useRef,
   type Dispatch,
 } from "react";
 import type {
@@ -524,6 +526,27 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
   const { status: sessionStatus } = useSession();
   const INITIAL_PAQUETES_CHUNK = 18;
 
+  // Refetch al volver el foco a la pestaña (ver nota en ServiceProvider): con
+  // varias personas/pestañas editando, los datos cargados al montar quedan
+  // viejos. Recargamos cuando la pestaña vuelve a primer plano, con throttle.
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const lastLoadRef = useRef(0);
+  const REFRESH_MIN_INTERVAL_MS = 15_000;
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    const maybeRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastLoadRef.current < REFRESH_MIN_INTERVAL_MS) return;
+      setRefreshNonce((n) => n + 1);
+    };
+    window.addEventListener("focus", maybeRefresh);
+    document.addEventListener("visibilitychange", maybeRefresh);
+    return () => {
+      window.removeEventListener("focus", maybeRefresh);
+      document.removeEventListener("visibilitychange", maybeRefresh);
+    };
+  }, [sessionStatus]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -562,6 +585,7 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
       .getBasePackages(activeBrandId, { take: INITIAL_PAQUETES_CHUNK })
       .then((base) => {
         if (cancelled) return;
+        lastLoadRef.current = Date.now();
         dispatch({
           type: "SET_ALL",
           payload: {
@@ -637,7 +661,7 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
       });
 
     return () => { cancelled = true; };
-  }, [activeBrandId, sessionStatus]);
+  }, [activeBrandId, sessionStatus, refreshNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist to sessionStorage whenever the state changes — but only after
   // wave 2 has populated (so we don't snapshot a half-loaded state). The

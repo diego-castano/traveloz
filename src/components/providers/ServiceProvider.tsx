@@ -6,6 +6,8 @@ import {
   useReducer,
   useEffect,
   useMemo,
+  useState,
+  useRef,
   type Dispatch,
 } from "react";
 import type {
@@ -358,6 +360,27 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
   const { status: sessionStatus } = useSession();
   const INITIAL_ALOJAMIENTOS_CHUNK = 10;
 
+  // Refetch cuando la pestaña vuelve a primer plano: con varias personas
+  // editando a la vez (o varias pestañas propias), los datos cargados al montar
+  // quedan viejos. Al volver el foco, si pasó un mínimo de tiempo, recargamos.
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const lastLoadRef = useRef(0);
+  const REFRESH_MIN_INTERVAL_MS = 15_000;
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    const maybeRefresh = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastLoadRef.current < REFRESH_MIN_INTERVAL_MS) return;
+      setRefreshNonce((n) => n + 1);
+    };
+    window.addEventListener("focus", maybeRefresh);
+    document.addEventListener("visibilitychange", maybeRefresh);
+    return () => {
+      window.removeEventListener("focus", maybeRefresh);
+      document.removeEventListener("visibilitychange", maybeRefresh);
+    };
+  }, [sessionStatus]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -391,6 +414,7 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       })
       .then((base) => {
         if (cancelled) return;
+        lastLoadRef.current = Date.now();
         dispatch({
           type: "SET_ALL",
           payload: {
@@ -471,7 +495,7 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [activeBrandId, sessionStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeBrandId, sessionStatus, refreshNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist to sessionStorage with debounce — same pattern as PackageProvider.
   useEffect(() => {
