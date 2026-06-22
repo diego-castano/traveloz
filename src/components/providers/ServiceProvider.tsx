@@ -26,6 +26,10 @@ import { useSession } from "next-auth/react";
 import * as serviceActions from "@/actions/service.actions";
 import { useBrand } from "./BrandProvider";
 import { readSessionCache, writeSessionCache } from "@/lib/session-cache";
+import {
+  notifyServiceMutation,
+  subscribeServiceMutations,
+} from "@/lib/services-broadcast";
 
 const SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -123,6 +127,17 @@ type ServiceAction =
   | { type: "UPDATE_PRECIO_CIRCUITO"; payload: PrecioCircuito }
   | { type: "DELETE_PRECIO_CIRCUITO"; payload: string };
 
+// Append-or-replace por id. Mantiene los ADD idempotentes: una mutación que
+// llega de otra pestaña (ver services-broadcast) no duplica si por una carrera
+// la entidad ya estaba (p. ej. un refetch por foco la trajo primero).
+function upsertById<T extends { id: string }>(arr: T[], item: T): T[] {
+  const i = arr.findIndex((e) => e.id === item.id);
+  if (i === -1) return [...arr, item];
+  const next = arr.slice();
+  next[i] = item;
+  return next;
+}
+
 // ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
@@ -147,7 +162,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
     // -- Aereo (soft delete) --
     case "ADD_AEREO":
-      return { ...state, aereos: [...state.aereos, action.payload] };
+      return { ...state, aereos: upsertById(state.aereos, action.payload) };
     case "UPDATE_AEREO":
       return {
         ...state,
@@ -167,7 +182,10 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
     // -- PrecioAereo (hard delete) --
     case "ADD_PRECIO_AEREO":
-      return { ...state, preciosAereo: [...state.preciosAereo, action.payload] };
+      return {
+        ...state,
+        preciosAereo: upsertById(state.preciosAereo, action.payload),
+      };
     case "UPDATE_PRECIO_AEREO":
       return {
         ...state,
@@ -183,7 +201,10 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
     // -- Alojamiento (soft delete) --
     case "ADD_ALOJAMIENTO":
-      return { ...state, alojamientos: [...state.alojamientos, action.payload] };
+      return {
+        ...state,
+        alojamientos: upsertById(state.alojamientos, action.payload),
+      };
     case "UPDATE_ALOJAMIENTO":
       return {
         ...state,
@@ -205,7 +226,10 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
     case "ADD_PRECIO_ALOJAMIENTO":
       return {
         ...state,
-        preciosAlojamiento: [...state.preciosAlojamiento, action.payload],
+        preciosAlojamiento: upsertById(
+          state.preciosAlojamiento,
+          action.payload,
+        ),
       };
     case "UPDATE_PRECIO_ALOJAMIENTO":
       return {
@@ -226,7 +250,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
     case "ADD_ALOJAMIENTO_FOTO":
       return {
         ...state,
-        alojamientoFotos: [...state.alojamientoFotos, action.payload],
+        alojamientoFotos: upsertById(state.alojamientoFotos, action.payload),
       };
     case "UPDATE_ALOJAMIENTO_FOTO":
       return {
@@ -245,7 +269,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
     // -- Traslado (soft delete) --
     case "ADD_TRASLADO":
-      return { ...state, traslados: [...state.traslados, action.payload] };
+      return { ...state, traslados: upsertById(state.traslados, action.payload) };
     case "UPDATE_TRASLADO":
       return {
         ...state,
@@ -264,8 +288,11 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
       };
 
     // -- Seguro (soft delete) --
-    case "ADD_SEGURO":
-      return { ...state, seguros: [action.payload, ...state.seguros] };
+    case "ADD_SEGURO": {
+      // Conserva el orden "más nuevo primero" y es idempotente.
+      const without = state.seguros.filter((e) => e.id !== action.payload.id);
+      return { ...state, seguros: [action.payload, ...without] };
+    }
     case "UPDATE_SEGURO":
       return {
         ...state,
@@ -285,7 +312,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
     // -- Circuito (soft delete) --
     case "ADD_CIRCUITO":
-      return { ...state, circuitos: [...state.circuitos, action.payload] };
+      return { ...state, circuitos: upsertById(state.circuitos, action.payload) };
     case "UPDATE_CIRCUITO":
       return {
         ...state,
@@ -305,7 +332,10 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 
     // -- CircuitoDia (hard delete) --
     case "ADD_CIRCUITO_DIA":
-      return { ...state, circuitoDias: [...state.circuitoDias, action.payload] };
+      return {
+        ...state,
+        circuitoDias: upsertById(state.circuitoDias, action.payload),
+      };
     case "UPDATE_CIRCUITO_DIA":
       return {
         ...state,
@@ -323,7 +353,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
     case "ADD_PRECIO_CIRCUITO":
       return {
         ...state,
-        preciosCircuito: [...state.preciosCircuito, action.payload],
+        preciosCircuito: upsertById(state.preciosCircuito, action.payload),
       };
     case "UPDATE_PRECIO_CIRCUITO":
       return {
@@ -379,6 +409,18 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", maybeRefresh);
       document.removeEventListener("visibilitychange", maybeRefresh);
     };
+  }, [sessionStatus]);
+
+  // Sync entre pestañas (mismo navegador): si otra pestaña crea/edita un
+  // servicio (p. ej. carga un hotel nuevo mientras acá se está armando un
+  // paquete), aplicamos esa misma mutación a nuestro estado local. Sin recargar
+  // la página y sin pegarle al servidor: la pestaña que escribió ya confirmó el
+  // cambio contra el server y nos manda la entidad ya persistida.
+  useEffect(() => {
+    if (sessionStatus !== "authenticated") return;
+    return subscribeServiceMutations((action) => {
+      dispatch(action as ServiceAction);
+    });
   }, [sessionStatus]);
 
   useEffect(() => {
@@ -666,10 +708,19 @@ function stripForUpdate<T extends Record<string, any>>(
 // CRUD action hook
 // ---------------------------------------------------------------------------
 export function useServiceActions() {
-  const dispatch = useServiceDispatch();
+  const rawDispatch = useServiceDispatch();
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    // `dispatch` aplica la mutación local y la transmite a las demás pestañas
+    // del mismo navegador (ver services-broadcast). Cada acción ya lleva la
+    // entidad confirmada por el server, así que las otras pestañas no necesitan
+    // refetchear. Solo transmitimos estas mutaciones granulares; las cargas
+    // masivas (SET_ALL, etc.) usan rawDispatch y no se propagan.
+    const dispatch = (action: ServiceAction) => {
+      rawDispatch(action);
+      notifyServiceMutation(action);
+    };
+    const actions = {
       // -- Aereo --
       createAereo: async (
         data: Omit<Aereo, "id" | "createdAt" | "updatedAt" | "deletedAt"> & {
@@ -851,7 +902,8 @@ export function useServiceActions() {
         await serviceActions.deletePrecioCircuito(id);
         dispatch({ type: "DELETE_PRECIO_CIRCUITO", payload: id });
       },
-    }),
-    [dispatch],
-  );
+    };
+
+    return actions;
+  }, [rawDispatch]);
 }
