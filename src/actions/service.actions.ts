@@ -22,17 +22,28 @@ const log = logger.child({ module: "service.actions" });
  *  navigation is rare and the TTL is only 60 s anyway. */
 const SERVICES_GLOBAL_TAG = "services-global";
 
+// Tag del SITIO PÚBLICO de paquetes (lib/public-data.ts → getPaqueteBySlug,
+// getPaquetesByRegion, …). Un servicio (hotel/aéreo/traslado/seguro/circuito)
+// se renderiza dentro de la página pública del paquete: nombre, categoría,
+// fotos del hotel y —vía recomputeFor*— el precioVenta de cada opción y el
+// "DESDE" del paquete. Por eso toda mutación de servicio debe invalidar también
+// este tag; si no, editar el precio o el nombre de un hotel no se refleja en el
+// preview hasta que vence el `revalidate: 60` (el bug de actualización retardada).
+const PUBLIC_SITE_PACKAGES_TAG = "paquetes";
+
 /** Invalidate the per-brand service caches. Call after any service mutation. */
 function bustServicesCache(brandId: string) {
   revalidateTag(`services:${brandId}`);
   revalidateTag(`service-sub:${brandId}`);
   revalidateTag(SERVICES_GLOBAL_TAG);
+  revalidateTag(PUBLIC_SITE_PACKAGES_TAG);
 }
 
 /** Bust the global service cache. Use from mutations that don't already have
  *  brandId in scope — saves the extra requireAuth call. */
 function bustServicesCacheGlobal() {
   revalidateTag(SERVICES_GLOBAL_TAG);
+  revalidateTag(PUBLIC_SITE_PACKAGES_TAG);
 }
 
 /** Block soft-deleting a service that is still assigned to a live (non-deleted)

@@ -59,9 +59,21 @@ async function syncPaqueteNoches(paqueteId: string): Promise<void> {
 // son mucho menos frecuentes que las lecturas, así que es barato).
 const PACKAGES_GLOBAL_TAG = "paquetes-global";
 
-/** Invalida la caché de servidor de paquetes y sus sub-entidades (todas las marcas). */
+// Tag del SITIO PÚBLICO. Las lecturas cacheadas de `lib/public-data.ts`
+// (getPaqueteBySlug, getPaquetesByRegion, getPaquetesByTipo,
+// getPaquetesRelacionados) se etiquetan con el literal "paquetes" y tienen
+// `revalidate: 60`. Si una mutación del backend NO invalida este tag, la página
+// pública del paquete —y su "Previsualizar"— sigue sirviendo datos viejos hasta
+// que vence esa ventana de 60 s. Ese era el bug de "actualización retardada":
+// el operador editaba título / agregaba opciones u hoteles, abría el preview y
+// no veía los cambios hasta esperar un rato y refrescar varias veces.
+const PUBLIC_SITE_PACKAGES_TAG = "paquetes";
+
+/** Invalida la caché de servidor de paquetes y sus sub-entidades (todas las
+ *  marcas), incluida la del sitio público para que el preview sea inmediato. */
 function bustPackagesGlobal() {
   revalidateTag(PACKAGES_GLOBAL_TAG);
+  revalidateTag(PUBLIC_SITE_PACKAGES_TAG);
 }
 
 // Cache busters for dashboard, report, AND paquete listing aggregates. Called
@@ -73,7 +85,8 @@ function bustDashboardCache(brandId: string) {
   revalidateTag(`reports:${brandId}`);
   revalidateTag(`paquetes:${brandId}`);
   revalidateTag(`paquete-sub:${brandId}`);
-  revalidateTag(PACKAGES_GLOBAL_TAG);
+  // Incluye PACKAGES_GLOBAL_TAG + el tag del sitio público.
+  bustPackagesGlobal();
 }
 
 // ──────────────────────────────────────────────
