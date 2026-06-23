@@ -17,7 +17,24 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { Save, ExternalLink, Eye, EyeOff, Star, AlertCircle } from "lucide-react";
+import { Save, ExternalLink, Eye, EyeOff, Star, AlertCircle, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
@@ -63,6 +80,14 @@ import {
   usePackageActions,
 } from "@/components/providers/PackageProvider";
 import type { EstadoPaquete } from "@/lib/types";
+import {
+  getPublicacionModulosOrden,
+  savePublicacionModulosOrden,
+} from "@/actions/publicacion-orden.actions";
+import {
+  DEFAULT_PUBLICACION_ORDEN,
+  type PublicacionModuloId,
+} from "@/lib/publicacion-modulos";
 
 type Servicio = { id: string; nombre: string; icon: string; activo?: boolean };
 
@@ -82,6 +107,17 @@ const ESTADO_OPTIONS: { value: EstadoPaquete; label: string }[] = [
   { value: "ACTIVO", label: "Activo" },
   { value: "ARCHIVADO", label: "Archivado" },
 ];
+
+// Etiqueta legible de cada módulo (sólo para accesibilidad del drag handle).
+const MODULO_LABELS: Record<PublicacionModuloId, string> = {
+  estado: "Estado y visibilidad",
+  etiquetas: "Etiquetas",
+  slider: "Slider de fotos",
+  textos: "Textos del paquete",
+  incluye: "Qué incluye",
+  condiciones: "Condiciones específicas",
+  seo: "SEO",
+};
 
 const hexToTagColor: Record<string, TagColor> = {
   "#22c55e": "green",
@@ -225,6 +261,12 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   // better than a transient toast that disappears.
   const [publishBlockers, setPublishBlockers] = useState<string[]>([]);
 
+  // Orden GLOBAL de los módulos de esta pestaña (drag-and-drop, persistido en
+  // SiteSetting). Arranca en el default y se reemplaza con el guardado al montar.
+  const [modulosOrden, setModulosOrden] = useState<PublicacionModuloId[]>(
+    DEFAULT_PUBLICACION_ORDEN,
+  );
+
   // Refs to the form fields that are most commonly the cause of a publish
   // gate failure. When the server returns "missing: slug" we scroll the
   // corresponding field into view and flash a red ring around it.
@@ -298,6 +340,15 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       },
     );
   }, [paqueteId]);
+
+  // El orden es global (mismo para todos los paquetes): se carga una sola vez.
+  useEffect(() => {
+    getPublicacionModulosOrden()
+      .then(setModulosOrden)
+      .catch(() => {
+        /* degradamos al default ya seteado */
+      });
+  }, []);
 
   const assignedEtiquetaIds = useMemo(
     () => new Set(assignedEtiquetas.map((pe) => pe.etiqueta.id)),
@@ -628,6 +679,39 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     }
   };
 
+  // ---------------------------------------------------------------------------
+  // Reordenar módulos — drag-and-drop. El orden se guarda global apenas se
+  // suelta (optimista: actualizo la UI, persisto, revierto si falla).
+  // ---------------------------------------------------------------------------
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleModulosDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = modulosOrden.indexOf(active.id as PublicacionModuloId);
+    const to = modulosOrden.indexOf(over.id as PublicacionModuloId);
+    if (from < 0 || to < 0) return;
+    const prevOrden = modulosOrden;
+    const next = arrayMove(modulosOrden, from, to);
+    setModulosOrden(next);
+    savePublicacionModulosOrden(next)
+      .then((saved) => {
+        setModulosOrden(saved);
+        toast(
+          "success",
+          "Orden actualizado",
+          "Se guardó el nuevo orden de los módulos; se aplica a todos los paquetes.",
+        );
+      })
+      .catch((e) => {
+        setModulosOrden(prevOrden);
+        toast("error", "No se pudo guardar el orden", (e as Error).message);
+      });
+  };
+
   if (!data) {
     return <div className="p-6 text-sm text-neutral-500">Cargando datos…</div>;
   }
@@ -704,7 +788,21 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         </div>
       )}
 
-      {/* Section 1 — Estado y visibilidad */}
+      {canEdit && (
+        <p className="text-[11px] text-neutral-400 flex items-center gap-1">
+          <GripVertical className="h-3 w-3 shrink-0" />
+          Arrastrá los módulos para reordenarlos. El orden queda guardado y se
+          aplica a todos los paquetes (al recargar o crear uno nuevo).
+        </p>
+      )}
+
+      {/* Módulos reordenables — se arman acá y se renderizan en el orden
+          guardado (modulosOrden). Mover una sección NO cambia su contenido ni
+          sus handlers, sólo su posición. */}
+      {(() => {
+        const moduleNodes: Record<PublicacionModuloId, React.ReactNode> = {
+          // Estado y visibilidad
+          estado: (
       <Section
         title="Estado y visibilidad"
         description="El estado describe en qué etapa del flujo interno está el paquete. El toggle Publicar lo hace visible (o no) en el sitio público; al publicar, si está en Borrador o En revisión, se pasa automáticamente a Activo."
@@ -801,8 +899,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           </p>
         </div>
       </Section>
-
-      {/* Section 2 — Etiquetas */}
+          ),
+          // Etiquetas
+          etiquetas: (
       <Section
         title="Etiquetas"
         description="Campañas, promociones y filtros que aplican a este paquete."
@@ -842,7 +941,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         )}
       </Section>
 
-      {/* Section 3 — Slider de fotos (galería + destacada, todo acá) */}
+          ),
+          // Slider de fotos
+          slider: (
       <Section
         title="Slider de fotos"
         description="El carrusel del detalle público. Subí, ordená y borrá las fotos acá mismo, y marcá con la estrella cuál es la destacada — esa aparece primera, sin importar el orden."
@@ -879,7 +980,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         </div>
       </Section>
 
-      {/* Section 4 — Texto principal */}
+          ),
+          // Textos del paquete
+          textos: (
       <Section
         title="Textos del paquete"
         description="Lo que el viajero ve al entrar al detalle. Usá la barra de formato para resaltar (negrita, cursiva, subrayado, listas y links)."
@@ -935,7 +1038,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         </div>
       </Section>
 
-      {/* Section 5 — Incluye */}
+          ),
+          // Qué incluye
+          incluye: (
       <Section
         title="Qué incluye (vista del cliente)"
         description="La lista que ve el viajero en la ficha pública. Tocá «Generar incluido» para armarla desde los servicios del paquete (aéreos, traslados, noches por destino con régimen, circuitos, seguros), después reordená arrastrando, editá el texto, cambiá el ícono o agregá items a mano."
@@ -959,7 +1064,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         </p>
       </Section>
 
-      {/* Section 6 — Condiciones */}
+          ),
+          // Condiciones específicas
+          condiciones: (
       <Section
         title="Condiciones específicas"
         description="Política de cancelación, pagos, requisitos especiales."
@@ -973,7 +1080,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         />
       </Section>
 
-      {/* Section 7 — SEO */}
+          ),
+          // SEO
+          seo: (
       <Section
         title="SEO"
         description="Cómo aparece en Google y al compartir en redes."
@@ -1037,6 +1146,35 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         )}
       </Section>
 
+          ),
+        };
+        return (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleModulosDragEnd}
+          >
+            <SortableContext
+              items={modulosOrden}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-5">
+                {modulosOrden.map((id) => (
+                  <SortableModule
+                    key={id}
+                    id={id}
+                    label={MODULO_LABELS[id]}
+                    draggable={canEdit}
+                  >
+                    {moduleNodes[id]}
+                  </SortableModule>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        );
+      })()}
+
       {/* Sticky autosave bar */}
       <div className="sticky bottom-4 bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-lg shadow-lg px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 text-xs text-neutral-500">
@@ -1053,6 +1191,59 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           {isPending ? "Guardando…" : "Forzar guardado"}
         </Button>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SortableModule — envuelve cada módulo de la pestaña con su agarradera de
+// arrastre (grip a la izquierda, en su propio canalón). Sólo el grip lleva los
+// listeners de dnd-kit, así que los inputs / editores de adentro siguen
+// funcionando normal: arrastrar arranca únicamente desde el ícono. Cuando el
+// usuario no puede editar, no se muestra el grip y el módulo ocupa todo el ancho.
+// ---------------------------------------------------------------------------
+function SortableModule({
+  id,
+  label,
+  draggable,
+  children,
+}: {
+  id: string;
+  label: string;
+  draggable: boolean;
+  children: React.ReactNode;
+}) {
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id, disabled: !draggable });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 30 : undefined,
+    opacity: isDragging ? 0.85 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-stretch gap-2">
+      {draggable && (
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label={`Arrastrar módulo ${label} para reordenar`}
+          title="Arrastrar para reordenar"
+          className="shrink-0 flex w-6 items-center justify-center rounded-md text-neutral-300 hover:bg-neutral-100 hover:text-neutral-500 cursor-grab active:cursor-grabbing touch-none"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      )}
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   );
 }
