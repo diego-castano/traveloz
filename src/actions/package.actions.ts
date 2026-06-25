@@ -23,6 +23,34 @@ export async function getBasePackages(requestedBrandId?: string) {
       where: { brandId, deletedAt: null },
       orderBy: { createdAt: "desc" },
     });
+
+    // Auto-desactivación por validez: cualquier paquete ACTIVO cuya
+    // `validezHasta` ya pasó se pasa a INACTIVO. Es una reconciliación "lazy"
+    // que corre en cada carga del listado, sin necesidad de un cron. La
+    // comparación es por día (YYYY-MM-DD) para evitar problemas de zona horaria
+    // — el paquete sigue activo durante todo el día de su fecha de validez.
+    const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+    const expiredIds = paquetes
+      .filter(
+        (p) =>
+          p.estado === "ACTIVO" &&
+          p.validezHasta != null &&
+          p.validezHasta.slice(0, 10) < todayStr,
+      )
+      .map((p) => p.id);
+
+    if (expiredIds.length > 0) {
+      await prisma.paquete.updateMany({
+        where: { id: { in: expiredIds } },
+        data: { estado: "INACTIVO" },
+      });
+      // Reflejar el cambio en los datos que devolvemos (sin re-consultar).
+      const expiredSet = new Set(expiredIds);
+      for (const p of paquetes) {
+        if (expiredSet.has(p.id)) p.estado = "INACTIVO";
+      }
+    }
+
     return { paquetes };
   } catch (error) {
     console.error("Error fetching base packages:", error);

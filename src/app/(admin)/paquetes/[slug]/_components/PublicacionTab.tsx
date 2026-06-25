@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Toggle } from "@/components/ui/Toggle";
 import { Select } from "@/components/ui/Select";
-import { DatePicker } from "@/components/ui/DatePicker";
+import { Badge } from "@/components/ui/Badge";
 import { Tag, type TagColor } from "@/components/ui/Tag";
 import {
   FormSection,
@@ -11,8 +11,6 @@ import {
 } from "@/components/ui/form/FormSection";
 import {
   Field,
-  FieldGroup,
-  FieldLabel,
 } from "@/components/ui/form/Field";
 import {
   usePackageActions,
@@ -21,7 +19,7 @@ import {
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
-import type { Paquete, EstadoPaquete } from "@/lib/types";
+import type { Paquete } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -32,14 +30,17 @@ interface PublicacionTabProps {
 }
 
 // ---------------------------------------------------------------------------
-// Estado options
+// Estado badge (read-only — estado se edita en la pestaña Datos)
 // ---------------------------------------------------------------------------
 
-const ESTADO_OPTIONS: { value: EstadoPaquete; label: string }[] = [
-  { value: "BORRADOR", label: "Borrador" },
-  { value: "ACTIVO", label: "Activo" },
-  { value: "INACTIVO", label: "Inactivo" },
-];
+const estadoBadge: Record<
+  string,
+  { variant: "active" | "draft" | "inactive"; label: string }
+> = {
+  ACTIVO: { variant: "active", label: "Activo" },
+  BORRADOR: { variant: "draft", label: "Borrador" },
+  INACTIVO: { variant: "inactive", label: "Inactivo" },
+};
 
 // ---------------------------------------------------------------------------
 // Tag color mapping (hex -> Tag preset)
@@ -74,9 +75,6 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
   const { canEdit } = useAuth();
   const { toast } = useToast();
 
-  // -- Publicado derived from estado --
-  const isPublicado = paquete.estado === "ACTIVO";
-
   // -- Available etiquetas (not yet assigned) --
   const assignedEtiquetaIds = useMemo(
     () => new Set(assignedPaqueteEtiquetas.map((pe) => pe.etiquetaId)),
@@ -104,42 +102,12 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
   );
 
   // -- Handlers --
-  const handlePublicadoToggle = (checked: boolean) => {
-    const newEstado: EstadoPaquete = checked ? "ACTIVO" : "INACTIVO";
-    updatePaquete({ ...paquete, estado: newEstado });
-    toast(
-      "success",
-      checked ? "Paquete publicado" : "Paquete despublicado",
-      `Estado cambiado a ${checked ? "Activo" : "Inactivo"}`,
-    );
-  };
-
   const handleDestacadoToggle = (checked: boolean) => {
     updatePaquete({ ...paquete, destacado: checked });
     toast(
       "success",
       checked ? "Marcado como destacado" : "Destacado removido",
     );
-  };
-
-  const handleEstadoChange = (value: string) => {
-    const newEstado = value as EstadoPaquete;
-    updatePaquete({ ...paquete, estado: newEstado });
-    toast("success", "Estado actualizado", `Nuevo estado: ${value}`);
-  };
-
-  const handleValidezDesdeChange = (date: Date | undefined) => {
-    if (date) {
-      updatePaquete({ ...paquete, validezDesde: date.toISOString() });
-      toast("success", "Fecha de inicio actualizada");
-    }
-  };
-
-  const handleValidezHastaChange = (date: Date | undefined) => {
-    if (date) {
-      updatePaquete({ ...paquete, validezHasta: date.toISOString() });
-      toast("success", "Fecha de fin actualizada");
-    }
   };
 
   const handleAddEtiqueta = (etiquetaId: string) => {
@@ -160,16 +128,27 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
       {/* ------------------------------------------------------------------ */}
       <FormSection
         title="Estado de publicacion"
-        description="Controla si el paquete es visible en el frontend publico y si aparece como destacado en la home."
+        description="El estado y la vigencia se editan en la pestaña Datos. Aca solo se controla si el paquete aparece como destacado en la home."
       >
         <div className="flex flex-col gap-4">
           <Field orientation="horizontal">
-            <Toggle
-              checked={isPublicado}
-              onCheckedChange={handlePublicadoToggle}
-              disabled={!canEdit}
-              label="Publicado"
-            />
+            <span className="text-[13px] text-neutral-600">Estado actual:</span>
+            <Badge
+              variant={estadoBadge[paquete.estado]?.variant ?? "draft"}
+              size="md"
+            >
+              {estadoBadge[paquete.estado]?.label ?? paquete.estado}
+            </Badge>
+            {paquete.validezHasta && (
+              <span className="text-[12px] text-neutral-400">
+                · vigente hasta{" "}
+                {new Date(paquete.validezHasta).toLocaleDateString("es-AR", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </span>
+            )}
           </Field>
           <Field orientation="horizontal">
             <Toggle
@@ -179,46 +158,7 @@ export function PublicacionTab({ paquete }: PublicacionTabProps) {
               label="Destacado"
             />
           </Field>
-
-          <FieldGroup columns={2}>
-            <Field>
-              <FieldLabel>Estado</FieldLabel>
-              <Select
-                value={paquete.estado}
-                onValueChange={handleEstadoChange}
-                options={ESTADO_OPTIONS}
-                disabled={!canEdit}
-              />
-            </Field>
-          </FieldGroup>
         </div>
-      </FormSection>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Periodo de validez                                                 */}
-      {/* ------------------------------------------------------------------ */}
-      <FormSection
-        title="Periodo de validez"
-        description="El paquete se auto-desactiva al llegar a la fecha de validez hasta."
-      >
-        <FieldGroup columns={2}>
-          <Field>
-            <FieldLabel>Valido desde</FieldLabel>
-            <DatePicker
-              value={new Date(paquete.validezDesde)}
-              onChange={handleValidezDesdeChange}
-              disabled={!canEdit}
-            />
-          </Field>
-          <Field>
-            <FieldLabel>Valido hasta</FieldLabel>
-            <DatePicker
-              value={new Date(paquete.validezHasta)}
-              onChange={handleValidezHastaChange}
-              disabled={!canEdit}
-            />
-          </Field>
-        </FieldGroup>
       </FormSection>
 
       {/* ------------------------------------------------------------------ */}

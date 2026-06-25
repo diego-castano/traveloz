@@ -8,6 +8,7 @@ import { DestinoAutocomplete } from "@/components/ui/form/DestinoAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { SegmentedControl } from "@/components/ui/data/SegmentedControl";
 import { Tag } from "@/components/ui/Tag";
 import type { TagColor } from "@/components/ui/Tag";
 import {
@@ -59,10 +60,15 @@ const textareaClassName =
 // Estado options
 // ---------------------------------------------------------------------------
 
-const estadoOptions = [
-  { value: "BORRADOR", label: "Borrador" },
-  { value: "ACTIVO", label: "Activo" },
-  { value: "INACTIVO", label: "Inactivo" },
+// Compact 3-state control. Dot colors match the estado badges del listado.
+const estadoSegmentOptions: {
+  value: EstadoPaquete;
+  label: string;
+  color: string;
+}[] = [
+  { value: "BORRADOR", label: "Borrador", color: "#E8913A" },
+  { value: "ACTIVO", label: "Activo", color: "#3BBFAD" },
+  { value: "INACTIVO", label: "Inactivo", color: "#6B6F99" },
 ];
 
 const monedaOptions = [
@@ -375,7 +381,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         {/* ================================================================ */}
         <FormSection
           title="Duracion y salidas"
-          description="Cantidad de noches y periodo de salidas del paquete."
+          description="Periodo de viaje (noches y salidas) que se muestra en la web. Es independiente de la vigencia/validez del paquete."
         >
           <FieldGroup columns={2}>
             <Field>
@@ -398,42 +404,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 onChange={(e) => setSalidasDirty(e.target.value)}
                 placeholder="Septiembre a noviembre"
                 readOnly={isReadOnly}
-              />
-            </Field>
-          </FieldGroup>
-        </FormSection>
-
-        {/* ================================================================ */}
-        {/* Validez                                                          */}
-        {/* ================================================================ */}
-        <FormSection
-          title="Validez"
-          description="El paquete se auto-desactiva al llegar a la fecha de validez hasta."
-        >
-          <FieldGroup columns={2}>
-            <Field>
-              <FieldLabel>Valido desde</FieldLabel>
-              <DatePicker
-                value={validezDesdeDate}
-                onChange={setValidezDesdeDateDirty}
-                placeholder="Seleccionar fecha..."
-                disabled={isReadOnly}
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Valido hasta</FieldLabel>
-              <DatePicker
-                value={validezHastaDate}
-                onChange={setValidezHastaDateDirty}
-                placeholder="Seleccionar fecha..."
-                disabled={isReadOnly}
-                error={
-                  hastaExpired
-                    ? "Vigencia vencida"
-                    : hastaWarning
-                      ? "Vence en menos de 30 dias"
-                      : undefined
-                }
               />
             </Field>
           </FieldGroup>
@@ -474,22 +444,74 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         </FormSection>
 
         {/* ================================================================ */}
-        {/* Estado y completitud                                             */}
+        {/* Estado y vigencia                                                */}
         {/* ================================================================ */}
         <FormSection
-          title="Estado"
-          description="Controla la visibilidad del paquete en el frontend publico. El checklist muestra los datos pendientes para activar."
+          title="Estado y vigencia"
+          description="El estado controla la visibilidad en la web. La vigencia define hasta cuándo el paquete sigue activo: al pasar la fecha de 'Valido hasta' se desactiva automaticamente. Es independiente del periodo de viaje."
         >
           <FieldGroup columns={2}>
+            {/* Estado — control compacto de 3 estados */}
             <Field>
               <FieldLabel>Estado</FieldLabel>
-              <Select
-                value={estado}
-                onValueChange={setEstadoDirty}
-                disabled={isReadOnly}
-                options={estadoOptions}
-                placeholder="Seleccionar estado..."
+              <SegmentedControl<EstadoPaquete>
+                options={estadoSegmentOptions}
+                value={estado as EstadoPaquete}
+                onChange={setEstadoDirty}
+                size="md"
+                aria-label="Estado del paquete"
               />
+            </Field>
+
+            {/* Valido hasta — fecha de auto-desactivacion (la lee la web) */}
+            <Field>
+              <FieldLabel>Valido hasta</FieldLabel>
+              <DatePicker
+                value={validezHastaDate}
+                onChange={setValidezHastaDateDirty}
+                placeholder="Elegir fecha en el calendario..."
+                disabled={isReadOnly}
+                error={
+                  hastaExpired
+                    ? "Vigencia vencida"
+                    : hastaWarning
+                      ? "Vence en menos de 30 dias"
+                      : undefined
+                }
+              />
+              {estado === "ACTIVO" &&
+                validezHastaDate &&
+                !hastaExpired && (
+                  <span className="mt-1 block text-[12px] text-neutral-400">
+                    Se desactivara automaticamente el{" "}
+                    {validezHastaDate.toLocaleDateString("es-AR", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                    .
+                  </span>
+                )}
+              {estado === "ACTIVO" && hastaExpired && (
+                <span className="mt-1 block text-[12px] text-red-500">
+                  La fecha ya paso: el paquete pasara a Inactivo al recargar el
+                  listado.
+                </span>
+              )}
+            </Field>
+
+            {/* Valido desde — por defecto la fecha de creacion */}
+            <Field>
+              <FieldLabel>Valido desde</FieldLabel>
+              <DatePicker
+                value={validezDesdeDate}
+                onChange={setValidezDesdeDateDirty}
+                placeholder="Desde la creacion..."
+                disabled={isReadOnly}
+              />
+              <span className="mt-1 block text-[12px] text-neutral-400">
+                Por defecto, la fecha de creacion del paquete.
+              </span>
             </Field>
           </FieldGroup>
 
