@@ -200,6 +200,32 @@ async function fetchBasePackagesUncached(
   return { paquetes, total };
 }
 
+/**
+ * Auto-baja por vigencia: pasa `publicado=false` a los paquetes publicados
+ * cuya `validezHasta` ya venció. Es un único `updateMany` (normalmente 0 filas)
+ * que corre al cargar el listado del backend, sin cron. El sitio público además
+ * se autoprotege filtrando por vigencia en `lib/public-data.ts`, así que esto
+ * es la persistencia "dentro de la app" para que el admin vea el paquete dado
+ * de baja. No invalida caché acá (getBasePackages puede correr en render).
+ */
+async function reconcileExpiredPaquetes(brandId: string): Promise<void> {
+  try {
+    const hoy = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+    await prisma.paquete.updateMany({
+      where: {
+        brandId,
+        deletedAt: null,
+        publicado: true,
+        validezHasta: { not: null, lt: hoy },
+      },
+      data: { publicado: false },
+    });
+  } catch (err) {
+    // Best-effort: nunca debe romper la carga del listado.
+    log.error("reconcileExpiredPaquetes failed", { brandId, err });
+  }
+}
+
 export async function getBasePackages(
   requestedBrandId?: string,
   options?: {
@@ -212,6 +238,7 @@ export async function getBasePackages(
 ) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
+    await reconcileExpiredPaquetes(brandId);
     const skip = Math.max(0, options?.skip ?? 0);
     const take = options?.take ?? null;
     const sortCreated = options?.sortCreated ?? "desc";

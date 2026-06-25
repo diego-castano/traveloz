@@ -43,6 +43,18 @@ export const getTestimoniosPublicados = unstable_cache(
   { revalidate: 60, tags: ["testimonios"] },
 );
 
+// Un paquete sigue "vigente" si no tiene fecha de baja (validezHasta) o si
+// todavía no pasó. validezHasta se guarda como "YYYY-MM-DD" (o ISO completo),
+// así que la comparación lexicográfica contra la fecha local de hoy es válida.
+// Esto da de baja del sitio público automáticamente los paquetes vencidos,
+// incluso si nadie entró al backend a reconciliar su estado.
+function vigenciaActivaWhere() {
+  const hoy = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
+  return {
+    OR: [{ validezHasta: null }, { validezHasta: { gte: hoy } }],
+  };
+}
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -79,6 +91,7 @@ export const getPaquetesByTipo = unstable_cache(
         deletedAt: null,
         brandId: PUBLIC_BRAND_ID,
         tipoPaqueteId,
+        ...vigenciaActivaWhere(),
       },
       orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
       include: {
@@ -123,6 +136,7 @@ export const getPaquetesByRegion = unstable_cache(
         deletedAt: null,
         brandId: PUBLIC_BRAND_ID,
         destinos: { some: { ciudad: { pais: { regionId } } } },
+        ...vigenciaActivaWhere(),
       },
       orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
       include: {
@@ -194,6 +208,7 @@ export const getPaquetesRelacionados = unstable_cache(
       deletedAt: null,
       brandId: PUBLIC_BRAND_ID,
       NOT: { id: paqueteId },
+      ...vigenciaActivaWhere(),
     } as const;
     const include = {
       fotos: { take: 1, orderBy: { orden: "asc" as const } },
