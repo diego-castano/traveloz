@@ -17,12 +17,14 @@ export default async function WorkWithUsPage() {
   const titulo = settings.workwithus_titulo?.trim() || "¡Queremos conocerte!";
   const subtitulo =
     settings.workwithus_subtitulo?.trim() ||
-    "Estamos transformando la experiencia de viajar, y queremos hacerlo con personas como vos.";
+    // El \n se respeta por el whiteSpace:"pre-line" del <p>; reproduce el <br>
+    // de la referencia (html_inicial/work-with-us.html).
+    "Estamos transformando la experiencia de viajar,\ny queremos hacerlo con personas como vos.";
   const imagen = settings.workwithus_imagen?.trim() || "/site/img/work-with-us.webp";
   const videoUrl = settings.workwithus_video_url?.trim() || "";
 
   return (
-    <section className="content-area gradient-page-bg work-with-us">
+    <section className="content-area work-with-us">
       <div className="container">
         <div className="content-box">
           <div className="text-center mb_50">
@@ -34,7 +36,7 @@ export default async function WorkWithUsPage() {
         </div>
         <div className="row gx-lg-5 gx-4">
           <div className="col-sm-6 order-sm-2 order-1">
-            <div className="content-box style2">
+            <div className="content-box style3">
               <WorkForm />
             </div>
           </div>

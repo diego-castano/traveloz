@@ -145,9 +145,10 @@ export function useUserActions() {
       createUser: async (
         data: Omit<AuthUser, "id"> & { password: string; pin?: string; sendInvite?: boolean },
       ) => {
-        const entity = await userActions.createUser(data);
-        dispatch({ type: "ADD_USER", payload: entity as AuthUser });
-        return entity as AuthUser;
+        const result = await userActions.createUser(data);
+        if (!result.ok) throw new Error(result.error);
+        dispatch({ type: "ADD_USER", payload: result.user as AuthUser });
+        return result.user as AuthUser;
       },
       updateUser: async (user: AuthUser) => {
         await userActions.updateUser(user.id, {
@@ -163,7 +164,8 @@ export function useUserActions() {
         await userActions.updateUserPassword(userId, newPassword);
       },
       setPin: async (userId: string, pin: string | null) => {
-        await userActions.adminSetUserPin(userId, pin);
+        const result = await userActions.adminSetUserPin(userId, pin);
+        if (!result.ok) throw new Error(result.error);
         // Patch the cached row so the "tiene PIN" indicator flips immediately.
         // The reducer merges this partial onto the existing row.
         dispatch({

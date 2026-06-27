@@ -1089,7 +1089,15 @@ export async function getServiceSubEntities(requestedBrandId?: string) {
     const cached = unstable_cache(
       () => fetchServiceSubEntitiesUncached(brandId),
       ["service-sub", brandId],
-      { revalidate: 60, tags: [`service-sub:${brandId}`, `services:${brandId}`] },
+      // SERVICES_GLOBAL_TAG es imprescindible: las mutaciones de precio/foto
+      // usan bustServicesCacheGlobal() (sin brandId en scope), que SOLO invalida
+      // el tag global. Sin él, esta ola (precios) quedaba vieja hasta el TTL de
+      // 60s mientras la ola de hoteles ya estaba fresca → tarifas faltantes y el
+      // hotel recién editado aparecía como "Sin tarifas" de forma intermitente.
+      {
+        revalidate: 60,
+        tags: [`service-sub:${brandId}`, `services:${brandId}`, SERVICES_GLOBAL_TAG],
+      },
     );
     return await cached();
   } catch (error) {

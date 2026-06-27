@@ -1654,6 +1654,30 @@ section {
     padding-left: 20px
 }
 
+/* El preflight de Tailwind (menu,ol,ul { list-style:none }) viaja en el bundle
+   del admin y le saca las viñetas a las listas del contenido CMS, que en el
+   HTML de referencia (sin Tailwind) salen con disc/decimal. Las restauramos
+   acá: la specificity de .faq-tab-content .plain-content gana sobre el reset. */
+.faq-tab-content .plain-content ul {
+    list-style: disc
+}
+
+.faq-tab-content .plain-content ol {
+    list-style: decimal
+}
+
+/* Mismo caso para las listas del contenido CMS de /terms, que van directo en
+   .accordion-body (sin .plain-content) y también las pisa el reset de Tailwind. */
+.faq-accordion .accordion-body ul {
+    list-style: disc;
+    padding-left: 20px
+}
+
+.faq-accordion .accordion-body ol {
+    list-style: decimal;
+    padding-left: 20px
+}
+
 .terms-banner-area {
     background: linear-gradient(87deg, rgba(244, 62, 85, 1) 0%, rgba(120, 90, 229, 1) 100%);
     overflow: hidden

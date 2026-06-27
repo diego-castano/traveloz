@@ -90,17 +90,19 @@ export async function createUser(data: {
     role: z.enum(["ADMIN", "VENDEDOR", "MARKETING"]),
     pin: z.string().regex(PIN_REGEX, "El PIN debe tener 4-6 dígitos").optional(),
   });
-  schema.parse({
+  const parsed = schema.safeParse({
     email: data.email,
     password: data.password,
     name: data.name,
     role: data.role,
     ...(data.pin ? { pin: data.pin } : {}),
   });
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  }
 
-  // El login por PIN identifica al usuario por su PIN → no puede repetirse.
   if (data.pin && (await isPinInUse(data.pin))) {
-    throw new Error("Ese PIN ya está en uso por otro usuario. Elegí uno diferente.");
+    return { ok: false as const, error: "Ese PIN ya está en uso por otro usuario. Elegí uno diferente." };
   }
 
   try {
@@ -146,11 +148,13 @@ export async function createUser(data: {
       );
     }
 
-    return { ...created, hasPin: !!data.pin };
+    return { ok: true as const, user: { ...created, hasPin: !!data.pin } };
   } catch (error: any) {
     log.error("creating user", error);
-    if (error?.code === "P2002") throw new Error("Ya existe un usuario con ese email.");
-    throw new Error("No se pudo crear el usuario.");
+    if (error?.code === "P2002") {
+      return { ok: false as const, error: "Ya existe un usuario con ese email." };
+    }
+    return { ok: false as const, error: "No se pudo crear el usuario." };
   }
 }
 
@@ -300,10 +304,14 @@ export async function adminSetUserPin(id: string, pin: string | null) {
   const { ip, userAgent } = await getRequestMeta();
 
   if (pin !== null) {
-    z.object({ pin: z.string().regex(PIN_REGEX, "El PIN debe tener 4-6 dígitos") }).parse({ pin });
-    // El login por PIN identifica al usuario por su PIN → no puede repetirse.
+    const parsed = z
+      .object({ pin: z.string().regex(PIN_REGEX, "El PIN debe tener 4-6 dígitos") })
+      .safeParse({ pin });
+    if (!parsed.success) {
+      return { ok: false as const, error: parsed.error.issues[0]?.message ?? "PIN inválido." };
+    }
     if (await isPinInUse(pin, id)) {
-      throw new Error("Ese PIN ya está en uso por otro usuario. Elegí uno diferente.");
+      return { ok: false as const, error: "Ese PIN ya está en uso por otro usuario. Elegí uno diferente." };
     }
   }
 
@@ -330,10 +338,10 @@ export async function adminSetUserPin(id: string, pin: string | null) {
     sendEmail({ to: target.email, ...tpl }).catch((err) =>
       log.error("pin.change.admin email failed", err),
     );
-    return { ok: true };
+    return { ok: true as const };
   } catch (error) {
     log.error("admin setting pin", error);
-    throw new Error("No se pudo actualizar el PIN.");
+    return { ok: false as const, error: "No se pudo actualizar el PIN." };
   }
 }
 

@@ -9,6 +9,7 @@
 
 import { PrismaClient } from "@prisma/client";
 import { assertSeedAllowed } from "./seed-guard";
+import { FAQ_TOPICS } from "./faq-topics";
 assertSeedAllowed("seed-fase9");
 
 const prisma = new PrismaClient();
@@ -66,51 +67,7 @@ const COTIZAR_SETTINGS = [
   },
 ];
 
-// ─── FAQ topics (the original 6 from html_inicial/faq.html) ──────────
-const FAQ_TOPICS = [
-  {
-    slug: "documentacion",
-    label: "Documentación",
-    iconUrl: "/site/img/faq-icon-1-blue.webp",
-    bodyHtml: `<h2>Documentación</h2><p>El pasajero es responsable de contar con la documentación adecuada y vigente para su viaje. A continuación, detallamos los aspectos fundamentales que deben ser considerados antes de la salida:</p><h3>Verificación de Datos Personales</h3><p>Es indispensable que los <strong>nombres, apellidos, número de documento y demás datos personales</strong> coincidan exactamente con los que figuran en el documento de identidad (cédula o pasaporte) que se utilizará para viajar. Inconsistencias pueden resultar en la invalidez del pasaje, sin posibilidad de reembolso.</p><h3>Confirmación del Itinerario</h3><p>Revise cuidadosamente que los destinos, fechas, horarios y escalas coincidan con lo solicitado.</p>`,
-    orden: 1,
-  },
-  {
-    slug: "menores",
-    label: "Menores de edad",
-    iconUrl: "/site/img/faq-icon-2.webp",
-    bodyHtml: `<h2>Menores de edad</h2><p>Todo menor de edad con nacionalidad uruguaya o extranjera, y con residencia habitual en Uruguay, requiere una autorización expresa de sus padres o representantes legales para salir del país cuando viaja acompañado por sólo uno de ellos o sin la compañía de ambos.</p><h3>¿Quiénes deben gestionarlo?</h3><ul><li>Menores de nacionalidad uruguaya.</li><li>Menores extranjeros con residencia legal o en trámite.</li><li>Menores extranjeros que demuestren haber vivido en Uruguay por más de un año.</li></ul>`,
-    orden: 2,
-  },
-  {
-    slug: "visados",
-    label: "Visados",
-    iconUrl: "/site/img/faq-icon-3.webp",
-    bodyHtml: `<h2>Visados</h2><p>Al planificar su viaje, es fundamental verificar los requisitos migratorios de todos los países incluidos en el itinerario, incluyendo aquellos en los que se realicen escalas.</p><p>Las visas pueden ser requeridas tanto en el país de destino como en países de tránsito. La falta de una visa adecuada puede resultar en la denegación del embarque, cancelaciones de último momento o la invalidación total del viaje.</p>`,
-    orden: 3,
-  },
-  {
-    slug: "sanitarios",
-    label: "Requisitos Sanitarios",
-    iconUrl: "/site/img/faq-icon-4.webp",
-    bodyHtml: `<h2>Requisitos Sanitarios</h2><p>Algunos países exigen la presentación de certificados de vacunación específicos como condición de ingreso. Esto aplica tanto para el destino final como para escalas en tránsito.</p><h3>Vacunas y salud</h3><ul><li>Verificar las recomendaciones de vacunación internacionales emitidas por la OMS.</li><li>Consultar con las autoridades sanitarias nacionales o su médico de cabecera.</li><li>Contactar a las embajadas o consulados correspondientes.</li></ul>`,
-    orden: 4,
-  },
-  {
-    slug: "mascotas",
-    label: "Mascotas",
-    iconUrl: "/site/img/faq-icon-5.webp",
-    bodyHtml: `<h2>Mascotas</h2><p>Si tiene previsto viajar con su mascota, le recomendamos gestionar con antelación todos los requisitos necesarios, ya que estos pueden variar según el medio de transporte, el país de destino y las características del animal.</p><h3>Documentación Requerida</h3><p>Es obligatorio contar con el <strong>Certificado Veterinario Internacional (CVI)</strong> emitido por el Ministerio de Ganadería, Agricultura y Pesca (MGAP) para la salida de mascotas desde Uruguay.</p>`,
-    orden: 5,
-  },
-  {
-    slug: "embarazadas",
-    label: "Embarazadas",
-    iconUrl: "/site/img/faq-icon-6.webp",
-    bodyHtml: `<h2>Mujeres Embarazadas</h2><p>Las condiciones para viajar durante el embarazo pueden variar según la aerolínea u otro medio de transporte. Por ello, es fundamental consultar con anticipación.</p><ul><li><strong>Hasta la semana 28</strong> generalmente sin restricciones.</li><li><strong>Semanas 28-36:</strong> certificado médico requerido.</li><li><strong>Desde la semana 36</strong> (o 32 en embarazos múltiples), IATA no recomienda viajar en avión.</li></ul>`,
-    orden: 6,
-  },
-];
+// FAQ topics viven en ./faq-topics.ts (compartido con prisma/fix-faq-textos.ts).
 
 // ─── Terms sections (original 14 from html_inicial/terms.html) ───────
 const TERM_SECTIONS = [
@@ -241,7 +198,9 @@ async function main() {
   for (const t of FAQ_TOPICS) {
     await prisma.faqTopic.upsert({
       where: { slug: t.slug },
-      update: {},
+      // Sincronizamos el contenido en re-corridas: antes era update:{}, que
+      // dejaba las filas viejas (truncadas) sin tocar.
+      update: { label: t.label, iconUrl: t.iconUrl, bodyHtml: t.bodyHtml, orden: t.orden },
       create: t,
     });
   }

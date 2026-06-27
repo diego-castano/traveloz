@@ -9,7 +9,9 @@
    --------------------------------------------------------------------------- */
 
 .tvz-footer {
-  padding: 60px 0;
+  /* Más aire vertical que el template (60px): el diseño aprobado pide el footer
+     menos comprimido, con más margen negro arriba y abajo. */
+  padding: 90px 0;
   background: #282828;
   /* Misma tipografía que el template en cualquier route group (no depender de
      la font heredada del body/.landing-root). El template usa Clarika Light (300)
@@ -52,7 +54,8 @@
 .tvz-footer .footer-left p {
   font-size: 16px;
   line-height: 24px;
-  color: #fff;
+  /* Gris del diseño aprobado (no el blanco del template HTML). */
+  color: #9a9a9a;
   margin-bottom: 20px;
 }
 
@@ -126,10 +129,12 @@
 .tvz-footer .footer-contact li {
   display: flex;
   align-items: flex-start;
-  line-height: 120%;
+  /* Mismo line-height y margin que .footer-links para que los ítems de
+     Contacto e Información útil queden alineados fila a fila. */
+  line-height: 160%;
   margin-bottom: 12px;
   font-size: 16px;
-  color: #fff;
+  color: #9a9a9a;
 }
 
 .tvz-footer .footer-contact li:last-child {
@@ -142,7 +147,7 @@
 }
 
 .tvz-footer .footer-contact a {
-  color: #fff;
+  color: #9a9a9a;
 }
 
 .tvz-footer .footer-contact a:hover {
@@ -157,10 +162,14 @@
 }
 
 .tvz-footer .footer-links li {
-  margin-bottom: 12px;
-  line-height: 100%;
+  /* margin mayor que Contacto (12px) a propósito: la dirección de Contacto
+     ocupa 2 líneas, así que repartiendo esa línea extra en los 3 huecos de esta
+     columna, el último ítem ("Agencia registrada") queda alineado con el último
+     de Contacto (el horario). */
+  margin-bottom: 20.5px;
+  line-height: 160%;
   font-size: 16px;
-  color: #fff;
+  color: #9a9a9a;
 }
 
 .tvz-footer .footer-links li:last-child {
@@ -168,7 +177,7 @@
 }
 
 .tvz-footer .footer-links a {
-  color: #fff;
+  color: #9a9a9a;
   cursor: pointer;
 }
 
@@ -200,11 +209,15 @@
   max-width: 100%;
   width: auto;
   height: auto;
+  /* Logos en gris monocromo como el diseño aprobado. brightness(0) aplana
+     cualquier color a negro e invert(.62) lo lleva al mismo gris que el texto
+     (~#9e9e9e), sin depender de cómo se haya subido la imagen. */
+  filter: brightness(0) invert(0.62);
 }
 
 @media (max-width: 991px) {
   .tvz-footer {
-    padding: 50px 0;
+    padding: 70px 0;
   }
 
   .tvz-footer-col {
@@ -224,7 +237,7 @@
 
 @media (max-width: 575px) {
   .tvz-footer {
-    padding: 40px 0;
+    padding: 56px 0;
     text-align: center;
   }
 

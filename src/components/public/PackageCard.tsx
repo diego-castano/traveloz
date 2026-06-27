@@ -1,4 +1,23 @@
+"use client";
+
 import { Skeleton } from "./SkeletonClient";
+
+// ---------------------------------------------------------------------------
+// PackageCard — tarjeta del slider "Descubrí más destinos". Replica 1:1 el
+// markup .box-card de la referencia html_inicial/destinos-detalle.html para que
+// el CSS del template (site.css: .box-card, .box-card .title, .large-price…)
+// aplique sin estilos inline. Cuando el paquete no tiene foto cae a un
+// placeholder branded (no a una foto genérica de otro destino).
+// ---------------------------------------------------------------------------
+
+const PLACEHOLDER_IMG = "/site/img/placeholder-package.svg";
+
+// Primera URL no vacía. heroImage puede venir como "" (no null) en borradores,
+// y el ?? no atrapa el string vacío; por eso filtramos por contenido real.
+function pickImage(heroImage: string | null, fotos: { url: string }[]): string {
+  const candidates = [heroImage, fotos[0]?.url];
+  return candidates.find((u) => u && u.trim().length > 0) ?? PLACEHOLDER_IMG;
+}
 
 type P = {
   id: string;
@@ -21,88 +40,66 @@ export function PackageCard({
   paquete: P;
   regionSlug: string;
 }) {
-  const img =
-    paquete.heroImage ??
-    paquete.fotos[0]?.url ??
-    "/site/img/slider-1.webp";
+  // heroImage → primera foto → placeholder. Nunca caemos a una foto de otro
+  // destino: una tarjeta sin imagen muestra el placeholder, no slider-1.webp.
+  const img = pickImage(paquete.heroImage, paquete.fotos);
   const href = paquete.slug
     ? `/destinos/${regionSlug}/${paquete.slug}`
     : "#";
-  const ciudades = paquete.destinos.map((d) => d.ciudad.nombre).join(" · ");
 
   return (
     <Skeleton name="package-card" loading={false}>
-      <a
-        href={href}
-        className="package-card"
-        style={{
-          display: "block",
-          margin: "0 10px",
-          borderRadius: 10,
-          overflow: "hidden",
-          background: "#fff",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-          color: "inherit",
-          textDecoration: "none",
-        }}
-      >
+      <a href={href} className="box-card">
         <img
           src={img}
           alt={paquete.titulo}
           loading="lazy"
           decoding="async"
-          style={{
-            display: "block",
-            width: "100%",
-            height: 220,
-            objectFit: "cover",
+          // Red de seguridad: si la URL existe pero falla (bucket movido, 404),
+          // cambiamos al placeholder en vez de mostrar el ícono de imagen rota.
+          onError={(e) => {
+            const el = e.currentTarget;
+            if (el.src.endsWith(PLACEHOLDER_IMG)) return;
+            el.src = PLACEHOLDER_IMG;
           }}
         />
-        <div style={{ padding: 16 }}>
-          <h3
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: "#222",
-              margin: "0 0 8px",
-              lineHeight: 1.25,
-            }}
-          >
-            {paquete.titulo}
-          </h3>
-          {ciudades && (
-            <p style={{ fontSize: 13, color: "#666", margin: "0 0 6px" }}>
-              {ciudades}
-            </p>
-          )}
-          {paquete.salidas && (
-            <p style={{ fontSize: 12, color: "#999", margin: "0 0 6px" }}>
-              {paquete.salidas}
-            </p>
-          )}
-          <ul
-            style={{
-              display: "flex",
-              gap: 8,
-              fontSize: 11,
-              color: "#785AE5",
-              margin: "0 0 10px",
-              padding: 0,
-              listStyle: "none",
-            }}
-          >
-            <li>✈ Pasaje</li>
-            <li>🌙 {paquete.noches} noches</li>
-            <li>🍽 Régimen</li>
-          </ul>
-          {paquete.precioDesde !== null && (
-            <p style={{ fontSize: 13, color: "#222", margin: 0 }}>
-              Desde{" "}
-              <strong style={{ color: "#785AE5", fontSize: 18 }}>
-                {paquete.precioDesdeMoneda} {paquete.precioDesde}
-              </strong>
-            </p>
-          )}
+        <div className="text">
+          <h3 className="title">{paquete.titulo}</h3>
+          {paquete.salidas && <p>{paquete.salidas}</p>}
+          <div className="row">
+            <div className="col-6">
+              <ul>
+                <li>Pasaje</li>
+                <li>{paquete.noches} noches</li>
+                <li>Traslados</li>
+                <li>Régimen incluido</li>
+              </ul>
+            </div>
+            <div className="col-6">
+              {paquete.precioDesde !== null ? (
+                <>
+                  <div className="large-price">
+                    <div className="price-left">
+                      <span className="d-block title">DESDE</span>
+                      <span className="d-block title2">
+                        {paquete.precioDesdeMoneda ?? "USD"}
+                      </span>
+                    </div>
+                    <div className="price-right">
+                      <span className="main-price d-block">
+                        {paquete.precioDesde}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="d-block text-end">
+                    Precio por persona <br className="keep" /> en base doble
+                  </span>
+                </>
+              ) : (
+                <span className="d-block text-end">Consultar precio</span>
+              )}
+            </div>
+          </div>
         </div>
       </a>
     </Skeleton>

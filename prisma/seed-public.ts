@@ -177,7 +177,7 @@ const SETTINGS: Array<{
   { key: "terms_banner_mobile", value: "/site/img/terms-mobile-banner.png", type: "image_url", group: "terms", label: "Banner mobile" },
   // ─── Work With Us (página /work-with-us) ─────────────────────────────
   { key: "workwithus_titulo", value: "¡Queremos conocerte!", group: "workwithus", label: "Título principal" },
-  { key: "workwithus_subtitulo", value: "Estamos transformando la forma en que se viaja desde Uruguay. Si querés sumarte al equipo, dejanos tu CV.", type: "textarea", group: "workwithus", label: "Subtítulo / lead" },
+  { key: "workwithus_subtitulo", value: "Estamos transformando la experiencia de viajar,\ny queremos hacerlo con personas como vos.", type: "textarea", group: "workwithus", label: "Subtítulo / lead" },
   { key: "workwithus_imagen", value: "/site/img/work-with-us.webp", type: "image_url", group: "workwithus", label: "Imagen lateral" },
   { key: "workwithus_video_url", value: "", type: "url", group: "workwithus", label: "Video opcional (URL)" },
   // ─── Cotizar (página /cotizar) ───────────────────────────────────────

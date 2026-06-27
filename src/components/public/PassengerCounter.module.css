@@ -1,0 +1,136 @@
+/* Selector de pasajeros — autónomo y full-width, pensado para las tarjetas
+   blancas de los formularios de cotización (/cotizar, QuoteSidebar). No depende
+   de las clases legacy .passenger-* de site.css. */
+
+.select {
+  position: relative;
+  width: 100%;
+}
+
+/* Disparador — mismo lenguaje visual que los demás inputs del form */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 16px;
+  color: #3c3c3c;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  border-color: #f43e55;
+  outline: none;
+}
+
+.triggerOpen {
+  border-color: #f43e55;
+}
+
+.placeholder {
+  color: #9a9a9a;
+}
+
+.chevron {
+  flex: none;
+  transition: transform 0.2s;
+  color: #9a9a9a;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Panel desplegable */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+  padding: 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 10px;
+}
+
+.row + .row {
+  border-top: 1px solid #f0f0f0;
+}
+
+.label {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: #3c3c3c;
+  line-height: 1.2;
+}
+
+.hint {
+  display: block;
+  font-size: 12px;
+  color: #9a9a9a;
+  margin-top: 2px;
+}
+
+/* Stepper */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+}
+
+.step {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #f43e55;
+  background: #fff;
+  color: #f43e55;
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+  user-select: none;
+}
+
+.step:hover:not(:disabled) {
+  background: #f43e55;
+  color: #fff;
+}
+
+.step:disabled {
+  border-color: #e0e0e0;
+  color: #cfcfcf;
+  cursor: not-allowed;
+}
+
+.count {
+  min-width: 22px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  color: #3c3c3c;
+  font-variant-numeric: tabular-nums;
+}

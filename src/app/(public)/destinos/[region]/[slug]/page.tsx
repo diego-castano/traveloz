@@ -230,10 +230,12 @@ export default async function PackageDetailPage({
           })),
         }}
         formasDePago={buildFormasDePagoData(pagosSettings)}
-      />
-      <RelatedPackages
-        titulo="Descubrí más destinos"
-        items={relacionados}
+        related={
+          <RelatedPackages
+            titulo="Descubrí más destinos, explorá otras opciones"
+            items={relacionados}
+          />
+        }
       />
     </>
   );

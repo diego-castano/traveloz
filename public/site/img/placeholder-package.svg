@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" role="img" aria-label="Imagen no disponible">
+  <rect width="800" height="560" fill="#efe9f6"/>
+  <g fill="none" stroke="#bda6dd" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <!-- marco -->
+    <rect x="250" y="190" width="300" height="210" rx="16"/>
+    <!-- sol -->
+    <circle cx="330" cy="255" r="22"/>
+    <!-- montañas -->
+    <path d="M250 360 L345 280 L405 335 L470 250 L550 360"/>
+  </g>
+  <text x="400" y="455" text-anchor="middle" font-family="'Clarika Geometric', system-ui, sans-serif" font-size="34" font-weight="700" fill="#a98fcf" letter-spacing="1">TravelOz</text>
+</svg>

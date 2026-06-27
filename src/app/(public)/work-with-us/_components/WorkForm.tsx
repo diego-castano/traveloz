@@ -11,22 +11,14 @@ import HoneypotField from "@/components/public/HoneypotField";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  // Estilo (violeta, ancho completo) viene de `.work-with-us form button` en
+  // site.css, igual que la referencia. Acá solo el feedback de "enviando".
   return (
     <button
       type="submit"
+      className="contact-btn"
       disabled={pending}
-      style={{
-        width: "100%",
-        padding: "12px 28px",
-        borderRadius: 30,
-        background: "#F43E55",
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: 600,
-        border: "none",
-        cursor: pending ? "wait" : "pointer",
-        opacity: pending ? 0.7 : 1,
-      }}
+      style={{ cursor: pending ? "wait" : "pointer", opacity: pending ? 0.7 : 1 }}
     >
       {pending ? "Enviando…" : "Enviar"}
     </button>

@@ -12,52 +12,90 @@ export async function generateMetadata() {
   });
 }
 
+// "¿Por qué elegirnos?" — diseño 1:1 con html_inicial/cotizacion.html: íconos
+// FontAwesome en círculo degradé (no imágenes) y copy fijo. Los textos se pueden
+// sobrescribir desde Ajustes (grupo "cotizar"); los íconos quedan fijos para no
+// romper el diseño aprobado.
+const PORQUE_DEFAULT = [
+  {
+    icon: "fa-bolt",
+    titulo: "Agilidad",
+    texto: "Respondemos a tu pedido de cotización en menos de 24hs",
+  },
+  {
+    icon: "fa-user-tie",
+    titulo: "Profesionalismo",
+    texto:
+      "Contamos con personal altamente capacitado, para brindarte el mejor servicio.",
+  },
+  {
+    icon: "fa-tags",
+    titulo: "Precios más bajos",
+    texto: "Te ofrecemos las mejores tarifas del mercado.",
+  },
+];
+
 export default async function CotizarPage() {
   const s = await getSiteSettings("cotizar");
   const titulo = s.cotizar_titulo ?? "Cotizá tu viaje";
   const lead =
     s.cotizar_lead ??
-    "Contanos a dónde querés ir, cuándo y cuántos viajan. Diseñamos el itinerario y te respondemos en 24 horas.";
+    "Completá el formulario y recibí tu presupuesto en menos de 24 horas.";
 
-  const porqueTitulo = s.cotizar_porque_titulo?.trim();
-  const porqueCards = [1, 2, 3].map((n) => ({
-    icon: s[`cotizar_porque_card_${n}_icon`]?.trim(),
-    titulo: s[`cotizar_porque_card_${n}_titulo`]?.trim(),
-    texto: s[`cotizar_porque_card_${n}_texto`]?.trim(),
-  })).filter((c) => c.titulo);
+  const porqueTitulo = s.cotizar_porque_titulo?.trim() || "¿Por qué elegirnos?";
+  const porqueCards = PORQUE_DEFAULT.map((card, i) => {
+    const n = i + 1;
+    return {
+      icon: card.icon,
+      titulo: s[`cotizar_porque_card_${n}_titulo`]?.trim() || card.titulo,
+      texto: s[`cotizar_porque_card_${n}_texto`]?.trim() || card.texto,
+    };
+  });
 
   return (
-    <section className="content-area">
-      <div className="container">
-        <div className="row justify-content-center">
-          <div className="col-lg-6">
-            <div className="text-center mb_50">
-              <h1 className="section-heading">{titulo}</h1>
-              <p>{lead}</p>
+    <>
+      {/* Formulario — fondo violeta, intro en blanco (form en tarjeta blanca) */}
+      <section className="content-area contact-area gradient-page-bg">
+        <div className="container">
+          <div className="row justify-content-center">
+            {/* contact-form-wrapper acá da el tamaño/responsive del título del
+                diseño original; el form va aparte para conservar la tarjeta y los
+                inputs blancos (este wrapper tiene reglas !important que los
+                volverían transparentes). */}
+            <div className="col-lg-8 col-md-10 text-center mb_50 contact-form-wrapper">
+              <h1 className="section-heading text_white">{titulo}</h1>
+              <p className="sub-text text_white">{lead}</p>
             </div>
-            <CotizarForm />
+          </div>
+          <div className="row justify-content-center">
+            <div className="col-lg-5 col-md-7">
+              <CotizarForm />
+            </div>
           </div>
         </div>
+      </section>
 
-        {porqueTitulo && porqueCards.length > 0 && (
-          <div className="mt-5 pt-5">
-            <div className="text-center mb_50">
-              <h2 className="section-heading">{porqueTitulo}</h2>
-            </div>
-            <div className="row">
-              {porqueCards.map((c, i) => (
-                <div className="col-md-4" key={i}>
-                  <div className="icon-teaser style1 text-center">
-                    {c.icon && <img src={c.icon} alt="" loading="lazy" decoding="async" />}
-                    <h3 className="title">{c.titulo}</h3>
-                    {c.texto && <p>{c.texto}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
+      {/* ¿Por qué elegirnos? — idéntico al diseño original */}
+      <section className="content-area bg_gray">
+        <div className="container">
+          <div className="text-center mb_50">
+            <h2 className="section-heading purple">{porqueTitulo}</h2>
           </div>
-        )}
-      </div>
-    </section>
+          <div className="row">
+            {porqueCards.map((c, i) => (
+              <div className="col-md-4" key={i}>
+                <div className="icon-teaser style1">
+                  <div className="quote-icon-circle">
+                    <i className={`fa-solid ${c.icon}`}></i>
+                  </div>
+                  <h3 className="title">{c.titulo}</h3>
+                  <p>{c.texto}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

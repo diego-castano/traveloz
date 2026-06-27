@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Skeleton } from "@/components/public/SkeletonClient";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
@@ -71,6 +71,10 @@ type Props = {
   };
   /** Payment methods block — built from SiteSettings group="pagos". */
   formasDePago?: FormasDePagoData;
+  /** Slider "Descubrí más destinos". Se inyecta como nodo para renderizarlo
+   * DENTRO de la sección con gradient de este componente (igual que la
+   * referencia), donde el heading-alt blanco se ve sobre el degradé. */
+  related?: ReactNode;
 };
 
 // Match a free-text bullet to one of the 5 reference icons (flight/bag/bus/
@@ -169,7 +173,10 @@ function splitTitulo(titulo: string): { main: string; nights: string | null } {
 // the reference to match a more polished feel: smaller Incluye bullets +
 // icons, tighter text-box padding, and a sane container width.
 const SCOPED_STYLES = `
-  .pkg-detail .container.wide { max-width: 1200px; }
+  /* 1320px = ancho del .container.wide del template, mismo que usa el header
+     (logo) y el footer. Así el contenido alinea con el logo a la izquierda y
+     con el borde derecho, igual que en la referencia. */
+  .pkg-detail .container.wide { max-width: 1320px; }
   .pkg-detail .content-box.style3 .top-heading { padding: 24px 28px 16px; }
   .pkg-detail .pkg-title { font-size: clamp(22px, 2.6vw, 34px); line-height: 1.12; margin-bottom: 8px; white-space: nowrap; }
   /* Nights ("07 Noches") drop to a second line, lighter than the destination. */
@@ -227,29 +234,24 @@ const SCOPED_STYLES = `
     margin-right: 16px;
     flex-shrink: 0;
   }
-  /* Alojamientos — cada OPCIÓN es un contenedor gris (como el PDF), que agrupa
-     sus hoteles. El gris + el orden por precio hacen evidente que son opciones
-     distintas, sin necesidad de etiqueta "Opción N". */
+  /* Alojamientos — cada OPCIÓN es una tarjeta BLANCA (como la referencia
+     html_inicial/destinos-detalle.html), que agrupa sus hoteles. El orden por
+     precio hace evidente que son opciones distintas, sin etiqueta "Opción N". */
   .pkg-detail .opcion-card.text-box.style1 {
-    background: #f6f4f9;
-    border: 1px solid #ebe5f2;
+    background: #fff;
+    border: 1px solid #e3d9ef;
     border-radius: 12px;
     padding: 22px 24px;
     margin-top: 18px;
   }
-  /* Estrellas inline a la derecha del nombre (PDF: "Astoria Copacabana ★★★"),
-     anulando el column-reverse del template que las pone arriba.
-     font-family explícito: site.css aplica una regla h1..h6 con font-family
-     Rufina sobre el h3, que gana por herencia. El PDF usa Clarika (sans) para
-     el nombre del hotel, no la serif Rufina; lo forzamos acá. */
+  /* Nombre del hotel: violeta + serif Rufina, con las estrellas ARRIBA — igual
+     que la referencia. No forzamos font-family ni flex-direction: dejamos el
+     column-reverse del template (estrellas sobre el nombre) y la herencia de la
+     regla h1..h6 { font-family: Rufina } de site.css. Así el nombre (serif) y el
+     precio (sans rosa) quedan en fonts distintas, como en el HTML original. */
   .pkg-detail .opcion-card .h4 {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
+    gap: 4px;
     margin-bottom: 4px;
-    font-family: "Clarika Geometric", system-ui, -apple-system, sans-serif;
-    font-weight: 700;
   }
   .pkg-detail .opcion-card .h4 ul li i { font-size: 14px; }
 
@@ -370,7 +372,7 @@ const SCOPED_STYLES = `
 
     /* Contenedor de opción y hoteles en mobile — más compacto. */
     .pkg-detail .opcion-card.text-box.style1 { padding: 16px 16px; margin-top: 14px; }
-    .pkg-detail .opcion-card .h4 { font-size: 18px; gap: 8px; }
+    .pkg-detail .opcion-card .h4 { font-size: 18px; gap: 4px; }
     .pkg-detail .opcion-card .h4 ul li i { font-size: 12px; }
     .pkg-detail .opcion-card .hotel-detail { font-size: 13px; }
     .pkg-detail .hotel-item-divided { margin-top: 12px; padding-top: 12px; }
@@ -403,7 +405,7 @@ function RichBlock({
   return <div style={{ ...style, whiteSpace: "pre-wrap" }}>{content}</div>;
 }
 
-export function PackageDetailView({ paquete, formasDePago }: Props) {
+export function PackageDetailView({ paquete, formasDePago, related }: Props) {
   const [tab, setTab] = useState<"incluye" | "alojamientos">("incluye");
 
   // Compose the slider photos. The featured photo (heroImage) always opens the
@@ -422,16 +424,22 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
       : [{ url: "/site/img/slider-1.webp", alt: paquete.titulo }];
   })();
 
-  // Items rendered inside the Incluye list — services first, then any extra
-  // bullets parsed from textoIncluye (one per non-empty line/bloque). Cada
-  // item conserva su HTML inline y su texto plano para resolver el ícono.
-  const includeBullets = parseIncludeItems(paquete.textoIncluye ?? "");
-
   // Lista "Incluye" nueva: renglones ordenados (ícono + texto) que el operador
   // armó en el módulo drag-and-drop, serializados como JSON en textoIncluye.
   // Cuando existe, es la única fuente y reemplaza las ramas legacy de abajo.
   const incluyeItems = parseIncluyeItems(paquete.textoIncluye);
+  // Un envelope JSON válido —incluso vacío— marca que el campo YA es el módulo
+  // nuevo. En ese caso jamás parseamos textoIncluye como texto legacy, porque
+  // parseIncludeItems renderizaría el JSON crudo como un bullet.
+  const isIncluyeModule = incluyeItems !== null;
   const hasIncluyeModule = !!incluyeItems && incluyeItems.length > 0;
+
+  // Items rendered inside the Incluye list — services first, then any extra
+  // bullets parsed from textoIncluye (one per non-empty line/bloque). Cada
+  // item conserva su HTML inline y su texto plano para resolver el ícono.
+  const includeBullets = isIncluyeModule
+    ? []
+    : parseIncludeItems(paquete.textoIncluye ?? "");
 
   // ¿El operador curó una lista pública "Incluye" (catálogo o texto libre)?
   // Si no, caemos a los servicios estructurados que cargó al crear el paquete.
@@ -819,6 +827,11 @@ export function PackageDetailView({ paquete, formasDePago }: Props) {
           </div>
         </div>
       </div>
+
+      {/* "Descubrí más destinos" — hermano del .container.wide del detalle,
+          dentro del mismo gradient (heading-alt blanco sobre el degradé),
+          igual que la referencia. RelatedPackages trae su propio container. */}
+      {related}
     </section>
   );
 }

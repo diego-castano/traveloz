@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import styles from "./PassengerCounter.module.css";
 
 type Counts = { adultos: number; ninos: number; infantes: number };
 
@@ -10,11 +11,34 @@ type Props = {
   initial?: Counts;
 };
 
+const ROWS: Array<{
+  key: keyof Counts;
+  label: string;
+  hint: string;
+  /** Mínimo permitido (el viaje necesita al menos 1 adulto). */
+  min: number;
+}> = [
+  { key: "adultos", label: "Adultos", hint: "Mayores de 18 años", min: 1 },
+  { key: "ninos", label: "Niños", hint: "De 2 a 17 años", min: 0 },
+  { key: "infantes", label: "Bebés", hint: "Menores de 2 años", min: 0 },
+];
+
+/** "2 adultos · 1 niño · 1 bebé" — resumen legible para el disparador. */
+function summarize(c: Counts): string {
+  const parts: string[] = [];
+  if (c.adultos > 0)
+    parts.push(`${c.adultos} ${c.adultos === 1 ? "adulto" : "adultos"}`);
+  if (c.ninos > 0)
+    parts.push(`${c.ninos} ${c.ninos === 1 ? "niño" : "niños"}`);
+  if (c.infantes > 0)
+    parts.push(`${c.infantes} ${c.infantes === 1 ? "bebé" : "bebés"}`);
+  return parts.join(" · ");
+}
+
 /**
- * +/- counter for adultos / niños / infantes used in the Fase 6 quote forms
- * (QuoteSidebar, /cotizar). Renders the same .passenger-select markup the
- * original html_inicial CSS targets, plus a hidden input that serializes the
- * counts into a single form field.
+ * Selector de pasajeros (adultos / niños / bebés) para los formularios de
+ * cotización (/cotizar, QuoteSidebar). Full-width, con stepper +/- por categoría
+ * y un input oculto que serializa los conteos en un solo campo.
  */
 export function PassengerCounter({
   name = "pasajeros",
@@ -30,59 +54,83 @@ export function PassengerCounter({
         setOpen(false);
       }
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const total = counts.adultos + counts.ninos + counts.infantes;
-  const adjust = (k: keyof Counts, delta: number) =>
-    setCounts((c) => ({ ...c, [k]: Math.max(0, c[k] + delta) }));
+  const adjust = (k: keyof Counts, delta: number, min: number) =>
+    setCounts((c) => ({ ...c, [k]: Math.max(min, c[k] + delta) }));
 
   const serialized = `adultos:${counts.adultos}|ninos:${counts.ninos}|infantes:${counts.infantes}`;
+  const summary = summarize(counts);
 
   return (
-    <div className="passenger-select" ref={ref}>
+    <div className={styles.select} ref={ref}>
       <input type="hidden" name={name} value={serialized} />
-      <div
-        className="passenger-input"
-        onClick={() => setOpen(!open)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setOpen(!open);
-          }
-        }}
+      <button
+        type="button"
+        className={`${styles.trigger} ${open ? styles.triggerOpen : ""}`}
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="true"
+        aria-expanded={open}
       >
-        <span>{total > 0 ? `${total} Pasajeros` : "0 Pasajeros"}</span>
-      </div>
+        <span className={summary ? undefined : styles.placeholder}>
+          {summary
+            ? `${total} ${total === 1 ? "pasajero" : "pasajeros"} · ${summary}`
+            : "Seleccioná los pasajeros"}
+        </span>
+        <svg
+          className={`${styles.chevron} ${open ? styles.chevronOpen : ""}`}
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+
       {open && (
-        <div className="passenger-dropdown" style={{ display: "block" }}>
-          {(
-            [
-              ["adultos", "Adultos"],
-              ["ninos", "Niños (>2)"],
-              ["infantes", "Menores (<2)"],
-            ] as const
-          ).map(([k, label]) => (
-            <div className="counter" key={k}>
-              <span>{label}</span>
-              <button
-                type="button"
-                onClick={() => adjust(k, -1)}
-                aria-label={`Restar ${label}`}
-              >
-                −
-              </button>
-              <span className={`${k}Count`}>{counts[k]}</span>
-              <button
-                type="button"
-                onClick={() => adjust(k, 1)}
-                aria-label={`Sumar ${label}`}
-              >
-                +
-              </button>
+        <div className={styles.dropdown} role="dialog" aria-label="Pasajeros">
+          {ROWS.map(({ key, label, hint, min }) => (
+            <div className={styles.row} key={key}>
+              <div>
+                <span className={styles.label}>{label}</span>
+                <span className={styles.hint}>{hint}</span>
+              </div>
+              <div className={styles.stepper}>
+                <button
+                  type="button"
+                  className={styles.step}
+                  onClick={() => adjust(key, -1, min)}
+                  disabled={counts[key] <= min}
+                  aria-label={`Restar ${label}`}
+                >
+                  −
+                </button>
+                <span className={styles.count}>{counts[key]}</span>
+                <button
+                  type="button"
+                  className={styles.step}
+                  onClick={() => adjust(key, 1, min)}
+                  aria-label={`Sumar ${label}`}
+                >
+                  +
+                </button>
+              </div>
             </div>
           ))}
         </div>
