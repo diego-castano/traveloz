@@ -2,6 +2,7 @@
 
 import { Accordion } from "radix-ui";
 import { useState } from "react";
+import { sanitizeRichHtml } from "@/lib/sanitize-html";
 
 export type AccordionItem = {
   id: string;
@@ -84,7 +85,12 @@ export function RadixAccordion({
               <Accordion.Content className="accordion-collapse">
                 <div
                   className="accordion-body"
-                  dangerouslySetInnerHTML={{ __html: item.bodyHtml }}
+                  // Sanitiza en render: limpia el HTML pegado desde Word
+                  // (spans .SpellingError con un wavy rojo embebido como
+                  // background-image) que aparecía como falsa línea roja.
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeRichHtml(item.bodyHtml),
+                  }}
                 />
               </Accordion.Content>
             </Accordion.Item>

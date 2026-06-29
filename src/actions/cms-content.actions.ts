@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireCanEdit } from "@/lib/require-auth";
+import { sanitizeRichHtml } from "@/lib/sanitize-html";
 
 // ---------------------------------------------------------------------------
 // CMS content CRUD — FaqTopic, TermSection, ClienteCorporativo, PersonaContacto
@@ -33,7 +34,7 @@ export async function createFaqTopic(input: {
   await requireCanEdit();
   const slug = slugify(input.label) || `topic-${Date.now()}`;
   const created = await prisma.faqTopic.create({
-    data: { ...input, slug },
+    data: { ...input, bodyHtml: sanitizeRichHtml(input.bodyHtml), slug },
   });
   revalidatePath("/backend/web/faq");
   revalidatePath("/faq");
@@ -53,7 +54,11 @@ export async function updateFaqTopic(
   }>,
 ) {
   await requireCanEdit();
-  const updated = await prisma.faqTopic.update({ where: { id }, data: input });
+  const data =
+    input.bodyHtml !== undefined
+      ? { ...input, bodyHtml: sanitizeRichHtml(input.bodyHtml) }
+      : input;
+  const updated = await prisma.faqTopic.update({ where: { id }, data });
   revalidatePath("/backend/web/faq");
   revalidatePath("/faq");
   revalidateTag("faq");
@@ -81,7 +86,7 @@ export async function createTermSection(input: {
   await requireCanEdit();
   const slug = slugify(input.title) || `section-${Date.now()}`;
   const created = await prisma.termSection.create({
-    data: { ...input, slug },
+    data: { ...input, bodyHtml: sanitizeRichHtml(input.bodyHtml), slug },
   });
   revalidatePath("/backend/web/terms");
   revalidatePath("/terms");
@@ -100,9 +105,13 @@ export async function updateTermSection(
   }>,
 ) {
   await requireCanEdit();
+  const data =
+    input.bodyHtml !== undefined
+      ? { ...input, bodyHtml: sanitizeRichHtml(input.bodyHtml) }
+      : input;
   const updated = await prisma.termSection.update({
     where: { id },
-    data: input,
+    data,
   });
   revalidatePath("/backend/web/terms");
   revalidatePath("/terms");
