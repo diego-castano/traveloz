@@ -32,6 +32,8 @@ type Props = {
   settingKey?: string;
   /** Oculta el escape hatch "Pegar URL externa" — fuerza subir un archivo. */
   hideUrl?: boolean;
+  /** Preview chico y centrado, para íconos/logos en vez de banners full-width. */
+  compact?: boolean;
 };
 
 export function MediaPicker({
@@ -40,6 +42,7 @@ export function MediaPicker({
   accept = "image/*",
   settingKey,
   hideUrl = false,
+  compact = false,
 }: Props) {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -149,7 +152,11 @@ export function MediaPicker({
       )}
       {value ? (
         // ---- File present: thumbnail + actions ----
-        <div className="relative group rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50">
+        <div
+          className={`relative group rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 ${
+            compact ? "inline-flex p-3" : ""
+          }`}
+        >
           {isVideo ? (
             <video
               src={value}
@@ -162,7 +169,11 @@ export function MediaPicker({
             <img
               src={value}
               alt="Preview"
-              className="w-full max-h-64 object-contain"
+              className={
+                compact
+                  ? "h-20 w-20 object-contain"
+                  : "w-full max-h-64 object-contain"
+              }
               onError={(e) => {
                 (e.target as HTMLImageElement).style.opacity = "0.3";
               }}

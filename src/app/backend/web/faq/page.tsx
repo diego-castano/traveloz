@@ -119,12 +119,13 @@ export default function WebFaqPage() {
               type: "image",
               key: "iconUrl",
               label: "Icono (opcional)",
+              compact: true,
             },
             {
               type: "html",
               key: "bodyHtml",
-              label: "Respuesta (HTML)",
-              placeholder: "<p>Contenido de la respuesta…</p>",
+              label: "Respuesta",
+              placeholder: "Escribí la respuesta. Seleccioná texto y usá la barra para negrita, subtítulos o listas.",
               rows: 14,
             },
           ]}

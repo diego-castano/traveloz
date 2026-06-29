@@ -1678,6 +1678,46 @@ section {
     padding-left: 20px
 }
 
+/* Igualar la tipografía de /terms con la de /faq (.plain-content): mismo color,
+   tamaño e interlineado de cuerpo y mismo estilo de títulos internos. El cliente
+   pidió usar la tipografía de FAQ en Términos y Condiciones. */
+.faq-accordion .accordion-body {
+    color: #474747;
+    font-size: 18px;
+    line-height: 26px
+}
+
+.faq-accordion .accordion-body h2,
+.faq-accordion .accordion-body h3,
+.faq-accordion .accordion-body h4,
+.faq-accordion .accordion-body h5 {
+    font-weight: 700;
+    font-family: 'Clarika Geometric';
+    color: #9563CC
+}
+
+.faq-accordion .accordion-body h2 {
+    font-size: 24px
+}
+
+.faq-accordion .accordion-body h3 {
+    font-size: 18px;
+    margin-bottom: 5px;
+    line-height: 23px
+}
+
+.faq-accordion .accordion-body p {
+    margin-bottom: 10px
+}
+
+/* Títulos de sección de /terms: el trigger de Radix viaja dentro de un <h3>,
+   que hereda Rufina (serif). FAQ muestra sus títulos en Clarika Geometric, así
+   que igualamos la fuente acá. Scopeado a #terms-accordion para no tocar el
+   acordeón mobile de /faq, que comparte .faq-accordion.style2. */
+#terms-accordion .accordion-button {
+    font-family: 'Clarika Geometric'
+}
+
 .terms-banner-area {
     background: linear-gradient(87deg, rgba(244, 62, 85, 1) 0%, rgba(120, 90, 229, 1) 100%);
     overflow: hidden

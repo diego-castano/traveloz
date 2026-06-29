@@ -110,8 +110,8 @@ export default function WebTermsPage() {
             {
               type: "html",
               key: "bodyHtml",
-              label: "Contenido (HTML)",
-              placeholder: "<p>Texto legal…</p>",
+              label: "Contenido",
+              placeholder: "Escribí el texto. Seleccioná y usá la barra para negrita, subtítulos o listas.",
               rows: 16,
             },
           ]}
