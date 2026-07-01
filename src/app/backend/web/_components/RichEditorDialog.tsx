@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, Save } from "lucide-react";
+import { X, Save, Star } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { MediaPicker } from "./MediaPicker";
@@ -14,7 +14,8 @@ export type RichField =
   | { type: "url"; key: string; label: string }
   | { type: "image"; key: string; label: string; hideUrl?: boolean; compact?: boolean }
   | { type: "html"; key: string; label: string; placeholder?: string; rows?: number }
-  | { type: "textarea"; key: string; label: string; rows?: number };
+  | { type: "textarea"; key: string; label: string; rows?: number }
+  | { type: "rating"; key: string; label: string; max?: number };
 
 type Props = {
   title: string;
@@ -157,6 +158,35 @@ export function RichEditorDialog({
                     rows={f.rows ?? 3}
                     className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20"
                   />
+                )}
+                {f.type === "rating" && (
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: f.max ?? 5 }).map((_, i) => {
+                      const val = i + 1;
+                      const active = (Number(values[f.key]) || 0) >= val;
+                      return (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => set(f.key, String(val))}
+                          className="p-1 transition-transform hover:scale-110"
+                          aria-label={`${val} ${val === 1 ? "estrella" : "estrellas"}`}
+                          title={`${val} de ${f.max ?? 5}`}
+                        >
+                          <Star
+                            className={`w-7 h-7 ${
+                              active
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-neutral-300"
+                            }`}
+                          />
+                        </button>
+                      );
+                    })}
+                    <span className="ml-2 text-sm text-neutral-500 tabular-nums">
+                      {Number(values[f.key]) || 0}/{f.max ?? 5}
+                    </span>
+                  </div>
                 )}
                 {f.type === "html" && (
                   <WysiwygEditor

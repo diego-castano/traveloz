@@ -169,7 +169,7 @@ export default function WebDestinosPage() {
                 </label>
                 <textarea
                   className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
-                  rows={2}
+                  rows={4}
                   placeholder="Texto que aparece en la cabecera de la página de la región"
                   value={descripcion}
                   onChange={(ev) =>
