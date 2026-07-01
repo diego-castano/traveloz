@@ -16,6 +16,7 @@ import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
 import { deleteFile, uploadFile } from "@/components/lib/upload";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 
 interface ItinerarioEditorProps {
   text: string;
@@ -45,6 +46,7 @@ export function ItinerarioEditor({
     {},
   );
   const [error, setError] = React.useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
 
   const uploadingNames = Object.keys(progressByName);
   const uploading = uploadingNames.length;
@@ -341,7 +343,7 @@ export function ItinerarioEditor({
           }}
           className="grid grid-cols-4 gap-2 sm:grid-cols-6"
         >
-          {images.map((url) => (
+          {images.map((url, i) => (
             <motion.div
               key={url}
               variants={{
@@ -352,12 +354,20 @@ export function ItinerarioEditor({
               transition={springs.micro}
               className="group relative aspect-square overflow-hidden rounded-[8px] border border-hairline bg-rail"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt=""
-                className="h-full w-full object-cover"
-              />
+              {/* Click abre la imagen a pantalla completa (con zoom). */}
+              <button
+                type="button"
+                onClick={() => setLightboxIndex(i)}
+                className="block h-full w-full cursor-zoom-in"
+                aria-label="Ampliar imagen"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </button>
               {!readOnly && (
                 <button
                   type="button"
@@ -383,6 +393,12 @@ export function ItinerarioEditor({
           ))}
         </motion.div>
       )}
+
+      <ImageLightbox
+        images={images}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+      />
     </div>
   );
 }

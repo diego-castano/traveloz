@@ -49,6 +49,7 @@ import {
   useRegiones,
 } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import {
   buildPaisResolver,
   countNuevosEstaSemana,
@@ -447,8 +448,10 @@ function Line({ label, value }: { label: string; value: number }) {
 function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: number; multiple: boolean; index: number }) {
   const { aereo, precio, netoPorAdulto } = line;
   const [showItin, setShowItin] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const hasItinerario = Boolean(aereo.itinerario && aereo.itinerario.trim().length > 0);
-  const hasImages = (aereo.itinerarioImagenes?.length ?? 0) > 0;
+  const imagenes = aereo.itinerarioImagenes ?? [];
+  const hasImages = imagenes.length > 0;
 
   return (
     <div className={`${multiple ? "rounded-[10px] border border-hairline bg-[#FBFBFC] p-2.5" : ""}`}>
@@ -560,16 +563,22 @@ function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: numbe
                 )}
                 {hasImages && (
                   <div className="mt-2 grid grid-cols-2 gap-1.5">
-                    {(aereo.itinerarioImagenes ?? []).map((url: string, i: number) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <a key={i} href={url} target="_blank" rel="noreferrer" className="block">
+                    {imagenes.map((url: string, i: number) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setLightboxIndex(i)}
+                        className="block cursor-zoom-in"
+                        aria-label={`Ampliar itinerario ${i + 1}`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={url}
                           alt={`Itinerario ${i + 1}`}
                           loading="lazy"
                           className="h-auto w-full rounded-[4px] border border-hairline object-cover"
                         />
-                      </a>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -578,6 +587,12 @@ function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: numbe
           )}
         </AnimatePresence>
       </div>
+
+      <ImageLightbox
+        images={imagenes}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+      />
     </div>
   );
 }
