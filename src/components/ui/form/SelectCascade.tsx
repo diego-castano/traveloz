@@ -62,9 +62,28 @@ export function SelectCascade({
 }: SelectCascadeProps) {
   const childList = childOptions(parentValue);
 
-  // If the current child is no longer valid under the new parent, reset it
+  // Reset the child only when the USER actually changes the parent — never on
+  // the initial mount, and never just because the options are still loading.
+  //
+  // En edición, el valor guardado (p. ej. ciudad = "Recife") se siembra desde el
+  // registro, pero el catálogo de opciones (usePaises) carga async: en el primer
+  // render childList viene vacío. Antes el efecto lo interpretaba como "valor
+  // inválido" y lo borraba, dejando "Seleccionar..." aunque el dato existía.
+  //
+  // Comparamos contra el parent anterior (no un flag de "primer render") para
+  // ser inmunes al doble-invocado de efectos de React StrictMode en dev. Y sólo
+  // reseteamos si ya hay opciones cargadas (childList.length > 0) para no borrar
+  // un valor válido mientras el catálogo todavía carga.
+  const prevParentRef = React.useRef(parentValue);
   useEffect(() => {
-    if (childValue && !childList.find((o) => o.value === childValue)) {
+    const parentChanged = prevParentRef.current !== parentValue;
+    prevParentRef.current = parentValue;
+    if (
+      parentChanged &&
+      childValue &&
+      childList.length > 0 &&
+      !childList.find((o) => o.value === childValue)
+    ) {
       onChildChange("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
