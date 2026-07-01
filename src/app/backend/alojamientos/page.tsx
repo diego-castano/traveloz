@@ -250,12 +250,19 @@ export default function AlojamientosPage() {
   // ---------------------------------------------------------------------------
 
   const filteredAlojamientos = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    // Normaliza a minúsculas y quita acentos/diacríticos: así "rio" encuentra
+    // "Río" y "Sao" encuentra "São".
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    const q = norm(search.trim());
     const base = q
       ? alojamientos.filter((a) => {
-          const nombreMatch = a.nombre.toLowerCase().includes(q);
-          const ciudadMatch = (ciudadMap[a.ciudadId] ?? "").toLowerCase().includes(q);
-          const paisMatch = (paisMap[a.paisId] ?? "").toLowerCase().includes(q);
+          const nombreMatch = norm(a.nombre).includes(q);
+          const ciudadMatch = norm(ciudadMap[a.ciudadId] ?? "").includes(q);
+          const paisMatch = norm(paisMap[a.paisId] ?? "").includes(q);
           return nombreMatch || ciudadMatch || paisMatch;
         })
       : alojamientos;

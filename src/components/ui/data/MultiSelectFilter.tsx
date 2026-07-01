@@ -4,6 +4,7 @@ import * as React from "react";
 import { Popover } from "radix-ui";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+import { normalizeSearchValue } from "@/lib/search";
 
 /**
  * MultiSelectFilter — popover-based multi-select with built-in search and
@@ -64,8 +65,8 @@ export function MultiSelectFilter({
 
   const filtered = React.useMemo(() => {
     if (!query.trim()) return options;
-    const q = query.toLowerCase();
-    return options.filter((o) => o.label.toLowerCase().includes(q));
+    const q = normalizeSearchValue(query).trim();
+    return options.filter((o) => normalizeSearchValue(o.label).includes(q));
   }, [options, query]);
 
   function toggle(value: string) {
