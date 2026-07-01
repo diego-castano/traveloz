@@ -154,7 +154,7 @@ const SETTINGS: Array<{
   { key: "footer_social_linkedin", value: "", group: "footer", label: "LinkedIn URL" },
   { key: "footer_social_youtube", value: "", group: "footer", label: "YouTube URL" },
   { key: "footer_copyright", value: "© 2026 TravelOz. Todos los derechos reservados.", group: "footer", label: "Texto de copyright" },
-  { key: "footer_partners_json", value: '[{"label":"Uruguay Natural","src":"/site/img/logouruguaynatural.png","href":""},{"label":"AUDAVI","src":"/site/img/footer-aud.webp","href":""}]', type: "textarea", group: "footer", label: "Logos partner (JSON [{label, src, href}])" },
+  { key: "footer_partners_json", value: '[{"label":"Uruguay Natural","src":"/site/img/logouruguaynatural.png","href":""},{"label":"AUDAVI","src":"/site/img/logo-audavi.png","href":""}]', type: "textarea", group: "footer", label: "Logos partner (JSON [{label, src, href}])" },
   { key: "footer_agencia_texto", value: "Agencia de viajes registrada Nº 1234", group: "footer", label: "Texto de agencia registrada" },
   { key: "agencia_certificado_url", value: "/site/img/agencia.jpeg", type: "image_url", group: "footer", label: "Certificado de agencia (modal)" },
   // ─── Destinos (página /destinos lista) ───────────────────────────────
