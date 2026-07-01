@@ -307,6 +307,10 @@ section {
     color: #fff;
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
     display: inline-flex;
+    /* Centra el texto en el pill: sin esto el flex item (el texto) se estira
+       (align-items:normal) y queda pegado arriba. */
+    align-items: center;
+    justify-content: center;
     line-height: 100%;
     border: 1px solid #fff;
     color: #fff !important;
