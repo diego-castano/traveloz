@@ -153,7 +153,10 @@ export function EmblaSlider({
           </button>
         </>
       )}
-      {showDots && (
+      {/* Solo mostramos dots si hay más de una página para navegar. Cuando el
+          contenido entra en una sola vista (p. ej. 3 ítems con slidesToShow=3)
+          Embla devuelve un único snap y quedaba un dot colgado suelto. */}
+      {showDots && scrollSnaps.length > 1 && (
         <ul className="slick-dots">
           {scrollSnaps.map((_, i) => (
             <li key={i} className={i === selectedIndex ? "slick-active" : ""}>

@@ -302,7 +302,10 @@ section {
 
 .hero-btn {
     background: rgb(255 255 255 / 12%);
-    padding: 10px 40px;
+    /* Padding vertical asimétrico (9 arriba / 11 abajo): corrige el ~1px de
+       desbalance óptico que deja el espacio de descendente de la fuente, para
+       que el texto quede centrado a la vista. */
+    padding: 9px 40px 11px;
     border-radius: 50px;
     color: #fff;
     text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
