@@ -275,7 +275,9 @@ const SCOPED_STYLES = `
      separada de los hoteles. */
   .pkg-detail .opcion-card .meta {
     margin-top: 16px;
-    align-items: flex-end;
+    /* La salida (izq) comparte la línea base del precio (der); el subtítulo
+       "Por persona en base doble" queda debajo de ambos. */
+    align-items: baseline;
   }
   .pkg-detail .opcion-card .meta .left .date {
     margin-bottom: 0;
