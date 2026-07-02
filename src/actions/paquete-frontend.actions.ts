@@ -330,12 +330,24 @@ export async function setPaqueteServicios(
   }>,
 ) {
   await requireCanEdit();
+  // Dedupe por servicioId: la tabla tiene @@unique([paqueteId, servicioId]), así
+  // que si el "incluye" lista el mismo servicio de catálogo más de una vez (el
+  // operador puede agregarlo dos veces), nos quedamos con la primera aparición.
+  // Sin esto, createMany viola la constraint, la transacción falla y el autosave
+  // muestra "Error al guardar" perdiendo el cambio. La lista visible que ve el
+  // cliente se guarda aparte en `textoIncluye`, no depende de esta tabla.
+  const vistos = new Set<string>();
+  const serviciosUnicos = servicios.filter((s) => {
+    if (vistos.has(s.servicioId)) return false;
+    vistos.add(s.servicioId);
+    return true;
+  });
   await prisma.$transaction([
     prisma.paqueteServicio.deleteMany({ where: { paqueteId } }),
-    ...(servicios.length > 0
+    ...(serviciosUnicos.length > 0
       ? [
           prisma.paqueteServicio.createMany({
-            data: servicios.map((s) => ({
+            data: serviciosUnicos.map((s) => ({
               paqueteId,
               servicioId: s.servicioId,
               textoCustom: s.textoCustom ?? null,
