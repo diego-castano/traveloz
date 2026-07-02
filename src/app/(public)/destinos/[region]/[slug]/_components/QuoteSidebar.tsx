@@ -81,7 +81,9 @@ export function QuoteSidebar({
           </li>
           <li>
             <label>Pasajeros*</label>
-            <PassengerCounter />
+            {/* Default 2 adultos: el precio se muestra "por persona en base
+                doble", así que la consulta parte de una pareja. */}
+            <PassengerCounter initial={{ adultos: 2, ninos: 0, infantes: 0 }} />
           </li>
           <li>
             <label htmlFor="quote-nombre">Nombre*</label>
