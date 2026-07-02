@@ -605,7 +605,7 @@ export async function getBaseCatalogs(requestedBrandId?: string) {
 async function fetchCatalogGeographyUncached(_brandId: string) {
   // Single-tenant — show all paises + ciudades regardless of brandId.
   const paises = await prisma.pais.findMany({
-    include: { ciudades: true },
+    include: { ciudades: { orderBy: { nombre: "asc" } } },
     orderBy: { nombre: "asc" },
   });
   return { paises };

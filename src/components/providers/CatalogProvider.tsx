@@ -470,6 +470,11 @@ export function useEtiquetas(): Etiqueta[] {
   );
 }
 
+// Orden alfabético en español: ignora mayúsculas y tildes, y ordena los
+// números de forma natural (ej. "2" antes que "10").
+const byNombre = (a: { nombre: string }, b: { nombre: string }) =>
+  a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base", numeric: true });
+
 export function useRegiones(): (Region & {
   paises: (Pais & { ciudades: Ciudad[] })[];
 })[] {
@@ -483,9 +488,12 @@ export function useRegiones(): (Region & {
           ...r,
           paises: state.paises
             .filter((p) => p.brandId === activeBrandId && p.regionId === r.id)
+            .sort(byNombre)
             .map((p) => ({
               ...p,
-              ciudades: state.ciudades.filter((c) => c.paisId === p.id),
+              ciudades: state.ciudades
+                .filter((c) => c.paisId === p.id)
+                .sort(byNombre),
             })),
         })),
     [state.regiones, state.paises, state.ciudades, activeBrandId],
@@ -499,9 +507,12 @@ export function usePaises(): (Pais & { ciudades: Ciudad[] })[] {
     () =>
       state.paises
         .filter((p) => p.brandId === activeBrandId)
+        .sort(byNombre)
         .map((p) => ({
           ...p,
-          ciudades: state.ciudades.filter((c) => c.paisId === p.id),
+          ciudades: state.ciudades
+            .filter((c) => c.paisId === p.id)
+            .sort(byNombre),
         })),
     [state.paises, state.ciudades, activeBrandId],
   );
