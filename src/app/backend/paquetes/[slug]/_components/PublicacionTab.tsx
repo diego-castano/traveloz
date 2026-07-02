@@ -545,6 +545,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     id: f.id,
     url: f.url,
     alt: f.alt,
+    posX: f.posX,
+    posY: f.posY,
+    zoom: f.zoom,
   }));
 
   // The featured photo, resolved from heroImage. Empty string keeps the
@@ -594,6 +597,14 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       if (target) patch("heroImage", target.url);
     },
     [fotos, patch],
+  );
+
+  const handleUpdateFocal = useCallback(
+    (id: string, focal: { posX: number; posY: number; zoom: number }) => {
+      const original = fotos.find((f) => f.id === id);
+      if (original) updateFoto({ ...original, ...focal });
+    },
+    [fotos, updateFoto],
   );
 
   // ---------------------------------------------------------------------------
@@ -963,6 +974,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             onRemove={canEdit ? handleRemoveFoto : undefined}
             onReorder={canEdit ? handleReorderFotos : undefined}
             onSetPrincipal={canEdit ? handleSetPrincipalFoto : undefined}
+            onUpdateFocal={canEdit ? handleUpdateFocal : undefined}
             folder="paquetes"
             maxImages={20}
           />

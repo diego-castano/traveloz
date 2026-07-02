@@ -300,6 +300,14 @@ export interface PaqueteFoto {
   url: string;
   alt: string;
   orden: number;
+  /**
+   * Punto focal del recorte (object-position %) y zoom. 50/50/1 = centrado.
+   * Opcionales en el tipo por comodidad al crear (la DB pone los defaults),
+   * pero las filas cargadas siempre los traen.
+   */
+  posX?: number;
+  posY?: number;
+  zoom?: number;
 }
 
 /** Many-to-many join between a package and a tag. */

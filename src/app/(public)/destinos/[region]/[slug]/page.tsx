@@ -189,6 +189,9 @@ export default async function PackageDetailPage({
           fotos: paquete.fotos.map((f) => ({
             url: f.url,
             alt: f.alt ?? paquete.titulo,
+            posX: f.posX,
+            posY: f.posY,
+            zoom: f.zoom,
           })),
           textoIntro: paquete.textoIntro,
           textoIncluye: paquete.textoIncluye,

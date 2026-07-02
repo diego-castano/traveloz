@@ -584,6 +584,11 @@ model PaqueteFoto {
   url       String
   alt       String
   orden     Int    @default(0)
+  // Punto focal del recorte (object-position en %) y zoom, para reencuadrar la
+  // foto en el hero/slider sin redimensionar el archivo. 50/50/1 = centrado.
+  posX      Float  @default(50)
+  posY      Float  @default(50)
+  zoom      Float  @default(1)
 
   paquete Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
 

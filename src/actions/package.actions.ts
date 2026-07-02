@@ -599,6 +599,9 @@ export async function clonePaquete(sourceId: string) {
             url: f.url,
             alt: f.alt,
             orden: f.orden,
+            posX: f.posX,
+            posY: f.posY,
+            zoom: f.zoom,
           })),
         });
       }
@@ -1065,6 +1068,9 @@ export async function addPaqueteFoto(data: {
   url: string;
   alt: string;
   orden?: number;
+  posX?: number;
+  posY?: number;
+  zoom?: number;
 }) {
   try {
     await requireCanEdit();
@@ -1091,7 +1097,14 @@ export async function removePaqueteFoto(id: string) {
 
 export async function updatePaqueteFoto(
   id: string,
-  data: { url?: string; alt?: string; orden?: number }
+  data: {
+    url?: string;
+    alt?: string;
+    orden?: number;
+    posX?: number;
+    posY?: number;
+    zoom?: number;
+  }
 ) {
   try {
     await requireCanEdit();

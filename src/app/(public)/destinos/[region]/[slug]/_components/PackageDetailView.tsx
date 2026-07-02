@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
+import { FramedImage } from "@/components/media/FramedImage";
 import { Skeleton } from "@/components/public/SkeletonClient";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import { parseIncluyeItems } from "@/lib/incluye";
@@ -17,7 +18,13 @@ import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
 // sidebar-form.sticky). Tabs are pure React state — no Bootstrap JS required.
 // ---------------------------------------------------------------------------
 
-type Foto = { url: string; alt: string };
+type Foto = {
+  url: string;
+  alt: string;
+  posX?: number;
+  posY?: number;
+  zoom?: number;
+};
 type Servicio = {
   id: string;
   textoCustom: string | null;
@@ -531,21 +538,17 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                         background: "#f3f1f7",
                       }}
                     >
-                      <img
+                      <FramedImage
                         src={f.url}
                         alt={f.alt}
+                        posX={f.posX}
+                        posY={f.posY}
+                        zoom={f.zoom}
                         decoding="async"
                         {...(fotoIdx === 0
                           ? { fetchPriority: "high" as const }
                           : { loading: "lazy" as const })}
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          objectPosition: "center",
-                        }}
+                        style={{ position: "absolute", inset: 0 }}
                       />
                     </div>
                   ))}

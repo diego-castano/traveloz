@@ -25,6 +25,7 @@ import {
   Copy as CopyIcon,
   Download,
   Replace,
+  Crop,
   Sparkles,
   Link as LinkIcon,
   Check,
@@ -64,6 +65,8 @@ import {
 } from "@/components/lib/upload";
 import { ImageCropper } from "@/components/ui/ImageCropper";
 import { Button } from "@/components/ui/Button";
+import { FramedImage } from "@/components/media/FramedImage";
+import { FocalPointEditor } from "@/components/ui/FocalPointEditor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,6 +76,10 @@ export interface ImageItem {
   id: string;
   url: string;
   alt?: string;
+  /** Encuadre no destructivo (object-position % + zoom). 50/50/1 = centrado. */
+  posX?: number;
+  posY?: number;
+  zoom?: number;
 }
 
 export interface ImageUploaderProps {
@@ -92,6 +99,15 @@ export interface ImageUploaderProps {
   onUpdateAlt?: (id: string, alt: string) => void;
   /** Optional: replace the URL of an existing item with a freshly uploaded one. */
   onReplace?: (id: string, url: string) => void;
+  /**
+   * Optional: persist the non-destructive framing (focal point + zoom) of a
+   * photo. When set, each thumbnail shows an "Encuadre" action that opens a
+   * WYSIWYG editor. `aspect` controls the editor frame (defaults to 16/9).
+   */
+  onUpdateFocal?: (
+    id: string,
+    value: { posX: number; posY: number; zoom: number },
+  ) => void;
   maxImages?: number;
   className?: string;
   folder?: string;
@@ -133,6 +149,7 @@ export function ImageUploader({
   principalId,
   onUpdateAlt,
   onReplace,
+  onUpdateFocal,
   maxImages = 10,
   className,
   folder = "uploads",
@@ -155,6 +172,7 @@ export function ImageUploader({
     replaceFor?: string;
   } | null>(null);
   const [lightboxIdx, setLightboxIdx] = React.useState<number | null>(null);
+  const [focalEditId, setFocalEditId] = React.useState<string | null>(null);
   const [byUrlOpen, setByUrlOpen] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -564,6 +582,9 @@ export function ImageUploader({
                   onConfirmDelete={() => handleRemoveImage(image)}
                   onSetPrincipal={onSetPrincipal ? () => onSetPrincipal(image.id) : undefined}
                   onReplace={onReplace ? () => handleReplace(image.id) : undefined}
+                  onEditFocal={
+                    onUpdateFocal ? () => setFocalEditId(image.id) : undefined
+                  }
                 />
               ))}
             </div>
@@ -705,6 +726,38 @@ export function ImageUploader({
           principalId={principalId}
         />
       )}
+
+      {/* Editor de encuadre (focal point + zoom), no destructivo. */}
+      {onUpdateFocal &&
+        focalEditId &&
+        (() => {
+          const foto = images.find((i) => i.id === focalEditId);
+          if (!foto) return null;
+          const isPrincipal =
+            principalId !== undefined
+              ? foto.id === principalId
+              : images[0]?.id === foto.id;
+          return (
+            <FocalPointEditor
+              open
+              onOpenChange={(o) => {
+                if (!o) setFocalEditId(null);
+              }}
+              src={foto.url}
+              value={{
+                posX: foto.posX ?? 50,
+                posY: foto.posY ?? 50,
+                zoom: foto.zoom ?? 1,
+              }}
+              onSave={(v) => onUpdateFocal(foto.id, v)}
+              hint={
+                isPrincipal
+                  ? "Es la foto destacada (hero): así se verá arriba del todo en el detalle del paquete."
+                  : undefined
+              }
+            />
+          );
+        })()}
     </div>
   );
 }
@@ -727,6 +780,7 @@ interface ThumbnailProps {
   onConfirmDelete: () => void;
   onSetPrincipal?: () => void;
   onReplace?: () => void;
+  onEditFocal?: () => void;
 }
 
 function Thumbnail({
@@ -743,6 +797,7 @@ function Thumbnail({
   onConfirmDelete,
   onSetPrincipal,
   onReplace,
+  onEditFocal,
 }: ThumbnailProps) {
   const { setNodeRef, attributes, listeners, transform, transition, isDragging } =
     useSortable({ id: image.id });
@@ -765,11 +820,13 @@ function Thumbnail({
         isFirst && !selected && "ring-2 ring-amber-400 ring-offset-1",
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <FramedImage
         src={image.url}
         alt={image.alt || `Imagen ${index + 1}`}
-        className="h-full w-full cursor-pointer object-cover"
+        posX={image.posX}
+        posY={image.posY}
+        zoom={image.zoom}
+        className="cursor-pointer"
         onClick={onClickOpen}
         loading="lazy"
         decoding="async"
@@ -850,6 +907,9 @@ function Thumbnail({
         <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1 bg-gradient-to-t from-black/60 to-transparent py-1 opacity-0 transition-opacity group-hover:opacity-100">
           {onSetPrincipal && !isFirst && (
             <ThumbAction icon={Star} label="Marcar principal" onClick={onSetPrincipal} />
+          )}
+          {onEditFocal && (
+            <ThumbAction icon={Crop} label="Encuadre" onClick={onEditFocal} />
           )}
           {onReplace && (
             <ThumbAction icon={Replace} label="Reemplazar" onClick={onReplace} />
