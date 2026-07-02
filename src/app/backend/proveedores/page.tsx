@@ -63,14 +63,14 @@ import { RecentBadge } from "@/components/ui/data/RecentBadge";
 const PAGE_SIZE = 10;
 
 const SERVICE_FILTERS = [
-  { key: "TRASLADOS", label: "Traslados", icon: Bus },
+  { key: "TRASLADOS", label: "Traslados y paseos", icon: Bus },
   { key: "SEGUROS", label: "Seguros", icon: ShieldCheck },
   { key: "CIRCUITOS", label: "Circuitos", icon: Map },
   { key: "HOTELES", label: "Hoteles", icon: Building2 },
 ];
 
 const SERVICE_LABEL: Record<CategoriaServicio, string> = {
-  TRASLADOS: "Traslados",
+  TRASLADOS: "Traslados y paseos",
   SEGUROS: "Seguros",
   CIRCUITOS: "Circuitos",
   HOTELES: "Hoteles",
@@ -420,7 +420,7 @@ export default function ProveedoresPage() {
                     }))
                   }
                   options={[
-                    { value: "TRASLADOS", label: "Traslados" },
+                    { value: "TRASLADOS", label: "Traslados y paseos" },
                     { value: "SEGUROS", label: "Seguros" },
                     { value: "CIRCUITOS", label: "Circuitos" },
                     { value: "HOTELES", label: "Hoteles" },

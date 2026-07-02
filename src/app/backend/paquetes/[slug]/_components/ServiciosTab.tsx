@@ -58,7 +58,7 @@ interface ServiciosTabProps {
 // lista los servicios "fijos" compartidos por todas las opciones hoteleras.
 const SERVICE_TYPES = [
   { key: "aereos" as const, label: "Aereos", icon: Plane },
-  { key: "traslados" as const, label: "Traslados", icon: Bus },
+  { key: "traslados" as const, label: "Traslados y paseos", icon: Bus },
   { key: "seguros" as const, label: "Seguros", icon: Shield },
   { key: "circuitos" as const, label: "Circuitos", icon: MapIcon },
 ] as const;

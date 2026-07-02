@@ -264,7 +264,7 @@ export default function TrasladosPage() {
     const precio = normalizePrice(form.precio);
 
     if (!nombre) {
-      toast("warning", "Nombre requerido", "Ingresá un nombre para el traslado.");
+      toast("warning", "Nombre requerido", "Ingresá un nombre para el traslado o paseo.");
       return;
     }
     // País y ciudad son opcionales (el schema los permite nulos). Forzarlos
@@ -294,10 +294,10 @@ export default function TrasladosPage() {
           ...editTarget,
           ...payload,
         } as Traslado);
-        toast("success", "Traslado actualizado", `"${nombre}" guardado correctamente.`);
+        toast("success", "Traslado o paseo actualizado", `"${nombre}" guardado correctamente.`);
       } else {
         await createTraslado(payload as any);
-        toast("success", "Traslado creado", `"${nombre}" fue creado correctamente.`);
+        toast("success", "Traslado o paseo creado", `"${nombre}" fue creado correctamente.`);
       }
 
       setModalOpen(false);
@@ -325,7 +325,7 @@ export default function TrasladosPage() {
     setDeleteTarget(null);
     toast(
       "success",
-      "Traslado eliminado",
+      "Traslado o paseo eliminado",
       `"${nombre}" fue eliminado correctamente.`,
     );
   }
@@ -339,12 +339,12 @@ export default function TrasladosPage() {
   return (
     <>
       <DataTablePageHeader
-        title="Traslados"
-        subtitle="Gestión de transfers y traslados"
+        title="Traslados y paseos"
+        subtitle="Gestión de traslados y paseos (transfers, excursiones, city tours)"
         action={
           canEdit ? (
             <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => openCreate()}>
-              Nuevo Traslado
+              Nuevo traslado o paseo
             </Button>
           ) : undefined
         }
@@ -365,12 +365,12 @@ export default function TrasladosPage() {
       {filteredTraslados.length === 0 ? (
         <EmptyState
           icon={Bus}
-          title="No hay traslados registrados"
-          description="Agrega un traslado para poder asignarlo a paquetes."
+          title="No hay traslados ni paseos registrados"
+          description="Agregá un traslado o paseo para poder asignarlo a paquetes."
           action={
             canEdit ? (
               <Button leftIcon={<Plus className="h-4 w-4" />} onClick={() => openCreate()}>
-                Nuevo Traslado
+                Nuevo traslado o paseo
               </Button>
             ) : undefined
           }
@@ -492,7 +492,7 @@ export default function TrasladosPage() {
         size="lg"
       >
         <ModalHeader
-          title={editTarget ? "Editar Traslado" : "Nuevo Traslado"}
+          title={editTarget ? "Editar traslado o paseo" : "Nuevo traslado o paseo"}
           description="Carga nombre, país, ciudad, proveedor y precio en un solo paso."
         >
           {null}
@@ -510,7 +510,7 @@ export default function TrasladosPage() {
               <Input
                 value={form.nombre}
                 onChange={(e) => setForm((prev) => ({ ...prev, nombre: e.target.value }))}
-                placeholder="Traslado aeropuerto - hotel"
+                placeholder="Ej. Traslado aeropuerto - hotel, city tour, excursión…"
                 autoFocus
               />
             </Field>
@@ -606,7 +606,7 @@ export default function TrasladosPage() {
             </Button>
           </ModalClose>
           <Button type="submit" loading={saving} disabled={saving}>
-            {editTarget ? "Guardar cambios" : "Crear traslado"}
+            {editTarget ? "Guardar cambios" : "Crear traslado o paseo"}
           </Button>
         </ModalFooter>
         </form>

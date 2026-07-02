@@ -74,7 +74,7 @@ const typeMeta: Record<
   paquete: { icon: Package, color: "#8B5CF6", label: "Paquetes" },
   aereo: { icon: Plane, color: "#3BBFAD", label: "Aereos" },
   alojamiento: { icon: Hotel, color: "#E74C5F", label: "Alojamientos" },
-  traslado: { icon: Bus, color: "#6B8BAE", label: "Traslados" },
+  traslado: { icon: Bus, color: "#6B8BAE", label: "Traslados y paseos" },
   seguro: { icon: ShieldCheck, color: "#C69C6D", label: "Seguros" },
   circuito: { icon: MapIcon, color: "#7C3AED", label: "Circuitos" },
 };
@@ -91,7 +91,7 @@ const navEntries: Array<{
   { id: "paquetes", label: "Paquetes", href: "/backend/paquetes", icon: Package, hint: "g p" },
   { id: "aereos", label: "Aereos", href: "/backend/aereos", icon: Plane },
   { id: "alojamientos", label: "Alojamientos", href: "/backend/alojamientos", icon: Hotel },
-  { id: "traslados", label: "Traslados", href: "/backend/traslados", icon: Bus },
+  { id: "traslados", label: "Traslados y paseos", href: "/backend/traslados", icon: Bus },
   { id: "circuitos", label: "Circuitos", href: "/backend/circuitos", icon: MapIcon },
   { id: "seguros", label: "Seguros", href: "/backend/seguros", icon: ShieldCheck },
   { id: "proveedores", label: "Proveedores", href: "/backend/proveedores", icon: Truck },

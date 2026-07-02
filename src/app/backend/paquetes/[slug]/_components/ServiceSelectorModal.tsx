@@ -388,7 +388,7 @@ export default function ServiceSelectorModal({
             <TabsTrigger value="traslados">
               <span className="flex items-center gap-1.5">
                 <Bus className="h-3.5 w-3.5" />
-                Traslados
+                Traslados y paseos
               </span>
             </TabsTrigger>
             <TabsTrigger value="seguros">
@@ -505,7 +505,7 @@ export default function ServiceSelectorModal({
           <TabsContent value="traslados">
             <div className="px-1 pt-1 pb-3">
               <Input
-                placeholder="Buscar traslados..."
+                placeholder="Buscar traslados o paseos..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 leftIcon={<Search className="w-4 h-4" />}

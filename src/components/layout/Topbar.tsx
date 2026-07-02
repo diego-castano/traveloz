@@ -24,7 +24,7 @@ const segmentLabels: Record<string, string> = {
   paquetes: "Paquetes",
   aereos: "Aéreos",
   alojamientos: "Alojamientos",
-  traslados: "Traslados",
+  traslados: "Traslados y paseos",
   circuitos: "Circuitos",
   seguros: "Seguros",
   proveedores: "Proveedores",
