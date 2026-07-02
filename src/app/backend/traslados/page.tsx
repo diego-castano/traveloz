@@ -25,6 +25,7 @@ import { Select } from "@/components/ui/Select";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { SelectCascade } from "@/components/ui/form/SelectCascade";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
+import { ImageGalleryField } from "@/components/ui/form/ImageGalleryField";
 import { StatusDot } from "@/components/ui/data/StatusDot";
 import {
   useTraslados,
@@ -65,6 +66,7 @@ type TrasladoFormState = {
   ciudadId: string;
   proveedorId: string;
   precio: string;
+  imagenes: string[];
 };
 
 function nullableId(value: string | null | undefined): string | null {
@@ -79,6 +81,7 @@ function emptyForm(tipo: TipoTraslado = "REGULAR"): TrasladoFormState {
     ciudadId: "",
     proveedorId: "",
     precio: "",
+    imagenes: [],
   };
 }
 
@@ -251,6 +254,7 @@ export default function TrasladosPage() {
       ciudadId: traslado.ciudadId ?? "",
       proveedorId: traslado.proveedorId ?? "",
       precio: String(traslado.precio ?? ""),
+      imagenes: traslado.imagenes ?? [],
     });
     setModalOpen(true);
   }
@@ -282,6 +286,7 @@ export default function TrasladosPage() {
         ciudadId: nullableId(form.ciudadId),
         proveedorId: nullableId(form.proveedorId),
         precio,
+        imagenes: form.imagenes,
       };
 
       if (editTarget) {
@@ -577,6 +582,21 @@ export default function TrasladosPage() {
                 />
               </Field>
             </FieldGroup>
+
+            <Field>
+              <FieldLabel>Imágenes</FieldLabel>
+              <FieldDescription>
+                Capturas de cotización, fotos del vehículo, etc. Podés subir
+                varias, pegarlas (⌘/Ctrl+V) y arrastrarlas para reordenar.
+              </FieldDescription>
+              <ImageGalleryField
+                images={form.imagenes}
+                onImagesChange={(imagenes) =>
+                  setForm((prev) => ({ ...prev, imagenes }))
+                }
+                folder="traslados"
+              />
+            </Field>
           </FieldGroup>
         </ModalBody>
         <ModalFooter>

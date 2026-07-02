@@ -163,6 +163,7 @@ const TrasladoSchema = z.object({
   paisId: optionalIdStringEarly,
   proveedorId: optionalIdStringEarly,
   precio: z.number().positive("El precio debe ser un número positivo"),
+  imagenes: z.array(z.string()).optional(),
 });
 
 const SeguroSchema = z.object({
@@ -591,6 +592,7 @@ export async function createTraslado(data: {
   paisId?: string | null;
   proveedorId?: string | null;
   precio: number;
+  imagenes?: string[];
 }, requestedBrandId?: string) {
   try {
     const { brandId } = await requireCanEdit(requestedBrandId);
@@ -617,6 +619,7 @@ export async function updateTraslado(
     paisId?: string | null;
     proveedorId?: string | null;
     precio?: number;
+    imagenes?: string[];
   }
 ) {
   try {

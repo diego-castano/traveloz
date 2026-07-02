@@ -113,6 +113,8 @@ export interface Traslado {
   paisId: string | null;
   proveedorId: string | null;
   precio: number;
+  /** Galería de imágenes (URLs del bucket). Ej: capturas de cotización. */
+  imagenes?: string[];
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
