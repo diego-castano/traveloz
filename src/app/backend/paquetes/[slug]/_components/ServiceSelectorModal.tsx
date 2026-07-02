@@ -25,6 +25,7 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { Plus, Plane, Bus, Shield, MapIcon, Search } from "lucide-react";
 import { AereoFullForm } from "@/app/backend/aereos/_components/AereoFullForm";
+import { ServiceCode } from "./ServiceCode";
 import type {
   Aereo,
   Traslado,
@@ -460,6 +461,7 @@ export default function ServiceSelectorModal({
                       >
                         <div className="flex flex-col">
                           <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-800">
+                            <ServiceCode id={aereo.id} />
                             {aereo.ruta}
                             {missingPriceForTrip && (
                               <span
@@ -521,7 +523,8 @@ export default function ServiceSelectorModal({
                       className="flex items-center justify-between px-4 py-3"
                     >
                       <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-neutral-800">
+                        <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-800">
+                          <ServiceCode id={traslado.id} />
                           {traslado.nombre}
                         </span>
                         <span className="text-xs text-neutral-500">
@@ -567,7 +570,8 @@ export default function ServiceSelectorModal({
                         className="flex items-center justify-between px-4 py-3"
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-semibold text-neutral-800">
+                          <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-800">
+                            <ServiceCode id={seguro.id} />
                             {seguro.plan}
                           </span>
                           <span className="text-xs text-neutral-500">
@@ -618,6 +622,7 @@ export default function ServiceSelectorModal({
                       >
                         <div className="flex flex-col">
                           <span className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-800">
+                            <ServiceCode id={circuito.id} />
                             {circuito.nombre}
                             {missingPriceForTrip && (
                               <span

@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/data/EmptyState";
 import type { AutoSaveStatus } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { MissingTravelWindowBanner } from "./MissingTravelWindowBanner";
+import { ServiceCode } from "./ServiceCode";
 import {
   usePaqueteServices,
   usePackageActions,
@@ -253,7 +254,10 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         if (!aereo) return <span className="text-neutral-400">Aereo no encontrado</span>;
         return (
           <div className="flex flex-col">
-            <span className="text-[13.5px] font-medium text-neutral-800">{aereo.ruta}</span>
+            <span className="inline-flex items-center gap-2 text-[13.5px] font-medium text-neutral-800">
+              <ServiceCode id={aereo.id} />
+              {aereo.ruta}
+            </span>
             <span className="text-[12px] text-neutral-500">
               {aereo.destino} &middot; {aereo.aerolinea}
             </span>
@@ -265,7 +269,10 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         if (!traslado) return <span className="text-neutral-400">Traslado no encontrado</span>;
         return (
           <div className="flex flex-col">
-            <span className="text-[13.5px] font-medium text-neutral-800">{traslado.nombre}</span>
+            <span className="inline-flex items-center gap-2 text-[13.5px] font-medium text-neutral-800">
+              <ServiceCode id={traslado.id} />
+              {traslado.nombre}
+            </span>
             <span className="text-[12px] text-neutral-500">{traslado.tipo}</span>
           </div>
         );
@@ -276,7 +283,10 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         const provNombre = proveedorMap.get(seguro.proveedorId ?? "") ?? "";
         return (
           <div className="flex flex-col">
-            <span className="text-[13.5px] font-medium text-neutral-800">{seguro.plan}</span>
+            <span className="inline-flex items-center gap-2 text-[13.5px] font-medium text-neutral-800">
+              <ServiceCode id={seguro.id} />
+              {seguro.plan}
+            </span>
             <span className="text-[12px] text-neutral-500">
               {provNombre && <>{provNombre} &middot; </>}
               {seguro.cobertura}
@@ -289,7 +299,10 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
         if (!circuito) return <span className="text-neutral-400">Circuito no encontrado</span>;
         return (
           <div className="flex flex-col">
-            <span className="text-[13.5px] font-medium text-neutral-800">{circuito.nombre}</span>
+            <span className="inline-flex items-center gap-2 text-[13.5px] font-medium text-neutral-800">
+              <ServiceCode id={circuito.id} />
+              {circuito.nombre}
+            </span>
             <span className="text-[12px] text-neutral-500">{circuito.noches} noches</span>
           </div>
         );
