@@ -14,8 +14,10 @@
 // (Lucha) gets the same UI in both places.
 // ---------------------------------------------------------------------------
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/Input";
+import { TextAutocomplete } from "@/components/ui/form/TextAutocomplete";
+import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { FormSection, FormSections } from "@/components/ui/form/FormSection";
@@ -27,7 +29,7 @@ import {
   type InlineEditColumn,
   type InlineEditTableHandle,
 } from "@/components/ui/form/InlineEditTable";
-import { useServiceActions } from "@/components/providers/ServiceProvider";
+import { useServiceActions, useAereos } from "@/components/providers/ServiceProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatStoredDate, parseStoredDate } from "@/lib/date";
@@ -126,6 +128,22 @@ export function AereoFullForm({
 
   const [ruta, setRuta] = useState(defaults?.ruta ?? "");
   const [destino, setDestino] = useState(defaults?.destino ?? "");
+
+  // Destinos ya cargados en los aéreos (de la marca activa), para el desplegable.
+  // La lista crece sola a medida que se van agregando aéreos con destinos nuevos.
+  const aereos = useAereos();
+  const destinoOptions = useMemo(() => {
+    const porNombre = new Map<string, string>();
+    for (const a of aereos) {
+      const d = (a.destino ?? "").trim();
+      if (!d) continue;
+      const key = d.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      if (!porNombre.has(key)) porNombre.set(key, d);
+    }
+    return Array.from(porNombre.values()).sort((a, b) =>
+      a.localeCompare(b, "es", { sensitivity: "base" }),
+    );
+  }, [aereos]);
   const [aerolinea, setAerolinea] = useState(defaults?.aerolinea ?? "");
   const [equipaje, setEquipaje] = useState(
     defaults?.equipaje ?? "Equipaje de mano + Equipaje en bodega",
@@ -299,11 +317,17 @@ export function AereoFullForm({
             </Field>
             <Field span={2}>
               <FieldLabel>Destino</FieldLabel>
-              <Input
+              <TextAutocomplete
                 value={destino}
-                onChange={(e) => setDestino(e.target.value)}
-                placeholder="Madrid"
+                onChange={setDestino}
+                options={destinoOptions}
+                placeholder="Elegí un destino o escribí uno nuevo"
+                leftIcon={<MapPin className="w-4 h-4" />}
               />
+              <FieldDescription>
+                Se completa con los destinos ya cargados. Si no está, escribilo y
+                queda disponible para los próximos aéreos.
+              </FieldDescription>
             </Field>
             <Field span={2}>
               <FieldLabel>Aerolínea</FieldLabel>

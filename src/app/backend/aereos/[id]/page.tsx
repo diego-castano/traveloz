@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/Input";
+import { TextAutocomplete } from "@/components/ui/form/TextAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
@@ -21,6 +22,7 @@ import {
   useServiceState,
   useServiceActions,
   useServiceLoading,
+  useAereos,
 } from "@/components/providers/ServiceProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { usePackageState } from "@/components/providers/PackageProvider";
@@ -147,6 +149,21 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
   // -- Flight form state (seeded from the loaded aereo) --
   const [ruta, setRuta] = useState(aereo.ruta);
   const [destino, setDestino] = useState(aereo.destino);
+
+  // Destinos ya cargados en los aéreos, para el desplegable del campo Destino.
+  const allAereos = useAereos();
+  const destinoOptions = useMemo(() => {
+    const porNombre = new Map<string, string>();
+    for (const a of allAereos) {
+      const d = (a.destino ?? "").trim();
+      if (!d) continue;
+      const key = d.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      if (!porNombre.has(key)) porNombre.set(key, d);
+    }
+    return Array.from(porNombre.values()).sort((a, b) =>
+      a.localeCompare(b, "es", { sensitivity: "base" }),
+    );
+  }, [allAereos]);
   const [aerolinea, setAerolinea] = useState(aereo.aerolinea);
   const [equipaje, setEquipaje] = useState(aereo.equipaje);
   const [itinerario, setItinerario] = useState(aereo.itinerario);
@@ -371,12 +388,18 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
             </Field>
             <Field span={2}>
               <FieldLabel>Destino</FieldLabel>
-              <Input
+              <TextAutocomplete
                 value={destino}
-                onChange={(e) => setDestino(e.target.value)}
-                placeholder="Madrid"
+                onChange={setDestino}
+                options={destinoOptions}
+                placeholder="Elegí un destino o escribí uno nuevo"
                 readOnly={!canEdit}
+                leftIcon={<MapPin className="w-4 h-4" />}
               />
+              <FieldDescription>
+                Se completa con los destinos ya cargados. Si no está, escribilo y
+                queda disponible para los próximos aéreos.
+              </FieldDescription>
             </Field>
             <Field span={2}>
               <FieldLabel>Aerolínea</FieldLabel>
