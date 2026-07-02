@@ -49,6 +49,35 @@ import { springs } from "@/components/lib/animations";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
+// Salidas — texto derivado del período de viaje
+// ---------------------------------------------------------------------------
+
+// Convierte el rango "Desde y hasta" en la leyenda de Salidas que ve el
+// cliente en el frontend. Ej: "Octubre - Noviembre 2026". Mismo año y mes →
+// "Octubre 2026"; años distintos → "Octubre 2026 - Enero 2027".
+function formatSalidasFromRange(
+  desde: Date | undefined,
+  hasta: Date | undefined,
+): string {
+  if (!desde && !hasta) return "";
+  const d = desde ?? hasta!;
+  const h = hasta ?? desde!;
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const mes = (dt: Date) =>
+    cap(new Intl.DateTimeFormat("es", { month: "long" }).format(dt));
+  const mesDesde = mes(d);
+  const mesHasta = mes(h);
+  const anioDesde = d.getFullYear();
+  const anioHasta = h.getFullYear();
+  if (anioDesde === anioHasta) {
+    return mesDesde === mesHasta
+      ? `${mesDesde} ${anioHasta}`
+      : `${mesDesde} - ${mesHasta} ${anioHasta}`;
+  }
+  return `${mesDesde} ${anioDesde} - ${mesHasta} ${anioHasta}`;
+}
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
@@ -145,7 +174,23 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   );
   // Salidas: leyenda libre que se muestra bajo el título en el frontend
   // (ej. "Salidas semanales todo el año"). Vive junto al período del viaje.
+  // Se autocompleta desde "Desde y hasta" salvo que el operador la edite a mano.
   const [salidas, setSalidas] = useState(paquete.salidas ?? "");
+  // "Modo manual": cuando el operador escribe algo propio en Salidas dejamos de
+  // pisarlo al cambiar las fechas. Arranca en manual solo si el valor guardado
+  // ya es un texto libre (no vacío, no "Consultar" y distinto del auto-generado
+  // por el rango actual). Si borra el campo, vuelve al modo automático.
+  const salidasManualRef = useRef(
+    (() => {
+      const v = (paquete.salidas ?? "").trim();
+      if (v === "" || v === "Consultar") return false;
+      const auto = formatSalidasFromRange(
+        parseStoredDate(paquete.viajeDesde),
+        parseStoredDate(paquete.viajeHasta),
+      );
+      return v !== auto;
+    })(),
+  );
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);
   const [tipoPaqueteId, setTipoPaqueteId] = useState(paquete.tipoPaqueteId);
   const [estado, setEstado] = useState<string>(paquete.estado);
@@ -291,7 +336,12 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   // -- Wrapped setters that also mark dirty --
   const setTituloDirty = (v: string) => { setTitulo(v); markDirty(); };
   const setDestinoDirty = (v: string) => { setDestino(v); markDirty(); };
-  const setSalidasDirty = (v: string) => { setSalidas(v); markDirty(); };
+  const setSalidasDirty = (v: string) => {
+    setSalidas(v);
+    // Texto propio → modo manual; campo vacío → reactiva el autocompletado.
+    salidasManualRef.current = v.trim() !== "";
+    markDirty();
+  };
   // (noches is derived from destinos — no dirty setter needed)
   const setTemporadaIdDirty = (v: string) => { setTemporadaId(v); markDirty(); };
   const setTipoPaqueteIdDirty = (v: string) => { setTipoPaqueteId(v); markDirty(); };
@@ -301,6 +351,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setViajeDates = (desde: Date | undefined, hasta: Date | undefined) => {
     setViajeDesdeDate(desde);
     setViajeHastaDate(hasta);
+    // Autocompleta la leyenda de Salidas salvo que el operador la haya editado.
+    if (!salidasManualRef.current) {
+      const auto = formatSalidasFromRange(desde, hasta);
+      if (auto) setSalidas(auto);
+    }
     markDirty();
   };
   const setValidezHastaDateDirty = (v: Date | undefined) => {
@@ -546,8 +601,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 readOnly={isReadOnly}
               />
               <p className="text-[11px] text-neutral-400 mt-1">
-                Leyenda que se muestra bajo el título en el frontend, junto al
-                ícono de calendario.
+                Se completa sola con el período de arriba (ej. &ldquo;Octubre -
+                Noviembre 2026&rdquo;). Podés editarla a mano; para volver al
+                automático, borrá el campo. Se muestra bajo el título en el
+                frontend, junto al ícono de calendario.
               </p>
             </Field>
           </FieldGroup>
