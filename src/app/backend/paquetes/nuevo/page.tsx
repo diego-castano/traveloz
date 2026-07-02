@@ -77,7 +77,13 @@ export default function NuevoPaquetePage() {
           noches: 0,
           salidas: "Consultar",
           temporadaId: temporadas[0]?.id ?? undefined,
-          tipoPaqueteId: tiposPaquete[0]?.id ?? undefined,
+          // Default "Playa": es el tipo más frecuente, así el operador no
+          // tiene que elegirlo en cada alta. Fallback al primero si no existe.
+          tipoPaqueteId:
+            tiposPaquete.find((t) => t.nombre.trim().toLowerCase() === "playa")
+              ?.id ??
+            tiposPaquete[0]?.id ??
+            undefined,
           estado: "BORRADOR",
           destacado: false,
           netoCalculado: 0,
