@@ -22,8 +22,8 @@ import {
   useServiceState,
   useServiceActions,
   useServiceLoading,
-  useAereos,
 } from "@/components/providers/ServiceProvider";
+import { useDestinoOptions } from "@/hooks/useDestinoOptions";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -150,20 +150,8 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
   const [ruta, setRuta] = useState(aereo.ruta);
   const [destino, setDestino] = useState(aereo.destino);
 
-  // Destinos ya cargados en los aéreos, para el desplegable del campo Destino.
-  const allAereos = useAereos();
-  const destinoOptions = useMemo(() => {
-    const porNombre = new Map<string, string>();
-    for (const a of allAereos) {
-      const d = (a.destino ?? "").trim();
-      if (!d) continue;
-      const key = d.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      if (!porNombre.has(key)) porNombre.set(key, d);
-    }
-    return Array.from(porNombre.values()).sort((a, b) =>
-      a.localeCompare(b, "es", { sensitivity: "base" }),
-    );
-  }, [allAereos]);
+  // Destinos del catálogo de ciudades + los ya usados en aéreos.
+  const destinoOptions = useDestinoOptions();
   const [aerolinea, setAerolinea] = useState(aereo.aerolinea);
   const [equipaje, setEquipaje] = useState(aereo.equipaje);
   const [itinerario, setItinerario] = useState(aereo.itinerario);

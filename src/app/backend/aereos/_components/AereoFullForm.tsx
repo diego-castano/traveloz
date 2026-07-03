@@ -14,7 +14,7 @@
 // (Lucha) gets the same UI in both places.
 // ---------------------------------------------------------------------------
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Input } from "@/components/ui/Input";
 import { TextAutocomplete } from "@/components/ui/form/TextAutocomplete";
 import { MapPin } from "lucide-react";
@@ -29,7 +29,8 @@ import {
   type InlineEditColumn,
   type InlineEditTableHandle,
 } from "@/components/ui/form/InlineEditTable";
-import { useServiceActions, useAereos } from "@/components/providers/ServiceProvider";
+import { useServiceActions } from "@/components/providers/ServiceProvider";
+import { useDestinoOptions } from "@/hooks/useDestinoOptions";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatStoredDate, parseStoredDate } from "@/lib/date";
@@ -129,21 +130,8 @@ export function AereoFullForm({
   const [ruta, setRuta] = useState(defaults?.ruta ?? "");
   const [destino, setDestino] = useState(defaults?.destino ?? "");
 
-  // Destinos ya cargados en los aéreos (de la marca activa), para el desplegable.
-  // La lista crece sola a medida que se van agregando aéreos con destinos nuevos.
-  const aereos = useAereos();
-  const destinoOptions = useMemo(() => {
-    const porNombre = new Map<string, string>();
-    for (const a of aereos) {
-      const d = (a.destino ?? "").trim();
-      if (!d) continue;
-      const key = d.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      if (!porNombre.has(key)) porNombre.set(key, d);
-    }
-    return Array.from(porNombre.values()).sort((a, b) =>
-      a.localeCompare(b, "es", { sensitivity: "base" }),
-    );
-  }, [aereos]);
+  // Destinos del catálogo de ciudades + los ya usados en aéreos, para el desplegable.
+  const destinoOptions = useDestinoOptions();
   const [aerolinea, setAerolinea] = useState(defaults?.aerolinea ?? "");
   const [equipaje, setEquipaje] = useState(
     defaults?.equipaje ?? "Equipaje de mano + Equipaje en bodega",
