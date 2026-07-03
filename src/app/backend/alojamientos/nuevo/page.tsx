@@ -22,6 +22,7 @@ import {
   usePaises,
   useRegimenes,
   useCatalogLoading,
+  useCatalogActions,
 } from "@/components/providers/CatalogProvider";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -40,7 +41,25 @@ export default function NuevoAlojamientoPage() {
   const paises = usePaises();
   const regimenes = useRegimenes();
   const catalogLoading = useCatalogLoading();
+  const { createCiudad } = useCatalogActions();
   const { toast } = useToast();
+
+  // Crea una ciudad "in situ" bajo el país elegido y la deja seleccionada, sin
+  // salir del alta del hotel. Devuelve el id para autoseleccionarla.
+  async function handleCreateCiudad(nombre: string): Promise<string | void> {
+    if (!paisId) return;
+    try {
+      const ciudad = await createCiudad({ paisId, nombre: nombre.trim() });
+      toast("success", "Ciudad agregada", `"${nombre.trim()}" quedó disponible.`);
+      return ciudad.id;
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo agregar la ciudad",
+        err instanceof Error ? err.message : "Intentá nuevamente",
+      );
+    }
+  }
 
   // VENDEDOR guard — redirect if no edit permission
   useEffect(() => {
@@ -192,6 +211,7 @@ export default function NuevoAlojamientoPage() {
                   childLabel="Ciudad"
                   childValue={ciudadId}
                   onChildChange={setCiudadId}
+                  onChildCreate={handleCreateCiudad}
                   childOptions={(selectedPaisId) =>
                     paises
                       .find((p) => p.id === selectedPaisId)

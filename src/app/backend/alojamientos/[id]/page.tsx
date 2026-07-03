@@ -34,6 +34,7 @@ import { PageSkeleton } from "@/components/ui/Skeletons";
 import {
   usePaises,
   useRegimenes,
+  useCatalogActions,
 } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -129,6 +130,7 @@ function AlojamientoDetailForm({
 
   const paises = usePaises();
   const regimenes = useRegimenes();
+  const { createCiudad } = useCatalogActions();
 
   // ---------------------------------------------------------------------------
   // Card 1: Hotel form state
@@ -137,6 +139,22 @@ function AlojamientoDetailForm({
   const [nombre, setNombre] = useState(alojamiento?.nombre ?? "");
   const [paisId, setPaisId] = useState(alojamiento?.paisId ?? "");
   const [ciudadId, setCiudadId] = useState(alojamiento?.ciudadId ?? "");
+
+  // Crea una ciudad "in situ" bajo el país elegido y la deja seleccionada.
+  async function handleCreateCiudad(nombre: string): Promise<string | void> {
+    if (!paisId) return;
+    try {
+      const ciudad = await createCiudad({ paisId, nombre: nombre.trim() });
+      toast("success", "Ciudad agregada", `"${nombre.trim()}" quedó disponible.`);
+      return ciudad.id;
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo agregar la ciudad",
+        err instanceof Error ? err.message : "Intentá nuevamente",
+      );
+    }
+  }
   const [categoria, setCategoria] = useState(
     String(alojamiento?.categoria ?? 3),
   );
@@ -446,6 +464,7 @@ function AlojamientoDetailForm({
                 childLabel="Ciudad"
                 childValue={ciudadId}
                 onChildChange={setCiudadId}
+                onChildCreate={isReadOnly ? undefined : handleCreateCiudad}
                 childOptions={(selectedPaisId) =>
                   paises
                     .find((p) => p.id === selectedPaisId)

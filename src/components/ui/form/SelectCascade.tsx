@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { CreatableSelect } from "@/components/ui/CreatableSelect";
 import { cn } from "@/components/lib/cn";
 
 /**
@@ -41,6 +42,12 @@ interface SelectCascadeProps {
   childOptions: (parentValue: string | undefined) => Option[];
   childLabel: string;
   childPlaceholder?: string;
+  /**
+   * Cuando se pasa, el hijo permite CREAR una opción nueva "in situ" (ej. una
+   * ciudad al dar de alta un hotel). Recibe lo tipeado; debe persistir la nueva
+   * opción y, si devuelve su value, se selecciona sola. Requiere parent elegido.
+   */
+  onChildCreate?: (label: string) => void | string | Promise<void | string>;
 
   disabled?: boolean;
   className?: string;
@@ -57,6 +64,7 @@ export function SelectCascade({
   childOptions,
   childLabel,
   childPlaceholder,
+  onChildCreate,
   disabled,
   className,
 }: SelectCascadeProps) {
@@ -100,19 +108,37 @@ export function SelectCascade({
         searchPlaceholder={`Buscar ${parentLabel.toLowerCase()}...`}
         disabled={disabled}
       />
-      <SearchableSelect
-        label={childLabel}
-        value={childValue}
-        onValueChange={onChildChange}
-        options={childList}
-        placeholder={
-          !parentValue
-            ? "Elegi un " + parentLabel.toLowerCase() + " primero"
-            : childPlaceholder ?? "Seleccionar..."
-        }
-        searchPlaceholder={`Buscar ${childLabel.toLowerCase()}...`}
-        disabled={disabled || !parentValue}
-      />
+      {onChildCreate ? (
+        <CreatableSelect
+          label={childLabel}
+          value={childValue}
+          onValueChange={onChildChange}
+          options={childList}
+          onCreate={onChildCreate}
+          placeholder={
+            !parentValue
+              ? "Elegi un " + parentLabel.toLowerCase() + " primero"
+              : childPlaceholder ?? "Seleccionar o crear..."
+          }
+          searchPlaceholder={`Buscar o crear ${childLabel.toLowerCase()}...`}
+          createLabel={(q) => `Crear ${childLabel.toLowerCase()} «${q}»`}
+          disabled={disabled || !parentValue}
+        />
+      ) : (
+        <SearchableSelect
+          label={childLabel}
+          value={childValue}
+          onValueChange={onChildChange}
+          options={childList}
+          placeholder={
+            !parentValue
+              ? "Elegi un " + parentLabel.toLowerCase() + " primero"
+              : childPlaceholder ?? "Seleccionar..."
+          }
+          searchPlaceholder={`Buscar ${childLabel.toLowerCase()}...`}
+          disabled={disabled || !parentValue}
+        />
+      )}
     </div>
   );
 }
