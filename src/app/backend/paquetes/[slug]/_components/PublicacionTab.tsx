@@ -440,8 +440,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       itinerarioPublico: form.itinerarioPublico,
       textoCondiciones: form.textoCondiciones,
     });
-    if (!res.ok && res.reason === "publish_blocked") {
-      return { ok: false, missing: res.missing };
+    if (!res.ok) {
+      // publish_blocked (falta algo para publicar) o slug_taken (colisión de
+      // slug). En ambos casos devolvemos los motivos para que la UI los muestre.
+      return { ok: false, reason: res.reason, missing: res.missing };
     }
     // Server may have auto-bumped estado to ACTIVO — reflect it locally.
     if (res.ok && form.publicado && form.estado !== "ACTIVO") {
@@ -484,12 +486,16 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         if (!res.ok && res.missing) {
           setPublishBlockers(res.missing);
           focusBlockerField(res.missing);
-          toast(
-            "warning",
-            "No se puede publicar todavía",
-            `Revisá lo que falta más arriba.`,
-          );
-          setForm((prev) => ({ ...prev, publicado: false }));
+          if (res.reason === "slug_taken") {
+            toast("error", "Slug en uso", res.missing[0]);
+          } else {
+            toast(
+              "warning",
+              "No se puede publicar todavía",
+              `Revisá lo que falta más arriba.`,
+            );
+            setForm((prev) => ({ ...prev, publicado: false }));
+          }
           return;
         }
         setPublishBlockers([]);
@@ -530,15 +536,19 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       itinerarioPublico: f.itinerarioPublico,
       textoCondiciones: f.textoCondiciones,
     });
-    if (!res.ok && res.reason === "publish_blocked") {
+    if (!res.ok) {
       setPublishBlockers(res.missing);
       focusBlockerField(res.missing);
-      toast(
-        "warning",
-        "No se puede publicar todavía",
-        `Revisá lo que falta más arriba.`,
-      );
-      setForm((prev) => ({ ...prev, publicado: false }));
+      if (res.reason === "slug_taken") {
+        toast("error", "Slug en uso", res.missing[0]);
+      } else {
+        toast(
+          "warning",
+          "No se puede publicar todavía",
+          `Revisá lo que falta más arriba.`,
+        );
+        setForm((prev) => ({ ...prev, publicado: false }));
+      }
       return;
     }
     setPublishBlockers([]);
@@ -676,6 +686,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   // ---------------------------------------------------------------------------
   const handleEstadoChange = (value: string) => {
     const newEstado = value as EstadoPaquete;
+    // Snapshot para revertir si el server falla (update optimista sin rollback
+    // dejaba el select mostrando un estado que la DB nunca guardó).
+    const prevEstado = form.estado;
     setForm((p) => ({ ...p, estado: newEstado }));
     updatePaqueteLifecycle(paqueteId, { estado: newEstado })
       .then((r) => {
@@ -690,10 +703,14 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           toast("success", "Estado actualizado", `Nuevo estado: ${newEstado}`);
         }
       })
-      .catch((e) => toast("error", "Error", (e as Error).message));
+      .catch((e) => {
+        setForm((p) => ({ ...p, estado: prevEstado }));
+        toast("error", "Error", (e as Error).message);
+      });
   };
 
   const handleDestacadoToggle = (checked: boolean) => {
+    const prevDestacado = form.destacado;
     setForm((p) => ({ ...p, destacado: checked }));
     updatePaqueteLifecycle(paqueteId, { destacado: checked })
       .then(() =>
@@ -702,7 +719,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           checked ? "Marcado como destacado" : "Destacado removido",
         ),
       )
-      .catch((e) => toast("error", "Error", (e as Error).message));
+      .catch((e) => {
+        setForm((p) => ({ ...p, destacado: prevDestacado }));
+        toast("error", "Error", (e as Error).message);
+      });
   };
 
   const handleAddEtiqueta = async (etiquetaId: string) => {

@@ -24,7 +24,7 @@
 // same way and persists via the same actions.
 // ---------------------------------------------------------------------------
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapPin, Plus, X, ArrowUp, ArrowDown, Route } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -160,7 +160,20 @@ export function DestinosMiniEditor({ paqueteId, canEdit }: Props) {
                 isFirst={idx === 0}
                 isLast={idx === arr.length - 1}
                 canEdit={canEdit}
-                onUpdate={(patch) => updateDestino({ ...destino, ...patch })}
+                onUpdate={async (patch) => {
+                  // Surface el error: antes el `void onUpdate(...)` de la fila lo
+                  // tragaba y el operador editaba noches sin enterarse del fallo
+                  // (p. ej. FK si el destino fue borrado en otra pestaña).
+                  try {
+                    await updateDestino({ ...destino, ...patch });
+                  } catch (e) {
+                    toast(
+                      "error",
+                      "No se pudo actualizar el destino",
+                      (e as Error).message,
+                    );
+                  }
+                }}
                 onDelete={() => deleteDestino(destino.id)}
                 onMove={(dir) => handleMove(destino.id, dir)}
               />
@@ -250,12 +263,14 @@ function DestinoMiniRow({
 }) {
   const [noches, setNoches] = useState<string>(String(destino.noches));
 
-  // Keep the local input in sync if the parent's value changes (e.g. when
+  // Keep the local input in sync when the parent's value changes (e.g. when
   // the Alojamientos tab edits this same destino — both editors share the
-  // provider state so both should always reflect the latest value).
-  if (noches !== String(destino.noches) && noches === "") {
+  // provider state so both should always reflect the latest value). Antes esto
+  // vivía en el render body y sólo sincronizaba cuando el campo estaba vacío,
+  // así que un cambio externo a un valor distinto de "" nunca se reflejaba.
+  useEffect(() => {
     setNoches(String(destino.noches));
-  }
+  }, [destino.noches]);
 
   const commitNoches = () => {
     const parsed = parseInt(noches, 10);

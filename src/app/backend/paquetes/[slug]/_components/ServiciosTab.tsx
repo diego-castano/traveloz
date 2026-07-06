@@ -420,7 +420,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
                       isDropTarget &&
                         "ring-2 ring-inset ring-[#3BBFAD]/60 bg-[#3BBFAD]/5",
                     )}
-                    draggable={canEdit}
+                    draggable={canEdit && saveStatus !== "saving"}
                     onDragStart={() => handleDragStart(key, index)}
                     onDragOver={(e) => handleDragOver(e, key, index)}
                     onDragEnd={handleDragEnd}

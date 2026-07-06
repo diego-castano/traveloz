@@ -38,14 +38,19 @@ async function safePropagate(paqueteId: string): Promise<void> {
  */
 async function syncPaqueteNoches(paqueteId: string): Promise<void> {
   try {
-    const destinos = await prisma.paqueteDestino.findMany({
-      where: { paqueteId },
-      select: { noches: true },
-    });
-    const total = destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
-    await prisma.paquete.update({
-      where: { id: paqueteId },
-      data: { noches: total },
+    // findMany + update en una transacción interactiva: sin esto, dos
+    // mutaciones de destino en paralelo (una crea con N noches, otra borra)
+    // podían intercalar read-then-write y persistir un total desactualizado.
+    await prisma.$transaction(async (tx) => {
+      const destinos = await tx.paqueteDestino.findMany({
+        where: { paqueteId },
+        select: { noches: true },
+      });
+      const total = destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
+      await tx.paquete.update({
+        where: { id: paqueteId },
+        data: { noches: total },
+      });
     });
   } catch (err) {
     log.error("syncPaqueteNoches failed", { paqueteId, err });

@@ -365,13 +365,21 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     [canEdit, persistPaquete],
   );
 
-  const handleSave = () => {
-    saveNow();
-    toast(
-      "success",
-      "Paquete actualizado",
-      "Los cambios fueron guardados correctamente.",
-    );
+  const handleSave = async () => {
+    const ok = await saveNow();
+    if (ok) {
+      toast(
+        "success",
+        "Paquete actualizado",
+        "Los cambios fueron guardados correctamente.",
+      );
+    } else {
+      toast(
+        "error",
+        "No se pudo guardar",
+        "Revisá los datos e intentá de nuevo.",
+      );
+    }
   };
 
   // -- Etiqueta handlers --

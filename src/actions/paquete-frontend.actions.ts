@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { type IncluyeItem, newIncluyeId } from "@/lib/incluye";
@@ -245,14 +246,52 @@ export async function updatePaqueteFrontend(
     }
   }
 
-  const updated = await prisma.paquete.update({
-    where: { id: paqueteId },
-    data: bumpEstadoToActivo ? { ...data, estado: "ACTIVO" } : data,
-  });
-  revalidatePath(`/backend/paquetes/${paqueteId}`);
-  revalidatePath("/destinos", "layout");
-  revalidateTag("paquetes");
-  return { ok: true as const, updated };
+  const dataToWrite: typeof data & { estado?: "ACTIVO" } = bumpEstadoToActivo
+    ? { ...data, estado: "ACTIVO" }
+    : { ...data };
+
+  // Slug vacío → null. La columna es @@unique([brandId, slug]); en Postgres
+  // conviven varios NULL, pero múltiples "" colisionan. La pestaña Publicación
+  // inicializa el form con `slug: d.slug ?? ""`, así que CUALQUIER paquete sin
+  // slug manda "" en el autosave. El primero que guarda ocupa el slot ("brandId",
+  // "") y todos los demás chocan con P2002 → "Error al guardar" (se veía al tocar
+  // "Generar incluido", que fuerza un autosave). Guardando null en vez de ""
+  // eliminamos la colisión.
+  if (typeof dataToWrite.slug === "string" && dataToWrite.slug.trim() === "") {
+    dataToWrite.slug = null;
+  }
+
+  try {
+    const updated = await prisma.paquete.update({
+      where: { id: paqueteId },
+      data: dataToWrite,
+    });
+    revalidatePath(`/backend/paquetes/${paqueteId}`);
+    revalidatePath("/destinos", "layout");
+    revalidateTag("paquetes");
+    return { ok: true as const, updated };
+  } catch (e) {
+    // P2002 en slug: otro paquete de la misma marca ya usa ese slug. Devolvemos
+    // un resultado estructurado (mismo canal que el publish gate) para que la UI
+    // muestre el motivo en vez de un genérico "Error al guardar" — en producción
+    // Next redacta los mensajes de las excepciones de server action.
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002" &&
+      Array.isArray((e.meta as { target?: string[] })?.target) &&
+      (e.meta as { target?: string[] }).target?.includes("slug")
+    ) {
+      return {
+        ok: false as const,
+        reason: "slug_taken" as const,
+        missing: [
+          `El slug «${dataToWrite.slug ?? ""}» ya está en uso por otro paquete. Elegí uno distinto.`,
+        ],
+      };
+    }
+    console.error("[updatePaqueteFrontend] update failed", paqueteId, e);
+    throw new Error("No se pudo guardar la ficha pública.");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -303,9 +342,27 @@ export async function assignPaqueteEtiqueta(
   etiquetaId: string,
 ) {
   await requireCanEdit();
-  const created = await prisma.paqueteEtiqueta.create({
-    data: { paqueteId, etiquetaId },
-  });
+  // @@unique([paqueteId, etiquetaId]): un doble-click o una etiqueta ya asignada
+  // en otra sesión tiraba P2002 → toast "Error". Como el efecto deseado (la
+  // etiqueta queda asignada) ya se cumple, tratamos el duplicado como éxito y
+  // devolvemos la fila existente.
+  let created;
+  try {
+    created = await prisma.paqueteEtiqueta.create({
+      data: { paqueteId, etiquetaId },
+    });
+  } catch (e) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === "P2002"
+    ) {
+      const existing = await prisma.paqueteEtiqueta.findFirst({
+        where: { paqueteId, etiquetaId },
+      });
+      if (existing) return existing;
+    }
+    throw e;
+  }
   revalidatePath(`/backend/paquetes/${paqueteId}`);
   revalidateTag("paquetes");
   return created;
