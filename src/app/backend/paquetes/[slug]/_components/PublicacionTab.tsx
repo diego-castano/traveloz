@@ -447,7 +447,18 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     if (res.ok && form.publicado && form.estado !== "ACTIVO") {
       setForm((p) => ({ ...p, estado: "ACTIVO" }));
     }
-    await setPaqueteServicios(paqueteId, serviciosFromIncluye(incluyeItems));
+    // Mismo wrap que handleAutoSave: la sync secundaria de PaqueteServicio
+    // es opcional (la lista visible la arma el front desde textoIncluye,
+    // ya guardada arriba). Si falla, los cambios del formulario ya
+    // quedaron persistidos y el guardado debe reportarse como exitoso.
+    try {
+      await setPaqueteServicios(paqueteId, serviciosFromIncluye(incluyeItems));
+    } catch (e) {
+      console.error(
+        "[PublicacionTab] setPaqueteServicios failed; front fields were already saved",
+        e,
+      );
+    }
     syncDescripcionToCache(form.descripcion);
     return { ok: true };
   }, [paqueteId, form, incluyeItems, serviciosFromIncluye, syncDescripcionToCache]);
