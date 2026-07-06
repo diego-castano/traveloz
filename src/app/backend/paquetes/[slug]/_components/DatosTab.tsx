@@ -462,11 +462,14 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
       <FormSections>
         {/* ================================================================ */}
-        {/* Estado                                                           */}
+        {/* Período y vigencia — fechas de viaje, vigencia derivada y estado. */}
+        {/* El orden sigue el flujo de configuración: primero el viaje         */}
+        {/* (de dónde sale la vigencia), después la vigencia editable,         */}
+        {/* después el estado interno.                                         */}
         {/* ================================================================ */}
         <FormSection
-          title="Estado y vigencia"
-          description="Etapa del flujo interno y hasta cuándo el paquete sigue activo en el frontend. Al pasar la fecha 'hasta' se da de baja automáticamente."
+          title="Período y vigencia"
+          description="Fechas en que viaja el cliente (de donde se deriva la vigencia), vigencia editable del paquete en el frontend, y estado interno del flujo."
         >
           {vigenciaDesincronizada && !isReadOnly && (
             <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
@@ -492,16 +495,26 @@ export default function DatosTab({ paquete }: DatosTabProps) {
             </div>
           )}
           <FieldGroup columns={2}>
-            <Field>
-              <FieldLabel>Estado</FieldLabel>
-              <Select
-                value={estado}
-                onValueChange={setEstadoDirty}
+            {/* 1) Período del viaje — la fuente de la vigencia automática. */}
+            <Field span={2}>
+              <FieldLabel>Período del viaje (desde y hasta)</FieldLabel>
+              <PeriodPicker
+                valueFrom={formatStoredDate(viajeDesdeDate) ?? null}
+                valueTo={formatStoredDate(viajeHastaDate) ?? null}
+                onChange={(desde, hasta) => {
+                  setViajeDates(parseStoredDate(desde), parseStoredDate(hasta));
+                }}
+                placeholder="Seleccionar período de viaje..."
                 disabled={isReadOnly}
-                options={estadoOptions}
-                placeholder="Seleccionar estado..."
               />
+              <p className="text-[11px] text-neutral-400 mt-1">
+                Define qué servicios y tarifas aplican, y se usa como ancla
+                para calcular la vigencia automática (15 días antes del
+                inicio, hasta la fecha de fin).
+              </p>
             </Field>
+
+            {/* 2) Vigencia — editable, atada al viaje por defecto. */}
             <Field>
               <FieldLabel className="flex items-center justify-between">
                 <span>Vigencia</span>
@@ -561,8 +574,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 </p>
               ) : (
                 <p className="mt-1.5 text-[11px] text-neutral-500">
-                  Calculada automáticamente como{" "}
-                  <span className="font-medium">viaje desde − 15 días</span>{" "}
+                  Calculada como <span className="font-medium">viaje desde − 15 días</span>{" "}
                   hasta <span className="font-medium">viaje hasta</span>.
                   Tocá cualquier fecha para personalizarla.
                 </p>
@@ -587,6 +599,35 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                   .
                 </p>
               ) : null}
+            </Field>
+
+            {/* 3) Salidas — vive junto al período del viaje, no en la sección */}
+            {/*    de identificación. Se autocompleta con el rango.            */}
+            <Field>
+              <FieldLabel>Salidas</FieldLabel>
+              <Input
+                value={salidas}
+                onChange={(e) => setSalidasDirty(e.target.value)}
+                placeholder="Ej. Salidas semanales todo el año / Consultar"
+                readOnly={isReadOnly}
+              />
+              <p className="text-[11px] text-neutral-400 mt-1">
+                Se muestra bajo el título en el frontend. Se autocompleta
+                con el período de arriba (ej. &ldquo;Octubre - Noviembre 2026&rdquo;).
+                Para volver al automático, borrá el campo.
+              </p>
+            </Field>
+
+            {/* 4) Estado — etapa del flujo interno. */}
+            <Field span={2}>
+              <FieldLabel>Estado</FieldLabel>
+              <Select
+                value={estado}
+                onValueChange={setEstadoDirty}
+                disabled={isReadOnly}
+                options={estadoOptions}
+                placeholder="Seleccionar estado..."
+              />
             </Field>
           </FieldGroup>
         </FormSection>
@@ -723,46 +764,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
             </Field>
           </FieldGroup>
         </FormSection>
-
-        {/* ================================================================ */}
-        {/* Período del viaje — usado para matchear servicios y sus precios   */}
-        {/* ================================================================ */}
-        <FormSection
-          title="Período del viaje"
-          description="Fechas en las que el cliente viaja. Define qué servicios y tarifas aplican, y la vigencia del paquete en el frontend (15 días previos al inicio, hasta la fecha de fin). Para personalizarla, editá la sección Estado y vigencia."
-        >
-          <FieldGroup columns={1}>
-            <Field>
-              <FieldLabel>Desde y hasta</FieldLabel>
-              <PeriodPicker
-                valueFrom={formatStoredDate(viajeDesdeDate) ?? null}
-                valueTo={formatStoredDate(viajeHastaDate) ?? null}
-                onChange={(desde, hasta) => {
-                  setViajeDates(parseStoredDate(desde), parseStoredDate(hasta));
-                }}
-                placeholder="Seleccionar período de viaje..."
-                disabled={isReadOnly}
-              />
-            </Field>
-
-            <Field>
-              <FieldLabel>Salidas</FieldLabel>
-              <Input
-                value={salidas}
-                onChange={(e) => setSalidasDirty(e.target.value)}
-                placeholder="Ej. Salidas semanales todo el año / Consultar"
-                readOnly={isReadOnly}
-              />
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Se completa sola con el período de arriba (ej. &ldquo;Octubre -
-                Noviembre 2026&rdquo;). Podés editarla a mano; para volver al
-                automático, borrá el campo. Se muestra bajo el título en el
-                frontend, junto al ícono de calendario.
-              </p>
-            </Field>
-          </FieldGroup>
-        </FormSection>
-
 
         {/* ================================================================ */}
         {/* Datos operativos (read-only legacy) — collapsed by default       */}
