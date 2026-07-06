@@ -45,7 +45,7 @@ import {
   startOfLocalDay,
   addDays,
 } from "@/lib/date";
-import { Star, ChevronDown, ChevronRight } from "lucide-react";
+import { Star, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { springs } from "@/components/lib/animations";
 import type { Paquete, EstadoPaquete } from "@/lib/types";
 
@@ -252,6 +252,36 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       ? validezHastaDate.getTime() - now.getTime() < thirtyDaysMs
       : false;
 
+  // Detecta si la vigencia mostrada en la UI está desincronizada del
+  // período de viaje. Caso típico: paquetes viejos donde la vigencia quedó
+  // con los defaults del alta (hoy / hoy+1año) y después se configuró el
+  // período de viaje a mano. La UI muestra un banner con un botón para
+  // aplicar el recálculo.
+  const localValidezDesdeStr = validezDesdeDate
+    ? formatStoredDate(validezDesdeDate)
+    : null;
+  const localValidezHastaStr = validezHastaDate
+    ? formatStoredDate(validezHastaDate)
+    : null;
+  const derivedValidezDesde = viajeDesdeDate
+    ? formatStoredDate(addDays(viajeDesdeDate, -15))
+    : null;
+  const derivedValidezHasta = viajeHastaDate
+    ? formatStoredDate(viajeHastaDate)
+    : null;
+  const vigenciaDesincronizada =
+    !vigenciaManual &&
+    (localValidezDesdeStr !== derivedValidezDesde ||
+      localValidezHastaStr !== derivedValidezHasta);
+
+  const handleAplicarVigenciaAlViaje = () => {
+    setValidezDesdeDate(
+      viajeDesdeDate ? addDays(viajeDesdeDate, -15) : undefined,
+    );
+    setValidezHastaDate(viajeHastaDate);
+    markDirty();
+  };
+
   const persistPaquete = useCallback(
     (overrides: Partial<Paquete> = {}) => {
       // Período de viaje: cuándo viaja el cliente (matchea servicios y precios).
@@ -380,6 +410,14 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       const auto = formatSalidasFromRange(desde, hasta);
       if (auto) setSalidas(auto);
     }
+    // Si la vigencia NO está en modo manual, reflejar el cambio del viaje
+    // inmediatamente en la UI para que el operador vea el recálculo sin tener
+    // que esperar al autosave + refresh. El persistPaquete ya hace lo mismo en
+    // el guardado.
+    if (!vigenciaManual) {
+      setValidezDesdeDate(desde ? addDays(desde, -15) : undefined);
+      setValidezHastaDate(hasta);
+    }
     markDirty();
   };
   const setValidezDesdeDateDirty = (v: Date | undefined) => {
@@ -430,6 +468,29 @@ export default function DatosTab({ paquete }: DatosTabProps) {
           title="Estado y vigencia"
           description="Etapa del flujo interno y hasta cuándo el paquete sigue activo en el frontend. Al pasar la fecha 'hasta' se da de baja automáticamente."
         >
+          {vigenciaDesincronizada && !isReadOnly && (
+            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0 text-[12px] text-amber-900 leading-snug">
+                <p className="font-semibold mb-0.5">
+                  La vigencia guardada no coincide con el período de viaje.
+                </p>
+                <p>
+                  {viajeDesdeDate && derivedValidezDesde && derivedValidezHasta
+                    ? `Cálculo automático: ${derivedValidezDesde} → ${derivedValidezHasta}.`
+                    : "Definí las fechas del viaje para calcular la vigencia automática."}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAplicarVigenciaAlViaje}
+                  disabled={!viajeDesdeDate}
+                  className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-amber-800 hover:text-amber-950 underline disabled:opacity-50 disabled:no-underline"
+                >
+                  Aplicar al período de viaje
+                </button>
+              </div>
+            </div>
+          )}
           <FieldGroup columns={2}>
             <Field>
               <FieldLabel>Estado</FieldLabel>
