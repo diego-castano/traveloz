@@ -459,7 +459,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       {canEdit && (
         <div className="sticky top-2 z-20 mb-4 flex justify-end">
           <div className="flex items-center gap-2 rounded-full bg-white/70 px-2 py-1 backdrop-blur-sm">
-            <AutoSaveIndicator status={autoSaveStatus} />
+            <AutoSaveIndicator status={autoSaveStatus} onRetry={() => void saveNow()} />
             <Button variant="secondary" size="sm" onClick={handleSave}>
               Guardar Cambios
             </Button>

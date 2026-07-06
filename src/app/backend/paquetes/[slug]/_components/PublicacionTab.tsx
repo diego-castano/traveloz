@@ -276,6 +276,30 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   useEffect(() => {
     cachedPaqueteRef.current = cachedPaquete;
   }, [cachedPaquete]);
+  // `data` (título + vigencia) se carga una sola vez al montar y alimenta
+  // placeholders (meta title, botón "Auto" del slug, vista SERP) y el resumen de
+  // vigencia. Si el operador edita el título o la vigencia en la pestaña Datos,
+  // esos valores quedaban stale acá. Los re-sincronizamos desde la cache del
+  // provider cuando cambian, sin re-fetchear.
+  useEffect(() => {
+    if (!cachedPaquete) return;
+    setData((prev) => {
+      if (!prev) return prev;
+      if (
+        prev.titulo === cachedPaquete.titulo &&
+        prev.validezDesde === cachedPaquete.validezDesde &&
+        prev.validezHasta === cachedPaquete.validezHasta
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        titulo: cachedPaquete.titulo,
+        validezDesde: cachedPaquete.validezDesde,
+        validezHasta: cachedPaquete.validezHasta,
+      };
+    });
+  }, [cachedPaquete]);
   const syncDescripcionToCache = useCallback(
     (descripcion: string) => {
       const cached = cachedPaqueteRef.current;
@@ -576,7 +600,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     syncDescripcionToCache(formRef.current.descripcion);
   }, [paqueteId, toast, focusBlockerField, serviciosFromIncluye, syncDescripcionToCache]);
 
-  const { status: autoSaveStatus, markDirty } = useAutoSave({
+  const { status: autoSaveStatus, markDirty, saveNow } = useAutoSave({
     onSave: handleAutoSave,
     enabled: !!data,
   });
@@ -1263,7 +1287,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       {/* Sticky autosave bar */}
       <div className="sticky bottom-4 bg-white/90 backdrop-blur-sm border border-neutral-200 rounded-lg shadow-lg px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 text-xs text-neutral-500">
-          <AutoSaveIndicator status={autoSaveStatus} />
+          <AutoSaveIndicator status={autoSaveStatus} onRetry={() => void saveNow()} />
           <span>Los cambios se autoguardan; el sitio se actualiza en &lt; 1 min.</span>
         </div>
         <Button

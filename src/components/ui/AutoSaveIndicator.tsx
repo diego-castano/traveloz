@@ -1,11 +1,14 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
-import { Check, Loader2, Circle } from 'lucide-react';
+import { Check, Loader2, Circle, RotateCw } from 'lucide-react';
 import type { AutoSaveStatus } from '@/hooks/useAutoSave';
 
 interface AutoSaveIndicatorProps {
   status: AutoSaveStatus;
+  // Si se pasa, en estado 'error' se muestra un botón "Reintentar". Sin esto el
+  // indicador quedaba en rojo hasta la próxima edición, sin forma de reintentar.
+  onRetry?: () => void;
 }
 
 const statusConfig = {
@@ -35,9 +38,10 @@ const statusConfig = {
   },
 };
 
-export function AutoSaveIndicator({ status }: AutoSaveIndicatorProps) {
+export function AutoSaveIndicator({ status, onRetry }: AutoSaveIndicatorProps) {
   const config = statusConfig[status];
   const Icon = config.icon;
+  const showRetry = status === 'error' && !!onRetry;
 
   return (
     <AnimatePresence mode="wait">
@@ -63,6 +67,17 @@ export function AutoSaveIndicator({ status }: AutoSaveIndicatorProps) {
         <span className="text-[11px] font-medium" style={{ color: config.textColor }}>
           {config.label}
         </span>
+        {showRetry && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="ml-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold text-[#CC2030] hover:bg-[#E74C5F]/10 transition-colors"
+            title="Reintentar el guardado"
+          >
+            <RotateCw className="w-3 h-3" />
+            Reintentar
+          </button>
+        )}
       </motion.div>
     </AnimatePresence>
   );
