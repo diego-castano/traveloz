@@ -534,10 +534,24 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     if (res.ok && formRef.current.publicado && formRef.current.estado !== "ACTIVO") {
       setForm((p) => ({ ...p, estado: "ACTIVO" }));
     }
-    await setPaqueteServicios(
-      paqueteId,
-      serviciosFromIncluye(incluyeItemsRef.current),
-    );
+    // Sincronización secundaria: la tabla `PaqueteServicio` (catálogo → paquete)
+    // es opcional. La lista visible la arma el front desde `textoIncluye` (el
+    // JSON ya guardado arriba). Si esta sync falla, NO debe quedar el indicador
+    // en "Error al guardar" indefinidamente: los cambios del formulario ya
+    // quedaron persistidos, así que logueamos y dejamos que el próximo autosave
+    // se encargue. Antes este throw sin catch rompía la sesión y el operador
+    // tenía que refrescar la página para volver a guardar.
+    try {
+      await setPaqueteServicios(
+        paqueteId,
+        serviciosFromIncluye(incluyeItemsRef.current),
+      );
+    } catch (e) {
+      console.error(
+        "[PublicacionTab] setPaqueteServicios failed; front fields were already saved",
+        e,
+      );
+    }
     syncDescripcionToCache(formRef.current.descripcion);
   }, [paqueteId, toast, focusBlockerField, serviciosFromIncluye, syncDescripcionToCache]);
 

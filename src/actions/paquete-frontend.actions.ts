@@ -342,21 +342,52 @@ export async function setPaqueteServicios(
     vistos.add(s.servicioId);
     return true;
   });
-  await prisma.$transaction([
-    prisma.paqueteServicio.deleteMany({ where: { paqueteId } }),
-    ...(serviciosUnicos.length > 0
-      ? [
-          prisma.paqueteServicio.createMany({
-            data: serviciosUnicos.map((s) => ({
-              paqueteId,
-              servicioId: s.servicioId,
-              textoCustom: s.textoCustom ?? null,
-              orden: s.orden,
-            })),
-          }),
-        ]
-      : []),
-  ]);
+  // Validación de FK antes de tocar la tabla. El JSON de `textoIncluye` puede
+  // arrastrar `servicioId` de catálogos borrados o desactivados; insertarlos
+  // acá rompe la transacción y deja al operador viendo "Error al guardar"
+  // incluso cuando el JSON (la lista visible al viajero) se guardó OK. Mejor
+  // descartar los `servicioId` que ya no existen en `CatalogoServicio` y dejar
+  // que el cliente re-sincronice desde la lista. El item sigue visible en
+  // `textoIncluye` con su texto/ícono snapshot.
+  let serviciosValidos = serviciosUnicos;
+  if (serviciosUnicos.length > 0) {
+    const existentes = await prisma.catalogoServicio.findMany({
+      where: { id: { in: serviciosUnicos.map((s) => s.servicioId) } },
+      select: { id: true },
+    });
+    const existentesSet = new Set(existentes.map((e) => e.id));
+    serviciosValidos = serviciosUnicos.filter((s) =>
+      existentesSet.has(s.servicioId),
+    );
+  }
+  try {
+    await prisma.$transaction([
+      prisma.paqueteServicio.deleteMany({ where: { paqueteId } }),
+      ...(serviciosValidos.length > 0
+        ? [
+            prisma.paqueteServicio.createMany({
+              data: serviciosValidos.map((s) => ({
+                paqueteId,
+                servicioId: s.servicioId,
+                textoCustom: s.textoCustom ?? null,
+                orden: s.orden,
+              })),
+            }),
+          ]
+        : []),
+    ]);
+  } catch (e) {
+    // No dejamos que la transacción falle silenciosamente. El autosave muestra
+    // "Error al guardar" y el operador no sabe qué pasó. Logueamos el contexto
+    // para diagnosticar y re-lanzamos para que el indicador quede en 'error'.
+    console.error("[setPaqueteServicios] failed for paquete", paqueteId, {
+      incoming: servicios.length,
+      afterDedupe: serviciosUnicos.length,
+      afterFkCheck: serviciosValidos.length,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    throw e;
+  }
   revalidatePath(`/backend/paquetes/${paqueteId}`);
   revalidateTag("paquetes");
 }
