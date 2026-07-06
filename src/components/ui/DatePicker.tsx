@@ -52,14 +52,14 @@ const dayPickerClassNames: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Selected day — flat teal, no clay shadow (cleaner + consistent)
+// Selected day — círculo rojo con texto blanco. Pide el cliente.
 // ---------------------------------------------------------------------------
 
 const modifiersStyles = {
   selected: {
-    background: "#3BBFAD",
+    background: "#E74C5F",
     color: "#FFFFFF",
-    borderRadius: "8px",
+    borderRadius: "9999px",
   },
 };
 

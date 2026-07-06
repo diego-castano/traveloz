@@ -167,9 +167,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     parseStoredDate(paquete.viajeHasta),
   );
   // Vigencia: hasta cuándo el paquete sigue visible/activo en el frontend.
-  // Por defecto se ata al período de viaje (validezDesde = viajeDesde − 15d,
-  // validezHasta = viajeHasta). Si el operador edita validezDesde/Hasta a
-  // mano, se rompe el vínculo y ya no se recalcula al tocar el viaje.
+  // Por defecto se ata al período de viaje (validezDesde = viajeDesde,
+  // validezHasta = viajeHasta − 15d). Si el operador edita validezDesde o
+  // validezHasta a mano, se rompe el vínculo y ya no se recalcula al tocar
+  // el viaje.
   const [validezDesdeDate, setValidezDesdeDate] = useState<Date | undefined>(
     parseStoredDate(paquete.validezDesde),
   );
@@ -264,10 +265,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     ? formatStoredDate(validezHastaDate)
     : null;
   const derivedValidezDesde = viajeDesdeDate
-    ? formatStoredDate(addDays(viajeDesdeDate, -15))
+    ? formatStoredDate(viajeDesdeDate)
     : null;
   const derivedValidezHasta = viajeHastaDate
-    ? formatStoredDate(viajeHastaDate)
+    ? formatStoredDate(addDays(viajeHastaDate, -15))
     : null;
   const vigenciaDesincronizada =
     !vigenciaManual &&
@@ -275,10 +276,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       localValidezHastaStr !== derivedValidezHasta);
 
   const handleAplicarVigenciaAlViaje = () => {
-    setValidezDesdeDate(
-      viajeDesdeDate ? addDays(viajeDesdeDate, -15) : undefined,
-    );
-    setValidezHastaDate(viajeHastaDate);
+    setValidezDesdeDate(viajeDesdeDate);
+    setValidezHastaDate(viajeHastaDate ? addDays(viajeHastaDate, -15) : undefined);
     markDirty();
   };
 
@@ -286,11 +285,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     (overrides: Partial<Paquete> = {}) => {
       // Período de viaje: cuándo viaja el cliente (matchea servicios y precios).
       // Vigencia: hasta cuándo el paquete sigue activo en el frontend.
-      //  • Si vigenciaManual es false, validezDesde se deriva de viajeDesde
-      //    (15 días antes) y validezHasta se iguala a viajeHasta.
-      //  • Si vigenciaManual es true, se respetan los valores manuales de
-      //    validezDesde/Hasta. validezDesde sigue siendo el ancla del resolver
-      //    de precios.
+      //  • Si vigenciaManual es false, validezDesde = viajeDesde y
+      //    validezHasta = viajeHasta - 15 días.
+      //  • Si vigenciaManual es true, se respetan los valores manuales.
       const viajeDesdeStr = viajeDesdeDate
         ? formatStoredDate(viajeDesdeDate)
         : null;
@@ -307,9 +304,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
           ? formatStoredDate(validezHastaDate)!
           : paquete.validezHasta;
       } else if (viajeDesdeDate) {
-        validezDesdeStr = formatStoredDate(addDays(viajeDesdeDate, -15))!;
+        // Vigencia automática: desde viajeDesde, hasta viajeHasta - 15 días.
+        validezDesdeStr = formatStoredDate(viajeDesdeDate)!;
         validezHastaStr = viajeHastaDate
-          ? formatStoredDate(viajeHastaDate)!
+          ? formatStoredDate(addDays(viajeHastaDate, -15))!
           : paquete.validezHasta;
       } else {
         validezDesdeStr = paquete.validezDesde;
@@ -413,10 +411,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     // Si la vigencia NO está en modo manual, reflejar el cambio del viaje
     // inmediatamente en la UI para que el operador vea el recálculo sin tener
     // que esperar al autosave + refresh. El persistPaquete ya hace lo mismo en
-    // el guardado.
+    // el guardado. Regla: validezHasta = viajeHasta - 15 días (la promo
+    // entra con 15 días de anticipación y se corta 15 días antes del fin).
     if (!vigenciaManual) {
-      setValidezDesdeDate(desde ? addDays(desde, -15) : undefined);
-      setValidezHastaDate(hasta);
+      setValidezDesdeDate(desde);
+      setValidezHastaDate(hasta ? addDays(hasta, -15) : undefined);
     }
     markDirty();
   };
@@ -509,8 +508,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               />
               <p className="text-[11px] text-neutral-400 mt-1">
                 Define qué servicios y tarifas aplican, y se usa como ancla
-                para calcular la vigencia automática (15 días antes del
-                inicio, hasta la fecha de fin).
+                para calcular la vigencia automática (desde el inicio del
+                viaje hasta 15 días antes del fin).
               </p>
             </Field>
 
@@ -533,8 +532,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                   </button>
                 )}
               </FieldLabel>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
+              <div className="flex items-end gap-2">
+                <div className="flex-1 min-w-0">
                   <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
                     Desde
                   </span>
@@ -543,15 +542,13 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                     onChange={setValidezDesdeDateDirty}
                     placeholder={
                       viajeDesdeDate
-                        ? `Auto: ${formatStoredDate(
-                            addDays(viajeDesdeDate, -15),
-                          )}`
+                        ? `Auto: ${formatStoredDate(viajeDesdeDate)}`
                         : "Elegir fecha..."
                     }
                     disabled={isReadOnly}
                   />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
                     Hasta
                   </span>
@@ -560,7 +557,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                     onChange={setValidezHastaDateDirty}
                     placeholder={
                       viajeHastaDate
-                        ? `Auto: ${formatStoredDate(viajeHastaDate)}`
+                        ? `Auto: ${formatStoredDate(addDays(viajeHastaDate, -15))}`
                         : "Elegir fecha..."
                     }
                     disabled={isReadOnly}
@@ -574,8 +571,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 </p>
               ) : (
                 <p className="mt-1.5 text-[11px] text-neutral-500">
-                  Calculada como <span className="font-medium">viaje desde − 15 días</span>{" "}
-                  hasta <span className="font-medium">viaje hasta</span>.
+                  Calculada desde <span className="font-medium">viaje desde</span>{" "}
+                  hasta <span className="font-medium">viaje hasta − 15 días</span>.
                   Tocá cualquier fecha para personalizarla.
                 </p>
               )}
@@ -601,8 +598,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               ) : null}
             </Field>
 
-            {/* 3) Salidas — vive junto al período del viaje, no en la sección */}
-            {/*    de identificación. Se autocompleta con el rango.            */}
+            {/* 3) Salidas — vive al lado de Vigencia, alineado por la base. */}
             <Field>
               <FieldLabel>Salidas</FieldLabel>
               <Input
