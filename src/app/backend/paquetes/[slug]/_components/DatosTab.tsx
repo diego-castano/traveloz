@@ -43,6 +43,7 @@ import {
   formatStoredDate,
   parseStoredDate,
   startOfLocalDay,
+  addDays,
 } from "@/lib/date";
 import { Star, ChevronDown, ChevronRight } from "lucide-react";
 import { springs } from "@/components/lib/animations";
@@ -166,12 +167,19 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     parseStoredDate(paquete.viajeHasta),
   );
   // Vigencia: hasta cuándo el paquete sigue visible/activo en el frontend.
-  // Es INDEPENDIENTE del período de viaje (ej: una promo que vence el domingo
-  // aunque el cliente viaje meses después). Al pasar esta fecha el paquete se
-  // da de baja automáticamente del sitio público.
+  // Por defecto se ata al período de viaje (validezDesde = viajeDesde − 15d,
+  // validezHasta = viajeHasta). Si el operador edita validezDesde/Hasta a
+  // mano, se rompe el vínculo y ya no se recalcula al tocar el viaje.
+  const [validezDesdeDate, setValidezDesdeDate] = useState<Date | undefined>(
+    parseStoredDate(paquete.validezDesde),
+  );
   const [validezHastaDate, setValidezHastaDate] = useState<Date | undefined>(
     parseStoredDate(paquete.validezHasta),
   );
+  // Override manual: queda en true apenas el operador toca validezDesde o
+  // validezHasta con el toggle "vincular" apagado. Mientras esté en true, los
+  // cambios al período de viaje no pisan la vigencia.
+  const [vigenciaManual, setVigenciaManual] = useState(false);
   // Salidas: leyenda libre que se muestra bajo el título en el frontend
   // (ej. "Salidas semanales todo el año"). Vive junto al período del viaje.
   // Se autocompleta desde "Desde y hasta" salvo que el operador la edite a mano.
@@ -246,21 +254,37 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
   const persistPaquete = useCallback(
     (overrides: Partial<Paquete> = {}) => {
-      // El período de viaje y la vigencia ahora son INDEPENDIENTES:
-      //  • viajeDesde/viajeHasta: cuándo viaja el cliente (matchea servicios y
-      //    precios). `validezDesde` se sincroniza con `viajeDesde` porque es el
-      //    ancla de fecha que usan los resolvers de precios.
-      //  • validezHasta: hasta cuándo el paquete sigue activo en el frontend
-      //    (fecha de baja automática). La edita el operador por separado.
+      // Período de viaje: cuándo viaja el cliente (matchea servicios y precios).
+      // Vigencia: hasta cuándo el paquete sigue activo en el frontend.
+      //  • Si vigenciaManual es false, validezDesde se deriva de viajeDesde
+      //    (15 días antes) y validezHasta se iguala a viajeHasta.
+      //  • Si vigenciaManual es true, se respetan los valores manuales de
+      //    validezDesde/Hasta. validezDesde sigue siendo el ancla del resolver
+      //    de precios.
       const viajeDesdeStr = viajeDesdeDate
         ? formatStoredDate(viajeDesdeDate)
         : null;
       const viajeHastaStr = viajeHastaDate
         ? formatStoredDate(viajeHastaDate)
         : null;
-      const validezHastaStr = validezHastaDate
-        ? formatStoredDate(validezHastaDate)
-        : null;
+      let validezDesdeStr: string;
+      let validezHastaStr: string;
+      if (vigenciaManual) {
+        validezDesdeStr = validezDesdeDate
+          ? formatStoredDate(validezDesdeDate)!
+          : paquete.validezDesde;
+        validezHastaStr = validezHastaDate
+          ? formatStoredDate(validezHastaDate)!
+          : paquete.validezHasta;
+      } else if (viajeDesdeDate) {
+        validezDesdeStr = formatStoredDate(addDays(viajeDesdeDate, -15))!;
+        validezHastaStr = viajeHastaDate
+          ? formatStoredDate(viajeHastaDate)!
+          : paquete.validezHasta;
+      } else {
+        validezDesdeStr = paquete.validezDesde;
+        validezHastaStr = paquete.validezHasta;
+      }
       return updatePaquete({
         ...paquete,
         titulo,
@@ -273,10 +297,8 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         estado: estado as EstadoPaquete,
         destacado,
         moneda,
-        // Ancla de precios: sigue al inicio del viaje (fallback al valor previo).
-        validezDesde: viajeDesdeStr ?? paquete.validezDesde,
-        // Vigencia independiente del viaje.
-        validezHasta: validezHastaStr ?? paquete.validezHasta,
+        validezDesde: validezDesdeStr,
+        validezHasta: validezHastaStr,
         viajeDesde: viajeDesdeStr,
         viajeHasta: viajeHastaStr,
         updatedAt: new Date().toISOString(),
@@ -295,7 +317,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       moneda,
       viajeDesdeDate,
       viajeHastaDate,
+      validezDesdeDate,
       validezHastaDate,
+      vigenciaManual,
       updatePaquete,
     ],
   );
@@ -358,8 +382,22 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     }
     markDirty();
   };
+  const setValidezDesdeDateDirty = (v: Date | undefined) => {
+    setValidezDesdeDate(v);
+    setVigenciaManual(true);
+    markDirty();
+  };
   const setValidezHastaDateDirty = (v: Date | undefined) => {
     setValidezHastaDate(v);
+    setVigenciaManual(true);
+    markDirty();
+  };
+  // Re-vincula la vigencia al período de viaje: borra validezDesde/Hasta y
+  // deja que el próximo render del autosave los derive del viaje.
+  const handleVincularVigencia = () => {
+    setVigenciaManual(false);
+    setValidezDesdeDate(undefined);
+    setValidezHastaDate(undefined);
     markDirty();
   };
 
@@ -390,7 +428,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         {/* ================================================================ */}
         <FormSection
           title="Estado y vigencia"
-          description="Etapa del flujo interno y hasta cuándo el paquete sigue activo en el frontend. Al pasar la fecha de 'Activo hasta' se da de baja automáticamente. La vigencia es independiente del período de viaje."
+          description="Etapa del flujo interno y hasta cuándo el paquete sigue activo en el frontend. Al pasar la fecha 'hasta' se da de baja automáticamente."
         >
           <FieldGroup columns={2}>
             <Field>
@@ -404,16 +442,74 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               />
             </Field>
             <Field>
-              <FieldLabel>Vigencia · activo hasta</FieldLabel>
-              <DatePicker
-                value={validezHastaDate}
-                onChange={setValidezHastaDateDirty}
-                placeholder="Elegir fecha en el calendario..."
-                disabled={isReadOnly}
-              />
+              <FieldLabel className="flex items-center justify-between">
+                <span>Vigencia</span>
+                {!vigenciaManual ? (
+                  <span className="text-[10.5px] font-normal text-neutral-400">
+                    Vinculada al período de viaje
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleVincularVigencia}
+                    disabled={isReadOnly}
+                    className="text-[10.5px] font-medium text-violet-600 hover:underline disabled:text-neutral-300 disabled:no-underline"
+                  >
+                    Volver a vincular al viaje
+                  </button>
+                )}
+              </FieldLabel>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
+                    Desde
+                  </span>
+                  <DatePicker
+                    value={validezDesdeDate}
+                    onChange={setValidezDesdeDateDirty}
+                    placeholder={
+                      viajeDesdeDate
+                        ? `Auto: ${formatStoredDate(
+                            addDays(viajeDesdeDate, -15),
+                          )}`
+                        : "Elegir fecha..."
+                    }
+                    disabled={isReadOnly}
+                  />
+                </div>
+                <div>
+                  <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
+                    Hasta
+                  </span>
+                  <DatePicker
+                    value={validezHastaDate}
+                    onChange={setValidezHastaDateDirty}
+                    placeholder={
+                      viajeHastaDate
+                        ? `Auto: ${formatStoredDate(viajeHastaDate)}`
+                        : "Elegir fecha..."
+                    }
+                    disabled={isReadOnly}
+                  />
+                </div>
+              </div>
+              {vigenciaManual ? (
+                <p className="mt-1.5 text-[11px] text-neutral-500">
+                  Vigencia manual: no se actualiza al cambiar el período de
+                  viaje.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-[11px] text-neutral-500">
+                  Calculada automáticamente como{" "}
+                  <span className="font-medium">viaje desde − 15 días</span>{" "}
+                  hasta <span className="font-medium">viaje hasta</span>.
+                  Tocá cualquier fecha para personalizarla.
+                </p>
+              )}
               {hastaExpired ? (
                 <p className="mt-1.5 text-[11.5px] font-medium text-[#CC2030]">
-                  Vigencia vencida — el paquete ya no se muestra en el frontend.
+                  Vigencia vencida — el paquete ya no se muestra en el
+                  frontend.
                 </p>
               ) : hastaWarning ? (
                 <p className="mt-1.5 text-[11.5px] font-medium text-amber-600">
@@ -429,11 +525,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                   })}
                   .
                 </p>
-              ) : (
-                <p className="mt-1 text-[11px] text-neutral-400">
-                  Sin fecha: el paquete permanece activo indefinidamente.
-                </p>
-              )}
+              ) : null}
             </Field>
           </FieldGroup>
         </FormSection>
@@ -576,7 +668,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         {/* ================================================================ */}
         <FormSection
           title="Período del viaje"
-          description="Fechas en las que el cliente viaja. Define qué servicios y tarifas aplican. No controla la vigencia del paquete (eso se configura abajo, en Vigencia)."
+          description="Fechas en las que el cliente viaja. Define qué servicios y tarifas aplican, y la vigencia del paquete en el frontend (15 días previos al inicio, hasta la fecha de fin). Para personalizarla, editá la sección Estado y vigencia."
         >
           <FieldGroup columns={1}>
             <Field>

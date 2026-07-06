@@ -12,8 +12,9 @@
 //     (handled in updatePaqueteLifecycle).
 //
 // All public-content fields (slug, hero, textos, SEO, servicios incluidos)
-// live here too; the rest of the lifecycle bits (estado, destacado, validez,
-// etiquetas) moved here from the former PublicacionTab.
+// live here too; el resto del lifecycle (estado, destacado, etiquetas) vive
+// acá. La vigencia (validezDesde/Hasta) se edita desde la pestaña Datos, donde
+// se vincula automáticamente al período de viaje.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -41,7 +42,6 @@ import { Toggle } from "@/components/ui/Toggle";
 import { Select } from "@/components/ui/Select";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Tag, type TagColor } from "@/components/ui/Tag";
-import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { useToast } from "@/components/ui/Toast";
 import {
   getPaqueteFrontendData,
@@ -73,6 +73,7 @@ import {
 } from "@/components/ui/EstadoHelp";
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { parseStoredDate } from "@/lib/date";
 import {
   usePackageDispatch,
   usePaqueteById,
@@ -199,6 +200,47 @@ function RichField({
   );
 }
 
+// Resumen de vigencia — la edición vive en la pestaña Datos. Acá solo
+// mostramos el estado persistido para que el operador sepa qué tiene guardado
+// sin tener que ir y volver.
+function VigenciaResumen({
+  validezDesde,
+  validezHasta,
+}: {
+  validezDesde?: string | null;
+  validezHasta?: string | null;
+}) {
+  const fmt = (iso?: string | null) => {
+    const d = parseStoredDate(iso ?? null);
+    if (!d) return "—";
+    return d.toLocaleDateString("es-AR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2">
+        <p className="text-[10px] uppercase tracking-wide text-neutral-400">
+          Desde
+        </p>
+        <p className="text-[13px] text-neutral-700 font-medium">
+          {fmt(validezDesde)}
+        </p>
+      </div>
+      <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2">
+        <p className="text-[10px] uppercase tracking-wide text-neutral-400">
+          Hasta
+        </p>
+        <p className="text-[13px] text-neutral-700 font-medium">
+          {fmt(validezHasta)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function Section({
   title,
   description,
@@ -291,8 +333,6 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     // Lifecycle
     estado: "BORRADOR" as EstadoPaquete,
     destacado: false,
-    validezDesde: "" as string | null,
-    validezHasta: "" as string | null,
   });
 
   useEffect(() => {
@@ -313,8 +353,6 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             textoCondiciones: toEditorHtml(d.textoCondiciones),
             estado: d.estado,
             destacado: d.destacado,
-            validezDesde: d.validezDesde ?? "",
-            validezHasta: d.validezHasta ?? "",
           });
           // Build the Incluye list: the canonical JSON list if present, else
           // migrate legacy content (catalog services + free-text bullets) into
@@ -642,18 +680,6 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       .catch((e) => toast("error", "Error", (e as Error).message));
   };
 
-  const handleValidezChange = (desde: string, hasta: string) => {
-    if (!desde && !hasta) return;
-    const next = {
-      validezDesde: desde || form.validezDesde,
-      validezHasta: hasta || form.validezHasta,
-    };
-    setForm((p) => ({ ...p, ...next }));
-    updatePaqueteLifecycle(paqueteId, next)
-      .then(() => toast("success", "Periodo de validez actualizado"))
-      .catch((e) => toast("error", "Error", (e as Error).message));
-  };
-
   const handleAddEtiqueta = async (etiquetaId: string) => {
     try {
       const created = await assignPaqueteEtiqueta(paqueteId, etiquetaId);
@@ -898,15 +924,17 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           <label className="block text-xs font-medium text-neutral-700 mb-1">
             Periodo de validez
           </label>
-          <PeriodPicker
-            valueFrom={form.validezDesde ?? ""}
-            valueTo={form.validezHasta ?? ""}
-            onChange={handleValidezChange}
-            disabled={disabled}
-            placeholder="Seleccionar periodo de validez..."
-          />
+          <VigenciaResumen validezDesde={data.validezDesde} validezHasta={data.validezHasta} />
           <p className="text-[11px] text-neutral-500 mt-1">
-            El paquete se auto-desactiva al llegar a la fecha "hasta".
+            Se configura desde la pestaña{" "}
+            <a
+              href="?tab=datos"
+              className="text-violet-600 hover:underline"
+            >
+              Datos
+            </a>
+            . Por defecto se vincula al período de viaje (15 días previos al
+            inicio, hasta la fecha de fin).
           </p>
         </div>
       </Section>

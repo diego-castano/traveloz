@@ -44,3 +44,10 @@ export function startOfLocalDay(value?: Date | null): Date | undefined {
 
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
+
+/** Returns a new Date shifted by `days` (can be negative), preserving the local calendar day. */
+export function addDays(value: Date, days: number): Date {
+  const out = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  out.setDate(out.getDate() + days);
+  return out;
+}
