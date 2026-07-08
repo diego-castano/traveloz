@@ -28,9 +28,7 @@ export default async function RegionListingPage({
   if (!region) notFound();
   const paquetesRaw = await getPaquetesByRegion(region.id);
 
-  // Project to the shape RegionExplorer expects. Strip destinos that are
-  // outside this region (stopovers) so package cards only list cities the
-  // user is actually buying as part of THIS region's listing.
+  // Project to the shape RegionExplorer expects.
   const paquetes = paquetesRaw.map((p) => ({
     id: p.id,
     slug: p.slug,
@@ -42,15 +40,6 @@ export default async function RegionListingPage({
     precioDesdeMoneda: p.precioDesdeMoneda,
     heroImage: p.heroImage,
     fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? "" })),
-    destinos: p.destinos
-      .filter((d) => d.ciudad?.pais?.regionId === region.id)
-      .map((d) => ({
-        ciudad: {
-          id: d.ciudad?.id ?? "",
-          nombre: d.ciudad?.nombre ?? "",
-          paisId: d.ciudad?.paisId ?? null,
-        },
-      })),
   }));
 
   return (
@@ -60,13 +49,7 @@ export default async function RegionListingPage({
         slug: region.slug,
         nombre: region.nombre,
         descripcion: region.descripcion,
-        heroImage: region.heroImage,
       }}
-      paises={region.paises.map((p) => ({
-        id: p.id,
-        nombre: p.nombre,
-        ciudades: p.ciudades.map((c) => ({ id: c.id, nombre: c.nombre })),
-      }))}
       paquetes={paquetes}
     />
   );

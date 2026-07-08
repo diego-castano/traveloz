@@ -30,15 +30,29 @@ type P = {
   precioDesdeMoneda: string | null;
   heroImage: string | null;
   fotos: { url: string; alt: string }[];
-  destinos: { ciudad: { nombre: string } }[];
+  /**
+   * Histórico: el RegionExplorer viejo proyectaba las ciudades del paquete
+   * acá para los chips de país/ciudad. Quedó opcional — los otros dos
+   * consumidores (RelatedPackages, /destinos?tipo=) no lo pasan y no lo
+   * necesitan.
+   */
+  destinos?: { ciudad: { nombre: string } }[];
 };
 
 export function PackageCard({
   paquete,
   regionSlug,
+  variant = "default",
 }: {
   paquete: P;
   regionSlug: string;
+  /**
+   * "alt" = tarjeta con imagen a 240px y `height:100%` (referencia de
+   * destination-listing.html, usada en grids de 3-4 columnas en
+   * RegionExplorer). "default" = tarjeta de 280px, usada en el slider del
+   * detalle y en /destinos?tipo=.
+   */
+  variant?: "default" | "alt";
 }) {
   // heroImage → primera foto → placeholder. Nunca caemos a una foto de otro
   // destino: una tarjeta sin imagen muestra el placeholder, no slider-1.webp.
@@ -49,7 +63,7 @@ export function PackageCard({
 
   return (
     <Skeleton name="package-card" loading={false}>
-      <a href={href} className="box-card">
+      <a href={href} className={`box-card${variant === "alt" ? " alt" : ""}`}>
         <img
           src={img}
           alt={paquete.titulo}
