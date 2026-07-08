@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Calendar } from "lucide-react";
+import { X } from "lucide-react";
 import { PackageCard } from "@/components/public/PackageCard";
 
 // ---------------------------------------------------------------------------
@@ -74,6 +74,7 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
   const [ciudadInput, setCiudadInput] = useState("");
   const [ciudadOpen, setCiudadOpen] = useState(false);
   const [ciudadesSel, setCiudadesSel] = useState<Ciudad[]>([]);
+  const [temporadaOpen, setTemporadaOpen] = useState(false);
   const [temporadas, setTemporadas] = useState<Set<string>>(new Set());
   const ciudadInputRef = useRef<HTMLInputElement>(null);
 
@@ -153,112 +154,164 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
         <div className="listing-filter">
           <h1 className="h2 text-center">Explorá todos los destinos</h1>
           <div className="filter-form">
-            {/* City typeahead (multi) */}
-            <div className="city-typeahead">
-              <div className="inner-flex">
-                <div className="filter-fields">
+            <div className="inner-flex">
+              {/* City typeahead (multi) */}
+              <div className="filter-fields">
+                <div
+                  className={`inner-field city-field${
+                    ciudadOpen ? " is-open" : ""
+                  }`}
+                >
+                  <label htmlFor="filter-location">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/site/img/location-icon.svg" alt="" />
+                  </label>
+                  <div className="city-input-wrap">
+                    {ciudadesSel.map((c) => (
+                      <span key={c.id} className="city-chip">
+                        {c.nombre}
+                        <button
+                          type="button"
+                          onClick={() => removeCiudad(c.id)}
+                          aria-label={`Quitar ${c.nombre}`}
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))}
+                    <input
+                      ref={ciudadInputRef}
+                      type="text"
+                      id="filter-location"
+                      autoComplete="off"
+                      placeholder={ciudadesSel.length === 0 ? "Destino (ciudad)" : ""}
+                      value={ciudadInput}
+                      onChange={(e) => {
+                        setCiudadInput(e.target.value);
+                        setCiudadOpen(true);
+                      }}
+                      onFocus={() => {
+                        setCiudadOpen(true);
+                        setTemporadaOpen(false);
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setCiudadOpen(false), 150);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (sugerencias[0]) addCiudad(sugerencias[0]);
+                        } else if (e.key === "Backspace" && ciudadInput === "" && ciudadesSel.length > 0) {
+                          removeCiudad(ciudadesSel[ciudadesSel.length - 1].id);
+                        }
+                      }}
+                    />
+                  </div>
+                  {ciudadOpen && sugerencias.length > 0 && (
+                    <ul className="city-suggest" role="listbox">
+                      {sugerencias.map((c) => (
+                        <li
+                          key={c.id}
+                          role="option"
+                          aria-selected={false}
+                          tabIndex={0}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => addCiudad(c)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") addCiudad(c);
+                          }}
+                        >
+                          <span className="city-suggest-name">{c.nombre}</span>
+                          <span className="city-suggest-pais">{c.paisNombre}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Temporada (multi) — mismo patrón visual que el de ciudad */}
+                {mesesDisponibles.length > 0 && (
                   <div
-                    className={`inner-field city-field${
-                      ciudadOpen ? " is-open" : ""
+                    className={`inner-field city-field season-field${
+                      temporadaOpen ? " is-open" : ""
                     }`}
                   >
-                    <label htmlFor="filter-location">
+                    <label htmlFor="filter-season" className="file-label">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/site/img/location-icon.svg" alt="" />
+                      <img src="/site/img/file.svg" alt="" />
                     </label>
                     <div className="city-input-wrap">
-                      {ciudadesSel.map((c) => (
-                        <span key={c.id} className="city-chip">
-                          {c.nombre}
-                          <button
-                            type="button"
-                            onClick={() => removeCiudad(c.id)}
-                            aria-label={`Quitar ${c.nombre}`}
-                          >
-                            <X size={12} />
-                          </button>
-                        </span>
-                      ))}
+                      {Array.from(temporadas).map((id) => {
+                        const m = MONTHS.find((x) => x.id === id);
+                        if (!m) return null;
+                        return (
+                          <span key={id} className="city-chip">
+                            {m.nombre}
+                            <button
+                              type="button"
+                              onClick={() => toggleTemporada(id)}
+                              aria-label={`Quitar ${m.nombre}`}
+                            >
+                              <X size={12} />
+                            </button>
+                          </span>
+                        );
+                      })}
                       <input
-                        ref={ciudadInputRef}
+                        id="filter-season"
                         type="text"
-                        id="filter-location"
+                        readOnly
                         autoComplete="off"
-                        placeholder={ciudadesSel.length === 0 ? "Destino (ciudad)" : ""}
-                        value={ciudadInput}
-                        onChange={(e) => {
-                          setCiudadInput(e.target.value);
-                          setCiudadOpen(true);
-                        }}
-                        onFocus={() => setCiudadOpen(true)}
-                        onBlur={() => {
-                          // Delay para que el click en sugerencia dispare antes.
-                          setTimeout(() => setCiudadOpen(false), 150);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            if (sugerencias[0]) addCiudad(sugerencias[0]);
-                          } else if (e.key === "Backspace" && ciudadInput === "" && ciudadesSel.length > 0) {
-                            removeCiudad(ciudadesSel[ciudadesSel.length - 1].id);
-                          }
+                        placeholder={
+                          temporadas.size === 0 ? "Temporada" : ""
+                        }
+                        onClick={() => {
+                          setTemporadaOpen((v) => !v);
+                          setCiudadOpen(false);
                         }}
                       />
                     </div>
-                    {ciudadOpen && sugerencias.length > 0 && (
+                    {temporadaOpen && (
                       <ul className="city-suggest" role="listbox">
-                        {sugerencias.map((c) => (
-                          <li
-                            key={c.id}
-                            role="option"
-                            aria-selected={false}
-                            tabIndex={0}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => addCiudad(c)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") addCiudad(c);
-                            }}
-                          >
-                            <span className="city-suggest-name">{c.nombre}</span>
-                            <span className="city-suggest-pais">{c.paisNombre}</span>
-                          </li>
-                        ))}
+                        {mesesDisponibles.map((m) => {
+                          const active = temporadas.has(m.id);
+                          return (
+                            <li
+                              key={m.id}
+                              role="option"
+                              aria-selected={active}
+                              tabIndex={0}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => toggleTemporada(m.id)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") toggleTemporada(m.id);
+                              }}
+                              className={active ? "is-active" : ""}
+                            >
+                              <span className="city-suggest-name">{m.nombre}</span>
+                              {active && (
+                                <span className="city-suggest-pais">✓</span>
+                              )}
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </div>
-                </div>
-                <button type="button" onClick={() => setCiudadOpen((v) => !v)}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/site/img/search-icon.svg" alt="" />
-                  Buscar
-                </button>
+                )}
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCiudadOpen(false);
+                  setTemporadaOpen(false);
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/site/img/search-icon.svg" alt="" />
+                Buscar
+              </button>
             </div>
-
-            {/* Season chips (meses) */}
-            {mesesDisponibles.length > 0 && (
-              <div className="season-chips" aria-label="Temporada">
-                <div className="season-chips-label">
-                  <Calendar size={13} /> Temporada
-                </div>
-                <div className="season-chips-row">
-                  {mesesDisponibles.map((m) => {
-                    const active = temporadas.has(m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        className={`season-chip${active ? " is-active" : ""}`}
-                        onClick={() => toggleTemporada(m.id)}
-                        aria-pressed={active}
-                      >
-                        {m.nombre}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
         </div>
 

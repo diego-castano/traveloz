@@ -4404,19 +4404,32 @@ header.header-area.header-dark {
 
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Region listing — typeahead de ciudad + chips de temporada (live).
-   Overrides del .filter-form del reference: el input absoluto no sirve
-   cuando conviven chips + input + dropdown de sugerencias, así que el
-   .inner-field con .city-field redefine layout a flex.
+   Region listing — typeahead de ciudad + input-dropdown de temporada.
+   Replica 1:1 del reference: 2 inputs lado a lado (Destino + Temporada)
+   con icono a la izquierda, y un botón Buscar. Ambos inputs aceptan
+   chips adentro para multi-select.
    ───────────────────────────────────────────────────────────────────────── */
 .filter-form .inner-field.city-field {
   overflow: visible;
   height: auto;
   min-height: 55px;
-  width: 460px;
-  min-width: 460px;
+  width: 360px;
+  min-width: 360px;
   display: flex;
   align-items: center;
+}
+
+.filter-form .inner-field.city-field.season-field {
+  width: 280px;
+  min-width: 280px;
+}
+
+.filter-form .inner-field.city-field.season-field .city-input-wrap {
+  cursor: pointer;
+}
+
+.filter-form .inner-field.city-field.season-field input {
+  cursor: pointer;
 }
 
 .filter-form .inner-field.city-field .city-input-wrap {
@@ -4427,6 +4440,11 @@ header.header-area.header-dark {
   width: 100%;
   padding: 6px 12px 6px 50px;
   min-height: 53px;
+}
+
+.filter-form .inner-field.city-field.season-field .city-input-wrap {
+  /* El file.svg es más chico, recentramos el icono y dejamos más espacio. */
+  padding-left: 50px;
 }
 
 .filter-form .inner-field.city-field input {
@@ -4517,6 +4535,12 @@ header.header-area.header-dark {
   outline: none;
 }
 
+.city-suggest li.is-active {
+  background: rgba(120, 90, 229, 0.10);
+  color: #5B21B6;
+  font-weight: 600;
+}
+
 .city-suggest-name {
   font-weight: 600;
   color: #222;
@@ -4527,55 +4551,22 @@ header.header-area.header-dark {
   font-size: 12px;
 }
 
-/* Season chips */
-.season-chips {
-  margin-top: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+/* Bullet en el listado de "incluye" del .box-card. Bootstrap resetea a
+   list-style: none y Tailwind preflight refuerza, asi que el <ul> de
+   Pasaje / 7 noches / Traslados / Regimen incluido sale sin los puntos
+   negros. Restauramos aca (afecta a los 3 PackageCard: RegionExplorer,
+   RelatedPackages, /destinos?tipo=). */
+.box-card .text ul {
+  list-style: disc;
+  padding-left: 20px;
+  font-weight: 400;
+  font-size: 14px;
+  margin: 0;
 }
 
-.season-chips-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: #888;
-  font-weight: 600;
-}
-
-.season-chips-row {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.season-chip {
-  background: #fff;
-  color: #444;
-  border: 1px solid rgba(120, 89, 228, 0.30);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  line-height: 1;
-}
-
-.season-chip:hover {
-  border-color: #785AE5;
-  color: #5B21B6;
-}
-
-.season-chip.is-active {
-  background: #785AE5;
-  color: #fff;
-  border-color: #785AE5;
+.box-card .text ul li {
+  line-height: 18px;
+  margin-bottom: 2px;
 }
 
 /* Clear filters link, a la izquierda del sort */
@@ -4598,20 +4589,24 @@ header.header-area.header-dark {
   background: rgba(120, 90, 229, 0.10);
 }
 
-/* Responsive: en mobile el typeahead pasa a ancho completo */
-@media (max-width: 575px) {
-  .filter-form .inner-field.city-field {
-    width: 100%;
-    min-width: 0;
-  }
+/* Responsive: en mobile los 2 inputs se apilan a ancho completo */
+@media (max-width: 767px) {
   .filter-form .inner-flex {
     flex-direction: column;
     align-items: stretch;
   }
-  .filter-form button {
-    margin: 8px 0 0 0;
+  .filter-form .filter-fields {
+    flex-direction: column;
   }
-  .season-chips {
-    justify-content: flex-start;
+  .filter-form .inner-field.city-field,
+  .filter-form .inner-field.city-field.season-field {
+    width: 100%;
+    min-width: 0;
+  }
+  .filter-form .inner-field.city-field.season-field {
+    margin-top: 12px;
+  }
+  .filter-form button {
+    margin: 12px 0 0 0;
   }
 }
