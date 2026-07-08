@@ -4468,15 +4468,16 @@ header.header-area.header-dark {
 .city-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: rgba(120, 90, 229, 0.10);
-  color: #5B21B6;
-  border: 1px solid rgba(120, 90, 229, 0.25);
-  border-radius: 999px;
-  padding: 3px 4px 3px 10px;
+  gap: 6px;
+  background: #785AE5;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0 4px 0 10px;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1;
+  line-height: 26px;
+  height: 28px;
+  white-space: nowrap;
 }
 
 .city-chip button {
@@ -4485,16 +4486,25 @@ header.header-area.header-dark {
   justify-content: center;
   background: transparent;
   border: 0;
-  color: inherit;
+  color: #fff;
   cursor: pointer;
-  padding: 3px;
-  border-radius: 999px;
-  opacity: 0.6;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  opacity: 0.75;
+  padding: 0;
+  margin: 0;
+  transition: background 0.12s, opacity 0.12s;
 }
 
 .city-chip button:hover {
   opacity: 1;
-  background: rgba(120, 90, 229, 0.15);
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.city-chip button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
 }
 
 .city-suggest {

@@ -89,15 +89,17 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
   // Sugerencias del typeahead: ciudades que matchean el query, no seleccionadas.
   const sugerencias = useMemo(() => {
     const q = ciudadInput.trim().toLowerCase();
-    if (!q) return ciudades.slice(0, 8);
-    return ciudades
+    const selIds = new Set(ciudadesSel.map((c) => c.id));
+    const disponibles = ciudades.filter((c) => !selIds.has(c.id));
+    if (!q) return disponibles.slice(0, 8);
+    return disponibles
       .filter(
         (c) =>
           c.nombre.toLowerCase().includes(q) ||
           c.paisNombre.toLowerCase().includes(q),
       )
       .slice(0, 8);
-  }, [ciudadInput, ciudades]);
+  }, [ciudadInput, ciudades, ciudadesSel]);
 
   const addCiudad = (c: Ciudad) => {
     if (ciudadesSel.some((x) => x.id === c.id)) return;
@@ -191,6 +193,12 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
                         setCiudadOpen(true);
                       }}
                       onFocus={() => {
+                        setCiudadOpen(true);
+                        setTemporadaOpen(false);
+                      }}
+                      onClick={() => {
+                        // Si el input ya tiene focus, el segundo click no
+                        // dispara focus — reabrimos el dropdown manualmente.
                         setCiudadOpen(true);
                         setTemporadaOpen(false);
                       }}
