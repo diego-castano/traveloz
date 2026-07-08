@@ -10,6 +10,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
+import { EmailTagInput } from "@/components/ui/EmailTagInput";
 import { useToast } from "@/components/ui/Toast";
 import {
   getSettingsByGroup,
@@ -233,9 +234,13 @@ export function SettingsForm({ group, title, blurb, excludeKeys }: Props) {
                 it.key.includes("hero"))) ||
             it.type === "video_upload";
           const forceUpload = it.type === "video_upload";
+          // Email lists for the per-form lead destinations. Stored as a CSV
+          // string in SiteSetting.value; rendered as removable chips so the
+          // operator sees exactly who's going to receive each form.
+          const isEmailList = it.key.startsWith("notificaciones_email_");
           const isTextarea =
             it.type === "textarea" ||
-            (!isMedia && (it.value?.length ?? 0) > 80);
+            (!isMedia && !isEmailList && (it.value?.length ?? 0) > 80);
           const error = errors[it.key];
 
           return (
@@ -255,6 +260,12 @@ export function SettingsForm({ group, title, blurb, excludeKeys }: Props) {
                   accept={isVideo ? "video/*" : "image/*"}
                   settingKey={it.key}
                   hideUrl={forceUpload}
+                />
+              ) : isEmailList ? (
+                <EmailTagInput
+                  value={current}
+                  onChange={(v) => onChangeField(it.key, v)}
+                  ariaInvalid={!!error}
                 />
               ) : isTextarea ? (
                 <textarea
