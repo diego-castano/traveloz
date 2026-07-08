@@ -457,7 +457,15 @@ export async function exportLeads(
         "Email",
         "Activo",
         "Origen",
+        "Confirmado",
         "Fecha baja",
+        "IP",
+        "User Agent",
+        "utm_source",
+        "utm_medium",
+        "utm_campaign",
+        "utm_content",
+        "utm_term",
       ];
       const data = rows.map((r) => [
         r.id,
@@ -465,7 +473,15 @@ export async function exportLeads(
         r.email,
         r.active,
         r.source,
+        r.confirmedAt,
         r.unsubscribedAt,
+        r.consentIp,
+        r.consentUserAgent,
+        r.utmSource,
+        r.utmMedium,
+        r.utmCampaign,
+        r.utmContent,
+        r.utmTerm,
       ]);
       return {
         filename: `newsletter-${todayStamp()}.csv`,
