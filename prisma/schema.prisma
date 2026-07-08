@@ -857,6 +857,17 @@ model SuscripcionNewsletter {
   confirmedAt    DateTime?
   createdAt      DateTime  @default(now())
   unsubscribedAt DateTime?
+  // LGPD / GDPR / Ley 18.331 (UY) — prueba de consentimiento al opt-in.
+  // IP y user-agent del request que disparó el submit, más la URL completa
+  // con UTM params. Útil para responder un pedido de la autoridad
+  // regulatoria mostrando que el consentimiento fue explícito.
+  consentIp          String?
+  consentUserAgent   String?
+  utmSource          String?
+  utmMedium          String?
+  utmCampaign        String?
+  utmContent         String?
+  utmTerm            String?
 
   @@index([active])
 }

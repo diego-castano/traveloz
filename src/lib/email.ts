@@ -34,6 +34,16 @@ export interface SendEmailInput {
   text?: string;
   from?: string;
   replyTo?: string;
+  /**
+   * URL pública para darse de baja. Cuando se pasa, sendEmail además del
+   * link en el cuerpo agrega dos headers RFC 8058 al email:
+   *   List-Unsubscribe: <mailto:unsub@…?subject=…>, <https://…>
+   *   List-Unsubscribe-Post: List-Unsubscribe=One-Click
+   * Esto es lo que miran Gmail / Outlook / Yahoo para mostrar el botón
+   * "Cancelar suscripción" arriba del email. Si no se pasa, no se
+   * agregan headers (los emails transaccionales al admin no califican).
+   */
+  unsubscribeUrl?: string;
 }
 
 export interface SendEmailResult {
@@ -60,6 +70,16 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     return { delivered: false, provider: "console" };
   }
 
+  const headers: Record<string, string> = {};
+  if (input.unsubscribeUrl) {
+    // RFC 8058: el formato "mailto:, url" es lo que mejor lo soportan
+    // los clientes (algunos ignoran el List-Unsubscribe si solo tiene
+    // mailto o solo URL). El POST one-click es opcional pero ayuda a
+    // Gmail/Outlook a mostrar el botón de "Cancelar suscripción".
+    headers["List-Unsubscribe"] = `<mailto:unsubscribe@traveloz.com.uy>, <${input.unsubscribeUrl}>`;
+    headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
+  }
+
   try {
     const res = await fetch(RESEND_API_URL, {
       method: "POST",
@@ -74,6 +94,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         html: input.html,
         text: input.text,
         reply_to: input.replyTo,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
       }),
     });
 
@@ -154,6 +175,13 @@ function brandedLayout(opts: {
   heading: string;
   bodyHtml: string;
   preheader?: string;
+  /**
+   * URL pública para que el suscriptor se dé de baja. Se renderea como link
+   * discreto en el footer gris del layout. Solo lo agregamos cuando el
+   * destinatario es un suscriptor real (newsletter); los emails
+   * transaccionales (cambio de contraseña, leads al admin) no lo llevan.
+   */
+  unsubscribeUrl?: string;
 }): string {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -189,6 +217,11 @@ function brandedLayout(opts: {
           <a href="${SITE_BASE_URL}" style="color:${BRAND_MUTED};text-decoration:underline">${escapeHtml(
             SITE_LABEL,
           )}</a>
+          ${
+            opts.unsubscribeUrl
+              ? ` · <a href="${opts.unsubscribeUrl}" style="color:${BRAND_MUTED};text-decoration:underline">Cancelar suscripción</a>`
+              : ""
+          }
         </td></tr>
       </table>
     </td></tr>
@@ -248,15 +281,20 @@ export function passwordResetEmail(opts: {
 
 export function newsletterConfirmEmail(opts: {
   confirmUrl: string;
+  unsubscribeUrl: string;
 }): { subject: string; html: string; text: string } {
   const body = `
     ${P("¡Gracias por suscribirte al newsletter de TravelOz! Falta un paso.")}
     <p style="margin:18px 0 0">${ctaButton(opts.confirmUrl, "Confirmar suscripción")}</p>
-    ${PMUTED("Si no fuiste vos, ignorá este email — no te vamos a escribir.")}`;
+    ${PMUTED("Si no fuiste vos, ignorá este email — no te vamos a escribir. Si querés, podés darte de baja sin confirmar desde acá.")}`;
   return {
     subject: "Confirmá tu suscripción a TravelOz",
-    text: `¡Gracias por suscribirte!\n\nPara confirmar tu suscripción al newsletter de TravelOz, abrí este link:\n${opts.confirmUrl}\n\nSi no fuiste vos, ignorá este email — no te vamos a escribir.`,
-    html: brandedLayout({ heading: "Confirmá tu suscripción", bodyHtml: body }),
+    text: `¡Gracias por suscribirte!\n\nPara confirmar tu suscripción al newsletter de TravelOz, abrí este link:\n${opts.confirmUrl}\n\nSi no fuiste vos, ignorá este email — no te vamos a escribir.\n\nPara cancelar sin confirmar: ${opts.unsubscribeUrl}`,
+    html: brandedLayout({
+      heading: "Confirmá tu suscripción",
+      bodyHtml: body,
+      unsubscribeUrl: opts.unsubscribeUrl,
+    }),
   };
 }
 

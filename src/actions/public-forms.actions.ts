@@ -425,11 +425,42 @@ export async function submitNewsletterForm(
     // Alta nueva o re-suscripción de una baja: (re)generamos token y dejamos
     // la fila inactiva hasta que confirme.
     const confirmToken = randomUUID();
-    const source = captureOrigen();
+    // En server actions de Next 14 los headers HTTP del request original
+    // (referer, user-agent) no son accesibles — los capturamos en el
+    // cliente via FormData (prefijo _). Si no estan, caen a null sin tirar.
+    const source =
+      s(formData, "_consentUrl")?.slice(0, 1000) || captureOrigen();
+    const utmSource = s(formData, "_utmSource")?.slice(0, 255) || null;
+    const utmMedium = s(formData, "_utmMedium")?.slice(0, 255) || null;
+    const utmCampaign = s(formData, "_utmCampaign")?.slice(0, 255) || null;
+    const utmContent = s(formData, "_utmContent")?.slice(0, 255) || null;
+    const utmTerm = s(formData, "_utmTerm")?.slice(0, 255) || null;
+    const consentUserAgent = s(formData, "_consentUserAgent")?.slice(0, 500) || null;
+    const consentIp = clientIp();
     await prisma.suscripcionNewsletter.upsert({
       where: { email },
-      update: { active: false, confirmToken, confirmedAt: null, unsubscribedAt: null },
-      create: { email, source, active: false, confirmToken },
+      // En re-suscripciones, no pisamos los datos de consentimiento de la
+      // primera alta — son el registro historico de cuando dieron opt-in
+      // originalmente. Solo refrescamos el token y el estado.
+      update: {
+        active: false,
+        confirmToken,
+        confirmedAt: null,
+        unsubscribedAt: null,
+      },
+      create: {
+        email,
+        source,
+        active: false,
+        confirmToken,
+        utmSource,
+        utmMedium,
+        utmCampaign,
+        utmContent,
+        utmTerm,
+        consentIp,
+        consentUserAgent,
+      },
     });
 
     // Avisamos al admin (mismo patrón que el resto de los forms del site).
@@ -446,11 +477,24 @@ export async function submitNewsletterForm(
       ],
     });
 
-    const confirmUrl = `${getBaseUrl().replace(/\/$/, "")}/newsletter/confirm?token=${confirmToken}`;
-    const tpl = newsletterConfirmEmail({ confirmUrl });
+    const baseUrl = getBaseUrl().replace(/\/$/, "");
+    const confirmUrl = `${baseUrl}/newsletter/confirm?token=${confirmToken}`;
+    // Link publico de unsubscribe. Por ahora usamos el email (en vez de un
+    // token) porque el unico flujo que lo dispara es este email de opt-in,
+    // y si el visitante reenvia el link el endpoint lo trata como baja
+    // valida (LGPD: el opt-in pendiente se puede revocar en cualquier
+    // momento, incluso antes de confirmar).
+    const unsubscribeUrl = `${baseUrl}/newsletter/unsubscribe?email=${encodeURIComponent(email)}`;
+    const tpl = newsletterConfirmEmail({ confirmUrl, unsubscribeUrl });
     // No bloqueamos al usuario si el envío falla (Resend puede no estar
     // configurado todavía) — el token queda persistido igual.
-    await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    await sendEmail({
+      to: email,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+      unsubscribeUrl,
+    });
 
     return { ok: true, message: NEWSLETTER_SUCCESS_MSG };
   } catch (err) {
