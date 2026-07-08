@@ -29,6 +29,9 @@ export default async function RegionListingPage({
   const paquetesRaw = await getPaquetesByRegion(region.id);
 
   // Project to the shape RegionExplorer expects.
+  // We expand `destinos` with ciudad+pais so the listing can offer a city
+  // typeahead (each paquete's primary city) and a season chip filter parsed
+  // from `salidas`.
   const paquetes = paquetesRaw.map((p) => ({
     id: p.id,
     slug: p.slug,
@@ -40,7 +43,28 @@ export default async function RegionListingPage({
     precioDesdeMoneda: p.precioDesdeMoneda,
     heroImage: p.heroImage,
     fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? "" })),
+    ciudades: p.destinos
+      .filter((d) => d.ciudad?.pais?.regionId === region.id)
+      .map((d) => ({
+        id: d.ciudad?.id ?? "",
+        nombre: d.ciudad?.nombre ?? "",
+        paisNombre: d.ciudad?.pais?.nombre ?? "",
+      })),
   }));
+
+  // Distinct city list (id, nombre, paisNombre) for the typeahead. Sorted by
+  // name; deduped by id.
+  const ciudadesMap = new Map<string, { id: string; nombre: string; paisNombre: string }>();
+  for (const p of paquetes) {
+    for (const c of p.ciudades) {
+      if (c.id && !ciudadesMap.has(c.id)) {
+        ciudadesMap.set(c.id, c);
+      }
+    }
+  }
+  const ciudades = Array.from(ciudadesMap.values()).sort((a, b) =>
+    a.nombre.localeCompare(b.nombre, "es"),
+  );
 
   return (
     <RegionExplorer
@@ -51,6 +75,7 @@ export default async function RegionListingPage({
         descripcion: region.descripcion,
       }}
       paquetes={paquetes}
+      ciudades={ciudades}
     />
   );
 }

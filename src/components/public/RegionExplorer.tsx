@@ -1,21 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { X, Calendar } from "lucide-react";
 import { PackageCard } from "@/components/public/PackageCard";
 
 // ---------------------------------------------------------------------------
 // RegionExplorer — listados de paquetes por región (/destinos/<region>).
 // Réplica 1:1 del shell de html_inicial/destination-listing.html: h1 centrado,
-// filter form (cosmético, sin lógica), sort dropdown (Menor/Mayor precio),
-// grid 4-up en xxl, 3-up en lg, 2-up en sm.
+// filter form con typeahead de ciudad + chips de temporada, sort dropdown
+// (Menor/Mayor precio), grid 4-up en xxl, 3-up en lg, 2-up en sm.
 //
-// Funcional: el sort dropdown ordena en cliente (la query al server ya
-// devuelve ordenado por precio ASC, pero el usuario puede invertirlo acá).
-// El search input está como UI pero no filtra — el buscador de paquetes
-// real vive en la home y en el detail. El filter form coincide con el
-// reference para que el match visual sea exacto.
+// Funcional: ciudad y temporada filtran en cliente en tiempo real (el
+// servidor ya devuelve los paquetes de la región). El sort es independiente.
 // ---------------------------------------------------------------------------
+
+type Ciudad = { id: string; nombre: string; paisNombre: string };
 
 type Paquete = {
   id: string;
@@ -28,32 +28,124 @@ type Paquete = {
   precioDesdeMoneda: string | null;
   heroImage: string | null;
   fotos: { url: string; alt: string }[];
+  ciudades: { id: string; nombre: string; paisNombre: string }[];
 };
 
 type Props = {
-  region: {
-    id: string;
-    slug: string;
-    nombre: string;
-    descripcion: string | null;
-  };
+  region: { id: string; slug: string; nombre: string; descripcion: string | null };
   paquetes: Paquete[];
+  ciudades: Ciudad[];
 };
 
 type SortKey = "low" | "high";
 
-export function RegionExplorer({ region, paquetes }: Props) {
+// ---------------------------------------------------------------------------
+// Meses canónicos (orden cronológico) y parser de `paquete.salidas` (string
+// libre, ej. "Octubre - Noviembre 2026", "Salidas todo el año").
+// Devuelve los meses que matchean por nombre dentro del string.
+// ---------------------------------------------------------------------------
+
+const MONTHS = [
+  { id: "ene", nombre: "Enero", patterns: [/\benero\b/i] },
+  { id: "feb", nombre: "Febrero", patterns: [/\bfebrero\b/i] },
+  { id: "mar", nombre: "Marzo", patterns: [/\bmarzo\b/i] },
+  { id: "abr", nombre: "Abril", patterns: [/\babril\b/i] },
+  { id: "may", nombre: "Mayo", patterns: [/\bmayo\b/i] },
+  { id: "jun", nombre: "Junio", patterns: [/\bjunio\b/i] },
+  { id: "jul", nombre: "Julio", patterns: [/\bjulio\b/i] },
+  { id: "ago", nombre: "Agosto", patterns: [/\bagosto\b/i] },
+  { id: "sep", nombre: "Septiembre", patterns: [/\bseptiembre\b/i, /\bsetiembre\b/i] },
+  { id: "oct", nombre: "Octubre", patterns: [/\boctubre\b/i] },
+  { id: "nov", nombre: "Noviembre", patterns: [/\bnoviembre\b/i] },
+  { id: "dic", nombre: "Diciembre", patterns: [/\bdiciembre\b/i] },
+] as const;
+
+function mesesDeSalidas(salidas: string | null): string[] {
+  if (!salidas) return [];
+  const ids = new Set<string>();
+  for (const m of MONTHS) {
+    if (m.patterns.some((re) => re.test(salidas))) ids.add(m.id);
+  }
+  return Array.from(ids);
+}
+
+export function RegionExplorer({ region, paquetes, ciudades }: Props) {
   const [sort, setSort] = useState<SortKey>("low");
+  const [ciudadInput, setCiudadInput] = useState("");
+  const [ciudadOpen, setCiudadOpen] = useState(false);
+  const [ciudadesSel, setCiudadesSel] = useState<Ciudad[]>([]);
+  const [temporadas, setTemporadas] = useState<Set<string>>(new Set());
+  const ciudadInputRef = useRef<HTMLInputElement>(null);
+
+  // Meses disponibles = unión de los meses matcheados en `salidas` de los
+  // paquetes de la región. Orden cronológico.
+  const mesesDisponibles = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of paquetes) for (const m of mesesDeSalidas(p.salidas)) set.add(m);
+    return MONTHS.filter((m) => set.has(m.id));
+  }, [paquetes]);
+
+  // Sugerencias del typeahead: ciudades que matchean el query, no seleccionadas.
+  const sugerencias = useMemo(() => {
+    const q = ciudadInput.trim().toLowerCase();
+    if (!q) return ciudades.slice(0, 8);
+    return ciudades
+      .filter(
+        (c) =>
+          c.nombre.toLowerCase().includes(q) ||
+          c.paisNombre.toLowerCase().includes(q),
+      )
+      .slice(0, 8);
+  }, [ciudadInput, ciudades]);
+
+  const addCiudad = (c: Ciudad) => {
+    if (ciudadesSel.some((x) => x.id === c.id)) return;
+    setCiudadesSel((prev) => [...prev, c]);
+    setCiudadInput("");
+    setCiudadOpen(false);
+    ciudadInputRef.current?.focus();
+  };
+  const removeCiudad = (id: string) => {
+    setCiudadesSel((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  const toggleTemporada = (id: string) => {
+    setTemporadas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Filtro combinado (ciudades OR, temporadas OR — un paquete pasa si tiene
+  // CUALQUIER ciudad seleccionada Y CUALQUIER temporada seleccionada).
+  // Si el filtro está vacío, ese eje es libre.
+  const filtered = useMemo(() => {
+    return paquetes.filter((p) => {
+      if (ciudadesSel.length > 0) {
+        const hit = p.ciudades.some((c) => ciudadesSel.some((s) => s.id === c.id));
+        if (!hit) return false;
+      }
+      if (temporadas.size > 0) {
+        const pMeses = mesesDeSalidas(p.salidas);
+        if (!pMeses.some((m) => temporadas.has(m))) return false;
+      }
+      return true;
+    });
+  }, [paquetes, ciudadesSel, temporadas]);
 
   const sorted = useMemo(() => {
-    const copy = [...paquetes];
+    const copy = [...filtered];
     copy.sort((a, b) => {
       const av = a.precioDesde ?? Number.POSITIVE_INFINITY;
       const bv = b.precioDesde ?? Number.POSITIVE_INFINITY;
       return sort === "low" ? av - bv : bv - av;
     });
     return copy;
-  }, [paquetes, sort]);
+  }, [filtered, sort]);
+
+  const hasFilters = ciudadesSel.length > 0 || temporadas.size > 0;
 
   return (
     <section className="listing-area">
@@ -61,53 +153,138 @@ export function RegionExplorer({ region, paquetes }: Props) {
         <div className="listing-filter">
           <h1 className="h2 text-center">Explorá todos los destinos</h1>
           <div className="filter-form">
-            <form onSubmit={(e) => e.preventDefault()}>
+            {/* City typeahead (multi) */}
+            <div className="city-typeahead">
               <div className="inner-flex">
                 <div className="filter-fields">
-                  <div className="inner-field">
+                  <div
+                    className={`inner-field city-field${
+                      ciudadOpen ? " is-open" : ""
+                    }`}
+                  >
                     <label htmlFor="filter-location">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src="/site/img/location-icon.svg" alt="" />
                     </label>
-                    <input
-                      type="search"
-                      id="filter-location"
-                      placeholder="Destino"
-                    />
-                  </div>
-                  <div className="inner-field">
-                    <label
-                      htmlFor="filter-season"
-                      className="file-label"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src="/site/img/file.svg" alt="" />
-                    </label>
-                    <input
-                      type="text"
-                      id="filter-season"
-                      placeholder="Temporada"
-                    />
+                    <div className="city-input-wrap">
+                      {ciudadesSel.map((c) => (
+                        <span key={c.id} className="city-chip">
+                          {c.nombre}
+                          <button
+                            type="button"
+                            onClick={() => removeCiudad(c.id)}
+                            aria-label={`Quitar ${c.nombre}`}
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                      <input
+                        ref={ciudadInputRef}
+                        type="text"
+                        id="filter-location"
+                        autoComplete="off"
+                        placeholder={ciudadesSel.length === 0 ? "Destino (ciudad)" : ""}
+                        value={ciudadInput}
+                        onChange={(e) => {
+                          setCiudadInput(e.target.value);
+                          setCiudadOpen(true);
+                        }}
+                        onFocus={() => setCiudadOpen(true)}
+                        onBlur={() => {
+                          // Delay para que el click en sugerencia dispare antes.
+                          setTimeout(() => setCiudadOpen(false), 150);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (sugerencias[0]) addCiudad(sugerencias[0]);
+                          } else if (e.key === "Backspace" && ciudadInput === "" && ciudadesSel.length > 0) {
+                            removeCiudad(ciudadesSel[ciudadesSel.length - 1].id);
+                          }
+                        }}
+                      />
+                    </div>
+                    {ciudadOpen && sugerencias.length > 0 && (
+                      <ul className="city-suggest" role="listbox">
+                        {sugerencias.map((c) => (
+                          <li
+                            key={c.id}
+                            role="option"
+                            aria-selected={false}
+                            tabIndex={0}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => addCiudad(c)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") addCiudad(c);
+                            }}
+                          >
+                            <span className="city-suggest-name">{c.nombre}</span>
+                            <span className="city-suggest-pais">{c.paisNombre}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
-                <button type="submit">
+                <button type="button" onClick={() => setCiudadOpen((v) => !v)}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/site/img/search-icon.svg" alt="" />
                   Buscar
                 </button>
               </div>
-            </form>
+            </div>
+
+            {/* Season chips (meses) */}
+            {mesesDisponibles.length > 0 && (
+              <div className="season-chips" aria-label="Temporada">
+                <div className="season-chips-label">
+                  <Calendar size={13} /> Temporada
+                </div>
+                <div className="season-chips-row">
+                  {mesesDisponibles.map((m) => {
+                    const active = temporadas.has(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`season-chip${active ? " is-active" : ""}`}
+                        onClick={() => toggleTemporada(m.id)}
+                        aria-pressed={active}
+                      >
+                        {m.nombre}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="filter_select d-flex justify-content-end align-items-center mb-4">
+          {hasFilters && (
+            <button
+              type="button"
+              className="clear-filters"
+              onClick={() => {
+                setCiudadesSel([]);
+                setTemporadas(new Set());
+                setCiudadInput("");
+              }}
+            >
+              <X size={12} /> Limpiar filtros
+            </button>
+          )}
           <strong>Ordenar por</strong>
           <SortDropdown value={sort} onChange={setSort} />
         </div>
 
         {sorted.length === 0 ? (
           <p className="text-center py-12">
-            Próximamente más destinos en {region.nombre}.
+            {hasFilters
+              ? `No hay paquetes que coincidan con los filtros en ${region.nombre}.`
+              : `Próximamente más destinos en ${region.nombre}.`}
           </p>
         ) : (
           <div className="row g-lg-4 g-3">
@@ -139,7 +316,7 @@ export function RegionExplorer({ region, paquetes }: Props) {
 
 // ---------------------------------------------------------------------------
 // SortDropdown — replica .cs_dropdown del reference. CSS-only chevron
-// (cs_arrow), <ul> que se abre al click. Es accesible por teclado: cada
+// (cs_arrow), <ul> que se abre al click. Accesible por teclado: cada
 // opción es un <li role="option"> con tabindex y Enter/Space para elegir.
 // ---------------------------------------------------------------------------
 

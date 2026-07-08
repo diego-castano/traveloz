@@ -1232,7 +1232,8 @@ section {
 }
 
 .box-card .text>p {
-    font-weight: 700
+    font-weight: 700;
+    font-size: 14px
 }
 
 .box-card .title {
@@ -4399,4 +4400,218 @@ header.header-area.header-dark {
   height: auto;
   aspect-ratio: 664 / 453;
   object-fit: cover;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Region listing — typeahead de ciudad + chips de temporada (live).
+   Overrides del .filter-form del reference: el input absoluto no sirve
+   cuando conviven chips + input + dropdown de sugerencias, así que el
+   .inner-field con .city-field redefine layout a flex.
+   ───────────────────────────────────────────────────────────────────────── */
+.filter-form .inner-field.city-field {
+  overflow: visible;
+  height: auto;
+  min-height: 55px;
+  width: 460px;
+  min-width: 460px;
+  display: flex;
+  align-items: center;
+}
+
+.filter-form .inner-field.city-field .city-input-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 12px 6px 50px;
+  min-height: 53px;
+}
+
+.filter-form .inner-field.city-field input {
+  position: static;
+  width: auto;
+  flex: 1 1 120px;
+  min-width: 120px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 15px;
+  outline: none;
+}
+
+.filter-form .inner-field.city-field.is-open {
+  border-color: #785AE5;
+  box-shadow: 0 0 0 3px rgba(120, 90, 229, 0.15);
+}
+
+.city-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(120, 90, 229, 0.10);
+  color: #5B21B6;
+  border: 1px solid rgba(120, 90, 229, 0.25);
+  border-radius: 999px;
+  padding: 3px 4px 3px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.city-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 3px;
+  border-radius: 999px;
+  opacity: 0.6;
+}
+
+.city-chip button:hover {
+  opacity: 1;
+  background: rgba(120, 90, 229, 0.15);
+}
+
+.city-suggest {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid rgba(120, 89, 228, 0.39);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+  z-index: 50;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.city-suggest li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.city-suggest li:last-child {
+  border-bottom: 0;
+}
+
+.city-suggest li:hover,
+.city-suggest li:focus-visible {
+  background: #f4f0ff;
+  outline: none;
+}
+
+.city-suggest-name {
+  font-weight: 600;
+  color: #222;
+}
+
+.city-suggest-pais {
+  color: #888;
+  font-size: 12px;
+}
+
+/* Season chips */
+.season-chips {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.season-chips-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #888;
+  font-weight: 600;
+}
+
+.season-chips-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.season-chip {
+  background: #fff;
+  color: #444;
+  border: 1px solid rgba(120, 89, 228, 0.30);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.season-chip:hover {
+  border-color: #785AE5;
+  color: #5B21B6;
+}
+
+.season-chip.is-active {
+  background: #785AE5;
+  color: #fff;
+  border-color: #785AE5;
+}
+
+/* Clear filters link, a la izquierda del sort */
+.clear-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 0;
+  color: #785AE5;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-right: auto;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.clear-filters:hover {
+  background: rgba(120, 90, 229, 0.10);
+}
+
+/* Responsive: en mobile el typeahead pasa a ancho completo */
+@media (max-width: 575px) {
+  .filter-form .inner-field.city-field {
+    width: 100%;
+    min-width: 0;
+  }
+  .filter-form .inner-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-form button {
+    margin: 8px 0 0 0;
+  }
+  .season-chips {
+    justify-content: flex-start;
+  }
 }
