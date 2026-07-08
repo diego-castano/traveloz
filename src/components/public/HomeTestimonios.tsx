@@ -40,10 +40,15 @@ export function HomeTestimonios({
                 <div className="col-lg-6">
                   <div className="content-image">
                     <img
-                      src={t.imageUrl ?? "/site/img/slider-4.webp"}
+                      src={t.imageUrl?.trim() || "/site/img/slider-4.webp"}
                       alt=""
                       loading="lazy"
                       decoding="async"
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.src.endsWith("/site/img/slider-4.webp")) return;
+                        el.src = "/site/img/slider-4.webp";
+                      }}
                     />
                   </div>
                 </div>

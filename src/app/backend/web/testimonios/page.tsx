@@ -125,7 +125,7 @@ export default function WebTestimoniosPage() {
               rows: 8,
             },
             { type: "rating", key: "rating", label: "Rating", max: 5 },
-            { type: "image", key: "imageUrl", label: "Imagen (opcional)" },
+            { type: "image", key: "imageUrl", label: "Imagen (opcional)", hideUrl: true },
           ]}
           values={initialValues}
           onClose={() => setEditing(null)}
