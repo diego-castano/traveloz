@@ -273,8 +273,12 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
                         placeholder={
                           temporadas.size === 0 ? "Temporada" : ""
                         }
+                        onFocus={() => {
+                          setTemporadaOpen(true);
+                          setCiudadOpen(false);
+                        }}
                         onClick={() => {
-                          setTemporadaOpen((v) => !v);
+                          setTemporadaOpen(true);
                           setCiudadOpen(false);
                         }}
                       />
