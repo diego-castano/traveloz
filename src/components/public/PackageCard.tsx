@@ -1,6 +1,7 @@
 "use client";
 
 import { Skeleton } from "./SkeletonClient";
+import { stripNochesSuffix } from "@/lib/format-paquete";
 
 // ---------------------------------------------------------------------------
 // PackageCard — tarjeta del slider "Descubrí más destinos". Replica 1:1 el
@@ -78,7 +79,7 @@ export function PackageCard({
           }}
         />
         <div className="text">
-          <h3 className="title">{paquete.titulo}</h3>
+          <h3 className="title">{stripNochesSuffix(paquete.titulo)}</h3>
           {paquete.salidas && <p>{paquete.salidas}</p>}
           <div className="row">
             <div className="col-6">
