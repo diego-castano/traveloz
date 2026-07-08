@@ -76,6 +76,7 @@ export const KEY_VALIDATORS: Record<string, Validator> = {
   notificaciones_email_corporativo: optionalEmailListV,
   notificaciones_email_cotizacion: optionalEmailListV,
   notificaciones_email_trabaja: optionalEmailListV,
+  notificaciones_email_newsletter: optionalEmailListV,
 
   // Destinos CTA
   destinos_cta_link_href: internalOrExternalUrl,

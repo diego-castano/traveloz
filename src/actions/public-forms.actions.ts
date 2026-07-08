@@ -425,10 +425,25 @@ export async function submitNewsletterForm(
     // Alta nueva o re-suscripción de una baja: (re)generamos token y dejamos
     // la fila inactiva hasta que confirme.
     const confirmToken = randomUUID();
+    const source = captureOrigen();
     await prisma.suscripcionNewsletter.upsert({
       where: { email },
       update: { active: false, confirmToken, confirmedAt: null, unsubscribedAt: null },
-      create: { email, source: captureOrigen(), active: false, confirmToken },
+      create: { email, source, active: false, confirmToken },
+    });
+
+    // Avisamos al admin (mismo patrón que el resto de los forms del site).
+    // Fire-and-forget: si falla el envio no bloqueamos al visitante, el token
+    // ya quedo persistido y el admin puede ver el lead en /backend/leads/newsletter.
+    void notifyLead({
+      settingKey: "notificaciones_email_newsletter",
+      tipo: "Newsletter",
+      replyTo: email,
+      origen: source,
+      campos: [
+        { label: "Email", value: email },
+        { label: "Origen", value: source ?? "(sin origen)" },
+      ],
     });
 
     const confirmUrl = `${getBaseUrl().replace(/\/$/, "")}/newsletter/confirm?token=${confirmToken}`;

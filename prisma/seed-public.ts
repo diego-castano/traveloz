@@ -128,6 +128,7 @@ const SETTINGS: Array<{
   { key: "notificaciones_email_corporativo", value: "", group: "notificaciones", label: "Corporativo — emails que reciben /corporativo" },
   { key: "notificaciones_email_cotizacion", value: "", group: "notificaciones", label: "Cotización — emails que reciben /cotizar y el formulario de paquetes" },
   { key: "notificaciones_email_trabaja", value: "", group: "notificaciones", label: "Trabajá con nosotros (RRHH) — emails que reciben /work-with-us" },
+  { key: "notificaciones_email_newsletter", value: "", group: "notificaciones", label: "Newsletter — emails que reciben cada nueva suscripción al newsletter" },
   // ─── Corporativo (página /corporativo) ───────────────────────────────
   { key: "corporativo_hero_titulo", value: "Viajes que impulsan negocios.", group: "corporativo", label: "Título del hero" },
   { key: "corporativo_hero_video", value: "/site/video/Video-Traveloz-Corporativo.mp4", type: "url", group: "corporativo", label: "Video de fondo del hero" },
