@@ -5,11 +5,12 @@
  * multipart, by-url, or presigned-trusted). Handles:
  *
  *   1. Magic-byte MIME sniffing — never trust client-supplied `file.type`.
- *   2. Allowlist enforcement (image/* + application/pdf).
+ *   2. Allowlist enforcement (image/* + video/* + application/pdf).
  *   3. For images: sharp pipeline → auto-rotate, strip EXIF/GPS, optional
  *      conversion to WebP for size + privacy.
- *   4. SHA-256 hashing for dedup.
- *   5. Bucket put via storage.uploadBuffer.
+ *   4. For videos: write-through, since sharp can't transcode.
+ *   5. SHA-256 hashing for dedup.
+ *   6. Bucket put via storage.uploadBuffer.
  *
  * Server-only (sharp is a native binary, file-type uses Node streams). Never
  * import from a client component.
@@ -20,7 +21,10 @@ import sharp from "sharp";
 import crypto from "crypto";
 import { uploadBuffer, type UploadResult } from "./storage";
 
-export const MAX_BYTES = 25 * 1024 * 1024; // 25 MB hard cap (PDFs can be heavy)
+// 25 MB cap fits most PDF/image uploads. Video shorts for hero blocks (e.g.
+// workwithus_video_url) are also served through this pipeline, so we raise
+// the ceiling to 100 MB to cover a 30-60 s marketing clip at 1080p H.264.
+export const MAX_BYTES = 100 * 1024 * 1024;
 
 export const ALLOWED_IMAGE_MIMES = new Set([
   "image/png",
@@ -30,6 +34,12 @@ export const ALLOWED_IMAGE_MIMES = new Set([
   "image/avif",
   "image/heic",
   "image/heif",
+]);
+
+export const ALLOWED_VIDEO_MIMES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
 ]);
 
 export const ALLOWED_DOCUMENT_MIMES = new Set([
@@ -95,6 +105,21 @@ export async function processAndUpload(
   // .jpg). We only accept it when the *actual* type is in the allowlist —
   // declared.type is informational at best.
   const isImage = ALLOWED_IMAGE_MIMES.has(realMime);
+  const isVideo = ALLOWED_VIDEO_MIMES.has(realMime);
+
+  if (isVideo) {
+    // Video passes through unchanged — sharp can't transcode and we don't
+    // want to corrupt a valid MP4/WebM. -movflags +faststart is the caller's
+    // responsibility (already done for uploads prepared externally).
+    const result = await uploadBuffer({
+      buffer,
+      contentType: realMime,
+      folder: opts.folder,
+      filename: opts.filename,
+      metadata: { ...opts.metadata, "original-mime": realMime },
+    });
+    return { ...result };
+  }
 
   if (!isImage) {
     // PDF or other allowed document — just write-through after hashing.
@@ -165,11 +190,19 @@ export async function processAndUpload(
 // ---------------------------------------------------------------------------
 
 export function isAllowed(mime: string): boolean {
-  return ALLOWED_IMAGE_MIMES.has(mime) || ALLOWED_DOCUMENT_MIMES.has(mime);
+  return (
+    ALLOWED_IMAGE_MIMES.has(mime) ||
+    ALLOWED_VIDEO_MIMES.has(mime) ||
+    ALLOWED_DOCUMENT_MIMES.has(mime)
+  );
 }
 
 export function isAllowedImage(mime: string): boolean {
   return ALLOWED_IMAGE_MIMES.has(mime);
+}
+
+export function isAllowedVideo(mime: string): boolean {
+  return ALLOWED_VIDEO_MIMES.has(mime);
 }
 
 export function isAllowedDocument(mime: string): boolean {

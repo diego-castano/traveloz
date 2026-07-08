@@ -179,7 +179,7 @@ const SETTINGS: Array<{
   { key: "workwithus_titulo", value: "¡Queremos conocerte!", group: "workwithus", label: "Título principal" },
   { key: "workwithus_subtitulo", value: "Estamos transformando la experiencia de viajar,\ny queremos hacerlo con personas como vos.", type: "textarea", group: "workwithus", label: "Subtítulo / lead" },
   { key: "workwithus_imagen", value: "/site/img/work-with-us.webp", type: "image_url", group: "workwithus", label: "Imagen lateral" },
-  { key: "workwithus_video_url", value: "", type: "url", group: "workwithus", label: "Video opcional (URL)" },
+  { key: "workwithus_video_url", value: "/api/image/site/workwithus.mp4", type: "url", group: "workwithus", label: "Video lateral (opcional)" },
   // ─── Cotizar (página /cotizar) ───────────────────────────────────────
   { key: "cotizar_titulo", value: "Cotizá tu viaje", group: "cotizar", label: "Título principal" },
   { key: "cotizar_lead", value: "Contanos a dónde querés ir, cuándo y cuántos viajan. Diseñamos el itinerario y te respondemos en 24 horas.", type: "textarea", group: "cotizar", label: "Subtítulo / lead" },

@@ -168,6 +168,12 @@ export const MEDIA_HINTS: Record<string, MediaHint> = {
     tolerance: 150,
     maxKB: 500,
   },
+  workwithus_video_url: {
+    label: "Video lateral · 1080×1350 (4:5) · MP4 H.264, ≤ 15 MB",
+    maxKB: 15360,
+    usage:
+      "Loop silencioso con autoplay. Si está vacío, se muestra la imagen lateral.",
+  },
 };
 
 /** Convenience helper: returns the hint for a key or null. */

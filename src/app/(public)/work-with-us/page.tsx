@@ -44,15 +44,17 @@ export default async function WorkWithUsPage() {
             {videoUrl ? (
               <div className="content-img work-with-img">
                 <video
+                  key={videoUrl}
                   src={videoUrl}
-                  controls
+                  autoPlay
+                  muted
+                  loop
                   playsInline
-                  preload="metadata"
+                  preload="auto"
                   poster={imagen}
+                  aria-label="Equipo TravelOz"
                   style={{ width: "100%", borderRadius: 12 }}
-                >
-                  <track kind="captions" />
-                </video>
+                />
               </div>
             ) : (
               <div className="content-img work-with-img video-placeholder">
