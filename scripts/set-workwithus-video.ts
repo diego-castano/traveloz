@@ -24,18 +24,18 @@ async function main() {
         data: {
           key: KEY,
           value: URL,
-          type: "url",
+          type: "video_upload",
           group: "workwithus",
-          label: "Video lateral (opcional)",
+          label: "Video lateral",
         },
       });
     } else {
       console.log(
-        `[seed] ${KEY} current value: ${JSON.stringify(existing.value)}`,
+        `[seed] ${KEY} current value: ${JSON.stringify(existing.value)} (type=${existing.type})`,
       );
       await prisma.siteSetting.update({
         where: { key: KEY },
-        data: { value: URL, type: "url", group: "workwithus" },
+        data: { value: URL, type: "video_upload", group: "workwithus" },
       });
     }
     const after = await prisma.siteSetting.findUnique({ where: { key: KEY } });

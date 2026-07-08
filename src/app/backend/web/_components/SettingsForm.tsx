@@ -223,13 +223,16 @@ export function SettingsForm({ group, title, blurb, excludeKeys }: Props) {
         )}
         {items.map((it) => {
           const current = edits[it.key] ?? it.value ?? "";
+          const isVideo = it.type === "video_upload" || it.key.includes("video");
           const isMedia =
             it.type === "image_url" ||
             (it.type === "url" &&
-              (it.key.includes("video") ||
+              (isVideo ||
                 it.key.includes("imagen") ||
                 it.key.includes("foto") ||
-                it.key.includes("hero")));
+                it.key.includes("hero"))) ||
+            it.type === "video_upload";
+          const forceUpload = it.type === "video_upload";
           const isTextarea =
             it.type === "textarea" ||
             (!isMedia && (it.value?.length ?? 0) > 80);
@@ -249,8 +252,9 @@ export function SettingsForm({ group, title, blurb, excludeKeys }: Props) {
                 <MediaPicker
                   value={current}
                   onChange={(v) => onChangeField(it.key, v)}
-                  accept={it.key.includes("video") ? "video/*" : "image/*"}
+                  accept={isVideo ? "video/*" : "image/*"}
                   settingKey={it.key}
+                  hideUrl={forceUpload}
                 />
               ) : isTextarea ? (
                 <textarea

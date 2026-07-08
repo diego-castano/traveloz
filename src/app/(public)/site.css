@@ -2182,6 +2182,27 @@ header.scrolled {
     opacity: 0.7
 }
 
+/* /work-with-us: kill the dark veil so the video plays full-bright. */
+.work-with-us .work-with-img::after {
+    display: none;
+}
+
+.work-with-us .video-placeholder {
+    background: transparent;
+}
+
+.work-with-us .video-placeholder img {
+    filter: none;
+    -webkit-filter: none;
+}
+
+.work-with-us .work-with-img video {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+}
+
 .header-area {
     border-bottom: 6px solid #D3D3D3;
     position: fixed;
