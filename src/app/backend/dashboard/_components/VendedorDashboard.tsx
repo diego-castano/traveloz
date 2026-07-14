@@ -177,7 +177,6 @@ interface DetailPanelProps {
   breakdown: PaqueteBreakdown;
   selectedOpcionIdx: number;
   onSelectOpcion: (idx: number) => void;
-  pax: number;
   alojamientoById: Map<string, Alojamiento>;
   ciudadById: Map<string, { id: string; nombre: string; paisId: string }>;
 }
@@ -187,17 +186,18 @@ function DetailPanel({
   breakdown,
   selectedOpcionIdx,
   onSelectOpcion,
-  pax,
   alojamientoById,
   ciudadById,
 }: DetailPanelProps) {
   const safeIdx = Math.min(selectedOpcionIdx, Math.max(0, breakdown.opcionesDetail.length - 1));
   const opcionDetail = breakdown.opcionesDetail[safeIdx];
 
-  // Totals scale with pax (aereos + per-pax shares) but traslados/seguros/circuitos
-  // are typically fixed per booking — we treat them as group costs since the schema
-  // doesn't distinguish. Aero is per-adulto so we multiply.
-  const aeroTotal = breakdown.netoAero * pax;
+  // Todo se cotiza POR PERSONA en base doble: el neto es exactamente el que
+  // usa el motor de precios del paquete (aereo + traslado + seguro + circuito,
+  // vía breakdown.netoFijos, más el alojamiento de la opción). La venta se
+  // deriva con calcularVentaOpcion(netoFijos, netoAloj, factor), idéntica a la
+  // del tab Precios del admin (computePaquetePrecios).
+  const aeroTotal = breakdown.netoAero;
   const trasladosTotal = breakdown.netoTraslado;
   const segurosTotal = breakdown.netoSeguros;
   const circuitosTotal = breakdown.netoCircuitos;
@@ -207,13 +207,8 @@ function DetailPanel({
 
   const netoTotal = aeroTotal + alojTotal + trasladosTotal + segurosTotal + circuitosTotal;
   const ventaTotal = opcionDetail
-    ? calcularVentaOpcion(
-        aeroTotal + trasladosTotal + segurosTotal + circuitosTotal,
-        alojTotal,
-        factor,
-      )
+    ? calcularVentaOpcion(breakdown.netoFijos, alojTotal, factor)
     : netoTotal;
-  const ventaPorAdulto = pax > 0 ? Math.round(ventaTotal / pax) : ventaTotal;
   const markupPct = factor > 0 && factor < 1 ? Math.round((1 - factor) * 100) : 0;
 
   return (
@@ -235,11 +230,11 @@ function DetailPanel({
         ) : (
           <div className="space-y-3">
             {breakdown.aereos.map((line, i) => (
-              <AereoBlock key={line.aereo.id} line={line} pax={pax} multiple={breakdown.aereos.length > 1} index={i} />
+              <AereoBlock key={line.aereo.id} line={line} multiple={breakdown.aereos.length > 1} index={i} />
             ))}
             <div className="mt-3 flex items-baseline justify-between border-t border-dashed border-neutral-200 pt-2 text-[12.5px]">
               <span className="font-semibold text-neutral-700">
-                Neto aéreo · {pax} {pax === 1 ? "adulto" : "adultos"}
+                Neto aéreo · por persona
               </span>
               <span className="font-mono font-bold tabular-nums text-neutral-900">
                 USD {fmt(aeroTotal)}
@@ -411,13 +406,17 @@ function DetailPanel({
               <span className="font-mono tabular-nums">{markupPct}% · factor {factor.toFixed(2)}</span>
             </div>
           )}
-          <div className="mt-2 text-[26px] font-extrabold tracking-tight text-[#8B5CF6] lining-nums tabular-nums">
+          <div className="mt-2 text-[9.5px] font-bold uppercase tracking-wider text-[#8B5CF6]/70">
+            Precio por persona (base doble)
+          </div>
+          <div className="text-[26px] font-extrabold leading-tight tracking-tight text-[#8B5CF6] lining-nums tabular-nums">
             USD {fmt(ventaTotal)}
           </div>
-          <div className="text-[11.5px] text-neutral-500">
-            {pax} {pax === 1 ? "adulto" : "adultos"} · USD {fmt(ventaPorAdulto)} / adulto
-            {opcionDetail?.opcion.nombre ? ` · ${opcionDetail.opcion.nombre}` : ""}
-          </div>
+          {opcionDetail?.opcion.nombre && (
+            <div className="text-[11.5px] text-neutral-500">
+              {opcionDetail.opcion.nombre}
+            </div>
+          )}
         </div>
 
         <Link
@@ -446,7 +445,7 @@ function Line({ label, value }: { label: string; value: number }) {
 // precio period y neto. This is the section the vendor needs to answer leads.
 // ---------------------------------------------------------------------------
 
-function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: number; multiple: boolean; index: number }) {
+function AereoBlock({ line, multiple, index }: { line: AeroLine; multiple: boolean; index: number }) {
   const { aereo, precio, netoPorAdulto } = line;
   const [showItin, setShowItin] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -509,8 +508,8 @@ function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: numbe
         {/* Precio */}
         <div className="mt-1.5 border-t border-dashed border-neutral-200 pt-1.5">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="text-neutral-500">Precio adulto</span>
-            <span className="font-mono font-semibold tabular-nums text-neutral-900">
+            <span className="text-neutral-500">Precio por persona</span>
+            <span className="font-mono font-bold lining-nums tabular-nums text-neutral-900">
               USD {fmt(netoPorAdulto)}
             </span>
           </div>
@@ -519,12 +518,6 @@ function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: numbe
               Periodo: {fmtFecha(precio.periodoDesde)} → {fmtFecha(precio.periodoHasta)}
             </div>
           )}
-          <div className="mt-1 flex items-baseline justify-between gap-2">
-            <span className="text-neutral-500">Neto × {pax}</span>
-            <span className="font-mono font-bold tabular-nums text-neutral-900">
-              USD {fmt(netoPorAdulto * pax)}
-            </span>
-          </div>
         </div>
 
         {/* Itinerario expandible */}
@@ -673,7 +666,6 @@ export default function VendedorDashboard() {
 
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
-  const [pax, setPax] = useState(2);
   const [openId, setOpenId] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
   const [selectedOpcion, setSelectedOpcion] = useState<Map<string, number>>(() => new Map());
@@ -1182,38 +1174,15 @@ export default function VendedorDashboard() {
           </select>
         </div>
 
-        {/* Pax bar */}
-        <div className="flex flex-wrap items-center gap-3 rounded-[12px] border border-hairline bg-white px-3 py-2">
-          <div className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-neutral-500">
-            <Users size={12} className="text-[#8B5CF6]" />
-            Para
-          </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-neutral-50 p-1">
-            <button
-              type="button"
-              onClick={() => setPax((p) => Math.max(1, p - 1))}
-              disabled={pax <= 1}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-hairline bg-white text-[13px] font-bold transition hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-neutral-900 disabled:hover:border-hairline"
-              aria-label="Menos adultos"
-            >
-              −
-            </button>
-            <span className="min-w-[70px] text-center text-[13px] tabular-nums">
-              <strong>{pax}</strong> <span className="text-neutral-500">{pax === 1 ? "adulto" : "adultos"}</span>
-            </span>
-            <button
-              type="button"
-              onClick={() => setPax((p) => Math.min(9, p + 1))}
-              disabled={pax >= 9}
-              className="flex h-6 w-6 items-center justify-center rounded-full border border-hairline bg-white text-[13px] font-bold transition hover:bg-[#8B5CF6] hover:text-white hover:border-[#8B5CF6] disabled:opacity-30 disabled:hover:bg-white disabled:hover:text-neutral-900 disabled:hover:border-hairline"
-              aria-label="Más adultos"
-            >
-              +
-            </button>
-          </div>
-          <span className="ml-auto flex items-center gap-1.5 text-[11px] text-neutral-500">
+        {/* Nota de cotización — todo se muestra por persona en base doble */}
+        <div className="flex flex-wrap items-center gap-2 rounded-[12px] border border-hairline bg-white px-3 py-2 text-[11px] text-neutral-500">
+          <span className="flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-[#8B5CF6]">
+            <Users size={12} />
+            Cotización por persona
+          </span>
+          <span className="ml-auto flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#3BBFAD]" />
-            Recálculo en vivo · Tarifas para adultos
+            Precios de venta por persona en base doble
           </span>
         </div>
       </div>
@@ -1261,7 +1230,7 @@ export default function VendedorDashboard() {
                   Temporada
                 </th>
                 <th className="bg-[#FBFBFC] px-4 py-3 text-right text-[10.5px] font-semibold uppercase tracking-wider text-neutral-500">
-                  Total grupo
+                  Por persona
                 </th>
                 <th className="bg-[#FBFBFC] px-4 py-3" style={{ width: "44px" }} />
               </tr>
@@ -1278,17 +1247,12 @@ export default function VendedorDashboard() {
                 const opcionIdx = selectedOpcion.get(p.id) ?? 0;
                 const safeIdx = Math.min(opcionIdx, Math.max(0, breakdown.opcionesDetail.length - 1));
                 const opcion = breakdown.opcionesDetail[safeIdx];
-                const aeroTotal = breakdown.netoAero * pax;
-                const alojTotal = opcion?.netoAloj ?? 0;
-                const factor = opcion?.opcion.factor ?? 1;
+                // Precio de venta POR PERSONA (base doble). Idéntico al motor de
+                // precios del paquete: calcularVentaOpcion(netoFijos, netoAloj,
+                // factor). Sin opciones, el neto fijo por persona es el piso.
                 const totalVenta = opcion
-                  ? calcularVentaOpcion(
-                      aeroTotal + breakdown.netoTraslado + breakdown.netoSeguros + breakdown.netoCircuitos,
-                      alojTotal,
-                      factor,
-                    )
-                  : aeroTotal + alojTotal + breakdown.netoTraslado;
-                const porAdulto = pax > 0 ? Math.round(totalVenta / pax) : totalVenta;
+                  ? calcularVentaOpcion(breakdown.netoFijos, opcion.netoAloj, opcion.opcion.factor)
+                  : breakdown.netoFijos;
 
                 return (
                   <RowGroup
@@ -1302,7 +1266,6 @@ export default function VendedorDashboard() {
                     isOpen={isOpen}
                     onToggle={() => setOpenId((cur) => (cur === p.id ? null : p.id))}
                     totalVenta={totalVenta}
-                    porAdulto={porAdulto}
                     opcionNombre={opcion?.opcion.nombre}
                     breakdown={breakdown}
                     selectedOpcionIdx={safeIdx}
@@ -1313,7 +1276,6 @@ export default function VendedorDashboard() {
                         return next;
                       })
                     }
-                    pax={pax}
                     alojamientoById={alojamientoById}
                     ciudadById={ciudadById}
                   />
@@ -1344,8 +1306,8 @@ export default function VendedorDashboard() {
 
 // ---------------------------------------------------------------------------
 // Row + detail combination — split out so each row only re-renders on its own
-// state changes (selected opcion, open/close). The parent's pax change still
-// re-renders all visible rows because price totals depend on pax.
+// state changes (selected opcion, open/close). Precios se muestran siempre por
+// persona en base doble, así que no dependen de ningún selector de pasajeros.
 // ---------------------------------------------------------------------------
 
 interface RowGroupProps {
@@ -1358,12 +1320,10 @@ interface RowGroupProps {
   isOpen: boolean;
   onToggle: () => void;
   totalVenta: number;
-  porAdulto: number;
   opcionNombre: string | undefined;
   breakdown: PaqueteBreakdown;
   selectedOpcionIdx: number;
   onSelectOpcion: (idx: number) => void;
-  pax: number;
   alojamientoById: Map<string, Alojamiento>;
   ciudadById: Map<string, { id: string; nombre: string; paisId: string }>;
 }
@@ -1378,12 +1338,10 @@ function RowGroup({
   isOpen,
   onToggle,
   totalVenta,
-  porAdulto,
   opcionNombre,
   breakdown,
   selectedOpcionIdx,
   onSelectOpcion,
-  pax,
   alojamientoById,
   ciudadById,
 }: RowGroupProps) {
@@ -1442,7 +1400,7 @@ function RowGroup({
             USD {fmt(totalVenta)}
           </div>
           <div className="mt-0.5 text-[10.5px] text-neutral-400">
-            USD {fmt(porAdulto)} / adulto{opcionNombre ? ` · ${opcionNombre}` : ""}
+            por persona · base doble{opcionNombre ? ` · ${opcionNombre}` : ""}
           </div>
         </td>
         <td className="px-2 py-3 text-center">
@@ -1468,7 +1426,6 @@ function RowGroup({
                   breakdown={breakdown}
                   selectedOpcionIdx={selectedOpcionIdx}
                   onSelectOpcion={onSelectOpcion}
-                  pax={pax}
                   alojamientoById={alojamientoById}
                   ciudadById={ciudadById}
                 />

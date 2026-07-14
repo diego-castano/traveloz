@@ -31,6 +31,7 @@ import {
   Inbox,
   ScrollText,
   Calculator,
+  Store,
 } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -160,7 +161,7 @@ const W_COLLAPSED = 68;
 // ---------------------------------------------------------------------------
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { visibleModules, user } = useAuth();
+  const { visibleModules, user, isAdmin } = useAuth();
   const { activeBrand } = useBrand();
   const pathname = usePathname();
   const router = useRouter();
@@ -404,6 +405,67 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
+
+        {/* ----------------------------------------------------------------- */}
+        {/* CTA destacado: previsualizar el módulo de vendedores (sólo ADMIN). */}
+        {/* Estilo de marca, distinto de los NavItem grises. Abre la vista de   */}
+        {/* vendedor en pestaña nueva vía `?vista=vendedor`.                    */}
+        {/* ----------------------------------------------------------------- */}
+        {isAdmin && (
+          <div className="relative flex-shrink-0 px-3 pb-2 pt-1">
+            {effectiveCollapsed ? (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <a
+                    href="/backend/dashboard?vista=vendedor"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center justify-center rounded-lg py-2.5 text-white transition-colors"
+                    style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #6D40D4 100%)" }}
+                    aria-label="Módulo de vendedores"
+                  >
+                    <Store size={17} strokeWidth={1.9} className="flex-shrink-0" />
+                  </a>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content
+                    side="right"
+                    sideOffset={8}
+                    className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                    style={{
+                      background: "rgba(26,26,46,0.94)",
+                      backdropFilter: "blur(12px)",
+                      WebkitBackdropFilter: "blur(12px)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    Módulo de vendedores
+                    <Tooltip.Arrow style={{ fill: "rgba(26,26,46,0.94)" }} />
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            ) : (
+              <a
+                href="/backend/dashboard?vista=vendedor"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-white shadow-[0_4px_14px_-4px_rgba(139,92,246,0.6)] transition-transform hover:scale-[1.015]"
+                style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #6D40D4 100%)" }}
+              >
+                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-white/15">
+                  <Store size={16} strokeWidth={1.9} />
+                </span>
+                <span className="flex min-w-0 flex-col leading-tight">
+                  <span className="truncate text-[13px] font-semibold">Módulo de vendedores</span>
+                  <span className="truncate text-[10px] font-normal text-white/70">
+                    Vista previa · pestaña nueva
+                  </span>
+                </span>
+              </a>
+            )}
+          </div>
+        )}
 
         {/* ----------------------------------------------------------------- */}
         {/* Footer: usuario + colapso — ancla el fondo del sidebar             */}
