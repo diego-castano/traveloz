@@ -68,6 +68,7 @@ import {
   computeNochesTotales,
 } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
+import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import type {
   Paquete,
   PaqueteFoto,
@@ -558,9 +559,15 @@ function AereoBlock({ line, pax, multiple, index }: { line: AeroLine; pax: numbe
               className="overflow-hidden"
             >
               <div className="mt-1.5 rounded-[6px] bg-white p-2 text-[11.5px] leading-snug text-neutral-700">
-                {hasItinerario && (
-                  <pre className="whitespace-pre-wrap font-sans">{aereo.itinerario}</pre>
-                )}
+                {hasItinerario &&
+                  (looksLikeHtml(aereo.itinerario) ? (
+                    <div
+                      className="[&_a]:text-[#2BA08F] [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-1.5 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5"
+                      dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(aereo.itinerario) }}
+                    />
+                  ) : (
+                    <pre className="whitespace-pre-wrap font-sans">{aereo.itinerario}</pre>
+                  ))}
                 {hasImages && (
                   <div className="mt-2 grid grid-cols-2 gap-1.5">
                     {imagenes.map((url: string, i: number) => (
@@ -626,6 +633,11 @@ function EstadoBadge({ estado }: { estado: Paquete["estado"] }) {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// Los operadores a veces pegan el itinerario como HTML (desde el editor
+// enriquecido o un correo) y otras como texto plano. Misma heurística que usa
+// la vista pública (looksLikeHtml en PackageDetailView).
+const looksLikeHtml = (s: string) => /<[a-z][\s\S]*>/i.test(s);
 
 const fmt = (n: number) => Math.round(n).toLocaleString("es-UY");
 const fmtFecha = (iso: string) => {
