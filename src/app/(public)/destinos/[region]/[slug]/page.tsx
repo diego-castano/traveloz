@@ -157,6 +157,17 @@ export default async function PackageDetailPage({
     ? Math.min(...ventasOpciones)
     : paquete.precioDesde;
 
+  // Itinerario estructurado día a día: solo aplica a modalidad CIRCUITO, y
+  // toma el primer circuito asignado al paquete (el motor de precios ya
+  // asume un único circuito por paquete en esta modalidad).
+  const itinerarioDias = (paquete.circuitos[0]?.circuito?.itinerario ?? []).map(
+    (d) => ({
+      numeroDia: d.numeroDia,
+      titulo: d.titulo,
+      descripcion: d.descripcion,
+    }),
+  );
+
   return (
     <>
       {isPreview && (
@@ -181,6 +192,7 @@ export default async function PackageDetailPage({
         paquete={{
           id: paquete.id,
           titulo: paquete.titulo,
+          modalidad: paquete.modalidad,
           salidas: paquete.salidas,
           noches: paquete.noches,
           precioDesde: precioDesdeReal,
@@ -196,6 +208,7 @@ export default async function PackageDetailPage({
           textoIntro: paquete.textoIntro,
           textoIncluye: paquete.textoIncluye,
           itinerarioPublico: paquete.itinerarioPublico,
+          itinerarioDias,
           textoCondiciones: paquete.textoCondiciones,
           serviciosDerivados,
           serviciosIncluidos: paquete.serviciosIncluidos.map((s) => ({

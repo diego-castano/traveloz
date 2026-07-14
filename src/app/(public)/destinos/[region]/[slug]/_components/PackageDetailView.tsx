@@ -55,10 +55,20 @@ type Opcion = {
   hoteles: Hotel[];
 };
 
+/** Un día del itinerario estructurado del circuito (modalidad CIRCUITO). */
+type CircuitoDiaData = {
+  numeroDia: number;
+  titulo: string;
+  descripcion: string | null;
+};
+
 type Props = {
   paquete: {
     id: string;
     titulo: string;
+    /** CLASICO (opciones hoteleras) o CIRCUITO (todo incluido, itinerario
+     *  estructurado propio del circuito asignado). */
+    modalidad: "CLASICO" | "CIRCUITO";
     salidas: string | null;
     noches: number;
     precioDesde: number | null;
@@ -68,6 +78,9 @@ type Props = {
     textoIntro: string | null;
     textoIncluye: string | null;
     itinerarioPublico: string | null;
+    /** Itinerario día a día del circuito asignado (modalidad CIRCUITO). Vacío
+     *  para paquetes CLASICO o circuitos sin días cargados. */
+    itinerarioDias: CircuitoDiaData[];
     textoCondiciones: string | null;
     serviciosIncluidos: Servicio[];
     /** Fallback de la lista "Incluye": servicios estructurados cargados al
@@ -414,8 +427,133 @@ function RichBlock({
   return <div style={{ ...style, whiteSpace: "pre-wrap" }}>{content}</div>;
 }
 
+// ---------------------------------------------------------------------------
+// Itinerario día a día (modalidad CIRCUITO). Acordeón mobile-first: el primer
+// día arranca abierto, el resto colapsado. Usa el mismo primitivo de animación
+// "grid-template-rows 0fr → 1fr" que evita medir alturas a mano, con estilos
+// inline consistentes con esta vista pública (site.css + RichBlock).
+// ---------------------------------------------------------------------------
+function ItinerarioAccordion({ dias }: { dias: CircuitoDiaData[] }) {
+  const [openDay, setOpenDay] = useState<number | null>(
+    dias[0]?.numeroDia ?? null,
+  );
+
+  if (dias.length === 0) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {dias.map((dia) => {
+        const open = openDay === dia.numeroDia;
+        const panelId = `itinerario-dia-panel-${dia.numeroDia}`;
+        const buttonId = `itinerario-dia-btn-${dia.numeroDia}`;
+        return (
+          <div
+            key={dia.numeroDia}
+            style={{
+              overflow: "hidden",
+              borderRadius: 12,
+              border: "1px solid #e5e5e5",
+            }}
+          >
+            <h3 style={{ margin: 0 }}>
+              <button
+                type="button"
+                id={buttonId}
+                aria-expanded={open}
+                aria-controls={panelId}
+                onClick={() => setOpenDay(open ? null : dia.numeroDia)}
+                style={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  background: "#fff",
+                  padding: "13px 16px",
+                  textAlign: "left",
+                  border: "none",
+                  cursor: "pointer",
+                  font: "inherit",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    lineHeight: "20px",
+                    color: "#1a1a1a",
+                  }}
+                >
+                  Día {dia.numeroDia}
+                  {dia.titulo?.trim() ? ` — ${dia.titulo}` : ""}
+                </span>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                  style={{
+                    flexShrink: 0,
+                    color: "#1A3A5C",
+                    transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                    transition: "transform .3s ease-in-out",
+                  }}
+                >
+                  <path
+                    d="M6 9l6 6 6-6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </h3>
+            <div
+              id={panelId}
+              role="region"
+              aria-labelledby={buttonId}
+              style={{
+                display: "grid",
+                gridTemplateRows: open ? "1fr" : "0fr",
+                transition: "grid-template-rows .3s ease-in-out",
+              }}
+            >
+              <div style={{ overflow: "hidden" }}>
+                {dia.descripcion?.trim() ? (
+                  <RichBlock
+                    content={dia.descripcion}
+                    style={{
+                      borderTop: "1px solid #f0f0f0",
+                      padding: "12px 16px",
+                      fontSize: 14,
+                      lineHeight: 1.6,
+                      color: "#444",
+                    }}
+                  />
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PackageDetailView({ paquete, formasDePago, related }: Props) {
-  const [tab, setTab] = useState<"incluye" | "alojamientos">("incluye");
+  const [tab, setTab] = useState<"incluye" | "alojamientos" | "itinerario">(
+    "incluye",
+  );
+
+  // Itinerario estructurado (modalidad CIRCUITO, circuito con días cargados).
+  // En CLASICO esto es siempre [] y el bloque de texto libre queda intacto.
+  const hasItinerarioDias =
+    paquete.modalidad === "CIRCUITO" && paquete.itinerarioDias.length > 0;
+  // En circuito el alojamiento va incluido: no hay opciones hoteleras, así que
+  // la pestaña Alojamientos no se muestra. CLASICO conserva su comportamiento.
+  const showAlojamientosTab = paquete.modalidad !== "CIRCUITO";
 
   // Compose the slider photos. The featured photo (heroImage) always opens the
   // carousel, whether it lives in the gallery or is a standalone hero URL — so
@@ -570,18 +708,34 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                       Incluye
                     </button>
                   </li>
-                  <li className="nav-item" role="presentation">
-                    <button
-                      type="button"
-                      className={`nav-link${tab === "alojamientos" ? " active" : ""}`}
-                      onClick={() => setTab("alojamientos")}
-                      role="tab"
-                      aria-selected={tab === "alojamientos"}
-                      aria-controls="tab-alojamientos"
-                    >
-                      Alojamientos
-                    </button>
-                  </li>
+                  {hasItinerarioDias && (
+                    <li className="nav-item" role="presentation">
+                      <button
+                        type="button"
+                        className={`nav-link${tab === "itinerario" ? " active" : ""}`}
+                        onClick={() => setTab("itinerario")}
+                        role="tab"
+                        aria-selected={tab === "itinerario"}
+                        aria-controls="tab-itinerario"
+                      >
+                        Itinerario
+                      </button>
+                    </li>
+                  )}
+                  {showAlojamientosTab && (
+                    <li className="nav-item" role="presentation">
+                      <button
+                        type="button"
+                        className={`nav-link${tab === "alojamientos" ? " active" : ""}`}
+                        onClick={() => setTab("alojamientos")}
+                        role="tab"
+                        aria-selected={tab === "alojamientos"}
+                        aria-controls="tab-alojamientos"
+                      >
+                        Alojamientos
+                      </button>
+                    </li>
+                  )}
                 </ul>
 
                 <div className="tab-content">
@@ -636,6 +790,31 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                       </ul>
                     )}
                   </div>
+
+                  {/* ITINERARIO PANE — modalidad CIRCUITO. Acordeón día a día
+                      del circuito asignado; el texto libre itinerarioPublico
+                      queda debajo como complemento. */}
+                  {hasItinerarioDias && (
+                    <div
+                      id="tab-itinerario"
+                      role="tabpanel"
+                      className={`tab-pane fade${tab === "itinerario" ? " show active" : ""}`}
+                    >
+                      <div style={{ padding: "20px 28px 28px" }}>
+                        <ItinerarioAccordion dias={paquete.itinerarioDias} />
+                        {paquete.itinerarioPublico && (
+                          <RichBlock
+                            content={paquete.itinerarioPublico}
+                            style={{
+                              marginTop: 16,
+                              color: "#444",
+                              lineHeight: 1.7,
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* ALOJAMIENTOS PANE — grouped by Opción Hotelera. Each opción
                       is one customer-facing bundle: the option's `precioVenta`
@@ -768,9 +947,11 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
               </div>
             </div>
 
-            {/* Optional intro / itinerario / condiciones below the card */}
+            {/* Optional intro / itinerario / condiciones below the card. En
+                circuito el itinerarioPublico se muestra dentro del tab
+                Itinerario, así que acá sólo aplica a paquetes clásicos. */}
             {(paquete.textoIntro ||
-              paquete.itinerarioPublico ||
+              (!hasItinerarioDias && paquete.itinerarioPublico) ||
               paquete.textoCondiciones) && (
               <div
                 className="content-box style3 bg_white"
@@ -787,7 +968,7 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                     />
                   </div>
                 )}
-                {paquete.itinerarioPublico && (
+                {!hasItinerarioDias && paquete.itinerarioPublico && (
                   <div style={{ marginBottom: 24 }}>
                     <h2 className="h2" style={{ marginBottom: 12 }}>
                       Itinerario

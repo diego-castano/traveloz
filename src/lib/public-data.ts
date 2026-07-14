@@ -263,7 +263,18 @@ export const getPaqueteBySlug = unstable_cache(
         aereos: { orderBy: { orden: "asc" }, include: { aereo: true } },
         traslados: { orderBy: { orden: "asc" }, include: { traslado: true } },
         seguros: { orderBy: { orden: "asc" }, include: { seguro: true } },
-        circuitos: { orderBy: { orden: "asc" }, include: { circuito: true } },
+        circuitos: {
+          orderBy: { orden: "asc" },
+          include: {
+            circuito: {
+              include: {
+                // Itinerario día a día (modalidad CIRCUITO) — mismo orden que
+                // usa el admin en circuitos/[id] (orderBy orden asc).
+                itinerario: { orderBy: { orden: "asc" } },
+              },
+            },
+          },
+        },
         destinos: {
           orderBy: { orden: "asc" },
           include: {
