@@ -200,43 +200,29 @@ function RichField({
   );
 }
 
-// Resumen de vigencia — la edición vive en la pestaña Datos. Acá solo
-// mostramos el estado persistido para que el operador sepa qué tiene guardado
-// sin tener que ir y volver.
+// Resumen de vigencia — la baja la calcula el sistema (15 días antes del
+// inicio del viaje). Acá sólo mostramos la fecha de baja persistida para que
+// el operador sepa qué tiene guardado sin ir a la pestaña Datos.
 function VigenciaResumen({
-  validezDesde,
   validezHasta,
 }: {
-  validezDesde?: string | null;
   validezHasta?: string | null;
 }) {
-  const fmt = (iso?: string | null) => {
-    const d = parseStoredDate(iso ?? null);
-    if (!d) return "—";
-    return d.toLocaleDateString("es-AR", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
+  const d = parseStoredDate(validezHasta ?? null);
   return (
-    <div className="grid grid-cols-2 gap-2">
-      <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2">
-        <p className="text-[10px] uppercase tracking-wide text-neutral-400">
-          Desde
-        </p>
-        <p className="text-[13px] text-neutral-700 font-medium">
-          {fmt(validezDesde)}
-        </p>
-      </div>
-      <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2">
-        <p className="text-[10px] uppercase tracking-wide text-neutral-400">
-          Hasta
-        </p>
-        <p className="text-[13px] text-neutral-700 font-medium">
-          {fmt(validezHasta)}
-        </p>
-      </div>
+    <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-neutral-400">
+        Baja automática
+      </p>
+      <p className="text-[13px] text-neutral-700 font-medium">
+        {d
+          ? d.toLocaleDateString("es-AR", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          : "Sin fecha de baja (activo indefinido)"}
+      </p>
     </div>
   );
 }
@@ -991,19 +977,20 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
 
         <div className="pt-2 border-t border-neutral-100">
           <label className="block text-xs font-medium text-neutral-700 mb-1">
-            Periodo de validez
+            Vigencia
           </label>
-          <VigenciaResumen validezDesde={data.validezDesde} validezHasta={data.validezHasta} />
+          <VigenciaResumen validezHasta={data.validezHasta} />
           <p className="text-[11px] text-neutral-500 mt-1">
-            Se configura desde la pestaña{" "}
+            El paquete está activo desde que se crea y se da de baja
+            automáticamente 15 días antes del inicio del viaje. El período de
+            viaje se carga en la pestaña{" "}
             <a
               href="?tab=datos"
               className="text-violet-600 hover:underline"
             >
               Datos
             </a>
-            . Por defecto se vincula al período de viaje (15 días previos al
-            inicio, hasta la fecha de fin).
+            .
           </p>
         </div>
       </Section>

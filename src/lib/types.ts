@@ -40,7 +40,10 @@ export interface Paquete {
   temporadaId: string;
   tipoPaqueteId: string;
   validezDesde: string;
-  validezHasta: string;
+  /** Fecha de baja automática. Se deriva de viajeDesde − 15 días en el server.
+   * `null` cuando el paquete todavía no tiene período de viaje (activo
+   * indefinido). No la gestiona el operador. */
+  validezHasta: string | null;
   /** Período de viaje real (cuándo viaja el cliente). Usado para matchear
    * servicios y resolver sus precios. Distinto de validez (que controla el
    * listing en el frontend). */

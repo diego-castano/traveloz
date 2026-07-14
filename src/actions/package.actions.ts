@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
+import { parseStoredDate, formatStoredDate, addDays } from "@/lib/date";
 import {
   recomputePaqueteOpciones,
   recomputeForOpcionHotelera,
@@ -458,6 +459,18 @@ export async function updatePaquete(
     if (nextNeto > 0 && nextVenta > 0) {
       const { assertMargenPositivo } = await import("./package-lifecycle.utils");
       assertMargenPositivo(nextNeto, nextVenta, nextFactor);
+    }
+
+    // Vigencia autoritativa: el paquete se da de baja 15 días antes del inicio
+    // del viaje (validezHasta = viajeDesde − 15 días). Se deriva acá, en el
+    // server, cada vez que el payload trae viajeDesde, para que ninguna ruta de
+    // guardado pueda divergir. Sin viajeDesde → sin fecha de baja (activo
+    // indefinido). validezDesde ya no se gestiona: se conserva lo que haya.
+    if (data.viajeDesde !== undefined) {
+      const desde = parseStoredDate(data.viajeDesde);
+      data.validezHasta = desde
+        ? formatStoredDate(addDays(desde, -15)) ?? null
+        : null;
     }
 
     const updated = await prisma.paquete.update({ where: { id }, data });

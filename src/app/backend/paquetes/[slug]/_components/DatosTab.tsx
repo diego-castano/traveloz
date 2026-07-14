@@ -16,7 +16,6 @@ import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { DestinoAutocomplete } from "@/components/ui/form/DestinoAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
-import { DatePicker } from "@/components/ui/DatePicker";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
 import { Tag } from "@/components/ui/Tag";
 import type { TagColor } from "@/components/ui/Tag";
@@ -49,14 +48,12 @@ import { validateForActivation } from "@/lib/validation";
 import {
   formatStoredDate,
   parseStoredDate,
-  startOfLocalDay,
   addDays,
 } from "@/lib/date";
 import {
   Star,
   ChevronDown,
   ChevronRight,
-  AlertTriangle,
   Hotel,
   Route,
   Check,
@@ -314,21 +311,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [viajeHastaDate, setViajeHastaDate] = useState<Date | undefined>(
     parseStoredDate(paquete.viajeHasta),
   );
-  // Vigencia: hasta cuándo el paquete sigue visible/activo en el frontend.
-  // Por defecto se ata al período de viaje (validezDesde = viajeDesde,
-  // validezHasta = viajeHasta − 15d). Si el operador edita validezDesde o
-  // validezHasta a mano, se rompe el vínculo y ya no se recalcula al tocar
-  // el viaje.
-  const [validezDesdeDate, setValidezDesdeDate] = useState<Date | undefined>(
-    parseStoredDate(paquete.validezDesde),
-  );
-  const [validezHastaDate, setValidezHastaDate] = useState<Date | undefined>(
-    parseStoredDate(paquete.validezHasta),
-  );
-  // Override manual: queda en true apenas el operador toca validezDesde o
-  // validezHasta con el toggle "vincular" apagado. Mientras esté en true, los
-  // cambios al período de viaje no pisan la vigencia.
-  const [vigenciaManual, setVigenciaManual] = useState(false);
+  // Vigencia: ya NO la gestiona el operador. El paquete se da de baja
+  // automáticamente 15 días antes del inicio del viaje (validezHasta =
+  // viajeDesde − 15d). La regla la aplica el server al guardar; acá sólo
+  // mostramos la fecha resultante como línea informativa de solo lectura.
   // Salidas: leyenda libre que se muestra bajo el título en el frontend
   // (ej. "Salidas semanales todo el año"). Vive junto al período del viaje.
   // Se autocompleta desde "Desde y hasta" salvo que el operador la edite a mano.
@@ -395,75 +381,26 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     destinos,
   );
 
-  // -- Vigencia helper: warn if close to expiry (sobre la validez, no el viaje) --
-  const now = startOfLocalDay(new Date()) ?? new Date();
-  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
-  const hastaExpired = validezHastaDate ? validezHastaDate < now : false;
-  const hastaWarning =
-    validezHastaDate && !hastaExpired
-      ? validezHastaDate.getTime() - now.getTime() < thirtyDaysMs
-      : false;
-
-  // Detecta si la vigencia mostrada en la UI está desincronizada del
-  // período de viaje. Caso típico: paquetes viejos donde la vigencia quedó
-  // con los defaults del alta (hoy / hoy+1año) y después se configuró el
-  // período de viaje a mano. La UI muestra un banner con un botón para
-  // aplicar el recálculo.
-  const localValidezDesdeStr = validezDesdeDate
-    ? formatStoredDate(validezDesdeDate)
-    : null;
-  const localValidezHastaStr = validezHastaDate
-    ? formatStoredDate(validezHastaDate)
-    : null;
-  const derivedValidezDesde = viajeDesdeDate
-    ? formatStoredDate(viajeDesdeDate)
-    : null;
-  const derivedValidezHasta = viajeHastaDate
-    ? formatStoredDate(addDays(viajeHastaDate, -15))
-    : null;
-  const vigenciaDesincronizada =
-    !vigenciaManual &&
-    (localValidezDesdeStr !== derivedValidezDesde ||
-      localValidezHastaStr !== derivedValidezHasta);
-
-  const handleAplicarVigenciaAlViaje = () => {
-    setValidezDesdeDate(viajeDesdeDate);
-    setValidezHastaDate(viajeHastaDate ? addDays(viajeHastaDate, -15) : undefined);
-    markDirty();
-  };
+  // -- Fecha de baja automática: viajeDesde − 15 días (solo lectura) --
+  // Si no hay período de viaje cargado, no hay fecha de baja (activo indefinido).
+  const bajaDate = viajeDesdeDate ? addDays(viajeDesdeDate, -15) : undefined;
 
   const persistPaquete = useCallback(
     (overrides: Partial<Paquete> = {}) => {
       // Período de viaje: cuándo viaja el cliente (matchea servicios y precios).
-      // Vigencia: hasta cuándo el paquete sigue activo en el frontend.
-      //  • Si vigenciaManual es false, validezDesde = viajeDesde y
-      //    validezHasta = viajeHasta - 15 días.
-      //  • Si vigenciaManual es true, se respetan los valores manuales.
+      // Vigencia: el paquete se da de baja 15 días antes del inicio del viaje.
+      // validezHasta lo deriva el server de forma autoritativa; lo enviamos ya
+      // calculado para que la cache del cliente quede coherente al instante.
+      // validezDesde no se gestiona: se conserva el valor existente.
       const viajeDesdeStr = viajeDesdeDate
         ? formatStoredDate(viajeDesdeDate)
         : null;
       const viajeHastaStr = viajeHastaDate
         ? formatStoredDate(viajeHastaDate)
         : null;
-      let validezDesdeStr: string;
-      let validezHastaStr: string;
-      if (vigenciaManual) {
-        validezDesdeStr = validezDesdeDate
-          ? formatStoredDate(validezDesdeDate)!
-          : paquete.validezDesde;
-        validezHastaStr = validezHastaDate
-          ? formatStoredDate(validezHastaDate)!
-          : paquete.validezHasta;
-      } else if (viajeDesdeDate) {
-        // Vigencia automática: desde viajeDesde, hasta viajeHasta - 15 días.
-        validezDesdeStr = formatStoredDate(viajeDesdeDate)!;
-        validezHastaStr = viajeHastaDate
-          ? formatStoredDate(addDays(viajeHastaDate, -15))!
-          : paquete.validezHasta;
-      } else {
-        validezDesdeStr = paquete.validezDesde;
-        validezHastaStr = paquete.validezHasta;
-      }
+      const validezHastaStr = viajeDesdeDate
+        ? formatStoredDate(addDays(viajeDesdeDate, -15))!
+        : null;
       return updatePaquete({
         ...paquete,
         titulo,
@@ -477,7 +414,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         modalidad,
         destacado,
         moneda,
-        validezDesde: validezDesdeStr,
+        // validezDesde se conserva (no se gestiona); validezHasta se deriva.
         validezHasta: validezHastaStr,
         viajeDesde: viajeDesdeStr,
         viajeHasta: viajeHastaStr,
@@ -498,9 +435,6 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       moneda,
       viajeDesdeDate,
       viajeHastaDate,
-      validezDesdeDate,
-      validezHastaDate,
-      vigenciaManual,
       updatePaquete,
     ],
   );
@@ -570,33 +504,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       const auto = formatSalidasFromRange(desde, hasta);
       if (auto) setSalidas(auto);
     }
-    // Si la vigencia NO está en modo manual, reflejar el cambio del viaje
-    // inmediatamente en la UI para que el operador vea el recálculo sin tener
-    // que esperar al autosave + refresh. El persistPaquete ya hace lo mismo en
-    // el guardado. Regla: validezHasta = viajeHasta - 15 días (la promo
-    // entra con 15 días de anticipación y se corta 15 días antes del fin).
-    if (!vigenciaManual) {
-      setValidezDesdeDate(desde);
-      setValidezHastaDate(hasta ? addDays(hasta, -15) : undefined);
-    }
-    markDirty();
-  };
-  const setValidezDesdeDateDirty = (v: Date | undefined) => {
-    setValidezDesdeDate(v);
-    setVigenciaManual(true);
-    markDirty();
-  };
-  const setValidezHastaDateDirty = (v: Date | undefined) => {
-    setValidezHastaDate(v);
-    setVigenciaManual(true);
-    markDirty();
-  };
-  // Re-vincula la vigencia al período de viaje: borra validezDesde/Hasta y
-  // deja que el próximo render del autosave los derive del viaje.
-  const handleVincularVigencia = () => {
-    setVigenciaManual(false);
-    setValidezDesdeDate(undefined);
-    setValidezHastaDate(undefined);
+    // La fecha de baja (validezHasta = viajeDesde − 15d) se deriva sola en el
+    // render (bajaDate) y en el guardado (server + persistPaquete). No hay
+    // estado de vigencia que actualizar acá.
     markDirty();
   };
 
@@ -623,40 +533,17 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
       <FormSections>
         {/* ================================================================ */}
-        {/* Período y vigencia — fechas de viaje, vigencia derivada y estado. */}
-        {/* El orden sigue el flujo de configuración: primero el viaje         */}
-        {/* (de dónde sale la vigencia), después la vigencia editable,         */}
-        {/* después el estado interno.                                         */}
+        {/* Período del viaje, baja automática y estado.                      */}
+        {/* El viaje es la fuente de la baja automática: el paquete se da de   */}
+        {/* baja 15 días antes de su inicio. La vigencia ya no la gestiona el  */}
+        {/* operador (regla del negocio); acá sólo se informa la fecha.        */}
         {/* ================================================================ */}
         <FormSection
-          title="Período y vigencia"
-          description="Fechas en que viaja el cliente (de donde se deriva la vigencia), vigencia editable del paquete en el frontend, y estado interno del flujo."
+          title="Período del viaje y estado"
+          description="Fechas en que viaja el cliente (matchean servicios y tarifas). La baja del paquete se calcula sola: 15 días antes del inicio del viaje."
         >
-          {vigenciaDesincronizada && !isReadOnly && (
-            <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0 text-[12px] text-amber-900 leading-snug">
-                <p className="font-semibold mb-0.5">
-                  La vigencia guardada no coincide con el período de viaje.
-                </p>
-                <p>
-                  {viajeDesdeDate && derivedValidezDesde && derivedValidezHasta
-                    ? `Cálculo automático: ${derivedValidezDesde} → ${derivedValidezHasta}.`
-                    : "Definí las fechas del viaje para calcular la vigencia automática."}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleAplicarVigenciaAlViaje}
-                  disabled={!viajeDesdeDate}
-                  className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-medium text-amber-800 hover:text-amber-950 underline disabled:opacity-50 disabled:no-underline"
-                >
-                  Aplicar al período de viaje
-                </button>
-              </div>
-            </div>
-          )}
           <FieldGroup columns={2}>
-            {/* 1) Período del viaje — la fuente de la vigencia automática. */}
+            {/* 1) Período del viaje — la fuente de la baja automática. */}
             <Field span={2}>
               <FieldLabel>Período del viaje (desde y hasta)</FieldLabel>
               <PeriodPicker
@@ -669,121 +556,55 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 disabled={isReadOnly}
               />
               <p className="text-[11px] text-neutral-400 mt-1">
-                Define qué servicios y tarifas aplican, y se usa como ancla
-                para calcular la vigencia automática (desde el inicio del
-                viaje hasta 15 días antes del fin).
+                Define qué servicios y tarifas aplican. También fija la baja
+                automática: el paquete se da de baja 15 días antes del inicio
+                del viaje.
               </p>
             </Field>
 
-            {/* 2-3) Vigencia + Salidas — agrupados en su propia fila con un
-                hairline vertical entre ambos en desktop (misma familia visual
-                que border-hairline usado en el resto del form). En mobile
-                quedan apiladas sin separador, como el resto de FieldGroup. */}
+            {/* 2-3) Baja automática (solo lectura) + Salidas — misma fila, con
+                un hairline vertical entre ambos en desktop. En mobile quedan
+                apiladas sin separador, como el resto de FieldGroup. */}
             <div className="md:col-span-2 flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-0">
-              {/* 2) Vigencia — editable, atada al viaje por defecto. */}
+              {/* 2) Baja automática — informativa, derivada del viaje. */}
               <Field className="md:pr-6">
-                <FieldLabel className="flex items-center justify-between">
-                  <span>Vigencia</span>
-                  {!vigenciaManual ? (
-                    <span className="text-[10.5px] font-normal text-neutral-400">
-                      Vinculada al período de viaje
-                    </span>
+                <FieldLabel>Baja automática</FieldLabel>
+                <div className="rounded-[8px] border border-[rgba(17,17,36,0.14)] bg-neutral-50 px-3 py-2.5">
+                  {bajaDate ? (
+                    <>
+                      <p className="text-[13.5px] font-medium text-neutral-800">
+                        {bajaDate.toLocaleDateString("es-AR", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </p>
+                      <p className="text-[11px] text-neutral-400 mt-0.5">
+                        15 días antes del inicio del viaje.
+                      </p>
+                    </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={handleVincularVigencia}
-                      disabled={isReadOnly}
-                      className="text-[10.5px] font-medium text-violet-600 hover:underline disabled:text-neutral-300 disabled:no-underline"
-                    >
-                      Volver a vincular al viaje
-                    </button>
+                    <p className="text-[13px] text-neutral-500">
+                      Se define al cargar el período del viaje.
+                    </p>
                   )}
-                </FieldLabel>
-                <div className="flex items-end gap-2">
-                  <div className="flex-1 min-w-0 max-w-[170px]">
-                    <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
-                      Desde
-                    </span>
-                    <DatePicker
-                      value={validezDesdeDate}
-                      onChange={setValidezDesdeDateDirty}
-                      placeholder={
-                        viajeDesdeDate
-                          ? `Auto: ${formatStoredDate(viajeDesdeDate)}`
-                          : "Elegir fecha..."
-                      }
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0 max-w-[170px]">
-                    <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
-                      Hasta
-                    </span>
-                    <DatePicker
-                      value={validezHastaDate}
-                      onChange={setValidezHastaDateDirty}
-                      placeholder={
-                        viajeHastaDate
-                          ? `Auto: ${formatStoredDate(addDays(viajeHastaDate, -15))}`
-                          : "Elegir fecha..."
-                      }
-                      disabled={isReadOnly}
-                    />
-                  </div>
                 </div>
-                {vigenciaManual ? (
-                  <p className="mt-1.5 text-[11px] text-neutral-500">
-                    Vigencia manual: no se actualiza al cambiar el período de
-                    viaje.
-                  </p>
-                ) : (
-                  <p className="mt-1.5 text-[11px] text-neutral-500">
-                    Calculada desde <span className="font-medium">viaje desde</span>{" "}
-                    hasta <span className="font-medium">viaje hasta − 15 días</span>.
-                    Tocá cualquier fecha para personalizarla.
-                  </p>
-                )}
-                {hastaExpired ? (
-                  <p className="mt-1.5 text-[11.5px] font-medium text-[#CC2030]">
-                    Vigencia vencida — el paquete ya no se muestra en el
-                    frontend.
-                  </p>
-                ) : hastaWarning ? (
-                  <p className="mt-1.5 text-[11.5px] font-medium text-amber-600">
-                    Vence en menos de 30 días.
-                  </p>
-                ) : validezHastaDate ? (
-                  <p className="mt-1 text-[11px] text-neutral-400">
-                    Se dará de baja automáticamente el{" "}
-                    {validezHastaDate.toLocaleDateString("es-AR", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                    .
-                  </p>
-                ) : null}
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  El paquete queda activo desde que se crea. La baja la calcula
+                  el sistema; no se edita a mano.
+                </p>
               </Field>
 
-              {/* 3) Salidas — separada de Vigencia por el hairline en desktop.
-                  El span invisible replica la micro-etiqueta "Desde/Hasta" de
-                  Vigencia para que el input arranque en el mismo baseline. */}
+              {/* 3) Salidas — separada por el hairline en desktop. El span
+                  invisible alinea el input con el baseline de Baja automática. */}
               <Field className="md:border-l md:border-hairline md:pl-6">
                 <FieldLabel>Salidas</FieldLabel>
-                <div>
-                  <span
-                    aria-hidden="true"
-                    className="invisible block text-[10.5px] uppercase tracking-wide mb-1"
-                  >
-                    Salidas
-                  </span>
-                  <Input
-                    value={salidas}
-                    onChange={(e) => setSalidasDirty(e.target.value)}
-                    placeholder="Ej. Salidas semanales todo el año / Consultar"
-                    readOnly={isReadOnly}
-                  />
-                </div>
+                <Input
+                  value={salidas}
+                  onChange={(e) => setSalidasDirty(e.target.value)}
+                  placeholder="Ej. Salidas semanales todo el año / Consultar"
+                  readOnly={isReadOnly}
+                />
                 <p className="text-[11px] text-neutral-400 mt-1">
                   Se muestra bajo el título en el frontend. Se autocompleta
                   con el período de arriba (ej. &ldquo;Octubre - Noviembre 2026&rdquo;).
@@ -792,9 +613,16 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               </Field>
             </div>
 
-            {/* 4) Estado — etapa del flujo interno. */}
+            {/* 4) Estado — etapa del flujo interno (no publica el paquete). */}
             <Field span={2}>
-              <FieldLabel>Estado</FieldLabel>
+              <FieldLabel className="flex items-center gap-2">
+                <span>Estado</span>
+                {!paquete.publicado && (
+                  <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[10.5px] font-medium text-neutral-500">
+                    No publicado
+                  </span>
+                )}
+              </FieldLabel>
               <Select
                 value={estado}
                 onValueChange={setEstadoDirty}
@@ -802,6 +630,16 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 options={estadoOptions}
                 placeholder="Seleccionar estado..."
               />
+              <p className="text-[11px] text-neutral-400 mt-1">
+                El estado no publica el paquete: para mostrarlo en el sitio usá{" "}
+                <a
+                  href="?tab=publicacion"
+                  className="text-violet-600 hover:underline"
+                >
+                  «Publicar en el sitio»
+                </a>{" "}
+                en la pestaña Publicación.
+              </p>
             </Field>
           </FieldGroup>
         </FormSection>

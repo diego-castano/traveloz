@@ -53,8 +53,6 @@ export default function NuevoPaquetePage() {
     (async () => {
       try {
         const now = formatStoredDate(new Date()) ?? "";
-        const oneYearLater =
-          formatStoredDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)) ?? "";
 
         // Date stamp (no hour) — date-only is enough to disambiguate drafts
         // in the list, and hides the embarrassing exact-minute leak when an
@@ -93,8 +91,10 @@ export default function NuevoPaquetePage() {
           markup: 0.8,
           precioVenta: 0,
           moneda: "USD",
+          // validezDesde: hoy sólo como ancla de precios para paquetes sin
+          // viajeDesde. validezHasta queda null: no hay baja hasta que se
+          // cargue el período del viaje (la deriva el server: viajeDesde − 15d).
           validezDesde: now,
-          validezHasta: oneYearLater,
           ordenServicios: [],
         });
 
