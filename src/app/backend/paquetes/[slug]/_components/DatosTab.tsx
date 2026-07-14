@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+} from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Input } from "@/components/ui/Input";
@@ -45,8 +52,17 @@ import {
   startOfLocalDay,
   addDays,
 } from "@/lib/date";
-import { Star, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
+import {
+  Star,
+  ChevronDown,
+  ChevronRight,
+  AlertTriangle,
+  Hotel,
+  Route,
+  Check,
+} from "lucide-react";
 import { springs } from "@/components/lib/animations";
+import { cn } from "@/components/lib/cn";
 import type { Paquete, EstadoPaquete, ModalidadPaquete } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -106,10 +122,137 @@ const estadoOptions = [
 
 const monedaOptions = [{ value: "USD", label: "USD" }];
 
-const modalidadOptions = [
-  { value: "CLASICO", label: "Paquete clásico" },
-  { value: "CIRCUITO", label: "Circuito (todo incluido)" },
+const modalidadCardOptions: Array<{
+  value: ModalidadPaquete;
+  label: string;
+  description: string;
+  icon: typeof Hotel;
+}> = [
+  {
+    value: "CLASICO",
+    label: "Paquete clásico",
+    description:
+      "Vuelo + hotel + extras. El precio sale de las opciones hoteleras.",
+    icon: Hotel,
+  },
+  {
+    value: "CIRCUITO",
+    label: "Circuito (todo incluido)",
+    description:
+      "El circuito incluye alojamiento, comidas y paseos. Precio por persona cargado en el circuito.",
+    icon: Route,
+  },
 ];
+
+// ---------------------------------------------------------------------------
+// ModalidadRadioCards — accessible two-card radio group for "Modalidad".
+//
+// Reemplaza el Select original: la elección entre Clásico/Circuito cambia el
+// motor de precios y la publicación del paquete, así que necesita ser
+// visualmente inequívoca en vez de un control chico. role="radiogroup" +
+// role="radio"/aria-checked en botones nativos (tab + espacio/enter
+// funcionan gratis); las flechas izquierda/derecha alternan entre las dos
+// tarjetas siguiendo el patrón ARIA de radiogroup.
+// ---------------------------------------------------------------------------
+
+interface ModalidadRadioCardsProps {
+  value: ModalidadPaquete;
+  onValueChange: (value: ModalidadPaquete) => void;
+  disabled?: boolean;
+}
+
+function ModalidadRadioCards({
+  value,
+  onValueChange,
+  disabled,
+}: ModalidadRadioCardsProps) {
+  const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (
+      e.key !== "ArrowRight" &&
+      e.key !== "ArrowLeft" &&
+      e.key !== "ArrowUp" &&
+      e.key !== "ArrowDown"
+    ) {
+      return;
+    }
+    e.preventDefault();
+    const currentIndex = modalidadCardOptions.findIndex(
+      (opt) => opt.value === value,
+    );
+    const delta =
+      e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1;
+    const nextIndex =
+      (currentIndex + delta + modalidadCardOptions.length) %
+      modalidadCardOptions.length;
+    onValueChange(modalidadCardOptions[nextIndex].value);
+  };
+
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Modalidad del paquete"
+      className={cn(
+        "grid grid-cols-1 gap-3 sm:grid-cols-2",
+        disabled && "opacity-60 pointer-events-none",
+      )}
+    >
+      {modalidadCardOptions.map((opt) => {
+        const active = opt.value === value;
+        const Icon = opt.icon;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            tabIndex={active ? 0 : -1}
+            disabled={disabled}
+            onClick={() => onValueChange(opt.value)}
+            onKeyDown={handleKeyDown}
+            className={cn(
+              "relative flex flex-col items-start gap-2 rounded-[14px] border px-4 py-3.5 text-left transition-all",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+              active
+                ? "border-teal-600 bg-teal-50 shadow-[0_10px_22px_rgba(15,118,110,0.12)] focus-visible:ring-teal-500"
+                : "border-hairline bg-white hover:border-neutral-300 hover:bg-neutral-50 focus-visible:ring-neutral-400",
+            )}
+          >
+            {active && (
+              <span
+                aria-hidden="true"
+                className="absolute right-3 top-3 inline-flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-white"
+              >
+                <Check className="h-3 w-3" strokeWidth={3} />
+              </span>
+            )}
+            <Icon
+              className={cn(
+                "h-5 w-5",
+                active ? "text-teal-600" : "text-neutral-400",
+              )}
+            />
+            <span
+              className={cn(
+                "text-[13.5px] font-semibold pr-6",
+                active ? "text-teal-700" : "text-neutral-800",
+              )}
+            >
+              {opt.label}
+            </span>
+            <span
+              className={cn(
+                "text-[11.5px] leading-snug",
+                active ? "text-teal-700/80" : "text-neutral-500",
+              )}
+            >
+              {opt.description}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Etiqueta color mapping helper
@@ -654,15 +797,13 @@ export default function DatosTab({ paquete }: DatosTabProps) {
           title="Modalidad del paquete"
           description="Cómo se arma y se cotiza. «Clásico» deriva el precio de las opciones hoteleras. «Circuito (todo incluido)» toma el precio por persona del circuito asignado (hotel, comidas y paseos van dentro del circuito); no se cargan opciones hoteleras ni destinos."
         >
-          <FieldGroup columns={2}>
+          <FieldGroup columns={1}>
             <Field>
               <FieldLabel>Modalidad</FieldLabel>
-              <Select
+              <ModalidadRadioCards
                 value={modalidad}
                 onValueChange={setModalidadDirty}
                 disabled={isReadOnly}
-                options={modalidadOptions}
-                placeholder="Seleccionar modalidad..."
               />
               {paquete.publicado && (
                 <p className="mt-1.5 text-[11.5px] font-medium text-amber-600">
