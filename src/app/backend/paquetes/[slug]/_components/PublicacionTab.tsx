@@ -1,20 +1,14 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// Publicación — single tab that controls EVERYTHING related to the public
-// life of a paquete. Replaces the former FrontendTab + PublicacionTab split:
+// Publicación — tab que edita la ficha pública del paquete (slug, hero, textos,
+// SEO, servicios incluidos, etiquetas, destacado).
 //
-//   • `publicado` (boolean) — is this visible on the public site RIGHT NOW.
-//   • `estado` (enum) — internal lifecycle: BORRADOR → EN_REVISION → ACTIVO
-//     → ARCHIVADO. Toggling "Publicar" auto-bumps estado to ACTIVO when the
-//     paquete is still in BORRADOR/EN_REVISION (handled server-side in
-//     updatePaqueteFrontend). Moving estado OUT of ACTIVO auto-unpublishes
-//     (handled in updatePaqueteLifecycle).
-//
-// All public-content fields (slug, hero, textos, SEO, servicios incluidos)
-// live here too; el resto del lifecycle (estado, destacado, etiquetas) vive
-// acá. La vigencia (validezDesde/Hasta) se edita desde la pestaña Datos, donde
-// se vincula automáticamente al período de viaje.
+// Invariante estado ACTIVO ⇔ publicado: la publicación NO se controla acá. El
+// único control es el Estado, en la pestaña Datos (Activo publica; cualquier
+// otro estado oculta). Este tab muestra el estado/publicación en modo lectura y
+// linkea a Datos. La vigencia (validezDesde/Hasta) se deriva del período de
+// viaje, también en la pestaña Datos.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -39,7 +33,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Toggle } from "@/components/ui/Toggle";
-import { Select } from "@/components/ui/Select";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { Tag, type TagColor } from "@/components/ui/Tag";
 import { useToast } from "@/components/ui/Toast";
@@ -67,10 +60,6 @@ import { RichTextEditor } from "@/app/backend/web/_components/RichTextEditor";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
-import {
-  EstadoHelpPanel,
-  type EstadoKey,
-} from "@/components/ui/EstadoHelp";
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { parseStoredDate } from "@/lib/date";
@@ -438,9 +427,11 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   // to publicado-only transitions.
   // ---------------------------------------------------------------------------
   const saveFrontend = useCallback(async () => {
+    // La publicación NO se controla acá: el flag `publicado` lo maneja el Estado
+    // en la pestaña Datos (invariante ACTIVO ⇔ publicado). Este tab sólo guarda
+    // slug + contenido público, así que no mandamos `publicado`.
     const res = await updatePaqueteFrontend(paqueteId, {
       slug: form.slug,
-      publicado: form.publicado,
       metaTitle: form.metaTitle,
       metaDescription: form.metaDescription,
       heroImage: form.heroImage,
@@ -451,13 +442,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       textoCondiciones: form.textoCondiciones,
     });
     if (!res.ok) {
-      // publish_blocked (falta algo para publicar) o slug_taken (colisión de
-      // slug). En ambos casos devolvemos los motivos para que la UI los muestre.
+      // slug_taken (colisión de slug): devolvemos el motivo para que la UI lo
+      // muestre. El publish_blocked ya no se dispara desde este tab.
       return { ok: false, reason: res.reason, missing: res.missing };
-    }
-    // Server may have auto-bumped estado to ACTIVO — reflect it locally.
-    if (res.ok && form.publicado && form.estado !== "ACTIVO") {
-      setForm((p) => ({ ...p, estado: "ACTIVO" }));
     }
     // Mismo wrap que handleAutoSave: la sync secundaria de PaqueteServicio
     // es opcional (la lista visible la arma el front desde textoIncluye,
@@ -494,18 +481,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       try {
         const res = await saveFrontend();
         if (!res.ok && res.missing) {
+          // Sólo slug_taken llega hasta acá (la publicación se controla en Datos).
           setPublishBlockers(res.missing);
           focusBlockerField(res.missing);
-          if (res.reason === "slug_taken") {
-            toast("error", "Slug en uso", res.missing[0]);
-          } else {
-            toast(
-              "warning",
-              "No se puede publicar todavía",
-              `Revisá lo que falta más arriba.`,
-            );
-            setForm((prev) => ({ ...prev, publicado: false }));
-          }
+          toast("error", "Slug en uso", res.missing[0]);
           return;
         }
         setPublishBlockers([]);
@@ -534,9 +513,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
 
   const handleAutoSave = useCallback(async () => {
     const f = formRef.current;
+    // Sin `publicado`: la publicación la controla el Estado (pestaña Datos).
     const res = await updatePaqueteFrontend(paqueteId, {
       slug: f.slug,
-      publicado: f.publicado,
       metaTitle: f.metaTitle,
       metaDescription: f.metaDescription,
       heroImage: f.heroImage,
@@ -547,24 +526,13 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       textoCondiciones: f.textoCondiciones,
     });
     if (!res.ok) {
+      // Sólo puede ser slug_taken (colisión de slug).
       setPublishBlockers(res.missing);
       focusBlockerField(res.missing);
-      if (res.reason === "slug_taken") {
-        toast("error", "Slug en uso", res.missing[0]);
-      } else {
-        toast(
-          "warning",
-          "No se puede publicar todavía",
-          `Revisá lo que falta más arriba.`,
-        );
-        setForm((prev) => ({ ...prev, publicado: false }));
-      }
+      toast("error", "Slug en uso", res.missing[0]);
       return;
     }
     setPublishBlockers([]);
-    if (res.ok && formRef.current.publicado && formRef.current.estado !== "ACTIVO") {
-      setForm((p) => ({ ...p, estado: "ACTIVO" }));
-    }
     // Sincronización secundaria: la tabla `PaqueteServicio` (catálogo → paquete)
     // es opcional. La lista visible la arma el front desde `textoIncluye` (el
     // JSON ya guardado arriba). Si esta sync falla, NO debe quedar el indicador
@@ -694,31 +662,6 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   // Lifecycle handlers — fire-and-forget server calls (no debounce: estado is
   // a discrete pick, not a typing-stream). Failures surface as a toast.
   // ---------------------------------------------------------------------------
-  const handleEstadoChange = (value: string) => {
-    const newEstado = value as EstadoPaquete;
-    // Snapshot para revertir si el server falla (update optimista sin rollback
-    // dejaba el select mostrando un estado que la DB nunca guardó).
-    const prevEstado = form.estado;
-    setForm((p) => ({ ...p, estado: newEstado }));
-    updatePaqueteLifecycle(paqueteId, { estado: newEstado })
-      .then((r) => {
-        if (r.unpublished) {
-          setForm((p) => ({ ...p, publicado: false }));
-          toast(
-            "info",
-            "Despublicado",
-            `Se quitó del sitio público al cambiar el estado a ${newEstado}.`,
-          );
-        } else {
-          toast("success", "Estado actualizado", `Nuevo estado: ${newEstado}`);
-        }
-      })
-      .catch((e) => {
-        setForm((p) => ({ ...p, estado: prevEstado }));
-        toast("error", "Error", (e as Error).message);
-      });
-  };
-
   const handleDestacadoToggle = (checked: boolean) => {
     const prevDestacado = form.destacado;
     setForm((p) => ({ ...p, destacado: checked }));
@@ -896,8 +839,8 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           // Estado y visibilidad
           estado: (
       <Section
-        title="Estado y visibilidad"
-        description="El estado describe en qué etapa del flujo interno está el paquete. El toggle Publicar lo hace visible (o no) en el sitio público; al publicar, si está en Borrador o En revisión, se pasa automáticamente a Activo."
+        title="Publicación y visibilidad"
+        description="Acá editás el slug y el contenido público. La publicación se controla con el Estado, en la pestaña Datos: Activo publica el paquete; cualquier otro estado lo oculta."
       >
         <div className="grid grid-cols-3 gap-3">
           <div
@@ -933,34 +876,45 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               /destinos/[región]/{form.slug || "<slug>"}
             </p>
           </div>
-          <div className="flex items-center pt-6">
-            <label className="inline-flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.publicado}
-                onChange={(e) => patch("publicado", e.target.checked)}
-                className="w-4 h-4 rounded text-violet-600"
-                disabled={disabled}
-              />
-              <span className="text-sm text-neutral-700">
-                Publicar en el sitio
-              </span>
-            </label>
+          <div className="flex flex-col justify-center pt-6">
+            <span className="block text-xs font-medium text-neutral-700 mb-1">
+              Publicación
+            </span>
+            <span
+              className={`inline-flex w-fit items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium ring-1 ring-inset ${
+                form.estado === "ACTIVO"
+                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                  : "bg-neutral-100 text-neutral-600 ring-neutral-200"
+              }`}
+            >
+              {form.estado === "ACTIVO" ? (
+                <Eye className="w-3 h-3" />
+              ) : (
+                <EyeOff className="w-3 h-3" />
+              )}
+              {form.estado === "ACTIVO" ? "Publicado" : "No publicado"}
+            </span>
           </div>
         </div>
 
+        {/* Bloque informativo de solo lectura: la publicación (estado) se
+            controla desde la pestaña Datos. Acá sólo lo mostramos. */}
         <div className="grid grid-cols-2 gap-4 pt-2 border-t border-neutral-100">
           <div>
             <label className="block text-xs font-medium text-neutral-700 mb-1">
               Estado del paquete
             </label>
-            <Select
-              value={form.estado}
-              onValueChange={handleEstadoChange}
-              options={ESTADO_OPTIONS}
-              disabled={disabled}
-            />
-            <EstadoHelpPanel current={form.estado as EstadoKey} />
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">
+              {ESTADO_OPTIONS.find((o) => o.value === form.estado)?.label ??
+                form.estado}
+            </div>
+            <p className="text-[11px] text-neutral-500 mt-1">
+              La publicación se controla con el Estado, en la pestaña{" "}
+              <a href="?tab=datos" className="text-violet-600 hover:underline">
+                Datos
+              </a>
+              .
+            </p>
           </div>
           <div className="flex items-end">
             <div className="flex items-center gap-2">

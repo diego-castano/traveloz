@@ -5,8 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { type IncluyeItem, newIncluyeId } from "@/lib/incluye";
-import { resolvePrecioCircuito } from "@/lib/utils";
-import type { PrecioCircuito } from "@/lib/types";
+import { checkPaquetePublicable } from "@/lib/paquete-publicable";
 
 // ---------------------------------------------------------------------------
 // Preview URL resolver — used by the "Previsualizar" button in /backend/paquetes
@@ -173,126 +172,22 @@ export async function updatePaqueteFrontend(
 ) {
   await requireCanEdit();
 
-  // Publishing gate: when the operator flips `publicado=true`, validate the
-  // paquete is actually ready. We block the publish (but still save the rest
-  // of the form) when essentials are missing — slug, at least 1 destino, at
-  // least 1 hotel option, and (when noches is declared) destinos summing
-  // correctly. Returning a structured error lets the UI show what's missing.
-  // Track whether the publish toggle is being flipped on — if so, we also
-  // auto-bump `estado` to ACTIVO server-side so the operator doesn't need to
-  // change the lifecycle state in a separate UI control. Source of truth:
-  // `publicado` is the public-visibility flag; `estado` is the lifecycle
-  // pipeline. Going public implies the package is at least ACTIVO.
+  // Publishing gate (invariante estado ACTIVO ⇔ publicado): cuando el payload
+  // trae `publicado=true` (path legacy del toggle, mientras exista), validamos
+  // con el helper compartido `checkPaquetePublicable` que el paquete esté listo.
+  // Si falta algo bloqueamos la publicación (pero guardamos el resto del form) y
+  // devolvemos un resultado estructurado para que la UI muestre los faltantes.
+  // Si pasa el gate, además pasamos `estado` a ACTIVO en el mismo update para
+  // no divergir del invariante. El control canónico de publicación ahora es el
+  // Estado en la pestaña Datos; este path queda por compatibilidad.
   let bumpEstadoToActivo = false;
 
   if (data.publicado === true) {
-    const current = await prisma.paquete.findUnique({
-      where: { id: paqueteId },
-      select: {
-        slug: true,
-        titulo: true,
-        noches: true,
-        heroImage: true,
-        estado: true,
-        modalidad: true,
-        viajeDesde: true,
-        viajeHasta: true,
-        validezDesde: true,
-        destinos: { select: { noches: true } },
-        opcionesHoteleras: { select: { id: true } },
-        aereos: { select: { id: true } },
-        // Circuito asignado — incluimos su itinerario, noches y precios para
-        // poder validar la modalidad CIRCUITO (precio vigente + itinerario).
-        circuitos: {
-          select: {
-            circuito: {
-              select: {
-                id: true,
-                noches: true,
-                itinerario: { select: { id: true } },
-                precios: {
-                  where: { deletedAt: null },
-                  select: {
-                    id: true,
-                    circuitoId: true,
-                    periodoDesde: true,
-                    periodoHasta: true,
-                    precio: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+    const gate = await checkPaquetePublicable(paqueteId, {
+      slug: data.slug,
+      heroImage: data.heroImage,
     });
-    if (!current) throw new Error("Paquete no encontrado.");
-
-    if (current.estado === "BORRADOR" || current.estado === "EN_REVISION") {
-      bumpEstadoToActivo = true;
-    }
-
-    const incomingSlug =
-      typeof data.slug === "string" ? data.slug.trim() : current.slug;
-    const heroImage =
-      typeof data.heroImage === "string" ? data.heroImage.trim() : current.heroImage;
-    const missing: string[] = [];
-
-    // Exigencias comunes a ambas modalidades.
-    if (!incomingSlug) missing.push("slug (URL pública)");
-    if (!current.titulo?.trim()) missing.push("título");
-    if (current.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
-    if (!heroImage) missing.push("foto principal del slider");
-    // Sin período de viaje el resolver de precios cae al fallback y el sitio
-    // público puede mostrar "Desde $0". Exigirlo antes de publicar.
-    if (!current.viajeDesde || !current.viajeHasta)
-      missing.push("período del viaje (desde / hasta)");
-
-    if (current.modalidad === "CIRCUITO") {
-      // Modalidad CIRCUITO: el circuito incluye todo (hotel, comidas, paseos).
-      // NO se exigen opciones hoteleras, destinos ni suma de noches. Sí se
-      // exige un circuito con precio vigente, itinerario y noches > 0.
-      const circ = current.circuitos[0]?.circuito ?? null;
-      if (!circ) {
-        missing.push("un circuito asignado con precio vigente");
-      } else {
-        const fecha = current.viajeDesde ?? current.validezDesde;
-        const precioVigente = resolvePrecioCircuito(
-          circ.precios as unknown as PrecioCircuito[],
-          circ.id,
-          fecha,
-        );
-        if (!precioVigente) {
-          missing.push("un circuito asignado con precio vigente");
-        }
-        if (circ.itinerario.length === 0) {
-          missing.push("itinerario del circuito (día por día)");
-        }
-        if (!circ.noches || circ.noches <= 0) {
-          missing.push("noches del circuito mayores a 0");
-        }
-      }
-    } else {
-      // Modalidad CLASICO: comportamiento histórico (opciones + destinos +
-      // coherencia de noches). Sin cambios.
-      if (current.destinos.length === 0)
-        missing.push("al menos 1 destino en el itinerario");
-      if (current.opcionesHoteleras.length === 0)
-        missing.push("al menos 1 opción hotelera");
-
-      const nochesPaquete = current.noches ?? 0;
-      const nochesDestinos = current.destinos.reduce(
-        (sum, d) => sum + (d.noches || 0),
-        0,
-      );
-      if (nochesPaquete > 0 && nochesDestinos !== nochesPaquete) {
-        missing.push(
-          `noches por destino suman ${nochesDestinos} (paquete declara ${nochesPaquete})`,
-        );
-      }
-    }
-
-    if (missing.length > 0) {
+    if (!gate.ok) {
       // Important: we return a structured result instead of throwing because
       // Next.js production builds redact server-action error messages, so the
       // user would otherwise see a generic "Error al guardar" with no clue
@@ -300,9 +195,10 @@ export async function updatePaqueteFrontend(
       return {
         ok: false as const,
         reason: "publish_blocked" as const,
-        missing,
+        missing: gate.missing,
       };
     }
+    bumpEstadoToActivo = true;
   }
 
   const dataToWrite: typeof data & { estado?: "ACTIVO" } = bumpEstadoToActivo

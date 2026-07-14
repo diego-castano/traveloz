@@ -11,6 +11,7 @@ import {
   recomputePaqueteOpciones,
   recomputeForOpcionHotelera,
 } from "@/lib/recompute-prices";
+import { checkPaquetePublicable } from "@/lib/paquete-publicable";
 import type { EstadoPaquete, ModalidadPaquete, Prisma } from "@prisma/client";
 
 const log = logger.child({ module: "package.actions" });
@@ -213,6 +214,9 @@ async function fetchBasePackagesUncached(
  * se autoprotege filtrando por vigencia en `lib/public-data.ts`, así que esto
  * es la persistencia "dentro de la app" para que el admin vea el paquete dado
  * de baja. No invalida caché acá (getBasePackages puede correr en render).
+ *
+ * Invariante estado ACTIVO ⇔ publicado: dar de baja también pasa el estado a
+ * ARCHIVADO, así el paquete no queda ACTIVO con publicado=false.
  */
 async function reconcileExpiredPaquetes(brandId: string): Promise<void> {
   try {
@@ -224,7 +228,7 @@ async function reconcileExpiredPaquetes(brandId: string): Promise<void> {
         publicado: true,
         validezHasta: { not: null, lt: hoy },
       },
-      data: { publicado: false },
+      data: { publicado: false, estado: "ARCHIVADO" },
     });
   } catch (err) {
     // Best-effort: nunca debe romper la carga del listado.
@@ -448,6 +452,7 @@ export async function updatePaquete(
         precioVenta: true,
         markup: true,
         modalidad: true,
+        estado: true,
       },
     });
     if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
@@ -473,7 +478,36 @@ export async function updatePaquete(
         : null;
     }
 
-    const updated = await prisma.paquete.update({ where: { id }, data });
+    // Invariante estado ACTIVO ⇔ publicado. El Estado (pestaña Datos) es el
+    // único control de publicación:
+    //   • Transición a ACTIVO → corre el gate compartido. Si pasa, se publica
+    //     (publicado=true) en el mismo update; si no pasa, NO se aplica el
+    //     cambio de estado y se devuelve {ok:false, reason:"publish_blocked",
+    //     missing} (el resto del payload sí se guarda).
+    //   • Cualquier estado ≠ ACTIVO → publicado=false en el mismo update.
+    // Sólo corremos el gate en la TRANSICIÓN a ACTIVO (no en cada autosave que
+    // reenvía el estado ya vigente).
+    let publishBlocked: string[] | null = null;
+    const dataToWrite: typeof data & { publicado?: boolean } = { ...data };
+    if (data.estado !== undefined) {
+      if (data.estado === "ACTIVO") {
+        if (owner.estado !== "ACTIVO") {
+          const gate = await checkPaquetePublicable(id);
+          if (gate.ok) {
+            dataToWrite.publicado = true;
+          } else {
+            publishBlocked = gate.missing;
+            delete dataToWrite.estado;
+          }
+        } else {
+          dataToWrite.publicado = true;
+        }
+      } else {
+        dataToWrite.publicado = false;
+      }
+    }
+
+    const updated = await prisma.paquete.update({ where: { id }, data: dataToWrite });
 
     // Cambiar la modalidad conmuta el motor de precios (opciones ↔ circuito) y
     // el markup del paquete es el divisor de venta en modalidad CIRCUITO, así
@@ -487,7 +521,18 @@ export async function updatePaquete(
       await safePropagate(id);
     }
     bustDashboardCache(brandId);
-    return updated;
+    if (publishBlocked) {
+      // Mismo canal estructurado que updatePaqueteFrontend: en producción Next
+      // redacta los mensajes de excepción de los server actions, así que la UI
+      // necesita el shape {ok:false, missing} para revertir el select y mostrar
+      // los faltantes en vez de un genérico "Error al guardar".
+      return {
+        ok: false as const,
+        reason: "publish_blocked" as const,
+        missing: publishBlocked,
+      };
+    }
+    return { ok: true as const, updated };
   } catch (error) {
     log.error("updating paquete", error);
     if (error instanceof Error && /margen|markup|venta|pertenece/i.test(error.message)) {

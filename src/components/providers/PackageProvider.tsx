@@ -783,8 +783,22 @@ export function usePackageActions() {
         return entity as any;
       },
       updatePaquete: async (paquete: Paquete) => {
-        await packageActions.updatePaquete(paquete.id, paquete as any);
-        dispatch({ type: "UPDATE_PAQUETE", payload: paquete });
+        const res = await packageActions.updatePaquete(paquete.id, paquete as any);
+        // Gate del invariante estado ACTIVO ⇔ publicado: si el server bloqueó la
+        // transición a ACTIVO, el estado en DB sigue siendo el anterior. No
+        // aplicamos el cambio optimista y devolvemos el resultado para que el
+        // caller (DatosTab) revierta el select y muestre los faltantes.
+        if (res && (res as { ok?: boolean }).ok === false) {
+          return res as { ok: false; reason: string; missing: string[] };
+        }
+        // Invariante estado ACTIVO ⇔ publicado: alineamos `publicado` con el
+        // estado en el payload optimista para que la caché no muestre un
+        // publicado stale hasta la próxima lectura del server.
+        dispatch({
+          type: "UPDATE_PAQUETE",
+          payload: { ...paquete, publicado: paquete.estado === "ACTIVO" },
+        });
+        return res as { ok: true };
       },
       deletePaquete: async (id: string) => {
         await packageActions.deletePaquete(id);

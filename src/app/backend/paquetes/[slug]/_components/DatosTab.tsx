@@ -337,6 +337,15 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);
   const [tipoPaqueteId, setTipoPaqueteId] = useState(paquete.tipoPaqueteId);
   const [estado, setEstado] = useState<string>(paquete.estado);
+  // Faltantes de la última activación bloqueada por el gate. Quedan visibles
+  // hasta resolverlos (mismo patrón que la pestaña Publicación).
+  const [publishBlockers, setPublishBlockers] = useState<string[]>([]);
+  // Último estado confirmado por el server. Si una transición a ACTIVO la
+  // bloquea el gate, revertimos el select a este valor.
+  const estadoConfirmadoRef = useRef<string>(paquete.estado);
+  // Marca la última corrida de autosave como bloqueada, para que el botón
+  // «Guardar Cambios» no muestre un toast de éxito engañoso.
+  const lastSaveBlockedRef = useRef(false);
   const [modalidad, setModalidad] = useState<ModalidadPaquete>(
     (paquete.modalidad ?? "CLASICO") as ModalidadPaquete,
   );
@@ -440,9 +449,25 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   );
 
   // -- Auto-save handler --
-  const handleAutoSave = useCallback(() => {
-    return persistPaquete();
-  }, [persistPaquete]);
+  // El payload incluye `estado`. Si el operador eligió «Activo» y el gate del
+  // server lo bloquea, updatePaquete devuelve {ok:false, missing}: revertimos el
+  // select al último estado confirmado y mostramos los faltantes. El resto del
+  // formulario sí se guardó, así que no lo tratamos como error de guardado.
+  const handleAutoSave = useCallback(async () => {
+    const res = (await persistPaquete()) as
+      | { ok: true }
+      | { ok: false; reason: string; missing: string[] }
+      | undefined;
+    if (res && res.ok === false) {
+      lastSaveBlockedRef.current = true;
+      setPublishBlockers(res.missing ?? []);
+      setEstado(estadoConfirmadoRef.current);
+      return;
+    }
+    lastSaveBlockedRef.current = false;
+    setPublishBlockers([]);
+    estadoConfirmadoRef.current = estado;
+  }, [persistPaquete, estado]);
 
   const handleDestinoCommit = useCallback(
     async (nextDestino: string) => {
@@ -454,7 +479,16 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
   const handleSave = async () => {
     const ok = await saveNow();
-    if (ok) {
+    if (ok && lastSaveBlockedRef.current) {
+      // El guardado persistió el resto del form, pero el gate rechazó la
+      // activación: avisamos que falta algo para publicar (los faltantes ya se
+      // listan debajo del select).
+      toast(
+        "warning",
+        "No se puede publicar todavía",
+        "Revisá lo que falta debajo del estado.",
+      );
+    } else if (ok) {
       toast(
         "success",
         "Paquete actualizado",
@@ -539,7 +573,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         {/* operador (regla del negocio); acá sólo se informa la fecha.        */}
         {/* ================================================================ */}
         <FormSection
-          title="Período del viaje y estado"
+          title="Período del viaje"
           description="Fechas en que viaja el cliente (matchean servicios y tarifas). La baja del paquete se calcula sola: 15 días antes del inicio del viaje."
         >
           <FieldGroup columns={2}>
@@ -613,11 +647,27 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               </Field>
             </div>
 
-            {/* 4) Estado — etapa del flujo interno (no publica el paquete). */}
-            <Field span={2}>
+          </FieldGroup>
+        </FormSection>
+
+        {/* ================================================================ */}
+        {/* Estado y publicación — control único de publicación.             */}
+        {/* Invariante: ACTIVO ⇔ publicado. Pasar a Activo publica el paquete */}
+        {/* (si pasa el gate); cualquier otro estado lo oculta.               */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Estado y publicación"
+          description="Un solo control decide si el paquete se ve en el sitio: el Estado."
+        >
+          <FieldGroup columns={1}>
+            <Field>
               <FieldLabel className="flex items-center gap-2">
                 <span>Estado</span>
-                {!paquete.publicado && (
+                {estado === "ACTIVO" ? (
+                  <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10.5px] font-medium text-emerald-700">
+                    Publicado
+                  </span>
+                ) : (
                   <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[10.5px] font-medium text-neutral-500">
                     No publicado
                   </span>
@@ -631,15 +681,49 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 placeholder="Seleccionar estado..."
               />
               <p className="text-[11px] text-neutral-400 mt-1">
-                El estado no publica el paquete: para mostrarlo en el sitio usá{" "}
-                <a
-                  href="?tab=publicacion"
-                  className="text-violet-600 hover:underline"
-                >
-                  «Publicar en el sitio»
-                </a>{" "}
-                en la pestaña Publicación.
+                Activo publica el paquete en el sitio. Borrador, En revisión o
+                Archivado lo ocultan.
               </p>
+
+              {/* Publish blockers — visibles hasta resolverlos. Mismo formato
+                  (lista con bullets) que la pestaña Publicación. */}
+              {publishBlockers.length > 0 && (
+                <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12.5px] font-semibold text-amber-900 mb-1">
+                      Para activar (publicar) este paquete todavía falta:
+                    </p>
+                    <ul className="space-y-0.5">
+                      {publishBlockers.map((b) => (
+                        <li
+                          key={b}
+                          className="text-[12px] text-amber-800 leading-snug"
+                        >
+                          • {b}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-[11px] text-amber-700 mt-2">
+                      Completá lo que falta (foto, textos y SEO en la pestaña{" "}
+                      <a
+                        href="?tab=publicacion"
+                        className="underline hover:text-amber-900"
+                      >
+                        Publicación
+                      </a>
+                      ; aéreos, hoteles y destinos en sus pestañas) y volvé a
+                      elegir «Activo».
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setPublishBlockers([])}
+                      className="text-[11px] text-amber-700 hover:text-amber-900 underline mt-2"
+                    >
+                      Ocultar
+                    </button>
+                  </div>
+                </div>
+              )}
             </Field>
           </FieldGroup>
         </FormSection>
