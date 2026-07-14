@@ -5,6 +5,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { type IncluyeItem, newIncluyeId } from "@/lib/incluye";
+import { resolvePrecioCircuito } from "@/lib/utils";
+import type { PrecioCircuito } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Preview URL resolver — used by the "Previsualizar" button in /backend/paquetes
@@ -192,11 +194,36 @@ export async function updatePaqueteFrontend(
         noches: true,
         heroImage: true,
         estado: true,
+        modalidad: true,
         viajeDesde: true,
         viajeHasta: true,
+        validezDesde: true,
         destinos: { select: { noches: true } },
         opcionesHoteleras: { select: { id: true } },
         aereos: { select: { id: true } },
+        // Circuito asignado — incluimos su itinerario, noches y precios para
+        // poder validar la modalidad CIRCUITO (precio vigente + itinerario).
+        circuitos: {
+          select: {
+            circuito: {
+              select: {
+                id: true,
+                noches: true,
+                itinerario: { select: { id: true } },
+                precios: {
+                  where: { deletedAt: null },
+                  select: {
+                    id: true,
+                    circuitoId: true,
+                    periodoDesde: true,
+                    periodoHasta: true,
+                    precio: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
     if (!current) throw new Error("Paquete no encontrado.");
@@ -211,10 +238,9 @@ export async function updatePaqueteFrontend(
       typeof data.heroImage === "string" ? data.heroImage.trim() : current.heroImage;
     const missing: string[] = [];
 
+    // Exigencias comunes a ambas modalidades.
     if (!incomingSlug) missing.push("slug (URL pública)");
     if (!current.titulo?.trim()) missing.push("título");
-    if (current.destinos.length === 0) missing.push("al menos 1 destino en el itinerario");
-    if (current.opcionesHoteleras.length === 0) missing.push("al menos 1 opción hotelera");
     if (current.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
     if (!heroImage) missing.push("foto principal del slider");
     // Sin período de viaje el resolver de precios cae al fallback y el sitio
@@ -222,15 +248,48 @@ export async function updatePaqueteFrontend(
     if (!current.viajeDesde || !current.viajeHasta)
       missing.push("período del viaje (desde / hasta)");
 
-    const nochesPaquete = current.noches ?? 0;
-    const nochesDestinos = current.destinos.reduce(
-      (sum, d) => sum + (d.noches || 0),
-      0,
-    );
-    if (nochesPaquete > 0 && nochesDestinos !== nochesPaquete) {
-      missing.push(
-        `noches por destino suman ${nochesDestinos} (paquete declara ${nochesPaquete})`,
+    if (current.modalidad === "CIRCUITO") {
+      // Modalidad CIRCUITO: el circuito incluye todo (hotel, comidas, paseos).
+      // NO se exigen opciones hoteleras, destinos ni suma de noches. Sí se
+      // exige un circuito con precio vigente, itinerario y noches > 0.
+      const circ = current.circuitos[0]?.circuito ?? null;
+      if (!circ) {
+        missing.push("un circuito asignado con precio vigente");
+      } else {
+        const fecha = current.viajeDesde ?? current.validezDesde;
+        const precioVigente = resolvePrecioCircuito(
+          circ.precios as unknown as PrecioCircuito[],
+          circ.id,
+          fecha,
+        );
+        if (!precioVigente) {
+          missing.push("un circuito asignado con precio vigente");
+        }
+        if (circ.itinerario.length === 0) {
+          missing.push("itinerario del circuito (día por día)");
+        }
+        if (!circ.noches || circ.noches <= 0) {
+          missing.push("noches del circuito mayores a 0");
+        }
+      }
+    } else {
+      // Modalidad CLASICO: comportamiento histórico (opciones + destinos +
+      // coherencia de noches). Sin cambios.
+      if (current.destinos.length === 0)
+        missing.push("al menos 1 destino en el itinerario");
+      if (current.opcionesHoteleras.length === 0)
+        missing.push("al menos 1 opción hotelera");
+
+      const nochesPaquete = current.noches ?? 0;
+      const nochesDestinos = current.destinos.reduce(
+        (sum, d) => sum + (d.noches || 0),
+        0,
       );
+      if (nochesPaquete > 0 && nochesDestinos !== nochesPaquete) {
+        missing.push(
+          `noches por destino suman ${nochesDestinos} (paquete declara ${nochesPaquete})`,
+        );
+      }
     }
 
     if (missing.length > 0) {

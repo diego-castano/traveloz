@@ -12,6 +12,7 @@ import {
   DollarSign,
   TrendingUp,
   AlertCircle,
+  Route,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
@@ -30,12 +31,14 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import {
   calcularNetoFijos,
+  calcularVenta,
   calcularVentaOpcion,
   formatCurrency,
   resolvePrecioAereo,
   resolvePrecioAlojamiento,
   resolvePrecioCircuito,
 } from "@/lib/utils";
+import { checkMargen } from "@/actions/package-lifecycle.utils";
 import type { Paquete, OpcionHotelera } from "@/lib/types";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs, stagger } from "@/components/lib/animations";
@@ -149,7 +152,8 @@ function CommitNumberInput({
 export default function PreciosTab({ paquete }: PreciosTabProps) {
   const services = usePaqueteServices(paquete.id);
   const serviceState = useServiceState();
-  const { updateOpcionHotelera } = usePackageActions();
+  const { updateOpcionHotelera, updatePaquete } = usePackageActions();
+  const isCircuito = paquete.modalidad === "CIRCUITO";
   const { canSeePricing, canEdit } = useAuth();
   const { toast } = useToast();
   const opciones = useOpcionesHoteleras(paquete.id);
@@ -287,6 +291,75 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   }, [assignedAereos, assignedTraslados, assignedSeguros, assignedCircuitos, nochesTotales]);
 
   // -------------------------------------------------------------------------
+  // Modalidad CIRCUITO — el neto son los costos fijos (circuito por persona
+  // vigente + aéreos + traslados + seguros) y la venta se deriva del markup del
+  // paquete. La duración de referencia para los seguros sin diasCobertura es la
+  // del circuito asignado (misma lógica que el motor), fallback a paquete.noches.
+  // -------------------------------------------------------------------------
+  const circuitPricing = useMemo(() => {
+    const nochesRef =
+      assignedCircuitos[0]?.circuito.noches ?? paquete.noches ?? nochesTotales;
+    const circuitosTotal = assignedCircuitos.reduce(
+      (sum, c) => sum + (c.precioCircuito?.precio ?? 0),
+      0,
+    );
+    const aereosTotal = assignedAereos.reduce(
+      (sum, a) => sum + (a.precioAereo?.precioAdulto ?? 0),
+      0,
+    );
+    const trasladosTotal = assignedTraslados.reduce((sum, t) => sum + t.precio, 0);
+    const segurosTotal = assignedSeguros.reduce((sum, s) => {
+      const dias = s.diasCobertura ?? nochesRef;
+      return sum + s.seguro.costoPorDia * dias;
+    }, 0);
+    const neto = calcularNetoFijos(
+      assignedAereos,
+      assignedTraslados,
+      assignedSeguros,
+      assignedCircuitos,
+      nochesRef,
+    );
+    const venta = calcularVenta(neto, paquete.markup);
+    const precioDesde = venta > 0 ? venta : null;
+    const margen = checkMargen(neto, venta, paquete.markup);
+    return {
+      nochesRef,
+      circuitosTotal,
+      aereosTotal,
+      trasladosTotal,
+      segurosTotal,
+      neto,
+      venta,
+      precioDesde,
+      margen,
+    };
+  }, [
+    assignedCircuitos,
+    assignedAereos,
+    assignedTraslados,
+    assignedSeguros,
+    paquete.noches,
+    paquete.markup,
+    nochesTotales,
+  ]);
+
+  const handleMarkupChange = useCallback(
+    (newFactor: number) => {
+      const clamped = Math.max(0.01, Math.min(1, newFactor || 0.8));
+      void trackSave(
+        () =>
+          updatePaquete({
+            ...paquete,
+            markup: clamped,
+            updatedAt: new Date().toISOString(),
+          }),
+        "No se pudo guardar el markup",
+      );
+    },
+    [paquete, updatePaquete, trackSave],
+  );
+
+  // -------------------------------------------------------------------------
   // Per-option pricing (live recompute from current service prices)
   // -------------------------------------------------------------------------
 
@@ -416,6 +489,188 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
+
+  // ── Modo CIRCUITO: sin opciones hoteleras. Desglose de costos fijos +
+  // markup del paquete editable + precio de venta / precioDesde resultantes. ──
+  if (isCircuito) {
+    const {
+      circuitosTotal,
+      aereosTotal,
+      trasladosTotal,
+      segurosTotal,
+      neto,
+      venta,
+      precioDesde,
+      margen,
+      nochesRef,
+    } = circuitPricing;
+    const markup = paquete.markup;
+    const marginPct = Math.round((1 - markup) * 100);
+    const circuitBreakdown = [
+      { key: "circuito", label: "Circuito (por persona)", icon: MapIcon, value: circuitosTotal },
+      { key: "aereos", label: "Aereos", icon: Plane, value: aereosTotal },
+      { key: "traslados", label: "Traslados", icon: Bus, value: trasladosTotal },
+      { key: "seguros", label: "Seguros", icon: ShieldCheck, value: segurosTotal },
+    ] as const;
+
+    return (
+      <motion.div
+        className="space-y-6"
+        variants={stagger.container.variants}
+        initial="hidden"
+        animate="show"
+      >
+        {/* ── Precio de venta (header) ── */}
+        <motion.div variants={stagger.item.variants}>
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20">
+                <DollarSign className="h-5 w-5 text-teal-600" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider">
+                  Precio de venta
+                </p>
+                <p className="text-2xl font-bold font-mono text-neutral-800 tracking-tight">
+                  {precioDesde != null ? (
+                    <span className="text-teal-600">{formatCurrency(venta)}</span>
+                  ) : (
+                    <span className="text-neutral-400">Sin precio</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1 ml-[52px] flex items-center gap-1.5">
+              <Route className="h-3.5 w-3.5" />
+              Circuito todo incluido · precioDesde{" "}
+              <span className="font-mono text-neutral-500">
+                {precioDesde != null ? formatCurrency(precioDesde) : "—"}
+              </span>
+            </p>
+          </Card>
+        </motion.div>
+
+        {/* ── Desglose de costos fijos ── */}
+        {canSeePricing.neto && (
+          <motion.div variants={stagger.item.variants}>
+            <div className="rounded-2xl p-5" style={glassMaterials.frostedSubtle}>
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="h-4 w-4 text-neutral-500" />
+                <h4 className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">
+                  Costos Fijos del Circuito
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                {circuitBreakdown.map(({ key, label, icon: Icon, value }) => (
+                  <motion.div
+                    key={key}
+                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/50 border border-white/30"
+                    whileHover={{ y: -2, scale: 1.02 }}
+                    transition={springs.micro}
+                  >
+                    <Icon className="h-5 w-5 text-neutral-400 mb-1.5" />
+                    <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider text-center">
+                      {label}
+                    </span>
+                    <span className="text-base font-mono font-bold text-neutral-700 mt-0.5">
+                      {formatCurrency(value)}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-3 border-t border-neutral-200/40 px-1">
+                <span className="text-sm font-medium text-neutral-600">Neto total</span>
+                <span className="text-lg font-mono font-bold text-neutral-800">
+                  {formatCurrency(neto)}
+                </span>
+              </div>
+              <p className="mt-2 text-[11px] text-neutral-400 px-1">
+                Seguros calculados sobre {nochesRef} noche{nochesRef === 1 ? "" : "s"} (duración del circuito).
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Markup del paquete (editable) + venta resultante ── */}
+        {canSeePricing.markup && (
+          <motion.div variants={stagger.item.variants}>
+            <div className="rounded-2xl p-5" style={frostedAccent}>
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="h-4 w-4 text-neutral-500" />
+                <h4 className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">
+                  Markup del paquete
+                </h4>
+                <AutoSaveIndicator status={saveStatus} />
+              </div>
+
+              <div className="flex items-center gap-4 px-3 py-2 rounded-lg bg-white/30 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-neutral-500 uppercase">Markup:</span>
+                  {canEdit ? (
+                    <CommitNumberInput
+                      min={0.01}
+                      max={1}
+                      step={0.01}
+                      decimals={2}
+                      value={markup}
+                      onCommit={handleMarkupChange}
+                      className="w-16 text-sm font-mono font-bold text-neutral-800 bg-white/60 rounded-md border border-neutral-200 px-2 py-1 focus:border-teal-500 focus:outline-none transition-colors text-center"
+                    />
+                  ) : (
+                    <span className="text-sm font-mono font-bold text-neutral-800">{markup}</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-xs font-medium text-neutral-500 uppercase">Margen:</span>
+                  <div className="flex-1 h-3 rounded-full bg-neutral-100 overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: getMarginGradient(markup) }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(marginPct * 2.5, 100)}%` }}
+                      transition={springs.gentle}
+                    />
+                  </div>
+                  <span
+                    className="text-sm font-mono font-bold min-w-[3ch] text-right"
+                    style={{ color: getMarginColor(markup) }}
+                  >
+                    {marginPct}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Aviso de margen — mismos umbrales MIN/WARN que create/update */}
+              {margen.warning && (
+                <div
+                  className={`flex items-center gap-2 text-xs rounded-lg px-3 py-2 mb-3 border ${
+                    margen.ok
+                      ? "text-amber-700 bg-amber-50 border-amber-200/60"
+                      : "text-[#CC2030] bg-red-50 border-red-200/60"
+                  }`}
+                >
+                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="font-medium">{margen.warning}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-3 border-t border-teal-100/50 px-1">
+                <span className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">
+                  Precio Venta
+                </span>
+                <span className="text-xl font-mono font-bold text-teal-700">
+                  {formatCurrency(venta)}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div

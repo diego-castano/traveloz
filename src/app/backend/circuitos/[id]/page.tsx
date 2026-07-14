@@ -307,7 +307,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
     },
     {
       key: "precio",
-      label: "Precio USD",
+      label: "Precio por persona (base doble) USD",
       align: "right",
       width: "160px",
       render: (r) => (

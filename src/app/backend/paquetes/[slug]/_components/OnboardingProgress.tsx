@@ -23,7 +23,8 @@ import {
   useOpcionesHoteleras,
   useDestinos,
 } from "@/components/providers/PackageProvider";
-import { computeNochesTotales } from "@/lib/utils";
+import { useServiceState } from "@/components/providers/ServiceProvider";
+import { computeNochesTotales, resolvePrecioCircuito } from "@/lib/utils";
 import type { Paquete } from "@/lib/types";
 
 // Each step maps to a tab plus a "what's missing" predicate. Order matches
@@ -45,10 +46,74 @@ function buildSteps(args: {
   opcionCount: number;
   destinoCount: number;
   nochesOk: boolean;
+  circuitoOk: boolean;
 }): Step[] {
-  const { paquete, aereoCount, opcionCount, destinoCount, nochesOk } = args;
+  const { paquete, aereoCount, opcionCount, destinoCount, nochesOk, circuitoOk } =
+    args;
   const missingTitulo = !paquete.titulo?.trim();
   const missingDestino = !paquete.destino?.trim();
+
+  // ── Modalidad CIRCUITO: el circuito incluye alojamiento/comidas/paseos, así
+  // que se ocultan los pasos de destinos y opciones hoteleras. El operador solo
+  // asigna el circuito (con precio vigente e itinerario), el aéreo, la foto y
+  // publica.
+  if (paquete.modalidad === "CIRCUITO") {
+    return [
+      {
+        key: "titulo",
+        label: "Título y datos básicos",
+        tab: "datos",
+        done: !missingTitulo && !missingDestino,
+        blocker:
+          missingTitulo && missingDestino
+            ? "Falta cargar el título y el destino del paquete."
+            : missingTitulo
+            ? "Falta el título del paquete."
+            : missingDestino
+            ? "Falta el destino del paquete."
+            : undefined,
+      },
+      {
+        key: "circuito",
+        label: "Circuito asignado (con precio vigente e itinerario)",
+        tab: "servicios",
+        done: circuitoOk,
+        blocker: !circuitoOk
+          ? "Asigná un circuito con precio vigente e itinerario cargado. El circuito y su itinerario se gestionan desde el módulo Circuitos."
+          : undefined,
+      },
+      {
+        key: "aereo",
+        label: "Al menos 1 aéreo",
+        tab: "servicios",
+        done: aereoCount > 0,
+        blocker:
+          aereoCount === 0
+            ? "Sin aéreos asignados. Asigná al menos uno desde la pestaña Servicios."
+            : undefined,
+      },
+      {
+        key: "hero",
+        label: "Foto principal del slider",
+        tab: "publicacion",
+        done: !!paquete.heroImage,
+        blocker: !paquete.heroImage
+          ? "Falta la foto principal del slider. Cargala desde la pestaña Publicación."
+          : undefined,
+      },
+      {
+        key: "publicar",
+        label: "Publicar en el sitio (slug y toggle)",
+        tab: "publicacion",
+        done: paquete.estado === "ACTIVO",
+        blocker:
+          paquete.estado !== "ACTIVO"
+            ? "Cuando esté todo listo, andá a Publicación, completá el slug y prendé el toggle Publicar."
+            : undefined,
+      },
+    ];
+  }
+
   return [
     {
       key: "titulo",
@@ -118,10 +183,31 @@ export function OnboardingProgress({ paquete }: { paquete: Paquete }) {
   const services = usePaqueteServices(paquete.id);
   const opciones = useOpcionesHoteleras(paquete.id);
   const destinos = useDestinos(paquete.id);
+  const serviceState = useServiceState();
 
   const nochesPaquete = paquete.noches ?? 0;
   const nochesDestinos = computeNochesTotales(destinos);
   const nochesOk = nochesPaquete === 0 ? destinos.length > 0 : nochesDestinos === nochesPaquete;
+
+  // Modalidad CIRCUITO: el paso "circuito" está OK cuando hay un circuito
+  // asignado con precio vigente para el período y con noches cargadas (el gate
+  // duro de itinerario/precio vive en el server; acá es una guía).
+  const circuitoOk = (() => {
+    if (paquete.modalidad !== "CIRCUITO") return false;
+    const asignado = services.circuitos[0];
+    if (!asignado) return false;
+    const circuito = serviceState.circuitos.find(
+      (c) => c.id === asignado.circuitoId,
+    );
+    if (!circuito || !circuito.noches || circuito.noches <= 0) return false;
+    const fecha = paquete.viajeDesde ?? paquete.validezDesde;
+    const vigente = resolvePrecioCircuito(
+      serviceState.preciosCircuito,
+      asignado.circuitoId,
+      fecha,
+    );
+    return Boolean(vigente);
+  })();
 
   const steps = buildSteps({
     paquete,
@@ -129,6 +215,7 @@ export function OnboardingProgress({ paquete }: { paquete: Paquete }) {
     opcionCount: opciones.length,
     destinoCount: destinos.length,
     nochesOk,
+    circuitoOk,
   });
 
   const completed = steps.filter((s) => s.done).length;

@@ -611,6 +611,34 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
 
   const hasTravelWindow = Boolean(paquete.viajeDesde && paquete.viajeHasta);
 
+  // Modalidad CIRCUITO: el alojamiento (y comidas/paseos) va incluido en el
+  // circuito, así que no se cargan destinos ni opciones hoteleras acá. Mostramos
+  // un estado deshabilitado que remite al módulo Circuitos. El resto de la UI
+  // queda condicionada (no se borra) para no romper la modalidad CLASICO.
+  if (paquete.modalidad === "CIRCUITO") {
+    return (
+      <div className="rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/60 p-8 text-center">
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm">
+          <Route className="h-5 w-5 text-teal-600" />
+        </div>
+        <h4 className="text-sm font-semibold text-neutral-700">
+          Este paquete es un circuito
+        </h4>
+        <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-neutral-500">
+          El alojamiento está incluido en el circuito. Gestioná el itinerario
+          día por día desde el módulo{" "}
+          <a
+            href="/backend/circuitos"
+            className="font-medium text-teal-600 hover:underline"
+          >
+            Circuitos
+          </a>
+          .
+        </p>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       className="space-y-6"

@@ -10,7 +10,7 @@ import {
   recomputePaqueteOpciones,
   recomputeForOpcionHotelera,
 } from "@/lib/recompute-prices";
-import type { EstadoPaquete, Prisma } from "@prisma/client";
+import type { EstadoPaquete, ModalidadPaquete, Prisma } from "@prisma/client";
 
 const log = logger.child({ module: "package.actions" });
 
@@ -358,6 +358,7 @@ export async function createPaquete(data: {
   viajeDesde?: string | null;
   viajeHasta?: string | null;
   estado?: EstadoPaquete;
+  modalidad?: ModalidadPaquete;
   destacado?: boolean;
   netoCalculado?: number;
   markup?: number;
@@ -373,6 +374,9 @@ export async function createPaquete(data: {
       destino: z.string(),
       temporadaId: z.string().min(1).nullable().optional(),
       tipoPaqueteId: z.string().min(1).nullable().optional(),
+      // Modalidad de armado. Default CLASICO lo aplica la columna en Prisma
+      // cuando llega undefined; acá sólo validamos el enum si viene.
+      modalidad: z.enum(["CLASICO", "CIRCUITO"]).optional(),
     });
     schema.parse(data);
 
@@ -414,6 +418,7 @@ export async function updatePaquete(
     viajeDesde?: string | null;
     viajeHasta?: string | null;
     estado?: EstadoPaquete;
+    modalidad?: ModalidadPaquete;
     destacado?: boolean;
     netoCalculado?: number;
     markup?: number;
@@ -425,12 +430,24 @@ export async function updatePaquete(
   try {
     const { brandId } = await requireCanEdit();
 
+    // Valida el enum de modalidad cuando viene en el payload (el autosave manda
+    // el paquete entero, así que puede llegar en cada guardado).
+    if (data.modalidad !== undefined) {
+      z.enum(["CLASICO", "CIRCUITO"]).parse(data.modalidad);
+    }
+
     // Brand-ownership check: prevent users from editing paquetes of other brands
     // even if they happen to know the ID. Cheap (indexed by id) and stops the
     // most common cross-tenant footgun.
     const owner = await prisma.paquete.findFirst({
       where: { id, brandId, deletedAt: null },
-      select: { id: true, netoCalculado: true, precioVenta: true, markup: true },
+      select: {
+        id: true,
+        netoCalculado: true,
+        precioVenta: true,
+        markup: true,
+        modalidad: true,
+      },
     });
     if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
 
@@ -444,6 +461,18 @@ export async function updatePaquete(
     }
 
     const updated = await prisma.paquete.update({ where: { id }, data });
+
+    // Cambiar la modalidad conmuta el motor de precios (opciones ↔ circuito) y
+    // el markup del paquete es el divisor de venta en modalidad CIRCUITO, así
+    // que ambos disparan el recálculo (comparando valor real contra el guardado
+    // para no recomputar en cada autosave que manda el paquete entero).
+    const modalidadChanged =
+      data.modalidad !== undefined && data.modalidad !== owner.modalidad;
+    const markupChanged =
+      data.markup !== undefined && data.markup !== owner.markup;
+    if (modalidadChanged || markupChanged) {
+      await safePropagate(id);
+    }
     bustDashboardCache(brandId);
     return updated;
   } catch (error) {

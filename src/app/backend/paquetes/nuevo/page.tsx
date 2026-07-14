@@ -85,6 +85,9 @@ export default function NuevoPaquetePage() {
             tiposPaquete[0]?.id ??
             undefined,
           estado: "BORRADOR",
+          // Default CLASICO. El operador puede cambiar la modalidad a CIRCUITO
+          // desde el tab Datos apenas aterriza en la ficha.
+          modalidad: "CLASICO",
           destacado: false,
           netoCalculado: 0,
           markup: 0.8,

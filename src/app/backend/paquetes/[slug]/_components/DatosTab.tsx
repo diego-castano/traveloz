@@ -47,7 +47,7 @@ import {
 } from "@/lib/date";
 import { Star, ChevronDown, ChevronRight, AlertTriangle } from "lucide-react";
 import { springs } from "@/components/lib/animations";
-import type { Paquete, EstadoPaquete } from "@/lib/types";
+import type { Paquete, EstadoPaquete, ModalidadPaquete } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // Salidas — texto derivado del período de viaje
@@ -105,6 +105,11 @@ const estadoOptions = [
 ];
 
 const monedaOptions = [{ value: "USD", label: "USD" }];
+
+const modalidadOptions = [
+  { value: "CLASICO", label: "Paquete clásico" },
+  { value: "CIRCUITO", label: "Circuito (todo incluido)" },
+];
 
 // ---------------------------------------------------------------------------
 // Etiqueta color mapping helper
@@ -203,6 +208,9 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);
   const [tipoPaqueteId, setTipoPaqueteId] = useState(paquete.tipoPaqueteId);
   const [estado, setEstado] = useState<string>(paquete.estado);
+  const [modalidad, setModalidad] = useState<ModalidadPaquete>(
+    (paquete.modalidad ?? "CLASICO") as ModalidadPaquete,
+  );
   const [destacado, setDestacado] = useState(paquete.destacado);
   const [moneda, setMoneda] = useState(paquete.moneda);
 
@@ -323,6 +331,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         temporadaId,
         tipoPaqueteId,
         estado: estado as EstadoPaquete,
+        modalidad,
         destacado,
         moneda,
         validezDesde: validezDesdeStr,
@@ -341,6 +350,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       temporadaId,
       tipoPaqueteId,
       estado,
+      modalidad,
       destacado,
       moneda,
       viajeDesdeDate,
@@ -406,6 +416,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setTemporadaIdDirty = (v: string) => { setTemporadaId(v); markDirty(); };
   const setTipoPaqueteIdDirty = (v: string) => { setTipoPaqueteId(v); markDirty(); };
   const setEstadoDirty = (v: string) => { setEstado(v); markDirty(); };
+  const setModalidadDirty = (v: string) => { setModalidad(v as ModalidadPaquete); markDirty(); };
   const setDestacadoDirty = (v: boolean) => { setDestacado(v); markDirty(); };
   const setMonedaDirty = (v: string) => { setMoneda(v); markDirty(); };
   const setViajeDates = (desde: Date | undefined, hasta: Date | undefined) => {
@@ -632,6 +643,33 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 options={estadoOptions}
                 placeholder="Seleccionar estado..."
               />
+            </Field>
+          </FieldGroup>
+        </FormSection>
+
+        {/* ================================================================ */}
+        {/* Modalidad de armado                                              */}
+        {/* ================================================================ */}
+        <FormSection
+          title="Modalidad del paquete"
+          description="Cómo se arma y se cotiza. «Clásico» deriva el precio de las opciones hoteleras. «Circuito (todo incluido)» toma el precio por persona del circuito asignado (hotel, comidas y paseos van dentro del circuito); no se cargan opciones hoteleras ni destinos."
+        >
+          <FieldGroup columns={2}>
+            <Field>
+              <FieldLabel>Modalidad</FieldLabel>
+              <Select
+                value={modalidad}
+                onValueChange={setModalidadDirty}
+                disabled={isReadOnly}
+                options={modalidadOptions}
+                placeholder="Seleccionar modalidad..."
+              />
+              {paquete.publicado && (
+                <p className="mt-1.5 text-[11.5px] font-medium text-amber-600">
+                  Cambiar la modalidad afecta el cálculo de precio y la
+                  publicación de este paquete.
+                </p>
+              )}
             </Field>
           </FieldGroup>
         </FormSection>

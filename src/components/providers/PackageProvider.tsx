@@ -767,6 +767,7 @@ export function usePackageActions() {
           temporadaId?: string;
           tipoPaqueteId?: string;
           estado?: Paquete["estado"];
+          modalidad?: Paquete["modalidad"];
           destacado?: boolean;
           netoCalculado?: number;
           markup?: number;

@@ -50,6 +50,10 @@ export interface Paquete {
   /** Modalidad de armado: CLASICO (opciones hoteleras) o CIRCUITO (todo
    * incluido, precio por persona del circuito). Default CLASICO. */
   modalidad?: ModalidadPaquete;
+  /** Flag de visibilidad en el sitio público. */
+  publicado?: boolean;
+  /** Foto principal del slider público. */
+  heroImage?: string | null;
   destacado: boolean;
   netoCalculado: number;
   /** Factor divisor (0.01-1.00). Precio venta = neto / factor. Ej: 0.88 = ~13.6% margen */
