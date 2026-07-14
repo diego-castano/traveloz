@@ -34,6 +34,15 @@ enum TipoTraslado {
   PRIVADO
 }
 
+// Modalidad de armado del paquete:
+//   CLASICO  → precio derivado de opciones hoteleras (comportamiento histórico).
+//   CIRCUITO → todo incluido con precio único por persona cargado en el circuito;
+//              el precio NO depende de OpcionHotelera.
+enum ModalidadPaquete {
+  CLASICO
+  CIRCUITO
+}
+
 enum CategoriaServicio {
   TRASLADOS
   SEGUROS
@@ -132,6 +141,9 @@ model Paquete {
   viajeDesde        String?
   viajeHasta        String?
   estado            EstadoPaquete @default(BORRADOR)
+  // Modalidad de armado: CLASICO (opciones hoteleras) o CIRCUITO (todo incluido,
+  // precio por persona cargado en el circuito, sin exigir opciones).
+  modalidad         ModalidadPaquete @default(CLASICO)
   destacado         Boolean       @default(false)
   netoCalculado     Float         @default(0)
   markup            Float         @default(0)

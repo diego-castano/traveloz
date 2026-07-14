@@ -18,6 +18,9 @@ export type EstadoPaquete =
   | 'ACTIVO'
   | 'ARCHIVADO';
 export type TipoTraslado = 'REGULAR' | 'PRIVADO';
+/** Modalidad de armado del paquete. CLASICO = precio por opciones hoteleras;
+ * CIRCUITO = todo incluido con precio único por persona cargado en el circuito. */
+export type ModalidadPaquete = 'CLASICO' | 'CIRCUITO';
 export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS' | 'HOTELES';
 
 // ---------------------------------------------------------------------------
@@ -44,6 +47,9 @@ export interface Paquete {
   viajeDesde?: string | null;
   viajeHasta?: string | null;
   estado: EstadoPaquete;
+  /** Modalidad de armado: CLASICO (opciones hoteleras) o CIRCUITO (todo
+   * incluido, precio por persona del circuito). Default CLASICO. */
+  modalidad?: ModalidadPaquete;
   destacado: boolean;
   netoCalculado: number;
   /** Factor divisor (0.01-1.00). Precio venta = neto / factor. Ej: 0.88 = ~13.6% margen */
