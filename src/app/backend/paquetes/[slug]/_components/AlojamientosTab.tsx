@@ -1227,7 +1227,14 @@ function CiudadPicker({
 
   // Build grouped structure iterating países (not regiones) so países whose
   // regionId is null still appear — under a "Sin región" group at the end.
-  const groupedResults = useMemo(() => {
+  //
+  // The catalog is never hard-filtered by the paquete's destino: every
+  // ciudad in every país is always searchable and selectable. When a
+  // destinoFilter is present we only use it to *rank* — ciudades within
+  // scope are split off into `recommendedRows` (rendered first, under a
+  // "Recomendadas" header), while `groupedResults` holds everything else
+  // (the full catalog minus whatever already appeared as recommended).
+  const { recommendedRows, groupedResults } = useMemo(() => {
     const q = normalizeSearch(search.trim());
     const SIN_REGION = "Sin región";
     type Row = {
@@ -1237,16 +1244,14 @@ function CiudadPicker({
       regionOrden: number;
       ciudades: Array<{ id: string; nombre: string }>;
     };
-    const rows: Row[] = [];
+    const recommended: Row[] = [];
+    const rest: Row[] = [];
     for (const p of paises) {
       const meta = p.regionId ? regionMetaById.get(p.regionId) : null;
       const regionNombre = meta?.nombre ?? SIN_REGION;
       const regionOrden = meta?.orden ?? Number.MAX_SAFE_INTEGER;
       const visibleCiudades = p.ciudades
         .filter((c) => !excludeSet.has(c.id))
-        .filter((c) =>
-          destinoFilter ? destinoFilter.allowedCiudadIds.has(c.id) : true,
-        )
         .filter((c) => {
           if (!q) return true;
           const paisMatch = normalizeSearch(p.nombre).includes(q);
@@ -1255,38 +1260,64 @@ function CiudadPicker({
           return paisMatch || regionMatch || ciudadMatch;
         })
         .sort((a, b) => a.nombre.localeCompare(b.nombre));
-      if (visibleCiudades.length > 0) {
-        rows.push({
+
+      if (visibleCiudades.length === 0) continue;
+
+      const recomendadas = destinoFilter
+        ? visibleCiudades.filter((c) => destinoFilter.allowedCiudadIds.has(c.id))
+        : [];
+      const restantes = destinoFilter
+        ? visibleCiudades.filter((c) => !destinoFilter.allowedCiudadIds.has(c.id))
+        : visibleCiudades;
+
+      if (recomendadas.length > 0) {
+        recommended.push({
           regionNombre,
           regionOrden,
           paisId: p.id,
           paisNombre: p.nombre,
-          ciudades: visibleCiudades,
+          ciudades: recomendadas,
         });
       }
+      if (restantes.length > 0) {
+        rest.push({
+          regionNombre,
+          regionOrden,
+          paisId: p.id,
+          paisNombre: p.nombre,
+          ciudades: restantes,
+        });
       }
-    rows.sort(
-      (a, b) =>
-        a.regionOrden - b.regionOrden ||
-        a.regionNombre.localeCompare(b.regionNombre) ||
-        a.paisNombre.localeCompare(b.paisNombre),
-    );
-    return rows;
+    }
+    const sortRows = (rows: Row[]) =>
+      rows.sort(
+        (a, b) =>
+          a.regionOrden - b.regionOrden ||
+          a.regionNombre.localeCompare(b.regionNombre) ||
+          a.paisNombre.localeCompare(b.paisNombre),
+      );
+    return {
+      recommendedRows: sortRows(recommended),
+      groupedResults: sortRows(rest),
+    };
   }, [paises, regionMetaById, search, excludeSet, destinoFilter]);
 
-  // All países — used for "Create '<text>' in <país>" options when search
-  // has no direct ciudad match.
+  // All países, sorted alphabetically — used for "Create '<text>' in <país>"
+  // options when search has no direct ciudad match. Every país is always
+  // offered; when a destinoFilter is present, países within scope are just
+  // listed first (recommendation, not restriction).
   const paisesPlanos = useMemo(() => {
-    return paises
+    const all = paises
       .map((p) => ({
         id: p.id,
         nombre: p.nombre,
         regionNombre: (p.regionId && regionMetaById.get(p.regionId)?.nombre) || "Sin región",
       }))
-      .filter((p) =>
-        destinoFilter ? destinoFilter.allowedPaisIds.has(p.id) : true,
-      )
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    if (!destinoFilter) return all;
+    const scoped = all.filter((p) => destinoFilter.allowedPaisIds.has(p.id));
+    const resto = all.filter((p) => !destinoFilter.allowedPaisIds.has(p.id));
+    return [...scoped, ...resto];
   }, [paises, regionMetaById, destinoFilter]);
 
   // If user typed something and there are zero ciudad matches, offer to
@@ -1297,12 +1328,12 @@ function CiudadPicker({
     if (!q) return [];
     const lowered = normalizeSearch(q);
     // If any row already matches by ciudad exactly, don't offer create.
-    const exact = groupedResults.some((row) =>
+    const exact = [...recommendedRows, ...groupedResults].some((row) =>
       row.ciudades.some((c) => normalizeSearch(c.nombre) === lowered),
     );
     if (exact) return [];
     // Prefer países whose name matches the search; fall back to all países
-    // sorted by relevance (name-match first).
+    // sorted by relevance (scope-first, then name-match first).
     const matchingPaises = paisesPlanos.filter((p) =>
       normalizeSearch(p.nombre).includes(lowered),
     );
@@ -1310,7 +1341,7 @@ function CiudadPicker({
       0,
       matchingPaises.length > 0 ? matchingPaises.length : 6,
     );
-  }, [search, groupedResults, paisesPlanos]);
+  }, [search, recommendedRows, groupedResults, paisesPlanos]);
 
   const handleCreate = async (paisId: string, paisNombre: string) => {
     const nombre = search.trim();
@@ -1332,7 +1363,10 @@ function CiudadPicker({
     }
   };
 
-  const hasAnyResult = groupedResults.length > 0 || createTargets.length > 0;
+  const hasAnyResult =
+    recommendedRows.length > 0 ||
+    groupedResults.length > 0 ||
+    createTargets.length > 0;
 
   return (
     <div ref={containerRef} className="relative">
@@ -1347,11 +1381,7 @@ function CiudadPicker({
             selectedId ? "text-neutral-800" : "text-neutral-400"
           }`}
         >
-          {selectedId
-            ? selectedLabel
-            : destinoFilter
-              ? "Elegí una ciudad del destino…"
-              : "Elegí una ciudad…"}
+          {selectedId ? selectedLabel : "Elegí una ciudad…"}
         </span>
         <Search className="h-3 w-3 text-neutral-300 flex-shrink-0" />
       </button>
@@ -1385,7 +1415,8 @@ function CiudadPicker({
                 <div className="flex items-center gap-1.5 border-b border-teal-100 bg-teal-50/60 px-2.5 py-1.5 text-[11px] text-teal-700">
                   <MapPin className="h-3 w-3 flex-shrink-0" />
                   <span className="truncate">
-                    Filtrando por destino: {destinoFilter.label}
+                    Destino del paquete: {destinoFilter.label} · se muestran
+                    todas las ciudades
                   </span>
                 </div>
               )}
@@ -1393,14 +1424,57 @@ function CiudadPicker({
               <div className="max-h-[320px] overflow-y-auto">
                 {!hasAnyResult ? (
                   <div className="px-3 py-6 text-center text-xs text-neutral-400 italic">
-                    {destinoFilter
-                      ? "No hay ciudades disponibles para el destino seleccionado."
-                      : "Sin resultados."}
+                    Sin resultados.
                   </div>
                 ) : (
                   <>
-                    {groupedResults.map((row) => (
-                      <div key={row.paisId} className="py-1">
+                    {recommendedRows.length > 0 && (
+                      <div className="py-1">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] uppercase tracking-wide text-teal-700 font-semibold bg-teal-50/80">
+                          <Star className="h-2.5 w-2.5 text-teal-500 flex-shrink-0" />
+                          <span>Recomendadas · {destinoFilter?.label}</span>
+                        </div>
+                        {recommendedRows.map((row) => (
+                          <div key={`rec-${row.paisId}`} className="py-0.5">
+                            <div className="flex items-center gap-1 px-4 py-1 text-[10px] uppercase tracking-wide text-teal-600/80 font-medium">
+                              <span>{row.regionNombre}</span>
+                              <ChevronRight className="h-2.5 w-2.5 text-teal-300" />
+                              <span>{row.paisNombre}</span>
+                            </div>
+                            {row.ciudades.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={() => {
+                                  onSelect(
+                                    c.id,
+                                    `${c.nombre} · ${row.paisNombre}`,
+                                  );
+                                  setOpen(false);
+                                  setSearch("");
+                                }}
+                                className="w-full flex items-center gap-2 px-6 py-1.5 text-left text-sm hover:bg-teal-50/60 transition-colors"
+                              >
+                                <MapPin className="h-3 w-3 text-teal-400 flex-shrink-0" />
+                                <span className="truncate text-neutral-800">
+                                  {c.nombre}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {groupedResults.map((row, index) => (
+                      <div
+                        key={row.paisId}
+                        className={
+                          index === 0 && recommendedRows.length > 0
+                            ? "py-1 border-t border-neutral-100"
+                            : "py-1"
+                        }
+                      >
                         <div className="flex items-center gap-1 px-2.5 py-1 text-[10px] uppercase tracking-wide text-neutral-400 font-semibold bg-neutral-50/70">
                           <span className="text-teal-600">
                             {row.regionNombre}
