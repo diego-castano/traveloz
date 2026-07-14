@@ -27,6 +27,7 @@ import {
   useTraslados,
   useSeguros,
   useCircuitos,
+  useServiceState,
 } from "@/components/providers/ServiceProvider";
 import { useProveedores } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -40,6 +41,7 @@ import {
   MapIcon,
 } from "lucide-react";
 import type { Paquete } from "@/lib/types";
+import { formatCurrency, resolvePrecioAereo, resolvePrecioCircuito } from "@/lib/utils";
 import ServiceSelectorModal from "./ServiceSelectorModal";
 
 // ---------------------------------------------------------------------------
@@ -102,6 +104,12 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   const seguros = useSeguros();
   const circuitos = useCircuitos();
   const proveedores = useProveedores();
+  const serviceState = useServiceState();
+
+  // Fecha ancla para resolver tarifas vigentes — misma que usa el motor de
+  // precios (VendedorDashboard/PreciosTab): la vigencia del paquete, no el
+  // período de viaje.
+  const fechaAncla = paquete.validezDesde;
 
   // Build proveedor lookup map
   const proveedorMap = useMemo(() => {
@@ -312,6 +320,76 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     }
   };
 
+  // -- Costo vigente por servicio asignado --
+  // Refleja la tarifa que el motor de precios usaría hoy (misma fecha ancla
+  // que VendedorDashboard/PreciosTab): paquete.validezDesde. No calcula venta
+  // ni markup — solo el costo neto, a modo informativo en este tab.
+  const noSinTarifa = (
+    <span className="text-[11.5px] font-medium text-amber-600 whitespace-nowrap">
+      Sin tarifa vigente
+    </span>
+  );
+
+  const renderServiceCost = (type: string, assignment: Record<string, unknown>) => {
+    switch (type) {
+      case "aereos": {
+        const aereo = aereoMap.get(assignment.aereoId as string);
+        if (!aereo) return null;
+        const precio = resolvePrecioAereo(serviceState.preciosAereo, aereo.id, fechaAncla);
+        if (!precio) return noSinTarifa;
+        return (
+          <div className="flex flex-col items-end">
+            <span className="text-[13.5px] font-semibold text-neutral-800 tabular-nums lining-nums">
+              {formatCurrency(precio.precioAdulto)}
+            </span>
+            <span className="text-[11px] text-neutral-400">por adulto</span>
+          </div>
+        );
+      }
+      case "traslados": {
+        const traslado = trasladoMap.get(assignment.trasladoId as string);
+        if (!traslado) return null;
+        return (
+          <span className="text-[13.5px] font-semibold text-neutral-800 tabular-nums lining-nums">
+            {formatCurrency(traslado.precio)}
+          </span>
+        );
+      }
+      case "seguros": {
+        const seguro = seguroMap.get(assignment.seguroId as string);
+        if (!seguro) return null;
+        const dias = (assignment.diasCobertura as number | null | undefined) ?? paquete.noches ?? 0;
+        const total = seguro.costoPorDia * dias;
+        return (
+          <div className="flex flex-col items-end">
+            <span className="text-[13.5px] font-semibold text-neutral-800 tabular-nums lining-nums">
+              {formatCurrency(total)}
+            </span>
+            <span className="text-[11px] text-neutral-400 tabular-nums lining-nums">
+              {formatCurrency(seguro.costoPorDia)}/día &times; {dias} día{dias === 1 ? "" : "s"}
+            </span>
+          </div>
+        );
+      }
+      case "circuitos": {
+        const circuito = circuitoMap.get(assignment.circuitoId as string);
+        if (!circuito) return null;
+        const precio = resolvePrecioCircuito(serviceState.preciosCircuito, circuito.id, fechaAncla);
+        if (!precio) return noSinTarifa;
+        return (
+          <div className="flex flex-col items-end">
+            <span className="text-[13.5px] font-semibold text-neutral-800 tabular-nums lining-nums">
+              {formatCurrency(precio.precio)}
+            </span>
+            <span className="text-[11px] text-neutral-400">por persona</span>
+          </div>
+        );
+      }
+      default:
+        return null;
+    }
+  };
+
   // -- Total count of all assigned services (excluye alojamientos, gestionados en su propio tab) --
   const totalCount =
     services.aereos.length +
@@ -440,6 +518,11 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
                     {/* Service details */}
                     <div className="flex-1 min-w-0">
                       {renderServiceDetails(key, assignment as unknown as Record<string, unknown>)}
+                    </div>
+
+                    {/* Costo vigente — alineado a la derecha, antes del botón de quitar */}
+                    <div className="shrink-0 text-right">
+                      {renderServiceCost(key, assignment as unknown as Record<string, unknown>)}
                     </div>
 
                     {/* Remove button — opens confirmation modal to prevent
