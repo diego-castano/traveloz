@@ -64,6 +64,7 @@ import {
   resolvePrecioCircuito,
   calcularNetoFijos,
   calcularNetoAlojamientosPorOpcion,
+  calcularVenta,
   calcularVentaOpcion,
   computeNochesTotales,
 } from "@/lib/utils";
@@ -125,6 +126,10 @@ interface PaqueteBreakdown {
   opcionesDetail: OpcionDetail[];
   nochesTotales: number;
   destinos: PaqueteDestino[];
+  /** Modalidad CIRCUITO sin opciones hoteleras: el precio sale del markup del paquete. */
+  esCircuito: boolean;
+  /** Venta por persona en modo circuito: calcularVenta(netoFijos, paquete.markup). 0 fuera de ese modo. */
+  ventaCircuito: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -194,21 +199,28 @@ function DetailPanel({
 
   // Todo se cotiza POR PERSONA en base doble: el neto es exactamente el que
   // usa el motor de precios del paquete (aereo + traslado + seguro + circuito,
-  // vía breakdown.netoFijos, más el alojamiento de la opción). La venta se
-  // deriva con calcularVentaOpcion(netoFijos, netoAloj, factor), idéntica a la
-  // del tab Precios del admin (computePaquetePrecios).
+  // vía breakdown.netoFijos, más el alojamiento de la opción). Resolución de
+  // venta, espejo de computePaquetePrecios / tab Precios del admin:
+  //   1. con opciones hoteleras → calcularVentaOpcion(netoFijos, netoAloj, factor)
+  //   2. modalidad CIRCUITO sin opciones → calcularVenta(netoFijos, paquete.markup)
+  //   3. fallback legacy → paquete.precioVenta
   const aeroTotal = breakdown.netoAero;
   const trasladosTotal = breakdown.netoTraslado;
   const segurosTotal = breakdown.netoSeguros;
   const circuitosTotal = breakdown.netoCircuitos;
 
   const alojTotal = opcionDetail ? opcionDetail.netoAloj : 0;
-  const factor = opcionDetail?.opcion.factor ?? 1;
+  const factor =
+    opcionDetail?.opcion.factor ?? (breakdown.esCircuito ? paquete.markup : 1);
 
   const netoTotal = aeroTotal + alojTotal + trasladosTotal + segurosTotal + circuitosTotal;
   const ventaTotal = opcionDetail
     ? calcularVentaOpcion(breakdown.netoFijos, alojTotal, factor)
-    : netoTotal;
+    : breakdown.esCircuito
+      ? breakdown.ventaCircuito
+      : paquete.precioVenta > 0
+        ? paquete.precioVenta
+        : netoTotal;
   const markupPct = factor > 0 && factor < 1 ? Math.round((1 - factor) * 100) : 0;
 
   return (
@@ -871,15 +883,6 @@ export default function VendedorDashboard() {
         if (t) trasladosList.push(t);
       }
 
-      const paSeguros = paqueteSegurosByPaquete.get(paquete.id) ?? [];
-      const segurosList: { seguro: Seguro; dias: number; neto: number }[] = [];
-      for (const ps of paSeguros) {
-        const s = seguroById.get(ps.seguroId);
-        if (!s) continue;
-        const dias = ps.diasCobertura ?? nochesTotales;
-        segurosList.push({ seguro: s, dias, neto: s.costoPorDia * dias });
-      }
-
       const paCircuitos = paqueteCircuitosByPaquete.get(paquete.id) ?? [];
       const circuitosList: { circuito: Circuito; neto: number }[] = [];
       for (const pc of paCircuitos) {
@@ -887,6 +890,26 @@ export default function VendedorDashboard() {
         if (!c) continue;
         const precio = resolvePrecioCircuito(serviceState.preciosCircuito, pc.circuitoId, fecha);
         circuitosList.push({ circuito: c, neto: precio?.precio ?? 0 });
+      }
+
+      const opciones = opcionesByPaquete.get(paquete.id) ?? [];
+
+      // Modalidad CIRCUITO sin opciones hoteleras: espejo de la rama circuito
+      // de computePaquetePrecios / PreciosTab. La duración de referencia para
+      // los seguros sin diasCobertura es la del circuito asignado, con
+      // fallback a paquete.noches y por último a nochesTotales.
+      const esCircuito = paquete.modalidad === "CIRCUITO" && opciones.length === 0;
+      const nochesRef = esCircuito
+        ? circuitosList[0]?.circuito.noches ?? paquete.noches ?? nochesTotales
+        : nochesTotales;
+
+      const paSeguros = paqueteSegurosByPaquete.get(paquete.id) ?? [];
+      const segurosList: { seguro: Seguro; dias: number; neto: number }[] = [];
+      for (const ps of paSeguros) {
+        const s = seguroById.get(ps.seguroId);
+        if (!s) continue;
+        const dias = ps.diasCobertura ?? nochesRef;
+        segurosList.push({ seguro: s, dias, neto: s.costoPorDia * dias });
       }
 
       const netoAero = aereoLines.reduce((s, l) => s + l.netoPorAdulto, 0);
@@ -898,10 +921,9 @@ export default function VendedorDashboard() {
         trasladosList,
         segurosList.map((x) => ({ seguro: x.seguro, diasCobertura: x.dias })),
         circuitosList.map((x) => ({ circuito: x.circuito, precioCircuito: { id: "", circuitoId: x.circuito.id, periodoDesde: "", periodoHasta: "", precio: x.neto } })),
-        nochesTotales,
+        nochesRef,
       );
-
-      const opciones = opcionesByPaquete.get(paquete.id) ?? [];
+      const ventaCircuito = esCircuito ? calcularVenta(netoFijos, paquete.markup) : 0;
       const opcionesDetail: OpcionDetail[] = opciones.map((opcion) => {
         const ohs = (opcionHotelesByOpcion.get(opcion.id) ?? []).slice().sort((a, b) => a.orden - b.orden);
         const hoteles: OpcionDetail["hoteles"] = [];
@@ -939,6 +961,8 @@ export default function VendedorDashboard() {
         opcionesDetail,
         nochesTotales,
         destinos,
+        esCircuito,
+        ventaCircuito,
       };
       breakdownCache.current.set(paquete.id, breakdown);
       return breakdown;
@@ -1247,12 +1271,18 @@ export default function VendedorDashboard() {
                 const opcionIdx = selectedOpcion.get(p.id) ?? 0;
                 const safeIdx = Math.min(opcionIdx, Math.max(0, breakdown.opcionesDetail.length - 1));
                 const opcion = breakdown.opcionesDetail[safeIdx];
-                // Precio de venta POR PERSONA (base doble). Idéntico al motor de
-                // precios del paquete: calcularVentaOpcion(netoFijos, netoAloj,
-                // factor). Sin opciones, el neto fijo por persona es el piso.
+                // Precio de venta POR PERSONA (base doble), espejo del motor
+                // computePaquetePrecios: con opciones usa calcularVentaOpcion;
+                // modalidad CIRCUITO sin opciones usa el markup del paquete;
+                // fallback legacy es paquete.precioVenta (último recurso, el
+                // neto fijo como piso).
                 const totalVenta = opcion
                   ? calcularVentaOpcion(breakdown.netoFijos, opcion.netoAloj, opcion.opcion.factor)
-                  : breakdown.netoFijos;
+                  : breakdown.esCircuito
+                    ? breakdown.ventaCircuito
+                    : p.precioVenta > 0
+                      ? p.precioVenta
+                      : breakdown.netoFijos;
 
                 return (
                   <RowGroup
