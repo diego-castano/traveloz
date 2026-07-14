@@ -31,6 +31,7 @@ import { prisma } from "@/lib/db";
 import { logger } from "@/lib/logger";
 import {
   calcularNetoFijos,
+  calcularVenta,
   calcularVentaOpcion,
   calcularNetoAlojamientosPorOpcion,
   computeNochesTotales,
@@ -38,6 +39,7 @@ import {
   resolvePrecioAlojamiento,
   resolvePrecioCircuito,
 } from "@/lib/utils";
+import { checkMargen } from "@/actions/package-lifecycle.utils";
 import type {
   Aereo,
   Traslado,
@@ -116,7 +118,11 @@ export async function recomputePaqueteOpciones(
       precioVenta: true,
       netoCalculado: true,
       precioDesde: true,
+      precioDesdeMoneda: true,
       moneda: true,
+      markup: true,
+      noches: true,
+      modalidad: true,
     },
   });
 
@@ -249,9 +255,84 @@ export async function recomputePaqueteOpciones(
 
   // ─── Compute per-opcion prices and persist them ───────────────────────
   if (opciones.length === 0) {
-    // No options: nothing per-option to persist. We still bump nothing on
-    // Paquete because the legacy fields are operator-managed in this path
-    // (cloning, manual entry). Leave them alone.
+    // Modalidad CIRCUITO: sin opciones hoteleras, el precio se deriva de los
+    // costos fijos (circuito por persona vigente + aéreos + traslados + seguros)
+    // y del markup del paquete. Persistimos netoCalculado / precioVenta /
+    // precioDesde para que el público lea el precio sin depender de opciones.
+    if (paquete.modalidad === "CIRCUITO") {
+      // Duración de referencia para seguros sin diasCobertura: la del circuito
+      // asignado (fuente de verdad en esta modalidad), fallback a paquete.noches.
+      const nochesCircuito =
+        assignedCircuitos[0]?.circuito.noches ?? paquete.noches ?? nochesTotales;
+      const netoFijosCircuito = calcularNetoFijos(
+        assignedAereos,
+        assignedTraslados,
+        assignedSeguros,
+        assignedCircuitos,
+        nochesCircuito,
+      );
+      const precioVentaCircuito = calcularVenta(netoFijosCircuito, paquete.markup);
+      const precioDesdeCircuito = precioVentaCircuito > 0 ? precioVentaCircuito : null;
+
+      // Guardarraíl de margen (mismos umbrales que create/update). No bloquea el
+      // recálculo (contrato: nunca tirar); sólo deja rastro cuando el markup del
+      // circuito queda fuera de umbral. El gate duro sigue en updatePaquete.
+      const margen = checkMargen(netoFijosCircuito, precioVentaCircuito, paquete.markup);
+      if (!margen.ok || margen.warning) {
+        log.warn("recompute circuito: margen fuera de umbral", {
+          paqueteId,
+          neto: netoFijosCircuito,
+          venta: precioVentaCircuito,
+          markup: paquete.markup,
+          warning: margen.warning,
+        });
+      }
+
+      const willUpdate =
+        Math.round(paquete.netoCalculado) !== Math.round(netoFijosCircuito) ||
+        Math.round(paquete.precioVenta) !== precioVentaCircuito ||
+        (paquete.precioDesde ?? null) !== precioDesdeCircuito ||
+        (paquete.precioDesdeMoneda ?? null) !== paquete.moneda;
+
+      const changes = willUpdate
+        ? {
+            opciones: [] as Array<{ id: string; before: number; after: number }>,
+            paquete: {
+              precioDesde: { before: paquete.precioDesde, after: precioDesdeCircuito ?? 0 },
+              precioVenta: { before: paquete.precioVenta, after: precioVentaCircuito },
+              netoCalculado: { before: paquete.netoCalculado, after: netoFijosCircuito },
+            },
+          }
+        : undefined;
+
+      if (!willUpdate) {
+        return { updated: false, opciones: 0, precioDesde: precioDesdeCircuito, changes };
+      }
+      if (dryRun) {
+        return { updated: true, opciones: 0, precioDesde: precioDesdeCircuito, changes };
+      }
+
+      const data = {
+        netoCalculado: netoFijosCircuito,
+        precioVenta: precioVentaCircuito,
+        precioDesde: precioDesdeCircuito,
+        precioDesdeMoneda: paquete.moneda,
+      };
+      if (tx) {
+        await db.paquete.update({ where: { id: paqueteId }, data });
+      } else {
+        await prisma.paquete.update({ where: { id: paqueteId }, data });
+      }
+      log.info("recompute circuito: paquete persisted", {
+        paqueteId,
+        neto: netoFijosCircuito,
+        precioDesde: precioDesdeCircuito,
+      });
+      return { updated: true, opciones: 0, precioDesde: precioDesdeCircuito, changes };
+    }
+
+    // Modalidad CLASICO sin opciones: campos legacy manejados por el operador
+    // (clon, carga manual). No los tocamos.
     log.info("recompute: paquete has no opciones, leaving Paquete legacy fields untouched", { paqueteId });
     return { updated: false, opciones: 0, precioDesde: null };
   }

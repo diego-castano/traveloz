@@ -302,6 +302,33 @@ export function computePaquetePrecios(
   const paqueteOpciones = opciones.filter((o) => o.paqueteId === paquete.id);
 
   if (paqueteOpciones.length === 0) {
+    // Modalidad CIRCUITO: el precio NO depende de opciones hoteleras. El neto son
+    // los costos fijos (circuito por persona vigente + aéreos + traslados +
+    // seguros) y la venta se deriva del markup del paquete (factor divisor,
+    // misma semántica que calcularVentaOpcion). La duración de referencia para
+    // los seguros sin diasCobertura es la del circuito asignado (fuente de verdad
+    // de duración en esta modalidad), con fallback a paquete.noches.
+    if (paquete.modalidad === 'CIRCUITO') {
+      const nochesCircuito =
+        assignedCircuitos[0]?.circuito.noches ?? paquete.noches ?? nochesTotales;
+      const netoFijosCircuito = calcularNetoFijos(
+        assignedAereos,
+        assignedTraslados,
+        assignedSeguros,
+        assignedCircuitos,
+        nochesCircuito,
+      );
+      const venta = calcularVenta(netoFijosCircuito, paquete.markup);
+      const precio = venta > 0 ? venta : null;
+      return {
+        hasOpciones: false,
+        min: precio,
+        max: precio,
+        opcionPrecios: [],
+        opcionFactors: [],
+        netoFijos: netoFijosCircuito,
+      };
+    }
     const legacy = paquete.precioVenta > 0 ? paquete.precioVenta : null;
     return {
       hasOpciones: false,
