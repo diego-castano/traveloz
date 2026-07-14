@@ -158,7 +158,7 @@ function StatCard({ icon: Icon, label, value, color, delay = 0 }: StatCardProps)
           <p className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
             {label}
           </p>
-          <p className="mt-0.5 truncate font-display text-[18px] font-bold leading-tight text-neutral-900 tabular-nums">
+          <p className="mt-0.5 truncate font-display text-[18px] font-bold leading-tight text-neutral-900 lining-nums tabular-nums">
             {value}
           </p>
         </div>
@@ -410,7 +410,7 @@ function DetailPanel({
               <span className="font-mono tabular-nums">{markupPct}% · factor {factor.toFixed(2)}</span>
             </div>
           )}
-          <div className="mt-2 text-[26px] font-extrabold tracking-tight text-[#8B5CF6] tabular-nums">
+          <div className="mt-2 text-[26px] font-extrabold tracking-tight text-[#8B5CF6] lining-nums tabular-nums">
             USD {fmt(ventaTotal)}
           </div>
           <div className="text-[11.5px] text-neutral-500">
@@ -1426,7 +1426,7 @@ function RowGroup({
           )}
         </td>
         <td className="px-4 py-3 text-right">
-          <div className="font-mono text-[14px] font-bold tabular-nums text-neutral-900">
+          <div className="font-mono text-[14px] font-bold lining-nums tabular-nums text-neutral-900">
             USD {fmt(totalVenta)}
           </div>
           <div className="mt-0.5 text-[10.5px] text-neutral-400">
