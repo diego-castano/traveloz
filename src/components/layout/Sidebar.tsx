@@ -128,7 +128,7 @@ const navGroups: NavGroup[] = [
     label: "Web",
     items: [
       { id: "web", label: "Frontend", icon: Globe, href: "/backend/web" },
-      { id: "leads", label: "Leads", icon: Inbox, href: "/backend/leads" },
+      { id: "leads", label: "Contactos", icon: Inbox, href: "/backend/leads" },
       { id: "cotizadores", label: "Cotizadores", sublabel: "por marca", icon: Calculator, href: "/backend/cotizadores" },
     ],
   },

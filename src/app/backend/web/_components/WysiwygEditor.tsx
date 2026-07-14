@@ -8,7 +8,12 @@ import {
   List,
   Heading,
   Code,
+  Baseline,
 } from "lucide-react";
+
+// Clase con la que el editor colorea texto en violeta. Debe coincidir con la
+// allowlist del sanitizador (sanitize-html.ts) y con el CSS público (site.css).
+const VIOLET_CLASS = "faq-violet";
 
 type Props = {
   value: string;
@@ -69,6 +74,56 @@ export function WysiwygEditor({
     emit(el.innerHTML);
   };
 
+  // Encuentra el <span.faq-violet> que contiene al nodo, si existe, sin salir
+  // del editor.
+  const violetAncestor = (node: Node | null, root: HTMLElement) => {
+    let n: Node | null = node;
+    while (n && n !== root) {
+      if (n instanceof HTMLElement && n.classList.contains(VIOLET_CLASS)) return n;
+      n = n.parentNode;
+    }
+    return null;
+  };
+
+  // Toggle violeta sobre la selección: si ya está dentro de un span violeta lo
+  // quita; si no, envuelve el texto seleccionado en <span class="faq-violet">.
+  const toggleViolet = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    const range = sel.getRangeAt(0);
+
+    const start = violetAncestor(range.startContainer, el);
+    const end = violetAncestor(range.endContainer, el);
+    // Selección dentro de un único span violeta → lo desenvolvemos.
+    if (start && start === end) {
+      const parent = start.parentNode;
+      if (parent) {
+        while (start.firstChild) parent.insertBefore(start.firstChild, start);
+        parent.removeChild(start);
+      }
+      emit(el.innerHTML);
+      return;
+    }
+
+    // Si no, envolvemos la selección.
+    const span = document.createElement("span");
+    span.className = VIOLET_CLASS;
+    try {
+      span.appendChild(range.extractContents());
+      range.insertNode(span);
+      sel.removeAllRanges();
+      const r = document.createRange();
+      r.selectNodeContents(span);
+      sel.addRange(r);
+    } catch {
+      // Selección que cruza límites de bloque: no forzamos.
+    }
+    emit(el.innerHTML);
+  };
+
   const insertLink = () => {
     const url = window.prompt("URL del enlace:", "https://");
     if (!url) return;
@@ -88,6 +143,8 @@ export function WysiwygEditor({
 
   return (
     <div className="border border-neutral-300 rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-violet-500/20">
+      {/* El violeta del contenido se ve igual en el editor que en el sitio. */}
+      <style>{`.wysiwyg-content .${VIOLET_CLASS}{color:#A05ED3}`}</style>
       <div className="flex flex-wrap items-center gap-0.5 bg-neutral-50 border-b border-neutral-200 px-2 py-1">
         <button
           type="button"
@@ -104,6 +161,15 @@ export function WysiwygEditor({
           title="Cursiva (Ctrl/Cmd + I)"
         >
           <Italic className="w-3.5 h-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={toggleViolet}
+          className={btn}
+          title="Texto en violeta (seleccioná el texto y aplicá)"
+          style={{ color: "#A05ED3" }}
+        >
+          <Baseline className="w-3.5 h-3.5" />
         </button>
         <span className="w-px h-4 bg-neutral-300 mx-1" />
         <button

@@ -11,6 +11,9 @@ import type { EstadoMensaje } from "@prisma/client";
 // fields the table view needs; detail returns the full row for the drawer.
 // ---------------------------------------------------------------------------
 
+// Identifica la TABLA a la que pertenece una fila (para estado/asignar/borrar).
+// Las cotizaciones de paquete y las standalone viven en la misma tabla
+// (Cotizacion), así que ambas usan kind="cotizaciones" para mutar.
 export type LeadKind =
   | "cotizaciones"
   | "mensajes"
@@ -18,7 +21,15 @@ export type LeadKind =
   | "postulaciones"
   | "newsletter";
 
+// El export sí distingue las dos vistas de Cotizacion: "leads" son las que
+// tienen paquete asociado; "cotizaciones", las standalone (/cotizar).
+export type ExportKind = LeadKind | "leads";
+
 export interface LeadCounts {
+  /** Cotizaciones CON paquete asociado (formulario del paquete). */
+  leads: number;
+  leadsNuevas: number;
+  /** Cotizaciones SIN paquete (formulario /cotizar). */
   cotizaciones: number;
   cotizacionesNuevas: number;
   mensajes: number;
@@ -37,6 +48,8 @@ export interface LeadCounts {
 export async function getLeadCounts(): Promise<LeadCounts> {
   await requireAuth();
   const [
+    leads,
+    leadsNuevas,
     cotizaciones,
     cotizacionesNuevas,
     mensajes,
@@ -48,8 +61,12 @@ export async function getLeadCounts(): Promise<LeadCounts> {
     newsletter,
     newsletterActivos,
   ] = await Promise.all([
-    prisma.cotizacion.count(),
-    prisma.cotizacion.count({ where: { estado: "NUEVO" } }),
+    prisma.cotizacion.count({ where: { paqueteId: { not: null } } }),
+    prisma.cotizacion.count({
+      where: { paqueteId: { not: null }, estado: "NUEVO" },
+    }),
+    prisma.cotizacion.count({ where: { paqueteId: null } }),
+    prisma.cotizacion.count({ where: { paqueteId: null, estado: "NUEVO" } }),
     prisma.mensajeContacto.count(),
     prisma.mensajeContacto.count({ where: { estado: "NUEVO" } }),
     prisma.contactoCorporativo.count(),
@@ -60,6 +77,8 @@ export async function getLeadCounts(): Promise<LeadCounts> {
     prisma.suscripcionNewsletter.count({ where: { active: true } }),
   ]);
   return {
+    leads,
+    leadsNuevas,
     cotizaciones,
     cotizacionesNuevas,
     mensajes,
@@ -77,13 +96,45 @@ export async function getLeadCounts(): Promise<LeadCounts> {
 // List queries (one per type)
 // ---------------------------------------------------------------------------
 
+/**
+ * "Leads" — interesados que completaron el formulario DE UN PAQUETE. Son las
+ * Cotizacion con paqueteId seteado. Trae el paquete con su primera foto para
+ * poder mostrarlo de forma visual en el listado.
+ */
+export async function listLeadsPaquete() {
+  await requireAuth();
+  return prisma.cotizacion.findMany({
+    where: { paqueteId: { not: null } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      paquete: {
+        select: {
+          id: true,
+          titulo: true,
+          slug: true,
+          destino: true,
+          precioDesde: true,
+          precioDesdeMoneda: true,
+          fotos: {
+            select: { url: true, alt: true },
+            orderBy: { orden: "asc" },
+            take: 1,
+          },
+        },
+      },
+    },
+  });
+}
+
+/**
+ * "Cotizaciones" — pedidos generales desde /cotizar, sin paquete asociado.
+ * Los que SÍ tienen paquete viven en listLeadsPaquete() para no duplicarlos.
+ */
 export async function listCotizaciones() {
   await requireAuth();
   return prisma.cotizacion.findMany({
+    where: { paqueteId: null },
     orderBy: { createdAt: "desc" },
-    include: {
-      paquete: { select: { id: true, titulo: true, slug: true } },
-    },
   });
 }
 
@@ -109,6 +160,15 @@ export async function listSuscripciones() {
   return prisma.suscripcionNewsletter.findMany({
     orderBy: { createdAt: "desc" },
   });
+}
+
+/**
+ * Revalida la vista del kind. Las Cotizacion se muestran en DOS rutas (Leads
+ * con paquete y Cotizaciones standalone), así que refrescamos ambas.
+ */
+function revalidateLead(kind: LeadKind) {
+  revalidatePath(`/backend/leads/${kind}`);
+  if (kind === "cotizaciones") revalidatePath("/backend/leads/paquetes");
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +197,7 @@ export async function updateLeadEstado(
       await prisma.postulacion.update({ where: { id }, data });
       break;
   }
-  revalidatePath(`/backend/leads/${kind}`);
+  revalidateLead(kind);
 }
 
 export async function deleteLead(
@@ -162,7 +222,7 @@ export async function deleteLead(
       await prisma.suscripcionNewsletter.delete({ where: { id } });
       break;
   }
-  revalidatePath(`/backend/leads/${kind}`);
+  revalidateLead(kind);
 }
 
 export async function toggleNewsletterActive(id: string) {
@@ -229,7 +289,7 @@ export async function assignLead(
       await prisma.postulacion.update({ where: { id }, data });
       break;
   }
-  revalidatePath(`/backend/leads/${kind}`);
+  revalidateLead(kind);
 }
 
 // ---------------------------------------------------------------------------
@@ -270,7 +330,7 @@ function todayStamp(): string {
 }
 
 export async function exportLeads(
-  kind: LeadKind,
+  kind: ExportKind,
 ): Promise<{ filename: string; csv: string }> {
   await requireAuth();
 
@@ -286,10 +346,14 @@ export async function exportLeads(
   };
 
   switch (kind) {
-    case "cotizaciones": {
+    // Leads de paquete: incluyen las columnas del paquete que pidió el interesado.
+    case "leads": {
       const rows = await prisma.cotizacion.findMany({
+        where: { paqueteId: { not: null } },
         orderBy: { createdAt: "desc" },
-        include: { paquete: { select: { titulo: true, slug: true } } },
+        include: {
+          paquete: { select: { titulo: true, slug: true, destino: true } },
+        },
       });
       const headers = [
         "ID",
@@ -300,6 +364,7 @@ export async function exportLeads(
         "Teléfono",
         "País (código)",
         "Paquete",
+        "Destino",
         "Slug paquete",
         "Origen",
         "Fecha desde",
@@ -322,8 +387,63 @@ export async function exportLeads(
         r.email,
         r.telefono,
         r.paisCodigo,
-        r.paquete?.titulo ?? "(standalone)",
+        r.paquete?.titulo ?? "",
+        r.paquete?.destino ?? "",
         r.paquete?.slug ?? "",
+        r.origen,
+        r.fechaDesde,
+        r.fechaHasta,
+        r.adultos,
+        r.ninos,
+        r.infantes,
+        r.adultos + r.ninos + r.infantes,
+        r.preferencia,
+        r.aceptaPromos,
+        r.comentarios,
+        userLabel(r.asignadoAUserId),
+        r.updatedAt,
+      ]);
+      return {
+        filename: `leads-paquete-${todayStamp()}.csv`,
+        csv: buildCsv(headers, data),
+      };
+    }
+
+    // Cotizaciones standalone (/cotizar): sin paquete, así que sin esas columnas.
+    case "cotizaciones": {
+      const rows = await prisma.cotizacion.findMany({
+        where: { paqueteId: null },
+        orderBy: { createdAt: "desc" },
+      });
+      const headers = [
+        "ID",
+        "Fecha",
+        "Estado",
+        "Nombre",
+        "Email",
+        "Teléfono",
+        "País (código)",
+        "Origen",
+        "Fecha desde",
+        "Fecha hasta",
+        "Adultos",
+        "Niños",
+        "Infantes",
+        "Total pax",
+        "Preferencia contacto",
+        "Acepta promociones",
+        "Comentarios",
+        "Asignado a",
+        "Última actualización",
+      ];
+      const data = rows.map((r) => [
+        r.id,
+        r.createdAt,
+        r.estado,
+        r.nombre,
+        r.email,
+        r.telefono,
+        r.paisCodigo,
         r.origen,
         r.fechaDesde,
         r.fechaHasta,
@@ -451,37 +571,25 @@ export async function exportLeads(
       const rows = await prisma.suscripcionNewsletter.findMany({
         orderBy: { createdAt: "desc" },
       });
+      // Export pensado para marketing: solo columnas legibles. Se omiten campos
+      // técnicos (ID interno, IP, User Agent, tokens, utm_*) que confunden y se
+      // leen como "códigos de programación".
+      const fecha = (d: Date | null) => (d ? d.toLocaleDateString("es-UY") : "");
       const headers = [
-        "ID",
-        "Fecha alta",
         "Email",
+        "Fecha de alta",
         "Activo",
-        "Origen",
         "Confirmado",
-        "Fecha baja",
-        "IP",
-        "User Agent",
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_content",
-        "utm_term",
+        "Origen",
+        "Fecha de baja",
       ];
       const data = rows.map((r) => [
-        r.id,
-        r.createdAt,
         r.email,
+        fecha(r.createdAt),
         r.active,
+        Boolean(r.confirmedAt),
         r.source,
-        r.confirmedAt,
-        r.unsubscribedAt,
-        r.consentIp,
-        r.consentUserAgent,
-        r.utmSource,
-        r.utmMedium,
-        r.utmCampaign,
-        r.utmContent,
-        r.utmTerm,
+        fecha(r.unsubscribedAt),
       ]);
       return {
         filename: `newsletter-${todayStamp()}.csv`,

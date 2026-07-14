@@ -12,16 +12,22 @@
 // in <body>, losing the cascade race.
 // ---------------------------------------------------------------------------
 
+// site.css DEBE importarse antes que cualquier componente que traiga su propio
+// .css (AgenciaModal, Footer, WhatsAppButton, CotizarCTA). Next bundlea el CSS
+// en orden del grafo de módulos; si un .css de componente queda antes que
+// site.css, sus reglas preceden a los @import de site.css y el navegador los
+// ignora (spec: @import debe ir al tope), tumbando Bootstrap y FontAwesome.
+import "./site.css";
 import type { ReactNode } from "react";
 import { preload } from "react-dom";
 import { Header } from "@/components/public/Header";
 import { Footer } from "@/components/public/Footer";
 import { AgenciaModal } from "@/components/public/AgenciaModal";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
+import { CotizarCTA } from "@/components/public/CotizarCTA";
 import { ComingSoon } from "@/components/public/ComingSoon";
 import { getSiteSettings } from "@/lib/public-data";
 import { auth } from "@/lib/auth.config";
-import "./site.css";
 // Boneyard pre-generated bones. Built by `npm run bones` (local) and
 // committed to the repo so Railway doesn't need a headless browser at build.
 import "@/bones/registry";
@@ -73,6 +79,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
         <Footer />
       </div>
 
+      <CotizarCTA />
       <WhatsAppButton />
       <AgenciaModal certificadoUrl={footerSettings.agencia_certificado_url} />
     </>

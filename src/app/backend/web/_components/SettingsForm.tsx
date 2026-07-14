@@ -17,6 +17,7 @@ import {
   updateSettings,
 } from "@/actions/site-settings.actions";
 import { MediaPicker } from "./MediaPicker";
+import { LinkListEditor } from "./LinkListEditor";
 import { useWebEdit } from "./web-edit-context";
 import { getValidator, validateAll } from "./key-validators";
 
@@ -238,9 +239,12 @@ export function SettingsForm({ group, title, blurb, excludeKeys }: Props) {
           // string in SiteSetting.value; rendered as removable chips so the
           // operator sees exactly who's going to receive each form.
           const isEmailList = it.key.startsWith("notificaciones_email_");
+          // Listas de enlaces del footer: editor de filas amigable en vez de
+          // JSON crudo. (El _partners_json lleva imágenes, va aparte.)
+          const isLinkList = /(_links_json|_legal_json)$/.test(it.key);
           const isTextarea =
             it.type === "textarea" ||
-            (!isMedia && !isEmailList && (it.value?.length ?? 0) > 80);
+            (!isMedia && !isEmailList && !isLinkList && (it.value?.length ?? 0) > 80);
           const error = errors[it.key];
 
           return (
@@ -266,6 +270,11 @@ export function SettingsForm({ group, title, blurb, excludeKeys }: Props) {
                   value={current}
                   onChange={(v) => onChangeField(it.key, v)}
                   ariaInvalid={!!error}
+                />
+              ) : isLinkList ? (
+                <LinkListEditor
+                  value={current}
+                  onChange={(v) => onChangeField(it.key, v)}
                 />
               ) : isTextarea ? (
                 <textarea

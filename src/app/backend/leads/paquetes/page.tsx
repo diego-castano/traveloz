@@ -1,3 +1,10 @@
+// ---------------------------------------------------------------------------
+// "Leads" — interesados que completaron el formulario de un paquete concreto.
+// Son las Cotizacion con paqueteId seteado (las standalone de /cotizar viven en
+// la pestaña Cotizaciones). Muestra el paquete de forma visual (miniatura +
+// título + destino) junto a los datos del interesado.
+// ---------------------------------------------------------------------------
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -7,10 +14,11 @@ import {
   Calendar,
   Users,
   MessageCircle,
-  ExternalLink,
+  Package,
+  ImageOff,
 } from "lucide-react";
 import {
-  listCotizaciones,
+  listLeadsPaquete,
   listAssignableUsers,
   assignCotizacion,
 } from "@/actions/leads.actions";
@@ -19,17 +27,17 @@ import { LeadsTable, relativeTime } from "../_components/LeadsTable";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
 import { ExportButton } from "../_components/ExportButton";
 
-type Row = Awaited<ReturnType<typeof listCotizaciones>>[number];
+type Row = Awaited<ReturnType<typeof listLeadsPaquete>>[number];
 type User = Awaited<ReturnType<typeof listAssignableUsers>>[number];
 
-export default function CotizacionesPage() {
+export default function LeadsPaquetePage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Row | null>(null);
 
   const refresh = () =>
-    listCotizaciones()
+    listLeadsPaquete()
       .then(setRows)
       .finally(() => setLoading(false));
 
@@ -38,8 +46,8 @@ export default function CotizacionesPage() {
     listAssignableUsers().then(setUsers).catch(() => setUsers([]));
   }, []);
 
-  // Keep the open row in sync after a refresh so the assignment select
-  // reflects the latest persisted value without the operator reopening it.
+  // Mantiene sincronizada la fila abierta tras un refresh, para que el select
+  // de asignación refleje lo persistido sin reabrir el drawer.
   useEffect(() => {
     if (!open) return;
     const fresh = rows.find((r) => r.id === open.id);
@@ -54,22 +62,13 @@ export default function CotizacionesPage() {
     <div className="p-6 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-neutral-900">Cotizaciones</h2>
+          <h2 className="text-xl font-semibold text-neutral-900">Leads</h2>
           <p className="text-sm text-neutral-500 mt-1">
-            Pedidos generales desde{" "}
-            <a
-              href="/cotizar"
-              target="_blank"
-              rel="noreferrer"
-              className="text-violet-600 hover:underline inline-flex items-center gap-0.5"
-            >
-              /cotizar <ExternalLink className="w-3 h-3" />
-            </a>
-            , sin un paquete asociado. Los que piden por un paquete están en{" "}
-            <span className="font-medium text-neutral-700">Leads</span>.
+            Interesados que pidieron cotización desde el formulario de un
+            paquete, con el paquete que les interesa.
           </p>
         </div>
-        <ExportButton kind="cotizaciones" disabled={rows.length === 0} />
+        <ExportButton kind="leads" disabled={rows.length === 0} />
       </div>
 
       {loading ? (
@@ -106,14 +105,56 @@ export default function CotizacionesPage() {
               className: "w-32",
             },
             {
+              key: "paquete",
+              label: "Paquete de interés",
+              cell: (r) => {
+                const foto = r.paquete?.fotos?.[0];
+                return (
+                  <a
+                    href={`/backend/paquetes/${r.paquete?.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center gap-2.5 group"
+                  >
+                    {foto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={foto.url}
+                        alt={foto.alt || r.paquete?.titulo || ""}
+                        className="w-12 h-9 rounded object-cover shrink-0 border border-neutral-200"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div className="w-12 h-9 rounded bg-neutral-100 border border-neutral-200 flex items-center justify-center shrink-0">
+                        <ImageOff className="w-3.5 h-3.5 text-neutral-300" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="text-[12px] font-medium text-violet-700 group-hover:underline truncate">
+                        {r.paquete?.titulo}
+                      </div>
+                      {r.paquete?.destino && (
+                        <div className="text-[11px] text-neutral-500 truncate">
+                          {r.paquete.destino}
+                        </div>
+                      )}
+                    </div>
+                  </a>
+                );
+              },
+            },
+            {
               key: "nombre",
-              label: "Cliente",
+              label: "Interesado",
               cell: (r) => (
                 <div>
-                  <div className="font-medium text-neutral-900">
-                    {r.nombre}
-                  </div>
+                  <div className="font-medium text-neutral-900">{r.nombre}</div>
                   <div className="text-[11px] text-neutral-500">{r.email}</div>
+                  {r.telefono && (
+                    <div className="text-[11px] text-neutral-400">
+                      {r.telefono}
+                    </div>
+                  )}
                 </div>
               ),
             },
@@ -174,10 +215,21 @@ export default function CotizacionesPage() {
             ? {
                 id: open.id,
                 title: open.nombre,
-                subtitle: "Cotización general (sin paquete)",
+                subtitle: open.paquete?.titulo ?? "—",
                 createdAt: open.createdAt,
                 estado: open.estado,
                 fields: [
+                  {
+                    label: "Paquete",
+                    value: open.paquete?.titulo ?? "—",
+                    href: open.paquete
+                      ? `/backend/paquetes/${open.paquete.id}`
+                      : undefined,
+                    icon: Package,
+                  },
+                  open.paquete?.destino
+                    ? { label: "Destino", value: open.paquete.destino }
+                    : { label: "", value: null },
                   { label: "Email", value: open.email, href: `mailto:${open.email}`, icon: Mail },
                   open.telefono
                     ? {

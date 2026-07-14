@@ -6,6 +6,7 @@
 
 import { getSiteSettings } from "@/lib/public-data";
 import { WorkForm } from "./_components/WorkForm";
+import { WorkVideo } from "./_components/WorkVideo";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
@@ -41,26 +42,7 @@ export default async function WorkWithUsPage() {
             </div>
           </div>
           <div className="col-sm-6 order-sm-1 order-2">
-            {videoUrl ? (
-              <div className="content-img work-with-img">
-                <video
-                  key={videoUrl}
-                  src={videoUrl}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="auto"
-                  poster={imagen}
-                  aria-label="Equipo TravelOz"
-                  style={{ width: "100%", borderRadius: 12 }}
-                />
-              </div>
-            ) : (
-              <div className="content-img work-with-img video-placeholder">
-                <img src={imagen} alt="Equipo TravelOz" decoding="async" />
-              </div>
-            )}
+            <WorkVideo videoUrl={videoUrl} imagen={imagen} />
           </div>
         </div>
       </div>

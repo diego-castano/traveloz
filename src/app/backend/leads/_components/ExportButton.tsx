@@ -2,14 +2,14 @@
 
 import { useTransition } from "react";
 import { Download } from "lucide-react";
-import { exportLeads, type LeadKind } from "@/actions/leads.actions";
+import { exportLeads, type ExportKind } from "@/actions/leads.actions";
 import { useToast } from "@/components/ui/Toast";
 
 export function ExportButton({
   kind,
   disabled,
 }: {
-  kind: LeadKind;
+  kind: ExportKind;
   disabled?: boolean;
 }) {
   const { toast } = useToast();

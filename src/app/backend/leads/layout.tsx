@@ -10,6 +10,7 @@ import {
   FileText,
   AtSign,
   Quote,
+  Package,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/components/lib/cn";
@@ -24,6 +25,14 @@ type Section = {
 };
 
 const SECTIONS: Section[] = [
+  {
+    // Interesados en un paquete concreto: el listado que el cliente llama "leads".
+    href: "/backend/leads/paquetes",
+    label: "Leads",
+    icon: Package,
+    countKey: "leads",
+    newKey: "leadsNuevas",
+  },
   {
     href: "/backend/leads/cotizaciones",
     label: "Cotizaciones",
@@ -78,10 +87,10 @@ export default function LeadsLayout({ children }: { children: ReactNode }) {
           </div>
           <div>
             <h1 className="text-lg font-semibold tracking-tight text-neutral-900">
-              Leads
+              Contactos
             </h1>
             <p className="text-xs text-neutral-500">
-              Envíos de los formularios públicos.
+              Todo lo que llega por los formularios públicos.
             </p>
           </div>
         </div>

@@ -30,11 +30,19 @@ const ALLOWED_TAGS = new Set([
   "a",
 ]);
 
-// Attributes kept per tag. Anything not listed (style, class, on*, data-*, …)
-// is dropped. Tags absent from this map keep no attributes at all.
+// Attributes kept per tag. Anything not listed (style, on*, data-*, …) is
+// dropped. Tags absent from this map keep no attributes at all.
 const ALLOWED_ATTRS: Record<string, Set<string>> = {
   a: new Set(["href"]),
+  // El editor colorea texto envolviéndolo en <span class="faq-violet">. Se
+  // permite class SOLO en span y SOLO con clases de esta allowlist (ver abajo),
+  // así no se abre la puerta a aplicar clases arbitrarias del sitio.
+  span: new Set(["class"]),
 };
+
+// Clases permitidas en `class`. Cualquier token fuera de esta lista se descarta
+// (y si no queda ninguno, el atributo class entero se omite).
+const ALLOWED_CLASSES = new Set(["faq-violet"]);
 
 function isSafeHref(href: string): boolean {
   const v = href.trim().toLowerCase();
@@ -93,6 +101,14 @@ export function sanitizeRichHtml(input: string | null | undefined): string {
             // External links open in a new tab without leaking the opener.
             if (/^https?:/i.test(val.trim())) {
               attrs += ` target="_blank" rel="noopener noreferrer"`;
+            }
+          } else if (attr === "class") {
+            // Filtra a la allowlist: solo sobreviven las clases conocidas.
+            const kept = val
+              .split(/\s+/)
+              .filter((c) => ALLOWED_CLASSES.has(c));
+            if (kept.length > 0) {
+              attrs += ` class="${escapeAttr(kept.join(" "))}"`;
             }
           } else {
             attrs += ` ${attr}="${escapeAttr(val)}"`;

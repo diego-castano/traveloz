@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 const PROTECTED_PREFIXES = ["leads/"];
 
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: { path: string[] } },
 ) {
   const key = ctx.params.path.join("/");
@@ -34,21 +34,34 @@ export async function GET(
   }
 
   try {
+    // Reenviar el header Range al storage para que el navegador pueda pedir el
+    // video por chunks (206 Partial Content) y empezar a reproducir sin bajar
+    // el archivo entero. Sin esto, video/audio bajan completos antes de sonar.
+    const range = req.headers.get("range") ?? undefined;
     const res = await getStorageClient().send(
-      new GetObjectCommand({ Bucket: getStorageBucket(), Key: normalized }),
+      new GetObjectCommand({
+        Bucket: getStorageBucket(),
+        Key: normalized,
+        ...(range ? { Range: range } : {}),
+      }),
     );
     const body = res.Body;
     if (!body) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const stream = body.transformToWebStream();
+    // Si el storage respondió con un rango, propagar 206 + Content-Range.
+    const isPartial = Boolean(res.ContentRange);
     return new Response(stream as unknown as BodyInit, {
-      status: 200,
+      status: isPartial ? 206 : 200,
       headers: {
         "Content-Type": res.ContentType ?? "application/octet-stream",
+        // Anunciar soporte de rangos para que el navegador lo aproveche.
+        "Accept-Ranges": "bytes",
         // PII detrás de auth: nunca en caches compartidos.
         "Cache-Control": isProtected
           ? "private, no-store"
           : "public, max-age=31536000, immutable",
+        ...(res.ContentRange ? { "Content-Range": res.ContentRange } : {}),
         ...(res.ContentLength
           ? { "Content-Length": String(res.ContentLength) }
           : {}),
