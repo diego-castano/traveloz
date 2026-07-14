@@ -675,106 +675,122 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               </p>
             </Field>
 
-            {/* 2) Vigencia — editable, atada al viaje por defecto. */}
-            <Field>
-              <FieldLabel className="flex items-center justify-between">
-                <span>Vigencia</span>
-                {!vigenciaManual ? (
-                  <span className="text-[10.5px] font-normal text-neutral-400">
-                    Vinculada al período de viaje
-                  </span>
+            {/* 2-3) Vigencia + Salidas — agrupados en su propia fila con un
+                hairline vertical entre ambos en desktop (misma familia visual
+                que border-hairline usado en el resto del form). En mobile
+                quedan apiladas sin separador, como el resto de FieldGroup. */}
+            <div className="md:col-span-2 flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-0">
+              {/* 2) Vigencia — editable, atada al viaje por defecto. */}
+              <Field className="md:pr-6">
+                <FieldLabel className="flex items-center justify-between">
+                  <span>Vigencia</span>
+                  {!vigenciaManual ? (
+                    <span className="text-[10.5px] font-normal text-neutral-400">
+                      Vinculada al período de viaje
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleVincularVigencia}
+                      disabled={isReadOnly}
+                      className="text-[10.5px] font-medium text-violet-600 hover:underline disabled:text-neutral-300 disabled:no-underline"
+                    >
+                      Volver a vincular al viaje
+                    </button>
+                  )}
+                </FieldLabel>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 min-w-0 max-w-[170px]">
+                    <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
+                      Desde
+                    </span>
+                    <DatePicker
+                      value={validezDesdeDate}
+                      onChange={setValidezDesdeDateDirty}
+                      placeholder={
+                        viajeDesdeDate
+                          ? `Auto: ${formatStoredDate(viajeDesdeDate)}`
+                          : "Elegir fecha..."
+                      }
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0 max-w-[170px]">
+                    <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
+                      Hasta
+                    </span>
+                    <DatePicker
+                      value={validezHastaDate}
+                      onChange={setValidezHastaDateDirty}
+                      placeholder={
+                        viajeHastaDate
+                          ? `Auto: ${formatStoredDate(addDays(viajeHastaDate, -15))}`
+                          : "Elegir fecha..."
+                      }
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                </div>
+                {vigenciaManual ? (
+                  <p className="mt-1.5 text-[11px] text-neutral-500">
+                    Vigencia manual: no se actualiza al cambiar el período de
+                    viaje.
+                  </p>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={handleVincularVigencia}
-                    disabled={isReadOnly}
-                    className="text-[10.5px] font-medium text-violet-600 hover:underline disabled:text-neutral-300 disabled:no-underline"
-                  >
-                    Volver a vincular al viaje
-                  </button>
+                  <p className="mt-1.5 text-[11px] text-neutral-500">
+                    Calculada desde <span className="font-medium">viaje desde</span>{" "}
+                    hasta <span className="font-medium">viaje hasta − 15 días</span>.
+                    Tocá cualquier fecha para personalizarla.
+                  </p>
                 )}
-              </FieldLabel>
-              <div className="flex items-end gap-2">
-                <div className="flex-1 min-w-0">
-                  <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
-                    Desde
-                  </span>
-                  <DatePicker
-                    value={validezDesdeDate}
-                    onChange={setValidezDesdeDateDirty}
-                    placeholder={
-                      viajeDesdeDate
-                        ? `Auto: ${formatStoredDate(viajeDesdeDate)}`
-                        : "Elegir fecha..."
-                    }
-                    disabled={isReadOnly}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="block text-[10.5px] uppercase tracking-wide text-neutral-400 mb-1">
-                    Hasta
-                  </span>
-                  <DatePicker
-                    value={validezHastaDate}
-                    onChange={setValidezHastaDateDirty}
-                    placeholder={
-                      viajeHastaDate
-                        ? `Auto: ${formatStoredDate(addDays(viajeHastaDate, -15))}`
-                        : "Elegir fecha..."
-                    }
-                    disabled={isReadOnly}
-                  />
-                </div>
-              </div>
-              {vigenciaManual ? (
-                <p className="mt-1.5 text-[11px] text-neutral-500">
-                  Vigencia manual: no se actualiza al cambiar el período de
-                  viaje.
-                </p>
-              ) : (
-                <p className="mt-1.5 text-[11px] text-neutral-500">
-                  Calculada desde <span className="font-medium">viaje desde</span>{" "}
-                  hasta <span className="font-medium">viaje hasta − 15 días</span>.
-                  Tocá cualquier fecha para personalizarla.
-                </p>
-              )}
-              {hastaExpired ? (
-                <p className="mt-1.5 text-[11.5px] font-medium text-[#CC2030]">
-                  Vigencia vencida — el paquete ya no se muestra en el
-                  frontend.
-                </p>
-              ) : hastaWarning ? (
-                <p className="mt-1.5 text-[11.5px] font-medium text-amber-600">
-                  Vence en menos de 30 días.
-                </p>
-              ) : validezHastaDate ? (
-                <p className="mt-1 text-[11px] text-neutral-400">
-                  Se dará de baja automáticamente el{" "}
-                  {validezHastaDate.toLocaleDateString("es-AR", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                  .
-                </p>
-              ) : null}
-            </Field>
+                {hastaExpired ? (
+                  <p className="mt-1.5 text-[11.5px] font-medium text-[#CC2030]">
+                    Vigencia vencida — el paquete ya no se muestra en el
+                    frontend.
+                  </p>
+                ) : hastaWarning ? (
+                  <p className="mt-1.5 text-[11.5px] font-medium text-amber-600">
+                    Vence en menos de 30 días.
+                  </p>
+                ) : validezHastaDate ? (
+                  <p className="mt-1 text-[11px] text-neutral-400">
+                    Se dará de baja automáticamente el{" "}
+                    {validezHastaDate.toLocaleDateString("es-AR", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                    .
+                  </p>
+                ) : null}
+              </Field>
 
-            {/* 3) Salidas — vive al lado de Vigencia, alineado por la base. */}
-            <Field>
-              <FieldLabel>Salidas</FieldLabel>
-              <Input
-                value={salidas}
-                onChange={(e) => setSalidasDirty(e.target.value)}
-                placeholder="Ej. Salidas semanales todo el año / Consultar"
-                readOnly={isReadOnly}
-              />
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Se muestra bajo el título en el frontend. Se autocompleta
-                con el período de arriba (ej. &ldquo;Octubre - Noviembre 2026&rdquo;).
-                Para volver al automático, borrá el campo.
-              </p>
-            </Field>
+              {/* 3) Salidas — separada de Vigencia por el hairline en desktop.
+                  El span invisible replica la micro-etiqueta "Desde/Hasta" de
+                  Vigencia para que el input arranque en el mismo baseline. */}
+              <Field className="md:border-l md:border-hairline md:pl-6">
+                <FieldLabel>Salidas</FieldLabel>
+                <div>
+                  <span
+                    aria-hidden="true"
+                    className="invisible block text-[10.5px] uppercase tracking-wide mb-1"
+                  >
+                    Salidas
+                  </span>
+                  <Input
+                    value={salidas}
+                    onChange={(e) => setSalidasDirty(e.target.value)}
+                    placeholder="Ej. Salidas semanales todo el año / Consultar"
+                    readOnly={isReadOnly}
+                  />
+                </div>
+                <p className="text-[11px] text-neutral-400 mt-1">
+                  Se muestra bajo el título en el frontend. Se autocompleta
+                  con el período de arriba (ej. &ldquo;Octubre - Noviembre 2026&rdquo;).
+                  Para volver al automático, borrá el campo.
+                </p>
+              </Field>
+            </div>
 
             {/* 4) Estado — etapa del flujo interno. */}
             <Field span={2}>
