@@ -173,19 +173,28 @@ function parseEmails(raw: string | null | undefined): string[] {
 }
 
 async function notifyLead(opts: {
-  /** Key de SiteSetting con el/los email(s) destino de este formulario. */
-  settingKey: string;
+  /**
+   * Key(s) de SiteSetting con el/los email(s) destino de este formulario. Si
+   * se pasa una lista, se prueban en orden y se usa la primera que resuelva
+   * a al menos un destinatario (ej. paquete → si está vacío, cae a cotización).
+   */
+  settingKey: string | string[];
   tipo: string;
   campos: { label: string; value: string }[];
   replyTo?: string | null;
   origen?: string | null;
 }): Promise<void> {
   try {
-    const setting = await prisma.siteSetting.findUnique({
-      where: { key: opts.settingKey },
-      select: { value: true },
-    });
-    const destinos = parseEmails(setting?.value);
+    const keys = Array.isArray(opts.settingKey) ? opts.settingKey : [opts.settingKey];
+    let destinos: string[] = [];
+    for (const key of keys) {
+      const setting = await prisma.siteSetting.findUnique({
+        where: { key },
+        select: { value: true },
+      });
+      destinos = parseEmails(setting?.value);
+      if (destinos.length > 0) break;
+    }
     if (destinos.length === 0) return;
 
     const tpl = leadNotificationEmail({
@@ -594,8 +603,14 @@ export async function submitQuoteForm(
     });
 
     const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+    // Leads que vienen del sidebar de un paquete (paqueteId presente y válido)
+    // notifican primero a la casilla dedicada a paquetes; si está vacía, caen
+    // a la misma casilla que usa el form standalone /cotizar. Los leads sin
+    // paqueteId (siempre /cotizar) usan solo esa última.
     await notifyLead({
-      settingKey: "notificaciones_email_cotizacion",
+      settingKey: paqueteId
+        ? ["notificaciones_email_paquete", "notificaciones_email_cotizacion"]
+        : "notificaciones_email_cotizacion",
       tipo: "Cotización",
       replyTo: data.email,
       origen: s(formData, "origen") ?? captureOrigen(),

@@ -75,6 +75,7 @@ export const KEY_VALIDATORS: Record<string, Validator> = {
   notificaciones_email_contacto: optionalEmailListV,
   notificaciones_email_corporativo: optionalEmailListV,
   notificaciones_email_cotizacion: optionalEmailListV,
+  notificaciones_email_paquete: optionalEmailListV,
   notificaciones_email_trabaja: optionalEmailListV,
   notificaciones_email_newsletter: optionalEmailListV,
 

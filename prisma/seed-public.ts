@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { NOTIFICACIONES_EMAIL_SETTINGS } from "../src/lib/site-settings-bootstrap";
 
 const prisma = new PrismaClient();
 
@@ -124,11 +125,10 @@ const SETTINGS: Array<{
   { key: "contacto_horario", value: "Lunes a Viernes 09:30 a 18:30", group: "contacto", label: "Horario de atención" },
   { key: "contacto_mapa_embed", value: "", type: "textarea", group: "contacto", label: "URL del iframe de Google Maps (opcional)" },
   // ─── Notificaciones de leads — un destino por formulario ──────────────
-  { key: "notificaciones_email_contacto", value: "", group: "notificaciones", label: "Contacto general — emails que reciben /contact (separá varios con comas)" },
-  { key: "notificaciones_email_corporativo", value: "", group: "notificaciones", label: "Corporativo — emails que reciben /corporativo" },
-  { key: "notificaciones_email_cotizacion", value: "", group: "notificaciones", label: "Cotización — emails que reciben /cotizar y el formulario de paquetes" },
-  { key: "notificaciones_email_trabaja", value: "", group: "notificaciones", label: "Trabajá con nosotros (RRHH) — emails que reciben /work-with-us" },
-  { key: "notificaciones_email_newsletter", value: "", group: "notificaciones", label: "Newsletter — emails que reciben cada nueva suscripción al newsletter" },
+  // Manifest compartido con getSettingsByGroup (src/lib/site-settings-bootstrap.ts):
+  // esa misma lista se usa para auto-completar la key en instalaciones ya
+  // deployadas que no vuelven a correr este seed.
+  ...NOTIFICACIONES_EMAIL_SETTINGS,
   // ─── Corporativo (página /corporativo) ───────────────────────────────
   { key: "corporativo_hero_titulo", value: "Viajes que impulsan negocios.", group: "corporativo", label: "Título del hero" },
   { key: "corporativo_hero_video", value: "/site/video/Video-Traveloz-Corporativo.mp4", type: "url", group: "corporativo", label: "Video de fondo del hero" },
