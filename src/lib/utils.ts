@@ -77,16 +77,30 @@ function periodLengthDays(desde: string, hasta: string): number {
 }
 
 /**
- * Pick the price whose period contains `fecha`. On overlap, the most specific
- * (shortest-range) period wins. Falls back to the first price if nothing matches
- * so the UI never shows a zero when data is partially seeded.
+ * Result of a period-aware resolution plus a flag telling whether the returned
+ * price is a genuine period match or the silent "first tariff" fallback.
+ *
+ * `fallback` is true when the price exists but no period actually covered the
+ * anchor date (either the date was missing/invalid, or no period matched) and we
+ * fell back to `precios[0]`. It is false when a period matched, and false when
+ * there is no price at all (`precio === undefined`).
  */
-export function resolvePrecioEnPeriodo<
+export interface PrecioResueltoMeta<T> {
+  precio: T | undefined;
+  fallback: boolean;
+}
+
+/**
+ * Like {@link resolvePrecioEnPeriodo} but also reports whether the result came
+ * from the "first tariff" fallback. The price value returned is identical to
+ * `resolvePrecioEnPeriodo` — this is purely additive metadata for the UI.
+ */
+export function resolvePrecioEnPeriodoConMeta<
   T extends { periodoDesde: string; periodoHasta: string },
->(precios: T[], fecha: string | null | undefined): T | undefined {
-  if (precios.length === 0) return undefined;
+>(precios: T[], fecha: string | null | undefined): PrecioResueltoMeta<T> {
+  if (precios.length === 0) return { precio: undefined, fallback: false };
   const target = normalizeFecha(fecha);
-  if (!target) return precios[0];
+  if (!target) return { precio: precios[0], fallback: true };
 
   const matches = precios.filter((p) => {
     const desde = normalizeFecha(p.periodoDesde);
@@ -95,14 +109,26 @@ export function resolvePrecioEnPeriodo<
     return target >= desde && target <= hasta;
   });
 
-  if (matches.length === 0) return precios[0];
-  if (matches.length === 1) return matches[0];
+  if (matches.length === 0) return { precio: precios[0], fallback: true };
+  if (matches.length === 1) return { precio: matches[0], fallback: false };
 
-  return [...matches].sort(
+  const best = [...matches].sort(
     (a, b) =>
       periodLengthDays(a.periodoDesde, a.periodoHasta) -
       periodLengthDays(b.periodoDesde, b.periodoHasta),
   )[0];
+  return { precio: best, fallback: false };
+}
+
+/**
+ * Pick the price whose period contains `fecha`. On overlap, the most specific
+ * (shortest-range) period wins. Falls back to the first price if nothing matches
+ * so the UI never shows a zero when data is partially seeded.
+ */
+export function resolvePrecioEnPeriodo<
+  T extends { periodoDesde: string; periodoHasta: string },
+>(precios: T[], fecha: string | null | undefined): T | undefined {
+  return resolvePrecioEnPeriodoConMeta(precios, fecha).precio;
 }
 
 /** Resolve the price for a specific flight route on a given date. */
@@ -112,6 +138,18 @@ export function resolvePrecioAereo(
   fecha: string | null | undefined,
 ): PrecioAereo | undefined {
   return resolvePrecioEnPeriodo(
+    precios.filter((p) => p.aereoId === aereoId),
+    fecha,
+  );
+}
+
+/** Like {@link resolvePrecioAereo}, plus whether the price is the fallback. */
+export function resolvePrecioAereoConMeta(
+  precios: PrecioAereo[],
+  aereoId: string,
+  fecha: string | null | undefined,
+): PrecioResueltoMeta<PrecioAereo> {
+  return resolvePrecioEnPeriodoConMeta(
     precios.filter((p) => p.aereoId === aereoId),
     fecha,
   );
@@ -129,6 +167,18 @@ export function resolvePrecioAlojamiento(
   );
 }
 
+/** Like {@link resolvePrecioAlojamiento}, plus whether the price is the fallback. */
+export function resolvePrecioAlojamientoConMeta(
+  precios: PrecioAlojamiento[],
+  alojamientoId: string,
+  fecha: string | null | undefined,
+): PrecioResueltoMeta<PrecioAlojamiento> {
+  return resolvePrecioEnPeriodoConMeta(
+    precios.filter((p) => p.alojamientoId === alojamientoId),
+    fecha,
+  );
+}
+
 /** Resolve the price for a specific circuit on a given date. */
 export function resolvePrecioCircuito(
   precios: PrecioCircuito[],
@@ -136,6 +186,18 @@ export function resolvePrecioCircuito(
   fecha: string | null | undefined,
 ): PrecioCircuito | undefined {
   return resolvePrecioEnPeriodo(
+    precios.filter((p) => p.circuitoId === circuitoId),
+    fecha,
+  );
+}
+
+/** Like {@link resolvePrecioCircuito}, plus whether the price is the fallback. */
+export function resolvePrecioCircuitoConMeta(
+  precios: PrecioCircuito[],
+  circuitoId: string,
+  fecha: string | null | undefined,
+): PrecioResueltoMeta<PrecioCircuito> {
+  return resolvePrecioEnPeriodoConMeta(
     precios.filter((p) => p.circuitoId === circuitoId),
     fecha,
   );

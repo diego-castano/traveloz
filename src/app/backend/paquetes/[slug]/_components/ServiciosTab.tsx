@@ -41,7 +41,8 @@ import {
   MapIcon,
 } from "lucide-react";
 import type { Paquete } from "@/lib/types";
-import { formatCurrency, resolvePrecioAereo, resolvePrecioCircuito } from "@/lib/utils";
+import { formatCurrency, resolvePrecioAereoConMeta, resolvePrecioCircuitoConMeta } from "@/lib/utils";
+import { TarifaFallbackChip } from "@/components/ui/TarifaFallbackChip";
 import ServiceSelectorModal from "./ServiceSelectorModal";
 
 // ---------------------------------------------------------------------------
@@ -335,14 +336,15 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
       case "aereos": {
         const aereo = aereoMap.get(assignment.aereoId as string);
         if (!aereo) return null;
-        const precio = resolvePrecioAereo(serviceState.preciosAereo, aereo.id, fechaAncla);
+        const { precio, fallback } = resolvePrecioAereoConMeta(serviceState.preciosAereo, aereo.id, fechaAncla);
         if (!precio) return noSinTarifa;
         return (
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end gap-1">
             <span className="text-[13.5px] font-semibold text-neutral-800 tabular-nums lining-nums">
               {formatCurrency(precio.precioAdulto)}
             </span>
             <span className="text-[11px] text-neutral-400">por adulto</span>
+            {fallback && <TarifaFallbackChip />}
           </div>
         );
       }
@@ -374,14 +376,15 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
       case "circuitos": {
         const circuito = circuitoMap.get(assignment.circuitoId as string);
         if (!circuito) return null;
-        const precio = resolvePrecioCircuito(serviceState.preciosCircuito, circuito.id, fechaAncla);
+        const { precio, fallback } = resolvePrecioCircuitoConMeta(serviceState.preciosCircuito, circuito.id, fechaAncla);
         if (!precio) return noSinTarifa;
         return (
-          <div className="flex flex-col items-end">
+          <div className="flex flex-col items-end gap-1">
             <span className="text-[13.5px] font-semibold text-neutral-800 tabular-nums lining-nums">
               {formatCurrency(precio.precio)}
             </span>
             <span className="text-[11px] text-neutral-400">por persona</span>
+            {fallback && <TarifaFallbackChip />}
           </div>
         );
       }

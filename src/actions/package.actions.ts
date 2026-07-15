@@ -1325,7 +1325,28 @@ export async function createPaqueteDestino(data: {
       orden: z.number().int().nonnegative().optional(),
     });
     const parsed = schema.parse(data);
-    const res = await prisma.paqueteDestino.create({ data: parsed });
+    // El `orden` lo calcula el server como max(existentes) + 1 dentro de una
+    // transacción interactiva. El que manda el cliente (destinos.length) colisiona
+    // al re-agregar un destino que se había quitado del medio: p.ej. [0,1,2],
+    // se borra el 1 → quedan [0,2], length=2 → el nuevo entra con orden 2 y
+    // duplica al sobreviviente. El read-then-write dentro de $transaction evita
+    // además la carrera entre dos altas simultáneas.
+    const res = await prisma.$transaction(async (tx) => {
+      const last = await tx.paqueteDestino.findFirst({
+        where: { paqueteId: parsed.paqueteId },
+        orderBy: { orden: "desc" },
+        select: { orden: true },
+      });
+      const orden = last ? last.orden + 1 : 0;
+      return tx.paqueteDestino.create({
+        data: {
+          paqueteId: parsed.paqueteId,
+          ciudadId: parsed.ciudadId,
+          noches: parsed.noches,
+          orden,
+        },
+      });
+    });
     await syncPaqueteNoches(parsed.paqueteId);
     await safePropagate(parsed.paqueteId);
     return res;

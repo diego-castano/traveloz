@@ -59,9 +59,9 @@ import {
 } from "./metrics";
 import {
   formatCurrency,
-  resolvePrecioAereo,
-  resolvePrecioAlojamiento,
-  resolvePrecioCircuito,
+  resolvePrecioAereoConMeta,
+  resolvePrecioAlojamientoConMeta,
+  resolvePrecioCircuitoConMeta,
   calcularNetoFijos,
   calcularNetoAlojamientosPorOpcion,
   calcularVenta,
@@ -70,6 +70,7 @@ import {
 } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
+import { TarifaFallbackChip } from "@/components/ui/TarifaFallbackChip";
 import type {
   Paquete,
   PaqueteFoto,
@@ -103,11 +104,13 @@ interface AeroLine {
   aereo: Aereo;
   precio: PrecioAereo | undefined;
   netoPorAdulto: number;
+  /** true cuando el precio salió del fallback "primera tarifa" (fuera de vigencia). */
+  tarifaFallback: boolean;
 }
 
 interface OpcionDetail {
   opcion: OpcionHotelera;
-  hoteles: { alojamiento: Alojamiento; noches: number; precioPorNoche: number; neto: number }[];
+  hoteles: { alojamiento: Alojamiento; noches: number; precioPorNoche: number; neto: number; tarifaFallback: boolean }[];
   netoAloj: number;
   ventaPorAdulto: number;
 }
@@ -117,7 +120,7 @@ interface PaqueteBreakdown {
   alojamientoNeto: number; // sum across all OpcionHotelera (per pax, base case before factor)
   traslados: Traslado[];
   seguros: { seguro: Seguro; dias: number; neto: number }[];
-  circuitos: { circuito: Circuito; neto: number }[];
+  circuitos: { circuito: Circuito; neto: number; tarifaFallback: boolean }[];
   netoAero: number; // por adulto
   netoTraslado: number;
   netoSeguros: number;
@@ -314,6 +317,7 @@ function DetailPanel({
                       {ciudad?.nombre ? `${ciudad.nombre} · ` : ""}
                       {h.noches}n × USD {h.precioPorNoche}/n
                     </div>
+                    {h.tarifaFallback && <TarifaFallbackChip className="mt-1" />}
                   </div>
                   <span className="flex-shrink-0 font-mono text-[12px] font-semibold tabular-nums text-neutral-900">
                     USD {fmt(h.neto)}
@@ -382,7 +386,10 @@ function DetailPanel({
             </h5>
             {breakdown.circuitos.map((c) => (
               <div key={c.circuito.id} className="flex items-baseline justify-between gap-2 text-[12px]">
-                <span className="truncate text-neutral-600">{c.circuito.nombre}</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate text-neutral-600">{c.circuito.nombre}</span>
+                  {c.tarifaFallback && <TarifaFallbackChip />}
+                </span>
                 <span className="flex-shrink-0 font-mono font-semibold tabular-nums text-neutral-900">
                   USD {fmt(c.neto)}
                 </span>
@@ -458,7 +465,7 @@ function Line({ label, value }: { label: string; value: number }) {
 // ---------------------------------------------------------------------------
 
 function AereoBlock({ line, multiple, index }: { line: AeroLine; multiple: boolean; index: number }) {
-  const { aereo, precio, netoPorAdulto } = line;
+  const { aereo, precio, netoPorAdulto, tarifaFallback } = line;
   const [showItin, setShowItin] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const hasItinerario = Boolean(aereo.itinerario && aereo.itinerario.trim().length > 0);
@@ -530,6 +537,7 @@ function AereoBlock({ line, multiple, index }: { line: AeroLine; multiple: boole
               Periodo: {fmtFecha(precio.periodoDesde)} → {fmtFecha(precio.periodoHasta)}
             </div>
           )}
+          {tarifaFallback && <TarifaFallbackChip className="mt-1" />}
         </div>
 
         {/* Itinerario expandible */}
@@ -872,8 +880,8 @@ export default function VendedorDashboard() {
       for (const pa of paAereos) {
         const aereo = aereoById.get(pa.aereoId);
         if (!aereo) continue;
-        const precio = resolvePrecioAereo(serviceState.preciosAereo, pa.aereoId, fecha);
-        aereoLines.push({ aereo, precio, netoPorAdulto: precio?.precioAdulto ?? 0 });
+        const { precio, fallback } = resolvePrecioAereoConMeta(serviceState.preciosAereo, pa.aereoId, fecha);
+        aereoLines.push({ aereo, precio, netoPorAdulto: precio?.precioAdulto ?? 0, tarifaFallback: Boolean(precio) && fallback });
       }
 
       const paTraslados = paqueteTrasladosByPaquete.get(paquete.id) ?? [];
@@ -884,12 +892,12 @@ export default function VendedorDashboard() {
       }
 
       const paCircuitos = paqueteCircuitosByPaquete.get(paquete.id) ?? [];
-      const circuitosList: { circuito: Circuito; neto: number }[] = [];
+      const circuitosList: { circuito: Circuito; neto: number; tarifaFallback: boolean }[] = [];
       for (const pc of paCircuitos) {
         const c = circuitoById.get(pc.circuitoId);
         if (!c) continue;
-        const precio = resolvePrecioCircuito(serviceState.preciosCircuito, pc.circuitoId, fecha);
-        circuitosList.push({ circuito: c, neto: precio?.precio ?? 0 });
+        const { precio, fallback } = resolvePrecioCircuitoConMeta(serviceState.preciosCircuito, pc.circuitoId, fecha);
+        circuitosList.push({ circuito: c, neto: precio?.precio ?? 0, tarifaFallback: Boolean(precio) && fallback });
       }
 
       const opciones = opcionesByPaquete.get(paquete.id) ?? [];
@@ -932,9 +940,9 @@ export default function VendedorDashboard() {
           if (!alo) continue;
           const destino = destinos.find((d) => d.id === oh.destinoId);
           const noches = destino?.noches ?? 0;
-          const precio = resolvePrecioAlojamiento(serviceState.preciosAlojamiento, oh.alojamientoId, fecha);
+          const { precio, fallback } = resolvePrecioAlojamientoConMeta(serviceState.preciosAlojamiento, oh.alojamientoId, fecha);
           const pn = precio?.precioPorNoche ?? 0;
-          hoteles.push({ alojamiento: alo, noches, precioPorNoche: pn, neto: pn * noches });
+          hoteles.push({ alojamiento: alo, noches, precioPorNoche: pn, neto: pn * noches, tarifaFallback: Boolean(precio) && fallback });
         }
         const netoAloj = calcularNetoAlojamientosPorOpcion(
           opcion.id,

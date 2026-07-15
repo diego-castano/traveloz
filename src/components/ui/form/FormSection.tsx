@@ -43,14 +43,19 @@ export function FormSection({
   return (
     <section
       className={cn(
-        "grid gap-6 py-10 first:pt-2",
+        // Single column on mobile (rail stacks above the fields); the two-column
+        // rail + content layout kicks in at md+. Encoded as Tailwind classes (not
+        // an inline gridTemplateColumns) so the mobile collapse actually works —
+        // an inline style would win over any responsive class. railWidth flows in
+        // through the --rail-width custom property so the prop still works.
+        "grid grid-cols-1 gap-6 py-10 first:pt-2 md:grid-cols-[minmax(0,var(--rail-width))_minmax(0,1fr)]",
         // Stronger divider than the near-invisible hairline so long forms
         // (DatosTab has 5 sections stacked) read as clearly separated blocks.
         "border-t first:border-t-0",
         className
       )}
       style={{
-        gridTemplateColumns: `minmax(0, ${railWidth}) minmax(0, 1fr)`,
+        ["--rail-width" as string]: railWidth,
         borderTopColor: "rgba(17,17,36,0.14)",
       }}
     >

@@ -34,10 +34,11 @@ import {
   calcularVenta,
   calcularVentaOpcion,
   formatCurrency,
-  resolvePrecioAereo,
-  resolvePrecioAlojamiento,
-  resolvePrecioCircuito,
+  resolvePrecioAereoConMeta,
+  resolvePrecioAlojamientoConMeta,
+  resolvePrecioCircuitoConMeta,
 } from "@/lib/utils";
+import { TarifaFallbackChip } from "@/components/ui/TarifaFallbackChip";
 import { checkMargen } from "@/actions/package-lifecycle.utils";
 import type { Paquete, OpcionHotelera } from "@/lib/types";
 import { glassMaterials } from "@/components/lib/glass";
@@ -193,10 +194,8 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         .map((pa) => {
           const aereo = serviceState.aereos.find((a) => a.id === pa.aereoId);
           if (!aereo) return null;
-          return {
-            aereo,
-            precioAereo: resolvePrecioAereo(serviceState.preciosAereo, pa.aereoId, fecha),
-          };
+          const { precio, fallback } = resolvePrecioAereoConMeta(serviceState.preciosAereo, pa.aereoId, fecha);
+          return { aereo, precioAereo: precio, tarifaFallback: fallback };
         })
         .filter((x): x is NonNullable<typeof x> => x !== null);
 
@@ -206,11 +205,11 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
           if (!alojamiento) return null;
           return {
             alojamiento,
-            precioAlojamiento: resolvePrecioAlojamiento(
+            precioAlojamiento: resolvePrecioAlojamientoConMeta(
               serviceState.preciosAlojamiento,
               pa.alojamientoId,
               fecha,
-            ),
+            ).precio,
             nochesEnEste: undefined, // legacy field removed; per-destino nights live in OpcionHotel
           };
         })
@@ -232,14 +231,12 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         .map((pc) => {
           const circuito = serviceState.circuitos.find((c) => c.id === pc.circuitoId);
           if (!circuito) return null;
-          return {
-            circuito,
-            precioCircuito: resolvePrecioCircuito(
-              serviceState.preciosCircuito,
-              pc.circuitoId,
-              fecha,
-            ),
-          };
+          const { precio, fallback } = resolvePrecioCircuitoConMeta(
+            serviceState.preciosCircuito,
+            pc.circuitoId,
+            fecha,
+          );
+          return { circuito, precioCircuito: precio, tarifaFallback: fallback };
         })
         .filter((x): x is NonNullable<typeof x> => x !== null);
 
@@ -289,6 +286,19 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
       },
     };
   }, [assignedAereos, assignedTraslados, assignedSeguros, assignedCircuitos, nochesTotales]);
+
+  // Categorías cuyo costo mostrado salió del fallback "primera tarifa" (ningún
+  // período cubre la fecha ancla del paquete). Sólo aéreos y circuitos tienen
+  // tarifas por período; traslados y seguros no aplican.
+  const tarifaFallbackByCategory = useMemo(
+    () => ({
+      aereos: assignedAereos.some((a) => a.precioAereo && a.tarifaFallback),
+      traslados: false,
+      seguros: false,
+      circuitos: assignedCircuitos.some((c) => c.precioCircuito && c.tarifaFallback),
+    }),
+    [assignedAereos, assignedCircuitos],
+  );
 
   // -------------------------------------------------------------------------
   // Modalidad CIRCUITO — el neto son los costos fijos (circuito por persona
@@ -376,7 +386,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         const aloj = serviceState.alojamientos.find(
           (a) => a.id === oh.alojamientoId,
         );
-        const precio = resolvePrecioAlojamiento(
+        const { precio, fallback } = resolvePrecioAlojamientoConMeta(
           serviceState.preciosAlojamiento,
           oh.alojamientoId,
           paquete.validezDesde,
@@ -389,6 +399,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
           precioPorNoche: precio?.precioPorNoche ?? 0,
           noches,
           subtotal: (precio?.precioPorNoche ?? 0) * noches,
+          tarifaFallback: Boolean(precio) && fallback,
         };
       });
 
@@ -562,22 +573,31 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                {circuitBreakdown.map(({ key, label, icon: Icon, value }) => (
-                  <motion.div
-                    key={key}
-                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/50 border border-white/30"
-                    whileHover={{ y: -2, scale: 1.02 }}
-                    transition={springs.micro}
-                  >
-                    <Icon className="h-5 w-5 text-neutral-400 mb-1.5" />
-                    <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider text-center">
-                      {label}
-                    </span>
-                    <span className="text-base font-mono font-bold text-neutral-700 mt-0.5">
-                      {formatCurrency(value)}
-                    </span>
-                  </motion.div>
-                ))}
+                {circuitBreakdown.map(({ key, label, icon: Icon, value }) => {
+                  const isFallback =
+                    key === "circuito"
+                      ? tarifaFallbackByCategory.circuitos
+                      : key === "aereos"
+                        ? tarifaFallbackByCategory.aereos
+                        : false;
+                  return (
+                    <motion.div
+                      key={key}
+                      className="flex flex-col items-center justify-center p-3 rounded-xl bg-white/50 border border-white/30"
+                      whileHover={{ y: -2, scale: 1.02 }}
+                      transition={springs.micro}
+                    >
+                      <Icon className="h-5 w-5 text-neutral-400 mb-1.5" />
+                      <span className="text-[11px] font-medium text-neutral-500 uppercase tracking-wider text-center">
+                        {label}
+                      </span>
+                      <span className="text-base font-mono font-bold text-neutral-700 mt-0.5">
+                        {formatCurrency(value)}
+                      </span>
+                      {isFallback && <TarifaFallbackChip className="mt-1.5" />}
+                    </motion.div>
+                  );
+                })}
               </div>
 
               <div className="flex items-center justify-between pt-3 border-t border-neutral-200/40 px-1">
@@ -741,6 +761,9 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                     <span className="text-base font-mono font-bold text-neutral-700 mt-0.5">
                       {formatCurrency(value)}
                     </span>
+                    {tarifaFallbackByCategory[key] && (
+                      <TarifaFallbackChip className="mt-1.5" />
+                    )}
                   </motion.div>
                 );
               })}
@@ -833,6 +856,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                                 · {hotel.ciudad}
                               </span>
                             )}
+                            {hotel.tarifaFallback && <TarifaFallbackChip />}
                           </div>
                           <span className="text-sm font-mono text-neutral-500 flex-shrink-0">
                             {formatCurrency(hotel.precioPorNoche)}/n × {hotel.noches}
