@@ -169,6 +169,41 @@ export const getPaquetesByRegion = unstable_cache(
   { revalidate: 60, tags: ["paquetes"] },
 );
 
+/**
+ * Todos los paquetes públicos, sin filtrar por región. Usado por
+ * /destinos/todos (mismo select/include que getPaquetesByRegion, sin la
+ * narrow-down client-side a "región primaria" porque acá no hay una sola
+ * región de referencia — se listan todos los paquetes publicados).
+ */
+export const getPaquetesPublicos = unstable_cache(
+  async () =>
+    prisma.paquete.findMany({
+      where: {
+        publicado: true,
+        deletedAt: null,
+        brandId: PUBLIC_BRAND_ID,
+        ...vigenciaActivaWhere(),
+      },
+      orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
+      include: {
+        fotos: { take: 1, orderBy: { orden: "asc" } },
+        destinos: {
+          orderBy: { orden: "asc" },
+          include: { ciudad: { include: { pais: true } } },
+        },
+        // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
+        // con noches propias): las noches reales viven en el circuito asignado.
+        circuitos: {
+          take: 1,
+          orderBy: { orden: "asc" },
+          select: { circuito: { select: { noches: true } } },
+        },
+      },
+    }),
+  ["paquetes-publicos"],
+  { revalidate: 60, tags: ["paquetes"] },
+);
+
 export const getFaqTopics = unstable_cache(
   async () =>
     prisma.faqTopic.findMany({

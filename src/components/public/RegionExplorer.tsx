@@ -30,10 +30,25 @@ type Paquete = {
   fotos: { url: string; alt: string }[];
   bullets: string[];
   ciudades: { id: string; nombre: string; paisNombre: string }[];
+  /**
+   * Slug de la región del paquete, para armar el href de la card. Solo lo
+   * completa la variante "todos" (cada paquete puede ser de una región
+   * distinta); en /destinos/[region] queda undefined y se usa `region.slug`.
+   */
+  regionSlug?: string;
 };
 
 type Props = {
-  region: { id: string; slug: string; nombre: string; descripcion: string | null };
+  /**
+   * Ausente en la variante "todos" (/destinos/todos): no hay una única
+   * región de referencia, así que el mensaje de "sin resultados" y el href
+   * de cada card (via `paquete.regionSlug` en vez de un slug fijo) manejan
+   * ese caso. Presente en /destinos/[region], comportamiento sin cambios.
+   */
+  region?: { id: string; slug: string; nombre: string; descripcion: string | null } | null;
+  /** Override del h1. Default: "Explorá todos los destinos" (mismo texto
+   * histórico que ya usaban las páginas por región). */
+  titulo?: string;
   paquetes: Paquete[];
   ciudades: Ciudad[];
 };
@@ -70,7 +85,7 @@ function mesesDeSalidas(salidas: string | null): string[] {
   return Array.from(ids);
 }
 
-export function RegionExplorer({ region, paquetes, ciudades }: Props) {
+export function RegionExplorer({ region, titulo, paquetes, ciudades }: Props) {
   const [sort, setSort] = useState<SortKey>("low");
   const [ciudadInput, setCiudadInput] = useState("");
   const [ciudadOpen, setCiudadOpen] = useState(false);
@@ -155,7 +170,7 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
     <section className="listing-area">
       <div className="container wide">
         <div className="listing-filter">
-          <h1 className="h2 text-center">Explorá todos los destinos</h1>
+          <h1 className="h2 text-center">{titulo ?? "Explorá todos los destinos"}</h1>
           <div className="filter-form">
             <div className="inner-flex">
               {/* City typeahead (multi) */}
@@ -349,8 +364,10 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
         {sorted.length === 0 ? (
           <p className="text-center py-12">
             {hasFilters
-              ? `No hay paquetes que coincidan con los filtros en ${region.nombre}.`
-              : `Próximamente más destinos en ${region.nombre}.`}
+              ? `No hay paquetes que coincidan con los filtros${
+                  region ? ` en ${region.nombre}` : ""
+                }.`
+              : `Próximamente más destinos${region ? ` en ${region.nombre}` : ""}.`}
           </p>
         ) : (
           <div className="row g-lg-4 g-3">
@@ -367,7 +384,7 @@ export function RegionExplorer({ region, paquetes, ciudades }: Props) {
                 >
                   <PackageCard
                     paquete={p}
-                    regionSlug={region.slug}
+                    regionSlug={p.regionSlug ?? region?.slug ?? ""}
                     variant="alt"
                   />
                 </motion.div>

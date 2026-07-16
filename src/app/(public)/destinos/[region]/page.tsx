@@ -2,7 +2,10 @@ import { notFound } from "next/navigation";
 import { getRegionBySlug, getPaquetesByRegion } from "@/lib/public-data";
 import { RegionExplorer } from "@/components/public/RegionExplorer";
 import { buildSeoMetadata } from "@/lib/seo";
-import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import {
+  projectPaqueteParaListado,
+  buildCiudadesUnicas,
+} from "@/lib/paquete-listing";
 
 export async function generateMetadata({
   params,
@@ -29,51 +32,15 @@ export default async function RegionListingPage({
   if (!region) notFound();
   const paquetesRaw = await getPaquetesByRegion(region.id);
 
-  // Project to the shape RegionExplorer expects.
-  // We expand `destinos` with ciudad+pais so the listing can offer a city
-  // typeahead (each paquete's primary city) and a season chip filter parsed
-  // from `salidas`.
-  const paquetes = paquetesRaw.map((p) => {
-    const nochesTotales = resolveNochesTotales({
-      noches: p.noches,
-      destinos: p.destinos,
-      circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
-    });
-    return {
-      id: p.id,
-      slug: p.slug,
-      titulo: p.titulo,
-      destino: p.destino,
-      noches: p.noches,
-      salidas: p.salidas,
-      precioDesde: p.precioDesde,
-      precioDesdeMoneda: p.precioDesdeMoneda,
-      heroImage: p.heroImage,
-      fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? "" })),
-      bullets: buildCardBullets({ textoIncluye: p.textoIncluye, nochesTotales }),
-      ciudades: p.destinos
-        .filter((d) => d.ciudad?.pais?.regionId === region.id)
-        .map((d) => ({
-          id: d.ciudad?.id ?? "",
-          nombre: d.ciudad?.nombre ?? "",
-          paisNombre: d.ciudad?.pais?.nombre ?? "",
-        })),
-    };
-  });
-
-  // Distinct city list (id, nombre, paisNombre) for the typeahead. Sorted by
-  // name; deduped by id.
-  const ciudadesMap = new Map<string, { id: string; nombre: string; paisNombre: string }>();
-  for (const p of paquetes) {
-    for (const c of p.ciudades) {
-      if (c.id && !ciudadesMap.has(c.id)) {
-        ciudadesMap.set(c.id, c);
-      }
-    }
-  }
-  const ciudades = Array.from(ciudadesMap.values()).sort((a, b) =>
-    a.nombre.localeCompare(b.nombre, "es"),
+  // Project to the shape RegionExplorer expects (helper compartido con
+  // /destinos/todos). Acá se pasa `regionId` para anclar las ciudades del
+  // paquete a la región actual (ver projectPaqueteParaListado).
+  const paquetes = paquetesRaw.map((p) =>
+    projectPaqueteParaListado(p, { regionId: region.id }),
   );
+
+  // Distinct city list (id, nombre, paisNombre) for the typeahead.
+  const ciudades = buildCiudadesUnicas(paquetes);
 
   return (
     <RegionExplorer

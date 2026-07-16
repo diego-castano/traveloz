@@ -1,4 +1,5 @@
 import { EmblaSlider } from "./EmblaSlider";
+import { sortRegionesAlfabetico } from "@/lib/utils";
 
 type Region = {
   id: string;
@@ -18,7 +19,9 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
   const titulo = settings.destinos_titulo?.trim() || "Elegí tu lugar en el mundo";
   const ctaLabel =
     settings.destinos_cta_link_label?.trim() || "Explorá todos los destinos";
-  const ctaHref = settings.destinos_cta_link_href?.trim() || "/destinos";
+  const ctaHref = settings.destinos_cta_link_href?.trim() || "/destinos/todos";
+  // --- Mismo orden alfabético (es) que el submenú DESTINOS del header.
+  const regionesOrdenadas = sortRegionesAlfabetico(regiones);
 
   return (
     <section className="content-area gradient-page-bg ver2 alt">
@@ -42,7 +45,7 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
             centerModeMobile
             className="image-box-slider v2 alt"
           >
-            {regiones.map((r) => (
+            {regionesOrdenadas.map((r) => (
               <a
                 href={`/destinos/${r.slug}`}
                 className="image-box style1"
