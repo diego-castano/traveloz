@@ -282,6 +282,21 @@ export interface PaquetePrecios {
   netoFijos: number;
 }
 
+// ---------------------------------------------------------------------------
+// fechaAnclaPaquete — fuente única de verdad para el ancla de resolución de
+// tarifas. La tarifa aplicable es la del período en que VIAJA el pasajero
+// (viajeDesde), no la del inicio de vigencia del listing (validezDesde). Los
+// paquetes viejos sin viajeDesde backfilleado caen a validezDesde para que su
+// pricing siga resolviendo. Toda superficie que resuelva precios de servicios
+// (motor de recompute, dashboards, tabs de admin, reportes) debe anclarse acá.
+// ---------------------------------------------------------------------------
+export function fechaAnclaPaquete(p: {
+  viajeDesde?: string | null;
+  validezDesde?: string | null;
+}): string | null | undefined {
+  return p.viajeDesde ?? p.validezDesde;
+}
+
 /**
  * Resolve all service prices for a paquete (period-aware) and compute per-opción sale prices.
  * Falls back to `paquete.precioVenta` when there are no OpcionHotelera rows — keeps listings
@@ -293,10 +308,7 @@ export function computePaquetePrecios(
   packageState: PackageStateSlice,
   serviceState: ServiceStateSlice,
 ): PaquetePrecios {
-  // Prefer the actual travel start date (viajeDesde) over the listing window
-  // start (validezDesde). Older paquetes that haven't been backfilled with
-  // viajeDesde fall back to validezDesde so their pricing still resolves.
-  const fecha = paquete.viajeDesde ?? paquete.validezDesde;
+  const fecha = fechaAnclaPaquete(paquete);
 
   const paqueteAereos = packageState.paqueteAereos.filter((pa) => pa.paqueteId === paquete.id);
   const paqueteAlojamientos = packageState.paqueteAlojamientos.filter((pa) => pa.paqueteId === paquete.id);
@@ -539,7 +551,7 @@ export function computePaquetePreciosIndexed(
   paquete: Paquete,
   index: PaquetePreciosIndex,
 ): PaquetePrecios {
-  const fecha = paquete.viajeDesde ?? paquete.validezDesde;
+  const fecha = fechaAnclaPaquete(paquete);
 
   const paqueteAereos = index.paqueteAereosByPaqueteId.get(paquete.id) ?? [];
   const paqueteAlojamientos = index.paqueteAlojamientosByPaqueteId.get(paquete.id) ?? [];

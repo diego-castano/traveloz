@@ -35,6 +35,7 @@ import {
   calcularVentaOpcion,
   calcularNetoAlojamientosPorOpcion,
   computeNochesTotales,
+  fechaAnclaPaquete,
   resolvePrecioAereo,
   resolvePrecioAlojamiento,
   resolvePrecioCircuito,
@@ -115,6 +116,7 @@ export async function recomputePaqueteOpciones(
     select: {
       id: true,
       validezDesde: true,
+      viajeDesde: true,
       precioVenta: true,
       netoCalculado: true,
       precioDesde: true,
@@ -196,7 +198,7 @@ export async function recomputePaqueteOpciones(
         : Promise.resolve([] as Awaited<ReturnType<Tx["precioCircuito"]["findMany"]>>),
     ]);
 
-  const fecha = paquete.validezDesde;
+  const fecha = fechaAnclaPaquete(paquete);
 
   // Prisma row types include extra metadata (createdAt as Date, nullable
   // strings instead of empty strings, etc.) that don't line up structurally

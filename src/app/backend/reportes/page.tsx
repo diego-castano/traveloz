@@ -67,6 +67,7 @@ import {
   calcularNetoAlojamientosPorOpcion,
   calcularNetoFijos,
   calcularVentaOpcion,
+  fechaAnclaPaquete,
   formatCurrency,
   resolvePrecioAereo,
   resolvePrecioAlojamiento,
@@ -392,7 +393,10 @@ function buildPackageRows(
   const etiquetaById = new Map(etiquetas.map((item) => [item.id, item]));
 
   return paquetes.map((paquete) => {
-    const fecha = paquete.validezDesde;
+    // Mismo ancla que el motor de precios: viajeDesde con fallback a
+    // validezDesde. Así el costo neto del reporte coincide con lo que
+    // resuelven el recompute y los dashboards.
+    const fecha = fechaAnclaPaquete(paquete);
     const destinos = packageState.destinos.filter((item) => item.paqueteId === paquete.id);
     const tagNames = packageState.paqueteEtiquetas
       .filter((item) => item.paqueteId === paquete.id)

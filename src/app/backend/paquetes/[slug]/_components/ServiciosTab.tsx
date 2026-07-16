@@ -41,7 +41,7 @@ import {
   MapIcon,
 } from "lucide-react";
 import type { Paquete } from "@/lib/types";
-import { formatCurrency, resolvePrecioAereoConMeta, resolvePrecioCircuitoConMeta } from "@/lib/utils";
+import { fechaAnclaPaquete, formatCurrency, resolvePrecioAereoConMeta, resolvePrecioCircuitoConMeta } from "@/lib/utils";
 import { TarifaFallbackChip } from "@/components/ui/TarifaFallbackChip";
 import ServiceSelectorModal from "./ServiceSelectorModal";
 
@@ -108,9 +108,9 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
   const serviceState = useServiceState();
 
   // Fecha ancla para resolver tarifas vigentes — misma que usa el motor de
-  // precios (VendedorDashboard/PreciosTab): la vigencia del paquete, no el
-  // período de viaje.
-  const fechaAncla = paquete.validezDesde;
+  // precios (VendedorDashboard/PreciosTab): el período de viaje (viajeDesde),
+  // con fallback a validezDesde para paquetes viejos sin viajeDesde.
+  const fechaAncla = fechaAnclaPaquete(paquete);
 
   // Build proveedor lookup map
   const proveedorMap = useMemo(() => {
@@ -323,8 +323,8 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
 
   // -- Costo vigente por servicio asignado --
   // Refleja la tarifa que el motor de precios usaría hoy (misma fecha ancla
-  // que VendedorDashboard/PreciosTab): paquete.validezDesde. No calcula venta
-  // ni markup — solo el costo neto, a modo informativo en este tab.
+  // que VendedorDashboard/PreciosTab): viajeDesde con fallback a validezDesde.
+  // No calcula venta ni markup — solo el costo neto, a modo informativo acá.
   const noSinTarifa = (
     <span className="text-[11.5px] font-medium text-amber-600 whitespace-nowrap">
       Sin tarifa vigente

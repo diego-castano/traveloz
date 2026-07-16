@@ -33,6 +33,7 @@ import {
   calcularNetoFijos,
   calcularVenta,
   calcularVentaOpcion,
+  fechaAnclaPaquete,
   formatCurrency,
   resolvePrecioAereoConMeta,
   resolvePrecioAlojamientoConMeta,
@@ -188,7 +189,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
 
   const { assignedAereos, assignedAlojamientos, assignedTraslados, assignedSeguros, assignedCircuitos } =
     useMemo(() => {
-      const fecha = paquete.validezDesde;
+      const fecha = fechaAnclaPaquete(paquete);
 
       const aer = services.aereos
         .map((pa) => {
@@ -247,7 +248,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         assignedSeguros: seg,
         assignedCircuitos: circ,
       };
-    }, [services, serviceState, paquete.validezDesde]);
+    }, [services, serviceState, paquete.viajeDesde, paquete.validezDesde]);
 
   // -------------------------------------------------------------------------
   // Fixed cost breakdown
@@ -369,6 +370,36 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
     [paquete, updatePaquete, trackSave],
   );
 
+  // Edit precio venta directamente en modo CIRCUITO — misma idea que
+  // handleVentaChange (opciones hoteleras), pero back-calculando el markup del
+  // paquete en vez del factor de una OpcionHotelera. El motor deriva
+  // precioVenta/precioDesde en circuito como round(neto / markup) (ver
+  // calcularVenta y su uso en resolveRangoPrecios, src/lib/utils.ts), así que
+  // persistir SOLO el markup (sin redondear) alcanza para que el precio
+  // tipeado sobreviva el round-trip al recargar.
+  const handleVentaChangeCircuito = useCallback(
+    (newVenta: number) => {
+      const netoActual = circuitPricing.neto;
+      if (newVenta <= 0 || netoActual <= 0) {
+        toast("warning", "Precio invalido", "Revisa los netos antes de cambiar el precio");
+        return;
+      }
+      // Full-precision inverse factor: redondearlo haría que round(neto / markup)
+      // se aleje del precio tipeado — igual razón que en handleVentaChange.
+      const newFactor = Math.max(0.01, Math.min(1, netoActual / newVenta));
+      void trackSave(
+        () =>
+          updatePaquete({
+            ...paquete,
+            markup: newFactor,
+            updatedAt: new Date().toISOString(),
+          }),
+        "No se pudo guardar el precio",
+      );
+    },
+    [circuitPricing.neto, paquete, updatePaquete, toast, trackSave],
+  );
+
   // -------------------------------------------------------------------------
   // Per-option pricing (live recompute from current service prices)
   // -------------------------------------------------------------------------
@@ -389,7 +420,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
         const { precio, fallback } = resolvePrecioAlojamientoConMeta(
           serviceState.preciosAlojamiento,
           oh.alojamientoId,
-          paquete.validezDesde,
+          fechaAnclaPaquete(paquete),
         );
         return {
           id: oh.alojamientoId,
@@ -417,6 +448,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
     netoFijos,
     serviceState.alojamientos,
     serviceState.preciosAlojamiento,
+    paquete.viajeDesde,
     paquete.validezDesde,
   ]);
 
@@ -681,9 +713,22 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
                 <span className="text-sm font-semibold text-neutral-600 uppercase tracking-wide">
                   Precio Venta
                 </span>
-                <span className="text-xl font-mono font-bold text-teal-700">
-                  {formatCurrency(venta)}
-                </span>
+                {canEdit ? (
+                  <div className="flex items-center gap-1">
+                    <span className="text-xl font-mono font-bold text-teal-700">$</span>
+                    <CommitNumberInput
+                      min={0}
+                      step={1}
+                      value={venta}
+                      onCommit={(n) => handleVentaChangeCircuito(n || 0)}
+                      className="w-28 text-xl font-mono font-bold text-teal-700 bg-transparent border-b-2 border-teal-200 hover:border-teal-400 focus:border-teal-500 focus:outline-none text-right px-1"
+                    />
+                  </div>
+                ) : (
+                  <span className="text-xl font-mono font-bold text-teal-700">
+                    {formatCurrency(venta)}
+                  </span>
+                )}
               </div>
             </div>
           </motion.div>

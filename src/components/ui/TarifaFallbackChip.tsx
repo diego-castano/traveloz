@@ -15,7 +15,7 @@ import { cn } from "@/components/lib/cn";
 // ---------------------------------------------------------------------------
 
 const FALLBACK_TOOLTIP =
-  "Ningún período de tarifas cubre la fecha del paquete; se usa la primera tarifa cargada. Revisá los períodos.";
+  "Ningún período de tarifas cubre la fecha de viaje del paquete; se usa la primera tarifa cargada. Revisá los períodos.";
 
 export function TarifaFallbackChip({ className }: { className?: string }) {
   return (

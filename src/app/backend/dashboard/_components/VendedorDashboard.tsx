@@ -68,6 +68,7 @@ import {
   calcularVenta,
   calcularVentaOpcion,
   computeNochesTotales,
+  fechaAnclaPaquete,
 } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
@@ -342,14 +343,7 @@ function DetailPanel({
               <Car size={10} /> Traslados
             </h5>
             {breakdown.traslados.map((t) => (
-              <div key={t.id} className="flex items-baseline justify-between gap-2 text-[12px]">
-                <span className="truncate text-neutral-600">
-                  {t.nombre} <span className="text-neutral-400">· {t.tipo}</span>
-                </span>
-                <span className="flex-shrink-0 font-mono font-semibold tabular-nums text-neutral-900">
-                  USD {fmt(t.precio)}
-                </span>
-              </div>
+              <TrasladoRow key={t.id} traslado={t} />
             ))}
             <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-neutral-100 pt-1 text-[12px]">
               <span className="text-neutral-500">Neto traslado</span>
@@ -619,6 +613,93 @@ function AereoBlock({ line, multiple, index }: { line: AeroLine; multiple: boole
 }
 
 // ---------------------------------------------------------------------------
+// TrasladoRow — línea de traslado/paseo dentro del detalle del paquete. Si el
+// traslado tiene `imagenes` (cargadas desde el admin de traslados), agrega un
+// chip discreto con contador que despliega miniaturas y abre el mismo
+// ImageLightbox reutilizado en el bloque de itinerario aéreo. Sin imágenes,
+// el renglón queda idéntico al original (solo nombre · tipo · precio).
+// ---------------------------------------------------------------------------
+
+function TrasladoRow({ traslado }: { traslado: Traslado }) {
+  const [showImages, setShowImages] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const imagenes = traslado.imagenes ?? [];
+  const hasImages = imagenes.length > 0;
+
+  return (
+    <div className="text-[12px]">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="flex min-w-0 items-center gap-1 truncate text-neutral-600">
+          <span className="truncate">
+            {traslado.nombre} <span className="text-neutral-400">· {traslado.tipo}</span>
+          </span>
+          {hasImages && (
+            <button
+              type="button"
+              onClick={(e) => {
+                // stopPropagation: este renglón vive dentro del detalle ya
+                // expandido del paquete, pero evitamos que el click se
+                // propague por si algún ancestro futuro agrega un toggle.
+                e.stopPropagation();
+                setShowImages((s) => !s);
+              }}
+              className="inline-flex flex-shrink-0 items-center gap-0.5 rounded-full bg-[#3BBFAD]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#2BA08F] hover:bg-[#3BBFAD]/20"
+              aria-label={`Ver ${imagenes.length} imagen(es) de ${traslado.nombre}`}
+            >
+              <ImageIcon size={9} /> {imagenes.length}
+            </button>
+          )}
+        </span>
+        <span className="flex-shrink-0 font-mono font-semibold tabular-nums text-neutral-900">
+          USD {fmt(traslado.precio)}
+        </span>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {showImages && hasImages && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1.5 grid grid-cols-4 gap-1 pb-0.5">
+              {imagenes.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxIndex(i);
+                  }}
+                  className="block cursor-zoom-in"
+                  aria-label={`Ampliar imagen ${i + 1} de ${traslado.nombre}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={proxyThumbUrl(url, 160)}
+                    alt={`${traslado.nombre} ${i + 1}`}
+                    loading="lazy"
+                    className="h-12 w-full rounded-[4px] border border-hairline object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ImageLightbox
+        images={imagenes}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Estado badge — compact pill rendered inline with the title. ACTIVO is the
 // default state so we omit its badge to keep the row clean; everything else
 // (borrador, en revisión, archivado) gets a coloured pill so the vendor
@@ -872,7 +953,7 @@ export default function VendedorDashboard() {
       const cached = breakdownCache.current.get(paquete.id);
       if (cached) return cached;
 
-      const fecha = paquete.validezDesde;
+      const fecha = fechaAnclaPaquete(paquete);
       const destinos = (destinosByPaquete.get(paquete.id) ?? []).slice().sort((a, b) => a.orden - b.orden);
       const nochesTotales = computeNochesTotales(destinos);
 
