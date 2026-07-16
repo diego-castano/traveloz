@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getRegionBySlug, getPaquetesByRegion } from "@/lib/public-data";
 import { RegionExplorer } from "@/components/public/RegionExplorer";
 import { buildSeoMetadata } from "@/lib/seo";
+import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
 
 export async function generateMetadata({
   params,
@@ -32,25 +33,33 @@ export default async function RegionListingPage({
   // We expand `destinos` with ciudad+pais so the listing can offer a city
   // typeahead (each paquete's primary city) and a season chip filter parsed
   // from `salidas`.
-  const paquetes = paquetesRaw.map((p) => ({
-    id: p.id,
-    slug: p.slug,
-    titulo: p.titulo,
-    destino: p.destino,
-    noches: p.noches,
-    salidas: p.salidas,
-    precioDesde: p.precioDesde,
-    precioDesdeMoneda: p.precioDesdeMoneda,
-    heroImage: p.heroImage,
-    fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? "" })),
-    ciudades: p.destinos
-      .filter((d) => d.ciudad?.pais?.regionId === region.id)
-      .map((d) => ({
-        id: d.ciudad?.id ?? "",
-        nombre: d.ciudad?.nombre ?? "",
-        paisNombre: d.ciudad?.pais?.nombre ?? "",
-      })),
-  }));
+  const paquetes = paquetesRaw.map((p) => {
+    const nochesTotales = resolveNochesTotales({
+      noches: p.noches,
+      destinos: p.destinos,
+      circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+    });
+    return {
+      id: p.id,
+      slug: p.slug,
+      titulo: p.titulo,
+      destino: p.destino,
+      noches: p.noches,
+      salidas: p.salidas,
+      precioDesde: p.precioDesde,
+      precioDesdeMoneda: p.precioDesdeMoneda,
+      heroImage: p.heroImage,
+      fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? "" })),
+      bullets: buildCardBullets({ textoIncluye: p.textoIncluye, nochesTotales }),
+      ciudades: p.destinos
+        .filter((d) => d.ciudad?.pais?.regionId === region.id)
+        .map((d) => ({
+          id: d.ciudad?.id ?? "",
+          nombre: d.ciudad?.nombre ?? "",
+          paisNombre: d.ciudad?.pais?.nombre ?? "",
+        })),
+    };
+  });
 
   // Distinct city list (id, nombre, paisNombre) for the typeahead. Sorted by
   // name; deduped by id.

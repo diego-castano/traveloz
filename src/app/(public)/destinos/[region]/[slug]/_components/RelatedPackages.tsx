@@ -21,6 +21,7 @@ type RelatedPaquete = {
   precioDesdeMoneda: string | null;
   heroImage: string | null;
   fotos: { url: string; alt: string }[];
+  bullets: string[];
   destinos: { ciudad: { nombre: string } }[];
   regionSlug: string;
 };

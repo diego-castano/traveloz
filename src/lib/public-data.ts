@@ -97,6 +97,13 @@ export const getPaquetesByTipo = unstable_cache(
       include: {
         fotos: { take: 1, orderBy: { orden: "asc" } },
         destinos: { orderBy: { orden: "asc" }, include: { ciudad: true } },
+        // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
+        // con noches propias): las noches reales viven en el circuito asignado.
+        circuitos: {
+          take: 1,
+          orderBy: { orden: "asc" },
+          select: { circuito: { select: { noches: true } } },
+        },
       },
     }),
   ["paquetes-by-tipo"],
@@ -144,6 +151,13 @@ export const getPaquetesByRegion = unstable_cache(
         destinos: {
           orderBy: { orden: "asc" },
           include: { ciudad: { include: { pais: true } } },
+        },
+        // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
+        // con noches propias): las noches reales viven en el circuito asignado.
+        circuitos: {
+          take: 1,
+          orderBy: { orden: "asc" },
+          select: { circuito: { select: { noches: true } } },
         },
       },
     });
@@ -215,6 +229,13 @@ export const getPaquetesRelacionados = unstable_cache(
       destinos: {
         orderBy: { orden: "asc" as const },
         include: { ciudad: { include: { pais: true } } },
+      },
+      // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
+      // con noches propias): las noches reales viven en el circuito asignado.
+      circuitos: {
+        take: 1,
+        orderBy: { orden: "asc" as const },
+        select: { circuito: { select: { noches: true } } },
       },
     };
     let rows = regionId

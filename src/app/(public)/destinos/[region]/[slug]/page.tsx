@@ -9,6 +9,7 @@ import { PackageDetailView } from "./_components/PackageDetailView";
 import { buildFormasDePagoData } from "./_components/FormasDePago";
 import { RelatedPackages } from "./_components/RelatedPackages";
 import { buildSeoMetadata } from "@/lib/seo";
+import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
 
 export async function generateMetadata({
   params,
@@ -16,13 +17,24 @@ export async function generateMetadata({
   params: { region: string; slug: string };
 }) {
   const p = await getPaqueteBySlug(params.slug);
+  // Noches robustas para el SEO: paquetes CIRCUITO tienen `noches` = 0 y las
+  // reales viven en el circuito → evita "0 noches" en la meta description.
+  const nochesSeo = p
+    ? resolveNochesTotales({
+        noches: p.noches,
+        destinos: p.destinos,
+        circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+      })
+    : 0;
   return buildSeoMetadata("default", {
     title: p ? (p.metaTitle ?? `${p.titulo} | TravelOz`) : undefined,
     // Fallback en cascada: meta propia → descripción interna → genérico.
     description: p
       ? (p.metaDescription?.trim() ||
         p.descripcion?.trim() ||
-        `Conocé ${p.titulo}, ${p.noches} noches.`)
+        (nochesSeo > 0
+          ? `Conocé ${p.titulo}, ${nochesSeo} noche${nochesSeo === 1 ? "" : "s"}.`
+          : `Conocé ${p.titulo}.`))
       : undefined,
     image: p?.fotos?.[0]?.url ?? undefined,
     noindex: !p,
@@ -46,24 +58,32 @@ export default async function PackageDetailPage({
   const regionId =
     paquete.destinos[0]?.ciudad?.pais?.region?.id ?? null;
   const relacionadosRaw = await getPaquetesRelacionados(paquete.id, regionId);
-  const relacionados = relacionadosRaw.map((p) => ({
-    id: p.id,
-    slug: p.slug,
-    titulo: p.titulo,
-    destino: p.destino,
-    noches: p.noches,
-    salidas: p.salidas,
-    precioDesde: p.precioDesde,
-    precioDesdeMoneda: p.precioDesdeMoneda,
-    heroImage: p.heroImage,
-    fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? p.titulo })),
-    destinos: p.destinos.map((d) => ({
-      ciudad: { nombre: d.ciudad?.nombre ?? "" },
-    })),
-    // The public detail page resolves by slug (region segment is cosmetic),
-    // so using the current region slug for every related card's href is safe.
-    regionSlug: params.region,
-  }));
+  const relacionados = relacionadosRaw.map((p) => {
+    const nochesTotales = resolveNochesTotales({
+      noches: p.noches,
+      destinos: p.destinos,
+      circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+    });
+    return {
+      id: p.id,
+      slug: p.slug,
+      titulo: p.titulo,
+      destino: p.destino,
+      noches: p.noches,
+      salidas: p.salidas,
+      precioDesde: p.precioDesde,
+      precioDesdeMoneda: p.precioDesdeMoneda,
+      heroImage: p.heroImage,
+      fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? p.titulo })),
+      bullets: buildCardBullets({ textoIncluye: p.textoIncluye, nochesTotales }),
+      destinos: p.destinos.map((d) => ({
+        ciudad: { nombre: d.ciudad?.nombre ?? "" },
+      })),
+      // The public detail page resolves by slug (region segment is cosmetic),
+      // so using the current region slug for every related card's href is safe.
+      regionSlug: params.region,
+    };
+  });
 
   // Drafts are visible only when ?preview=1 is set AND the request comes from
   // an authenticated admin session. Public visitors still get a 404 for

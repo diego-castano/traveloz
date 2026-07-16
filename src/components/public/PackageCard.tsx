@@ -32,6 +32,12 @@ type P = {
   heroImage: string | null;
   fotos: { url: string; alt: string }[];
   /**
+   * Renglones ya resueltos de la tarjeta (lista "Incluye" curada del operador,
+   * completada con derivados clásicos). Se arma server-side con
+   * `buildCardBullets` — reemplaza los 4 bullets hardcodeados de antes.
+   */
+  bullets: string[];
+  /**
    * Histórico: el RegionExplorer viejo proyectaba las ciudades del paquete
    * acá para los chips de país/ciudad. Quedó opcional — los otros dos
    * consumidores (RelatedPackages, /destinos?tipo=) no lo pasan y no lo
@@ -83,11 +89,10 @@ export function PackageCard({
           {paquete.salidas && <p>{paquete.salidas}</p>}
           <div className="row">
             <div className="col-6">
-              <ul>
-                <li>Pasaje</li>
-                <li>{paquete.noches} noches</li>
-                <li>Traslados</li>
-                <li>Régimen incluido</li>
+              <ul className="card-bullets">
+                {paquete.bullets.map((b, i) => (
+                  <li key={i}>{b}</li>
+                ))}
               </ul>
             </div>
             <div className="col-6">

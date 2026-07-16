@@ -28,6 +28,7 @@ type Paquete = {
   precioDesdeMoneda: string | null;
   heroImage: string | null;
   fotos: { url: string; alt: string }[];
+  bullets: string[];
   ciudades: { id: string; nombre: string; paisNombre: string }[];
 };
 

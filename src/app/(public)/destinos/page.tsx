@@ -8,6 +8,7 @@ import {
 import { DestinosGrid } from "@/components/public/DestinosGrid";
 import { PackageCard } from "@/components/public/PackageCard";
 import { buildSeoMetadata } from "@/lib/seo";
+import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
 
 export async function generateMetadata() {
   return buildSeoMetadata("destinos");
@@ -55,14 +56,28 @@ export default async function DestinosPage({
               </p>
             ) : (
               <div className="row">
-                {paquetes.map((p) => (
-                  <div className="col-lg-4 col-md-6 mb-4" key={p.id}>
-                    <PackageCard
-                      paquete={p}
-                      regionSlug={defaultRegionSlug}
-                    />
-                  </div>
-                ))}
+                {paquetes.map((p) => {
+                  const nochesTotales = resolveNochesTotales({
+                    noches: p.noches,
+                    destinos: p.destinos,
+                    circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+                  });
+                  const cardData = {
+                    ...p,
+                    bullets: buildCardBullets({
+                      textoIncluye: p.textoIncluye,
+                      nochesTotales,
+                    }),
+                  };
+                  return (
+                    <div className="col-lg-4 col-md-6 mb-4" key={p.id}>
+                      <PackageCard
+                        paquete={cardData}
+                        regionSlug={defaultRegionSlug}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

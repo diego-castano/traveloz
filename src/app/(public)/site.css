@@ -4677,3 +4677,15 @@ header.header-area.header-dark {
     margin: 12px 0 0 0;
   }
 }
+
+/* Renglones "Incluye" de la tarjeta publica (.card-bullets). Ahora salen de la
+   lista curada del operador y pueden ser largos ("3 noches de alojamiento en
+   Rio con desayuno"): los recortamos a 1 linea con ellipsis por <li> para no
+   romper el alto fijo de la .box-card del template. Solo aplica a este <ul>
+   nuevo; no toca .box-card .text ul (las reglas de arriba siguen igual). */
+.box-card .text ul.card-bullets li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
