@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { DataTablePageHeader } from "@/components/ui/data/DataTableToolbar";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { usePaqueteById, usePackageLoading } from "@/components/providers/PackageProvider";
+import { usePaqueteById, usePackageLoading, usePackageProgress } from "@/components/providers/PackageProvider";
 import { DetailPageSkeleton } from "@/components/ui/Skeletons";
 import { EmptyState } from "@/components/ui/data/EmptyState";
 import { ArrowLeft, PackageOpen } from "lucide-react";
@@ -86,6 +86,7 @@ export default function PaqueteDetailPage() {
   const slug = params.slug;
   const paquete = usePaqueteById(slug);
   const loading = usePackageLoading();
+  const { hydratingPaquetes } = usePackageProgress();
 
   const activeTab = searchParams.get("tab") ?? "datos";
 
@@ -94,7 +95,10 @@ export default function PaqueteDetailPage() {
   };
 
   if (loading || !paquete) {
-    if (loading) return <DetailPageSkeleton />;
+    // Mientras la tanda 2 de paquetes todavía se está hidratando, `paquete`
+    // puede faltar solo porque no llegó todavía (no porque no exista). Mostrar
+    // el skeleton evita el flash de "Paquete no encontrado" en ese instante.
+    if (loading || hydratingPaquetes) return <DetailPageSkeleton />;
 
     // -- Not found state --
     return (

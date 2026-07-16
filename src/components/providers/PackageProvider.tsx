@@ -112,6 +112,14 @@ type PackageAction =
       type: "APPEND_PAQUETES";
       payload: { paquetes: Paquete[]; totalPaquetes: number };
     }
+  | {
+      type: "APPLY_BASE_PAQUETES";
+      payload: { paquetes: Paquete[]; totalPaquetes: number; complete: boolean };
+    }
+  | {
+      type: "RECONCILE_PAQUETES";
+      payload: { paquetes: Paquete[]; totalPaquetes: number };
+    }
   // Paquete (soft delete)
   | { type: "ADD_PAQUETE"; payload: Paquete }
   | { type: "UPDATE_PAQUETE"; payload: Paquete }
@@ -186,6 +194,44 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
         paquetes: sortPaquetesByCreatedAtDesc(Array.from(merged.values())),
       };
     }
+
+    // La tanda 1 trae solo un chunk de paquetes (los más nuevos). Si pisáramos
+    // `state.paquetes` directo, cualquier página de detalle abierta en un
+    // paquete fuera de ese chunk vería `usePaqueteById` === undefined durante
+    // la ventana entre tanda 1 y tanda 2, y mostraría "Paquete no encontrado"
+    // por un instante. Por eso fusionamos (upsert) en vez de reemplazar,
+    // salvo que el server ya nos haya dado la verdad completa (`complete`).
+    case "APPLY_BASE_PAQUETES": {
+      const paquetes = action.payload.complete
+        ? sortPaquetesByCreatedAtDesc(action.payload.paquetes)
+        : (() => {
+            const merged = new Map(
+              state.paquetes.map((item) => [item.id, item]),
+            );
+            for (const paquete of action.payload.paquetes) {
+              merged.set(paquete.id, paquete);
+            }
+            return sortPaquetesByCreatedAtDesc(Array.from(merged.values()));
+          })();
+      return {
+        ...state,
+        loading: false,
+        totalPaquetes: action.payload.totalPaquetes,
+        hydratingPaquetes: !action.payload.complete,
+        paquetes,
+      };
+    }
+
+    // La unión de tanda 1 + tanda 2 es la verdad completa del server: acá sí
+    // reemplazamos la lista entera (así los paquetes borrados remotamente
+    // desaparecen), sin tocar sub-entidades.
+    case "RECONCILE_PAQUETES":
+      return {
+        ...state,
+        hydratingPaquetes: false,
+        totalPaquetes: action.payload.totalPaquetes,
+        paquetes: sortPaquetesByCreatedAtDesc(action.payload.paquetes),
+      };
 
     // -- Paquete (soft delete) --
     case "ADD_PAQUETE":
@@ -586,19 +632,17 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
       .then((base) => {
         if (cancelled) return;
         lastLoadRef.current = Date.now();
-        dispatch({
-          type: "SET_ALL",
-          payload: {
-            ...initialState,
-            loading: false,
-            hydratingPaquetes:
-              (base.total ?? base.paquetes.length) > base.paquetes.length,
-            totalPaquetes: base.total ?? base.paquetes.length,
-            paquetes: base.paquetes as any,
-          },
-        });
 
         const shouldHydrateMore = (base.total ?? 0) > base.paquetes.length;
+
+        dispatch({
+          type: "APPLY_BASE_PAQUETES",
+          payload: {
+            paquetes: base.paquetes as any,
+            totalPaquetes: base.total ?? base.paquetes.length,
+            complete: !shouldHydrateMore,
+          },
+        });
 
         if (!shouldHydrateMore) return;
 
@@ -609,9 +653,9 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
           .then((remaining) => {
             if (cancelled) return;
             dispatch({
-              type: "APPEND_PAQUETES",
+              type: "RECONCILE_PAQUETES",
               payload: {
-                paquetes: remaining.paquetes as any,
+                paquetes: [...base.paquetes, ...remaining.paquetes] as any,
                 totalPaquetes: remaining.total,
               },
             });
