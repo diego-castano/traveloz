@@ -1065,21 +1065,52 @@ async function fetchServiceSubEntitiesUncached(brandId: string) {
     circuitoDias,
     preciosCircuito,
   ] = await Promise.all([
+    // select explícito: el tipo cliente (PrecioAereo en lib/types.ts) NO declara
+    // createdAt/updatedAt/deletedAt, así que no los enviamos al cliente ni a la
+    // sessionStorage. (Los precios se borran en duro con .delete, deletedAt nunca
+    // se setea, así que excluirlo no cambia el conjunto de filas.)
     prisma.precioAereo.findMany({
       where: { aereo: { brandId, deletedAt: null } },
+      select: {
+        id: true,
+        aereoId: true,
+        periodoDesde: true,
+        periodoHasta: true,
+        precioAdulto: true,
+      },
     }),
+    // select explícito: PrecioAlojamiento (lib/types.ts) omite timestamps + deletedAt.
     prisma.precioAlojamiento.findMany({
       where: { alojamiento: { brandId, deletedAt: null } },
+      select: {
+        id: true,
+        alojamientoId: true,
+        periodoDesde: true,
+        periodoHasta: true,
+        precioPorNoche: true,
+        regimenId: true,
+      },
     }),
+    // AlojamientoFoto espeja el modelo completo (id, alojamientoId, url, alt, orden);
+    // sin campos extra que recortar, se deja sin select.
     prisma.alojamientoFoto.findMany({
       where: { alojamiento: { brandId, deletedAt: null } },
     }),
+    // CircuitoDia espeja el modelo completo; se deja sin select.
     prisma.circuitoDia.findMany({
       where: { circuito: { brandId, deletedAt: null } },
       orderBy: { orden: "asc" },
     }),
+    // select explícito: PrecioCircuito (lib/types.ts) omite timestamps + deletedAt.
     prisma.precioCircuito.findMany({
       where: { circuito: { brandId, deletedAt: null } },
+      select: {
+        id: true,
+        circuitoId: true,
+        periodoDesde: true,
+        periodoHasta: true,
+        precio: true,
+      },
     }),
   ]);
 

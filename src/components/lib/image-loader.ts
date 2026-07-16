@@ -26,6 +26,22 @@
 
 import type { ImageLoaderProps } from "next/image";
 
+/**
+ * Arma la URL de un thumbnail para el proxy interno de imágenes del admin.
+ * Agrega `?w=<width>` SOLO cuando la URL apunta al proxy `/api/image/` (que
+ * ahora reencodea/redimensiona on-the-fly). URLs externas o absolutas se
+ * devuelven intactas. Usar en `<img>` del admin para no bajar el original
+ * full-res dentro de tarjetas/thumbnails chicos. El sitio público no lo usa.
+ *
+ * `width` debe ser uno de los anchos de la whitelist del route handler
+ * ([160, 320, 480, 640, 960, 1280]); cualquier otro cae al passthrough.
+ */
+export function proxyThumbUrl(url: string, width: number): string {
+  if (!url.startsWith("/api/image/")) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}w=${width}`;
+}
+
 export function bucketImageLoader({ src, width, quality }: ImageLoaderProps): string {
   // Already absolute? Pass through unchanged.
   if (/^https?:\/\//i.test(src)) return src;

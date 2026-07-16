@@ -22,6 +22,7 @@ import {
   listAssignableUsers,
   assignCotizacion,
 } from "@/actions/leads.actions";
+import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { EstadoBadge } from "../_components/EstadoBadge";
 import { LeadsTable, relativeTime } from "../_components/LeadsTable";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
@@ -118,7 +119,7 @@ export default function LeadsPaquetePage() {
                     {foto ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={foto.url}
+                        src={proxyThumbUrl(foto.url, 160)}
                         alt={foto.alt || r.paquete?.titulo || ""}
                         className="w-12 h-9 rounded object-cover shrink-0 border border-neutral-200"
                         loading="lazy"

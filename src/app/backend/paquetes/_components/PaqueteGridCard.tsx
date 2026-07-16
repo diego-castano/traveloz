@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { MapPin, Package as PackageIcon, ArrowRight } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { formatCurrency } from "@/lib/utils";
 import type {
   Paquete,
@@ -132,7 +133,7 @@ export function PaqueteGridCard({
           <div className="relative aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-neutral-100 to-neutral-50">
             {cover ? (
               <img
-                src={cover}
+                src={proxyThumbUrl(cover, 480)}
                 alt={foto?.alt ?? paquete.titulo}
                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                 loading="lazy"

@@ -49,6 +49,7 @@ import {
   useRegiones,
 } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import {
   buildPaisResolver,
@@ -1396,7 +1397,7 @@ function RowGroup({
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-gradient-to-br from-[#E8E5FF] to-[#DCFAF4]">
               {foto?.url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={foto.url} alt={foto.alt ?? paquete.titulo} loading="lazy" className="h-full w-full object-cover" />
+                <img src={proxyThumbUrl(foto.url, 160)} alt={foto.alt ?? paquete.titulo} loading="lazy" className="h-full w-full object-cover" />
               ) : (
                 <Package size={20} className="text-neutral-300" />
               )}

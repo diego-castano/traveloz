@@ -550,10 +550,17 @@ async function safeRecomputeMany(
     const ids = Array.from(new Set(await fetchIds()));
     if (ids.length === 0) return 0;
     let updated = 0;
-    // Sequential to avoid hammering the connection pool with N parallel txns.
-    // The number of paquetes per service is small (typically <30 in this dataset).
-    for (const id of ids) {
-      updated += await safeRecompute(id);
+    // Bounded concurrency to avoid hammering the connection pool with N parallel
+    // txns. We cap at 3 in-flight recomputes (chunks) instead of running strictly
+    // one-at-a-time: the pool stays protected while a 30-paquete cascade no longer
+    // serializes 30 round-trip-heavy recomputes inside the autosave. Each recompute
+    // still isolates its own failure (safeRecompute never throws), so one failing
+    // paquete does not stop the rest.
+    const CONCURRENCY = 3;
+    for (let i = 0; i < ids.length; i += CONCURRENCY) {
+      const chunk = ids.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(chunk.map((id) => safeRecompute(id)));
+      updated += results.reduce((sum, n) => sum + n, 0);
     }
     log.info(`recompute: cascade complete for ${kind}`, {
       serviceId,
