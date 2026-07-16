@@ -86,12 +86,29 @@ function bustPackagesGlobal() {
 // Cache busters for dashboard, report, AND paquete listing aggregates. Called
 // after every paquete mutation so the UI stops serving stale counts/lists the
 // moment the user commits a change.
-function bustDashboardCache(brandId: string) {
+//
+// `scope`:
+//   • "full"  (default) — invalida TODO: dashboard, metrics, reports, las dos
+//     lecturas cacheadas del backend (paquetes / paquete-sub) y el tag del sitio
+//     público. Es el comportamiento histórico; lo usan create/delete/clone y
+//     cualquier guardado que pueda impactar el sitio público.
+//   • "draft" — invalida SOLO las dos lecturas del backend por marca
+//     (`paquetes:${brandId}` y `paquete-sub:${brandId}`). Es lo mínimo para que
+//     el admin vea sus propios cambios frescos SIN tirar la caché de 60 s del
+//     sitio público ni la de dashboard/metrics/reports en cada tecla del
+//     autosave. `paquetes:${brandId}` está en las tags de getBasePackages Y de
+//     getPackageSubEntities, y `paquete-sub:${brandId}` en las de esta última:
+//     entre las dos cubren por completo el refetch del backend (base + sub +
+//     CacheWarmer) para esta marca. No incluye PACKAGES_GLOBAL_TAG a propósito:
+//     invalidar el tag por marca ya basta para las dos lecturas de ESTA marca,
+//     y así no reventamos la caché de las otras marcas innecesariamente.
+function bustDashboardCache(brandId: string, scope: "full" | "draft" = "full") {
+  revalidateTag(`paquetes:${brandId}`);
+  revalidateTag(`paquete-sub:${brandId}`);
+  if (scope === "draft") return;
   revalidateTag(`dashboard:${brandId}`);
   revalidateTag(`metrics:${brandId}`);
   revalidateTag(`reports:${brandId}`);
-  revalidateTag(`paquetes:${brandId}`);
-  revalidateTag(`paquete-sub:${brandId}`);
   // Incluye PACKAGES_GLOBAL_TAG + el tag del sitio público.
   bustPackagesGlobal();
 }
@@ -217,7 +234,17 @@ async function fetchBasePackagesUncached(
  *
  * Invariante estado ACTIVO ⇔ publicado: dar de baja también pasa el estado a
  * ARCHIVADO, así el paquete no queda ACTIVO con publicado=false.
+ *
+ * Gate por proceso (ver `lastReconcileAt` en el call site de getBasePackages):
+ * antes esto corría en CADA getBasePackages — y getBasePackages se invoca varias
+ * veces por navegación (CacheWarmer server-side + wave 1 + wave 2 con skip + cada
+ * refetch por foco). El resultado real (dar de baja vencidos) cambia como mucho
+ * una vez por día, así que sólo lo corremos si pasaron >5 min desde el último run
+ * de esa marca. La lógica interna de esta función NO cambia.
  */
+const lastReconcileAt = new Map<string, number>();
+const RECONCILE_INTERVAL_MS = 5 * 60 * 1000;
+
 async function reconcileExpiredPaquetes(brandId: string): Promise<void> {
   try {
     const hoy = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD local
@@ -248,7 +275,16 @@ export async function getBasePackages(
 ) {
   try {
     const { brandId } = await requireAuth(requestedBrandId);
-    await reconcileExpiredPaquetes(brandId);
+    // Gate por proceso: sólo reconciliamos vencidos si pasaron >5 min desde el
+    // último run de esta marca (ver lastReconcileAt). Actualizamos el timestamp
+    // ANTES del await para que llamadas concurrentes no lo dupliquen. Cuando sí
+    // corre, se hace await para que la baja se refleje en esta misma respuesta.
+    const now = Date.now();
+    const last = lastReconcileAt.get(brandId) ?? 0;
+    if (now - last > RECONCILE_INTERVAL_MS) {
+      lastReconcileAt.set(brandId, now);
+      await reconcileExpiredPaquetes(brandId);
+    }
     const skip = Math.max(0, options?.skip ?? 0);
     const take = options?.take ?? null;
     const sortCreated = options?.sortCreated ?? "desc";
@@ -453,6 +489,8 @@ export async function updatePaquete(
         markup: true,
         modalidad: true,
         estado: true,
+        // publicado: necesario para decidir el scope de invalidación (draft/full).
+        publicado: true,
       },
     });
     if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
@@ -520,7 +558,29 @@ export async function updatePaquete(
     if (modalidadChanged || markupChanged) {
       await safePropagate(id);
     }
-    bustDashboardCache(brandId);
+    // Scope de invalidación (perf del autosave): el autosave (debounce 800 ms)
+    // llama a updatePaquete en cada tecla, así que hacer "full" siempre tira la
+    // caché del sitio público y la de dashboard/metrics/reports en cada guardado
+    // y vuelve inútil la unstable_cache de 60 s. Usamos "draft" (sólo las dos
+    // lecturas del backend por marca) SALVO que el guardado pueda tocar el sitio
+    // público. Regla conservadora (ante la duda, full): es "full" si el paquete
+    //   • estaba publicado antes del update, O
+    //   • queda publicado / ACTIVO después, O
+    //   • el payload toca estado / publicado / slug.
+    // Un paquete que ni estaba ni queda publicado/activo nunca aparece en el
+    // sitio público (public-data filtra por publicado + vigencia), así que no
+    // reventar el tag público en ese caso es seguro. El refetch del backend
+    // (getBasePackages + getPackageSubEntities + CacheWarmer) sí queda cubierto
+    // porque draft invalida `paquetes:${brandId}` y `paquete-sub:${brandId}`,
+    // que son las tags de esas dos lecturas.
+    const affectsPublicSite =
+      owner.publicado === true ||
+      updated.publicado === true ||
+      updated.estado === "ACTIVO" ||
+      data.estado !== undefined ||
+      "publicado" in data ||
+      "slug" in data;
+    bustDashboardCache(brandId, affectsPublicSite ? "full" : "draft");
     if (publishBlocked) {
       // Mismo canal estructurado que updatePaqueteFrontend: en producción Next
       // redacta los mensajes de excepción de los server actions, así que la UI

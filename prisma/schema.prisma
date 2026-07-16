@@ -299,6 +299,8 @@ model AlojamientoFoto {
   orden         Int    @default(0)
 
   alojamiento Alojamiento @relation(fields: [alojamientoId], references: [id], onDelete: Cascade)
+
+  @@index([alojamientoId])
 }
 
 model Traslado {
