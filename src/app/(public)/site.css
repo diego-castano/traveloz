@@ -1142,6 +1142,41 @@ section {
     height: 120px
 }
 
+/* Destino detalle: el form de la derecha cierra a la misma altura que la
+   tarjeta principal (diseño de referencia) y el textarea de comentarios
+   absorbe la diferencia. Solo cuando las columnas van lado a lado (≥768px). */
+@media (min-width: 768px) {
+    .pkg-detail .sidebar-form.sticky {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pkg-detail .sidebar-form form {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pkg-detail .sidebar-form form ul {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pkg-detail .sidebar-form form li.field-grow {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pkg-detail .sidebar-form form li.field-grow textarea {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 120px;
+    }
+}
+
 .sidebar-form form button.btns {
     border-radius: 50px;
     background: #f43e55;
@@ -1245,10 +1280,17 @@ section {
     margin-bottom: 5px
 }
 
+/* Renglones "Incluye" de la tarjeta pública (.box-card). Regla ÚNICA de la
+   lista: Bootstrap y el preflight de Tailwind resetean ul a list-style:none,
+   así que reponemos el disc acá (specificity .box-card .text ul gana sobre el
+   reset element-level). Afecta a los 3 PackageCard: RegionExplorer,
+   RelatedPackages y /destinos?tipo=. */
 .box-card .text ul {
+    list-style: disc;
     padding-left: 20px;
     font-weight: 400;
     font-size: 14px;
+    margin: 0;
 }
 
 .box-card .text ul li {
@@ -2258,6 +2300,50 @@ header.scrolled {
 @keyframes workVideoSpin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+/* /work-with-us: formulario y video en cajas de la misma altura. El video 4:5
+   marca la altura natural; la columna del form se estira hasta igualarla y el
+   textarea absorbe el espacio extra. Si el form resultara más alto (viewports
+   angostos), el video llena la columna con object-fit: cover. Solo aplica
+   cuando las columnas van lado a lado (≥576px). */
+@media (min-width: 576px) {
+    .work-with-us .work-with-img {
+        height: 100%;
+    }
+
+    .work-with-us .work-with-img video {
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .work-with-us .content-box.style3 {
+        height: 100%;
+    }
+
+    .work-with-us .content-box.style3 form {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .work-with-us .content-box.style3 form ul {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .work-with-us form li.field-grow {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .work-with-us form li.field-grow textarea {
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 100px;
     }
 }
 
@@ -4618,23 +4704,9 @@ header.header-area.header-dark {
   font-size: 12px;
 }
 
-/* Bullet en el listado de "incluye" del .box-card. Bootstrap resetea a
-   list-style: none y Tailwind preflight refuerza, asi que el <ul> de
-   Pasaje / 7 noches / Traslados / Regimen incluido sale sin los puntos
-   negros. Restauramos aca (afecta a los 3 PackageCard: RegionExplorer,
-   RelatedPackages, /destinos?tipo=). */
-.box-card .text ul {
-  list-style: disc;
-  padding-left: 20px;
-  font-weight: 400;
-  font-size: 14px;
-  margin: 0;
-}
-
-.box-card .text ul li {
-  line-height: 18px;
-  margin-bottom: 2px;
-}
+/* La regla de los bullets del .box-card (list-style: disc) vive una sola vez,
+   junto a las demás reglas de .box-card más arriba en este archivo. Se quitó de
+   acá el duplicado que causaba confusión. */
 
 /* Clear filters link, a la izquierda del sort */
 .clear-filters {
@@ -4678,14 +4750,77 @@ header.header-area.header-dark {
   }
 }
 
-/* Renglones "Incluye" de la tarjeta publica (.card-bullets). Ahora salen de la
-   lista curada del operador y pueden ser largos ("3 noches de alojamiento en
-   Rio con desayuno"): los recortamos a 1 linea con ellipsis por <li> para no
-   romper el alto fijo de la .box-card del template. Solo aplica a este <ul>
-   nuevo; no toca .box-card .text ul (las reglas de arriba siguen igual). */
+/* Renglones "Incluye" de la tarjeta pública (.card-bullets). Ahora buildCardBullets
+   los reduce a conceptos cortos de 1-2 palabras (Vuelos / 07 Noches / Traslados…),
+   así que ya NO truncamos con ellipsis. El truncado anterior usaba overflow:hidden
+   sobre el <li>, y eso recortaba el marcador disc (se dibuja fuera del content box)
+   dejando las viñetas invisibles. Al sacarlo, los discos vuelven a verse y los
+   conceptos cortos entran en una línea sin necesidad de recorte. */
 .box-card .text ul.card-bullets li {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+  overflow: visible;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Testimonios ("Relatos de nuestros viajeros") — flechas más claras y más
+   separadas del texto, a pedido del cliente. Reglas nuevas y propias del
+   .image-text-slider (no tocamos .slick-arrow base ni las otras clases que
+   ya tienen su propio color de flecha, como .box-slider o .destinos-slider),
+   para no afectar el resto de los carruseles.
+   ───────────────────────────────────────────────────────────────────────── */
+.image-text-slider .slick-arrow path {
+  fill: #CCCCCC;
+}
+
+/* Escritorio ancho: bien afuera, cerca del borde de la página. */
+@media (min-width: 1300px) {
+  .image-text-slider .slick-prev {
+    left: -90px;
+  }
+
+  .image-text-slider .slick-next {
+    right: -90px;
+  }
+}
+
+/* Laptop / tablet ancha: en este rango el contenedor "smalls" ya casi no
+   tiene margen lateral (a veces ~12px), así que achicamos el offset del
+   valor original (-50px, que ya se salía de la pantalla acá) a algo que
+   nunca se sale, en vez de agrandarlo. */
+@media (min-width: 992px) and (max-width: 1299px) {
+  .image-text-slider .slick-prev {
+    left: -10px;
+  }
+
+  .image-text-slider .slick-next {
+    right: -10px;
+  }
+}
+
+/* Mobile / tablet portrait: acá las columnas se apilan (imagen arriba, texto
+   abajo) así que el slide es mucho más alto y el top:50% original queda a
+   mitad del bloque de texto, tapándolo. Lo subimos al 15% (mismo criterio
+   que ya usa el breakpoint <=575px de este archivo) y usamos un offset chico
+   para no salirnos de la pantalla: acá el contenedor "smalls" casi no tiene
+   margen lateral. El breakpoint <=575px ya existente no se toca. */
+@media (min-width: 576px) and (max-width: 991px) {
+  .image-text-slider .slick-prev {
+    top: 15%;
+    left: -10px;
+  }
+
+  .image-text-slider .slick-next {
+    top: 15%;
+    right: -10px;
+  }
+}
+
+/* ── Corporativo: header dark ── */
+/* Item CORPORATIVO destacado en el header oscuro cuando la ruta es
+   /corporativo (ver MobileMenu.tsx / StickyHeader.tsx). El resto del look
+   .header-dark (fondo, color de links, hamburguesa blanca) ya venía portado
+   más arriba en este archivo -- solo faltaba activarlo según la ruta. */
+.header-dark .mainmenu ul li a.nav-current {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 8px;
 }

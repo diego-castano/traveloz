@@ -1,21 +1,29 @@
 // ---------------------------------------------------------------------------
-// Client island para el video de /work-with-us. Reproduce el video sin poster
-// (el poster estático mostraba una foto con "delay" mientras el video buffea)
-// y en su lugar muestra un spinner hasta que el video puede reproducirse.
+// Client island para el video de /work-with-us. Con poster configurado, el
+// primer frame aparece al instante y el video arranca encima cuando buffea.
+// Sin poster, cae al spinner hasta que el video puede reproducirse.
 // ---------------------------------------------------------------------------
 
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 
-export function WorkVideo({ videoUrl, imagen }: { videoUrl: string; imagen: string }) {
+export function WorkVideo({
+  videoUrl,
+  imagen,
+  poster,
+}: {
+  videoUrl: string;
+  imagen: string;
+  poster?: string;
+}) {
   const [ready, setReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Si el video ya está bufferizado (p. ej. en caché) el evento canPlay pudo
-  // dispararse antes de montar el listener; lo chequeamos al montar.
+  // Si el video ya está bufferizado (p. ej. en caché) los eventos loadedData /
+  // canPlay pudieron dispararse antes de montar el listener; chequeo al montar.
   useEffect(() => {
-    if (videoRef.current && videoRef.current.readyState >= 3) setReady(true);
+    if (videoRef.current && videoRef.current.readyState >= 2) setReady(true);
   }, []);
 
   if (!videoUrl) {
@@ -29,7 +37,7 @@ export function WorkVideo({ videoUrl, imagen }: { videoUrl: string; imagen: stri
 
   return (
     <div className={`content-img work-with-img work-with-video${ready ? " is-ready" : ""}`}>
-      {!ready && (
+      {!ready && !poster && (
         <div className="work-with-video__loading" aria-hidden="true">
           <span className="work-with-video__spinner" />
         </div>
@@ -38,12 +46,14 @@ export function WorkVideo({ videoUrl, imagen }: { videoUrl: string; imagen: stri
         key={videoUrl}
         ref={videoRef}
         src={videoUrl}
+        poster={poster || undefined}
         autoPlay
         muted
         loop
         playsInline
         preload="auto"
         aria-label="Equipo TravelOz"
+        onLoadedData={() => setReady(true)}
         onCanPlay={() => setReady(true)}
         onPlaying={() => setReady(true)}
         style={{ width: "100%", borderRadius: 12 }}

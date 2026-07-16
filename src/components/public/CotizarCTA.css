@@ -9,13 +9,12 @@
   z-index: 111;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 16px;
+  padding: 14px 24px;
   border-radius: 999px;
   background: linear-gradient(135deg, #A05ED3 0%, #F43E55 100%);
   color: #fff;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 17px;
   line-height: 1;
   letter-spacing: 0.1px;
   white-space: nowrap;
@@ -30,10 +29,6 @@
   transform: translateY(-2px) scale(1.03);
   box-shadow: 0 10px 24px rgba(244, 62, 85, 0.42);
   outline: none;
-}
-
-.cotizar-cta__icon {
-  flex: 0 0 auto;
 }
 
 /* Anillo pulsante que llama la atención sin tocar el transform del hover. */

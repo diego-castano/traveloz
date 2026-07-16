@@ -136,7 +136,7 @@ export function QuoteSidebar({
               />
             </div>
           </li>
-          <li>
+          <li className="field-grow">
             <label htmlFor="quote-coment">Comentarios</label>
             <textarea
               id="quote-coment"

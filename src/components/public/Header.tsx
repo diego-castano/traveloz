@@ -11,17 +11,26 @@
 // region the menu reflects it without a redeploy. The logo image is sourced
 // from SiteSettings group=general key=header_logo so it can be replaced too;
 // falls back to the bundled asset when not configured.
+//
+// El <header> en sí (className + logo) lo renderiza <StickyHeader>, que es
+// client y decide ahí la variante "header-dark" de /corporativo vía
+// usePathname(). Header.tsx sigue siendo server-only: solo hace el fetch de
+// regiones/settings y arma NAV; no tiene forma de conocer la ruta actual.
 // ---------------------------------------------------------------------------
 
 import { StickyHeader } from "./StickyHeader";
 import { MobileMenu } from "./MobileMenu";
 import { getRegionesPublicas, getSiteSettings } from "@/lib/public-data";
+import { sortRegionesAlfabetico } from "@/lib/utils";
 
 export async function Header() {
-  const [regiones, settings] = await Promise.all([
+  const [regionesRaw, settings] = await Promise.all([
     getRegionesPublicas(),
     getSiteSettings("general"),
   ]);
+  // --- Orden alfabético (es) para el submenú, no el orden manual de la DB.
+  // "Otros"/"Otras" (si existe) queda siempre al final.
+  const regiones = sortRegionesAlfabetico(regionesRaw);
 
   const NAV = [
     {
@@ -40,21 +49,8 @@ export async function Header() {
   const logo = settings.header_logo?.trim() || "/site/img/header-logo.webp";
 
   return (
-    <StickyHeader>
-      <header className="header-area">
-        <div className="container wide">
-          <div className="header-inn d-flex align-items-center justify-content-between">
-            <div className="header-logo">
-              <a href="/">
-                <img src={logo} alt="TravelOz" decoding="async" />
-              </a>
-            </div>
-            <div className="header-menu">
-              <MobileMenu items={NAV} />
-            </div>
-          </div>
-        </div>
-      </header>
+    <StickyHeader logo={logo}>
+      <MobileMenu items={NAV} />
     </StickyHeader>
   );
 }

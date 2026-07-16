@@ -993,8 +993,6 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
               </div>
             )}
 
-            {/* Payment methods (desktop, below the content card) */}
-            <FormasDePago variant="desktop" data={formasDePago} />
             </Skeleton>
           </div>
 
@@ -1010,6 +1008,15 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
               precioDesdeMoneda={paquete.precioDesdeMoneda}
             />
             <FormasDePago variant="mobile" data={formasDePago} />
+          </div>
+        </div>
+
+        {/* Payment methods (desktop) en fila propia: así el sidebar puede
+            igualar la altura de la tarjeta principal (las dos cajas cierran
+            al mismo nivel, como el diseño de referencia). */}
+        <div className="row">
+          <div className="col-lg-8 col-md-7">
+            <FormasDePago variant="desktop" data={formasDePago} />
           </div>
         </div>
       </div>

@@ -29,7 +29,11 @@ export function HomeTestimonios({
         <EmblaSlider
           slidesToShow={1}
           autoplay
-          autoplayDelay={5000}
+          // --- Rotación más pausada que el resto de los carruseles: el
+          // cliente pidió testimonios más lentos y una transición notoriamente
+          // más suave (duration alto = deslizamiento calmo, solo acá).
+          autoplayDelay={9000}
+          duration={38}
           loop
           showArrows
           className="image-text-slider"

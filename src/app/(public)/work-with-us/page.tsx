@@ -23,6 +23,7 @@ export default async function WorkWithUsPage() {
     "Estamos transformando la experiencia de viajar,\ny queremos hacerlo con personas como vos.";
   const imagen = settings.workwithus_imagen?.trim() || "/site/img/work-with-us.webp";
   const videoUrl = settings.workwithus_video_url?.trim() || "";
+  const videoPoster = settings.workwithus_video_poster?.trim() || "";
 
   return (
     <section className="content-area work-with-us">
@@ -42,7 +43,7 @@ export default async function WorkWithUsPage() {
             </div>
           </div>
           <div className="col-sm-6 order-sm-1 order-2">
-            <WorkVideo videoUrl={videoUrl} imagen={imagen} />
+            <WorkVideo videoUrl={videoUrl} imagen={imagen} poster={videoPoster} />
           </div>
         </div>
       </div>

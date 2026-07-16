@@ -61,7 +61,7 @@ export function WorkForm() {
             required
           />
         </li>
-        <li className="col-sm-12">
+        <li className="col-sm-12 field-grow">
           <label htmlFor="msg">Mensaje</label>
           <textarea
             id="msg"

@@ -24,7 +24,7 @@ export function HomeCategorias({
           </div>
         ) : null}
         <EmblaSlider
-          slidesToShow={3}
+          slidesToShow={2}
           autoplay
           autoplayDelay={3000}
           loop

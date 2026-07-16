@@ -65,21 +65,21 @@ export function CorporativoView({
       title: s.corporativo_valores_titulo_1 ?? "Nuestros valores",
       body:
         s.corporativo_valores_texto_1 ??
-        "Trabajamos con una premisa clara: generar valor real a través de la confianza, la eficiencia y el compromiso.",
+        "Trabajamos con una premisa clara: generar valor real a través de la **confianza, la eficiencia y el compromiso.**",
     },
     {
       icon: s.corporativo_valores_icon_2?.trim() || "/site/img/flight-icon.webp",
       title: s.corporativo_valores_titulo_2 ?? "¿Cómo trabajamos?",
       body:
         s.corporativo_valores_texto_2 ??
-        "Identificamos las necesidades de cada organización y brindamos soluciones alineadas a sus objetivos, garantizando calidad y respaldo.",
+        "Identificamos las necesidades de cada organización y brindamos soluciones alineadas a sus objetivos, garantizando **calidad y respaldo.**",
     },
     {
       icon: s.corporativo_valores_icon_3?.trim() || "/site/img/clock-icon.webp",
       title: s.corporativo_valores_titulo_3 ?? "Atención 24/7",
       body:
         s.corporativo_valores_texto_3 ??
-        "Más de 35 profesionales brindan un servicio de excelencia, resolviendo cada solicitud de forma ágil y con la máxima calidad las 24 horas.",
+        "Más de 35 profesionales brindan un servicio de excelencia, resolviendo cada solicitud de **forma ágil y con la máxima calidad las 24 horas.**",
     },
   ];
   const clientesTitulo = s.corporativo_clientes_titulo ?? "Confían en nosotros";
@@ -122,7 +122,7 @@ export function CorporativoView({
                   <div className="icon-teaser style1">
                     <img src={c.icon} alt="icon" loading="lazy" decoding="async" />
                     <h3 className="title">{c.title}</h3>
-                    <CardBody html={c.body} />
+                    <BoldText text={c.body} />
                   </div>
                 </div>
               ))}
@@ -143,7 +143,7 @@ export function CorporativoView({
                 <div className="icon-teaser style1" key={c.icon}>
                   <img src={c.icon} alt="icon" loading="lazy" decoding="async" />
                   <h3 className="title">{c.title}</h3>
-                  <CardBody html={c.body} />
+                  <BoldText text={c.body} />
                 </div>
               ))}
             </EmblaSlider>
@@ -314,9 +314,25 @@ export function CorporativoView({
   );
 }
 
-function CardBody({ html }: { html: string }) {
-  if (!html) return null;
-  const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(html);
-  if (!looksLikeHtml) return <p>{html}</p>;
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+// --- Negrita liviana para los textos de "Nuestros valores" (SiteSettings).
+// El settings admite marcar tramos así: "texto **en negrita** texto". Parser
+// mínimo por split en "**" -- arma <strong> a partir de texto plano, nunca
+// HTML arbitrario (sin dangerouslySetInnerHTML: el texto lo escribe el
+// director desde el admin y no queremos abrir la puerta a HTML/JS inyectado).
+// Si el número de "**" es impar (marcado desbalanceado, ej. abrí negrita y
+// nunca la cerré) no se arriesga un parseo raro: se muestra el texto tal cual
+// vino, "**" literales incluidos, para que sea obvio en el admin que falta
+// cerrarla.
+function BoldText({ text }: { text: string }) {
+  if (!text) return null;
+  const segments = text.split("**");
+  const balanced = segments.length % 2 === 1;
+  if (!balanced) return <p>{text}</p>;
+  return (
+    <p>
+      {segments.map((part, i) =>
+        i % 2 === 1 ? <strong key={i}>{part}</strong> : part,
+      )}
+    </p>
+  );
 }

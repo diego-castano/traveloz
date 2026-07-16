@@ -172,7 +172,16 @@ export const MEDIA_HINTS: Record<string, MediaHint> = {
     label: "Video lateral · 1080×1350 (4:5) · MP4 H.264, ≤ 15 MB",
     maxKB: 15360,
     usage:
-      "Loop silencioso con autoplay. Si está vacío, se muestra la imagen lateral.",
+      "Loop silencioso con autoplay. Si está vacío, se muestra la imagen lateral. Encodear liviano (≤ 1 Mbps, sin audio) para que cargue rápido.",
+  },
+  workwithus_video_poster: {
+    label: "Poster del video · 810×1012 (4:5) · WebP/JPG liviano",
+    width: 810,
+    height: 1012,
+    tolerance: 300,
+    maxKB: 120,
+    usage:
+      "Primer frame del video: se muestra al instante mientras el video buffea. Si está vacío, se muestra un spinner.",
   },
 };
 

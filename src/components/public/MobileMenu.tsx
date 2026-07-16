@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type SubItem = { href: string; label: string };
 type Item = { href: string; label: string; submenu?: SubItem[] };
@@ -23,6 +24,11 @@ type Props = { items: Item[] };
 export function MobileMenu({ items }: Props) {
   const [open, setOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+  // --- Destaca el item CORPORATIVO cuando estamos en esa sección (header
+  // oscuro). Acotado a esa ruta puntual: el resto de las páginas no tienen
+  // hoy un indicador de "activo" y no queremos sumarles uno de paso.
+  const pathname = usePathname();
+  const isCorporativoSection = pathname?.startsWith("/corporativo") ?? false;
 
   useEffect(() => {
     const body = document.body;
@@ -56,6 +62,8 @@ export function MobileMenu({ items }: Props) {
             {items.map((item) => {
               const hasSub = !!item.submenu?.length;
               const subOpen = openSubmenu === item.label;
+              const isCurrent =
+                item.href === "/corporativo" && isCorporativoSection;
               return (
                 <li
                   key={item.label}
@@ -73,7 +81,12 @@ export function MobileMenu({ items }: Props) {
                   )}
                   <a
                     href={item.href}
-                    className={hasSub && subOpen ? "active" : ""}
+                    className={[
+                      hasSub && subOpen ? "active" : "",
+                      isCurrent ? "nav-current" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     onClick={() => closeAll()}
                   >
                     {item.label}

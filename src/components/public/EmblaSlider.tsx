@@ -12,6 +12,13 @@ type Props = {
   slidesToShowMobile?: number;
   autoplay?: boolean;
   autoplayDelay?: number;
+  /**
+   * Duración de la transición entre slides, en "unidades" de Embla (no ms;
+   * internamente son frames de una curva de fricción). Default de Embla: 25.
+   * Valores más altos = deslizamiento más lento/suave. Opcional: si no se
+   * pasa, Embla usa su propio default y no afecta a los demás usos.
+   */
+  duration?: number;
   showDots?: boolean;
   showArrows?: boolean;
   loop?: boolean;
@@ -30,6 +37,7 @@ export function EmblaSlider({
   slidesToShowMobile,
   autoplay = true,
   autoplayDelay = 3000,
+  duration,
   showDots = false,
   showArrows = true,
   loop = true,
@@ -58,7 +66,7 @@ export function EmblaSlider({
     : [];
 
   const [emblaRef, emblaApi] = useEmblaCarousel(
-    { loop, align: "start" },
+    { loop, align: "start", ...(duration !== undefined ? { duration } : {}) },
     plugins,
   );
 
@@ -92,8 +100,12 @@ export function EmblaSlider({
   // internal scroll math is stale until we ask it to re-measure. También
   // alternamos align: en centerMode móvil centramos la slide activa.
   useEffect(() => {
-    emblaApi?.reInit({ loop, align: centered ? "center" : "start" });
-  }, [emblaApi, effectiveSlides, centered, loop]);
+    emblaApi?.reInit({
+      loop,
+      align: centered ? "center" : "start",
+      ...(duration !== undefined ? { duration } : {}),
+    });
+  }, [emblaApi, effectiveSlides, centered, loop, duration]);
 
   const slideStyle = {
     flex: `0 0 ${100 / effectiveSlides}%`,
