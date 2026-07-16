@@ -296,7 +296,14 @@ export async function assignLead(
 // CSV export — one server action for all 5 lead types. Joins related
 // entities (paquete, asignado) so marketing gets readable names instead of
 // CUIDs. UTF-8 + BOM so Excel auto-detects encoding on Windows.
+//
+// Separador ";" (no ","): Excel en español usa "," como separador decimal,
+// así que su import de CSV espera ";" entre campos. Con "," todo queda
+// apretado en la columna A. El BOM al inicio hace que Excel detecte UTF-8 y
+// se vean bien los acentos ("Sí", "Fecha de baja").
 // ---------------------------------------------------------------------------
+
+const CSV_DELIMITER = ";";
 
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -308,19 +315,19 @@ function csvEscape(value: unknown): string {
   } else {
     s = String(value);
   }
-  // Strip control chars (including \r) that confuse Excel, normalize newlines
-  // inside a field to a literal space — multiline cells render fine but the
-  // first CSV reader the marketing team uses likely won't quote-aware-parse.
-  s = s.replace(/\r/g, "").replace(/\n+/g, " ").replace(/\t/g, " ").trim();
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+  // Strip \r (confunde a Excel) y tabs, pero conservamos \n: si el valor
+  // necesita salto de línea, se envuelve en comillas y Excel lo respeta
+  // como una sola celda multilínea.
+  s = s.replace(/\r/g, "").replace(/\t/g, " ").trim();
+  if (s.includes(CSV_DELIMITER) || s.includes('"') || s.includes("\n")) {
     return `"${s.replace(/"/g, '""')}"`;
   }
   return s;
 }
 
 function buildCsv(headers: string[], rows: (unknown[])[]): string {
-  const lines = [headers.map(csvEscape).join(",")];
-  for (const row of rows) lines.push(row.map(csvEscape).join(","));
+  const lines = [headers.map(csvEscape).join(CSV_DELIMITER)];
+  for (const row of rows) lines.push(row.map(csvEscape).join(CSV_DELIMITER));
   // BOM so Excel detects UTF-8 (acentos, ñ).
   return "﻿" + lines.join("\r\n");
 }

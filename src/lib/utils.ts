@@ -664,11 +664,36 @@ export function computePaquetePreciosIndexed(
 }
 
 // ---------------------------------------------------------------------------
+// sortRegionesAlfabetico -- orden de regiones para menús/listados públicos
+// ---------------------------------------------------------------------------
+
+/**
+ * Ordena regiones alfabéticamente con localeCompare("es") (así "África"
+ * ordena bien pese al tilde). Si existe una región "Otros"/"Otras", queda
+ * siempre al final sin importar dónde le tocaría alfabéticamente.
+ * @example sortRegionesAlfabetico([{nombre:"Europa"},{nombre:"África"}]) // [África, Europa]
+ * @example sortRegionesAlfabetico([{nombre:"Otros"},{nombre:"Asia"}]) // [Asia, Otros]
+ */
+export function sortRegionesAlfabetico<T extends { nombre: string }>(
+  regiones: T[],
+): T[] {
+  const esOtros = (nombre: string) => /^otr[oa]s?$/i.test(nombre.trim());
+  return [...regiones].sort((a, b) => {
+    const aOtros = esOtros(a.nombre);
+    const bOtros = esOtros(b.nombre);
+    if (aOtros !== bOtros) return aOtros ? 1 : -1;
+    return a.nombre.localeCompare(b.nombre, "es");
+  });
+}
+
+// ---------------------------------------------------------------------------
 // slugify -- URL-safe slug from Spanish text
 // ---------------------------------------------------------------------------
 
 /**
- * Convert text to a URL-safe slug. Handles Spanish characters (accents, n with tilde).
+ * Convert text to a URL-safe slug. Handles Spanish characters (accents, n
+ * with tilde). Trunca a 80 caracteres (largo razonable para un slug SEO) sin
+ * dejar un guion colgando en el corte.
  * @example slugify("Lunas de Miel") // "lunas-de-miel"
  * @example slugify("Black Friday 2026") // "black-friday-2026"
  * @example slugify("Promo Nordeste Marzo") // "promo-nordeste-marzo"
@@ -679,7 +704,9 @@ export function slugify(text: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/g, '');
 }
 
 // ---------------------------------------------------------------------------

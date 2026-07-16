@@ -63,6 +63,7 @@ import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
 import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { parseStoredDate } from "@/lib/date";
+import { slugify } from "@/lib/utils";
 import {
   usePackageDispatch,
   usePaqueteById,
@@ -122,15 +123,6 @@ const hexToTagColor: Record<string, TagColor> = {
 
 function getTagColor(hex: string): TagColor {
   return hexToTagColor[hex.toLowerCase()] ?? "teal";
-}
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 // Detecta si un string ya viene como HTML (editado con el editor enriquecido)
@@ -251,6 +243,18 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   useEffect(() => {
     cachedPaqueteRef.current = cachedPaquete;
   }, [cachedPaquete]);
+  // Piloto automático del slug SEO: mientras esté prendido, cada cambio de
+  // título (editado en la pestaña Datos) regenera el slug solo. Se apaga
+  // apenas el operador lo edita a mano o el paquete ya estaba publicado con
+  // un slug propio al cargar la ficha — así nunca pisamos una URL elegida a
+  // mano ni una ya vigente en el sitio. Se prende de nuevo si el operador
+  // vacía el campo o toca "Auto". Valor inicial correcto: ver el efecto que
+  // carga `data` más abajo.
+  const slugAutoRef = useRef(true);
+  // Último título que ya procesamos para el auto-slug: evita regenerar en el
+  // primer render (cuando `cachedPaquete` ya trae el título actual) y sólo
+  // reacciona a cambios reales posteriores.
+  const prevTituloForSlugRef = useRef(cachedPaquete?.titulo);
   // `data` (título + vigencia) se carga una sola vez al montar y alimenta
   // placeholders (meta title, botón "Auto" del slug, vista SERP) y el resumen de
   // vigencia. Si el operador edita el título o la vigencia en la pestaña Datos,
@@ -353,6 +357,14 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             estado: d.estado,
             destacado: d.destacado,
           });
+          // Piloto automático del slug: arranca prendido si el paquete todavía
+          // no tiene slug propio, o si el slug guardado coincide con lo que
+          // generaría el título actual Y el paquete no está publicado. Si ya
+          // está publicado, o el slug guardado difiere del auto-generado
+          // (elegido a mano), arranca apagado.
+          const savedSlug = d.slug ?? "";
+          slugAutoRef.current =
+            !savedSlug || (!d.publicado && savedSlug === slugify(d.titulo));
           // Build the Incluye list: the canonical JSON list if present, else
           // migrate legacy content (catalog services + free-text bullets) into
           // editable items. Nothing is persisted until the operator saves.
@@ -570,6 +582,28 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     },
     [markDirty],
   );
+
+  // ---------------------------------------------------------------------------
+  // Auto-slug — el título se edita en la pestaña Datos, no acá. Nos enteramos
+  // del cambio vía la cache compartida del provider (mismo mecanismo que ya
+  // sincroniza título/vigencia en el efecto de arriba). Mientras `slugAutoRef`
+  // siga prendido regeneramos el slug con cada cambio de título; se frena si
+  // el paquete ya quedó publicado con un slug cargado (no queremos romper una
+  // URL en vivo por renombrar el título).
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (!cachedPaquete) return;
+    if (cachedPaquete.titulo === prevTituloForSlugRef.current) return;
+    prevTituloForSlugRef.current = cachedPaquete.titulo;
+    if (!canEdit || !slugAutoRef.current) return;
+    const current = formRef.current;
+    if (current.estado === "ACTIVO" && current.slug) return;
+    const nextSlug = slugify(cachedPaquete.titulo);
+    if (nextSlug === current.slug) return;
+    setForm((prev) => ({ ...prev, slug: nextSlug }));
+    markDirty();
+  }, [cachedPaquete, canEdit, markDirty]);
+
   const handleIncluyeChange = useCallback(
     (next: IncluyeItem[]) => {
       setIncluyeItems(next);
@@ -857,14 +891,25 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             <div className="flex gap-2">
               <Input
                 value={form.slug}
-                onChange={(e) => patch("slug", slugify(e.target.value))}
+                onChange={(e) => {
+                  const next = slugify(e.target.value);
+                  // Editar el slug a mano apaga el piloto automático; vaciarlo
+                  // lo vuelve a prender (paquete "sin slug" siempre autogenera).
+                  slugAutoRef.current = next === "";
+                  patch("slug", next);
+                }}
                 placeholder="ej. buzios-7-noches"
                 className="flex-1"
                 disabled={disabled}
               />
               <button
                 type="button"
-                onClick={() => patch("slug", slugify(data.titulo))}
+                onClick={() => {
+                  // Regenerar a mano vuelve a prender el piloto automático:
+                  // el operador está eligiendo explícitamente seguir el título.
+                  slugAutoRef.current = true;
+                  patch("slug", slugify(data.titulo));
+                }}
                 className="text-[11px] text-violet-600 hover:underline px-2"
                 title="Generar desde el título"
                 disabled={disabled}

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { type IncluyeItem, newIncluyeId } from "@/lib/incluye";
 import { checkPaquetePublicable } from "@/lib/paquete-publicable";
+import { slugify } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Preview URL resolver — used by the "Previsualizar" button in /backend/paquetes
@@ -17,16 +18,6 @@ import { checkPaquetePublicable } from "@/lib/paquete-publicable";
 // The `?preview=1` flag is honored by the public page only for authenticated
 // users — draft packages stay invisible to the public.
 // ---------------------------------------------------------------------------
-
-function slugifyTitulo(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
-}
 
 async function ensureUniqueSlug(
   base: string,
@@ -87,7 +78,7 @@ export async function getPaquetePreviewUrl(
   let slug = p.slug;
   let slugGenerated: string | undefined;
   if (!slug) {
-    const base = slugifyTitulo(p.titulo);
+    const base = slugify(p.titulo);
     slug = await ensureUniqueSlug(base, paqueteId);
     await prisma.paquete.update({
       where: { id: paqueteId },
