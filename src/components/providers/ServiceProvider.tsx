@@ -25,7 +25,8 @@ import type {
 import { useSession } from "next-auth/react";
 import * as serviceActions from "@/actions/service.actions";
 import { useBrand } from "./BrandProvider";
-import { readSessionCache, writeSessionCache } from "@/lib/session-cache";
+import { readSessionCache } from "@/lib/session-cache";
+import { useIdleSessionCacheWrite } from "@/hooks/useIdleSessionCacheWrite";
 import {
   notifyServiceMutation,
   subscribeServiceMutations,
@@ -539,15 +540,15 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
     };
   }, [activeBrandId, sessionStatus, refreshNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist to sessionStorage with debounce — same pattern as PackageProvider.
-  useEffect(() => {
-    if (state.loading) return;
-    if (sessionStatus !== "authenticated") return;
-    const handle = window.setTimeout(() => {
-      writeSessionCache("service-state", activeBrandId, state);
-    }, 800);
-    return () => window.clearTimeout(handle);
-  }, [state, activeBrandId, sessionStatus]);
+  // Persist to sessionStorage with debounce — same pattern as PackageProvider,
+  // now via the shared useIdleSessionCacheWrite (debounce + idle-time write +
+  // skip-if-unchanged; see its doc comment for details).
+  useIdleSessionCacheWrite(
+    "service-state",
+    activeBrandId,
+    state,
+    !state.loading && sessionStatus === "authenticated",
+  );
 
   return (
     <ServiceStateContext.Provider value={state}>

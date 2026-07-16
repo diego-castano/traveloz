@@ -27,7 +27,8 @@ import { computeNochesTotales } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import * as packageActions from "@/actions/package.actions";
 import { useBrand } from "./BrandProvider";
-import { readSessionCache, writeSessionCache } from "@/lib/session-cache";
+import { readSessionCache } from "@/lib/session-cache";
+import { useIdleSessionCacheWrite } from "@/hooks/useIdleSessionCacheWrite";
 
 // Session-cache TTL: 30 min. Long enough to make hard reloads instant during
 // a working session, short enough that someone returning after a coffee gets
@@ -708,17 +709,18 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
   }, [activeBrandId, sessionStatus, refreshNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist to sessionStorage whenever the state changes — but only after
-  // wave 2 has populated (so we don't snapshot a half-loaded state). The
-  // 800 ms debounce coalesces the burst of dispatches that fire during
-  // hydration and during bulk edits into one write per quiet period.
-  useEffect(() => {
-    if (state.loading) return;
-    if (sessionStatus !== "authenticated") return;
-    const handle = window.setTimeout(() => {
-      writeSessionCache("package-state", activeBrandId, state);
-    }, 800);
-    return () => window.clearTimeout(handle);
-  }, [state, activeBrandId, sessionStatus]);
+  // wave 2 has populated (so we don't snapshot a half-loaded state).
+  // useIdleSessionCacheWrite keeps the 800ms debounce that coalesces the
+  // burst of dispatches from hydration/bulk edits into one write per quiet
+  // period, and additionally runs the serialize during browser idle time
+  // (skipping it altogether if `state` hasn't changed by reference since the
+  // last write) so it doesn't compete with interaction on the main thread.
+  useIdleSessionCacheWrite(
+    "package-state",
+    activeBrandId,
+    state,
+    !state.loading && sessionStatus === "authenticated",
+  );
 
   return (
     <PackageStateContext.Provider value={state}>
@@ -1226,5 +1228,18 @@ export function usePaqueteServices(paqueteId: string) {
         (pe) => pe.paqueteId === paqueteId,
       ),
     };
-  }, [state, paqueteId]);
+    // Narrowed to the exact slices this selector reads — the previous
+    // `[state, paqueteId]` deps invalidated on *any* dispatch to any part of
+    // PackageProvider's state, forcing a recompute even when none of these
+    // seven arrays changed.
+  }, [
+    state.paqueteAereos,
+    state.paqueteAlojamientos,
+    state.paqueteTraslados,
+    state.paqueteSeguros,
+    state.paqueteCircuitos,
+    state.paqueteFotos,
+    state.paqueteEtiquetas,
+    paqueteId,
+  ]);
 }

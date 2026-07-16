@@ -427,6 +427,243 @@ export function computePaquetePrecios(
 }
 
 // ---------------------------------------------------------------------------
+// computePaquetePreciosIndexed -- same math as computePaquetePrecios, but
+// reads from pre-built Maps instead of scanning the full arrays per paquete.
+// computePaquetePrecios does `.filter`/`.find` over the *entire*
+// packageState/serviceState arrays for every relation, for every paquete —
+// O(paquetes * relations) linear scans. When pricing many paquetes in the
+// same pass (list/table views), build the index once via
+// buildPaquetePreciosIndex and reuse it — O(n) to build, O(1) lookups after.
+// Any change here must mirror computePaquetePrecios exactly; the two must
+// always return identical results for the same inputs.
+// ---------------------------------------------------------------------------
+
+export interface PaquetePreciosIndex {
+  aereoById: Map<string, Aereo>;
+  preciosAereoByAereoId: Map<string, PrecioAereo[]>;
+  alojamientoById: Map<string, Alojamiento>;
+  preciosAlojamientoByAlojamientoId: Map<string, PrecioAlojamiento[]>;
+  trasladoById: Map<string, Traslado>;
+  seguroById: Map<string, Seguro>;
+  circuitoById: Map<string, Circuito>;
+  preciosCircuitoByCircuitoId: Map<string, PrecioCircuito[]>;
+  paqueteAereosByPaqueteId: Map<string, PaqueteAereo[]>;
+  paqueteAlojamientosByPaqueteId: Map<string, PaqueteAlojamiento[]>;
+  paqueteTrasladosByPaqueteId: Map<string, PaqueteTraslado[]>;
+  paqueteSegurosByPaqueteId: Map<string, PaqueteSeguro[]>;
+  paqueteCircuitosByPaqueteId: Map<string, PaqueteCircuito[]>;
+  destinosByPaqueteId: Map<string, PaqueteDestino[]>;
+  opcionesByPaqueteId: Map<string, OpcionHotelera[]>;
+  opcionHotelesByOpcionId: Map<string, OpcionHotel[]>;
+}
+
+function groupByKey<T>(arr: T[], key: (item: T) => string): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const item of arr) {
+    const k = key(item);
+    const list = map.get(k);
+    if (list) list.push(item);
+    else map.set(k, [item]);
+  }
+  return map;
+}
+
+function indexByKey<T>(arr: T[], key: (item: T) => string): Map<string, T> {
+  const map = new Map<string, T>();
+  for (const item of arr) map.set(key(item), item);
+  return map;
+}
+
+/**
+ * Build the lookup indices consumed by {@link computePaquetePreciosIndexed}.
+ * Call once per state snapshot (memoize on the underlying array slices) and
+ * reuse it across every paquete being priced in the same pass.
+ */
+export function buildPaquetePreciosIndex(
+  opciones: OpcionHotelera[],
+  packageState: PackageStateSlice,
+  serviceState: ServiceStateSlice,
+): PaquetePreciosIndex {
+  return {
+    aereoById: indexByKey(serviceState.aereos, (a) => a.id),
+    preciosAereoByAereoId: groupByKey(serviceState.preciosAereo, (p) => p.aereoId),
+    alojamientoById: indexByKey(serviceState.alojamientos, (a) => a.id),
+    preciosAlojamientoByAlojamientoId: groupByKey(serviceState.preciosAlojamiento, (p) => p.alojamientoId),
+    trasladoById: indexByKey(serviceState.traslados, (t) => t.id),
+    seguroById: indexByKey(serviceState.seguros, (s) => s.id),
+    circuitoById: indexByKey(serviceState.circuitos, (c) => c.id),
+    preciosCircuitoByCircuitoId: groupByKey(serviceState.preciosCircuito, (p) => p.circuitoId),
+    paqueteAereosByPaqueteId: groupByKey(packageState.paqueteAereos, (pa) => pa.paqueteId),
+    paqueteAlojamientosByPaqueteId: groupByKey(packageState.paqueteAlojamientos, (pa) => pa.paqueteId),
+    paqueteTrasladosByPaqueteId: groupByKey(packageState.paqueteTraslados, (pt) => pt.paqueteId),
+    paqueteSegurosByPaqueteId: groupByKey(packageState.paqueteSeguros, (ps) => ps.paqueteId),
+    paqueteCircuitosByPaqueteId: groupByKey(packageState.paqueteCircuitos, (pc) => pc.paqueteId),
+    destinosByPaqueteId: groupByKey(packageState.destinos, (d) => d.paqueteId),
+    opcionesByPaqueteId: groupByKey(opciones, (o) => o.paqueteId),
+    opcionHotelesByOpcionId: groupByKey(packageState.opcionHoteles, (oh) => oh.opcionHoteleraId),
+  };
+}
+
+/**
+ * Indexed variant of {@link calcularNetoAlojamientosPorOpcion} — identical
+ * math, but reads the opción's hoteles from the pre-grouped index instead of
+ * filtering the full opcionHoteles array.
+ */
+function calcularNetoAlojamientosPorOpcionIndexed(
+  opcionId: string,
+  index: PaquetePreciosIndex,
+  destinos: PaqueteDestino[],
+  fechaReferencia?: string | null,
+): number {
+  const hotelesDeOpcion = index.opcionHotelesByOpcionId.get(opcionId) ?? [];
+  let total = 0;
+  for (const oh of hotelesDeOpcion) {
+    const destino = destinos.find((d) => d.id === oh.destinoId);
+    if (!destino) continue;
+    const precios = index.preciosAlojamientoByAlojamientoId.get(oh.alojamientoId) ?? [];
+    const precio = resolvePrecioEnPeriodo(precios, fechaReferencia);
+    if (!precio) continue;
+    total += precio.precioPorNoche * destino.noches;
+  }
+  return total;
+}
+
+/**
+ * Indexed variant of {@link computePaquetePrecios}. Same formulas, same
+ * fallback rules, same return shape — only the data-access pattern differs.
+ * Use this (with a shared {@link buildPaquetePreciosIndex} index) when pricing
+ * many paquetes in the same render pass; use computePaquetePrecios for
+ * one-off lookups where building the index isn't worth it.
+ */
+export function computePaquetePreciosIndexed(
+  paquete: Paquete,
+  index: PaquetePreciosIndex,
+): PaquetePrecios {
+  const fecha = paquete.viajeDesde ?? paquete.validezDesde;
+
+  const paqueteAereos = index.paqueteAereosByPaqueteId.get(paquete.id) ?? [];
+  const paqueteAlojamientos = index.paqueteAlojamientosByPaqueteId.get(paquete.id) ?? [];
+  const paqueteTraslados = index.paqueteTrasladosByPaqueteId.get(paquete.id) ?? [];
+  const paqueteSeguros = index.paqueteSegurosByPaqueteId.get(paquete.id) ?? [];
+  const paqueteCircuitos = index.paqueteCircuitosByPaqueteId.get(paquete.id) ?? [];
+
+  const assignedAereos = paqueteAereos
+    .map((pa) => {
+      const aereo = index.aereoById.get(pa.aereoId);
+      if (!aereo) return null;
+      const precios = index.preciosAereoByAereoId.get(pa.aereoId) ?? [];
+      return { aereo, precioAereo: resolvePrecioEnPeriodo(precios, fecha) };
+    })
+    .filter((x): x is { aereo: Aereo; precioAereo: PrecioAereo | undefined } => x !== null);
+
+  const assignedAlojamientos = paqueteAlojamientos
+    .map((pa) => {
+      const alojamiento = index.alojamientoById.get(pa.alojamientoId);
+      if (!alojamiento) return null;
+      const precios = index.preciosAlojamientoByAlojamientoId.get(pa.alojamientoId) ?? [];
+      return {
+        alojamiento,
+        precioAlojamiento: resolvePrecioEnPeriodo(precios, fecha),
+      };
+    })
+    .filter((x): x is { alojamiento: Alojamiento; precioAlojamiento: PrecioAlojamiento | undefined } => x !== null);
+
+  const assignedTraslados = paqueteTraslados
+    .map((pt) => index.trasladoById.get(pt.trasladoId))
+    .filter((t): t is Traslado => Boolean(t));
+
+  const assignedSeguros = paqueteSeguros
+    .map((ps) => {
+      const seguro = index.seguroById.get(ps.seguroId);
+      if (!seguro) return null;
+      return { seguro, diasCobertura: ps.diasCobertura ?? undefined };
+    })
+    .filter((x): x is { seguro: Seguro; diasCobertura: number | undefined } => x !== null);
+
+  const assignedCircuitos = paqueteCircuitos
+    .map((pc) => {
+      const circuito = index.circuitoById.get(pc.circuitoId);
+      if (!circuito) return null;
+      const precios = index.preciosCircuitoByCircuitoId.get(pc.circuitoId) ?? [];
+      return {
+        circuito,
+        precioCircuito: resolvePrecioEnPeriodo(precios, fecha),
+      };
+    })
+    .filter((x): x is { circuito: Circuito; precioCircuito: PrecioCircuito | undefined } => x !== null);
+
+  // Noches totales: sum of destinos.noches. Used by calcularNetoFijos for
+  // seguros (días × precio/día) and as the historical fallback for empty paquetes.
+  const paqueteDestinos = index.destinosByPaqueteId.get(paquete.id) ?? [];
+  const nochesTotales = computeNochesTotales(paqueteDestinos);
+
+  const netoFijos = calcularNetoFijos(
+    assignedAereos,
+    assignedTraslados,
+    assignedSeguros,
+    assignedCircuitos,
+    nochesTotales,
+  );
+
+  const paqueteOpciones = index.opcionesByPaqueteId.get(paquete.id) ?? [];
+
+  if (paqueteOpciones.length === 0) {
+    if (paquete.modalidad === 'CIRCUITO') {
+      const nochesCircuito =
+        assignedCircuitos[0]?.circuito.noches ?? paquete.noches ?? nochesTotales;
+      const netoFijosCircuito = calcularNetoFijos(
+        assignedAereos,
+        assignedTraslados,
+        assignedSeguros,
+        assignedCircuitos,
+        nochesCircuito,
+      );
+      const venta = calcularVenta(netoFijosCircuito, paquete.markup);
+      const precio = venta > 0 ? venta : null;
+      return {
+        hasOpciones: false,
+        min: precio,
+        max: precio,
+        opcionPrecios: [],
+        opcionFactors: [],
+        netoFijos: netoFijosCircuito,
+      };
+    }
+    const legacy = paquete.precioVenta > 0 ? paquete.precioVenta : null;
+    return {
+      hasOpciones: false,
+      min: legacy,
+      max: legacy,
+      opcionPrecios: [],
+      opcionFactors: [],
+      netoFijos,
+    };
+  }
+
+  const opcionPrecios: number[] = [];
+  const opcionFactors: number[] = [];
+  for (const op of paqueteOpciones) {
+    const netoAloj = calcularNetoAlojamientosPorOpcionIndexed(
+      op.id,
+      index,
+      paqueteDestinos,
+      fecha,
+    );
+    opcionPrecios.push(calcularVentaOpcion(netoFijos, netoAloj, op.factor));
+    opcionFactors.push(op.factor);
+  }
+
+  return {
+    hasOpciones: true,
+    min: Math.min(...opcionPrecios),
+    max: Math.max(...opcionPrecios),
+    opcionPrecios,
+    opcionFactors,
+    netoFijos,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // slugify -- URL-safe slug from Spanish text
 // ---------------------------------------------------------------------------
 

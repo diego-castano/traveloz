@@ -21,7 +21,8 @@ import type {
 import { useSession } from "next-auth/react";
 import * as catalogActions from "@/actions/catalog.actions";
 import { useBrand } from "./BrandProvider";
-import { readSessionCache, writeSessionCache } from "@/lib/session-cache";
+import { readSessionCache } from "@/lib/session-cache";
+import { useIdleSessionCacheWrite } from "@/hooks/useIdleSessionCacheWrite";
 
 // Catalogs change rarely; a 1-hour TTL is safe and gives near-instant first
 // paint on hard reloads.
@@ -380,15 +381,15 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     };
   }, [activeBrandId, sessionStatus]);
 
-  // Persist to sessionStorage with debounce — same pattern as Package/Service.
-  useEffect(() => {
-    if (state.loading) return;
-    if (sessionStatus !== "authenticated") return;
-    const handle = window.setTimeout(() => {
-      writeSessionCache("catalog-state", activeBrandId, state);
-    }, 800);
-    return () => window.clearTimeout(handle);
-  }, [state, activeBrandId, sessionStatus]);
+  // Persist to sessionStorage with debounce — same pattern as Package/Service,
+  // now via the shared useIdleSessionCacheWrite (debounce + idle-time write +
+  // skip-if-unchanged; see its doc comment for details).
+  useIdleSessionCacheWrite(
+    "catalog-state",
+    activeBrandId,
+    state,
+    !state.loading && sessionStatus === "authenticated",
+  );
 
   return (
     <CatalogStateContext.Provider value={state}>

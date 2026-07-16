@@ -88,7 +88,12 @@ import {
   usePackageLoading,
   usePackageProgress,
 } from "@/components/providers/PackageProvider";
-import { formatCurrency, computePaquetePrecios } from "@/lib/utils";
+import {
+  formatCurrency,
+  computePaquetePrecios,
+  computePaquetePreciosIndexed,
+  buildPaquetePreciosIndex,
+} from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
 import { sortByRecency } from "@/lib/recency";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
@@ -289,19 +294,51 @@ export default function PaquetesPage() {
     return regiones.find((r) => r.id === regionParam) ?? null;
   }, [regionParam, regiones]);
 
-  // Per-paquete price derivation
+  // Lookup indices for pricing — built once per relevant-state slice change
+  // (not on every provider dispatch) instead of computePaquetePrecios's
+  // per-paquete .filter/.find over the full arrays. Deps are the exact
+  // slices computePaquetePrecios reads, not the whole packageState/
+  // serviceState objects, so an unrelated dispatch elsewhere in either
+  // provider doesn't invalidate this.
+  const preciosIndex = useMemo(
+    () => buildPaquetePreciosIndex(allOpciones, packageState, serviceState),
+    // Deliberately narrowed: buildPaquetePreciosIndex only reads the slices
+    // listed below off packageState/serviceState, so depending on those
+    // (not the whole objects) avoids recomputing on unrelated dispatches.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      allOpciones,
+      packageState.paqueteAereos,
+      packageState.paqueteAlojamientos,
+      packageState.paqueteTraslados,
+      packageState.paqueteSeguros,
+      packageState.paqueteCircuitos,
+      packageState.destinos,
+      packageState.opcionHoteles,
+      serviceState.aereos,
+      serviceState.preciosAereo,
+      serviceState.alojamientos,
+      serviceState.preciosAlojamiento,
+      serviceState.traslados,
+      serviceState.seguros,
+      serviceState.circuitos,
+      serviceState.preciosCircuito,
+    ],
+  );
+
+  // Per-paquete price derivation. Covers ALL paquetes (not just the current
+  // page) because the "precio" column is sortable and useTableSort sorts
+  // over filteredPaquetes before pagination is applied — see sortColumns
+  // below. computePaquetePreciosIndexed returns numerically identical
+  // results to computePaquetePrecios, just via the index above instead of
+  // per-paquete linear scans.
   const preciosMap = useMemo(() => {
     const map: Record<string, ReturnType<typeof computePaquetePrecios>> = {};
     for (const paq of paquetes) {
-      map[paq.id] = computePaquetePrecios(
-        paq,
-        allOpciones,
-        packageState,
-        serviceState,
-      );
+      map[paq.id] = computePaquetePreciosIndexed(paq, preciosIndex);
     }
     return map;
-  }, [paquetes, allOpciones, packageState, serviceState]);
+  }, [paquetes, preciosIndex]);
 
   // First-photo lookup per paquete (used by the grid view)
   const fotoByPaquete = useMemo(() => {
