@@ -9,6 +9,7 @@ import {
   useCallback,
 } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Package,
@@ -1117,6 +1118,32 @@ export default function VendedorDashboard() {
     destinosByPaquete,
   ]);
 
+  // Deep link `?paquete={id}`: los emails de consulta de paquete traen un
+  // acceso directo que abre el panel de ese paquete en este portal. Se aplica
+  // una sola vez cuando los datos ya están cargados; si el id no existe, se
+  // ignora en silencio.
+  const searchParams = useSearchParams();
+  const deepLinkAppliedRef = useRef(false);
+  useEffect(() => {
+    if (deepLinkAppliedRef.current) return;
+    const target = searchParams.get("paquete");
+    if (!target) {
+      deepLinkAppliedRef.current = true;
+      return;
+    }
+    if (indexedRows.length === 0) return;
+    deepLinkAppliedRef.current = true;
+    const idx = indexedRows.findIndex((r) => r.paquete.id === target);
+    if (idx === -1) return;
+    if (idx >= PAGE_SIZE) setPageSize(idx + 1);
+    setOpenId(target);
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`vend-row-${target}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [searchParams, indexedRows]);
+
   const filteredRows = useMemo(() => {
     const term = deferredSearch.trim();
     let rows = indexedRows;
@@ -1468,6 +1495,7 @@ function RowGroup({
   return (
     <>
       <tr
+        id={`vend-row-${paquete.id}`}
         className={`cursor-pointer border-t border-hairline transition ${
           isOpen ? "bg-[#F8F7FF]" : "hover:bg-[#FBFBFC]"
         }`}

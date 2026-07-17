@@ -30,7 +30,12 @@ import { prisma } from "@/lib/db";
 import { uploadBuffer } from "@/lib/storage";
 import { checkFormRate } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
-import { sendEmail, newsletterConfirmEmail, leadNotificationEmail } from "@/lib/email";
+import {
+  sendEmail,
+  newsletterConfirmEmail,
+  leadNotificationEmail,
+  paqueteConsultaEmail,
+} from "@/lib/email";
 import { getBaseUrl } from "@/lib/seo";
 
 const log = logger.child({ module: "public-forms.actions" });
@@ -211,6 +216,66 @@ async function notifyLead(opts: {
     });
   } catch (err) {
     log.error(`notifyLead (${opts.tipo}) failed`, err);
+  }
+}
+
+/**
+ * Notificación premium para consultas que nacen del detalle de un paquete.
+ * Resuelve los destinatarios igual que notifyLead (misma cascada de settings:
+ * casilla dedicada a paquetes con fallback a la de cotización) pero arma el
+ * email con `paqueteConsultaEmail` — encabezado con el nombre del paquete,
+ * contacto destacado y dos accesos directos (sitio + panel). Best-effort:
+ * nunca propaga errores. Devuelve `true` si logró resolver y disparar el
+ * envío por este camino; `false` si no había paquete/destinos y el caller
+ * debe caer al aviso genérico.
+ */
+async function notifyPaqueteConsulta(opts: {
+  settingKey: string[];
+  tituloPaquete: string;
+  sitioUrl: string;
+  adminUrl: string;
+  nombre: string;
+  email?: string | null;
+  telefono: string;
+  fecha?: string;
+  campos: { label: string; value: string }[];
+  replyTo?: string | null;
+}): Promise<boolean> {
+  try {
+    let destinos: string[] = [];
+    for (const key of opts.settingKey) {
+      const setting = await prisma.siteSetting.findUnique({
+        where: { key },
+        select: { value: true },
+      });
+      destinos = parseEmails(setting?.value);
+      if (destinos.length > 0) break;
+    }
+    // Sin destinatarios no hay nada que mandar; tampoco tiene sentido caer al
+    // genérico (usaría las mismas casillas vacías). Lo tratamos como "manejado".
+    if (destinos.length === 0) return true;
+
+    const tpl = paqueteConsultaEmail({
+      tituloPaquete: opts.tituloPaquete,
+      sitioUrl: opts.sitioUrl,
+      adminUrl: opts.adminUrl,
+      nombre: opts.nombre,
+      email: opts.email ?? null,
+      telefono: opts.telefono,
+      fecha: opts.fecha,
+      campos: opts.campos,
+    });
+    await sendEmail({
+      to: destinos,
+      subject: tpl.subject,
+      html: tpl.html,
+      text: tpl.text,
+      replyTo: opts.replyTo ?? undefined,
+    });
+    return true;
+  } catch (err) {
+    log.error("notifyPaqueteConsulta failed", err);
+    return false;
   }
 }
 
@@ -603,39 +668,112 @@ export async function submitQuoteForm(
     });
 
     const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
-    // Leads que vienen del sidebar de un paquete (paqueteId presente y válido)
-    // notifican primero a la casilla dedicada a paquetes; si está vacía, caen
-    // a la misma casilla que usa el form standalone /cotizar. Los leads sin
-    // paqueteId (siempre /cotizar) usan solo esa última.
-    await notifyLead({
-      settingKey: paqueteId
-        ? ["notificaciones_email_paquete", "notificaciones_email_cotizacion"]
-        : "notificaciones_email_cotizacion",
-      tipo: "Cotización",
-      replyTo: data.email,
-      origen: s(formData, "origen") ?? captureOrigen(),
-      campos: [
-        { label: "Nombre", value: data.nombre },
-        { label: "Email", value: data.email },
-        {
-          label: "Teléfono",
-          value: [data.paisCodigo, data.telefono].filter(Boolean).join(" "),
-        },
-        { label: "Destino", value: data.destino ?? "" },
-        {
-          label: "Fechas",
-          value: [fmtDate(date(formData, "fechaDesde")), fmtDate(date(formData, "fechaHasta"))]
-            .filter(Boolean)
-            .join(" → "),
-        },
-        {
-          label: "Pasajeros",
-          value: `${m("adultos")} adultos · ${m("ninos")} niños · ${m("infantes")} infantes`,
-        },
-        { label: "Preferencia de contacto", value: validPref ?? "" },
-        { label: "Comentarios", value: data.comentarios ?? "" },
-      ],
-    });
+    const telefonoDisplay = [data.paisCodigo, data.telefono]
+      .filter(Boolean)
+      .join(" ");
+    // Campos que se muestran (además de nombre/email/teléfono, que van en la
+    // card de contacto del email de paquete). El aviso genérico repite algunos
+    // en la tabla — cada template los consume como necesita. Valores idénticos
+    // a los que hoy manda /cotizar para no cambiar ese email.
+    const camposDetalle = [
+      { label: "Destino", value: data.destino ?? "" },
+      {
+        label: "Fechas",
+        value: [fmtDate(date(formData, "fechaDesde")), fmtDate(date(formData, "fechaHasta"))]
+          .filter(Boolean)
+          .join(" → "),
+      },
+      {
+        label: "Pasajeros",
+        value: `${m("adultos")} adultos · ${m("ninos")} niños · ${m("infantes")} infantes`,
+      },
+      { label: "Preferencia de contacto", value: validPref ?? "" },
+      { label: "Comentarios", value: data.comentarios ?? "" },
+    ];
+
+    // Consultas nacidas del detalle de un paquete (paqueteId válido) reciben el
+    // email premium con branding, título del paquete y accesos directos. Si el
+    // fetch del paquete falla o no arma bien, caemos al aviso genérico —
+    // nunca rompemos ni perdemos el lead.
+    let handledByPaquete = false;
+    if (paqueteId) {
+      try {
+        const paquete = await prisma.paquete.findUnique({
+          where: { id: paqueteId },
+          select: {
+            titulo: true,
+            slug: true,
+            // El detalle público resuelve por slug (el segmento de región es
+            // cosmético), pero armamos la región real cuando existe.
+            destinos: {
+              orderBy: { orden: "asc" },
+              take: 1,
+              select: {
+                ciudad: {
+                  select: { pais: { select: { region: { select: { slug: true } } } } },
+                },
+              },
+            },
+          },
+        });
+        if (paquete) {
+          const base = getBaseUrl();
+          const regionSlug =
+            paquete.destinos[0]?.ciudad?.pais?.region?.slug ?? "destinos";
+          // Ruta pública del detalle: /destinos/{region}/{slug}. Sin slug (aún
+          // sin copy público) apuntamos al listado de destinos.
+          const sitioUrl = paquete.slug
+            ? `${base}/destinos/${regionSlug}/${paquete.slug}`
+            : `${base}/destinos`;
+          // Acceso directo al paquete abierto en el portal de VENDEDORES
+          // (pedido del cliente): el dashboard aplica `?paquete={id}` como deep
+          // link y abre el panel de ese paquete.
+          const adminUrl = `${base}/backend/dashboard?vista=vendedor&paquete=${paqueteId}`;
+          const fechaEnvio = new Intl.DateTimeFormat("es-UY", {
+            dateStyle: "long",
+            timeStyle: "short",
+            timeZone: "America/Montevideo",
+          }).format(new Date());
+          handledByPaquete = await notifyPaqueteConsulta({
+            settingKey: [
+              "notificaciones_email_paquete",
+              "notificaciones_email_cotizacion",
+            ],
+            tituloPaquete: paquete.titulo,
+            sitioUrl,
+            adminUrl,
+            nombre: data.nombre,
+            email: data.email,
+            telefono: telefonoDisplay,
+            fecha: fechaEnvio,
+            campos: camposDetalle,
+            replyTo: data.email,
+          });
+        }
+      } catch (err) {
+        // No rompemos el submit: el lead ya está guardado. Caemos al genérico.
+        log.error("submitQuoteForm paquete email failed", err);
+      }
+    }
+
+    // Aviso genérico: siempre para /cotizar sin paquete, y como fallback si el
+    // camino premium no pudo resolver.
+    if (!handledByPaquete) {
+      await notifyLead({
+        settingKey: paqueteId
+          ? ["notificaciones_email_paquete", "notificaciones_email_cotizacion"]
+          : "notificaciones_email_cotizacion",
+        tipo: "Cotización",
+        replyTo: data.email,
+        origen: s(formData, "origen") ?? captureOrigen(),
+        campos: [
+          { label: "Nombre", value: data.nombre },
+          { label: "Email", value: data.email },
+          { label: "Teléfono", value: telefonoDisplay },
+          ...camposDetalle,
+        ],
+      });
+    }
     return { ok: true, message: SUCCESS_MSG };
   } catch (err) {
     log.error("submitQuoteForm failed", err);

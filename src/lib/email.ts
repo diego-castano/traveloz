@@ -387,6 +387,157 @@ export function leadNotificationEmail(opts: {
   };
 }
 
+// ── Consulta de un paquete puntual (sidebar del detalle) ────────────────
+// Email premium que reciben las casillas configuradas cuando un visitante
+// consulta desde la ficha de un paquete. Diferente del lead genérico:
+// encabeza con el nombre del paquete, destaca el contacto y ofrece dos
+// accesos directos — ver el paquete en el sitio y abrirlo en el panel.
+//
+// Todo inline-CSS email-safe (tablas, width 560), mismo sistema visual del
+// brandedLayout. Ningún dato ingresado por el visitante se pierde: los
+// campos vacíos se omiten y los comentarios respetan los saltos de línea.
+
+/** Botón CTA de la consulta de paquete, con color de fondo configurable. */
+function paqueteCta(url: string, label: string, bg: string): string {
+  return `<a href="${url}" style="display:inline-block;background:${bg};color:#ffffff;padding:13px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;line-height:1;text-align:center">${escapeHtml(
+    label,
+  )}</a>`;
+}
+
+export function paqueteConsultaEmail(opts: {
+  /** Título del paquete consultado (ej. "Ushuaia"). Va en el heading grande. */
+  tituloPaquete: string;
+  nombre: string;
+  /** Email del visitante — opcional (no siempre lo dejan). */
+  email?: string | null;
+  /** Teléfono ya formateado (paisCodigo + número). Obligatorio. */
+  telefono: string;
+  /** Fecha/hora legible del envío, ya formateada. */
+  fecha?: string;
+  /** Resto de los campos que completó el visitante (vacíos se omiten). */
+  campos: { label: string; value: string }[];
+  /** URL pública del paquete en el sitio. */
+  sitioUrl: string;
+  /** URL del paquete en el panel de administración. */
+  adminUrl: string;
+}): { subject: string; html: string; text: string } {
+  const titulo = escapeHtml(opts.tituloPaquete);
+  const nombre = escapeHtml(opts.nombre);
+  // href tel: solo dígitos y un "+" inicial; el texto visible queda tal cual.
+  const telHref = opts.telefono.replace(/[^\d+]/g, "");
+  const telText = escapeHtml(opts.telefono);
+  const emailAddr = opts.email?.trim() || "";
+
+  const subject = `Nueva consulta · ${opts.tituloPaquete} — ${opts.nombre}`;
+  const preheader = `${opts.nombre} consultó por ${opts.tituloPaquete}`;
+
+  const contactLines = [
+    `<div style="color:${BRAND_INK};font-size:16px;font-weight:700;line-height:1.4">${nombre}</div>`,
+    emailAddr
+      ? `<a href="mailto:${escapeHtml(emailAddr)}" style="color:${BRAND_ACCENT};text-decoration:none;font-size:14px;display:inline-block;margin-top:3px">${escapeHtml(
+          emailAddr,
+        )}</a><br/>`
+      : "",
+    `<a href="tel:${escapeHtml(telHref)}" style="color:${BRAND_ACCENT};text-decoration:none;font-size:14px;display:inline-block;margin-top:3px">${telText}</a>`,
+    opts.fecha
+      ? `<div style="color:${BRAND_MUTED};font-size:12px;margin-top:8px">${escapeHtml(opts.fecha)}</div>`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("");
+
+  const filas = fieldRows(opts.campos);
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="supported-color-schemes" content="light" />
+</head>
+<body style="margin:0;padding:0;background-color:#eef0f4;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#eef0f4;font-size:1px;line-height:1px">${escapeHtml(
+    preheader,
+  )}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef0f4;padding:24px 12px;font-family:'Helvetica Neue',Arial,sans-serif">
+    <tr><td align="center">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border:1px solid #e6e8ee;border-radius:16px;overflow:hidden">
+        <!-- Logo TravelOz -->
+        <tr><td style="padding:26px 28px 0;text-align:center">
+          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="28" style="height:28px;width:auto;display:inline-block" />
+        </td></tr>
+        <tr><td style="padding:16px 28px 0"><div style="height:2px;background-color:${BRAND_ACCENT};width:40px;margin:0 auto;border-radius:2px;line-height:2px">&nbsp;</div></td></tr>
+        <!-- Kicker + título del paquete -->
+        <tr><td style="padding:22px 32px 0;text-align:center">
+          <div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:${BRAND_MUTED};font-weight:600">Nueva consulta de paquete</div>
+          <h1 style="margin:8px 0 0;font-size:26px;line-height:1.25;color:${BRAND_INK};font-weight:700">${titulo}</h1>
+        </td></tr>
+        <!-- Contacto destacado -->
+        <tr><td style="padding:20px 32px 0">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f8fa;border-radius:12px">
+            <tr><td style="padding:16px 18px;line-height:1.5">${contactLines}</td></tr>
+          </table>
+        </td></tr>
+        <!-- Resto de los datos -->
+        ${
+          filas
+            ? `<tr><td style="padding:8px 32px 0">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${filas}</table>
+        </td></tr>`
+            : ""
+        }
+        <!-- Accesos directos -->
+        <tr><td style="padding:24px 32px 28px">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
+            <tr>
+              <td style="padding:0 5px 0 0;width:50%" align="center">${paqueteCta(
+                opts.sitioUrl,
+                "Ver paquete en el sitio",
+                BRAND_ACCENT,
+              )}</td>
+              <td style="padding:0 0 0 5px;width:50%" align="center">${paqueteCta(
+                opts.adminUrl,
+                "Ver en portal de vendedores",
+                BRAND_INK,
+              )}</td>
+            </tr>
+          </table>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:16px 28px;background-color:#f7f8fa;border-top:1px solid #e6e8ee;text-align:center;color:${BRAND_MUTED};font-size:12px;line-height:1.6">
+          <strong style="color:${BRAND_INK}">TravelOz</strong><br/>
+          <a href="${SITE_BASE_URL}" style="color:${BRAND_MUTED};text-decoration:underline">${escapeHtml(
+            SITE_LABEL,
+          )}</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = [
+    `Nueva consulta de paquete — ${opts.tituloPaquete}`,
+    "",
+    `Nombre: ${opts.nombre}`,
+    emailAddr ? `Email: ${emailAddr}` : "",
+    `Teléfono: ${opts.telefono}`,
+    opts.fecha ? `Fecha: ${opts.fecha}` : "",
+    "",
+    ...opts.campos
+      .filter((c) => c.value != null && String(c.value).trim() !== "")
+      .map((c) => `${c.label}: ${c.value}`),
+    "",
+    `Ver paquete en el sitio: ${opts.sitioUrl}`,
+    `Ver en portal de vendedores: ${opts.adminUrl}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return { subject, html, text };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
