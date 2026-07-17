@@ -409,7 +409,7 @@ export default function AdminDashboard() {
           : "paquetes sin opción hotelera",
       description:
         "Paquetes activos a los que les falta configurar la opción hotelera.",
-      href: "/backend/paquetes",
+      href: "/backend/paquetes?alerta=sin-opcion",
       actionLabel: "Completar configuración",
     });
   }

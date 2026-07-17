@@ -219,15 +219,31 @@ export function groupPaquetesByRegion(
 // Alert computations
 // ---------------------------------------------------------------------------
 
+/**
+ * Predicate for "activo sin opción hotelera configurada". Excluye modalidad
+ * CIRCUITO: esos paquetes no llevan opciones hoteleras por diseño (la
+ * pestaña Alojamientos está deshabilitada; su precio sale del markup del
+ * paquete), así que no deben contarse como configuración incompleta.
+ */
+export function esPaqueteSinOpcionHotelera(
+  p: Paquete,
+  paqueteIdsConOpcion: Set<string>,
+): boolean {
+  return (
+    p.estado === "ACTIVO" &&
+    p.modalidad !== "CIRCUITO" &&
+    !paqueteIdsConOpcion.has(p.id)
+  );
+}
+
 /** Count ACTIVE paquetes without any opción hotelera (incomplete config). */
 export function countPaquetesSinOpcion(
   paquetes: Paquete[],
   opciones: OpcionHotelera[],
 ): number {
   const withOpciones = new Set(opciones.map((o) => o.paqueteId));
-  return paquetes.filter(
-    (p) => p.estado === "ACTIVO" && !withOpciones.has(p.id),
-  ).length;
+  return paquetes.filter((p) => esPaqueteSinOpcionHotelera(p, withOpciones))
+    .length;
 }
 
 /**

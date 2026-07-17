@@ -60,6 +60,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { ColumnDef } from "@tanstack/react-table";
 import { usePaquetesQueryState } from "./searchParams";
+import { esPaqueteSinOpcionHotelera } from "@/app/backend/dashboard/_components/metrics";
 import {
   usePaquetes,
   usePackageActions,
@@ -232,6 +233,7 @@ export default function PaquetesPage() {
     destino: destinoFilter,
     region: regionParamRaw,
     view: viewMode,
+    alerta: alertaFilter,
     page: pageIndex,
   } = filters;
   const regionParam = regionParamRaw || null;
@@ -457,6 +459,14 @@ export default function PaquetesPage() {
     [destinoCounts],
   );
 
+  // Set of paquete ids that already have at least one opción hotelera —
+  // reused by the "alerta=sin-opcion" filter below (same source the
+  // dashboard's countPaquetesSinOpcion card reads from).
+  const paqueteIdsConOpcion = useMemo(
+    () => new Set(allOpciones.map((o) => o.paqueteId)),
+    [allOpciones],
+  );
+
   // ---------------------------------------------------------------------------
   // Filtered + paginated data
   // ---------------------------------------------------------------------------
@@ -503,6 +513,14 @@ export default function PaquetesPage() {
       });
     }
 
+    // Alerta (from dashboard card ?alerta=sin-opcion) — activos sin opción
+    // hotelera, excluyendo CIRCUITO (no le aplica: precio por markup).
+    if (alertaFilter === "sin-opcion") {
+      result = result.filter((p) =>
+        esPaqueteSinOpcionHotelera(p, paqueteIdsConOpcion),
+      );
+    }
+
     return sortByRecency(result);
   }, [
     paquetes,
@@ -514,6 +532,8 @@ export default function PaquetesPage() {
     resolver,
     regionParam,
     regionIdByPais,
+    alertaFilter,
+    paqueteIdsConOpcion,
   ]);
 
   // Filters reset the page index inline through their setters, so no
@@ -527,7 +547,8 @@ export default function PaquetesPage() {
     temporadaFilter.length > 0 ||
     tipoFilter.length > 0 ||
     destinoFilter.length > 0 ||
-    Boolean(regionParam);
+    Boolean(regionParam) ||
+    Boolean(alertaFilter);
   const visibleTotalPaquetes = hasSearchOrFilters
     ? filteredPaquetes.length
     : hydratingPaquetes
@@ -600,7 +621,8 @@ export default function PaquetesPage() {
     temporadaFilter.length +
     tipoFilter.length +
     destinoFilter.length +
-    (regionParam ? 1 : 0);
+    (regionParam ? 1 : 0) +
+    (alertaFilter ? 1 : 0);
   const packageSubtitle = hydratingPaquetes
     ? `${loadedPaquetes} de ${Math.max(totalPaquetes, loadedPaquetes)} paquetes cargados${
         hasSearchOrFilters
@@ -629,12 +651,17 @@ export default function PaquetesPage() {
       tipo: [],
       destino: [],
       region: "",
+      alerta: "",
       page: 0,
     });
   }
 
   function clearRegionFilter() {
     setFilters({ region: "", page: 0 });
+  }
+
+  function clearAlertaFilter() {
+    setFilters({ alerta: "", page: 0 });
   }
 
   useEffect(() => {
@@ -702,6 +729,15 @@ export default function PaquetesPage() {
         onRemove: clearRegionFilter,
       });
     }
+    if (alertaFilter === "sin-opcion") {
+      chips.push({
+        key: "alerta:sin-opcion",
+        dimension: "Alerta",
+        value: "Activos sin opción hotelera",
+        color: "#EF4444",
+        onRemove: clearAlertaFilter,
+      });
+    }
     return chips;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -711,6 +747,7 @@ export default function PaquetesPage() {
     tipoFilter,
     destinoFilter,
     activeRegion,
+    alertaFilter,
     temporadaById,
     tipoById,
   ]);
