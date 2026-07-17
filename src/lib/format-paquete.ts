@@ -91,18 +91,41 @@ const STOPWORDS = new Set([
 
 // --- Ítem que no matcheó ninguna categoría: tomamos las primeras 2 palabras
 // significativas y capitalizamos. Nunca devolvemos el texto largo (la tarjeta
-// lo truncaría con "…", que es justo lo que estamos sacando).
-function resumenGenerico(texto: string): string {
+// lo truncaría con "…", que es justo lo que estamos sacando). Los tokens sin
+// letras ni dígitos (guiones sueltos, "·", "&"...) se descartan antes de
+// elegir: "Montevideo - Madrid" da "Montevideo Madrid", no "Montevideo -".
+// Si tras filtrar no queda ningún token con contenido, el ítem se descarta
+// (null) en vez de devolver un bullet vacío.
+function resumenGenerico(texto: string): string | null {
   const palabras = texto.split(/\s+/).filter(Boolean);
-  const significativas = palabras.filter((w) => !STOPWORDS.has(w.toLowerCase()));
-  const elegidas = (significativas.length ? significativas : palabras).slice(0, 2);
+  // Sin flag "u" (el target de tsc en este proyecto no lo admite): cubrimos
+  // letras/dígitos ASCII + Latin-1 Supplement y Latin Extended-A (tildes, ñ,
+  // etc.), suficiente para descartar guiones sueltos, "·", "&"...
+  const conContenido = palabras.filter((w) => /[a-zA-Z0-9À-ſ]/.test(w));
+  if (conContenido.length === 0) return null;
+  const significativas = conContenido.filter((w) => !STOPWORDS.has(w.toLowerCase()));
+  const elegidas = (significativas.length ? significativas : conContenido).slice(0, 2);
   const frase = elegidas.join(" ");
   return frase.charAt(0).toUpperCase() + frase.slice(1);
 }
 
+// --- Bucket de equipaje de mano/bodega. Va en banda de prioridad baja (ver
+// buildCardBullets): es el ítem que el operador casi siempre carga primero,
+// pero el que menos diferencia un paquete de otro, así que cede el slot a
+// conceptos más específicos (Seguros, All inclusive, régimen, excursiones...)
+// cuando hay que elegir entre los 4 bullets de la tarjeta.
+const EQUIPAJE_RE = /art[ií]culo\s*personal|valija|equipaje|mochila|carry[\s-]?on|bolso/i;
+
+// --- Etiquetas que puede producir resumirConcepto y que pertenecen a la
+// banda baja de prioridad (todo lo demás es banda alta). Se comparan en
+// minúsculas contra el concepto ya resuelto.
+const BANDA_BAJA = new Set(["artículo personal", "equipaje"]);
+
 // --- Resume un ítem curado del "Incluye" a un concepto corto de tarjeta.
 // El orden de los chequeos es la prioridad pedida por el cliente. Devuelve
-// null para conceptos que no aportan en la tarjeta (cupos, tasas, impuestos).
+// null para conceptos que no aportan en la tarjeta (cupos, tasas, impuestos)
+// o cuyo texto no tiene ningún token con contenido tras filtrar (ver
+// resumenGenerico).
 function resumirConcepto(texto: string, nochesTotales: number): string | null {
   const t = texto.trim();
   if (!t) return null;
@@ -111,14 +134,22 @@ function resumirConcepto(texto: string, nochesTotales: number): string | null {
   // Traslado antes que noche/hotel: "Traslado Aeropuerto - Hotel" menciona
   // "Hotel" pero es un traslado, no alojamiento.
   if (/traslado|transfer/i.test(t)) return "Traslados";
+  // All inclusive antes que noche/hotel: "all inclusive en el hotel" es el
+  // régimen, no el alojamiento. Las noches no se pierden: si el paquete tiene
+  // nochesTotales y ningún ítem las cubrió, el derivado las repone al final.
+  if (/all\s*inclusive/i.test(t)) return "All inclusive";
   if (/noche|alojamiento|hotel/i.test(t)) return nochesConcepto(t, nochesTotales);
   if (/seguro|asistencia/i.test(t)) return "Seguros";
-  if (/all\s*inclusive/i.test(t)) return "All inclusive";
   if (/desayuno|media\s*pensi[oó]n|pensi[oó]n\s*completa|r[eé]gimen/i.test(t)) {
     return regimenCorto(t);
   }
   if (/excursi[oó]n|paseo|city\s*tour/i.test(t)) return "Excursiones";
   if (/cupo|tasas?|impuesto/i.test(t)) return null;
+  // Equipaje va justo antes del genérico: si nada más matcheó, es el último
+  // chequeo específico antes de caer al resumen de palabras sueltas.
+  if (EQUIPAJE_RE.test(t)) {
+    return /art[ií]culo\s*personal/i.test(t) ? "Artículo personal" : "Equipaje";
+  }
   return resumenGenerico(t);
 }
 
@@ -129,9 +160,17 @@ function resumirConcepto(texto: string, nochesTotales: number): string | null {
  * `textoIncluye`), cada ítem se resume a un concepto corto de una o dos
  * palabras (Vuelos / Bus / 07 Noches / Traslados / Seguros / All inclusive…)
  * en vez de volcar el texto completo (que la tarjeta truncaba con "…"). Se
- * descartan los conceptos que no aportan (cupos/tasas), se deduplica y se
- * toman los primeros 4 en el orden del operador. Si quedan menos de 4, se
- * completa con derivados clásicos (noches / Vuelos / Traslados) sin duplicar.
+ * descartan los conceptos que no aportan (cupos/tasas) y se deduplica.
+ *
+ * Priorización por especificidad: el equipaje de mano (Artículo personal /
+ * Equipaje) es el ítem que el operador casi siempre carga primero pero el que
+ * menos diferencia un paquete, así que se clasifica en banda baja y compite
+ * por los slots sobrantes recién después de TODOS los conceptos de banda alta
+ * (Vuelos, Bus, Traslados, noches, Seguros, All inclusive, régimen,
+ * Excursiones, genéricos). Dentro de cada banda se conserva el orden del
+ * operador. Si aun así quedan menos de 4, se completa con derivados clásicos
+ * (noches / Vuelos / Traslados) sin duplicar.
+ *
  * Sin lista curada, fallback legacy con los renglones fijos, omitiendo el de
  * noches cuando `nochesTotales === 0` (para no mostrar nunca "0 noches").
  */
@@ -153,30 +192,35 @@ export function buildCardBullets(input: {
     return legacy;
   }
 
-  // Con lista curada: cada ítem se resume a su concepto corto; se descartan los
-  // que no aportan y se deduplica preservando el orden del operador.
-  const bullets: string[] = [];
+  // Resolvemos y deduplicamos TODOS los ítems curados primero (no solo los
+  // primeros 4) para poder clasificarlos en banda alta/baja antes de elegir
+  // qué entra en la tarjeta.
+  const altos: string[] = [];
+  const bajos: string[] = [];
   const vistos = new Set<string>();
-  const agregar = (concepto: string | null): boolean => {
-    if (!concepto) return false;
-    const clave = concepto.toLowerCase();
-    if (vistos.has(clave)) return false;
-    vistos.add(clave);
-    bullets.push(concepto);
-    return true;
-  };
-
   for (const texto of curados) {
-    agregar(resumirConcepto(texto, nochesTotales));
-    if (bullets.length >= 4) return bullets;
+    const concepto = resumirConcepto(texto, nochesTotales);
+    if (!concepto) continue;
+    const clave = concepto.toLowerCase();
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    (BANDA_BAJA.has(clave) ? bajos : altos).push(concepto);
   }
+
+  // Banda alta completa primero (orden del operador), banda baja solo si
+  // sobran slots.
+  const bullets: string[] = [...altos, ...bajos].slice(0, 4);
+  if (bullets.length >= 4) return bullets;
 
   // Completar hasta 4 con derivados clásicos que la lista curada no cubrió.
   const derivados: string[] = [];
   if (nochesTotales > 0) derivados.push(textoNoches(nochesTotales));
   derivados.push("Vuelos", "Traslados");
   for (const d of derivados) {
-    agregar(d);
+    const clave = d.toLowerCase();
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    bullets.push(d);
     if (bullets.length >= 4) break;
   }
   return bullets;
