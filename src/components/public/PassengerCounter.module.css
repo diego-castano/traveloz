@@ -134,3 +134,30 @@
   color: #3c3c3c;
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Variante onGradient: solo el disparador cambia de tema para acompañar
+   los inputs translúcidos del form de /cotizar (borde blanco 2px, texto
+   blanco, fondo transparente). El dropdown, filas y stepper siguen blancos
+   como en el tema por defecto (QuoteSidebar) — no se tocan. --- */
+.onGradient .trigger {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  padding: 12px 18px;
+  font-size: 15px;
+  color: #fff;
+}
+
+.onGradient .trigger:hover,
+.onGradient .trigger:focus-visible,
+.onGradient .triggerOpen {
+  border-color: #fff;
+}
+
+.onGradient .placeholder {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.onGradient .chevron {
+  color: rgba(255, 255, 255, 0.8);
+}

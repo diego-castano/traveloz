@@ -2481,14 +2481,18 @@ strong {
 
 /* centerMode móvil: la tarjeta activa queda a escala 1 y las vecinas, que
    asoman a los lados, se achican. Reemplaza los transforms hardcodeados de
-   slick del template original. */
+   slick del template original. El scale vive en .embla__slide-inner (no en
+   .embla__slide) porque Embla setea su propio transform inline en
+   .embla__slide para reposicionar slides al loopear, y ese inline style pisa
+   cualquier transform por CSS con la misma especificidad -- dejaba a la
+   vecina que Embla tocaba en ese momento sin achicar (peek asimétrico). */
 @media (max-width: 767px) {
-    .image-box-slider .embla__slide {
+    .image-box-slider .embla__slide-inner {
         transition: transform 0.4s;
-        transform: scale(0.82);
+        transform: scale(0.88);
     }
 
-    .image-box-slider .embla__slide.is-center {
+    .image-box-slider .embla__slide-inner.is-center {
         transform: scale(1);
         position: relative;
         z-index: 2;
@@ -2777,6 +2781,23 @@ strong {
     border: none !important;
     margin: 0 !important;
     max-width: 18px !important;
+}
+
+/* DateRangePicker — variante onGradient del form de /cotizar. El disparador
+   translúcido acompaña los inputs blancos del degradado; el popup del calendario
+   sigue blanco (definido más abajo en el bloque .date-range-picker). El tema por
+   defecto (QuoteSidebar del detalle de paquete) no lleva .on-gradient y no cambia. */
+.date-range-picker.on-gradient .date-range-display {
+    background: transparent !important;
+    border: 2px solid rgba(255, 255, 255, 0.9) !important;
+    color: #fff !important;
+    border-radius: 6px !important;
+    padding: 12px 18px !important;
+    font-size: 15px !important;
+}
+
+.date-range-picker.on-gradient .date-range-display::placeholder {
+    color: rgba(255, 255, 255, 0.8) !important;
 }
 
 .quote-icon-circle {

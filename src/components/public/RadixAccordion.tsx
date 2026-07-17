@@ -9,6 +9,10 @@ export type AccordionItem = {
   title: string;
   /** Inner HTML for the body. Source is trusted (html_inicial copy / admin). */
   bodyHtml: string;
+  /** Ícono mostrado con el trigger cerrado (solo variant="alt"). */
+  iconBlue?: string;
+  /** Ícono mostrado con el trigger abierto (solo variant="alt"). */
+  iconRed?: string;
 };
 
 type Props = {
@@ -17,6 +21,12 @@ type Props = {
   items: AccordionItem[];
   /** Allow multiple items open at once. Default: single (collapsible). */
   multiple?: boolean;
+  /**
+   * Variante visual de .faq-accordion (clases ya portadas a site.css):
+   * "style2" (default, usado en /terms) o "alt" (usado en /faq, con
+   * íconos por item que se togglean según el estado abierto/cerrado).
+   */
+  variant?: "style2" | "alt";
 };
 
 /**
@@ -31,6 +41,7 @@ export function RadixAccordion({
   parentId = "accordion",
   items,
   multiple = false,
+  variant = "style2",
 }: Props) {
   // Controlled state so we can mirror open/closed onto the .collapsed class.
   const [openValues, setOpenValues] = useState<string[]>([]);
@@ -50,7 +61,7 @@ export function RadixAccordion({
   >;
 
   return (
-    <div className="faq-accordion style2">
+    <div className={`faq-accordion ${variant}`}>
       <RootAny
         id={parentId}
         className="accordion"
@@ -79,6 +90,16 @@ export function RadixAccordion({
                 <Accordion.Trigger
                   className={`accordion-button ${open ? "" : "collapsed"}`}
                 >
+                  {variant === "alt" && item.iconBlue ? (
+                    <>
+                      <img src={item.iconBlue} alt="" className="blue-icon" />
+                      <img
+                        src={item.iconRed || "/site/img/faq-icon-red.png"}
+                        alt=""
+                        className="red-icon"
+                      />
+                    </>
+                  ) : null}
                   {item.title}
                 </Accordion.Trigger>
               </Accordion.Header>

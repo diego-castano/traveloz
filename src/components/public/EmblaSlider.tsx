@@ -46,10 +46,12 @@ export function EmblaSlider({
 }: Props) {
   // Responsive slidesToShow — defaults to 1.1 on mobile if desktop shows >1,
   // matching the legacy Slick "peek the next card" behavior. En centerMode
-  // mostramos algo más (1.3) para que asomen las vecinas a ambos lados.
+  // mostramos algo más (1.4) para que, incluso tras el achique por CSS de
+  // las vecinas (.embla__slide-inner en site.css), les quede un peek visible
+  // simétrico y legible (>20px) a ambos lados de la tarjeta central.
   const mobileSlides =
     slidesToShowMobile ??
-    (centerModeMobile ? 1.3 : slidesToShow > 1 ? 1.1 : slidesToShow);
+    (centerModeMobile ? 1.4 : slidesToShow > 1 ? 1.1 : slidesToShow);
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
@@ -125,14 +127,21 @@ export function EmblaSlider({
       >
         <div className="embla__container" style={{ display: "flex" }}>
           {children.map((child, i) => (
-            <div
-              className={`embla__slide slide${
-                centered && i === selectedIndex ? " is-center" : ""
-              }`}
-              style={slideStyle}
-              key={i}
-            >
-              {child}
+            // --- El div .embla__slide es el que Embla mueve con un
+            // transform inline propio (translate3d) para reposicionar slides
+            // al loopear; si el scale del centerMode se aplicara ahí, ese
+            // inline style lo pisa (gana por especificidad) y la vecina que
+            // Embla tocó queda sin achicar -> peek asimétrico/errático. Por
+            // eso el scale de .is-center vive en un wrapper interno que
+            // Embla nunca toca.
+            <div className="embla__slide slide" style={slideStyle} key={i}>
+              <div
+                className={`embla__slide-inner${
+                  centered && i === selectedIndex ? " is-center" : ""
+                }`}
+              >
+                {child}
+              </div>
             </div>
           ))}
         </div>

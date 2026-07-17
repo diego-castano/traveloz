@@ -28,7 +28,7 @@ export function HomeCategorias({
           autoplay
           autoplayDelay={3000}
           loop
-          showArrows={false}
+          showArrows
           showDots
           centerModeMobile
           className="image-box-slider"

@@ -24,6 +24,7 @@ export function FaqContent({ topics }: Props) {
     id: t.id,
     title: t.label,
     bodyHtml: `<div class="faq-tab-content"><div class="plain-content">${t.bodyHtml}</div></div>`,
+    iconBlue: t.iconBlue || undefined,
   }));
 
   return (
@@ -73,6 +74,7 @@ export function FaqContent({ topics }: Props) {
         <RadixAccordion
           parentId="faq-accordion-mobile"
           items={accordionItems}
+          variant="alt"
         />
       </div>
     </>

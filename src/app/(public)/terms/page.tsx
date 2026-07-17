@@ -38,9 +38,11 @@ export default async function TermsPage() {
   return (
     <>
       <section className="terms-banner-area">
+        {/* Fondo full-bleed mobile: siempre el degradado de referencia (faq-mobile-banner),
+            no el gráfico decorativo chico configurable (bannerMobile). */}
         <img
           className="bg_image d-md-none"
-          src={bannerMobile}
+          src="/site/img/faq-mobile-banner.png"
           alt=""
           fetchPriority="high"
           decoding="async"

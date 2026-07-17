@@ -53,7 +53,7 @@ type Props = {
   ciudades: Ciudad[];
 };
 
-type SortKey = "low" | "high";
+type SortKey = "low" | "high" | "az";
 
 // ---------------------------------------------------------------------------
 // Meses canónicos (orden cronológico) y parser de `paquete.salidas` (string
@@ -156,11 +156,15 @@ export function RegionExplorer({ region, titulo, paquetes, ciudades }: Props) {
 
   const sorted = useMemo(() => {
     const copy = [...filtered];
-    copy.sort((a, b) => {
-      const av = a.precioDesde ?? Number.POSITIVE_INFINITY;
-      const bv = b.precioDesde ?? Number.POSITIVE_INFINITY;
-      return sort === "low" ? av - bv : bv - av;
-    });
+    if (sort === "az") {
+      copy.sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
+    } else {
+      copy.sort((a, b) => {
+        const av = a.precioDesde ?? Number.POSITIVE_INFINITY;
+        const bv = b.precioDesde ?? Number.POSITIVE_INFINITY;
+        return sort === "low" ? av - bv : bv - av;
+      });
+    }
     return copy;
   }, [filtered, sort]);
 
@@ -411,7 +415,8 @@ function SortDropdown({
   onChange: (next: SortKey) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const label = value === "low" ? "Menor precio" : "Mayor precio";
+  const label =
+    value === "low" ? "Menor precio" : value === "high" ? "Mayor precio" : "A - Z";
 
   return (
     <div
@@ -426,7 +431,7 @@ function SortDropdown({
         <i className="cs_arrow" />
       </span>
       <ul className="cs_options" role="listbox">
-        {(["low", "high"] as const).map((v) => (
+        {(["low", "high", "az"] as const).map((v) => (
           <li
             key={v}
             role="option"
@@ -446,7 +451,7 @@ function SortDropdown({
             }}
             data-value={v}
           >
-            {v === "low" ? "Menor precio" : "Mayor precio"}
+            {v === "low" ? "Menor precio" : v === "high" ? "Mayor precio" : "A - Z"}
           </li>
         ))}
       </ul>

@@ -61,7 +61,11 @@ export default async function PublicLayout({ children }: { children: ReactNode }
     getSiteSettings("general"),
     auth(),
   ]);
-  const comingSoon = generalSettings.coming_soon_activo !== "false";
+  // Fail-open: el gate solo se muestra con "true" explícito (el toggle del
+  // admin escribe "true"/"false"). Antes era `!== "false"` y un error
+  // transitorio de DB (getSiteSettings degrada a {}) mostraba "Muy pronto" a
+  // visitantes reales con el sitio ya lanzado.
+  const comingSoon = generalSettings.coming_soon_activo === "true";
   if (comingSoon && !session?.user) {
     return (
       <ComingSoon

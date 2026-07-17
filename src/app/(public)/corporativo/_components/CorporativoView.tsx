@@ -181,10 +181,11 @@ export function CorporativoView({
                   {clientes.length > 0 && (
                     <EmblaSlider
                       slidesToShow={3}
+                      slidesToShowMobile={3}
                       autoplay
                       autoplayDelay={3000}
                       loop
-                      showArrows={false}
+                      showArrows
                       className="logo-slider"
                     >
                       {clientes.map((c) => (

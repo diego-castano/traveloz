@@ -36,7 +36,6 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
         ) : (
           <EmblaSlider
             slidesToShow={3}
-            slidesToShowMobile={1.1}
             autoplay
             autoplayDelay={3000}
             loop

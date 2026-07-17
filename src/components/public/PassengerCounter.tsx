@@ -9,6 +9,13 @@ type Props = {
   /** Hidden field name — value submitted as "adultos:N|ninos:N|infantes:N" */
   name?: string;
   initial?: Counts;
+  /**
+   * Tema del disparador. "default" = tarjeta blanca / borde gris (QuoteSidebar
+   * del detalle de paquete). "onGradient" = disparador translúcido con borde
+   * blanco para el form de /cotizar sobre el degradado violeta. El dropdown
+   * queda blanco en ambos casos.
+   */
+  variant?: "default" | "onGradient";
 };
 
 const ROWS: Array<{
@@ -43,6 +50,7 @@ function summarize(c: Counts): string {
 export function PassengerCounter({
   name = "pasajeros",
   initial = { adultos: 1, ninos: 0, infantes: 0 },
+  variant = "default",
 }: Props) {
   const [open, setOpen] = useState(false);
   const [counts, setCounts] = useState<Counts>(initial);
@@ -73,7 +81,10 @@ export function PassengerCounter({
   const summary = summarize(counts);
 
   return (
-    <div className={styles.select} ref={ref}>
+    <div
+      className={`${styles.select} ${variant === "onGradient" ? styles.onGradient : ""}`}
+      ref={ref}
+    >
       <input type="hidden" name={name} value={serialized} />
       <button
         type="button"

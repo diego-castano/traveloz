@@ -11,6 +11,12 @@ type Props = {
   nameFrom?: string;
   nameTo?: string;
   placeholder?: string;
+  /**
+   * Tema del disparador. "default" = tarjeta blanca / borde gris (QuoteSidebar
+   * del detalle de paquete). "onGradient" = input translúcido con borde blanco
+   * para el form de /cotizar sobre el degradado violeta.
+   */
+  variant?: "default" | "onGradient";
 };
 
 /**
@@ -23,6 +29,7 @@ export function DateRangePicker({
   nameFrom = "fechaDesde",
   nameTo = "fechaHasta",
   placeholder = "Seleccioná las fechas",
+  variant = "default",
 }: Props) {
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<DateRange | undefined>();
@@ -47,7 +54,7 @@ export function DateRangePicker({
 
   return (
     <div
-      className="date-range-picker"
+      className={`date-range-picker${variant === "onGradient" ? " on-gradient" : ""}`}
       ref={wrapperRef}
       style={{ position: "relative" }}
     >

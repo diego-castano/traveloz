@@ -32,7 +32,17 @@ export default async function WorkWithUsPage() {
           <div className="text-center mb_50">
             <h1 className="section-heading">{titulo}</h1>
             <div className="sub-text">
-              <p style={{ whiteSpace: "pre-line" }}>{subtitulo}</p>
+              {/* <br> real (no \n + pre-line): así aplica la regla mobile
+                  `br:not(.keep){display:none}` de site.css y el texto refluye
+                  natural en pantallas chicas, como la referencia. */}
+              <p>
+                {subtitulo.split("\n").map((line, i, arr) => (
+                  <span key={i}>
+                    {line}
+                    {i < arr.length - 1 && <br />}
+                  </span>
+                ))}
+              </p>
             </div>
           </div>
         </div>

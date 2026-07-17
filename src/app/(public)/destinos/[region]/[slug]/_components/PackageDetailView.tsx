@@ -357,33 +357,22 @@ const SCOPED_STYLES = `
   @media (max-width: 767px) {
     .pkg-detail .content-box.style3 .top-heading { padding: 18px 18px 12px; }
 
-    /* Header: título más delicado y apilado sobre el precio, así usa todo el
-       ancho y no se parte en 3 renglones. */
-    .pkg-detail .top-heading .row > [class*="col-"] {
-      flex: 0 0 100%;
-      max-width: 100%;
-    }
-    .pkg-detail .pkg-title { font-size: 22px; line-height: 1.18; margin-bottom: 6px; white-space: normal; }
-    .pkg-detail .top-heading .large-price {
-      justify-content: flex-start;
-      margin-top: 10px;
-      margin-bottom: 0;
-    }
-    .pkg-detail .top-heading .pr_notes {
-      text-align: left !important;
-      margin-top: 4px;
-    }
+    /* Header: título (col-7) y precio (col-5) quedan en la misma fila, igual
+       que la referencia — no forzamos el stack a 100% ni el align del precio.
+       Sólo achicamos el título un escalón y permitimos wrap normal (nunca
+       nowrap/ellipsis) para que títulos largos no desborden la columna angosta. */
+    .pkg-detail .pkg-title { font-size: 19px; line-height: 1.2; margin-bottom: 6px; white-space: normal; }
     .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 10px 18px 0; }
     .pkg-detail .box-tab-content.style1 .nav-link { font-size: 15px; }
     .pkg-detail .box-tab-content.style1 .content-inner { padding: 16px 18px; }
     .pkg-detail .box-tab-content.style1 .content-inner > li {
-      font-size: 14px;
+      font-size: 16px;
       margin-bottom: 14px;
     }
     .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
-      width: 38px;
-      height: 38px;
-      padding: 9px;
+      width: 32px;
+      height: 32px;
+      padding: 8px;
       margin-right: 12px;
     }
     .pkg-detail .box-tab-content.style1 .content-inner > li img {

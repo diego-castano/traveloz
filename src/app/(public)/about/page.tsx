@@ -25,11 +25,60 @@ function richTextHtml(html: string): string {
   if (!html) return "";
   const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(html);
   return looksLikeHtml
-    ? html
+    ? normalizeWysiwygHtml(html)
     : html
         .split(/\n{2,}/)
         .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br/>")}</p>`)
         .join("");
+}
+
+// Separador de párrafo "vacío" que deja el WysiwygEditor (contentEditable)
+// al presionar Enter dos veces: un <div> con un único <br> adentro.
+const EMPTY_PARA_BREAK = /<div[^>]*>\s*<br[^>]*>\s*<\/div>/gi;
+const BLOCK_TAG_RE = /<(div|p|h1|h2|h3|h4|ul|ol|blockquote)[\s>]/i;
+
+/**
+ * Normaliza el HTML que emite el WysiwygEditor para que cada párrafo herede
+ * el margin-bottom:20px global de <p> (site.css línea ~111), que los <div>
+ * no tienen:
+ * - Los separadores vacíos `<div><br></div>` / `<div><br/></div>` marcan un
+ *   corte de párrafo: se descartan (el corte real lo da el <p> siguiente).
+ * - Los `<div>` de línea que el editor usa como párrafo pasan a `<p>`.
+ * - El texto/tags sueltos que preceden al primer bloque (contenido pegado
+ *   sin pasar por el editor, o la primera línea antes del primer Enter) se
+ *   envuelven en su propio `<p>`.
+ * HTML ya bien formado (con <p> propios, sin separadores vacíos) sale
+ * intacto salvo la promoción de <div> sueltos a <p>.
+ */
+function normalizeWysiwygHtml(html: string): string {
+  return html
+    .split(EMPTY_PARA_BREAK)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map(normalizeSegment)
+    .join("");
+}
+
+function normalizeSegment(segment: string): string {
+  const blockMatch = segment.match(BLOCK_TAG_RE);
+  if (!blockMatch || blockMatch.index !== 0) {
+    // Hay texto/tags inline antes del primer bloque (o no hay bloques):
+    // ese tramo suelto se envuelve en <p> propio.
+    const idx = blockMatch ? (blockMatch.index as number) : segment.length;
+    const leading = segment.slice(0, idx).trim();
+    const rest = segment.slice(idx);
+    return (leading ? `<p>${leading}</p>` : "") + promoteDivsToParagraphs(rest);
+  }
+  return promoteDivsToParagraphs(segment);
+}
+
+// Los <div> de párrafo del editor pasan a <p> (los <div> no tienen
+// margin-bottom en site.css). Los demás bloques (p/h2/h3/ul/ol/blockquote)
+// quedan como están.
+function promoteDivsToParagraphs(html: string): string {
+  return html
+    .replace(/<div(\s[^>]*)?>/gi, "<p$1>")
+    .replace(/<\/div>/gi, "</p>");
 }
 
 function escapeHtml(s: string) {

@@ -1,5 +1,6 @@
 import { getSiteSettings } from "@/lib/public-data";
 import { CotizarForm } from "./_components/CotizarForm";
+import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
@@ -54,45 +55,71 @@ export default async function CotizarPage() {
 
   return (
     <>
-      {/* Formulario — fondo violeta, intro en blanco (form en tarjeta blanca) */}
+      {/* Formulario — 1:1 con html_inicial/cotizacion.html: título + form dentro
+          de un mismo `content-box style2 contact-form-wrapper`, así los inputs
+          heredan el look translúcido (fondo transparente, borde blanco 2px,
+          texto blanco) directo sobre el degradado, sin tarjeta blanca. */}
       <section className="content-area contact-area gradient-page-bg">
         <div className="container">
-          <div className="row justify-content-center">
-            {/* contact-form-wrapper acá da el tamaño/responsive del título del
-                diseño original; el form va aparte para conservar la tarjeta y los
-                inputs blancos (este wrapper tiene reglas !important que los
-                volverían transparentes). */}
-            <div className="col-lg-8 col-md-10 text-center mb_50 contact-form-wrapper">
-              <h1 className="section-heading text_white">{titulo}</h1>
-              <p className="sub-text text_white">{lead}</p>
+          <div className="content-box style2 contact-form-wrapper">
+            <div className="row justify-content-center">
+              <div className="col-lg-8 col-md-10 text-center mb_50">
+                <h1 className="section-heading text_white">{titulo}</h1>
+                <p className="sub-text text_white">{lead}</p>
+              </div>
             </div>
-          </div>
-          <div className="row justify-content-center">
-            <div className="col-lg-5 col-md-7">
-              <CotizarForm />
+            <div className="row justify-content-center">
+              <div className="col-lg-5 col-md-7">
+                <CotizarForm />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ¿Por qué elegirnos? — idéntico al diseño original */}
+      {/* ¿Por qué elegirnos? — grid en ≥md, carrusel de 1 tarjeta con dots en
+          mobile (mismo patrón d-none/d-md-block + EmblaSlider que CorporativoView). */}
       <section className="content-area bg_gray">
         <div className="container">
           <div className="text-center mb_50">
             <h2 className="section-heading purple">{porqueTitulo}</h2>
           </div>
-          <div className="row">
-            {porqueCards.map((c, i) => (
-              <div className="col-md-4" key={i}>
-                <div className="icon-teaser style1">
+          <div className="d-none d-md-block">
+            <div className="row">
+              {porqueCards.map((c, i) => (
+                <div className="col-md-4" key={i}>
+                  <div className="icon-teaser style1">
+                    <div className="quote-icon-circle">
+                      <i className={`fa-solid ${c.icon}`}></i>
+                    </div>
+                    <h3 className="title">{c.titulo}</h3>
+                    <p>{c.texto}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Mobile: una tarjeta por vez con dots */}
+          <div className="d-md-none">
+            <EmblaSlider
+              slidesToShow={1}
+              autoplay
+              autoplayDelay={5000}
+              loop
+              showArrows={false}
+              showDots
+              className="icon-teaser-slider"
+            >
+              {porqueCards.map((c, i) => (
+                <div className="icon-teaser style1" key={i}>
                   <div className="quote-icon-circle">
                     <i className={`fa-solid ${c.icon}`}></i>
                   </div>
                   <h3 className="title">{c.titulo}</h3>
                   <p>{c.texto}</p>
                 </div>
-              </div>
-            ))}
+              ))}
+            </EmblaSlider>
           </div>
         </div>
       </section>
