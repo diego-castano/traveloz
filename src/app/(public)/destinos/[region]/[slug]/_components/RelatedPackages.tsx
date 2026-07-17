@@ -51,8 +51,13 @@ export function RelatedPackages({
           __html: `
             .box-slider .embla__container { align-items: stretch; }
             .box-slider .embla__slide { display: flex; }
-            .box-slider .embla__slide > div,
-            .box-slider .embla__slide > div > div { display: flex; width: 100%; }
+            /* EmblaSlider mete un wrapper .embla__slide-inner entre el slide
+               y el contenido (para el scale del centerMode): la cadena de
+               width:100% tiene que atravesarlo, si no la card colapsa a su
+               ancho mínimo y aparece un "gap" fantasma entre tarjetas. */
+            .box-slider .embla__slide-inner { display: flex; width: 100%; }
+            .box-slider .embla__slide-inner > div,
+            .box-slider .embla__slide-inner > div > div { display: flex; width: 100%; }
             .box-slider .box-card {
               display: flex;
               flex-direction: column;
