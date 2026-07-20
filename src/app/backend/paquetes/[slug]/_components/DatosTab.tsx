@@ -832,6 +832,11 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
             <Field span={2}>
               <FieldLabel>Etiquetas</FieldLabel>
+              <p className="text-[11px] text-neutral-400 mb-1.5">
+                La categoría (arriba) es única por paquete y arma la página{" "}
+                /destinos?tipo=…; las etiquetas pueden ser varias y cada una
+                arma su propia página pública /tag/&lt;slug&gt;.
+              </p>
               <div className="flex flex-wrap items-center gap-2 min-h-[32px]">
                 {assignedEtiquetasFull.length === 0 ? (
                   <span className="text-[13px] text-neutral-400 italic">
@@ -843,12 +848,17 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                     // Publicación tab (single source of truth). Showing them
                     // here keeps the operator informed when reviewing Datos
                     // without giving two competing editors that can drift.
-                    <Tag
+                    // El title va en el wrapper porque Tag no reenvía props
+                    // extra al <span> que renderiza — es la URL pública real
+                    // de esta etiqueta (/tag/<slug>).
+                    <span
                       key={etq.assignmentId}
-                      color={resolveTagColor(etq.color)}
+                      title={`/tag/${etq.slug}`}
                     >
-                      {etq.nombre}
-                    </Tag>
+                      <Tag color={resolveTagColor(etq.color)}>
+                        {etq.nombre}
+                      </Tag>
+                    </span>
                   ))
                 )}
               </div>

@@ -110,6 +110,54 @@ export const getPaquetesByTipo = unstable_cache(
   { revalidate: 60, tags: ["paquetes"] },
 );
 
+/**
+ * Resuelve una Etiqueta publica por su slug real (columna `slug`, con
+ * @@unique([brandId, slug]) — a diferencia de TipoPaquete no hace falta
+ * slugify: cada Etiqueta ya guarda su propio slug). Null si no existe para
+ * la marca.
+ */
+export const getEtiquetaBySlug = unstable_cache(
+  async (slug: string) =>
+    prisma.etiqueta.findFirst({
+      where: { slug, brandId: PUBLIC_BRAND_ID },
+      select: { id: true, nombre: true, slug: true },
+    }),
+  ["etiqueta-by-slug"],
+  { revalidate: 300, tags: ["etiquetas"] },
+);
+
+/**
+ * Public packages tagged with una Etiqueta dada (join PaqueteEtiqueta). Usado
+ * por /tag/[slug]. Mismo select/include/orden que `getPaquetesByTipo` — la
+ * grilla (PackageCard) espera esa forma exacta.
+ */
+export const getPaquetesByEtiqueta = unstable_cache(
+  async (etiquetaId: string) =>
+    prisma.paquete.findMany({
+      where: {
+        publicado: true,
+        deletedAt: null,
+        brandId: PUBLIC_BRAND_ID,
+        etiquetas: { some: { etiquetaId } },
+        ...vigenciaActivaWhere(),
+      },
+      orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
+      include: {
+        fotos: { take: 1, orderBy: { orden: "asc" } },
+        destinos: { orderBy: { orden: "asc" }, include: { ciudad: true } },
+        // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
+        // con noches propias): las noches reales viven en el circuito asignado.
+        circuitos: {
+          take: 1,
+          orderBy: { orden: "asc" },
+          select: { circuito: { select: { noches: true } } },
+        },
+      },
+    }),
+  ["paquetes-by-etiqueta"],
+  { revalidate: 60, tags: ["paquetes"] },
+);
+
 export const getRegionesPublicas = unstable_cache(
   async () =>
     prisma.region.findMany({

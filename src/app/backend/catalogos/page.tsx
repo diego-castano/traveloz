@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Check,
   X,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -398,6 +400,60 @@ function RegimenesTab() {
 }
 
 // ---------------------------------------------------------------------------
+// EtiquetaUrlCell — celda "URL pública" del catálogo de Etiquetas. Cada
+// etiqueta arma su propia landing pública en /tag/<slug>; acá se expone con
+// acceso fácil: copiar (con feedback por toast, igual que el resto del tab)
+// y abrir en pestaña nueva. La fila entera abre el modal de edición al hacer
+// click (ver CatalogEditor → DataTableRow interactive), así que el wrapper
+// frena la propagación para que copiar/abrir no dispare también el modal.
+// ---------------------------------------------------------------------------
+
+const etiquetaUrlIconBtn =
+  "inline-flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700";
+
+function EtiquetaUrlCell({ slug }: { slug: string }) {
+  const { toast } = useToast();
+  const path = `/tag/${slug}`;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}${path}`);
+      toast("success", "URL copiada", `${path} se copió al portapapeles.`);
+    } catch {
+      toast("error", "No se pudo copiar", "Copiá la URL manualmente.");
+    }
+  };
+
+  return (
+    <div
+      className="flex items-center gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="font-mono text-[12px] text-neutral-500">{path}</span>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className={etiquetaUrlIconBtn}
+        aria-label="Copiar URL pública"
+        title="Copiar URL"
+      >
+        <Copy className="h-[13px] w-[13px]" strokeWidth={1.75} />
+      </button>
+      <a
+        href={path}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={etiquetaUrlIconBtn}
+        aria-label="Abrir página pública"
+        title="Abrir página pública"
+      >
+        <ExternalLink className="h-[13px] w-[13px]" strokeWidth={1.75} />
+      </a>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // EtiquetasTab
 // ---------------------------------------------------------------------------
 
@@ -437,6 +493,10 @@ function EtiquetasTab() {
           header: "Slug",
           cell: (r) => r.slug,
           variant: "mono",
+        },
+        {
+          header: "URL pública",
+          cell: (r) => <EtiquetaUrlCell slug={r.slug} />,
         },
       ]}
       fields={[
