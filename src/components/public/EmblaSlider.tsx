@@ -20,6 +20,12 @@ type Props = {
    */
   duration?: number;
   showDots?: boolean;
+  /**
+   * Cantidad REAL de ítems para los dots. Cuando las slides están duplicadas
+   * para forzar el loop de Embla (ver HomeCategorias), los snaps clonados se
+   * mapean módulo a este número: 6 snaps / dotsCount=3 → 3 dots.
+   */
+  dotsCount?: number;
   showArrows?: boolean;
   loop?: boolean;
   /**
@@ -39,6 +45,7 @@ export function EmblaSlider({
   autoplayDelay = 3000,
   duration,
   showDots = false,
+  dotsCount,
   showArrows = true,
   loop = true,
   centerModeMobile = false,
@@ -121,6 +128,33 @@ export function EmblaSlider({
   const prevIndex = (selectedIndex - 1 + n) % n;
   const nextIndex = (selectedIndex + 1) % n;
 
+  // Dots por ítem real cuando las slides están duplicadas para forzar el
+  // loop (ver doc de dotsCount en Props / HomeCategorias). Si no vino
+  // dotsCount, o no hay menos dots que snaps, comportamiento de siempre: un
+  // dot por snap.
+  const effectiveDotsCount =
+    dotsCount !== undefined && dotsCount > 0 && dotsCount < scrollSnaps.length
+      ? dotsCount
+      : scrollSnaps.length;
+  const dotsRemapped = effectiveDotsCount !== scrollSnaps.length;
+
+  const scrollToDot = (dot: number) => {
+    if (!dotsRemapped) {
+      scrollTo(dot);
+      return;
+    }
+    // Cada dot representa varios snaps clonados (p. ej. dot 0 -> snaps 0 y 3
+    // con 6 snaps/dotsCount=3). Vamos al candidato más cercano al snap
+    // actual para no dar una vuelta entera hasta el primero.
+    const candidates = scrollSnaps
+      .map((_, s) => s)
+      .filter((s) => s % effectiveDotsCount === dot);
+    const closest = candidates.reduce((best, s) =>
+      Math.abs(s - selectedIndex) < Math.abs(best - selectedIndex) ? s : best,
+    );
+    scrollTo(closest);
+  };
+
   return (
     // position:relative ancla las flechas y los dots (.slick-dots, position:absolute
     // bottom:-25px del slick-theme) a este wrapper. Sin esto se anclan al
@@ -190,16 +224,25 @@ export function EmblaSlider({
           </button>
         </>
       )}
-      {/* Solo mostramos dots si hay más de una página para navegar. Cuando el
-          contenido entra en una sola vista (p. ej. 3 ítems con slidesToShow=3)
-          Embla devuelve un único snap y quedaba un dot colgado suelto. */}
-      {showDots && scrollSnaps.length > 1 && (
+      {/* Solo mostramos dots si hay más de una página para navegar (cantidad
+          EFECTIVA de dots — ver dotsCount arriba — no scrollSnaps.length a
+          secas). Cuando el contenido entra en una sola vista (p. ej. 3 ítems
+          con slidesToShow=3) Embla devuelve un único snap y quedaba un dot
+          colgado suelto. */}
+      {showDots && effectiveDotsCount > 1 && (
         <ul className="slick-dots">
-          {scrollSnaps.map((_, i) => (
-            <li key={i} className={i === selectedIndex ? "slick-active" : ""}>
+          {Array.from({ length: effectiveDotsCount }, (_, i) => (
+            <li
+              key={i}
+              className={
+                (dotsRemapped ? selectedIndex % effectiveDotsCount : selectedIndex) === i
+                  ? "slick-active"
+                  : ""
+              }
+            >
               <button
                 type="button"
-                onClick={() => scrollTo(i)}
+                onClick={() => scrollToDot(i)}
                 aria-label={`Slide ${i + 1}`}
               />
             </li>

@@ -20,7 +20,9 @@ export function HomeCategorias({
   // (con slidesToShow=3 y exactamente 3 categorías, 3 x 33.3% = 100%, sin
   // overflow). La referencia aprobada (html_inicial) resuelve esto duplicando
   // las slides x2 para forzar overflow y que loop + autoplay + dots funcionen.
-  // Con 4+ categorías ya hay overflow natural, así que no duplicamos.
+  // Con 4+ categorías ya hay overflow natural, así que no duplicamos. Esto
+  // infla los snaps de Embla (6 snaps para 3 categorías); los dots se
+  // corrigen aparte pasando dotsCount al EmblaSlider más abajo.
   const slidesForCarousel =
     shownItems.length <= slidesToShow
       ? [...shownItems, ...shownItems]
@@ -40,6 +42,8 @@ export function HomeCategorias({
           loop
           showArrows
           showDots
+          // Un dot por categoría real, no por slide duplicada.
+          dotsCount={shownItems.length}
           centerModeMobile
           className="image-box-slider"
         >
