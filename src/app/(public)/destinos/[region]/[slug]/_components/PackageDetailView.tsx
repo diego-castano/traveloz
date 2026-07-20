@@ -259,21 +259,27 @@ const SCOPED_STYLES = `
      precio hace evidente que son opciones distintas, sin etiqueta "Opción N". */
   .pkg-detail .opcion-card.text-box.style1 {
     background: #fff;
-    border: 1px solid #e3d9ef;
-    border-radius: 12px;
+    border: 1px solid #e6e6e6;
+    border-radius: 10px;
     padding: 22px 24px;
     margin-top: 18px;
   }
-  /* Nombre del hotel: violeta + serif Rufina, con las estrellas ARRIBA — igual
-     que la referencia. No forzamos font-family ni flex-direction: dejamos el
-     column-reverse del template (estrellas sobre el nombre) y la herencia de la
-     regla h1..h6 { font-family: Rufina } de site.css. Así el nombre (serif) y el
-     precio (sans rosa) quedan en fonts distintas, como en el HTML original. */
+  /* Nombre del hotel: sans Clarika Geometric, con las estrellas INLINE a la
+     derecha — la referencia vigente es el diseño del cliente, no la serif
+     Rufina con estrellas arriba del template original. Forzamos flex-direction
+     para pisar el column-reverse de .text-box.style1 .h4 en site.css, y
+     font-family para pisar la herencia h1..h6 { font-family: Rufina }. */
   .pkg-detail .opcion-card .h4 {
-    gap: 4px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Clarika Geometric';
+    font-size: 17px;
+    font-weight: 700;
     margin-bottom: 4px;
   }
-  .pkg-detail .opcion-card .h4 ul li i { font-size: 14px; }
+  .pkg-detail .opcion-card .h4 ul li i { font-size: 13px; }
 
   /* Hoteles dentro de la opción: a partir del 2.º, divisor sutil para leer
      "estos hoteles van juntos en esta opción". */
@@ -286,15 +292,19 @@ const SCOPED_STYLES = `
   /* Régimen en una sola línea gris, igual que el PDF. */
   .pkg-detail .opcion-card .hotel-detail {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     color: #8a8a8a;
     line-height: 1.4;
   }
 
-  /* Fila de precio de la opción — sin borde superior (como el PDF), apenas
-     separada de los hoteles. */
+  /* Fila de precio de la opción — divisor de borde a borde, como el diseño del
+     cliente ("sin borde superior, como el PDF" ya no aplica: el diseño nuevo SÍ
+     lleva divisor). Los márgenes negativos matchean el padding horizontal del
+     card en desktop (22px 24px) para que la línea llegue borde a borde. */
   .pkg-detail .opcion-card .meta {
-    margin-top: 16px;
+    border-top: 1px solid #ececec;
+    margin: 16px -24px 0;
+    padding: 14px 24px 0;
     /* La salida (izq) comparte la línea base del precio (der); el subtítulo
        "Por persona en base doble" queda debajo de ambos. */
     align-items: baseline;
@@ -306,6 +316,15 @@ const SCOPED_STYLES = `
   .pkg-detail .opcion-card .meta .left .icon {
     color: #A05ED3;
     margin-right: 6px;
+  }
+  .pkg-detail .opcion-card .meta .right .price {
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .pkg-detail .opcion-card .meta .right p {
+    font-size: 12.5px;
+    color: #8a8a8a;
+    margin: 2px 0 0;
   }
   .pkg-detail .opcion-card .price-consult {
     font-size: 15px;
@@ -383,11 +402,11 @@ const SCOPED_STYLES = `
 
     /* Contenedor de opción y hoteles en mobile — más compacto. */
     .pkg-detail .opcion-card.text-box.style1 { padding: 16px 16px; margin-top: 14px; }
-    .pkg-detail .opcion-card .h4 { font-size: 18px; gap: 4px; }
+    .pkg-detail .opcion-card .h4 { font-size: 16px; gap: 4px; flex-wrap: wrap; }
     .pkg-detail .opcion-card .h4 ul li i { font-size: 12px; }
     .pkg-detail .opcion-card .hotel-detail { font-size: 13px; }
     .pkg-detail .hotel-item-divided { margin-top: 12px; padding-top: 12px; }
-    .pkg-detail .opcion-card .meta { margin-top: 14px; }
+    .pkg-detail .opcion-card .meta { margin: 14px -16px 0; padding: 12px 16px 0; }
     .pkg-detail .opcion-card .meta .price { font-size: 18px; }
   }
 `;
