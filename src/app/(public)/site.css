@@ -1012,6 +1012,14 @@ section {
     left: 20px
 }
 
+/* Flechas del slider de categorías (image-box-slider sin .alt): el SVG del
+   EmblaSlider no trae fill, así que caían a negro. La referencia (main.js)
+   las usa en gris #9A9A9A. El .alt (destinos) las pisa más abajo con su
+   propio gris. */
+.image-box-slider .slick-arrow path {
+    fill: #9A9A9A;
+}
+
 .image-box-slider.alt .slick-arrow path {
     fill: #777 !important
 }
@@ -3897,8 +3905,29 @@ header.header-area.header-dark {
 
     .terms-banner-area .terms_bg_img {
         bottom: -20px;
-        width: 190px;
+        width: 150px;
         right: 0;
+    }
+
+    /* El título largo ("Términos y condiciones de compra") con la columna
+       ancha (col-10) chocaba con el avión del fondo y los boarding passes en
+       pantallas anchas (>=~400px). Acotamos el texto a la mitad izquierda y
+       bajamos el título a 28px para que siempre envuelva en 3 líneas que
+       libran los gráficos de la derecha en todos los anchos de teléfono. */
+    .terms-banner-area .col-10 {
+        flex: 0 0 54%;
+        max-width: 54%;
+    }
+
+    .terms-banner-area .h1 {
+        font-size: 28px;
+    }
+
+    /* Mismo criterio en el banner de FAQ: acotamos el texto a la izquierda
+       para que el subtítulo no roce la mano con el avión del fondo. */
+    .faq-banner-area .col-8 {
+        flex: 0 0 56%;
+        max-width: 56%;
     }
 
     .faq-accordion.style2 .accordion-button {
