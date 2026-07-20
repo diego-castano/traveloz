@@ -3626,18 +3626,19 @@ header.header-area.header-dark {
         margin: 0 auto;
     }
 
-    .icon-teaser-slider .slide.slick-slide {
+    /* centerMode del carrusel de valores con las clases de Embla (antes
+       apuntaba a .slick-slide/.slick-center, muertas tras migrar a Embla):
+       la card central queda a escala 1 y opaca, las vecinas asoman
+       atenuadas y más chicas. */
+    .icon-teaser-slider .embla__slide-inner {
         transition: transform .6s ease, opacity .6s ease;
         transform: scale(0.85);
         opacity: 0.5;
-        position: relative;
-        z-index: 1;
     }
 
-    .icon-teaser-slider .slide.slick-slide.slick-center {
+    .icon-teaser-slider .embla__slide-inner.is-center {
         transform: scale(1);
         opacity: 1;
-        z-index: 2;
     }
 
     .icon-teaser-slider .slick-list {
@@ -4898,6 +4899,13 @@ header.header-area.header-dark {
     top: 15%;
     right: -10px;
   }
+}
+
+/* Carrusel "Nuestros valores" de /corporativo (EmblaSlider): el SVG de las
+   flechas no trae fill propio y por defecto queda negro; lo pintamos gris
+   para que combine con el resto del sitio. */
+.icon-teaser-slider .slick-arrow path {
+  fill: #9A9A9A;
 }
 
 /* ── Corporativo: header dark ── */

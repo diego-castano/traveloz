@@ -130,7 +130,8 @@ export function CorporativoView({
               autoplay
               autoplayDelay={5000}
               loop
-              showArrows={false}
+              centerModeMobile
+              showArrows
               showDots
               className="icon-teaser-slider"
             >
