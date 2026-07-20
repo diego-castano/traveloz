@@ -4472,6 +4472,56 @@ header.header-area.header-dark {
         width: 120px;
     }
 
+    /* Tarjetas del LISTADO de destinos en mobile (.box-card.alt = grids de
+       RegionExplorer). El mockup del cliente las muestra más grandes: foto casi
+       cuadrada y tipografía mayor. Scopeado a .alt para no tocar los sliders del
+       home/detalle, y con .box-card.alt img para ganarle a la regla base de 240px. */
+    .box-card.alt img {
+        height: 300px
+    }
+
+    .box-card.alt .title {
+        font-size: 30px
+    }
+
+    .box-card.alt .text>p {
+        font-size: 16px;
+        margin-bottom: 12px
+    }
+
+    .box-card.alt .text ul {
+        font-size: 15px
+    }
+
+    .box-card.alt .text ul li {
+        line-height: 22px;
+        margin-bottom: 4px
+    }
+
+    .box-card.alt .price-left .title {
+        font-size: 11px;
+        letter-spacing: 1.5px;
+    }
+
+    .box-card.alt .price-left .title2 {
+        font-size: 15px;
+        letter-spacing: 2.5px;
+    }
+
+    .box-card.alt .main-price {
+        font-size: 44px;
+        line-height: 1;
+    }
+
+    .box-card.alt .text .text-end {
+        font-size: 13px;
+        line-height: 17px;
+    }
+
+    .box-card.alt .text {
+        padding: 20px;
+    }
+
 }
 
 /* =============================================
