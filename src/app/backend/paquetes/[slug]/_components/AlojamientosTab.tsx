@@ -1701,19 +1701,30 @@ const OpcionCard = forwardRef<HTMLDivElement, OpcionCardProps>(function OpcionCa
               )}
             </div>
             {canEdit ? (
-              <input
-                type="text"
-                value={opcion.textoDisplay ?? ""}
-                placeholder="Texto público (ej. All Inclusive 5★)…"
-                onChange={(e) =>
-                  onUpdateTextoDisplay(opcion, e.target.value)
-                }
-                className="text-[12px] text-neutral-500 bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-teal-400 focus:outline-none transition-colors px-0 py-0.5 w-full max-w-[420px]"
-              />
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold mb-1">
+                  Etiqueta pública · opcional
+                </p>
+                <input
+                  type="text"
+                  value={opcion.textoDisplay ?? ""}
+                  placeholder='Ej: "Setiembre y Octubre" — aparece junto al calendario en la web'
+                  title="Se muestra junto al calendario en la card pública de esta opción. Si queda vacío, la web usa las salidas generales del paquete."
+                  onChange={(e) =>
+                    onUpdateTextoDisplay(opcion, e.target.value)
+                  }
+                  className="text-[12px] text-neutral-500 bg-transparent border-b border-transparent hover:border-neutral-200 focus:border-teal-400 focus:outline-none transition-colors px-0 py-0.5 w-full max-w-[420px]"
+                />
+              </div>
             ) : opcion.textoDisplay ? (
-              <p className="text-[12px] text-neutral-500">
-                {opcion.textoDisplay}
-              </p>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-semibold mb-1">
+                  Etiqueta pública · opcional
+                </p>
+                <p className="text-[12px] text-neutral-500">
+                  {opcion.textoDisplay}
+                </p>
+              </div>
             ) : null}
           </div>
           {canEdit && (

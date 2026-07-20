@@ -242,6 +242,7 @@ export default async function PackageDetailPage({
           opcionesHoteleras: paquete.opcionesHoteleras.map((opt) => ({
             id: opt.id,
             nombre: opt.nombre,
+            textoDisplay: opt.textoDisplay,
             precioVenta: opt.precioVenta,
             hoteles: opt.hoteles.map((h) => ({
               id: h.id,

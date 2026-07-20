@@ -51,6 +51,9 @@ type Hotel = {
 type Opcion = {
   id: string;
   nombre: string;
+  /** Etiqueta pública opcional de temporada (ej. "Setiembre y Octubre").
+   *  Si es null/vacía, la card cae al fallback `paquete.salidas`. */
+  textoDisplay: string | null;
   precioVenta: number;
   hoteles: Hotel[];
 };
@@ -853,6 +856,10 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                           .map((opt, optIdx) => {
                             const moneda = paquete.precioDesdeMoneda ?? "USD";
                             const hasPrice = opt.precioVenta > 0;
+                            // Etiqueta pública por opción — p. ej. temporada — con
+                            // fallback a las salidas generales del paquete.
+                            const fechaLabel =
+                              opt.textoDisplay?.trim() || paquete.salidas;
                             return (
                               <div
                                 key={opt.id}
@@ -918,12 +925,12 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                                     interno por hotel. */}
                                 <div className="meta">
                                   <div className="left">
-                                    {paquete.salidas && (
+                                    {fechaLabel && (
                                       <p className="date">
                                         <span className="icon">
                                           <i className="fa-regular fa-calendar-check"></i>
                                         </span>
-                                        {paquete.salidas}
+                                        {fechaLabel}
                                       </p>
                                     )}
                                   </div>
