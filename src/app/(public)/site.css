@@ -3626,19 +3626,33 @@ header.header-area.header-dark {
         margin: 0 auto;
     }
 
-    /* centerMode del carrusel de valores con las clases de Embla (antes
-       apuntaba a .slick-slide/.slick-center, muertas tras migrar a Embla):
-       la card central queda a escala 1 y opaca, las vecinas asoman
-       atenuadas y más chicas. */
+    /* Efecto 3D/coverflow del carrusel de valores con las clases de Embla
+       (antes apuntaba a .slick-slide/.slick-center, muertas tras migrar a
+       Embla): la card central queda a escala 1, opaca y con z-index alto; las
+       vecinas se achican, se atenúan y se TIRAN hacia el centro (translateX)
+       para meterse DETRÁS de los bordes de la central, dando profundidad,
+       como la referencia de diseño. Valores calibrados con Playwright. */
     .icon-teaser-slider .embla__slide-inner {
         transition: transform .6s ease, opacity .6s ease;
-        transform: scale(0.85);
-        opacity: 0.5;
+        transform: scale(0.72);
+        opacity: 0.35;
+        position: relative;
     }
 
     .icon-teaser-slider .embla__slide-inner.is-center {
         transform: scale(1);
         opacity: 1;
+        z-index: 30;
+    }
+
+    .icon-teaser-slider .embla__slide-inner.is-prev {
+        transform: scale(0.72) translateX(34%);
+        z-index: 10;
+    }
+
+    .icon-teaser-slider .embla__slide-inner.is-next {
+        transform: scale(0.72) translateX(-34%);
+        z-index: 10;
     }
 
     .icon-teaser-slider .slick-list {
