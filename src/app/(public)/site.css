@@ -1162,38 +1162,13 @@ section {
     height: 120px
 }
 
-/* Destino detalle: el form de la derecha cierra a la misma altura que la
-   tarjeta principal (diseño de referencia) y el textarea de comentarios
-   absorbe la diferencia. Solo cuando las columnas van lado a lado (≥768px). */
+/* Destino detalle: el form de la derecha ocupa su altura natural y acompaña
+   el scroll dentro de su columna (sticky del template). El top despeja el
+   header fijo (~105px). Antes se estiraba al alto de la tarjeta principal
+   (textarea absorbía la diferencia) — revertido a pedido del cliente. */
 @media (min-width: 768px) {
     .pkg-detail .sidebar-form.sticky {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .pkg-detail .sidebar-form form {
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .pkg-detail .sidebar-form form ul {
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .pkg-detail .sidebar-form form li.field-grow {
-        flex: 1 1 auto;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .pkg-detail .sidebar-form form li.field-grow textarea {
-        flex: 1 1 auto;
-        height: auto;
-        min-height: 120px;
+        top: 120px;
     }
 }
 
