@@ -970,16 +970,28 @@ section {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid #785AE5;
     background: #fff;
     z-index: 1;
     transition: all 0.4s
 }
 
+.destinos-slider .slick-arrow,
+.box-slider .slick-arrow {
+    border: 2px solid #785AE5;
+}
+
+/* Flechas del slider de destinos: grises (no violetas), como el diseño original */
+.image-box-slider.alt .slick-arrow {
+    border: 2px solid #d9d9d9;
+}
+
 .destinos-slider .slick-arrow:hover,
-.box-slider .slick-arrow:hover,
-.image-box-slider.alt .slick-arrow:hover {
+.box-slider .slick-arrow:hover {
     background: #785AE5;
+}
+
+.image-box-slider.alt .slick-arrow:hover {
+    background: #777;
 }
 
 .destinos-slider .slick-arrow svg,
@@ -1001,7 +1013,7 @@ section {
 }
 
 .image-box-slider.alt .slick-arrow path {
-    fill: #785AE5 !important
+    fill: #777 !important
 }
 
 .destinos-slider .slick-arrow:hover path,
@@ -2489,13 +2501,32 @@ strong {
 @media (max-width: 767px) {
     .image-box-slider .embla__slide-inner {
         transition: transform 0.4s;
-        transform: scale(0.88);
+        transform: scale(0.75);
+        position: relative;
     }
 
     .image-box-slider .embla__slide-inner.is-center {
         transform: scale(1);
-        position: relative;
-        z-index: 2;
+        z-index: 30;
+    }
+
+    /* Coverflow: las vecinas inmediatas se tiran hacia el centro (translateX)
+       para meterse DETRÁS de los bordes de la card central, sin gaps, igual
+       que el diseño original (slick usaba scale(0.7) translate). % relativo al
+       ancho de la propia card, así queda robusto en todos los anchos. */
+    .image-box-slider .embla__slide-inner.is-prev {
+        transform: scale(0.75) translateX(22%);
+        z-index: 10;
+    }
+
+    .image-box-slider .embla__slide-inner.is-next {
+        transform: scale(0.75) translateX(-22%);
+        z-index: 10;
+    }
+
+    /* Las flechas deben quedar por encima de la card central (z-index: 30) */
+    .image-box-slider .slick-arrow {
+        z-index: 40;
     }
 }
 

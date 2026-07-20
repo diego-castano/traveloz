@@ -114,6 +114,13 @@ export function EmblaSlider({
     minWidth: 0,
   };
 
+  // Índices de las vecinas inmediatas a la central, con wrap por el loop.
+  // Con n < 3 podrían coincidir con el de la central; se descartan en ese
+  // caso (guard más abajo) ya que ambos sliders reales tienen 3+ ítems.
+  const n = children.length;
+  const prevIndex = (selectedIndex - 1 + n) % n;
+  const nextIndex = (selectedIndex + 1) % n;
+
   return (
     // position:relative ancla las flechas y los dots (.slick-dots, position:absolute
     // bottom:-25px del slick-theme) a este wrapper. Sin esto se anclan al
@@ -134,15 +141,24 @@ export function EmblaSlider({
             // Embla tocó queda sin achicar -> peek asimétrico/errático. Por
             // eso el scale de .is-center vive en un wrapper interno que
             // Embla nunca toca.
-            <div className="embla__slide slide" style={slideStyle} key={i}>
-              <div
-                className={`embla__slide-inner${
-                  centered && i === selectedIndex ? " is-center" : ""
-                }`}
-              >
-                {child}
-              </div>
-            </div>
+            // is-prev/is-next habilitan el efecto coverflow (vecinas tiradas
+            // hacia el centro, detrás de los bordes de la central) del CSS.
+            (() => {
+              const isCenter = centered && i === selectedIndex;
+              const isPrev = centered && i === prevIndex && prevIndex !== selectedIndex;
+              const isNext = centered && i === nextIndex && nextIndex !== selectedIndex;
+              return (
+                <div className="embla__slide slide" style={slideStyle} key={i}>
+                  <div
+                    className={`embla__slide-inner${isCenter ? " is-center" : ""}${
+                      isPrev ? " is-prev" : ""
+                    }${isNext ? " is-next" : ""}`}
+                  >
+                    {child}
+                  </div>
+                </div>
+              );
+            })()
           ))}
         </div>
       </div>
