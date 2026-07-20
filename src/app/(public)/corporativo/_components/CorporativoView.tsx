@@ -16,6 +16,7 @@ import { FormStatus } from "@/components/public/FormStatus";
 import HoneypotField from "@/components/public/HoneypotField";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Typewriter } from "@/components/public/Typewriter";
+import { HeroVideo } from "@/components/public/HeroVideo";
 
 type Settings = Record<string, string>;
 
@@ -89,17 +90,11 @@ export function CorporativoView({
     <>
       {/* Hero with video */}
       <section className="hero-area relative">
-        <video
+        <HeroVideo
           key={heroVideo}
-          className="hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="none"
-        >
-          <source src={heroVideo} type="video/mp4" />
-        </video>
+          src={heroVideo}
+          poster="/site/img/corporativo-hero-poster.webp"
+        />
         <div className="container z-99">
           <div className="hero-inner text-sm-center text-start p_150">
             <Typewriter

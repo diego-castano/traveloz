@@ -7,6 +7,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useVideoAutoplay } from "@/components/public/HeroVideo";
 
 export function WorkVideo({
   videoUrl,
@@ -25,6 +26,10 @@ export function WorkVideo({
   useEffect(() => {
     if (videoRef.current && videoRef.current.readyState >= 2) setReady(true);
   }, []);
+
+  // Fallback para Modo de bajo consumo de iOS: si el autoplay queda
+  // bloqueado, arranca en el primer scroll/toque de la página.
+  useVideoAutoplay(videoRef, videoUrl);
 
   if (!videoUrl) {
     // Sin video configurado: se mantiene la imagen de fallback.

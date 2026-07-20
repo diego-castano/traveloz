@@ -1,4 +1,5 @@
 import { Skeleton } from "./SkeletonClient";
+import { HeroVideo } from "./HeroVideo";
 
 type Props = {
   title: string;
@@ -18,16 +19,7 @@ export function HomeHero({
   return (
     <Skeleton name="home-hero" loading={false}>
       <section className="hero-area relative">
-        <video
-          className="hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-        >
-          <source src={videoUrl} type="video/mp4" />
-        </video>
+        <HeroVideo src={videoUrl} poster="/site/img/home-hero-poster.webp" />
         <div className="container z-99">
           <div className="hero-inner text-sm-center text-start p_150">
             <h1 className="hero-text">{title}</h1>
