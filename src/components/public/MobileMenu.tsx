@@ -24,11 +24,7 @@ type Props = { items: Item[] };
 export function MobileMenu({ items }: Props) {
   const [open, setOpen] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
-  // --- Destaca el item CORPORATIVO cuando estamos en esa sección (header
-  // oscuro). Acotado a esa ruta puntual: el resto de las páginas no tienen
-  // hoy un indicador de "activo" y no queremos sumarles uno de paso.
   const pathname = usePathname();
-  const isCorporativoSection = pathname?.startsWith("/corporativo") ?? false;
 
   useEffect(() => {
     const body = document.body;
@@ -62,8 +58,12 @@ export function MobileMenu({ items }: Props) {
             {items.map((item) => {
               const hasSub = !!item.submenu?.length;
               const subOpen = openSubmenu === item.label;
+              // Marca como actual cualquier item top-level cuya ruta
+              // coincida con la sección de la página en la que estamos.
               const isCurrent =
-                item.href === "/corporativo" && isCorporativoSection;
+                item.href !== "/" &&
+                (pathname === item.href ||
+                  (pathname?.startsWith(item.href + "/") ?? false));
               return (
                 <li
                   key={item.label}

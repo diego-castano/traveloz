@@ -3168,6 +3168,25 @@ header.header-area.header-dark {
         font-weight: 500
     }
 
+    /* Menú mobile: el ítem de la sección actual (nav-current) y el que se
+       toca se pintan de rojo, replicando el hover/selected rojo de desktop
+       (que en touch no existe). El #menu (id) + !important gana sobre el
+       color atenuado de .header-dark en corporativo. */
+    nav#menu ul li a.nav-current,
+    nav#menu ul li a:hover,
+    nav#menu ul li a:focus,
+    nav#menu ul li a:active,
+    nav#menu ul ul li a:hover,
+    nav#menu ul ul li a:focus,
+    nav#menu ul ul li a:active {
+        color: #F43E55 !important;
+    }
+
+    nav#menu ul li a.nav-current {
+        text-decoration: underline;
+        text-underline-offset: 8px;
+    }
+
     .header-menu a::before {
         display: none
     }
