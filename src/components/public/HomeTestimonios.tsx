@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { EmblaSlider } from "./EmblaSlider";
 
 type T = {
@@ -19,7 +20,25 @@ export function HomeTestimonios({
   title: string;
   items: T[];
 }) {
+  // Ids de testimonios expandidos en mobile: replica el
+  // `classList.toggle('expanded')` del JS de referencia (main.js),
+  // pero guardado en estado de React en vez de tocar el DOM directo.
+  // OJO: los hooks van antes de cualquier early return (Rules of Hooks).
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   if (items.length === 0) return null;
+
   return (
     <section className="content-area">
       <div className="container smalls">
@@ -38,7 +57,9 @@ export function HomeTestimonios({
           showArrows
           className="image-text-slider"
         >
-          {items.map((t) => (
+          {items.map((t) => {
+            const isExpanded = expanded.has(t.id);
+            return (
             <div key={t.id}>
               <div className="row align-items-center">
                 <div className="col-lg-6">
@@ -63,10 +84,19 @@ export function HomeTestimonios({
                       {t.ubicacion}
                     </span>
                     <h3 className="title">{t.titulo}</h3>
-                    <div className="expand-wrapper">
+                    <div className={`expand-wrapper${isExpanded ? " expanded" : ""}`}>
                       <div className="expand-content">
                         <p>{t.texto}</p>
                       </div>
+                      <button
+                        type="button"
+                        className="expand-toggle"
+                        aria-label={isExpanded ? "Ver menos" : "Ver más"}
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleExpanded(t.id)}
+                      >
+                        <span className="arrow"><em className="fa-solid fa-angle-down" /></span>
+                      </button>
                     </div>
                     <div className="meta">
                       <ul>
@@ -82,7 +112,8 @@ export function HomeTestimonios({
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </EmblaSlider>
       </div>
     </section>

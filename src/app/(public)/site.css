@@ -4267,14 +4267,19 @@ header.header-area.header-dark {
         padding-top: 50px
     }
 
+    /* top en vw (no %): la imagen tiene aspect-ratio 664/453 a ancho
+       completo del viewport, así que 26vw ≈ el centro vertical de la
+       imagen. Usar % de la tarjeta entera (imagen + texto) dejaba las
+       flechas por encima del centro y las corría si el relato se
+       expandía o el título ocupaba dos líneas. */
     .image-text-slider .slick-prev {
         left: -25px;
-        top: 15%;
+        top: 26vw;
     }
 
     .image-text-slider .slick-next {
         right: -25px;
-        top: 15%;
+        top: 26vw;
     }
 
     .expand-wrapper {
