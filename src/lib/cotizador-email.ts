@@ -32,8 +32,10 @@ export interface CotizadorLeadEmailOpts {
 // Dominio del servicio (el mismo que Railway/Resend). Cambiar acá si migra.
 export const SITE_BASE_URL = "https://app.traveloz.com.uy";
 
-// Logo de la plataforma (TravelOz).
-export const TRAVELOZ_LOGO_URL = `${SITE_BASE_URL}/header-logo.webp`;
+// Logo de la plataforma (TravelOz). No usamos header-logo.webp: mismo motivo
+// que en email.ts (proxy de Gmail rompe el alpha del webp → fondo negro;
+// Outlook no soporta webp).
+export const TRAVELOZ_LOGO_URL = `${SITE_BASE_URL}/email-logo.png`;
 
 export function cotizadorLeadEmail(opts: CotizadorLeadEmailOpts): {
   subject: string;
@@ -86,7 +88,7 @@ export function cotizadorLeadEmail(opts: CotizadorLeadEmailOpts): {
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border:1px solid #e6e8ee;border-radius:16px;overflow:hidden">
         <!-- Plataforma -->
         <tr><td style="padding:24px 28px 0;text-align:center">
-          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="26" style="height:26px;width:auto;display:inline-block" />
+          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="32" style="height:32px;width:auto;display:inline-block" />
         </td></tr>
         <tr><td style="padding:14px 28px 0"><div style="height:1px;background-color:#eef0f4;line-height:1px">&nbsp;</div></td></tr>
         <!-- Marca + título -->

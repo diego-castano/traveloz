@@ -138,7 +138,12 @@ const SITE_BASE_URL = (
   process.env.NEXTAUTH_URL ||
   "https://traveloz-production.up.railway.app"
 ).replace(/\/+$/, "");
-const TRAVELOZ_LOGO_URL = `${SITE_BASE_URL}/header-logo.webp`;
+// No usamos header-logo.webp acá: el proxy de imágenes de Gmail convierte los
+// webp con transparencia a JPEG, y el canal alpha queda como un rectángulo
+// negro detrás del logo. Outlook, además, directamente no soporta webp.
+// email-logo.png ya viene con fondo blanco horneado, así que se ve bien en
+// ambos clientes.
+const TRAVELOZ_LOGO_URL = `${SITE_BASE_URL}/email-logo.png`;
 const SITE_LABEL = SITE_BASE_URL.replace(/^https?:\/\//, "");
 
 /** Botón CTA con el color de marca. La URL la arma el caller (ya es segura). */
@@ -203,7 +208,7 @@ function brandedLayout(opts: {
     <tr><td align="center">
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border:1px solid #e6e8ee;border-radius:16px;overflow:hidden">
         <tr><td style="padding:26px 28px 0;text-align:center">
-          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="28" style="height:28px;width:auto;display:inline-block" />
+          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="32" style="height:32px;width:auto;display:inline-block" />
         </td></tr>
         <tr><td style="padding:16px 28px 0"><div style="height:2px;background-color:${BRAND_ACCENT};width:40px;margin:0 auto;border-radius:2px;line-height:2px">&nbsp;</div></td></tr>
         <tr><td style="padding:20px 32px 26px">
@@ -480,7 +485,7 @@ export function paqueteConsultaEmail(opts: {
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border:1px solid #e6e8ee;border-radius:16px;overflow:hidden">
         <!-- Logo TravelOz -->
         <tr><td style="padding:26px 28px 0;text-align:center">
-          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="28" style="height:28px;width:auto;display:inline-block" />
+          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="32" style="height:32px;width:auto;display:inline-block" />
         </td></tr>
         <tr><td style="padding:16px 28px 0"><div style="height:2px;background-color:${BRAND_ACCENT};width:40px;margin:0 auto;border-radius:2px;line-height:2px">&nbsp;</div></td></tr>
         <!-- Kicker + título del paquete -->
