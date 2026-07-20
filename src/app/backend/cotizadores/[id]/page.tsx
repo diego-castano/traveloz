@@ -6,6 +6,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCotizadorLanding } from "@/actions/cotizador.actions";
 import { parseCampos, parseRespuestas } from "@/lib/cotizador-form";
+import type { Touch } from "@/lib/atribucion";
+import { parseAtribJson } from "@/app/backend/leads/_components/atribucion-admin";
 import { CotizadorForm } from "../_components/CotizadorForm";
 import { DeleteLandingButton } from "../_components/DeleteLandingButton";
 
@@ -19,6 +21,14 @@ function fmt(d: Date): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(d));
+}
+
+// Línea compacta "fuente / campaña" para un touch de atribución. `null` si
+// el touch no tiene ninguno de los dos (ej. solo trajo referrer externo).
+function pautaCompacta(touch: Touch | null): string | null {
+  if (!touch) return null;
+  const partes = [touch.src, touch.cmp].filter(Boolean);
+  return partes.length > 0 ? partes.join(" / ") : null;
 }
 
 export default async function EditarCotizadorPage({
@@ -90,6 +100,11 @@ export default async function EditarCotizadorPage({
           <div className="space-y-3">
             {landing.leads.map((lead) => {
               const respuestas = parseRespuestas(lead.respuestas);
+              // Atribución de pauta: el Json guardado se re-valida siempre
+              // con el mismo zod de atribucion.ts antes de mostrarse (nunca
+              // se confía en el Json de la columna tal cual).
+              const pautaEntrada = pautaCompacta(parseAtribJson(lead.atribFirst));
+              const pautaUltimo = pautaCompacta(parseAtribJson(lead.atribLast));
               return (
                 <div
                   key={lead.id}
@@ -114,6 +129,22 @@ export default async function EditarCotizadorPage({
                         </div>
                       ))}
                     </dl>
+                  )}
+                  {(pautaEntrada || pautaUltimo) && (
+                    <div className="mt-3 space-y-0.5 border-t border-neutral-100 pt-2 text-xs text-neutral-500">
+                      {pautaEntrada && (
+                        <div>
+                          Pauta (entrada):{" "}
+                          <span className="text-neutral-700">{pautaEntrada}</span>
+                        </div>
+                      )}
+                      {pautaUltimo && pautaUltimo !== pautaEntrada && (
+                        <div>
+                          Pauta (último):{" "}
+                          <span className="text-neutral-700">{pautaUltimo}</span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               );

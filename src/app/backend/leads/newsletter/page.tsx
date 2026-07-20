@@ -10,11 +10,17 @@ import {
 import { useToast } from "@/components/ui/Toast";
 import { LeadsTable, relativeTime } from "../_components/LeadsTable";
 import { ExportButton } from "../_components/ExportButton";
+import {
+  parseAtribJson,
+  coalesceClickId,
+  formatTouchFecha,
+} from "../_components/atribucion-admin";
+import type { Touch } from "@/lib/atribucion";
 
 type Row = Awaited<ReturnType<typeof listSuscripciones>>[number];
 
-// Cuantos campos de consentimiento/UTM tienen dato — para decidir si
-// mostramos el icono "Detalle" en la columna. Si todo es null, no
+// Cuantos campos de consentimiento/UTM/atribución tienen dato — para decidir
+// si mostramos el icono "Detalle" en la columna. Si todo es null, no
 // saturamos la tabla con un boton que abre un popover vacio.
 function hasDetail(r: Row): boolean {
   return Boolean(
@@ -24,7 +30,9 @@ function hasDetail(r: Row): boolean {
       r.utmMedium ||
       r.utmCampaign ||
       r.utmContent ||
-      r.utmTerm,
+      r.utmTerm ||
+      r.atribFirst ||
+      r.atribLast,
   );
 }
 
@@ -192,6 +200,11 @@ function DetailPopover({ row }: { row: Row }) {
   // Truncar UA para que no rompa el layout si alguien tiene un UA gigante.
   const ua = row.consentUserAgent ?? "";
   const uaShort = ua.length > 80 ? ua.slice(0, 80) + "…" : ua;
+  // Atribución de pauta (cookie tvz_attr): el Json guardado se re-valida
+  // siempre antes de mostrarse. Semántica distinta de los utm_* de arriba,
+  // que son el snapshot legal de consentimiento al opt-in.
+  const first = parseAtribJson(row.atribFirst);
+  const last = parseAtribJson(row.atribLast);
 
   return (
     <div ref={ref} className="relative inline-block">
@@ -218,6 +231,16 @@ function DetailPopover({ row }: { row: Row }) {
             <Field label="utm_campaign" value={row.utmCampaign} />
             <Field label="utm_content" value={row.utmContent} />
             <Field label="utm_term" value={row.utmTerm} />
+            {(first || last) && (
+              <>
+                <div className="border-t border-neutral-100 my-2" />
+                <div className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider">
+                  Pauta (cookie)
+                </div>
+                {first && <TouchFields prefix="Entrada" touch={first} />}
+                {last && <TouchFields prefix="Último" touch={last} />}
+              </>
+            )}
             <div className="border-t border-neutral-100 my-2" />
             <Field
               label="Confirmado"
@@ -235,6 +258,30 @@ function DetailPopover({ row }: { row: Row }) {
         </div>
       )}
     </div>
+  );
+}
+
+// TouchFields — líneas de un touch (first o last) de la atribución de pauta,
+// reusando el mismo <Field> dt/dd de acá abajo. El prefijo ("Entrada" /
+// "Último") distingue las dos dentro de la lista plana del popover.
+function TouchFields({ prefix, touch }: { prefix: string; touch: Touch }) {
+  const click = coalesceClickId(touch);
+  return (
+    <>
+      {touch.src && <Field label={`${prefix} · Fuente`} value={touch.src} />}
+      {touch.med && <Field label={`${prefix} · Medio`} value={touch.med} />}
+      {touch.cmp && <Field label={`${prefix} · Campaña`} value={touch.cmp} />}
+      {touch.cnt && <Field label={`${prefix} · Contenido`} value={touch.cnt} />}
+      {touch.trm && <Field label={`${prefix} · Término`} value={touch.trm} />}
+      {click && (
+        <Field
+          label={`${prefix} · Click ID (${click.label})`}
+          value={click.value}
+        />
+      )}
+      {touch.lp && <Field label={`${prefix} · Landing`} value={touch.lp} />}
+      <Field label={`${prefix} · Fecha`} value={formatTouchFecha(touch.ts)} />
+    </>
   );
 }
 

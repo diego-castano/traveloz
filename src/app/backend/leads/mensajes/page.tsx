@@ -6,11 +6,13 @@ import {
   listMensajes,
   listAssignableUsers,
   assignLead,
+  getRecorridoVisitante,
 } from "@/actions/leads.actions";
 import { EstadoBadge } from "../_components/EstadoBadge";
 import { LeadsTable, relativeTime } from "../_components/LeadsTable";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
 import { ExportButton } from "../_components/ExportButton";
+import { parseAtribJson } from "../_components/atribucion-admin";
 
 type Row = Awaited<ReturnType<typeof listMensajes>>[number];
 type User = Awaited<ReturnType<typeof listAssignableUsers>>[number];
@@ -20,6 +22,9 @@ export default function MensajesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Row | null>(null);
+  const [recorrido, setRecorrido] = useState<{ url: string; ts: Date }[] | null>(
+    null,
+  );
 
   const refresh = () =>
     listMensajes()
@@ -38,6 +43,30 @@ export default function MensajesPage() {
       setOpen(fresh);
     }
   }, [rows, open]);
+
+  // Trae el recorrido de páginas vistas del visitante al abrir un row (si
+  // tiene visitanteId). Guard de carrera igual que UserProvider.tsx: si el
+  // operador cambia de fila antes de que resuelva, la respuesta vieja no
+  // debe pisar el recorrido de la fila nueva.
+  useEffect(() => {
+    let cancelled = false;
+    setRecorrido(null);
+    if (!open?.visitanteId) return;
+    getRecorridoVisitante(open.visitanteId)
+      .then((paginas) => {
+        if (cancelled) return;
+        setRecorrido(paginas.map((p) => ({ url: p.url, ts: p.createdAt })));
+      })
+      .catch((err) => {
+        console.error("Error fetching recorrido:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Solo re-dispara al cambiar de fila (id), no ante cualquier mutación
+    // de `open` (ej. reasignación) — visitanteId es fijo para un mismo id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open?.id]);
 
   return (
     <div className="p-6 space-y-4">
@@ -147,6 +176,15 @@ export default function MensajesPage() {
               }
             : undefined
         }
+        atribucion={
+          open
+            ? {
+                first: parseAtribJson(open.atribFirst),
+                last: parseAtribJson(open.atribLast),
+              }
+            : null
+        }
+        recorrido={recorrido}
         data={
           open
             ? {

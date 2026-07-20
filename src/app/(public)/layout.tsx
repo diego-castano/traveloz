@@ -26,6 +26,7 @@ import { AgenciaModal } from "@/components/public/AgenciaModal";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
 import { CotizarCTA } from "@/components/public/CotizarCTA";
 import { ComingSoon } from "@/components/public/ComingSoon";
+import { AtribucionTracker } from "@/components/public/AtribucionTracker";
 import { getSiteSettings } from "@/lib/public-data";
 import { auth } from "@/lib/auth.config";
 // Boneyard pre-generated bones. Built by `npm run bones` (local) and
@@ -68,10 +69,15 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   const comingSoon = generalSettings.coming_soon_activo === "true";
   if (comingSoon && !session?.user) {
     return (
-      <ComingSoon
-        titulo={generalSettings.coming_soon_titulo}
-        mensaje={generalSettings.coming_soon_mensaje}
-      />
+      <>
+        <ComingSoon
+          titulo={generalSettings.coming_soon_titulo}
+          mensaje={generalSettings.coming_soon_mensaje}
+        />
+        {/* Con el gate activo igual capturamos: si no, el anónimo llegaría a una
+            landing sin cookie previa. */}
+        <AtribucionTracker />
+      </>
     );
   }
 
@@ -85,6 +91,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
 
       <CotizarCTA />
       <WhatsAppButton />
+      <AtribucionTracker />
       <AgenciaModal certificadoUrl={footerSettings.agencia_certificado_url} />
     </>
   );

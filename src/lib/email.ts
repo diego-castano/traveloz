@@ -354,6 +354,8 @@ export function leadNotificationEmail(opts: {
   tipo: string;
   campos: { label: string; value: string }[];
   origen?: string | null;
+  /** Resumen corto de atribución de pauta (ver `resumenPauta` en atribucion.ts). */
+  pauta?: string | null;
 }): { subject: string; html: string; text: string } {
   const subject = `Nuevo lead — ${opts.tipo}`;
   const body = `
@@ -365,14 +367,27 @@ export function leadNotificationEmail(opts: {
       opts.origen
         ? PMUTED(`Origen: ${escapeHtml(opts.origen)}`)
         : ""
+    }
+    ${
+      opts.pauta
+        ? PMUTED(`Pauta: ${escapeHtml(opts.pauta)}`)
+        : ""
     }`;
+  // Origen y pauta van pegados como dos líneas de meta-info, separadas del
+  // bloque de campos por una línea en blanco (el "\n" inicial embebido en la
+  // primera línea no vacía logra eso sin depender de un "" suelto — el join
+  // de abajo ya usa filter(Boolean), que descartaría un "" suelto).
+  const metaLines = [
+    opts.origen ? `Origen: ${opts.origen}` : null,
+    opts.pauta ? `Pauta: ${opts.pauta}` : null,
+  ].filter((l): l is string => l !== null);
   const text = [
     subject,
     "",
     ...opts.campos
       .filter((c) => c.value != null && String(c.value).trim() !== "")
       .map((c) => `${c.label}: ${c.value}`),
-    opts.origen ? `\nOrigen: ${opts.origen}` : "",
+    metaLines.length ? `\n${metaLines.join("\n")}` : "",
   ]
     .filter(Boolean)
     .join("\n");

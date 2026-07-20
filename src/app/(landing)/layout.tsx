@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import { preinit } from "react-dom";
 import { AgenciaModal } from "@/components/public/AgenciaModal";
 import { WhatsAppButton } from "@/components/public/WhatsAppButton";
+import { AtribucionTracker } from "@/components/public/AtribucionTracker";
 import { getSiteSettings } from "@/lib/public-data";
 import "./landing.css";
 
@@ -37,6 +38,7 @@ export default async function LandingLayout({ children }: { children: ReactNode 
     <div className="landing-root min-h-screen bg-neutral-50 text-neutral-900">
       {children}
       <WhatsAppButton />
+      <AtribucionTracker />
       <AgenciaModal certificadoUrl={footer.agencia_certificado_url} />
     </div>
   );

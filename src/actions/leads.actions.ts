@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import type { EstadoMensaje } from "@prisma/client";
+import { touchSchema, type Touch } from "@/lib/atribucion";
 
 // ---------------------------------------------------------------------------
 // Lead admin server actions — list/detail/transition for the 5 form
@@ -293,6 +294,33 @@ export async function assignLead(
 }
 
 // ---------------------------------------------------------------------------
+// Atribución de pauta — recorrido de navegación de un visitante anónimo
+// (histórico de PaginaVista antes de convertir), para mostrar en el drawer
+// de leads junto al snapshot first/last touch que ya quedó guardado en el
+// propio lead (columnas atribFirst/atribLast/visitanteId).
+// ---------------------------------------------------------------------------
+
+export async function getRecorridoVisitante(
+  visitanteId: string,
+): Promise<{ url: string; createdAt: Date }[]> {
+  await requireAuth();
+  if (!visitanteId?.trim()) {
+    throw new Error("Falta el id del visitante.");
+  }
+  // Traemos las últimas 100 en orden DESC (las más recientes) y las damos
+  // vuelta: así quedan en orden cronológico sin perder las visitas más
+  // nuevas. Un `orderBy: "asc"` literal traería las 100 MÁS VIEJAS del
+  // historial — justo lo contrario de lo que le sirve al operador.
+  const paginas = await prisma.paginaVista.findMany({
+    where: { visitanteId },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+  });
+  paginas.reverse();
+  return paginas.map((p) => ({ url: p.url, createdAt: p.createdAt }));
+}
+
+// ---------------------------------------------------------------------------
 // CSV export — one server action for all 5 lead types. Joins related
 // entities (paquete, asignado) so marketing gets readable names instead of
 // CUIDs. UTF-8 + BOM so Excel auto-detects encoding on Windows.
@@ -305,6 +333,16 @@ export async function assignLead(
 
 const CSV_DELIMITER = ";";
 
+// CSV injection (fórmulas): si una celda arranca con = + - @ o un tab/CR,
+// Excel/Sheets pueden interpretarla como el inicio de una fórmula al abrir
+// el archivo (ej. un utm_campaign="=cmd|'/c calc'!A1" ejecutando algo). Los
+// valores que llegan acá vienen de forms públicos (y, desde la atribución
+// de pauta, de una cookie) — input no confiable. El fix estándar (OWASP) es
+// anteponer un apóstrofo: fuerza texto literal sin cambiar lo que se ve en
+// la celda. Se evalúa sobre el string CRUDO (antes del strip de \r/\t de
+// abajo) para no perder la señal cuando el trigger ES un tab o un CR.
+const CSV_FORMULA_TRIGGER_RE = /^[=+\-@\t\r]/;
+
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return "";
   let s: string;
@@ -315,6 +353,7 @@ function csvEscape(value: unknown): string {
   } else {
     s = String(value);
   }
+  if (CSV_FORMULA_TRIGGER_RE.test(s)) s = `'${s}`;
   // Strip \r (confunde a Excel) y tabs, pero conservamos \n: si el valor
   // necesita salto de línea, se envuelve en comillas y Excel lo respeta
   // como una sola celda multilínea.
@@ -334,6 +373,77 @@ function buildCsv(headers: string[], rows: (unknown[])[]): string {
 
 function todayStamp(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// Atribución de pauta en el CSV — 16 columnas (8 campos × entrada/último)
+// compartidas por los 5 kinds que tienen cookie de atribución. El kind
+// "newsletter" NO las suma (ver comentario en su propio case, más abajo):
+// su export es un recorte deliberado a las columnas que lee marketing.
+//
+// `atribFirst`/`atribLast` llegan de Prisma como `Json?` (JsonValue): mismo
+// nivel de confianza que la cookie en sí, así que se re-validan acá con el
+// MISMO `touchSchema` de atribucion.ts antes de tocar el CSV — igual que el
+// drawer (ver _components/atribucion-admin.ts, que hace este mismo re-parse
+// para la UI; se repite acá en vez de importarlo para no cruzar la acción
+// de servidor con una carpeta de componentes de una ruta).
+// ---------------------------------------------------------------------------
+
+function parseTouchJson(value: unknown): Touch | null {
+  if (value === null || value === undefined) return null;
+  const parsed = touchSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+// Mismo orden de prioridad que usa el drawer de leads: el primer click ID
+// presente entre Google Ads → Meta → Google (gad_source) gana.
+function coalesceClickId(touch: Touch | null): { label: string; value: string } | null {
+  if (!touch) return null;
+  if (touch.gclid) return { label: "gclid", value: touch.gclid };
+  if (touch.fbclid) return { label: "fbclid", value: touch.fbclid };
+  if (touch.gad) return { label: "gad_source", value: touch.gad };
+  return null;
+}
+
+const TOUCH_HEADERS = [
+  "Pauta entrada — Fuente",
+  "Pauta entrada — Medio",
+  "Pauta entrada — Campaña",
+  "Pauta entrada — Contenido",
+  "Pauta entrada — Término",
+  "Pauta entrada — Click ID",
+  "Pauta entrada — Landing",
+  "Pauta entrada — Fecha",
+  "Pauta último — Fuente",
+  "Pauta último — Medio",
+  "Pauta último — Campaña",
+  "Pauta último — Contenido",
+  "Pauta último — Término",
+  "Pauta último — Click ID",
+  "Pauta último — Landing",
+  "Pauta último — Fecha",
+];
+
+function touchCells(touch: Touch | null): unknown[] {
+  const click = coalesceClickId(touch);
+  return [
+    touch?.src ?? "",
+    touch?.med ?? "",
+    touch?.cmp ?? "",
+    touch?.cnt ?? "",
+    touch?.trm ?? "",
+    click ? `${click.label}: ${click.value}` : "",
+    touch?.lp ?? "",
+    touch ? new Date(touch.ts).toISOString() : "",
+  ];
+}
+
+/** Fila de 16 columnas (TOUCH_HEADERS) a partir de los `Json` crudos de Prisma. */
+function touchToRow(first: unknown, last: unknown): unknown[] {
+  return [
+    ...touchCells(parseTouchJson(first)),
+    ...touchCells(parseTouchJson(last)),
+  ];
 }
 
 export async function exportLeads(
@@ -385,6 +495,7 @@ export async function exportLeads(
         "Comentarios",
         "Asignado a",
         "Última actualización",
+        ...TOUCH_HEADERS,
       ];
       const data = rows.map((r) => [
         r.id,
@@ -409,6 +520,7 @@ export async function exportLeads(
         r.comentarios,
         userLabel(r.asignadoAUserId),
         r.updatedAt,
+        ...touchToRow(r.atribFirst, r.atribLast),
       ]);
       return {
         filename: `leads-paquete-${todayStamp()}.csv`,
@@ -442,6 +554,7 @@ export async function exportLeads(
         "Comentarios",
         "Asignado a",
         "Última actualización",
+        ...TOUCH_HEADERS,
       ];
       const data = rows.map((r) => [
         r.id,
@@ -463,6 +576,7 @@ export async function exportLeads(
         r.comentarios,
         userLabel(r.asignadoAUserId),
         r.updatedAt,
+        ...touchToRow(r.atribFirst, r.atribLast),
       ]);
       return {
         filename: `cotizaciones-${todayStamp()}.csv`,
@@ -484,6 +598,7 @@ export async function exportLeads(
         "Mensaje",
         "Asignado a",
         "Última actualización",
+        ...TOUCH_HEADERS,
       ];
       const data = rows.map((r) => [
         r.id,
@@ -495,6 +610,7 @@ export async function exportLeads(
         r.comentarios,
         userLabel(r.asignadoAUserId),
         r.updatedAt,
+        ...touchToRow(r.atribFirst, r.atribLast),
       ]);
       return {
         filename: `mensajes-${todayStamp()}.csv`,
@@ -518,6 +634,7 @@ export async function exportLeads(
         "Comentarios",
         "Asignado a",
         "Última actualización",
+        ...TOUCH_HEADERS,
       ];
       const data = rows.map((r) => [
         r.id,
@@ -531,6 +648,7 @@ export async function exportLeads(
         r.comentarios,
         userLabel(r.asignadoAUserId),
         r.updatedAt,
+        ...touchToRow(r.atribFirst, r.atribLast),
       ]);
       return {
         filename: `corporativo-${todayStamp()}.csv`,
@@ -554,6 +672,7 @@ export async function exportLeads(
         "CV (URL)",
         "Asignado a",
         "Última actualización",
+        ...TOUCH_HEADERS,
       ];
       const data = rows.map((r) => [
         r.id,
@@ -567,6 +686,7 @@ export async function exportLeads(
         r.cvUrl,
         userLabel(r.asignadoAUserId),
         r.updatedAt,
+        ...touchToRow(r.atribFirst, r.atribLast),
       ]);
       return {
         filename: `postulaciones-${todayStamp()}.csv`,

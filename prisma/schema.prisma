@@ -796,6 +796,11 @@ model Cotizacion {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
+  // Atribución de pauta (cookie tvz_attr): snapshot first/last touch al convertir.
+  atribFirst  Json?
+  atribLast   Json?
+  visitanteId String?
+
   paquete Paquete? @relation(fields: [paqueteId], references: [id])
 
   @@index([estado])
@@ -813,6 +818,11 @@ model MensajeContacto {
   asignadoAUserId String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  // Atribución de pauta (cookie tvz_attr): snapshot first/last touch al convertir.
+  atribFirst  Json?
+  atribLast   Json?
+  visitanteId String?
 
   @@index([estado])
   @@index([asignadoAUserId])
@@ -833,6 +843,11 @@ model ContactoCorporativo {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
+  // Atribución de pauta (cookie tvz_attr): snapshot first/last touch al convertir.
+  atribFirst  Json?
+  atribLast   Json?
+  visitanteId String?
+
   @@index([estado])
   @@index([asignadoAUserId])
   @@index([createdAt(sort: Desc)])
@@ -851,6 +866,11 @@ model Postulacion {
   asignadoAUserId String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+
+  // Atribución de pauta (cookie tvz_attr): snapshot first/last touch al convertir.
+  atribFirst  Json?
+  atribLast   Json?
+  visitanteId String?
 
   @@index([estado])
   @@index([asignadoAUserId])
@@ -882,6 +902,13 @@ model SuscripcionNewsletter {
   utmCampaign        String?
   utmContent         String?
   utmTerm            String?
+
+  // Atribución de pauta (cookie tvz_attr): snapshot first/last touch al convertir.
+  // Convive con las columnas utm* de arriba, que son otra cosa: el snapshot legal
+  // de consentimiento al opt-in (Ley 18.331). Esta es la señal de marketing.
+  atribFirst  Json?
+  atribLast   Json?
+  visitanteId String?
 
   @@index([active])
 }
@@ -949,10 +976,34 @@ model CotizadorLead {
   estado      EstadoMensaje  @default(NUEVO)
   createdAt   DateTime       @default(now())
 
+  // Atribución de pauta (cookie tvz_attr): snapshot first/last touch al convertir.
+  // Este es EL destino de la pauta (landings por marca).
+  atribFirst  Json?
+  atribLast   Json?
+  visitanteId String?
+
   landing CotizadorLanding @relation(fields: [landingId], references: [id], onDelete: Cascade)
 
   @@index([landingId, createdAt(sort: Desc)])
   @@index([email])
+}
+
+// ──────────────────────────────────────────────
+// Historial anónimo de navegación para atribución de pauta. Cada página vista
+// del sitio/landings se registra vía el beacon POST /api/visita, ligada al
+// visitanteId (vid) de la cookie tvz_attr. Al convertir un lead, este recorrido
+// se muestra en el admin. Retención: 180 días (prune probabilístico en el
+// handler; ver src/app/api/visita/route.ts).
+// ──────────────────────────────────────────────
+model PaginaVista {
+  id          String   @id @default(cuid())
+  visitanteId String
+  url         String
+  referrer    String?
+  createdAt   DateTime @default(now())
+
+  @@index([visitanteId, createdAt])
+  @@index([createdAt])
 }
 
 // ──────────────────────────────────────────────

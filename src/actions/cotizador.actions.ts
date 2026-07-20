@@ -17,6 +17,8 @@ import {
 import { sendEmail } from "@/lib/email";
 import { cotizadorLeadEmail, cotizadorFrom } from "@/lib/cotizador-email";
 import { logger } from "@/lib/logger";
+import { resumenPauta } from "@/lib/atribucion";
+import { leerAtribucion } from "@/lib/atribucion-server";
 
 const log = logger.child({ module: "cotizador.actions" });
 
@@ -122,25 +124,37 @@ export async function submitCotizadorLead(
     const built = buildRespuestas(parseCampos(landing.campos), formData);
     if (!built.ok) return { ok: false, message: built.message };
 
+    const atrib = leerAtribucion();
+    const pauta = resumenPauta(atrib?.first, atrib?.last);
+
     await prisma.cotizadorLead.create({
       data: {
         landingId,
         nombre: contacto.data.nombre,
         email: contacto.data.email,
         respuestas: built.respuestas,
+        atribFirst: atrib?.first ?? undefined,
+        atribLast: atrib?.last ?? undefined,
+        visitanteId: atrib?.vid,
       },
     });
 
     // Notificación a los vendedores (best-effort: el lead ya quedó guardado).
     if (landing.emailsDestino.length > 0) {
       try {
+        // cotizadorLeadEmail no tiene un campo dedicado de pauta: la sumamos
+        // como una respuesta más SOLO para el email (built.respuestas, lo que
+        // se persiste en CotizadorLead, queda intacto).
+        const respuestasEmail: { etiqueta: string; valor: string }[] = pauta
+          ? [...built.respuestas, { etiqueta: "Pauta", valor: pauta }]
+          : built.respuestas;
         const tmpl = cotizadorLeadEmail({
           marca: landing.nombreMarca,
           slug: landing.slug,
           logoUrl: landing.logoUrl,
           nombre: contacto.data.nombre,
           email: contacto.data.email,
-          respuestas: built.respuestas,
+          respuestas: respuestasEmail,
           fecha: new Intl.DateTimeFormat("es-UY", {
             dateStyle: "long",
             timeStyle: "short",

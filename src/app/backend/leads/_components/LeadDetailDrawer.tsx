@@ -14,6 +14,8 @@ import {
   Trash2,
   FileDown,
   UserCheck,
+  Megaphone,
+  Route,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -21,6 +23,8 @@ import { useToast } from "@/components/ui/Toast";
 import { deleteLead, type LeadKind } from "@/actions/leads.actions";
 import { EstadoBadge } from "./EstadoBadge";
 import type { EstadoMensaje } from "@prisma/client";
+import type { Touch } from "@/lib/atribucion";
+import { coalesceClickId, formatTouchFecha } from "./atribucion-admin";
 
 type Field = {
   label: string;
@@ -52,6 +56,16 @@ type Props = {
   onEstadoChange?: (next: EstadoMensaje) => void;
   /** Optional — when present, shows an "Asignar a" picker in the drawer. */
   assignment?: AssignmentControl;
+  /**
+   * Atribución de pauta (cookie tvz_attr) snapshoteada al convertir el lead.
+   * `first`/`last` llegan ya re-validados (touchSchema.safeParse) por el caller.
+   */
+  atribucion?: { first?: Touch | null; last?: Touch | null } | null;
+  /**
+   * Historial de páginas vistas por el visitante antes de convertir, en
+   * orden cronológico (más vieja primero). `null`/vacío → no se renderiza.
+   */
+  recorrido?: { url: string; ts: Date }[] | null;
   data: {
     id: string;
     title: string;
@@ -71,6 +85,8 @@ export function LeadDetailDrawer({
   onDeleted,
   onEstadoChange,
   assignment,
+  atribucion,
+  recorrido,
   data,
 }: Props) {
   const { toast } = useToast();
@@ -97,6 +113,8 @@ export function LeadDetailDrawer({
   };
 
   if (!open || !data) return null;
+
+  const hasAtribucion = Boolean(atribucion?.first || atribucion?.last);
 
   return (
     <>
@@ -232,6 +250,48 @@ export function LeadDetailDrawer({
             </div>
           )}
 
+          {hasAtribucion && (
+            <div className="border-t border-neutral-200 pt-5">
+              <div className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Megaphone className="w-3.5 h-3.5" />
+                Atribución de pauta
+              </div>
+              <div className="space-y-4">
+                {atribucion?.first && (
+                  <TouchBlock titulo="Entrada" touch={atribucion.first} />
+                )}
+                {atribucion?.last && (
+                  <TouchBlock titulo="Último toque" touch={atribucion.last} />
+                )}
+              </div>
+            </div>
+          )}
+
+          {recorrido && recorrido.length > 0 && (
+            <div className="border-t border-neutral-200 pt-5">
+              <div className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Route className="w-3.5 h-3.5" />
+                Recorrido
+              </div>
+              <ul className="space-y-1 max-h-56 overflow-y-auto pr-1">
+                {recorrido.map((p, i) => (
+                  <li
+                    key={i}
+                    className="flex items-baseline justify-between gap-3 text-[12px] py-0.5"
+                  >
+                    <span className="text-neutral-700 break-all">{p.url}</span>
+                    <span className="text-neutral-400 text-[11px] shrink-0 tabular-nums">
+                      {p.ts.toLocaleString("es-UY", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {data.actions && data.actions.length > 0 && (
             <div className="border-t border-neutral-200 pt-5 space-y-2">
               {data.actions.map((a) => {
@@ -269,6 +329,44 @@ export function LeadDetailDrawer({
         </div>
       </aside>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TouchBlock — un touch (first o last) de la atribución de pauta. Mismo
+// patrón dt/dd que el DetailPopover de newsletter (leads/newsletter/page.tsx).
+// Todos los valores se muestran como texto plano: vienen de una cookie del
+// visitante (input NO confiable) — nunca se usan como href.
+// ---------------------------------------------------------------------------
+function TouchBlock({ titulo, touch }: { titulo: string; touch: Touch }) {
+  const click = coalesceClickId(touch);
+  const rows: { label: string; value: string }[] = [];
+  if (touch.src) rows.push({ label: "Fuente", value: touch.src });
+  if (touch.med) rows.push({ label: "Medio", value: touch.med });
+  if (touch.cmp) rows.push({ label: "Campaña", value: touch.cmp });
+  if (touch.cnt) rows.push({ label: "Contenido", value: touch.cnt });
+  if (touch.trm) rows.push({ label: "Término", value: touch.trm });
+  if (click) {
+    rows.push({ label: `Click ID (${click.label})`, value: click.value });
+  }
+  if (touch.lp) rows.push({ label: "Landing", value: touch.lp });
+  // Fecha siempre presente (touchSchema la exige), así que va sin guard.
+  rows.push({ label: "Fecha", value: formatTouchFecha(touch.ts) });
+
+  return (
+    <div>
+      <div className="text-[11px] font-medium text-neutral-600 mb-1.5">
+        {titulo}
+      </div>
+      <dl className="space-y-1">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-baseline gap-2 text-[12px]">
+            <dt className="text-neutral-500 shrink-0">{r.label}</dt>
+            <dd className="text-neutral-900 break-all">{r.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 

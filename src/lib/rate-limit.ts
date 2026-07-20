@@ -119,6 +119,103 @@ export function checkFormRate(
 }
 
 // ──────────────────────────────────────────────
+// Beacon de páginas vistas (/api/visita)
+// ──────────────────────────────────────────────
+
+const VISITA_WINDOW_MS = 60 * 60 * 1000; // 1 hora
+const VISITA_MAX_IP = 300; // páginas vistas por IP por hora
+const VISITA_MAX_VID = 200; // páginas vistas por visitante (vid) por hora
+const VISITA_MAX_GLOBAL = 10_000; // presupuesto global de inserts por hora
+
+const visitaIpBuckets = new Map<string, Bucket>();
+const visitaVidBuckets = new Map<string, Bucket>();
+// Circuit breaker global: una sola ventana compartida por todo el proceso.
+let visitaGlobal: Bucket = { count: 0, resetAt: 0 };
+
+/**
+ * Rate limit del beacon de páginas vistas. TRES capas independientes; si
+ * cualquiera se pasa devolvemos allowed=false y el handler responde 429 (el
+ * cliente lo ignora, es fire-and-forget):
+ *
+ *   1. por IP (~300/h): frena scrapers que rotan `vid` pero no IP. La IP la
+ *      pasa el handler tomando el extremo CONFIABLE de X-Forwarded-For.
+ *   2. por vid (~200/h): frena a un mismo visitante que dispara de más.
+ *   3. presupuesto global (~10k inserts/h): circuit breaker ante un pico
+ *      anómalo (bot distribuido) para no inundar la tabla PaginaVista.
+ *
+ * El presupuesto global se consume recién al final, así una request rechazada
+ * por IP/vid no gasta cupo global. Misma estrategia process-local que el resto
+ * de los limiters (una instancia en Railway; a Redis si escalamos horizontal).
+ */
+export function checkVisitaRate(
+  ip: string | null,
+  vid: string,
+): RateLimitResult {
+  const now = Date.now();
+
+  // GC oportunista para que los Maps no crezcan sin límite (más visitantes que
+  // logins/forms → umbral más alto).
+  if (visitaIpBuckets.size > 20000) {
+    visitaIpBuckets.forEach((b, k) => {
+      if (b.resetAt < now) visitaIpBuckets.delete(k);
+    });
+  }
+  if (visitaVidBuckets.size > 20000) {
+    visitaVidBuckets.forEach((b, k) => {
+      if (b.resetAt < now) visitaVidBuckets.delete(k);
+    });
+  }
+
+  // Capa 3 (chequeo, sin consumir todavía): si el presupuesto global ya está
+  // agotado, cortamos antes de tocar las capas por-clave.
+  if (visitaGlobal.resetAt < now) {
+    visitaGlobal = { count: 0, resetAt: now + VISITA_WINDOW_MS };
+  }
+  if (visitaGlobal.count >= VISITA_MAX_GLOBAL) {
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds: Math.ceil((visitaGlobal.resetAt - now) / 1000),
+    };
+  }
+
+  // Capa 1: por IP.
+  const ipKey = ip || "unknown";
+  const ipB = visitaIpBuckets.get(ipKey);
+  if (!ipB || ipB.resetAt < now) {
+    visitaIpBuckets.set(ipKey, { count: 1, resetAt: now + VISITA_WINDOW_MS });
+  } else {
+    ipB.count += 1;
+    if (ipB.count > VISITA_MAX_IP) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: Math.ceil((ipB.resetAt - now) / 1000),
+      };
+    }
+  }
+
+  // Capa 2: por vid.
+  const vidB = visitaVidBuckets.get(vid);
+  if (!vidB || vidB.resetAt < now) {
+    visitaVidBuckets.set(vid, { count: 1, resetAt: now + VISITA_WINDOW_MS });
+  } else {
+    vidB.count += 1;
+    if (vidB.count > VISITA_MAX_VID) {
+      return {
+        allowed: false,
+        remaining: 0,
+        retryAfterSeconds: Math.ceil((vidB.resetAt - now) / 1000),
+      };
+    }
+  }
+
+  // Pasó las tres capas: recién ahora consumimos presupuesto global.
+  visitaGlobal.count += 1;
+  return { allowed: true, remaining: 0, retryAfterSeconds: 0 };
+}
+
+// ──────────────────────────────────────────────
 // Per-user lockout policy (driven by DB columns)
 // ──────────────────────────────────────────────
 

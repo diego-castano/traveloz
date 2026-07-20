@@ -37,6 +37,8 @@ import {
   paqueteConsultaEmail,
 } from "@/lib/email";
 import { getBaseUrl } from "@/lib/seo";
+import { resumenPauta } from "@/lib/atribucion";
+import { leerAtribucion } from "@/lib/atribucion-server";
 
 const log = logger.child({ module: "public-forms.actions" });
 
@@ -188,6 +190,8 @@ async function notifyLead(opts: {
   campos: { label: string; value: string }[];
   replyTo?: string | null;
   origen?: string | null;
+  /** Resumen corto de atribución de pauta (ver `resumenPauta`). */
+  pauta?: string | null;
 }): Promise<void> {
   try {
     const keys = Array.isArray(opts.settingKey) ? opts.settingKey : [opts.settingKey];
@@ -206,6 +210,7 @@ async function notifyLead(opts: {
       tipo: opts.tipo,
       campos: opts.campos,
       origen: opts.origen ?? null,
+      pauta: opts.pauta ?? null,
     });
     await sendEmail({
       to: destinos,
@@ -309,12 +314,23 @@ export async function submitContactForm(
     });
     if (!parsed.success) return zodError(parsed.error);
 
-    await prisma.mensajeContacto.create({ data: parsed.data });
+    const atrib = leerAtribucion();
+    const pauta = resumenPauta(atrib?.first, atrib?.last);
+
+    await prisma.mensajeContacto.create({
+      data: {
+        ...parsed.data,
+        atribFirst: atrib?.first ?? undefined,
+        atribLast: atrib?.last ?? undefined,
+        visitanteId: atrib?.vid,
+      },
+    });
     await notifyLead({
       settingKey: "notificaciones_email_contacto",
       tipo: "Contacto",
       replyTo: parsed.data.email,
       origen: captureOrigen(),
+      pauta,
       campos: [
         { label: "Nombre", value: parsed.data.nombre },
         { label: "Email", value: parsed.data.email },
@@ -370,6 +386,9 @@ export async function submitWorkWithUsForm(
       return { ok: false, message: "El CV no puede superar los 10 MB." };
     }
 
+    const atrib = leerAtribucion();
+    const pauta = resumenPauta(atrib?.first, atrib?.last);
+
     const buffer = Buffer.from(await cv.arrayBuffer());
     const uploaded = await uploadBuffer({
       buffer,
@@ -384,6 +403,9 @@ export async function submitWorkWithUsForm(
         ...parsed.data,
         cvUrl: uploaded.url,
         cvFilename: cv.name,
+        atribFirst: atrib?.first ?? undefined,
+        atribLast: atrib?.last ?? undefined,
+        visitanteId: atrib?.vid,
       },
     });
     await notifyLead({
@@ -391,6 +413,7 @@ export async function submitWorkWithUsForm(
       tipo: "Trabajá con nosotros",
       replyTo: parsed.data.email,
       origen: captureOrigen(),
+      pauta,
       campos: [
         { label: "Nombre", value: parsed.data.nombre },
         { label: "Email", value: parsed.data.email },
@@ -440,12 +463,23 @@ export async function submitCorporateForm(
     });
     if (!parsed.success) return zodError(parsed.error);
 
-    await prisma.contactoCorporativo.create({ data: parsed.data });
+    const atrib = leerAtribucion();
+    const pauta = resumenPauta(atrib?.first, atrib?.last);
+
+    await prisma.contactoCorporativo.create({
+      data: {
+        ...parsed.data,
+        atribFirst: atrib?.first ?? undefined,
+        atribLast: atrib?.last ?? undefined,
+        visitanteId: atrib?.vid,
+      },
+    });
     await notifyLead({
       settingKey: "notificaciones_email_corporativo",
       tipo: "Corporativo",
       replyTo: parsed.data.email,
       origen: captureOrigen(),
+      pauta,
       campos: [
         { label: "Nombre", value: parsed.data.nombre },
         { label: "Empresa", value: parsed.data.empresa },
@@ -511,11 +545,16 @@ export async function submitNewsletterForm(
     const utmTerm = s(formData, "_utmTerm")?.slice(0, 255) || null;
     const consentUserAgent = s(formData, "_consentUserAgent")?.slice(0, 500) || null;
     const consentIp = clientIp();
+    const atrib = leerAtribucion();
+    const pauta = resumenPauta(atrib?.first, atrib?.last);
     await prisma.suscripcionNewsletter.upsert({
       where: { email },
       // En re-suscripciones, no pisamos los datos de consentimiento de la
       // primera alta — son el registro historico de cuando dieron opt-in
-      // originalmente. Solo refrescamos el token y el estado.
+      // originalmente. Solo refrescamos el token y el estado. La atribución
+      // de pauta sigue la misma regla: es del PRIMER alta, así que solo va
+      // en `create`, jamás en `update` (si no, un re-opt-in con otro touch
+      // pisaría el touch original).
       update: {
         active: false,
         confirmToken,
@@ -534,6 +573,9 @@ export async function submitNewsletterForm(
         utmTerm,
         consentIp,
         consentUserAgent,
+        atribFirst: atrib?.first ?? undefined,
+        atribLast: atrib?.last ?? undefined,
+        visitanteId: atrib?.vid,
       },
     });
 
@@ -545,6 +587,7 @@ export async function submitNewsletterForm(
       tipo: "Newsletter",
       replyTo: email,
       origen: source,
+      pauta,
       campos: [
         { label: "Email", value: email },
         { label: "Origen", value: source ?? "(sin origen)" },
@@ -614,6 +657,8 @@ export async function submitQuoteForm(
     });
     if (!parsed.success) return zodError(parsed.error);
     const data = parsed.data;
+    const atrib = leerAtribucion();
+    const pauta = resumenPauta(atrib?.first, atrib?.last);
 
     // The PassengerCounter component serializes counts in a single hidden
     // input "pasajeros" with shape "adultos:N|ninos:N|infantes:N", but for
@@ -664,6 +709,9 @@ export async function submitQuoteForm(
         comentarios,
         origen: s(formData, "origen") ?? (captureOrigen()),
         aceptaPromos: formData.get("aceptaPromos") === "on",
+        atribFirst: atrib?.first ?? undefined,
+        atribLast: atrib?.last ?? undefined,
+        visitanteId: atrib?.vid,
       },
     });
 
@@ -746,7 +794,11 @@ export async function submitQuoteForm(
             email: data.email,
             telefono: telefonoDisplay,
             fecha: fechaEnvio,
-            campos: camposDetalle,
+            // paqueteConsultaEmail no tiene un campo dedicado de pauta (no le
+            // cambiamos la firma): entra como un campo más de la lista.
+            campos: pauta
+              ? [...camposDetalle, { label: "Pauta", value: pauta }]
+              : camposDetalle,
             replyTo: data.email,
           });
         }
@@ -766,6 +818,7 @@ export async function submitQuoteForm(
         tipo: "Cotización",
         replyTo: data.email,
         origen: s(formData, "origen") ?? captureOrigen(),
+        pauta,
         campos: [
           { label: "Nombre", value: data.nombre },
           { label: "Email", value: data.email },
