@@ -3691,12 +3691,12 @@ header.header-area.header-dark {
 
     .faq-banner-area .banner-text .h1,
     .terms-banner-area .h1 {
-        font-size: 30px
+        font-size: 24px
     }
 
     .faq-banner-area .banner-text,
     .terms-banner-area .banner-text {
-        font-size: 20px;
+        font-size: 16px;
     }
 
     .faq-banner-area {
@@ -3944,8 +3944,8 @@ header.header-area.header-dark {
     }
 
     .terms-banner-area .inner-text {
-        width: 70%;
-        font-size: 18px;
+        width: 92%;
+        font-size: 14px;
         line-height: normal
     }
 
@@ -3961,19 +3961,19 @@ header.header-area.header-dark {
        bajamos el título a 28px para que siempre envuelva en 3 líneas que
        libran los gráficos de la derecha en todos los anchos de teléfono. */
     .terms-banner-area .col-10 {
-        flex: 0 0 54%;
-        max-width: 54%;
+        flex: 0 0 66%;
+        max-width: 66%;
     }
 
     .terms-banner-area .h1 {
-        font-size: 28px;
+        font-size: 20px;
     }
 
     /* Mismo criterio en el banner de FAQ: acotamos el texto a la izquierda
        para que el subtítulo no roce la mano con el avión del fondo. */
     .faq-banner-area .col-8 {
-        flex: 0 0 56%;
-        max-width: 56%;
+        flex: 0 0 64%;
+        max-width: 64%;
     }
 
     .faq-accordion.style2 .accordion-button {

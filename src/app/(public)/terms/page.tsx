@@ -32,8 +32,6 @@ export default async function TermsPage() {
     "Todo lo que necesitás saber acerca de las contrataciones de tus servicios";
   const bannerDesktop =
     settings.terms_banner_desktop?.trim() || "/site/img/terms-banner.webp";
-  const bannerMobile =
-    settings.terms_banner_mobile?.trim() || "/site/img/terms-mobile-banner.png";
 
   return (
     <>
@@ -55,13 +53,9 @@ export default async function TermsPage() {
             fetchPriority="high"
             decoding="async"
           />
-          <img
-            src={bannerMobile}
-            alt=""
-            className="terms_bg_img d-md-none"
-            fetchPriority="high"
-            decoding="async"
-          />
+          {/* En mobile el fondo full-bleed (bg_image, faq-mobile-banner) ya
+              trae el avión/boardings; no montamos un segundo gráfico encima
+              (antes se superponían dos imágenes). */}
           <div className="row align-items-lg-center">
             <div className="col-lg-10 col-10">
               <div className="banner-text text_white">
