@@ -3738,14 +3738,15 @@ header.header-area.header-dark {
     }
 
     .box-card .main-price {
-        font-size: 34px;
+        font-size: 28px;
+        letter-spacing: -0.5px;
         line-height: 1;
         margin-top: -3px;
     }
 
     .box-card .price-left .title {
         font-size: 9px;
-        letter-spacing: 1.5px;
+        letter-spacing: 0.5px;
         line-height: 1;
         margin-bottom: 2px;
     }
@@ -3753,7 +3754,7 @@ header.header-area.header-dark {
     .box-card .price-left .title2 {
         font-size: 13px;
         font-weight: 700 !important;
-        letter-spacing: 2.5px;
+        letter-spacing: 0.5px;
         line-height: 1;
     }
 
