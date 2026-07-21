@@ -55,7 +55,10 @@ export interface SendEmailResult {
 
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = input.from ?? process.env.EMAIL_FROM ?? DEFAULT_FROM;
+  // OJO con el `??`: si EMAIL_FROM viene como "" (string vacío, no ausente),
+  // `??` NO cae al default y Resend rechaza el envío con "domain is invalid".
+  // Por eso normalizamos: EMAIL_FROM vacío/espacios → usar DEFAULT_FROM.
+  const from = input.from ?? (process.env.EMAIL_FROM?.trim() || DEFAULT_FROM);
 
   // No Resend key yet — log a clear preview so the developer (or the admin
   // testing the flow locally) can copy any one-time link out of the console.
@@ -208,7 +211,7 @@ function brandedLayout(opts: {
     <tr><td align="center">
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border:1px solid #e6e8ee;border-radius:16px;overflow:hidden">
         <tr><td style="padding:26px 28px 0;text-align:center">
-          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="32" style="height:32px;width:auto;display:inline-block" />
+          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="40" style="height:40px;width:auto;display:inline-block" />
         </td></tr>
         <tr><td style="padding:16px 28px 0"><div style="height:2px;background-color:${BRAND_ACCENT};width:40px;margin:0 auto;border-radius:2px;line-height:2px">&nbsp;</div></td></tr>
         <tr><td style="padding:20px 32px 26px">
@@ -485,7 +488,7 @@ export function paqueteConsultaEmail(opts: {
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="width:560px;max-width:100%;background-color:#ffffff;border:1px solid #e6e8ee;border-radius:16px;overflow:hidden">
         <!-- Logo TravelOz -->
         <tr><td style="padding:26px 28px 0;text-align:center">
-          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="32" style="height:32px;width:auto;display:inline-block" />
+          <img src="${TRAVELOZ_LOGO_URL}" alt="TravelOz" height="40" style="height:40px;width:auto;display:inline-block" />
         </td></tr>
         <tr><td style="padding:16px 28px 0"><div style="height:2px;background-color:${BRAND_ACCENT};width:40px;margin:0 auto;border-radius:2px;line-height:2px">&nbsp;</div></td></tr>
         <!-- Kicker + título del paquete -->
