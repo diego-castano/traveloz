@@ -3026,10 +3026,6 @@ strong {
 
 
 /*REsponsive*/
-.expand-toggle {
-    display: none
-}
-
 .expand-content {
     margin-bottom: 15px
 }
@@ -4391,52 +4387,8 @@ header.header-area.header-dark {
         top: 26vw;
     }
 
-    .expand-wrapper {
-        position: relative;
-    }
-
-    .expand-content p {
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        line-clamp: 3;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-
-    /* Expanded state */
-    .expand-wrapper.expanded .expand-content p {
-        -webkit-line-clamp: unset;
-        line-clamp: unset;
-    }
-
-    .expand-toggle {
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 0;
-        margin-top: 6px;
-        position: absolute;
-        right: 0;
-        bottom: -3px;
-        opacity: 0.5;
-        display: block
-    }
-
-    .expand-toggle .arrow {
-        display: inline-block;
-        font-size: 18px;
-        transition: transform 0.3s ease;
-        color: #222;
-        background: #fff;
-        padding-left: 10px;
-    }
-
-    /* Rotate arrow when expanded */
-    .expand-wrapper.expanded .arrow {
-        transform: rotate(180deg);
-    }
-
+    /* Mobile: el comentario se muestra entero (sin truncar ni flechita),
+       igual que en desktop y como pidió el cliente. */
     .expand-content {
         margin-bottom: 15px;
         padding-right: 15px
