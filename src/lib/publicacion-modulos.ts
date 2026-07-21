@@ -2,7 +2,7 @@
 // Orden de los módulos de la pestaña "Publicación" del editor de paquetes.
 //
 // El operador puede reordenar las secciones (Estado, Etiquetas, Slider, Textos,
-// Incluye, Condiciones, SEO) con drag-and-drop. El orden se guarda GLOBAL (una
+// Incluye, Tarjeta, Condiciones, SEO) con drag-and-drop. El orden se guarda GLOBAL (una
 // sola fila en SiteSetting) y se aplica a todos los paquetes — al recargar, al
 // crear uno nuevo o al emitirlo. Este módulo es la fuente de verdad de los ids
 // canónicos y vive en `lib/` para que la server action (validación) y el
@@ -16,6 +16,7 @@ export type PublicacionModuloId =
   | "slider"
   | "textos"
   | "incluye"
+  | "tarjeta"
   | "condiciones"
   | "seo";
 
@@ -26,6 +27,7 @@ export const DEFAULT_PUBLICACION_ORDEN: PublicacionModuloId[] = [
   "slider",
   "textos",
   "incluye",
+  "tarjeta",
   "condiciones",
   "seo",
 ];
@@ -41,7 +43,7 @@ const CANONICAL = new Set<string>(DEFAULT_PUBLICACION_ORDEN);
  *   • elimina duplicados,
  *   • agrega al final cualquier módulo canónico que falte (así un módulo NUEVO
  *     siempre aparece aunque el orden guardado sea viejo).
- * Siempre devuelve los 7 ids exactamente una vez.
+ * Siempre devuelve los 8 ids exactamente una vez.
  */
 export function sanitizePublicacionOrden(
   input: unknown,

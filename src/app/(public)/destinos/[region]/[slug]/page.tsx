@@ -75,7 +75,11 @@ export default async function PackageDetailPage({
       precioDesdeMoneda: p.precioDesdeMoneda,
       heroImage: p.heroImage,
       fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? p.titulo })),
-      bullets: buildCardBullets({ textoIncluye: p.textoIncluye, nochesTotales }),
+      bullets: buildCardBullets({
+        textoIncluye: p.textoIncluye,
+        nochesTotales,
+        cardBullets: p.cardBullets,
+      }),
       destinos: p.destinos.map((d) => ({
         ciudad: { nombre: d.ciudad?.nombre ?? "" },
       })),

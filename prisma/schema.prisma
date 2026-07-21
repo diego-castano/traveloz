@@ -164,6 +164,9 @@ model Paquete {
   textoIntro        String? @db.Text
   // Texto introductorio de la lista "Incluye"
   textoIncluye      String? @db.Text
+  // Renglones custom de la tarjeta en grillas/listados (array de strings).
+  // null/vacío → se derivan automáticos de textoIncluye via buildCardBullets.
+  cardBullets       Json?
   // Itinerario día a día visible públicamente (distinto al itinerarioAmadeus interno)
   itinerarioPublico String? @db.Text
   // Notas de condiciones/cancelación específicas del paquete

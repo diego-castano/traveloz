@@ -47,7 +47,7 @@ export default async function DestinosPage({
         <section className="content-area">
           <div className="container">
             <div className="text-center mb_50">
-              <h1 className="section-heading">{tipo.nombre}</h1>
+              <h1 className="section-heading sans">{tipo.nombre}</h1>
               <p>{subtitulo}</p>
             </div>
             {paquetes.length === 0 ? (
@@ -67,6 +67,7 @@ export default async function DestinosPage({
                     bullets: buildCardBullets({
                       textoIncluye: p.textoIncluye,
                       nochesTotales,
+                      cardBullets: p.cardBullets,
                     }),
                   };
                   return (

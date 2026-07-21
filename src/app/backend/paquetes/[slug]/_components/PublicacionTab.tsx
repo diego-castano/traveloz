@@ -64,6 +64,7 @@ import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { parseStoredDate } from "@/lib/date";
 import { slugify } from "@/lib/utils";
+import { buildCardBullets } from "@/lib/format-paquete";
 import {
   usePackageDispatch,
   usePaqueteById,
@@ -106,9 +107,23 @@ const MODULO_LABELS: Record<PublicacionModuloId, string> = {
   slider: "Slider de fotos",
   textos: "Textos del paquete",
   incluye: "Qué incluye",
+  tarjeta: "Renglones de la tarjeta",
   condiciones: "Condiciones específicas",
   seo: "SEO",
 };
+
+// Cantidad de renglones que muestra la tarjeta del paquete en los listados.
+const CARD_BULLET_SLOTS = 4;
+const CARD_BULLET_MAX = 60;
+
+// Normaliza el Json `cardBullets` de la DB a exactamente 4 slots editables
+// (strings). Valor no-array o vacío → 4 slots vacíos (modo automático).
+function cardBulletsToSlots(raw: unknown): string[] {
+  const arr = Array.isArray(raw)
+    ? raw.filter((b): b is string => typeof b === "string").slice(0, CARD_BULLET_SLOTS)
+    : [];
+  return Array.from({ length: CARD_BULLET_SLOTS }, (_, i) => arr[i] ?? "");
+}
 
 const hexToTagColor: Record<string, TagColor> = {
   "#22c55e": "green",
@@ -297,6 +312,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   > | null>(null);
   const [catalog, setCatalog] = useState<Servicio[]>([]);
   const [incluyeItems, setIncluyeItems] = useState<IncluyeItem[]>([]);
+  // Renglones custom de la tarjeta (4 slots). Todos vacíos ⇒ automáticos.
+  const [cardBulletsSlots, setCardBulletsSlots] = useState<string[]>(() =>
+    cardBulletsToSlots(null),
+  );
   const [assignedEtiquetas, setAssignedEtiquetas] = useState<EtiquetaAssignment[]>([]);
   const [isPending, start] = useTransition();
 
@@ -383,6 +402,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               ...legacyTextToIncluye(d.textoIncluye),
             ]);
           }
+          setCardBulletsSlots(cardBulletsToSlots(d.cardBullets));
           setAssignedEtiquetas(d.etiquetas);
         }
         setCatalog(s);
@@ -452,6 +472,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       textoIncluye: serializeIncluyeItems(incluyeItems),
       itinerarioPublico: form.itinerarioPublico,
       textoCondiciones: form.textoCondiciones,
+      cardBullets: cardBulletsSlots,
     });
     if (!res.ok) {
       // slug_taken (colisión de slug): devolvemos el motivo para que la UI lo
@@ -472,7 +493,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     }
     syncDescripcionToCache(form.descripcion);
     return { ok: true };
-  }, [paqueteId, form, incluyeItems, serviciosFromIncluye, syncDescripcionToCache]);
+  }, [paqueteId, form, incluyeItems, cardBulletsSlots, serviciosFromIncluye, syncDescripcionToCache]);
 
   // Surface a publish-blocker visually: scroll the relevant field into
   // view + flash it. Picks the highest-priority issue from the missing list.
@@ -516,12 +537,16 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   // ---------------------------------------------------------------------------
   const formRef = useRef(form);
   const incluyeItemsRef = useRef(incluyeItems);
+  const cardBulletsSlotsRef = useRef(cardBulletsSlots);
   useEffect(() => {
     formRef.current = form;
   }, [form]);
   useEffect(() => {
     incluyeItemsRef.current = incluyeItems;
   }, [incluyeItems]);
+  useEffect(() => {
+    cardBulletsSlotsRef.current = cardBulletsSlots;
+  }, [cardBulletsSlots]);
 
   const handleAutoSave = useCallback(async () => {
     const f = formRef.current;
@@ -536,6 +561,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       textoIncluye: serializeIncluyeItems(incluyeItemsRef.current),
       itinerarioPublico: f.itinerarioPublico,
       textoCondiciones: f.textoCondiciones,
+      cardBullets: cardBulletsSlotsRef.current,
     });
     if (!res.ok) {
       // Sólo puede ser slug_taken (colisión de slug).
@@ -616,6 +642,54 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     () => getSugerenciasIncluye(paqueteId),
     [paqueteId],
   );
+
+  // ---------------------------------------------------------------------------
+  // Renglones de la tarjeta (listados/grillas) — override manual opcional.
+  // Los "automáticos" se computan client-side con el MISMO buildCardBullets que
+  // usa el sitio público, alimentado con el Incluye editable de este tab y las
+  // noches del paquete. Los "personalizados" son los slots no vacíos.
+  // ---------------------------------------------------------------------------
+  const autoBullets = useMemo(
+    () =>
+      buildCardBullets({
+        textoIncluye: serializeIncluyeItems(incluyeItems),
+        nochesTotales: data?.noches ?? 0,
+        // Sin custom: forzamos el cálculo automático para la vista previa.
+        cardBullets: undefined,
+      }),
+    [incluyeItems, data?.noches],
+  );
+  const customBullets = useMemo(
+    () => cardBulletsSlots.map((b) => b.trim()).filter((b) => b.length > 0),
+    [cardBulletsSlots],
+  );
+  const hasCustomBullets = customBullets.length > 0;
+
+  const handleCardBulletChange = useCallback(
+    (index: number, value: string) => {
+      setCardBulletsSlots((prev) => {
+        const next = [...prev];
+        next[index] = value.slice(0, CARD_BULLET_MAX);
+        return next;
+      });
+      markDirty();
+    },
+    [markDirty],
+  );
+
+  // "Usar los automáticos como base": copia los renglones automáticos a los
+  // slots para que el operador los edite en vez de arrancar de cero.
+  const handleUsarAutomaticos = useCallback(() => {
+    setCardBulletsSlots(cardBulletsToSlots(autoBullets));
+    markDirty();
+  }, [autoBullets, markDirty]);
+
+  // "Volver a automáticos": vacía los 4 slots → al guardar se persiste null y
+  // la tarjeta vuelve a derivar sus renglones sola.
+  const handleVolverAutomaticos = useCallback(() => {
+    setCardBulletsSlots(cardBulletsToSlots(null));
+    markDirty();
+  }, [markDirty]);
 
   // ---------------------------------------------------------------------------
   // Slider gallery — managed in-place (replaces the old "Fotos" tab). Photos
@@ -1157,6 +1231,84 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           </a>
           .
         </p>
+      </Section>
+
+          ),
+          // Renglones de la tarjeta (listados/grillas)
+          tarjeta: (
+      <Section
+        title="Renglones de la tarjeta"
+        description="Los 4 renglones que se ven en la tarjeta del paquete en listados y grillas. Opcional: si los dejás vacíos, se arman automáticos desde el Incluye."
+      >
+        {/* Vista previa de lo que se muestra hoy en la tarjeta. */}
+        <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-neutral-400 mb-2">
+            {hasCustomBullets
+              ? "Personalizados"
+              : "Automáticos (lo que se muestra hoy)"}
+          </p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {(hasCustomBullets ? customBullets : autoBullets).length === 0 ? (
+              <li className="text-[13px] text-neutral-400 italic">
+                Sin renglones
+              </li>
+            ) : (
+              (hasCustomBullets ? customBullets : autoBullets).map((b, i) => (
+                <li
+                  key={`${b}-${i}`}
+                  className="flex items-center gap-1.5 text-[13px] text-neutral-600"
+                >
+                  <span className="inline-block h-1 w-1 rounded-full bg-neutral-400" />
+                  {b}
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        {/* Editor de 4 slots. El placeholder de cada uno es el renglón
+            automático que ocuparía ese lugar, para orientar al operador. */}
+        <div className="space-y-2">
+          {cardBulletsSlots.map((slot, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-center text-[11px] font-medium text-neutral-400">
+                {i + 1}
+              </span>
+              <div className="flex-1">
+                <Input
+                  value={slot}
+                  onChange={(e) => handleCardBulletChange(i, e.target.value)}
+                  maxLength={CARD_BULLET_MAX}
+                  placeholder={autoBullets[i] ?? "Renglón opcional"}
+                  disabled={disabled}
+                />
+              </div>
+              <span className="w-12 shrink-0 text-right text-[10px] text-neutral-300 tabular-nums">
+                {slot.length}/{CARD_BULLET_MAX}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {canEdit && (
+          <div className="flex flex-wrap items-center gap-4 pt-1">
+            <button
+              type="button"
+              onClick={handleUsarAutomaticos}
+              className="text-[11px] text-violet-600 hover:underline"
+            >
+              Usar los automáticos como base
+            </button>
+            <button
+              type="button"
+              onClick={handleVolverAutomaticos}
+              disabled={cardBulletsSlots.every((s) => !s.trim())}
+              className="text-[11px] text-neutral-500 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+            >
+              Volver a automáticos
+            </button>
+          </div>
+        )}
       </Section>
 
           ),

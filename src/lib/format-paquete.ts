@@ -156,9 +156,15 @@ function resumirConcepto(texto: string, nochesTotales: number): string | null {
 /**
  * Arma los (hasta 4) renglones de la tarjeta pública de un paquete.
  *
- * Regla de negocio: si el operador curó una lista "Incluye" (JSON en
- * `textoIncluye`), cada ítem se resume a un concepto corto de una o dos
- * palabras (Vuelos / Bus / 07 Noches / Traslados / Seguros / All inclusive…)
+ * Override manual: si el operador cargó renglones custom (`cardBullets`, JSON
+ * editable desde la pestaña Publicación), se muestran esos tal cual (trim, cap
+ * 60 chars c/u, máx 4) y no se deriva nada. Campo vacío/null → se cae a la
+ * lógica automática de siempre (abajo). La validación es defensiva porque el
+ * valor viene de un Json de DB (podría no ser un array de strings).
+ *
+ * Regla de negocio (modo automático): si el operador curó una lista "Incluye"
+ * (JSON en `textoIncluye`), cada ítem se resume a un concepto corto de una o
+ * dos palabras (Vuelos / Bus / 07 Noches / Traslados / Seguros / All inclusive…)
  * en vez de volcar el texto completo (que la tarjeta truncaba con "…"). Se
  * descartan los conceptos que no aportan (cupos/tasas) y se deduplica.
  *
@@ -177,8 +183,22 @@ function resumirConcepto(texto: string, nochesTotales: number): string | null {
 export function buildCardBullets(input: {
   textoIncluye: string | null;
   nochesTotales: number;
+  cardBullets?: unknown;
 }): string[] {
-  const { textoIncluye, nochesTotales } = input;
+  const { textoIncluye, nochesTotales, cardBullets } = input;
+
+  // Override manual: renglones custom del operador. Validación defensiva —
+  // es un Json de DB, así que sólo confiamos si es un array con al menos un
+  // string no vacío. Recortamos cada uno a 60 chars y tomamos máx 4.
+  if (Array.isArray(cardBullets)) {
+    const custom = cardBullets
+      .filter((b): b is string => typeof b === "string")
+      .map((b) => b.trim().slice(0, 60))
+      .filter((b) => b.length > 0)
+      .slice(0, 4);
+    if (custom.length > 0) return custom;
+  }
+
   const items = parseIncluyeItems(textoIncluye);
   const curados = (items ?? [])
     .map((it) => it.texto?.trim() ?? "")

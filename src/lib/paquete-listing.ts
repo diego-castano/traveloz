@@ -21,6 +21,8 @@ export type PaqueteRawParaListado = {
   precioDesdeMoneda: string | null;
   heroImage: string | null;
   textoIncluye: string | null;
+  // Json de DB: renglones custom de la tarjeta (o null → automáticos).
+  cardBullets: unknown;
   fotos: { url: string; alt: string | null }[];
   destinos: {
     noches: number | null;
@@ -81,7 +83,11 @@ export function projectPaqueteParaListado(
     precioDesdeMoneda: p.precioDesdeMoneda,
     heroImage: p.heroImage,
     fotos: p.fotos.map((f) => ({ url: f.url, alt: f.alt ?? "" })),
-    bullets: buildCardBullets({ textoIncluye: p.textoIncluye, nochesTotales }),
+    bullets: buildCardBullets({
+      textoIncluye: p.textoIncluye,
+      nochesTotales,
+      cardBullets: p.cardBullets,
+    }),
     ciudades: destinosFuente
       .filter((d) => d.ciudad?.id)
       .map((d) => ({

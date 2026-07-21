@@ -104,6 +104,9 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       titulo: true,
       slug: true,
       publicado: true,
+      // Noches: alimenta la vista previa de los renglones automáticos de la
+      // tarjeta en la pestaña Publicación (buildCardBullets client-side).
+      noches: true,
       // Lifecycle fields — merged from former PublicacionTab so this is the
       // single source of truth for everything the operator manages from the
       // "Publicación" tab.
@@ -119,6 +122,8 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       descripcion: true,
       textoIntro: true,
       textoIncluye: true,
+      // Renglones custom de la tarjeta (Json). null → automáticos.
+      cardBullets: true,
       itinerarioPublico: true,
       textoCondiciones: true,
       precioDesde: true,
@@ -159,9 +164,30 @@ export async function updatePaqueteFrontend(
     textoIncluye?: string | null;
     itinerarioPublico?: string | null;
     textoCondiciones?: string | null;
+    // Renglones custom de la tarjeta en listados. undefined = no tocar;
+    // array vacío = volver a automáticos (se persiste null).
+    cardBullets?: string[] | null;
   },
 ) {
   await requireCanEdit();
+
+  // cardBullets es una columna Json, así que la sacamos del spread de campos
+  // String y la tratamos aparte (Prisma exige DbNull para vaciarla). El resto
+  // del payload (`data`) queda intacto para el publish gate de más abajo.
+  const { cardBullets: cardBulletsInput, ...frontendData } = data;
+  let cardBulletsToWrite: Prisma.PaqueteUpdateInput["cardBullets"];
+  if (cardBulletsInput !== undefined) {
+    // Sanitizado: array → sólo strings → trim → cap 60 chars → filtrar vacíos
+    // → máx 4. Si no queda ninguno, null (la tarjeta arma los automáticos).
+    const limpios = Array.isArray(cardBulletsInput)
+      ? cardBulletsInput
+          .filter((b): b is string => typeof b === "string")
+          .map((b) => b.trim().slice(0, 60))
+          .filter((b) => b.length > 0)
+          .slice(0, 4)
+      : [];
+    cardBulletsToWrite = limpios.length > 0 ? limpios : Prisma.DbNull;
+  }
 
   // Publishing gate (invariante estado ACTIVO ⇔ publicado): cuando el payload
   // trae `publicado=true` (path legacy del toggle, mientras exista), validamos
@@ -192,9 +218,10 @@ export async function updatePaqueteFrontend(
     bumpEstadoToActivo = true;
   }
 
-  const dataToWrite: typeof data & { estado?: "ACTIVO" } = bumpEstadoToActivo
-    ? { ...data, estado: "ACTIVO" }
-    : { ...data };
+  const dataToWrite: typeof frontendData & { estado?: "ACTIVO" } =
+    bumpEstadoToActivo
+      ? { ...frontendData, estado: "ACTIVO" }
+      : { ...frontendData };
 
   // Slug vacío → null. La columna es @@unique([brandId, slug]); en Postgres
   // conviven varios NULL, pero múltiples "" colisionan. La pestaña Publicación
@@ -210,7 +237,12 @@ export async function updatePaqueteFrontend(
   try {
     const updated = await prisma.paquete.update({
       where: { id: paqueteId },
-      data: dataToWrite,
+      data: {
+        ...dataToWrite,
+        ...(cardBulletsToWrite !== undefined
+          ? { cardBullets: cardBulletsToWrite }
+          : {}),
+      },
     });
     revalidatePath(`/backend/paquetes/${paqueteId}`);
     revalidatePath("/destinos", "layout");
