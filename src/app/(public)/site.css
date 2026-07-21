@@ -4706,9 +4706,34 @@ header.header-area.header-dark {
   padding: 8px;
 }
 
-.rdp-root {
-  --rdp-accent-color: #785AE5;
-  --rdp-accent-background-color: rgba(120, 90, 229, 0.1);
+/* Calendario (react-day-picker) tematizado al coral de la marca para
+   replicar el diseño original (litepicker): rango en píldora roja, título /
+   días de semana / flechas en coral. Compartido por QuoteSidebar y /cotizar. */
+.date-range-picker .rdp-root {
+  --rdp-accent-color: #f43e55;
+  --rdp-accent-background-color: #ffe1e5;
+  --rdp-today-color: #f43e55;
+  --rdp-range_middle-background-color: #ffe1e5;
+  --rdp-range_middle-color: #f43e55;
+}
+
+.date-range-picker .rdp-month_caption,
+.date-range-picker .rdp-caption_label {
+  color: #f43e55;
+  font-weight: 700;
+}
+
+.date-range-picker .rdp-weekday {
+  color: #f43e55;
+  font-weight: 600;
+}
+
+.date-range-picker .rdp-chevron {
+  fill: #f43e55;
+}
+
+.date-range-picker .rdp-day_button {
+  color: #3c3c3c;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
