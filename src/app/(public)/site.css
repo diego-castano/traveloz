@@ -1077,8 +1077,16 @@ section {
 
 .sidebar-form .large-price {
     justify-content: center;
-    align-items: center;
+    align-items: flex-end;
     margin-bottom: 5px;
+}
+
+.sidebar-form .price-left {
+    margin-right: 8px;
+}
+
+.sidebar-form .main-price {
+    letter-spacing: -1.5px;
 }
 
 .sidebar-form .price-left .title2 {
@@ -3732,9 +3740,17 @@ header.header-area.header-dark {
     }
 
     .sidebar-form .main-price {
-        font-size: 65px;
-        margin-top: -7px;
-        margin-left: -5px;
+        font-size: 52px;
+        line-height: 0.8;
+        margin: 0 0 6px 0;
+    }
+
+    .sidebar-form .price-left .title {
+        font-size: 13px;
+    }
+
+    .sidebar-form .price-left .title2 {
+        font-size: 26px;
     }
 
     .box-card .main-price {
