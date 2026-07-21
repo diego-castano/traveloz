@@ -1032,10 +1032,11 @@ section {
     fill: #777 !important
 }
 
-/* Flechas del slider de fotos del detalle de paquete: mismo problema que
-   arriba (el SVG del EmblaSlider no trae fill y cae a negro). Mismo gris
-   #9A9A9A de la referencia. */
-.package-slider .slick-arrow path {
+/* Flechas del slider de fotos del detalle de paquete y del slider de logos
+   "Confían en nosotros" (corporativo): mismo problema que arriba (el SVG del
+   EmblaSlider no trae fill y cae a negro). Mismo gris #9A9A9A de la referencia. */
+.package-slider .slick-arrow path,
+.logo-slider .slick-arrow path {
     fill: #9A9A9A;
 }
 
