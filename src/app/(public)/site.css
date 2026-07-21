@@ -1087,10 +1087,16 @@ section {
         margin-bottom: 80px;
     }
 
-    /* Tarjetas más cuadradas (menos verticales) que el 400×487 de desktop,
-       para acercarse a la referencia del cliente. */
-    .image-box-slider.v2 .image-box.style1 img {
-        aspect-ratio: 1 / 1.1;
+    /* Coverflow apilado como la referencia: la card previa y la siguiente se
+       meten MÁS detrás de la central (mayor translateX) para que se solapen y
+       den sensación de profundidad 3D, en vez de quedar como slivers sueltos
+       a los costados. */
+    .image-box-slider.alt .embla__slide-inner.is-prev {
+        transform: scale(0.82) translateX(50%);
+    }
+
+    .image-box-slider.alt .embla__slide-inner.is-next {
+        transform: scale(0.82) translateX(-50%);
     }
 }
 
