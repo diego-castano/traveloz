@@ -1039,6 +1039,14 @@ section {
     fill: #9A9A9A;
 }
 
+/* Flechas del slider de destinos relacionados (box-slider): el SVG del
+   EmblaSlider no trae fill y caía a negro. Van violeta, igual que su borde
+   (#785AE5). En hover pasan a blanco (regla de abajo). */
+.destinos-slider .slick-arrow path,
+.box-slider .slick-arrow path {
+    fill: #785AE5;
+}
+
 .destinos-slider .slick-arrow:hover path,
 .box-slider .slick-arrow:hover path,
 .image-box-slider.alt .slick-arrow:hover path {
