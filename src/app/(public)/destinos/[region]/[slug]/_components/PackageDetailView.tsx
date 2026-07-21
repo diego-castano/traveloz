@@ -670,7 +670,10 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
               >
                 <EmblaSlider
                   slidesToShow={1}
-                  autoplay={false}
+                  // Foto principal del paquete: rota sola, un poco más calma
+                  // (4s) que los carruseles de cards (3s).
+                  autoplay
+                  autoplayDelay={4000}
                   showArrows
                   showDots
                 >

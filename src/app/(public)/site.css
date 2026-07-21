@@ -179,6 +179,14 @@ section {
     color: #A05ED3
 }
 
+/* Títulos de las páginas de listado por categoría (/destinos?tipo=) y por
+   etiqueta (/tag/): en la sans de marca, no en la serif del template —
+   pedido del cliente (jul-2026). El resto de los section-heading no cambia. */
+.section-heading.sans {
+    font-family: 'Clarika Geometric';
+    font-weight: 700;
+}
+
 .bg_white {
     background: #fff
 }
@@ -1022,6 +1030,13 @@ section {
 
 .image-box-slider.alt .slick-arrow path {
     fill: #777 !important
+}
+
+/* Flechas del slider de fotos del detalle de paquete: mismo problema que
+   arriba (el SVG del EmblaSlider no trae fill y cae a negro). Mismo gris
+   #9A9A9A de la referencia. */
+.package-slider .slick-arrow path {
+    fill: #9A9A9A;
 }
 
 .destinos-slider .slick-arrow:hover path,
