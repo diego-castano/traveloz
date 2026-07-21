@@ -4,6 +4,7 @@ import { useFormState } from "react-dom";
 import { submitQuoteForm } from "@/actions/public-forms.actions";
 import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
+import { SelectField } from "@/components/public/SelectField";
 import { FormStatus } from "@/components/public/FormStatus";
 import HoneypotField from "@/components/public/HoneypotField";
 
@@ -97,16 +98,16 @@ export function QuoteSidebar({
           </li>
           <li>
             <label htmlFor="quote-pref">Preferencia de contacto</label>
-            <select
+            <SelectField
               id="quote-pref"
               name="preferencia"
-              defaultValue=""
-            >
-              <option value="">Preferencia de contacto</option>
-              <option value="LLAMADA">Llamada telefónica</option>
-              <option value="EMAIL">E-mail</option>
-              <option value="WHATSAPP">WhatsApp</option>
-            </select>
+              placeholder="Preferencia de contacto"
+              options={[
+                { value: "LLAMADA", label: "Llamada telefónica" },
+                { value: "EMAIL", label: "E-mail" },
+                { value: "WHATSAPP", label: "WhatsApp" },
+              ]}
+            />
           </li>
           <li>
             <label htmlFor="quote-email">E-mail*</label>

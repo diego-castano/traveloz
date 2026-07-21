@@ -1,0 +1,145 @@
+/* Select custom — dropdown accesible con tema coral de la marca, pensado para
+   los formularios de cotización (/cotizar, QuoteSidebar). Reemplaza al <select>
+   nativo (que no se puede tematizar) manteniendo teclado, ARIA y buen tacto en
+   mobile. Comparte el lenguaje visual del PassengerCounter. */
+
+.select {
+  position: relative;
+  width: 100%;
+}
+
+/* Disparador — mismo look que los demás inputs del form */
+.trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  /* min-height 48px = target táctil cómodo en mobile */
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fff;
+  /* 16px evita el zoom automático de iOS al enfocar */
+  font-size: 16px;
+  color: #3c3c3c;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.trigger:hover,
+.trigger:focus-visible {
+  border-color: #f43e55;
+  outline: none;
+}
+
+.triggerOpen {
+  border-color: #f43e55;
+}
+
+.value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.placeholder {
+  color: #9a9a9a;
+}
+
+.chevron {
+  flex: none;
+  transition: transform 0.2s;
+  color: #9a9a9a;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Panel desplegable */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  z-index: 30;
+  padding: 6px;
+  /* el listbox recibe foco pero no mostramos su outline propio: el estado
+     activo se comunica con el resaltado coral de la opción */
+  outline: none;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 16px;
+  color: #3c3c3c;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Opción resaltada por teclado o hover del mouse */
+.option:hover,
+.optionActive {
+  background: #ffe1e5;
+  color: #f43e55;
+}
+
+/* Opción ya seleccionada */
+.optionSelected {
+  color: #f43e55;
+  font-weight: 600;
+}
+
+.check {
+  flex: none;
+  color: #f43e55;
+  opacity: 0;
+}
+
+.optionSelected .check {
+  opacity: 1;
+}
+
+/* --- Variante onGradient: solo el disparador cambia de tema para acompañar
+   los inputs translúcidos del form de /cotizar (borde blanco, texto blanco,
+   fondo transparente). El dropdown y las opciones siguen blancos con acento
+   coral, como en el tema por defecto. --- */
+.onGradient .trigger {
+  background: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 6px;
+  padding: 12px 18px;
+  font-size: 15px;
+  color: #fff;
+}
+
+.onGradient .trigger:hover,
+.onGradient .trigger:focus-visible,
+.onGradient .triggerOpen {
+  border-color: #fff;
+}
+
+.onGradient .placeholder {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.onGradient .chevron {
+  color: rgba(255, 255, 255, 0.85);
+}

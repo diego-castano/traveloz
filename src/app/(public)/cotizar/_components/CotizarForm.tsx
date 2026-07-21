@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { submitQuoteForm } from "@/actions/public-forms.actions";
 import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
+import { SelectField } from "@/components/public/SelectField";
 import { FormStatus } from "@/components/public/FormStatus";
 import HoneypotField from "@/components/public/HoneypotField";
 
@@ -82,12 +83,17 @@ export function CotizarForm() {
         </li>
         <li className="col-sm-12">
           <label htmlFor="q_pref">Preferencia de contacto</label>
-          <select id="q_pref" name="preferencia" defaultValue="">
-            <option value="">Preferencia de contacto</option>
-            <option value="LLAMADA">Llamada</option>
-            <option value="EMAIL">Email</option>
-            <option value="WHATSAPP">WhatsApp</option>
-          </select>
+          <SelectField
+            id="q_pref"
+            name="preferencia"
+            placeholder="Preferencia de contacto"
+            variant="onGradient"
+            options={[
+              { value: "LLAMADA", label: "Llamada" },
+              { value: "EMAIL", label: "Email" },
+              { value: "WHATSAPP", label: "WhatsApp" },
+            ]}
+          />
         </li>
         <li className="col-sm-12">
           <label htmlFor="q_obs">Comentarios</label>
