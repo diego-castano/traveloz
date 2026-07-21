@@ -1058,6 +1058,42 @@ section {
     display: none !important
 }
 
+/* Sección "Elegí tu lugar en el mundo" (DestinosGrid) en mobile: acercarse a
+   la referencia — flechas planas sin círculo (chevron blanco sobre el
+   degradado) y más aire entre el título y el carrusel. */
+@media (max-width: 767px) {
+    .image-box-slider.alt .slick-arrow {
+        width: auto;
+        height: auto;
+        border: none;
+        background: transparent;
+        border-radius: 0;
+    }
+
+    .image-box-slider.alt .slick-arrow:hover {
+        background: transparent;
+    }
+
+    .image-box-slider.alt .slick-arrow svg {
+        width: 30px;
+    }
+
+    .image-box-slider.alt .slick-arrow path,
+    .image-box-slider.alt .slick-arrow:hover path {
+        fill: #fff !important;
+    }
+
+    .content-area.gradient-page-bg.ver2.alt .section-heading {
+        margin-bottom: 80px;
+    }
+
+    /* Tarjetas más cuadradas (menos verticales) que el 400×487 de desktop,
+       para acercarse a la referencia del cliente. */
+    .image-box-slider.v2 .image-box.style1 img {
+        aspect-ratio: 1 / 1.1;
+    }
+}
+
 .destinos-slider .slick-list {
     padding-right: 180px;
 }
