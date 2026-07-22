@@ -2731,6 +2731,35 @@ strong {
     color: #6a6a78 !important;
 }
 
+/* Acento violeta (páginas de línea violeta, ej. corporativo): el check y el
+   borde usan el violeta #A05ED3 en vez del coral. */
+.form-success--accentViolet {
+    border-color: rgba(160, 94, 211, 0.18);
+}
+.form-success--accentViolet .form-success__circle,
+.form-success--accentViolet .form-success__tick {
+    stroke: #a05ed3;
+}
+
+/* Versión compacta (espacios reducidos, ej. sidebar del detalle de paquete). */
+.form-success--compact {
+    padding: 26px 20px 24px;
+    border-radius: 14px;
+}
+.form-success--compact .form-success__check {
+    width: 58px;
+    height: 58px;
+    margin-bottom: 14px;
+}
+.form-success--compact .form-success__title {
+    font-size: 23px !important;
+    margin-bottom: 8px !important;
+}
+.form-success--compact .form-success__text {
+    font-size: 15px !important;
+    line-height: 22px !important;
+}
+
 @media (max-width: 767px) {
     .form-success {
         padding: 38px 20px 34px;
@@ -2747,6 +2776,22 @@ strong {
     .form-success__text {
         font-size: 16px !important;
         line-height: 25px !important;
+    }
+    /* En mobile la compacta también se achica un poco menos que la grande. */
+    .form-success--compact {
+        padding: 24px 18px 22px;
+    }
+    .form-success--compact .form-success__check {
+        width: 54px;
+        height: 54px;
+        margin-bottom: 12px;
+    }
+    .form-success--compact .form-success__title {
+        font-size: 22px !important;
+    }
+    .form-success--compact .form-success__text {
+        font-size: 14px !important;
+        line-height: 21px !important;
     }
 }
 

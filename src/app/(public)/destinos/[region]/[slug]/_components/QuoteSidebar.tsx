@@ -82,6 +82,7 @@ export function QuoteSidebar({
       {result?.ok ? (
         <FormSuccess
           variant="onLight"
+          compact
           title="¡Consulta enviada!"
           text="Recibimos tu consulta. Nuestro equipo te va a contactar a la brevedad con la propuesta de tu viaje."
         />

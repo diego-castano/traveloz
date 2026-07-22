@@ -212,6 +212,7 @@ export function CorporativoView({
                 {result?.ok ? (
                   <FormSuccess
                     variant="onLight"
+                    accent="violet"
                     title="¡Mensaje enviado!"
                     text="Gracias por tu interés. Nuestro equipo corporativo se va a poner en contacto con vos a la brevedad."
                   />

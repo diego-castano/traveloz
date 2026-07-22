@@ -18,14 +18,23 @@ export function FormSuccess({
   variant = "onLight",
   title = "¡Consulta enviada!",
   text = "Gracias por escribirnos. Te vamos a contactar a la brevedad.",
+  compact = false,
+  accent = "coral",
 }: {
   variant?: "onGradient" | "onLight";
   title?: string;
   text?: string;
+  /** Versión más chica, para espacios reducidos (ej. sidebar del paquete). */
+  compact?: boolean;
+  /** Color del check en la variante onLight. Por defecto coral (marca);
+   *  "violet" para páginas de línea violeta (ej. corporativo). */
+  accent?: "coral" | "violet";
 }) {
   return (
     <div
-      className={`form-success form-success--${variant}`}
+      className={`form-success form-success--${variant}${
+        compact ? " form-success--compact" : ""
+      }${accent === "violet" ? " form-success--accentViolet" : ""}`}
       role="status"
       aria-live="polite"
     >
