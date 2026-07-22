@@ -174,7 +174,7 @@ export function RegionExplorer({ region, titulo, paquetes, ciudades }: Props) {
     <section className="listing-area">
       <div className="container wide">
         <div className="listing-filter">
-          <h1 className="h2 text-center">{titulo ?? "Explorá todos los destinos"}</h1>
+          <h1 className="section-heading sans text-center">{titulo ?? "Explorá todos los destinos"}</h1>
           <div className="filter-form">
             <div className="inner-flex">
               {/* City typeahead (multi) */}

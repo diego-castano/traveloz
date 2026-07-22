@@ -2547,6 +2547,13 @@ strong {
     display: block;
 }
 
+/* Placeholder oscuro (en la línea violeta de la sección) para que mientras la
+   imagen carga (o durante la transición del coverflow) la card NO flashee en
+   blanco, como se veía con señal lenta. */
+.image-box-slider.v2 .image-box.style1 {
+    background-color: #2d2547;
+}
+
 .image-box-slider.v2 .slick-list {
     padding-right: 150px
 }
