@@ -2763,6 +2763,75 @@ strong {
     }
 }
 
+/* Confirmación inline del newsletter del home (banda finita: no una tarjeta,
+   un pill con check + texto, en blanco sobre el fondo del CTA). */
+.newsletter-success {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px 22px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    color: #fff;
+    font-size: 17px;
+    font-weight: 400;
+    text-align: left;
+    animation: formSuccessIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.newsletter-success svg {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+}
+
+.newsletter-success circle {
+    stroke: #fff;
+    stroke-width: 2.5;
+    stroke-dasharray: 151;
+    stroke-dashoffset: 151;
+    animation: formSuccessCircle 0.55s ease-out 0.1s forwards;
+}
+
+.newsletter-success path {
+    stroke: #fff;
+    stroke-width: 3.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: formSuccessTick 0.35s ease-out 0.5s forwards;
+}
+
+@media (max-width: 767px) {
+    .newsletter-success {
+        font-size: 15px;
+        padding: 14px 18px;
+        gap: 10px;
+    }
+    .newsletter-success svg {
+        width: 26px;
+        height: 26px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .newsletter-success,
+    .newsletter-success circle,
+    .newsletter-success path {
+        animation-duration: 0.01ms !important;
+        animation-delay: 0ms !important;
+    }
+    .newsletter-success circle,
+    .newsletter-success path {
+        stroke-dashoffset: 0 !important;
+    }
+}
+
 .contact-form-wrapper form ul.row {
     padding: 0 !important;
     margin: 0 !important;

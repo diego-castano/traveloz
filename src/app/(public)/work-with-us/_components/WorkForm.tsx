@@ -5,7 +5,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { submitWorkWithUsForm } from "@/actions/public-forms.actions";
-import { FormStatus } from "@/components/public/FormStatus";
+import { FormSuccess } from "@/components/public/FormSuccess";
 import { FileUploadField } from "@/components/public/FileUploadField";
 import HoneypotField from "@/components/public/HoneypotField";
 
@@ -27,6 +27,16 @@ function SubmitButton() {
 
 export function WorkForm() {
   const [result, formAction] = useFormState(submitWorkWithUsForm, null);
+
+  if (result?.ok) {
+    return (
+      <FormSuccess
+        variant="onLight"
+        title="¡Postulación enviada!"
+        text="Gracias por tu interés en trabajar con nosotros. Vamos a revisar tu CV y te contactamos si avanzamos con tu perfil."
+      />
+    );
+  }
 
   return (
     <form action={formAction} encType="multipart/form-data">
@@ -77,7 +87,11 @@ export function WorkForm() {
       <div className="text-start mt-4">
         <SubmitButton />
       </div>
-      <FormStatus result={result} />
+      {result && !result.ok && (
+        <p style={{ color: "#c0392b", marginTop: 15 }} role="alert">
+          {result.message}
+        </p>
+      )}
     </form>
   );
 }

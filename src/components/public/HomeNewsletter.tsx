@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { submitNewsletterForm } from "@/actions/public-forms.actions";
-import { FormStatus } from "./FormStatus";
 import HoneypotField from "./HoneypotField";
 
 // Lee un param de la URL (?utm_source=…). Trim + cap a 255 chars para
@@ -78,24 +77,45 @@ export function HomeNewsletter({
       />
       <div className="container z-99">
         <div className="site-form style1">
-          <form onSubmit={onSubmit}>
-            <HoneypotField />
-            <label htmlFor="newsletter-email">
-              <img src={icon} alt="" loading="lazy" decoding="async" />
-            </label>
-            <input
-              id="newsletter-email"
-              name="email"
-              type="email"
-              placeholder={label}
-              required
-              disabled={isPending}
-            />
-            <button type="submit" disabled={isPending}>
-              {isPending ? "..." : button}
-            </button>
-          </form>
-          <FormStatus result={result} />
+          {result?.ok ? (
+            // Confirmación inline (la banda es finita: reemplazamos el campo por
+            // un mensaje compacto con check, en vez de una tarjeta grande).
+            <div className="newsletter-success" role="status" aria-live="polite">
+              <svg viewBox="0 0 52 52" aria-hidden="true">
+                <circle cx="26" cy="26" r="24" fill="none" />
+                <path fill="none" d="M14 27 l8 8 l16 -18" />
+              </svg>
+              <span>¡Listo! Ya estás suscripto. Gracias por sumarte.</span>
+            </div>
+          ) : (
+            <>
+              <form onSubmit={onSubmit}>
+                <HoneypotField />
+                <label htmlFor="newsletter-email">
+                  <img src={icon} alt="" loading="lazy" decoding="async" />
+                </label>
+                <input
+                  id="newsletter-email"
+                  name="email"
+                  type="email"
+                  placeholder={label}
+                  required
+                  disabled={isPending}
+                />
+                <button type="submit" disabled={isPending}>
+                  {isPending ? "..." : button}
+                </button>
+              </form>
+              {result && !result.ok && (
+                <p
+                  style={{ color: "#fff", marginTop: 12, textAlign: "center" }}
+                  role="alert"
+                >
+                  {result.message}
+                </p>
+              )}
+            </>
+          )}
         </div>
       </div>
     </section>
