@@ -6,6 +6,7 @@ import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
 import { SelectField } from "@/components/public/SelectField";
 import { FormStatus } from "@/components/public/FormStatus";
+import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
 
 // --- Botón de envío con estado pending (mismo patrón que ContactForm /
@@ -28,31 +29,11 @@ export function CotizarForm() {
   // con texto blanco. Ver `.quote-success` en site.css.
   if (result?.ok) {
     return (
-      <div className="quote-success" role="status" aria-live="polite">
-        <svg
-          className="quote-success__check"
-          viewBox="0 0 52 52"
-          aria-hidden="true"
-        >
-          <circle
-            className="quote-success__circle"
-            cx="26"
-            cy="26"
-            r="24"
-            fill="none"
-          />
-          <path
-            className="quote-success__tick"
-            fill="none"
-            d="M14 27 l8 8 l16 -18"
-          />
-        </svg>
-        <h2 className="quote-success__title">¡Consulta enviada!</h2>
-        <p className="quote-success__text">
-          Gracias por escribirnos. Nuestro equipo te va a contactar a la
-          brevedad, en menos de 24 horas, con tu propuesta de viaje.
-        </p>
-      </div>
+      <FormSuccess
+        variant="onGradient"
+        title="¡Consulta enviada!"
+        text="Gracias por escribirnos. Nuestro equipo te va a contactar a la brevedad, en menos de 24 horas, con tu propuesta de viaje."
+      />
     );
   }
 

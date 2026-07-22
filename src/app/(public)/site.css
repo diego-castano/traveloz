@@ -2616,26 +2616,22 @@ strong {
     font-weight: 100 !important;
 }
 
-/* --- Tarjeta de confirmación (post-envío de "Cotizá tu viaje").
-   Reemplaza al formulario en éxito. Vive sobre el degradado violeta, con
-   texto blanco (branding). Panel translúcido con check animado. --- */
-.quote-success {
+/* --- Tarjeta de confirmación post-envío (reemplaza al formulario en éxito).
+   Un solo look para todos los forms públicos, con dos variantes según el
+   fondo: `--onGradient` (violeta, texto/check blancos) y `--onLight` (fondo
+   claro/tarjeta blanca, acento coral, texto oscuro). Check animado por stroke.
+   Componente: src/components/public/FormSuccess.tsx --- */
+.form-success {
     display: flex;
     flex-direction: column;
     align-items: center;
     text-align: center;
-    color: #fff;
-    padding: 48px 32px 44px;
+    padding: 44px 30px 40px;
     border-radius: 18px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.28);
-    box-shadow: 0 24px 60px rgba(60, 30, 90, 0.28);
-    -webkit-backdrop-filter: blur(6px);
-    backdrop-filter: blur(6px);
-    animation: quoteSuccessIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: formSuccessIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-@keyframes quoteSuccessIn {
+@keyframes formSuccessIn {
     from {
         opacity: 0;
         transform: translateY(18px) scale(0.97);
@@ -2646,88 +2642,123 @@ strong {
     }
 }
 
-.quote-success__check {
-    width: 92px;
-    height: 92px;
-    margin-bottom: 26px;
+.form-success__check {
+    width: 88px;
+    height: 88px;
+    margin-bottom: 24px;
 }
 
-.quote-success__circle {
-    stroke: #fff;
+.form-success__circle {
     stroke-width: 2.5;
     stroke-dasharray: 151;
     stroke-dashoffset: 151;
     transform-origin: 50% 50%;
-    animation: quoteCircle 0.6s ease-out 0.15s forwards;
+    animation: formSuccessCircle 0.6s ease-out 0.15s forwards;
 }
 
-.quote-success__tick {
-    stroke: #fff;
+.form-success__tick {
     stroke-width: 3.2;
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-dasharray: 40;
     stroke-dashoffset: 40;
-    animation: quoteTick 0.4s ease-out 0.62s forwards;
+    animation: formSuccessTick 0.4s ease-out 0.62s forwards;
 }
 
-@keyframes quoteCircle {
+@keyframes formSuccessCircle {
     to {
         stroke-dashoffset: 0;
     }
 }
 
-@keyframes quoteTick {
+@keyframes formSuccessTick {
     to {
         stroke-dashoffset: 0;
     }
 }
 
-.quote-success__title {
-    color: #fff !important;
-    font-size: 34px !important;
+.form-success__title {
+    font-size: 32px !important;
     font-weight: 300 !important;
-    margin: 0 0 14px !important;
+    margin: 0 0 12px !important;
     letter-spacing: 0.5px;
 }
 
-.quote-success__text {
-    color: rgba(255, 255, 255, 0.92) !important;
+.form-success__text {
     font-size: 18px !important;
     line-height: 28px !important;
-    font-weight: 100 !important;
+    font-weight: 300 !important;
     max-width: 420px;
     margin: 0 auto !important;
 }
 
+/* Variante sobre degradado violeta (cotizar / contacto) */
+.form-success--onGradient {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 24px 60px rgba(60, 30, 90, 0.28);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+}
+.form-success--onGradient .form-success__circle,
+.form-success--onGradient .form-success__tick {
+    stroke: #fff;
+}
+.form-success--onGradient .form-success__title {
+    color: #fff !important;
+}
+.form-success--onGradient .form-success__text {
+    color: rgba(255, 255, 255, 0.92) !important;
+    font-weight: 100 !important;
+}
+
+/* Variante sobre fondo claro / tarjeta blanca (corporativo / sidebar paquete) */
+.form-success--onLight {
+    color: #3a3a4a;
+    background: #fff;
+    border: 1px solid rgba(244, 62, 85, 0.16);
+    box-shadow: 0 18px 46px rgba(120, 90, 160, 0.16);
+}
+.form-success--onLight .form-success__circle,
+.form-success--onLight .form-success__tick {
+    stroke: #f43e55;
+}
+.form-success--onLight .form-success__title {
+    color: #2c2c38 !important;
+}
+.form-success--onLight .form-success__text {
+    color: #6a6a78 !important;
+}
+
 @media (max-width: 767px) {
-    .quote-success {
-        padding: 40px 22px 36px;
+    .form-success {
+        padding: 38px 20px 34px;
         border-radius: 16px;
     }
-    .quote-success__check {
-        width: 78px;
-        height: 78px;
-        margin-bottom: 22px;
+    .form-success__check {
+        width: 74px;
+        height: 74px;
+        margin-bottom: 20px;
     }
-    .quote-success__title {
-        font-size: 28px !important;
+    .form-success__title {
+        font-size: 27px !important;
     }
-    .quote-success__text {
+    .form-success__text {
         font-size: 16px !important;
         line-height: 25px !important;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .quote-success,
-    .quote-success__circle,
-    .quote-success__tick {
+    .form-success,
+    .form-success__circle,
+    .form-success__tick {
         animation-duration: 0.01ms !important;
         animation-delay: 0ms !important;
     }
-    .quote-success__circle,
-    .quote-success__tick {
+    .form-success__circle,
+    .form-success__tick {
         stroke-dashoffset: 0 !important;
     }
 }

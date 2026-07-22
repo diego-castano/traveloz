@@ -1,12 +1,24 @@
 "use client";
 
-import { useFormState } from "react-dom";
+import { useFormState, useFormStatus } from "react-dom";
 import { submitQuoteForm } from "@/actions/public-forms.actions";
 import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
 import { SelectField } from "@/components/public/SelectField";
 import { FormStatus } from "@/components/public/FormStatus";
+import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
+
+// Botón con estado pending: se deshabilita mientras se envía para que no se
+// puedan disparar varios leads con clicks repetidos (bug reportado).
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btns" disabled={pending}>
+      {pending ? "Enviando…" : "Enviar consulta"}
+    </button>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // QuoteSidebar — right column form using the `sidebar-form sticky` markup
@@ -66,6 +78,15 @@ export function QuoteSidebar({
           ? "Por persona en base doble"
           : "Cotización personalizada según fechas y pasajeros"}
       </span>
+
+      {result?.ok ? (
+        <FormSuccess
+          variant="onLight"
+          title="¡Consulta enviada!"
+          text="Recibimos tu consulta. Nuestro equipo te va a contactar a la brevedad con la propuesta de tu viaje."
+        />
+      ) : (
+        <>
       <span className="d-block form-title">Contactate con nosotros</span>
 
       <form action={action}>
@@ -147,12 +168,12 @@ export function QuoteSidebar({
           </li>
         </ul>
         <div className="text-center">
-          <button type="submit" className="btns">
-            Enviar consulta
-          </button>
+          <SubmitButton />
         </div>
-        <FormStatus result={result} />
+        {result && !result.ok && <FormStatus result={result} />}
       </form>
+        </>
+      )}
     </div>
   );
 }

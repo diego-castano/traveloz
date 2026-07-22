@@ -2,7 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { submitContactForm } from "@/actions/public-forms.actions";
-import { FormStatus } from "@/components/public/FormStatus";
+import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
 
 function SubmitButton() {
@@ -16,6 +16,17 @@ function SubmitButton() {
 
 export function ContactForm() {
   const [result, formAction] = useFormState(submitContactForm, null);
+
+  if (result?.ok) {
+    return (
+      <FormSuccess
+        variant="onGradient"
+        title="¡Mensaje enviado!"
+        text="Gracias por contactarte con nosotros. Te vamos a responder a la brevedad."
+      />
+    );
+  }
+
   return (
     <form id="contact-form" action={formAction}>
       <HoneypotField />
@@ -57,14 +68,11 @@ export function ContactForm() {
       <div className="text-center">
         <SubmitButton />
       </div>
-      <p
-        id="success-msg"
-        style={{ display: "none", color: "white", marginTop: 15 }}
-        className="text-center"
-      >
-        ¡Mensaje enviado con éxito!
-      </p>
-      <FormStatus result={result} />
+      {result && !result.ok && (
+        <p style={{ color: "#ffb8bf", marginTop: 15 }} className="text-center" role="alert">
+          {result.message}
+        </p>
+      )}
     </form>
   );
 }

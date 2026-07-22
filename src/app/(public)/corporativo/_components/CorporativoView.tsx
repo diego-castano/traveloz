@@ -12,7 +12,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { submitCorporateForm } from "@/actions/public-forms.actions";
-import { FormStatus } from "@/components/public/FormStatus";
+import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Typewriter } from "@/components/public/Typewriter";
@@ -209,6 +209,14 @@ export function CorporativoView({
           <div className="row">
             <div className="col-lg-5 col-sm-6 mx-auto">
               <div className="content-box style2 ver2">
+                {result?.ok ? (
+                  <FormSuccess
+                    variant="onLight"
+                    title="¡Mensaje enviado!"
+                    text="Gracias por tu interés. Nuestro equipo corporativo se va a poner en contacto con vos a la brevedad."
+                  />
+                ) : (
+                  <>
                 <div className="text-center mb_50">
                   <h2 className="section-heading">{formTitulo}</h2>
                 </div>
@@ -275,8 +283,17 @@ export function CorporativoView({
                   <div className="text-start">
                     <SubmitButton />
                   </div>
-                  <FormStatus result={result} />
+                  {result && !result.ok && (
+                    <p
+                      style={{ color: "#c0392b", marginTop: 15 }}
+                      role="alert"
+                    >
+                      {result.message}
+                    </p>
+                  )}
                 </form>
+                  </>
+                )}
               </div>
             </div>
             <div className="col-lg-8 mx-auto">
