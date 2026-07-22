@@ -192,6 +192,12 @@ async function notifyLead(opts: {
   origen?: string | null;
   /** Resumen corto de atribución de pauta (ver `resumenPauta`). */
   pauta?: string | null;
+  /** Adjuntos a incluir en el email (ej. el CV de una postulación). */
+  attachments?: {
+    filename: string;
+    content: string;
+    contentType?: string;
+  }[];
 }): Promise<void> {
   try {
     const keys = Array.isArray(opts.settingKey) ? opts.settingKey : [opts.settingKey];
@@ -218,6 +224,7 @@ async function notifyLead(opts: {
       html: tpl.html,
       text: tpl.text,
       replyTo: opts.replyTo ?? undefined,
+      attachments: opts.attachments,
     });
   } catch (err) {
     log.error(`notifyLead (${opts.tipo}) failed`, err);
@@ -419,7 +426,19 @@ export async function submitWorkWithUsForm(
         { label: "Email", value: parsed.data.email },
         { label: "Teléfono", value: parsed.data.telefono ?? "" },
         { label: "Motivación", value: parsed.data.motivacion },
-        { label: "CV", value: uploaded.url },
+        // El CV va adjunto al email (abajo). En el cuerpo solo el nombre del
+        // archivo — NO la URL del bucket: es relativa, está detrás del login
+        // del admin y no se puede abrir desde el mail.
+        { label: "CV (adjunto)", value: cv.name },
+      ],
+      // Adjuntamos el CV al email para que se pueda descargar directo desde la
+      // bandeja, sin depender del proxy protegido ni de estar logueado.
+      attachments: [
+        {
+          filename: cv.name,
+          content: buffer.toString("base64"),
+          contentType: cv.type || "application/octet-stream",
+        },
       ],
     });
     return { ok: true, message: WORK_SUCCESS_MSG };

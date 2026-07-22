@@ -27,6 +27,14 @@ const RESEND_API_URL = "https://api.resend.com/emails";
 // EMAIL_FROM en el entorno.
 const DEFAULT_FROM = "TravelOz <notificaciones@app.traveloz.com.uy>";
 
+/** Adjunto de email. `content` es el archivo codificado en base64. */
+export interface EmailAttachment {
+  filename: string;
+  /** Contenido del archivo en base64 (sin el prefijo data:). */
+  content: string;
+  contentType?: string;
+}
+
 export interface SendEmailInput {
   to: string | string[];
   subject: string;
@@ -34,6 +42,8 @@ export interface SendEmailInput {
   text?: string;
   from?: string;
   replyTo?: string;
+  /** Archivos a adjuntar (ej. el CV de una postulación). */
+  attachments?: EmailAttachment[];
   /**
    * URL pública para darse de baja. Cuando se pasa, sendEmail además del
    * link en el cuerpo agrega dos headers RFC 8058 al email:
@@ -98,6 +108,13 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         text: input.text,
         reply_to: input.replyTo,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
+        attachments: input.attachments?.length
+          ? input.attachments.map((a) => ({
+              filename: a.filename,
+              content: a.content,
+              content_type: a.contentType,
+            }))
+          : undefined,
       }),
     });
 
