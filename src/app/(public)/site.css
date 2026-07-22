@@ -1781,6 +1781,18 @@ section {
     color: #A05ED3;
 }
 
+/* Negrita del contenido FAQ/Terms. El preflight de Tailwind (que viaja en el
+   bundle) trae `b,strong{font-weight:bolder}` y `bolder` es RELATIVO: como el
+   cuerpo pesa 300, en desktop resolvía a 400 (no se veía la negrita). Forzamos
+   700 con un selector más específico que gana al preflight sin importar el
+   orden de carga. Aplica a desktop (.plain-content) y mobile/terms (.accordion-body). */
+.faq-tab-content .plain-content strong,
+.faq-tab-content .plain-content b,
+.faq-accordion .accordion-body strong,
+.faq-accordion .accordion-body b {
+    font-weight: 700;
+}
+
 /* El preflight de Tailwind (menu,ol,ul { list-style:none }) viaja en el bundle
    del admin y le saca las viñetas a las listas del contenido CMS, que en el
    HTML de referencia (sin Tailwind) salen con disc/decimal. Las restauramos
@@ -4104,7 +4116,7 @@ header.header-area.header-dark {
     }
 
     .faq-accordion.alt .accordion-button {
-        padding: 20px;
+        padding: 18px 22px;
         font-family: 'Clarika Geometric';
         background: transparent;
         color: #A05ED3;
@@ -4113,11 +4125,14 @@ header.header-area.header-dark {
         font-size: 22px
     }
 
+    /* Padding parejo del cuerpo: mismo inset horizontal que el header (22px) y
+       separación clara del borde del card, sin el desfasaje que tenía antes
+       (header 20 / cuerpo 30). */
     .faq-accordion.alt .accordion-body .faq-tab-content .plain-content {
         border: none !important;
         margin: 0;
         background: transparent;
-        padding-top: 20px;
+        padding: 6px 22px 22px;
     }
 
     .faq-accordion.alt .accordion-item {
