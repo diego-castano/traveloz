@@ -1119,11 +1119,29 @@ export default function VendedorDashboard() {
   ]);
 
   // Deep link `?paquete={id}`: los emails de consulta de paquete traen un
-  // acceso directo que abre el panel de ese paquete en este portal. Se aplica
-  // una sola vez cuando los datos ya están cargados; si el id no existe, se
-  // ignora en silencio.
+  // acceso directo que abre el panel de ese paquete en este portal.
+  // OJO con la carga por tandas: el provider trae primero un chunk con los
+  // paquetes más nuevos y el resto después. Por eso NO marcamos el deep-link
+  // como aplicado hasta ENCONTRAR el paquete; si todavía no llegó su tanda,
+  // reintentamos cuando `indexedRows` crece. (Antes se marcaba aplicado en la
+  // primera tanda, y un paquete viejo — aún no cargado — no se abría nunca.)
   const searchParams = useSearchParams();
   const deepLinkAppliedRef = useRef(false);
+  const [deepLink, setDeepLink] = useState<{ id: string; titulo: string } | null>(
+    null,
+  );
+
+  const focusPaquete = (id: string) => {
+    setOpenId(id);
+    const idx = indexedRows.findIndex((r) => r.paquete.id === id);
+    if (idx >= 0) setPageSize((s) => Math.max(s, idx + 1));
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`vend-row-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+
   useEffect(() => {
     if (deepLinkAppliedRef.current) return;
     const target = searchParams.get("paquete");
@@ -1131,17 +1149,12 @@ export default function VendedorDashboard() {
       deepLinkAppliedRef.current = true;
       return;
     }
-    if (indexedRows.length === 0) return;
-    deepLinkAppliedRef.current = true;
     const idx = indexedRows.findIndex((r) => r.paquete.id === target);
-    if (idx === -1) return;
-    if (idx >= PAGE_SIZE) setPageSize(idx + 1);
-    setOpenId(target);
-    requestAnimationFrame(() => {
-      document
-        .getElementById(`vend-row-${target}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    if (idx === -1) return; // aún no cargó su tanda → reintenta cuando crezca
+    deepLinkAppliedRef.current = true;
+    setDeepLink({ id: target, titulo: indexedRows[idx].paquete.titulo });
+    focusPaquete(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, indexedRows]);
 
   const filteredRows = useMemo(() => {
@@ -1203,6 +1216,39 @@ export default function VendedorDashboard() {
   // ---- Render ----
   return (
     <div className="space-y-5">
+      {/* Banner de consulta: cuando se entra desde el CTA del email de un
+          paquete (?paquete=<id>), dejamos claro QUÉ paquete se está viendo y
+          un acceso para re-abrirlo/scrollear si el usuario se movió. */}
+      {deepLink && (
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="flex flex-wrap items-center gap-3 rounded-[12px] border border-[#F43E55]/25 bg-[#FFF1F3] px-4 py-3"
+        >
+          <span className="flex items-center gap-2 text-[13px] font-semibold text-[#C42B45]">
+            <Package size={15} strokeWidth={2} />
+            Consulta del email · Paquete:&nbsp;
+            <strong className="text-[#8f1f34]">{deepLink.titulo}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => focusPaquete(deepLink.id)}
+            className="ml-auto rounded-[8px] bg-[#F43E55] px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#e02e46]"
+          >
+            Ver el paquete
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeepLink(null)}
+            aria-label="Cerrar aviso"
+            className="rounded-[8px] px-2 py-1 text-[15px] leading-none text-[#C42B45]/70 transition hover:bg-[#F43E55]/10"
+          >
+            ✕
+          </button>
+        </motion.div>
+      )}
+
       {/* Greeting */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
