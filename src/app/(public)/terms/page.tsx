@@ -36,26 +36,18 @@ export default async function TermsPage() {
   return (
     <>
       <section className="terms-banner-area">
-        {/* Fondo full-bleed mobile: siempre el degradado de referencia (faq-mobile-banner),
-            no el gráfico decorativo chico configurable (bannerMobile). */}
-        <img
-          className="bg_image d-md-none"
-          src="/site/img/faq-mobile-banner.png"
-          alt=""
-          fetchPriority="high"
-          decoding="async"
-        />
         <div className="container">
+          {/* Boarding pass decorativo: MISMO gráfico en desktop y mobile, sobre
+              el degradado de .terms-banner-area. En mobile antes se mostraba el
+              avión de FAQ (faq-mobile-banner) por error; el cliente pidió el
+              boarding pass en ambos. Un solo gráfico → sin superposición. */}
           <img
             src={bannerDesktop}
             alt=""
-            className="terms_bg_img d-none d-md-block"
+            className="terms_bg_img"
             fetchPriority="high"
             decoding="async"
           />
-          {/* En mobile el fondo full-bleed (bg_image, faq-mobile-banner) ya
-              trae el avión/boardings; no montamos un segundo gráfico encima
-              (antes se superponían dos imágenes). */}
           <div className="row align-items-lg-center">
             <div className="col-lg-10 col-10">
               <div className="banner-text text_white">
