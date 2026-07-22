@@ -4276,8 +4276,9 @@ header.header-area.header-dark {
 
     .terms-banner-area .terms_bg_img {
         bottom: -20px;
-        width: 150px;
-        right: 0;
+        width: 140px;
+        /* Corrida a la derecha para que no quede tan pegada al texto (pedido). */
+        right: -30px;
     }
 
     /* El título largo ("Términos y condiciones de compra") con la columna
