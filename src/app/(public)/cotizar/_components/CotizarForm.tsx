@@ -21,6 +21,41 @@ function SubmitButton() {
 
 export function CotizarForm() {
   const [result, action] = useFormState(submitQuoteForm, null);
+
+  // --- Éxito: reemplazamos el formulario por una tarjeta de confirmación
+  // animada (check + copy), en vez de dejar el form relleno con un mensajito
+  // abajo (confundía al cliente). Mantiene el branding del degradado violeta
+  // con texto blanco. Ver `.quote-success` en site.css.
+  if (result?.ok) {
+    return (
+      <div className="quote-success" role="status" aria-live="polite">
+        <svg
+          className="quote-success__check"
+          viewBox="0 0 52 52"
+          aria-hidden="true"
+        >
+          <circle
+            className="quote-success__circle"
+            cx="26"
+            cy="26"
+            r="24"
+            fill="none"
+          />
+          <path
+            className="quote-success__tick"
+            fill="none"
+            d="M14 27 l8 8 l16 -18"
+          />
+        </svg>
+        <h2 className="quote-success__title">¡Consulta enviada!</h2>
+        <p className="quote-success__text">
+          Gracias por escribirnos. Nuestro equipo te va a contactar a la
+          brevedad, en menos de 24 horas, con tu propuesta de viaje.
+        </p>
+      </div>
+    );
+  }
+
   // --- Sin tarjeta blanca ni estilos inline: el form vive dentro de
   // `.contact-form-wrapper` (page.tsx) y hereda los inputs translúcidos con
   // borde blanco del diseño aprobado. Los pickers usan variant="onGradient"
