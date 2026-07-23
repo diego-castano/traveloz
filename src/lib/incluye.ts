@@ -16,7 +16,7 @@ export interface IncluyeItem {
   id: string;
   /** Source catalog service id, when the item came from the catalog. */
   servicioId?: string | null;
-  /** Icon key — maps to /site/img/p-{icon}-icon.png. */
+  /** Icon key — maps to a Traveloz SVG icon via the ServiceIcon registry. */
   icon: string;
   /** Display text shown to the traveler. */
   texto: string;

@@ -5,7 +5,7 @@
 //
 // Servicios incluidos are the "Incluye" amenities shown on every package
 // detail page (vuelo, traslado, alojamiento…). Each row has a name + an
-// icon key that maps to /public/site/img/p-{key}-icon.png on the public site.
+// icon key that maps to a Traveloz SVG icon via the ServiceIcon registry.
 // ---------------------------------------------------------------------------
 
 import { useEffect, useState } from "react";
@@ -15,7 +15,7 @@ import {
   updateServicio,
   deleteServicio,
 } from "@/actions/catalogo-servicios.actions";
-import { ICON_OPTIONS } from "@/components/ui/ServiceIcon";
+import { ICON_OPTIONS, ServiceIcon } from "@/components/ui/ServiceIcon";
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
 import { useWebEdit } from "../_components/web-edit-context";
@@ -37,7 +37,7 @@ export default function WebServiciosIncluidosPage() {
   }, []);
 
   const onSave = async (values: Record<string, string>) => {
-    const icon = (values.icon ?? "flight").trim() || "flight";
+    const icon = (values.icon ?? "vuelo").trim() || "vuelo";
     if (editing === "new") {
       await createServicio({
         nombre: values.nombre,
@@ -61,7 +61,7 @@ export default function WebServiciosIncluidosPage() {
           icon: editing.icon,
           descripcion: editing.descripcion ?? "",
         }
-      : { nombre: "", icon: "flight", descripcion: "" };
+      : { nombre: "", icon: "vuelo", descripcion: "" };
 
   return (
     <div className="p-6 max-w-4xl space-y-4">
@@ -71,8 +71,8 @@ export default function WebServiciosIncluidosPage() {
         </h2>
         <p className="text-sm text-neutral-500 mt-1">
           Iconos y descripciones que aparecen en la lista <strong>Incluye</strong>{" "}
-          de cada paquete en el sitio público. Los iconos se mapean a archivos
-          en <code>/site/img/p-&lt;icon&gt;-icon.png</code>.
+          de cada paquete en el sitio público. Cada servicio usa una clave de
+          icono del set de Traveloz (ver el selector de iconos).
         </p>
       </div>
 
@@ -81,7 +81,7 @@ export default function WebServiciosIncluidosPage() {
           id: i.id,
           title: i.nombre,
           subtitle: i.descripcion ?? `icon: ${i.icon}`,
-          thumbUrl: `/site/img/p-${i.icon}-icon.png`,
+          thumbNode: <ServiceIcon icon={i.icon} size={28} />,
           activo: i.activo,
           orden: i.orden,
         }))}

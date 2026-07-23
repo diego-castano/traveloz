@@ -1,44 +1,39 @@
 // ---------------------------------------------------------------------------
-// Service / Incluye icon registry — a curated set of travel-relevant icons
-// from lucide-react, rendered in the public template's brand violet (#a05ed3)
-// so they match the reference look (html_inicial/destinos-detalle.html) while
-// giving us a large, searchable, scalable icon set. One source of truth used by
-// the Incluye module picker, the public package page, and the catalog admin.
-// Items store a short string `key`; this maps it to a Lucide component.
+// Service / Incluye icon registry — the designer's custom Traveloz icon set,
+// rendered in the brand violet (#a05ed3) so it matches the reference look
+// (html_inicial/destinos-detalle.html). Solid-fill SVGs (see traveloz-icons),
+// one source of truth used by the Incluye module picker, the public package
+// page, and the catalog admin. Items store a short string `key`; this maps it
+// to a React SVG component.
 // ---------------------------------------------------------------------------
 
 import {
-  Plane,
-  Luggage,
-  CarFront,
-  Bus,
-  TrainFront,
-  Ship,
-  BedDouble,
-  Coffee,
-  Utensils,
-  MapPinned,
-  Users,
-  Ticket,
-  ShieldCheck,
-  HeartPulse,
-  Landmark,
-  Receipt,
-  Wifi,
-  HandCoins,
-  Umbrella,
-  Building2,
-  CircleCheck,
-  Star,
-  Camera,
-  LifeBuoy,
-  FileText,
-  Mountain,
-  Sparkles,
-  type LucideIcon,
-} from "lucide-react";
+  IconAvion,
+  IconInfo,
+  IconCama,
+  IconBusFrente,
+  IconValijaRuedas,
+  IconMochila,
+  IconValijaMano,
+  IconCrucero,
+  IconVelero,
+  IconCafe,
+  IconCartelSenales,
+  IconMapaPin,
+  IconTickets,
+  IconEscudoCheck,
+  IconPlato,
+  IconEstrella,
+  IconAuto,
+  IconDocCheck,
+  IconMonedas,
+  IconTren,
+  type TravelozIconProps,
+} from "./traveloz-icons";
 
-// Brand violet from the reference PNG icons (#a05ed3).
+type IconComponent = (props: TravelozIconProps) => React.JSX.Element;
+
+// Brand violet from the designer's icons (#a05ed3).
 export const INCLUYE_ICON_COLOR = "#a05ed3";
 
 export interface IconOption {
@@ -46,46 +41,42 @@ export interface IconOption {
   label: string;
   /** Extra search terms (Spanish synonyms) for the picker. */
   keywords: string;
-  Icon: LucideIcon;
+  Icon: IconComponent;
 }
 
 // Curated, ordered list shown in the picker. Keys are stable identifiers
 // stored on items / catalog services.
 export const ICON_OPTIONS: IconOption[] = [
-  { key: "vuelo", label: "Vuelo / Aéreo", keywords: "avion pasaje aereo flight", Icon: Plane },
-  { key: "equipaje", label: "Equipaje", keywords: "valija maleta bolso carry", Icon: Luggage },
-  { key: "traslado", label: "Traslado", keywords: "transfer auto remis privado", Icon: CarFront },
-  { key: "bus", label: "Bus / Ómnibus", keywords: "omnibus micro colectivo", Icon: Bus },
-  { key: "tren", label: "Tren", keywords: "ferrocarril", Icon: TrainFront },
-  { key: "crucero", label: "Crucero / Barco", keywords: "barco ferry navegacion", Icon: Ship },
-  { key: "alojamiento", label: "Alojamiento", keywords: "hotel noche habitacion cama regimen", Icon: BedDouble },
-  { key: "desayuno", label: "Desayuno", keywords: "cafe breakfast", Icon: Coffee },
-  { key: "comida", label: "Comida / Régimen", keywords: "regimen pension media all inclusive cena almuerzo", Icon: Utensils },
-  { key: "excursion", label: "Excursión / Tour", keywords: "paseo tour visita city", Icon: MapPinned },
-  { key: "guia", label: "Guía", keywords: "guia acompanante grupo", Icon: Users },
-  { key: "entradas", label: "Entradas / Tickets", keywords: "ticket acceso parque", Icon: Ticket },
-  { key: "seguro", label: "Seguro / Asistencia", keywords: "asistencia cobertura proteccion escudo", Icon: ShieldCheck },
-  { key: "salud", label: "Seguro médico", keywords: "medico salud cruz emergencia hospital", Icon: HeartPulse },
-  { key: "impuestos", label: "Impuestos / Tasas", keywords: "tasas iva fee cargos tax", Icon: Landmark },
-  { key: "recibo", label: "Recibo / Comprobante", keywords: "factura comprobante", Icon: Receipt },
-  { key: "wifi", label: "WiFi", keywords: "internet conexion", Icon: Wifi },
-  { key: "propinas", label: "Propinas", keywords: "tips gratificacion", Icon: HandCoins },
-  { key: "playa", label: "Playa", keywords: "sombrilla mar costa", Icon: Umbrella },
-  { key: "ciudad", label: "Ciudad", keywords: "city edificio urbano", Icon: Building2 },
-  { key: "naturaleza", label: "Naturaleza", keywords: "montana paisaje aventura", Icon: Mountain },
-  { key: "fotos", label: "Fotos", keywords: "camara foto recuerdo", Icon: Camera },
-  { key: "asistencia", label: "Asistencia 24h", keywords: "soporte ayuda salvavidas", Icon: LifeBuoy },
-  { key: "documentos", label: "Documentos / Visa", keywords: "visa pasaporte tramite", Icon: FileText },
-  { key: "premium", label: "Premium / Extra", keywords: "lujo destacado especial", Icon: Sparkles },
-  { key: "estrella", label: "Destacado", keywords: "estrella rating", Icon: Star },
-  { key: "check", label: "Incluido (genérico)", keywords: "incluido check tilde general", Icon: CircleCheck },
+  { key: "vuelo", label: "Vuelo / Aéreo", keywords: "avion pasaje aereo flight", Icon: IconAvion },
+  { key: "equipaje", label: "Equipaje", keywords: "valija maleta bolso bodega ruedas", Icon: IconValijaRuedas },
+  { key: "valijamano", label: "Valija de mano", keywords: "carry on cabina bolso equipaje mano", Icon: IconValijaMano },
+  { key: "mochila", label: "Mochila / Carry on", keywords: "carry on mochila bolso personal", Icon: IconMochila },
+  { key: "traslado", label: "Traslado", keywords: "transfer auto remis privado aeropuerto", Icon: IconAuto },
+  { key: "bus", label: "Bus / Ómnibus", keywords: "omnibus micro colectivo", Icon: IconBusFrente },
+  { key: "tren", label: "Tren", keywords: "ferrocarril", Icon: IconTren },
+  { key: "crucero", label: "Crucero / Barco", keywords: "barco ferry navegacion", Icon: IconCrucero },
+  { key: "velero", label: "Velero / Paseo náutico", keywords: "barco navegacion nautico paseo velero", Icon: IconVelero },
+  { key: "alojamiento", label: "Alojamiento", keywords: "hotel noche habitacion cama regimen", Icon: IconCama },
+  { key: "desayuno", label: "Desayuno", keywords: "cafe breakfast", Icon: IconCafe },
+  { key: "comida", label: "Comida / Régimen", keywords: "regimen pension media all inclusive cena almuerzo plato", Icon: IconPlato },
+  { key: "excursion", label: "Excursión / Tour", keywords: "paseo tour visita city mapa", Icon: IconMapaPin },
+  { key: "circuito", label: "Circuito / Itinerario", keywords: "circuito itinerario ruta recorrido cartel senales", Icon: IconCartelSenales },
+  { key: "entradas", label: "Entradas / Tickets", keywords: "ticket acceso parque entrada", Icon: IconTickets },
+  { key: "seguro", label: "Seguro / Asistencia", keywords: "asistencia cobertura proteccion escudo", Icon: IconEscudoCheck },
+  { key: "impuestos", label: "Impuestos / Tasas", keywords: "tasas iva fee cargos tax monedas", Icon: IconMonedas },
+  { key: "documentos", label: "Documentos / Visa", keywords: "visa pasaporte tramite documento", Icon: IconDocCheck },
+  { key: "estrella", label: "Destacado", keywords: "estrella rating", Icon: IconEstrella },
+  { key: "check", label: "Info / Otro", keywords: "incluido info otro general nota", Icon: IconInfo },
 ];
 
-const BY_KEY: Record<string, LucideIcon> = Object.fromEntries(
+const BY_KEY: Record<string, IconComponent> = Object.fromEntries(
   ICON_OPTIONS.map((o) => [o.key, o.Icon]),
 );
 
-// Legacy keys still present in stored data / older catalog services.
+// Legacy keys still present in stored data / older catalog services. Keys that
+// no longer exist in ICON_OPTIONS (guia, salud, wifi, propinas, playa, ciudad,
+// naturaleza, fotos, asistencia, recibo, premium) intentionally fall through to
+// DEFAULT_ICON_KEY via resolveIcon — no migration needed, they render as info.
 const ALIASES: Record<string, string> = {
   flight: "vuelo",
   bag: "equipaje",
@@ -99,7 +90,7 @@ const ALIASES: Record<string, string> = {
 
 export const DEFAULT_ICON_KEY = "check";
 
-export function resolveIcon(key: string | null | undefined): LucideIcon {
+export function resolveIcon(key: string | null | undefined): IconComponent {
   if (!key) return BY_KEY[DEFAULT_ICON_KEY];
   return BY_KEY[key] ?? BY_KEY[ALIASES[key] ?? ""] ?? BY_KEY[DEFAULT_ICON_KEY];
 }
@@ -109,7 +100,9 @@ export function ServiceIcon({
   size = 24,
   className,
   style,
-  strokeWidth = 2.1,
+  // Fill icons — kept in the signature so existing callers don't break, but
+  // there's no stroke to width so it's ignored.
+  strokeWidth: _strokeWidth,
   color = INCLUYE_ICON_COLOR,
 }: {
   icon: string | null | undefined;
@@ -120,13 +113,5 @@ export function ServiceIcon({
   color?: string;
 }) {
   const Icon = resolveIcon(icon);
-  return (
-    <Icon
-      size={size}
-      className={className}
-      style={style}
-      strokeWidth={strokeWidth}
-      color={color}
-    />
-  );
+  return <Icon size={size} className={className} style={style} color={color} />;
 }

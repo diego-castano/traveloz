@@ -256,13 +256,13 @@ const CATEGORIAS = [
 ];
 
 const SERVICIOS = [
-  { nombre: "Pasaje aéreo", icon: "flight", orden: 1 },
-  { nombre: "Carry on", icon: "bag", orden: 2 },
-  { nombre: "Equipaje en bodega", icon: "bag", orden: 3 },
-  { nombre: "Traslados aeropuerto-hotel-aeropuerto", icon: "bus", orden: 4 },
-  { nombre: "Alojamiento", icon: "bed", orden: 5 },
-  { nombre: "Régimen", icon: "exc", orden: 6 },
-  { nombre: "Tasas e impuestos", icon: "shield", orden: 7 },
+  { nombre: "Pasaje aéreo", icon: "vuelo", orden: 1 },
+  { nombre: "Carry on", icon: "valijamano", orden: 2 },
+  { nombre: "Equipaje en bodega", icon: "equipaje", orden: 3 },
+  { nombre: "Traslados aeropuerto-hotel-aeropuerto", icon: "traslado", orden: 4 },
+  { nombre: "Alojamiento", icon: "alojamiento", orden: 5 },
+  { nombre: "Régimen", icon: "comida", orden: 6 },
+  { nombre: "Tasas e impuestos", icon: "impuestos", orden: 7 },
 ];
 
 async function main() {

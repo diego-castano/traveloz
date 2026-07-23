@@ -144,7 +144,7 @@ export default async function PackageDetailPage({
         ? [
             {
               texto: `${nochesTotales} noche${nochesTotales === 1 ? "" : "s"} de alojamiento`,
-              icon: "bed",
+              icon: "alojamiento",
             },
           ]
         : [];

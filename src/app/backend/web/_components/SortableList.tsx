@@ -27,6 +27,9 @@ export type ListItem = {
   title: string;
   subtitle?: string;
   thumbUrl?: string;
+  /** Rendered thumbnail (e.g. an inline SVG icon). Takes precedence over
+   * `thumbUrl` when present, so lists can show real components, not just PNGs. */
+  thumbNode?: React.ReactNode;
   activo: boolean;
   orden: number;
 };
@@ -201,9 +204,11 @@ function Row<T extends ListItem>({
       )}
 
       {/* Thumb */}
-      {item.thumbUrl !== undefined && (
+      {(item.thumbNode !== undefined || item.thumbUrl !== undefined) && (
         <div className="w-12 h-12 rounded-md bg-neutral-100 overflow-hidden shrink-0 flex items-center justify-center">
-          {item.thumbUrl ? (
+          {item.thumbNode !== undefined ? (
+            item.thumbNode
+          ) : item.thumbUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={item.thumbUrl}

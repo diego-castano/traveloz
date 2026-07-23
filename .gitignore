@@ -57,3 +57,4 @@ audit/
 # cambie a pnpm y rompa el build de producción.
 pnpm-lock.yaml
 pnpm-workspace.yaml
+/iconostraveloz/
