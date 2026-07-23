@@ -60,11 +60,17 @@ export function EmblaSlider({
     slidesToShowMobile ??
     (centerModeMobile ? 1.4 : slidesToShow > 1 ? 1.1 : slidesToShow);
   const [isMobile, setIsMobile] = useState(false);
+  // `measured` marca que YA leímos el viewport con matchMedia (post-montaje).
+  // El SSR y el primer paint no conocen el ancho, así que hasta que esto sea
+  // true no revelamos el slider: evita mostrar el layout desktop (flex 33%,
+  // sin coverflow) un frame antes de saber que estamos en mobile.
+  const [measured, setMeasured] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;
     const mq = window.matchMedia("(max-width: 767px)");
     const update = () => setIsMobile(mq.matches);
     update();
+    setMeasured(true);
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
@@ -90,6 +96,11 @@ export function EmblaSlider({
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+  // `dragging` corta la transición de scale/coverflow de .embla__slide-inner
+  // mientras el dedo arrastra: si no, cada cambio de is-center/is-prev/is-next
+  // dispara la transición transform 0.4s a la vez que Embla mueve el translate
+  // -> pelean y se siente trabado. Al soltar vuelve la transición suave.
+  const [dragging, setDragging] = useState(false);
 
   const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
   const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
@@ -105,12 +116,18 @@ export function EmblaSlider({
       setScrollSnaps(emblaApi.scrollSnapList());
       onSelect();
     };
+    const onPointerDown = () => setDragging(true);
+    const onPointerUp = () => setDragging(false);
     sync();
     emblaApi.on("select", onSelect);
     emblaApi.on("reInit", sync);
+    emblaApi.on("pointerDown", onPointerDown);
+    emblaApi.on("pointerUp", onPointerUp);
     return () => {
       emblaApi.off("select", onSelect);
       emblaApi.off("reInit", sync);
+      emblaApi.off("pointerDown", onPointerDown);
+      emblaApi.off("pointerUp", onPointerUp);
     };
   }, [emblaApi]);
 
@@ -125,11 +142,14 @@ export function EmblaSlider({
     });
   }, [emblaApi, effectiveSlides, centered, loop, duration]);
 
-  // Revela el slider recién cuando emblaApi está listo y el layout mobile
-  // (isMobile/flex/align/reInit) ya se resolvió, esperando dos frames para que
-  // el navegador pinte el coverflow correcto antes de hacerlo visible.
+  // Revela el slider recién cuando emblaApi está listo, ya medimos el viewport
+  // (measured) y el layout mobile (isMobile/flex/align/reInit) se resolvió,
+  // esperando dos frames para que el navegador pinte el coverflow correcto
+  // antes de hacerlo visible. El gate en `measured` es clave: sin él los 2 rAF
+  // podían disparar y revelar el slider mientras isMobile todavía era false
+  // (layout desktop roto) y recién después "se corregía solo".
   useEffect(() => {
-    if (!emblaApi) return;
+    if (!emblaApi || !measured) return;
     let r1 = 0;
     let r2 = 0;
     r1 = requestAnimationFrame(() => {
@@ -139,7 +159,7 @@ export function EmblaSlider({
       cancelAnimationFrame(r1);
       cancelAnimationFrame(r2);
     };
-  }, [emblaApi, isMobile, centered, effectiveSlides]);
+  }, [emblaApi, measured, isMobile, centered, effectiveSlides]);
 
   const slideStyle = {
     flex: `0 0 ${100 / effectiveSlides}%`,
@@ -219,9 +239,11 @@ export function EmblaSlider({
                     className={`embla__slide-inner${isCenter ? " is-center" : ""}${
                       isPrev ? " is-prev" : ""
                     }${isNext ? " is-next" : ""}`}
-                    // Sin transición hasta revelar: el coverflow se aplica de
-                    // una (no anima desde el estado intermedio del arranque).
-                    style={ready ? undefined : { transition: "none" }}
+                    // Sin transición hasta revelar (el coverflow se aplica de
+                    // una, no anima desde el estado intermedio del arranque) y
+                    // tampoco mientras se arrastra (evita la pelea con el
+                    // translate de Embla que se sentía trabada).
+                    style={ready && !dragging ? undefined : { transition: "none" }}
                   >
                     {child}
                   </div>

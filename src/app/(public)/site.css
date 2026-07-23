@@ -2022,9 +2022,16 @@ section {
     text-transform: initial
 }
 
-.mainmenu ul li:hover>ul {
-    visibility: visible;
-    opacity: 1;
+/* Solo escritorio: revelar el submenú al hacer :hover. En iOS Safari, cuando
+   un :hover muestra contenido el primer tap se consume como hover y el click
+   recién llega en el segundo tap -> el link DESTINOS del drawer mobile pedía
+   dos taps. En mobile (<992px) el submenú lo abre .sub-menu.active por JS, así
+   que esta regla no hace falta y solo estorba. */
+@media (min-width: 992px) {
+    .mainmenu ul li:hover>ul {
+        visibility: visible;
+        opacity: 1;
+    }
 }
 
 
@@ -2588,6 +2595,9 @@ strong {
         transition: transform 0.4s;
         transform: scale(0.75);
         position: relative;
+        /* Sube la card a su propia capa: la transición de scale del coverflow
+           corre en GPU y no repinta en cada frame -> menos tirones. */
+        will-change: transform;
     }
 
     .image-box-slider .embla__slide-inner.is-center {

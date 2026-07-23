@@ -50,10 +50,14 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
                 className="image-box style1"
                 key={r.id}
               >
+                {/* eager (no lazy): dentro de un carrusel loop Embla clona y
+                    reposiciona slides, y el lazy dispara decodes durante el
+                    scroll -> tirones. Son pocas imágenes y el carrusel abre
+                    la página, así que las cargamos ya. */}
                 <img
                   src={r.heroImage ?? "/site/img/slider-1.webp"}
                   alt={r.nombre}
-                  loading="lazy"
+                  loading="eager"
                   decoding="async"
                 />
                 <h3 className="title">{r.nombre}</h3>

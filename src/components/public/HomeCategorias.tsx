@@ -49,7 +49,11 @@ export function HomeCategorias({
         >
           {slidesForCarousel.map((c, i) => (
             <a href={c.link} className="image-box style1" key={`${c.id}-${i}`}>
-              <img src={c.imagen} alt={c.titulo} loading="lazy" decoding="async" />
+              {/* eager (no lazy): este carrusel duplica slides para forzar el
+                  loop y Embla clona/reposiciona; con lazy los decodes saltaban
+                  durante el scroll y se sentía trabado. Son pocas imágenes y
+                  están arriba en la home, así que las cargamos ya. */}
+              <img src={c.imagen} alt={c.titulo} loading="eager" decoding="async" />
               <h3 className="title">{c.titulo}</h3>
             </a>
           ))}
