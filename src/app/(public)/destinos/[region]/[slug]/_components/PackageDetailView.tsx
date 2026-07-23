@@ -5,7 +5,7 @@ import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { FramedImage } from "@/components/media/FramedImage";
 import { Skeleton } from "@/components/public/SkeletonClient";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
-import { parseIncluyeItems } from "@/lib/incluye";
+import { parseIncluyeItems, iconForTrasladoTexto } from "@/lib/incluye";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { QuoteSidebar } from "./QuoteSidebar";
 import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
@@ -100,14 +100,23 @@ type Props = {
   related?: ReactNode;
 };
 
-// Match a free-text bullet to one of the 5 reference icons (flight/bag/bus/
-// bed/exc) by detecting Spanish travel keywords. Falls back to "exc" so every
-// bullet at least gets a checkmark-style icon.
+// Match a free-text bullet to a reference icon by detecting Spanish travel
+// keywords. Transport bullets (bus/tren/crucero/traslado) are classified by the
+// shared `iconForTrasladoTexto` heuristic. Falls back to "exc" so every bullet
+// at least gets a checkmark-style icon.
 function detectIconForBullet(text: string): string {
   const t = text.toLowerCase();
   if (/\b(pasaje|aére[oa]|vuelo|avi[oó]n|aeropuerto)\b/.test(t)) return "flight";
   if (/\b(carry|equipaje|valija|maleta|bolso|bagaje)\b/.test(t)) return "bag";
-  if (/\b(traslado|transfer|bus|[oó]mnibus|micro|combi)\b/.test(t)) return "bus";
+  // Transporte terrestre/marítimo: si el bullet menciona un medio, delegamos la
+  // elección del ícono (bus/tren/crucero/traslado=auto) a la misma heurística
+  // que usa el generador y el script de remapeo, así queda todo alineado.
+  if (
+    /\b(traslado|transfer|bus|buses|[oó]mnibus|micro|combi|tren|trenes|rail|ferry|barco|catamar[aá]n|navegaci[oó]n)\b/.test(
+      t,
+    )
+  )
+    return iconForTrasladoTexto(text);
   if (
     /\b(noche|noches|alojamiento|hotel|habitaci[oó]n|r[ée]gimen|desayuno|all\s*inclusive|media\s*pensi[oó]n|pensi[oó]n)\b/.test(
       t,

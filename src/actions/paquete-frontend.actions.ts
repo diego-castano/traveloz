@@ -4,7 +4,11 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
-import { type IncluyeItem, newIncluyeId } from "@/lib/incluye";
+import {
+  type IncluyeItem,
+  newIncluyeId,
+  iconForTrasladoTexto,
+} from "@/lib/incluye";
 import { checkPaquetePublicable } from "@/lib/paquete-publicable";
 import { slugify } from "@/lib/utils";
 
@@ -491,8 +495,12 @@ export async function getSugerenciasIncluye(
     // "1 valija 23kg", etc.) con el ícono de equipaje.
     push("equipaje", pa.aereo.equipaje);
   }
-  for (const pt of paquete.traslados)
-    push("traslado", pt.textoDisplay ?? pt.traslado.nombre);
+  for (const pt of paquete.traslados) {
+    // El ícono del traslado depende del medio que diga el texto ("Bus Lisboa -
+    // Oporto" → bus, "Tren a Machu Picchu" → tren, etc.). Default: auto.
+    const texto = pt.textoDisplay ?? pt.traslado.nombre;
+    push(iconForTrasladoTexto(texto), texto);
+  }
 
   for (const d of paquete.destinos) {
     if (!d.noches || d.noches <= 0) continue;

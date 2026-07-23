@@ -111,6 +111,32 @@ export function legacyTextToIncluye(raw: string | null | undefined): IncluyeItem
     }));
 }
 
+/**
+ * Elige la clave de ícono de transporte según el texto del renglón.
+ *
+ * El set nuevo de iconos distingue el medio: "traslado" = auto (default),
+ * "bus" = ómnibus de frente, "tren", "crucero" = barco/ferry. El generador de
+ * sugerencias creaba TODOS los traslados con "traslado" (auto), así que un
+ * renglón como "Bus Lisboa - Oporto - Lisboa" mostraba un auto. Esta función
+ * lee el texto (case-insensitive, sin tildes) y devuelve el ícono correcto.
+ *
+ * Es la única fuente de verdad para esta heurística: la usan el generador
+ * (`getSugerenciasIncluye`), el script de remapeo y la detección legacy de
+ * bullets de texto libre (`detectIconForBullet` en la vista pública).
+ */
+export function iconForTrasladoTexto(
+  texto: string | null | undefined,
+): "traslado" | "bus" | "tren" | "crucero" {
+  const t = (texto ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, ""); // saca tildes/diacríticos
+  if (/\b(bus|buses|omnibus|autobus|micro)\b/.test(t)) return "bus";
+  if (/\b(tren|trenes|rail)\b/.test(t)) return "tren";
+  if (/\b(ferry|barco|catamaran|navegacion)\b/.test(t)) return "crucero";
+  return "traslado";
+}
+
 export function newIncluyeId(): string {
   try {
     if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
