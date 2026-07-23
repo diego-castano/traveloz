@@ -249,10 +249,12 @@
     text-align: center;
   }
 
-  /* Separación pareja y no tan grande entre los bloques apilados (el cliente
-     marcó que el espacio social→Contacto quedaba enorme). */
+  /* Separación pareja y generosa entre los bloques apilados (el cliente marcó
+     que 30px quedaba apretado — subido a 48px, misma mecánica: el único
+     margen entre secciones es este, así que queda parejo en toda la cadena
+     logo/about/redes → Contacto → Información útil → logos partner). */
   .tvz-footer-col {
-    margin-bottom: 30px;
+    margin-bottom: 48px;
   }
 
   /* .footer-left es una clase heredada del template (site.css la usa fuera de
@@ -275,19 +277,14 @@
     justify-content: center;
   }
 
-  /* Contacto en mobile: bloque angosto centrado, con los ítems alineados a la
-     izquierda. Así el ícono queda SIEMPRE pegado al texto (antes, con la
-     dirección larga a 2 líneas + centrado, el pin se iba al borde izquierdo,
-     separado del texto). Los íconos quedan en una columnita prolija. */
-  .tvz-footer .footer-contact {
-    max-width: 290px;
-    margin-left: auto;
-    margin-right: auto;
-    text-align: left;
-  }
-
+  /* Contacto en mobile: cada renglón (ícono + texto) centrado como unidad
+     respecto al ancho del footer, en vez del bloque quedar alineado a la
+     izquierda dentro de una columna centrada. justify-content: center en el
+     <li> centra el conjunto ícono+texto; el texto se limita a un max-width
+     para que la dirección (la única que envuelve) lo haga a 2 líneas cortas
+     y prolijas en vez de estirarse a lo ancho del footer. */
   .tvz-footer .footer-contact li {
-    justify-content: flex-start;
+    justify-content: center;
   }
 
   .tvz-footer .footer-contact .icon {
@@ -296,13 +293,26 @@
     flex-shrink: 0;
   }
 
+  .tvz-footer .footer-contact li span:last-child,
+  .tvz-footer .footer-contact li a {
+    max-width: 230px;
+    text-align: left;
+  }
+
   .tvz-footer .footer-col-title {
     font-size: 20px;
   }
 
+  /* .footer-brand-logo trae padding-top: 30px de la regla base (línea ~192,
+     válida en todos los breakpoints) que en mobile se sumaba a un margin-top
+     propio de 30px, más el margin-bottom de la columna anterior: el hueco
+     antes de los logos partner terminaba siendo el triple que el resto
+     (90px vs 30px). Lo neutralizamos acá para que el único espacio entre
+     "Información útil" y los logos sea, otra vez, el de .tvz-footer-col. */
   .tvz-footer .footer-brand-logo {
     justify-content: center;
-    margin-top: 30px;
+    margin-top: 0;
+    padding-top: 0;
   }
 
   .tvz-footer .footer-brand-logo li {
