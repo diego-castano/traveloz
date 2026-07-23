@@ -70,12 +70,13 @@ export function EmblaSlider({
   }, []);
 
   // Evita el "flash" del layout equivocado: en el primer paint (SSR + hidratación)
-  // isMobile arranca en false → se renderiza el layout desktop (flex 33%, sin las
-  // clases del coverflow) y recién el efecto lo corrige. Mantenemos el slider
-  // invisible hasta montar (isMobile ya resuelto) y lo revelamos con un fade.
-  // opacity:0 no afecta la medición de Embla (el elemento conserva dimensiones).
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  // isMobile arranca en false → se renderiza el layout desktop (flex 33%, align
+  // start, sin las clases del coverflow) y recién los efectos lo corrigen. No
+  // alcanza con revelar al montar: hay que esperar a que isMobile/flex/align y
+  // el reInit de Embla se asienten. El slider queda invisible + sin transición
+  // hasta `ready` (ver el efecto más abajo, tras declarar emblaApi), así aparece
+  // ya armado y no "anima" desde el estado intermedio.
+  const [ready, setReady] = useState(false);
   const effectiveSlides = isMobile ? mobileSlides : slidesToShow;
   const centered = centerModeMobile && isMobile;
   const plugins = autoplay
@@ -123,6 +124,22 @@ export function EmblaSlider({
       ...(duration !== undefined ? { duration } : {}),
     });
   }, [emblaApi, effectiveSlides, centered, loop, duration]);
+
+  // Revela el slider recién cuando emblaApi está listo y el layout mobile
+  // (isMobile/flex/align/reInit) ya se resolvió, esperando dos frames para que
+  // el navegador pinte el coverflow correcto antes de hacerlo visible.
+  useEffect(() => {
+    if (!emblaApi) return;
+    let r1 = 0;
+    let r2 = 0;
+    r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => setReady(true));
+    });
+    return () => {
+      cancelAnimationFrame(r1);
+      cancelAnimationFrame(r2);
+    };
+  }, [emblaApi, isMobile, centered, effectiveSlides]);
 
   const slideStyle = {
     flex: `0 0 ${100 / effectiveSlides}%`,
@@ -172,7 +189,7 @@ export function EmblaSlider({
       className={`embla ${className}`}
       style={{
         position: "relative",
-        opacity: mounted ? 1 : 0,
+        opacity: ready ? 1 : 0,
         transition: "opacity 0.25s ease",
       }}
     >
@@ -202,6 +219,9 @@ export function EmblaSlider({
                     className={`embla__slide-inner${isCenter ? " is-center" : ""}${
                       isPrev ? " is-prev" : ""
                     }${isNext ? " is-next" : ""}`}
+                    // Sin transición hasta revelar: el coverflow se aplica de
+                    // una (no anima desde el estado intermedio del arranque).
+                    style={ready ? undefined : { transition: "none" }}
                   >
                     {child}
                   </div>

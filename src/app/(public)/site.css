@@ -904,6 +904,16 @@ section {
     padding-bottom: 30px
 }
 
+/* En mobile, el coverflow de /destinos (v2) centra las cards con scale; ese
+   padding-bottom de 30px (herencia del template Slick, para el hover de
+   desktop) dejaba el card pegado arriba del slide con un gap vacío abajo, que
+   se veía como una "tarjeta" desalineada detrás del centro. Lo anulamos acá. */
+@media (max-width: 767px) {
+    .image-box-slider.v2 .slide {
+        padding-bottom: 0;
+    }
+}
+
 .image-box-slider .image-box.style1:hover {
     transform: translateY(20px)
 }
@@ -2547,11 +2557,10 @@ strong {
     display: block;
 }
 
-/* Placeholder oscuro (en la línea violeta de la sección) para que mientras la
-   imagen carga (o durante la transición del coverflow) la card NO flashee en
-   blanco, como se veía con señal lenta. */
+/* Placeholder en la línea violeta de la sección, para que si una imagen tarda
+   en cargar la card no flashee en blanco (se revela con el slider ya montado). */
 .image-box-slider.v2 .image-box.style1 {
-    background-color: #2d2547;
+    background-color: #6b4bb3;
 }
 
 .image-box-slider.v2 .slick-list {
