@@ -133,7 +133,7 @@ export function iconForTrasladoTexto(
     .replace(/[̀-ͯ]/g, ""); // saca tildes/diacríticos
   if (/\b(bus|buses|omnibus|autobus|micro)\b/.test(t)) return "bus";
   if (/\b(tren|trenes|rail)\b/.test(t)) return "tren";
-  if (/\b(ferry|barco|catamaran|navegacion)\b/.test(t)) return "crucero";
+  if (/\b(ferry|barco|catamaran|navegacion|cruceros?)\b/.test(t)) return "crucero";
   return "traslado";
 }
 
