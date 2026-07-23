@@ -227,6 +227,14 @@
   .tvz-footer-col:last-child {
     margin-bottom: 0;
   }
+
+  /* Con las columnas apiladas, el espaciado distinto entre ítems de Contacto
+     (12px) e Información útil (20.5px) —un hack para alinear la última fila en
+     el layout de 4 columnas de desktop— se ve inconsistente. Lo unificamos. */
+  .tvz-footer .footer-contact li,
+  .tvz-footer .footer-links li {
+    margin-bottom: 14px;
+  }
 }
 
 @media (max-width: 1400px) {
@@ -241,6 +249,12 @@
     text-align: center;
   }
 
+  /* Separación pareja y no tan grande entre los bloques apilados (el cliente
+     marcó que el espacio social→Contacto quedaba enorme). */
+  .tvz-footer-col {
+    margin-bottom: 30px;
+  }
+
   .tvz-footer .footer-logo {
     display: block;
     width: 120px;
@@ -251,8 +265,25 @@
     justify-content: center;
   }
 
+  /* Contacto en mobile: bloque angosto centrado, con los ítems alineados a la
+     izquierda. Así el ícono queda SIEMPRE pegado al texto (antes, con la
+     dirección larga a 2 líneas + centrado, el pin se iba al borde izquierdo,
+     separado del texto). Los íconos quedan en una columnita prolija. */
+  .tvz-footer .footer-contact {
+    max-width: 290px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+  }
+
   .tvz-footer .footer-contact li {
-    justify-content: center;
+    justify-content: flex-start;
+  }
+
+  .tvz-footer .footer-contact .icon {
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
   }
 
   .tvz-footer .footer-col-title {
