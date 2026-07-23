@@ -2612,9 +2612,21 @@ strong {
         transition: transform 0.4s;
         transform: scale(0.75);
         position: relative;
-        /* Sube la card a su propia capa: la transición de scale del coverflow
-           corre en GPU y no repinta en cada frame -> menos tirones. */
-        will-change: transform;
+    }
+
+    /* Orden de apilado en el flex item EXTERNO (.embla__slide), no en el inner:
+       Embla le pone transform inline y en WebKit cada slide con transform crea
+       su propio stacking context; el z-index de los inners no ordenaba entre
+       hermanos y las vecinas tapaban a la central. Subimos la central acá.
+       (position:relative por robustez; z-index ya aplica a flex items.) */
+    .image-box-slider .embla__slide.slide--center {
+        position: relative;
+        z-index: 30;
+    }
+
+    .image-box-slider .embla__slide.slide--side {
+        position: relative;
+        z-index: 10;
     }
 
     .image-box-slider .embla__slide-inner.is-center {
@@ -4026,6 +4038,19 @@ header.header-area.header-dark {
         transform: scale(0.72);
         opacity: 0.35;
         position: relative;
+    }
+
+    /* Mismo apilado que image-box-slider: el orden entre hermanos lo decide el
+       flex item externo (.embla__slide), no el inner, porque en WebKit el
+       transform inline de Embla crea un stacking context por slide. */
+    .icon-teaser-slider .embla__slide.slide--center {
+        position: relative;
+        z-index: 30;
+    }
+
+    .icon-teaser-slider .embla__slide.slide--side {
+        position: relative;
+        z-index: 10;
     }
 
     .icon-teaser-slider .embla__slide-inner.is-center {

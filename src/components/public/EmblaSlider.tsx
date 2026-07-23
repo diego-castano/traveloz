@@ -201,7 +201,19 @@ export function EmblaSlider({
               const isNext =
                 centerModeMobile && i === nextIndex && nextIndex !== selectedIndex;
               return (
-                <div className="embla__slide slide" key={i}>
+                // slide--center/slide--side viven en el wrapper EXTERNO (no en
+                // el inner) para poder subir z-index del propio flex item que
+                // Embla mueve con transform inline: en WebKit cada .embla__slide
+                // con transform crea su stacking context y el orden entre
+                // hermanos se resolvía por DOM ignorando el z-index de los
+                // inners (vecinas tapaban la central). Acá NO ponemos style
+                // inline: Embla escribe su translate3d en este mismo div.
+                <div
+                  className={`embla__slide slide${isCenter ? " slide--center" : ""}${
+                    isPrev || isNext ? " slide--side" : ""
+                  }`}
+                  key={i}
+                >
                   <div
                     className={`embla__slide-inner${isCenter ? " is-center" : ""}${
                       isPrev ? " is-prev" : ""
