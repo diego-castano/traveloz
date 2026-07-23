@@ -68,6 +68,14 @@ export function EmblaSlider({
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
+
+  // Evita el "flash" del layout equivocado: en el primer paint (SSR + hidratación)
+  // isMobile arranca en false → se renderiza el layout desktop (flex 33%, sin las
+  // clases del coverflow) y recién el efecto lo corrige. Mantenemos el slider
+  // invisible hasta montar (isMobile ya resuelto) y lo revelamos con un fade.
+  // opacity:0 no afecta la medición de Embla (el elemento conserva dimensiones).
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const effectiveSlides = isMobile ? mobileSlides : slidesToShow;
   const centered = centerModeMobile && isMobile;
   const plugins = autoplay
@@ -160,7 +168,14 @@ export function EmblaSlider({
     // bottom:-25px del slick-theme) a este wrapper. Sin esto se anclan al
     // .main-wrapper (relative) y los dots se escapan al pie de la página, debajo
     // del footer. Es lo que hace .slick-slider en el template original.
-    <div className={`embla ${className}`} style={{ position: "relative" }}>
+    <div
+      className={`embla ${className}`}
+      style={{
+        position: "relative",
+        opacity: mounted ? 1 : 0,
+        transition: "opacity 0.25s ease",
+      }}
+    >
       <div
         className="embla__viewport"
         ref={emblaRef}
