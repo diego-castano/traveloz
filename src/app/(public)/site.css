@@ -2954,6 +2954,15 @@ strong {
     font-size: 16px !important;
     text-transform: none !important;
     border: none !important;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+/* El hover global (.content-box.style2 .contact-btn:hover { background:#ededed })
+   no tiene `!important`, así que el `background:#fff !important` de arriba lo
+   pisaba y el botón quedaba SIN hover visible. Lo replicamos con `!important`
+   para que use el mismo gris que el resto de los botones. */
+.contact-form-wrapper .contact-btn:hover {
+    background: #ededed !important;
 }
 
 .content-box.style2 form textarea {
