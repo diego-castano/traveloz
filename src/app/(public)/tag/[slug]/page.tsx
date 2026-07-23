@@ -78,7 +78,7 @@ export default async function TagPage({
     <section className="content-area">
       <div className="container">
         <div className="text-center mb_50">
-          <h1 className="section-heading sans">{etiqueta.nombre}</h1>
+          <h1 className="section-heading">{etiqueta.nombre}</h1>
           <p>{subtitulo}</p>
         </div>
         {paquetes.length === 0 ? (

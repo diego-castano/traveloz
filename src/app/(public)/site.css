@@ -179,14 +179,6 @@ section {
     color: #A05ED3
 }
 
-/* Títulos de las páginas de listado por categoría (/destinos?tipo=) y por
-   etiqueta (/tag/): en la sans de marca, no en la serif del template —
-   pedido del cliente (jul-2026). El resto de los section-heading no cambia. */
-.section-heading.sans {
-    font-family: 'Clarika Geometric';
-    font-weight: 700;
-}
-
 .bg_white {
     background: #fff
 }
