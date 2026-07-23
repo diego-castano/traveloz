@@ -364,10 +364,16 @@ export async function updateRegion(
     // `paises`, brandId, timestamps…) y Prisma rompe si le llega la relación
     // `paises`. El schema partial descarta todo lo que no sea nombre/slug/orden.
     const clean = RegionSchema.partial().parse(data);
+    log.info("updateRegion", { id, keys: Object.keys(clean) });
     const __res = await prisma.region.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating region", error);
-    throw new Error("No se pudo actualizar la región.");
+    // Incluimos el mensaje real para que el toast del cliente lo muestre y
+    // podamos diagnosticar (antes ocultaba todo tras un texto genérico).
+    throw new Error(
+      "No se pudo actualizar la región." +
+        (error instanceof Error ? ` (${error.message})` : ""),
+    );
   }
 }
 

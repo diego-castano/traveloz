@@ -710,6 +710,7 @@ function RegionesPaisesTab() {
       }
       setRegionModalOpen(false);
     } catch (err) {
+      console.error("[handleSaveRegion] falló:", err);
       toast(
         "error",
         "No se pudo guardar",

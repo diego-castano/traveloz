@@ -614,8 +614,15 @@ export function useCatalogActions() {
         return entity;
       },
       updateRegion: async (entity: Region) => {
-        const { id, ...rest } = entity;
-        const updated = await catalogActions.updateRegion(id, rest);
+        // Mandamos SOLO los campos escalares: el `entity` viene enriquecido con
+        // `paises` (relación) + fechas; pasar todo eso por la server action es
+        // frágil (serialización + Prisma rompe con la relación). Extraemos lo
+        // que se edita y nada más.
+        const updated = await catalogActions.updateRegion(entity.id, {
+          nombre: entity.nombre,
+          slug: entity.slug,
+          orden: entity.orden,
+        });
         dispatch({ type: "UPDATE_REGION", payload: updated as unknown as Region });
         return updated;
       },
@@ -633,8 +640,12 @@ export function useCatalogActions() {
         return entity;
       },
       updatePais: async (entity: Pais) => {
-        const { id, ...rest } = entity;
-        const updated = await catalogActions.updatePais(id, rest);
+        // Solo escalares (ver updateRegion): el entity trae `ciudades` + fechas.
+        const updated = await catalogActions.updatePais(entity.id, {
+          nombre: entity.nombre,
+          codigo: entity.codigo,
+          regionId: entity.regionId,
+        });
         dispatch({ type: "UPDATE_PAIS", payload: updated as unknown as Pais });
         return updated;
       },
@@ -652,8 +663,9 @@ export function useCatalogActions() {
         return entity;
       },
       updateCiudad: async (entity: Ciudad) => {
-        const { id, ...rest } = entity;
-        const updated = await catalogActions.updateCiudad(id, rest);
+        const updated = await catalogActions.updateCiudad(entity.id, {
+          nombre: entity.nombre,
+        });
         dispatch({ type: "UPDATE_CIUDAD", payload: updated as unknown as Ciudad });
         return updated;
       },
