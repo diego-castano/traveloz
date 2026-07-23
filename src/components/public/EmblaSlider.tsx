@@ -66,8 +66,18 @@ export function EmblaSlider({
     slidesToShowMobile ??
     (centerModeMobile ? 1.4 : slidesToShow > 1 ? 1.1 : slidesToShow);
 
+  // stopOnMouseEnter pausa el autoplay mientras el mouse está sobre el
+  // carrusel (molesta que avance solo mientras el usuario lo navega); con
+  // stopOnInteraction: false se reanuda solo al salir el mouse y tras
+  // drags/flechas. En touch no hay mouseenter, así que mobile no cambia.
   const plugins = autoplay
-    ? [Autoplay({ delay: autoplayDelay, stopOnInteraction: false })]
+    ? [
+        Autoplay({
+          delay: autoplayDelay,
+          stopOnInteraction: false,
+          stopOnMouseEnter: true,
+        }),
+      ]
     : [];
 
   // El ancho de cada slide lo pone el CSS con las custom properties de abajo
