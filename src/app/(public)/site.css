@@ -2570,18 +2570,14 @@ strong {
     background-color: #6b4bb3;
 }
 
-.image-box-slider.v2 .slick-list {
-    padding-right: 150px
-}
-
-/* Peek de la 4ª tarjeta en /destinos (equivale al padding-right del slick-list
-   del template). Embla clipea en el viewport, así que el padding deja asomar la
-   slide siguiente. Solo en escritorio; en mobile manda el centerMode. */
-@media (min-width: 768px) {
-    .image-box-slider.v2 .embla__viewport {
-        padding-right: 150px;
-    }
-}
+/* El peek de la 4ª card en /destinos (escritorio) NO se hace con padding: el
+   viewport de Embla clipea en su borde, pero Embla calcula qué slides están en
+   vista sobre el ancho del contenedor SIN saber del padding, así que con loop
+   activo a veces no reposicionaba la slide que cubría ese 4º slot -> hueco
+   vacío intermitente. Ahora el peek sale del ancho fraccional de las slides:
+   slidesToShow={3.4} en DestinosGrid deja las slides más angostas que 1/3 del
+   viewport, así asoma la 4ª por diseño (caso soportado: slide < viewport/visibles).
+   En mobile el peek lo da el centerMode (1.4), no esto. */
 
 /* Ancho de cada slide por CSS, no por JS: el wrapper .embla recibe las custom
    properties --slide-size (mobile) y --slide-size-md-up (>=768px) inline,

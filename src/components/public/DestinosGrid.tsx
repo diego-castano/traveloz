@@ -35,7 +35,11 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
           </p>
         ) : (
           <EmblaSlider
-            slidesToShow={3}
+            // 3.4 (no 3) para que la 4ª card asome ~150px por su propio ancho
+            // (1296/3.4 ≈ 381px por slide, 3 completas + peek), en vez del viejo
+            // hack de padding-right en el viewport que Embla no contabilizaba y
+            // dejaba el 4º slot vacío de forma intermitente con loop activo.
+            slidesToShow={3.4}
             autoplay
             autoplayDelay={3000}
             loop
