@@ -2583,6 +2583,23 @@ strong {
     }
 }
 
+/* Ancho de cada slide por CSS, no por JS: el wrapper .embla recibe las custom
+   properties --slide-size (mobile) y --slide-size-md-up (>=768px) inline,
+   calculadas de slidesToShow / slidesToShowMobile en EmblaSlider.tsx. Así el
+   HTML del SSR ya pinta el layout correcto en cualquier viewport y no hay flash
+   de layout desktop que después corrija el JS. La regla md-up va después de la
+   base para ganar por orden (misma especificidad). */
+.embla .embla__slide {
+    flex: 0 0 var(--slide-size);
+    min-width: 0;
+}
+
+@media (min-width: 768px) {
+    .embla .embla__slide {
+        flex: 0 0 var(--slide-size-md-up);
+    }
+}
+
 /* centerMode móvil: la tarjeta activa queda a escala 1 y las vecinas, que
    asoman a los lados, se achican. Reemplaza los transforms hardcodeados de
    slick del template original. El scale vive en .embla__slide-inner (no en

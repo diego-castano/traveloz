@@ -2,7 +2,13 @@
 
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 type Props = {
   children: ReactNode[];
@@ -59,38 +65,26 @@ export function EmblaSlider({
   const mobileSlides =
     slidesToShowMobile ??
     (centerModeMobile ? 1.4 : slidesToShow > 1 ? 1.1 : slidesToShow);
-  const [isMobile, setIsMobile] = useState(false);
-  // `measured` marca que YA leímos el viewport con matchMedia (post-montaje).
-  // El SSR y el primer paint no conocen el ancho, así que hasta que esto sea
-  // true no revelamos el slider: evita mostrar el layout desktop (flex 33%,
-  // sin coverflow) un frame antes de saber que estamos en mobile.
-  const [measured, setMeasured] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(max-width: 767px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    setMeasured(true);
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
 
-  // Evita el "flash" del layout equivocado: en el primer paint (SSR + hidratación)
-  // isMobile arranca en false → se renderiza el layout desktop (flex 33%, align
-  // start, sin las clases del coverflow) y recién los efectos lo corrigen. No
-  // alcanza con revelar al montar: hay que esperar a que isMobile/flex/align y
-  // el reInit de Embla se asienten. El slider queda invisible + sin transición
-  // hasta `ready` (ver el efecto más abajo, tras declarar emblaApi), así aparece
-  // ya armado y no "anima" desde el estado intermedio.
-  const [ready, setReady] = useState(false);
-  const effectiveSlides = isMobile ? mobileSlides : slidesToShow;
-  const centered = centerModeMobile && isMobile;
   const plugins = autoplay
     ? [Autoplay({ delay: autoplayDelay, stopOnInteraction: false })]
     : [];
 
+  // El ancho de cada slide lo pone el CSS con las custom properties de abajo
+  // (--slide-size / --slide-size-md-up), no un style inline calculado en JS.
+  // Así el HTML del SSR ya pinta el layout correcto en cualquier viewport, sin
+  // el flash de layout desktop que antes corregía un efecto. Con centerMode,
+  // Embla se re-alinea solo al cruzar el media query gracias a `breakpoints`
+  // (no hace falta reInit manual ni leer el viewport con matchMedia).
   const [emblaRef, emblaApi] = useEmblaCarousel(
-    { loop, align: "start", ...(duration !== undefined ? { duration } : {}) },
+    {
+      loop,
+      align: "start",
+      ...(duration !== undefined ? { duration } : {}),
+      ...(centerModeMobile
+        ? { breakpoints: { "(max-width: 767px)": { align: "center" } } }
+        : {}),
+    },
     plugins,
   );
 
@@ -131,41 +125,6 @@ export function EmblaSlider({
     };
   }, [emblaApi]);
 
-  // When the breakpoint flips, slide widths change in the DOM but Embla's
-  // internal scroll math is stale until we ask it to re-measure. También
-  // alternamos align: en centerMode móvil centramos la slide activa.
-  useEffect(() => {
-    emblaApi?.reInit({
-      loop,
-      align: centered ? "center" : "start",
-      ...(duration !== undefined ? { duration } : {}),
-    });
-  }, [emblaApi, effectiveSlides, centered, loop, duration]);
-
-  // Revela el slider recién cuando emblaApi está listo, ya medimos el viewport
-  // (measured) y el layout mobile (isMobile/flex/align/reInit) se resolvió,
-  // esperando dos frames para que el navegador pinte el coverflow correcto
-  // antes de hacerlo visible. El gate en `measured` es clave: sin él los 2 rAF
-  // podían disparar y revelar el slider mientras isMobile todavía era false
-  // (layout desktop roto) y recién después "se corregía solo".
-  useEffect(() => {
-    if (!emblaApi || !measured) return;
-    let r1 = 0;
-    let r2 = 0;
-    r1 = requestAnimationFrame(() => {
-      r2 = requestAnimationFrame(() => setReady(true));
-    });
-    return () => {
-      cancelAnimationFrame(r1);
-      cancelAnimationFrame(r2);
-    };
-  }, [emblaApi, measured, isMobile, centered, effectiveSlides]);
-
-  const slideStyle = {
-    flex: `0 0 ${100 / effectiveSlides}%`,
-    minWidth: 0,
-  };
-
   // Índices de las vecinas inmediatas a la central, con wrap por el loop.
   // Con n < 3 podrían coincidir con el de la central; se descartan en ese
   // caso (guard más abajo) ya que ambos sliders reales tienen 3+ ítems.
@@ -205,13 +164,17 @@ export function EmblaSlider({
     // bottom:-25px del slick-theme) a este wrapper. Sin esto se anclan al
     // .main-wrapper (relative) y los dots se escapan al pie de la página, debajo
     // del footer. Es lo que hace .slick-slider en el template original.
+    // Las custom properties fijan el ancho de las slides por CSS: --slide-size
+    // en mobile y --slide-size-md-up en >=768px (ver .embla__slide en site.css).
     <div
       className={`embla ${className}`}
-      style={{
-        position: "relative",
-        opacity: ready ? 1 : 0,
-        transition: "opacity 0.25s ease",
-      }}
+      style={
+        {
+          position: "relative",
+          "--slide-size": `${100 / mobileSlides}%`,
+          "--slide-size-md-up": `${100 / slidesToShow}%`,
+        } as CSSProperties
+      }
     >
       <div
         className="embla__viewport"
@@ -227,23 +190,26 @@ export function EmblaSlider({
             // Embla tocó queda sin achicar -> peek asimétrico/errático. Por
             // eso el scale de .is-center vive en un wrapper interno que
             // Embla nunca toca.
-            // is-prev/is-next habilitan el efecto coverflow (vecinas tiradas
-            // hacia el centro, detrás de los bordes de la central) del CSS.
+            // is-center/is-prev/is-next se asignan siempre que centerModeMobile
+            // esté activo (derivadas de selectedIndex, que en SSR es 0 -> slide
+            // 0 is-center, correcto). El CSS scopea el efecto visual a
+            // max-width:767px, así que en desktop estas clases no hacen nada.
             (() => {
-              const isCenter = centered && i === selectedIndex;
-              const isPrev = centered && i === prevIndex && prevIndex !== selectedIndex;
-              const isNext = centered && i === nextIndex && nextIndex !== selectedIndex;
+              const isCenter = centerModeMobile && i === selectedIndex;
+              const isPrev =
+                centerModeMobile && i === prevIndex && prevIndex !== selectedIndex;
+              const isNext =
+                centerModeMobile && i === nextIndex && nextIndex !== selectedIndex;
               return (
-                <div className="embla__slide slide" style={slideStyle} key={i}>
+                <div className="embla__slide slide" key={i}>
                   <div
                     className={`embla__slide-inner${isCenter ? " is-center" : ""}${
                       isPrev ? " is-prev" : ""
                     }${isNext ? " is-next" : ""}`}
-                    // Sin transición hasta revelar (el coverflow se aplica de
-                    // una, no anima desde el estado intermedio del arranque) y
-                    // tampoco mientras se arrastra (evita la pelea con el
-                    // translate de Embla que se sentía trabada).
-                    style={ready && !dragging ? undefined : { transition: "none" }}
+                    // Sin transición mientras se arrastra: evita la pelea con el
+                    // translate de Embla que se sentía trabada. Al soltar vuelve
+                    // la transición suave del coverflow.
+                    style={dragging ? { transition: "none" } : undefined}
                   >
                     {child}
                   </div>
