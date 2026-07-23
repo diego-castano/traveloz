@@ -127,12 +127,12 @@ export default async function AboutPage() {
         {(valores || proposito) && (
           <div className="inner-media-content">
             <div className="row align-items-lg-center">
-              <div className="col-sm-6">
+              <div className="col-sm-7">
                 <div className="content-img">
                   <img src={imagen2} alt="TravelOz equipo" loading="lazy" decoding="async" />
                 </div>
               </div>
-              <div className="col-sm-6">
+              <div className="col-sm-5">
                 <div
                   className="content-text text_white ps-lg-5"
                   dangerouslySetInnerHTML={{
