@@ -360,7 +360,11 @@ export async function updateRegion(
 ) {
   try {
     await requireCanEdit();
-    const __res = await prisma.region.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
+    // Solo campos escalares: el caller manda el objeto Region enriquecido (con
+    // `paises`, brandId, timestamps…) y Prisma rompe si le llega la relación
+    // `paises`. El schema partial descarta todo lo que no sea nombre/slug/orden.
+    const clean = RegionSchema.partial().parse(data);
+    const __res = await prisma.region.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating region", error);
     throw new Error("No se pudo actualizar la región.");
@@ -424,7 +428,10 @@ export async function updatePais(
 ) {
   try {
     await requireCanEdit();
-    const __res = await prisma.pais.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
+    // Igual que updateRegion: descartamos campos extra (relación `ciudades`,
+    // brandId, timestamps) para no romper el update de Prisma.
+    const clean = PaisSchema.partial().parse(data);
+    const __res = await prisma.pais.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating pais", error);
     throw new Error("No se pudo actualizar el país.");
@@ -475,7 +482,8 @@ export async function updateCiudad(
 ) {
   try {
     await requireCanEdit();
-    const __res = await prisma.ciudad.update({ where: { id }, data }); bustCatalogsCacheGlobal(); return __res;
+    const clean = CiudadSchema.partial().parse(data);
+    const __res = await prisma.ciudad.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating ciudad", error);
     throw new Error("No se pudo actualizar la ciudad.");

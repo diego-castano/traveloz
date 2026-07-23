@@ -695,19 +695,27 @@ function RegionesPaisesTab() {
     const nombre = regionForm.nombre.trim();
     if (!nombre) return;
     const slug = regionForm.slug.trim() || slugifyRegion(nombre);
-    if (editRegion) {
-      await updateRegion({ ...editRegion, nombre, slug, orden: regionForm.orden });
-      toast("success", "Región actualizada", `"${nombre}" fue actualizada correctamente`);
-    } else {
-      await createRegion({
-        brandId: activeBrandId,
-        nombre,
-        slug,
-        orden: regionForm.orden,
-      });
-      toast("success", "Región creada", `"${nombre}" fue creada correctamente`);
+    try {
+      if (editRegion) {
+        await updateRegion({ ...editRegion, nombre, slug, orden: regionForm.orden });
+        toast("success", "Región actualizada", `"${nombre}" fue actualizada correctamente`);
+      } else {
+        await createRegion({
+          brandId: activeBrandId,
+          nombre,
+          slug,
+          orden: regionForm.orden,
+        });
+        toast("success", "Región creada", `"${nombre}" fue creada correctamente`);
+      }
+      setRegionModalOpen(false);
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo guardar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
     }
-    setRegionModalOpen(false);
   }
 
   async function handleConfirmDeleteRegion() {
@@ -749,24 +757,32 @@ function RegionesPaisesTab() {
   async function handleSavePais(e?: React.FormEvent) {
     e?.preventDefault();
     if (!paisForm.nombre.trim() || !paisForm.regionId) return;
-    if (editPais) {
-      await updatePais({
-        ...editPais,
-        nombre: paisForm.nombre,
-        codigo: paisForm.codigo,
-        regionId: paisForm.regionId,
-      });
-      toast("success", "País actualizado", `"${paisForm.nombre}" fue actualizado correctamente`);
-    } else {
-      await createPais({
-        brandId: activeBrandId,
-        nombre: paisForm.nombre,
-        codigo: paisForm.codigo,
-        regionId: paisForm.regionId,
-      });
-      toast("success", "País creado", `"${paisForm.nombre}" fue creado correctamente`);
+    try {
+      if (editPais) {
+        await updatePais({
+          ...editPais,
+          nombre: paisForm.nombre,
+          codigo: paisForm.codigo,
+          regionId: paisForm.regionId,
+        });
+        toast("success", "País actualizado", `"${paisForm.nombre}" fue actualizado correctamente`);
+      } else {
+        await createPais({
+          brandId: activeBrandId,
+          nombre: paisForm.nombre,
+          codigo: paisForm.codigo,
+          regionId: paisForm.regionId,
+        });
+        toast("success", "País creado", `"${paisForm.nombre}" fue creado correctamente`);
+      }
+      setPaisModalOpen(false);
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo guardar",
+        err instanceof Error ? err.message : "Intenta nuevamente",
+      );
     }
-    setPaisModalOpen(false);
   }
 
   async function handleConfirmDeletePais() {
