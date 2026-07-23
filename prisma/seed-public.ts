@@ -147,7 +147,7 @@ const SETTINGS: Array<{
   { key: "footer_about_titulo", value: "Sobre TravelOz", group: "footer", label: "Columna 1 — título" },
   { key: "footer_about_texto", value: "Diseñamos experiencias de viaje únicas, hechas a la medida de cada uno de nuestros clientes.", type: "textarea", group: "footer", label: "Columna 1 — texto" },
   { key: "footer_links_titulo", value: "Enlaces rápidos", group: "footer", label: "Columna 2 — título" },
-  { key: "footer_links_json", value: '[{"label":"Destinos","href":"/destinos"},{"label":"Corporativo","href":"/corporativo"},{"label":"Nosotros","href":"/about"},{"label":"Contacto","href":"/contact"},{"label":"Trabaja con nosotros","href":"/work-with-us"}]', type: "textarea", group: "footer", label: "Columna 2 — links (JSON [{label, href}])" },
+  { key: "footer_links_json", value: '[{"label":"Destinos","href":"/destinos"},{"label":"Corporativo","href":"/corporativo"},{"label":"Nosotros","href":"/about"},{"label":"Contacto","href":"/contact"},{"label":"Trabajá con nosotros","href":"/work-with-us"}]', type: "textarea", group: "footer", label: "Columna 2 — links (JSON [{label, href}])" },
   { key: "footer_legal_titulo", value: "Legal", group: "footer", label: "Columna 3 — título" },
   { key: "footer_legal_json", value: '[{"label":"Términos y condiciones","href":"/terms"},{"label":"FAQ","href":"/faq"}]', type: "textarea", group: "footer", label: "Columna 3 — links (JSON [{label, href}])" },
   { key: "footer_social_facebook", value: "", group: "footer", label: "Facebook URL" },

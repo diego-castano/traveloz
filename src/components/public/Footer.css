@@ -255,6 +255,16 @@
     margin-bottom: 30px;
   }
 
+  /* .footer-left es una clase heredada del template (site.css la usa fuera de
+     este componente) que trae su propio margin-bottom: 40px en este mismo
+     breakpoint. .tvz-footer-col es flex item → no colapsa el margin de su
+     hijo con el propio, así que ambos se sumaban (40 + 30 = 70px), el doble
+     que el resto de las columnas (30px). Lo neutralizamos acá para que el
+     único margen que separe los bloques sea el de .tvz-footer-col. */
+  .tvz-footer .footer-left {
+    margin-bottom: 0;
+  }
+
   .tvz-footer .footer-logo {
     display: block;
     width: 120px;
