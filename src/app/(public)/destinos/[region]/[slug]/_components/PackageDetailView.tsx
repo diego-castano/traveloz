@@ -393,6 +393,11 @@ const SCOPED_STYLES = `
        Sólo achicamos el título un escalón y permitimos wrap normal (nunca
        nowrap/ellipsis) para que títulos largos no desborden la columna angosta. */
     .pkg-detail .pkg-title { font-size: 19px; line-height: 1.2; margin-bottom: 6px; white-space: normal; }
+    /* Precio del header (col-5): DESDE+monto ya van a la derecha (large-price
+       usa justify-content:flex-end). La leyenda "Precio por persona en base
+       doble" venía text-align:left del template; la alineamos a la derecha para
+       que todo el bloque comparta el mismo borde derecho de la columna. */
+    .pkg-detail .top-heading .pr_notes { text-align: right !important; }
     .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 10px 18px 0; }
     .pkg-detail .box-tab-content.style1 .nav-link { font-size: 15px; }
     .pkg-detail .box-tab-content.style1 .content-inner { padding: 16px 18px; }
@@ -418,7 +423,28 @@ const SCOPED_STYLES = `
     .pkg-detail .opcion-card .h4 ul li i { font-size: 12px; }
     .pkg-detail .opcion-card .hotel-detail { font-size: 13px; }
     .pkg-detail .hotel-item-divided { margin-top: 12px; padding-top: 12px; }
-    .pkg-detail .opcion-card .meta { margin: 14px -16px 0; padding: 12px 16px 0; }
+    /* Fila de precio de la opción en mobile: mismo layout que desktop —
+       fecha a la izquierda, precio + leyenda a la derecha en la MISMA fila.
+       Pisamos el display:block y el text-align:left !important que el template
+       aplica en mobile (.text-box.style1 .meta / .meta .right). El gap + la
+       fecha con min-width:0 dejan que meses largos ("Septiembre - Noviembre
+       2026") envuelvan sin encimarse, mientras el precio queda intacto a la
+       derecha (flex-shrink:0). */
+    .pkg-detail .opcion-card .meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 14px -16px 0;
+      padding: 12px 16px 0;
+    }
+    .pkg-detail .opcion-card .meta .left { min-width: 0; }
+    .pkg-detail .opcion-card .meta .left .date { margin-bottom: 0; }
+    .pkg-detail .opcion-card .meta .right {
+      flex-shrink: 0;
+      text-align: right !important;
+      margin-top: 0;
+    }
     .pkg-detail .opcion-card .meta .price { font-size: 18px; }
   }
 `;
