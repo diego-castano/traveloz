@@ -4366,18 +4366,22 @@ header.header-area.header-dark {
         line-height: normal
     }
 
-    /* La foto es un retrato muy alto (1861x3205). A 140px de ancho solo asoma
-       una astilla de la mano recortada en la esquina, que se ve rota en el
-       teléfono. La ocultamos: el hero queda limpio con el texto blanco sobre
-       el degradado violeta→rosa. Desktop y tablet no se tocan. */
+    /* Mismo encuadre que desktop (166px de ancho con bottom -127px, que
+       muestra la mano con los boarding passes arriba y recorta el resto por
+       el overflow del hero) escalado a mobile: 120px de ancho → el corrimiento
+       proporcional es -92px. Antes se usaba bottom -20px y del retrato solo
+       asomaba una astilla; la clave es COPIAR la proporción del desktop. */
     .terms-banner-area .terms_bg_img {
-        display: none;
+        display: block;
+        width: 120px;
+        right: 0;
+        bottom: -92px;
     }
 
-    /* Sin gráfico a la derecha el texto usa todo el ancho disponible. */
+    /* El texto deja lugar al gráfico de la esquina derecha. */
     .terms-banner-area .col-10 {
-        flex: 0 0 100%;
-        max-width: 100%;
+        flex: 0 0 68%;
+        max-width: 68%;
     }
 
     .terms-banner-area .h1 {
