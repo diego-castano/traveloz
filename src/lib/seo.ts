@@ -124,7 +124,11 @@ export async function buildSeoMetadata(
   const defaultDescription =
     (s.seo_default_description ?? "").trim() ||
     `Agencia de viajes en Uruguay.`;
-  const defaultImage = (s.seo_default_og_image ?? "").trim();
+  // Fallback en código: pieza 1200x630 con el degradado + logo de marca
+  // (public/site/img/og-default.jpg). El campo seo_default_og_image del
+  // admin la pisa si el equipo carga otra.
+  const defaultImage =
+    (s.seo_default_og_image ?? "").trim() || "/site/img/og-default.jpg";
   const twitterHandle = (s.seo_twitter_handle ?? "").trim();
 
   const routeDefaults = route === "default" ? undefined : ROUTE_DEFAULTS[route];
