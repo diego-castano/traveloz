@@ -36,7 +36,10 @@ export async function generateMetadata({
           ? `Conocé ${p.titulo}, ${nochesSeo} noche${nochesSeo === 1 ? "" : "s"}.`
           : `Conocé ${p.titulo}.`))
       : undefined,
-    image: p?.fotos?.[0]?.url ?? undefined,
+    // Al compartir un paquete debe ir SU foto: primera de la galería, o el
+    // hero si la galería está vacía (p.ej. Rio & Buzios solo carga heroImage).
+    // Sin ninguna de las dos cae al og-default de marca vía buildSeoMetadata.
+    image: p?.fotos?.[0]?.url || p?.heroImage || undefined,
     noindex: !p,
     path: p ? `/destinos/${params.region}/${params.slug}` : undefined,
   });
