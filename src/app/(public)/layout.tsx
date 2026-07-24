@@ -19,6 +19,7 @@
 // ignora (spec: @import debe ir al tope), tumbando Bootstrap y FontAwesome.
 import "./site.css";
 import type { ReactNode } from "react";
+import Script from "next/script";
 import { preload } from "react-dom";
 import { Header } from "@/components/public/Header";
 import { Footer } from "@/components/public/Footer";
@@ -67,9 +68,31 @@ export default async function PublicLayout({ children }: { children: ReactNode }
   // transitorio de DB (getSiteSettings degrada a {}) mostraba "Muy pronto" a
   // visitantes reales con el sitio ya lanzado.
   const comingSoon = generalSettings.coming_soon_activo === "true";
+
+  // Google Tag Manager (GTM-NLVNKHRK). Solo el sitio público — NO se monta en
+  // /backend ni /login, que viven fuera de este layout. `afterInteractive` es
+  // el estándar de Next para gtag/GTM: carga apenas la página es interactiva,
+  // lo antes posible sin bloquear el render. El inline bootstrapea dataLayer y
+  // dispara el evento `js` (equivale al snippet provisto por el cliente).
+  const gtm = (
+    <>
+      <Script
+        id="gtm-loader"
+        src="https://www.googletagmanager.com/gtm.js?id=GTM-NLVNKHRK"
+        strategy="afterInteractive"
+      />
+      <Script id="gtag-init" strategy="afterInteractive">
+        {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());`}
+      </Script>
+    </>
+  );
+
   if (comingSoon && !session?.user) {
     return (
       <>
+        {gtm}
         <ComingSoon
           titulo={generalSettings.coming_soon_titulo}
           mensaje={generalSettings.coming_soon_mensaje}
@@ -83,6 +106,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
 
   return (
     <>
+      {gtm}
       <div className="main-wrapper">
         <Header />
         {children}

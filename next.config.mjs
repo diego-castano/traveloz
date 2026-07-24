@@ -7,7 +7,9 @@ const isDev = process.env.NODE_ENV !== "production";
 // del admin (/backend/web) que iframea el sitio público.
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // Google Tag Manager / GA carga gtm.js y librerías GA desde estos orígenes.
+  // connect-src e img-src ya permiten https: (beacons a google-analytics.com).
+  `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
