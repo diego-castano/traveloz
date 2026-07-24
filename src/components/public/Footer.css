@@ -293,9 +293,13 @@
     flex-shrink: 0;
   }
 
+  /* 244px: "Av. Dr. Luis Alberto de Herrera 1343" mide 234px y con " Of." se
+     va a 258px, así que este ancho corta la dirección justo después del número
+     de puerta ("Of. 301 - Edificio Trade Plaza" baja entero a la 2ª línea).
+     Con 230px el corte caía ANTES del 1343 y el número quedaba abajo. */
   .tvz-footer .footer-contact li span:last-child,
   .tvz-footer .footer-contact li a {
-    max-width: 230px;
+    max-width: 244px;
     text-align: left;
   }
 
