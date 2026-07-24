@@ -120,7 +120,7 @@ export async function buildSeoMetadata(
   const siteName = (s.seo_site_name ?? "TravelOz").trim() || "TravelOz";
   const defaultTitle =
     (s.seo_default_title ?? "").trim() ||
-    `${siteName} — Diseñamos tu viaje, creamos tu historia`;
+    `${siteName} - Diseñamos tu viaje, creamos tu historia`;
   const defaultDescription =
     (s.seo_default_description ?? "").trim() ||
     `Agencia de viajes en Uruguay.`;
