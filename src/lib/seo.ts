@@ -124,11 +124,13 @@ export async function buildSeoMetadata(
   const defaultDescription =
     (s.seo_default_description ?? "").trim() ||
     `Agencia de viajes en Uruguay.`;
-  // Fallback en código: pieza 1200x630 con el degradado + logo de marca
-  // (public/site/img/og-default.jpg). El campo seo_default_og_image del
-  // admin la pisa si el equipo carga otra.
+  // Fallback en código: logo de marca centrado sobre fondo blanco, 1200x630
+  // (specs de Meta: ratio 1.91:1, JPEG <600KB para WhatsApp). Generada desde
+  // logoOG.pdf del cliente. El campo seo_default_og_image del admin la pisa
+  // si el equipo carga otra. Nombre nuevo (og-logo, antes og-default) para
+  // que los scrapers de Meta/WhatsApp no sirvan la versión vieja cacheada.
   const defaultImage =
-    (s.seo_default_og_image ?? "").trim() || "/site/img/og-default.jpg";
+    (s.seo_default_og_image ?? "").trim() || "/site/img/og-logo.jpg";
   const twitterHandle = (s.seo_twitter_handle ?? "").trim();
 
   const routeDefaults = route === "default" ? undefined : ROUTE_DEFAULTS[route];
@@ -168,7 +170,10 @@ export async function buildSeoMetadata(
       title,
       description,
       ...(canonicalPath ? { url: canonicalPath } : {}),
-      ...(image ? { images: [{ url: image, width: 1200, height: 630 }] } : {}),
+      // width/height/alt (props estructuradas de OGP): con las dimensiones
+      // declaradas WhatsApp/Facebook muestran el preview grande ya en el
+      // primer share, sin esperar a scrapear la imagen.
+      ...(image ? { images: [{ url: image, width: 1200, height: 630, alt: title }] } : {}),
     },
     twitter: {
       card: image ? "summary_large_image" : "summary",
