@@ -4231,8 +4231,39 @@ header.header-area.header-dark {
         transform: rotate(0deg)
     }
 
+    /* Más aire vertical: el hero venía finito (20px). Mismo valor que /terms
+       para que ambos heros respiren igual. El degradado violeta→rosa (idéntico
+       al de /terms) pasa a ser el fondo: la foto del avión ya no es un
+       full-bleed, sino un recorte chico anclado a la derecha (ver .bg_image
+       abajo), así el texto queda sobre degradado y la imagen no lo pisa. */
     .faq-banner-area {
-        padding: 20px 0
+        padding: 44px 0;
+        background: linear-gradient(87deg, rgba(244, 62, 85, 1) 0%, rgba(120, 90, 229, 1) 100%);
+        position: relative;
+        z-index: 1;
+        overflow: hidden
+    }
+
+    /* La foto (banner-mobile.png) trae el mismo degradado horneado + la mano con
+       el avión a la derecha. En vez de cubrir todo el hero, la acotamos a un
+       recorte chico anclado abajo-derecha con alto FIJO (no 100%), así el avión
+       no crece cuando el hero gana padding y queda contenido en la esquina.
+       object-position right muestra el avión; su degradado empalma con el del
+       contenedor. */
+    .faq-banner-area .bg_image {
+        top: auto;
+        bottom: 0;
+        left: auto;
+        right: 0;
+        width: 62%;
+        height: 130px;
+        object-fit: cover;
+        object-position: right bottom;
+        /* Difuminamos el borde superior-izquierdo del recorte hacia
+           transparente para que su degradado horneado empalme con el del
+           contenedor sin costura visible; el avión (abajo-derecha) queda opaco. */
+        -webkit-mask-image: linear-gradient(135deg, transparent 8%, #000 52%);
+        mask-image: linear-gradient(135deg, transparent 8%, #000 52%)
     }
 
     .contact-area {
@@ -4310,8 +4341,11 @@ header.header-area.header-dark {
         margin-bottom: 0
     }
 
+    /* Mismo aire vertical que el hero de /faq (44px). Tras ocultar el retrato
+       del avión en mobile este hero quedó solo texto sobre degradado; sin este
+       padding se veía finito. Ambos heros consistentes entre sí. */
     .terms-banner-area {
-        padding: 20px 0;
+        padding: 44px 0;
         position: relative;
         z-index: 1
     }
@@ -4327,26 +4361,23 @@ header.header-area.header-dark {
     }
 
     .terms-banner-area .inner-text {
-        width: 92%;
+        width: 100%;
         font-size: 14px;
         line-height: normal
     }
 
+    /* La foto es un retrato muy alto (1861x3205). A 140px de ancho solo asoma
+       una astilla de la mano recortada en la esquina, que se ve rota en el
+       teléfono. La ocultamos: el hero queda limpio con el texto blanco sobre
+       el degradado violeta→rosa. Desktop y tablet no se tocan. */
     .terms-banner-area .terms_bg_img {
-        bottom: -20px;
-        width: 140px;
-        /* Corrida a la derecha para que no quede tan pegada al texto (pedido). */
-        right: -30px;
+        display: none;
     }
 
-    /* El título largo ("Términos y condiciones de compra") con la columna
-       ancha (col-10) chocaba con el avión del fondo y los boarding passes en
-       pantallas anchas (>=~400px). Acotamos el texto a la mitad izquierda y
-       bajamos el título a 28px para que siempre envuelva en 3 líneas que
-       libran los gráficos de la derecha en todos los anchos de teléfono. */
+    /* Sin gráfico a la derecha el texto usa todo el ancho disponible. */
     .terms-banner-area .col-10 {
-        flex: 0 0 66%;
-        max-width: 66%;
+        flex: 0 0 100%;
+        max-width: 100%;
     }
 
     .terms-banner-area .h1 {
