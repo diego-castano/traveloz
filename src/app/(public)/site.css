@@ -1330,7 +1330,10 @@ section {
 .box-card img {
     height: 280px;
     width: 100%;
-    object-fit: cover
+    object-fit: cover;
+    /* Placeholder gris suave mientras baja la imagen: el alto ya está reservado
+       (280/240px), así que sin esto la card flashea en blanco hasta el decode. */
+    background-color: #f2f2f4;
 }
 
 .box-card .text {
@@ -2544,7 +2547,9 @@ strong {
 }
 
 .image-box.style1 img {
-    width: 100%
+    width: 100%;
+    /* Mismo placeholder gris que las cards, para el carrusel de regiones. */
+    background-color: #f2f2f4;
 }
 
 /* Las imágenes de región vienen de la DB con cualquier relación de aspecto.

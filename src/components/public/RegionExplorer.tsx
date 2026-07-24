@@ -376,7 +376,7 @@ export function RegionExplorer({ region, titulo, paquetes, ciudades }: Props) {
         ) : (
           <div className="row g-lg-4 g-3">
             <AnimatePresence mode="popLayout">
-              {sorted.map((p) => (
+              {sorted.map((p, i) => (
                 <motion.div
                   key={p.id}
                   layout
@@ -390,6 +390,8 @@ export function RegionExplorer({ region, titulo, paquetes, ciudades }: Props) {
                     paquete={p}
                     regionSlug={p.regionSlug ?? region?.slug ?? ""}
                     variant="alt"
+                    // Primeras 6 (fila above-the-fold en 4-up + buffer): eager.
+                    priority={i < 6}
                   />
                 </motion.div>
               ))}

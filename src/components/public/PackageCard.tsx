@@ -2,6 +2,7 @@
 
 import { Skeleton } from "./SkeletonClient";
 import { stripNochesSuffix } from "@/lib/format-paquete";
+import { cardImage, CARD_SIZES } from "@/lib/image-src";
 
 // ---------------------------------------------------------------------------
 // PackageCard — tarjeta del slider "Descubrí más destinos". Replica 1:1 el
@@ -50,6 +51,7 @@ export function PackageCard({
   paquete,
   regionSlug,
   variant = "default",
+  priority = false,
 }: {
   paquete: P;
   regionSlug: string;
@@ -60,10 +62,19 @@ export function PackageCard({
    * detalle y en /destinos?tipo=.
    */
   variant?: "default" | "alt";
+  /**
+   * Cards above-the-fold (las primeras del grid): cargan eager + fetchpriority
+   * high para que la imagen aparezca ya, sin esperar al scroll. El resto del
+   * grid queda lazy (default).
+   */
+  priority?: boolean;
 }) {
   // heroImage → primera foto → placeholder. Nunca caemos a una foto de otro
   // destino: una tarjeta sin imagen muestra el placeholder, no slider-1.webp.
   const img = pickImage(paquete.heroImage, paquete.fotos);
+  // Servimos el thumbnail al tamaño de la card (?w=…) en vez del original de
+  // 1-3 MB. cardImage solo toca URLs /api/image; el placeholder pasa igual.
+  const { src, srcSet } = cardImage(img);
   const href = paquete.slug
     ? `/destinos/${regionSlug}/${paquete.slug}`
     : "#";
@@ -72,15 +83,20 @@ export function PackageCard({
     <Skeleton name="package-card" loading={false}>
       <a href={href} className={`box-card${variant === "alt" ? " alt" : ""}`}>
         <img
-          src={img}
+          src={src}
+          srcSet={srcSet}
+          sizes={srcSet ? CARD_SIZES : undefined}
           alt={paquete.titulo}
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : undefined}
           decoding="async"
           // Red de seguridad: si la URL existe pero falla (bucket movido, 404),
           // cambiamos al placeholder en vez de mostrar el ícono de imagen rota.
+          // Limpiamos srcset para que el navegador no reintente una variante ?w=.
           onError={(e) => {
             const el = e.currentTarget;
             if (el.src.endsWith(PLACEHOLDER_IMG)) return;
+            el.srcset = "";
             el.src = PLACEHOLDER_IMG;
           }}
         />

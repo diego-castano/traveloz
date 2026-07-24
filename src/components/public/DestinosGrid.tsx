@@ -1,5 +1,6 @@
 import { EmblaSlider } from "./EmblaSlider";
 import { sortRegionesAlfabetico } from "@/lib/utils";
+import { cardImage } from "@/lib/image-src";
 
 type Region = {
   id: string;
@@ -48,7 +49,14 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
             centerModeMobile
             className="image-box-slider v2 alt"
           >
-            {regionesOrdenadas.map((r) => (
+            {regionesOrdenadas.map((r) => {
+              // Slot del carrusel ~381px CSS (1296/3.4), aspecto 400/487. Con
+              // DPR2 pide ~760px → servimos hasta w=960 en vez del original.
+              const { src, srcSet } = cardImage(
+                r.heroImage ?? "/site/img/slider-1.webp",
+                [480, 640, 960],
+              );
+              return (
               <a
                 href={`/destinos/${r.slug}`}
                 className="image-box style1"
@@ -59,14 +67,17 @@ export function DestinosGrid({ regiones, settings = {} }: DestinosGridProps) {
                     scroll -> tirones. Son pocas imágenes y el carrusel abre
                     la página, así que las cargamos ya. */}
                 <img
-                  src={r.heroImage ?? "/site/img/slider-1.webp"}
+                  src={src}
+                  srcSet={srcSet}
+                  sizes="(max-width: 991px) 90vw, 400px"
                   alt={r.nombre}
                   loading="eager"
                   decoding="async"
                 />
                 <h3 className="title">{r.nombre}</h3>
               </a>
-            ))}
+              );
+            })}
           </EmblaSlider>
         )}
         <div className="text-center mt_50">
