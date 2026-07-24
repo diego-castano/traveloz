@@ -38,6 +38,7 @@ export async function generateMetadata({
       : undefined,
     image: p?.fotos?.[0]?.url ?? undefined,
     noindex: !p,
+    path: p ? `/destinos/${params.region}/${params.slug}` : undefined,
   });
 }
 

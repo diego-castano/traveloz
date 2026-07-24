@@ -7,7 +7,7 @@ import { getSiteSettings } from "@/lib/public-data";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("about");
+  return buildSeoMetadata("about", { path: "/about" });
 }
 
 /**

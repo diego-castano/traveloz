@@ -8,7 +8,7 @@ import { ContactForm } from "./_components/ContactForm";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("contact");
+  return buildSeoMetadata("contact", { path: "/contact" });
 }
 
 export default async function ContactPage() {

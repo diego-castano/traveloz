@@ -25,6 +25,7 @@ export async function generateMetadata() {
     title: "Todos los destinos | TravelOz",
     description:
       "Explorá el catálogo completo de paquetes de viaje de TravelOz: todos los destinos, en un solo lugar.",
+    path: "/destinos/todos",
   });
 }
 

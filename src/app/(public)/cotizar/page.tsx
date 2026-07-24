@@ -9,6 +9,7 @@ export async function generateMetadata() {
   return buildSeoMetadata("cotizar", {
     title: s.cotizar_meta_title?.trim() || undefined,
     description: s.cotizar_meta_description?.trim() || undefined,
+    path: "/cotizar",
   });
 }
 

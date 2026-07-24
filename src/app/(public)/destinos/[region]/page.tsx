@@ -20,6 +20,7 @@ export async function generateMetadata({
       : undefined,
     image: region?.heroImage ?? undefined,
     noindex: !region,
+    path: region ? `/destinos/${params.region}` : undefined,
   });
 }
 

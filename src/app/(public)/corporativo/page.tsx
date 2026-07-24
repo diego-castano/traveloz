@@ -17,7 +17,7 @@ import { CorporativoView } from "./_components/CorporativoView";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("corporativo");
+  return buildSeoMetadata("corporativo", { path: "/corporativo" });
 }
 
 export default async function CorporativoPage() {

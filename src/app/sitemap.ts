@@ -58,6 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     updatedAt: Date;
     region: { slug: string } | null;
   }> = [];
+  let tags: Array<{ slug: string; updatedAt: Date }> = [];
 
   try {
     regions = await prisma.region.findMany({
@@ -99,6 +100,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.warn("[sitemap] paquetes query failed:", err);
   }
 
+  // Etiquetas "activas": las que tienen al menos un paquete publicado, no
+  // borrado y vigente (misma vigencia que usa /tag/[slug] al listar). Una
+  // etiqueta sin paquetes vivos renderiza una landing vacía, así que no va al
+  // sitemap. `hoy` en formato local YYYY-MM-DD para comparar contra
+  // validezHasta (ver vigenciaActivaWhere en public-data).
+  try {
+    const hoy = new Date().toLocaleDateString("en-CA");
+    const rows = await prisma.etiqueta.findMany({
+      where: {
+        brandId: BRAND_ID,
+        paquetes: {
+          some: {
+            paquete: {
+              publicado: true,
+              deletedAt: null,
+              brandId: BRAND_ID,
+              OR: [{ validezHasta: null }, { validezHasta: { gte: hoy } }],
+            },
+          },
+        },
+      },
+      select: { slug: true, updatedAt: true },
+    });
+    tags = rows;
+  } catch (err) {
+    console.warn("[sitemap] etiquetas query failed:", err);
+  }
+
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
     url: `${base}${r.path}`,
     lastModified: now,
@@ -124,5 +153,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-  return [...staticEntries, ...regionEntries, ...paqueteEntries];
+  const tagEntries: MetadataRoute.Sitemap = tags.map((t) => ({
+    url: `${base}/tag/${t.slug}`,
+    lastModified: t.updatedAt,
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
+
+  return [
+    ...staticEntries,
+    ...regionEntries,
+    ...paqueteEntries,
+    ...tagEntries,
+  ];
 }

@@ -11,7 +11,7 @@ import { buildSeoMetadata } from "@/lib/seo";
 import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("destinos");
+  return buildSeoMetadata("destinos", { path: "/destinos" });
 }
 
 export default async function DestinosPage({

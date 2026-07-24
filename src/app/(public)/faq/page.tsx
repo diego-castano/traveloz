@@ -9,7 +9,7 @@ import { FaqContent, type FaqTopic } from "./_components/FaqContent";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("faq");
+  return buildSeoMetadata("faq", { path: "/faq" });
 }
 
 export default async function FaqPage() {

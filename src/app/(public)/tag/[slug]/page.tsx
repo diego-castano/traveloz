@@ -45,6 +45,7 @@ export async function generateMetadata({
     title: `${etiqueta.nombre} | TravelOz`,
     description,
     noindex: false,
+    path: `/tag/${params.slug}`,
   });
 }
 

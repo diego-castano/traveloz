@@ -10,7 +10,7 @@ import { WorkVideo } from "./_components/WorkVideo";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("work");
+  return buildSeoMetadata("work", { path: "/work-with-us" });
 }
 
 export default async function WorkWithUsPage() {

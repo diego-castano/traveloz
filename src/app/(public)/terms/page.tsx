@@ -11,7 +11,7 @@ import {
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("terms");
+  return buildSeoMetadata("terms", { path: "/terms" });
 }
 
 export default async function TermsPage() {

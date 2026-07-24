@@ -16,7 +16,7 @@ import { HomeNewsletter } from "@/components/public/HomeNewsletter";
 import { buildSeoMetadata } from "@/lib/seo";
 
 export async function generateMetadata() {
-  return buildSeoMetadata("home");
+  return buildSeoMetadata("home", { path: "/" });
 }
 
 export default async function HomePage() {
