@@ -8,8 +8,11 @@ const isDev = process.env.NODE_ENV !== "production";
 const csp = [
   "default-src 'self'",
   // Google Tag Manager / GA carga gtm.js y librerías GA desde estos orígenes.
-  // connect-src e img-src ya permiten https: (beacons a google-analytics.com).
-  `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com${isDev ? " 'unsafe-eval'" : ""}`,
+  // El contenedor GTM (GTM-NLVNKHRK) además dispara Facebook Pixel
+  // (connect.facebook.net) y Metricool (tracker.metricool.com) — configurados
+  // en el panel de GTM, no en el repo; sin estos orígenes la CSP los bloquea.
+  // connect-src e img-src ya permiten https: (beacons de todos ellos).
+  `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://connect.facebook.net https://tracker.metricool.com${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
