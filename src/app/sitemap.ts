@@ -17,6 +17,8 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { BRAND_ID } from "@/lib/brand";
+import { getRegionResolver } from "@/lib/public-data";
+import { resolveRegionSlugParaListado } from "@/lib/region-paquete";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // 1h is plenty for a brochure site
@@ -70,31 +72,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   try {
-    const rows = await prisma.paquete.findMany({
-      where: {
-        publicado: true,
-        deletedAt: null,
-        brandId: BRAND_ID,
-        slug: { not: null },
-      },
-      select: {
-        slug: true,
-        updatedAt: true,
-        destinos: {
-          orderBy: { orden: "asc" },
-          take: 1,
-          include: {
-            ciudad: { include: { pais: { include: { region: true } } } },
+    // La región de la URL sale del helper compartido (src/lib/region-paquete.ts),
+    // el mismo criterio que usan /destinos/todos y el detalle. Antes el sitemap
+    // leía `pais.region.slug` directo, que devuelve el slug de la región de
+    // CUALQUIER marca; ahora se traduce siempre a la región del brand público.
+    const [rows, regionResolver] = await Promise.all([
+      prisma.paquete.findMany({
+        where: {
+          publicado: true,
+          deletedAt: null,
+          brandId: BRAND_ID,
+          slug: { not: null },
+        },
+        select: {
+          slug: true,
+          updatedAt: true,
+          destinos: {
+            orderBy: { orden: "asc" },
+            take: 1,
+            include: { ciudad: { include: { pais: true } } },
           },
         },
-      },
-    });
+      }),
+      getRegionResolver(),
+    ]);
     paquetes = rows.map((p) => ({
       slug: p.slug,
       updatedAt: p.updatedAt,
-      region: p.destinos[0]?.ciudad?.pais?.region
-        ? { slug: p.destinos[0].ciudad.pais.region.slug }
-        : null,
+      region: { slug: resolveRegionSlugParaListado(p, regionResolver) },
     }));
   } catch (err) {
     console.warn("[sitemap] paquetes query failed:", err);
@@ -144,7 +149,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const paqueteEntries: MetadataRoute.Sitemap = paquetes
     .filter((p): p is typeof p & { slug: string; region: { slug: string } } =>
-      Boolean(p.slug && p.region),
+      Boolean(p.slug && p.region?.slug),
     )
     .map((p) => ({
       url: `${base}/destinos/${p.region.slug}/${p.slug}`,

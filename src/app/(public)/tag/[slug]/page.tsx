@@ -2,12 +2,13 @@ import { notFound } from "next/navigation";
 import {
   getEtiquetaBySlug,
   getPaquetesByEtiqueta,
-  getRegionesPublicas,
+  getRegionResolver,
   getSiteSettings,
 } from "@/lib/public-data";
 import { PackageCard } from "@/components/public/PackageCard";
 import { buildSeoMetadata } from "@/lib/seo";
 import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import { resolveRegionSlugParaListado } from "@/lib/region-paquete";
 
 // ---------------------------------------------------------------------------
 // /tag/[slug] — landing publica por Etiqueta (ej. "Miami combinados"). Mismo
@@ -57,14 +58,15 @@ export default async function TagPage({
   const etiqueta = await getEtiquetaBySlug(params.slug);
   if (!etiqueta) notFound();
 
-  const [paquetes, regiones, settings] = await Promise.all([
+  const [paquetes, regionResolver, settings] = await Promise.all([
     getPaquetesByEtiqueta(etiqueta.id),
-    // Resolver region slug para el href de cada paquete (toma la primera
-    // región disponible; cae a una default si no tiene).
-    getRegionesPublicas(),
+    // El href de cada card sale de la región REAL de ese paquete
+    // (src/lib/region-paquete.ts). Esta landing es la que reportó el cliente:
+    // /tag/miami-combinados linkeaba todo a /destinos/europa/… porque usaba la
+    // primera región publicada para cualquier paquete.
+    getRegionResolver(),
     getSiteSettings("destinos"),
   ]);
-  const defaultRegionSlug = regiones[0]?.slug ?? "ver";
   // Misma plantilla del subtítulo de categoría que usa /destinos?tipo= — ver
   // comentario en generateMetadata sobre el reuso deliberado.
   const subtituloTpl =
@@ -106,7 +108,7 @@ export default async function TagPage({
                 <div className="col-lg-4 col-md-6 mb-4" key={p.id}>
                   <PackageCard
                     paquete={cardData}
-                    regionSlug={defaultRegionSlug}
+                    regionSlug={resolveRegionSlugParaListado(p, regionResolver)}
                   />
                 </div>
               );

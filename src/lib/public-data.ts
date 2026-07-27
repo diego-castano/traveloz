@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { BRAND_ID } from "@/lib/brand";
+import { buildRegionResolver, type RegionResolver } from "@/lib/region-paquete";
 
 // Single-tenant: every public query filters by the constant brandId. The
 // PUBLIC_BRAND_ID alias is kept for callers that imported it before Fase 7.
@@ -96,7 +97,14 @@ export const getPaquetesByTipo = unstable_cache(
       orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
       include: {
         fotos: { take: 1, orderBy: { orden: "asc" } },
-        destinos: { orderBy: { orden: "asc" }, include: { ciudad: true } },
+        destinos: {
+          orderBy: { orden: "asc" },
+          // `pais` hace falta para resolver la región real del paquete y armar
+          // el href /destinos/<region>/<slug> de cada card (ver
+          // src/lib/region-paquete.ts). Sin esto la card caía a la primera
+          // región publicada ("europa") para TODOS los paquetes.
+          include: { ciudad: { include: { pais: true } } },
+        },
         // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
         // con noches propias): las noches reales viven en el circuito asignado.
         circuitos: {
@@ -144,7 +152,14 @@ export const getPaquetesByEtiqueta = unstable_cache(
       orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
       include: {
         fotos: { take: 1, orderBy: { orden: "asc" } },
-        destinos: { orderBy: { orden: "asc" }, include: { ciudad: true } },
+        destinos: {
+          orderBy: { orden: "asc" },
+          // `pais` hace falta para resolver la región real del paquete y armar
+          // el href /destinos/<region>/<slug> de cada card (ver
+          // src/lib/region-paquete.ts). Sin esto la card caía a la primera
+          // región publicada ("europa") para TODOS los paquetes.
+          include: { ciudad: { include: { pais: true } } },
+        },
         // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
         // con noches propias): las noches reales viven en el circuito asignado.
         circuitos: {
@@ -167,6 +182,36 @@ export const getRegionesPublicas = unstable_cache(
   ["regiones"],
   { revalidate: 300, tags: ["regiones"] },
 );
+
+/**
+ * Regiones de TODAS las marcas (id + slug). La base arrastra un juego
+ * duplicado de regiones de otra marca con los mismos slugs, y algunos países
+ * del brand público quedaron colgados de ese juego. Este índice permite
+ * traducir por slug ese regionId cruzado a la región pública equivalente en
+ * vez de caer al fallback silencioso. Tabla de ~14 filas: el costo es nulo.
+ */
+export const getRegionesTodasLasMarcas = unstable_cache(
+  async () =>
+    prisma.region.findMany({
+      select: { id: true, slug: true },
+      orderBy: { orden: "asc" },
+    }),
+  ["regiones-todas-marcas"],
+  { revalidate: 300, tags: ["regiones"] },
+);
+
+/**
+ * Contexto que necesitan `resolveRegionSlugPaquete` /
+ * `resolveRegionSlugParaListado` (src/lib/region-paquete.ts). Lo usan los
+ * listados, el detalle y el sitemap para hablar todos el mismo criterio.
+ */
+export async function getRegionResolver(): Promise<RegionResolver> {
+  const [publicas, todas] = await Promise.all([
+    getRegionesPublicas(),
+    getRegionesTodasLasMarcas(),
+  ]);
+  return buildRegionResolver(publicas, todas);
+}
 
 export const getRegionBySlug = unstable_cache(
   async (slug: string) =>

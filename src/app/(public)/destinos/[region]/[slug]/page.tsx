@@ -1,9 +1,14 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   getPaqueteBySlug,
   getSiteSettings,
   getPaquetesRelacionados,
+  getRegionResolver,
 } from "@/lib/public-data";
+import {
+  resolveRegionSlugPaquete,
+  resolveRegionSlugParaListado,
+} from "@/lib/region-paquete";
 import { auth } from "@/lib/auth.config";
 import { PackageDetailView } from "./_components/PackageDetailView";
 import { buildFormasDePagoData } from "./_components/FormasDePago";
@@ -16,7 +21,17 @@ export async function generateMetadata({
 }: {
   params: { region: string; slug: string };
 }) {
-  const p = await getPaqueteBySlug(params.slug);
+  const [p, regionResolver] = await Promise.all([
+    getPaqueteBySlug(params.slug),
+    getRegionResolver(),
+  ]);
+  // Canonical: SIEMPRE la región real del paquete, nunca el segmento de la
+  // URL. El componente de página ya redirige a la región correcta, pero el
+  // canonical es la señal que consolida en Google y no debe reforzar jamás una
+  // región equivocada.
+  const regionCanonica = p
+    ? (resolveRegionSlugPaquete(p, regionResolver) ?? params.region)
+    : params.region;
   // Noches robustas para el SEO: paquetes CIRCUITO tienen `noches` = 0 y las
   // reales viven en el circuito → evita "0 noches" en la meta description.
   const nochesSeo = p
@@ -41,7 +56,7 @@ export async function generateMetadata({
     // Sin ninguna de las dos cae al og-default de marca vía buildSeoMetadata.
     image: p?.fotos?.[0]?.url || p?.heroImage || undefined,
     noindex: !p,
-    path: p ? `/destinos/${params.region}/${params.slug}` : undefined,
+    path: p ? `/destinos/${regionCanonica}/${params.slug}` : undefined,
   });
 }
 
@@ -52,11 +67,54 @@ export default async function PackageDetailPage({
   params: { region: string; slug: string };
   searchParams: { preview?: string };
 }) {
-  const [paquete, pagosSettings] = await Promise.all([
+  const [paquete, pagosSettings, regionResolver] = await Promise.all([
     getPaqueteBySlug(params.slug),
     getSiteSettings("pagos"),
+    getRegionResolver(),
   ]);
   if (!paquete || paquete.deletedAt) notFound();
+
+  // Drafts are visible only when ?preview=1 is set AND the request comes from
+  // an authenticated admin session. Public visitors still get a 404 for
+  // unpublished packages. Este gate va ANTES del redirect de región para que
+  // un borrador nunca delate su existencia con un 308.
+  const wantsPreview = searchParams.preview === "1";
+  let isPreview = false;
+  if (!paquete.publicado) {
+    if (!wantsPreview) notFound();
+    const session = await auth();
+    if (!session?.user) notFound();
+    isPreview = true;
+  }
+
+  // ── Región canónica de la URL ───────────────────────────────────────────
+  // El detalle resuelve por slug, así que el segmento de región es cosmético y
+  // durante un tiempo se generaron links con la región equivocada (todas las
+  // cards de /destinos?tipo= y /tag/[slug] usaban la primera región publicada,
+  // "europa", para cualquier paquete). Esas URLs viejas siguen vivas en Google
+  // y en campañas: si la región del path no es la real del paquete, mandamos
+  // al visitante a la buena.
+  //
+  // OJO con el status: /destinos/** tiene loading.tsx en tres niveles
+  // (destinos/, [region]/, [region]/[slug]/), y un `loading.tsx` mete un
+  // Suspense que hace que React arranque a streamear antes de que el page
+  // resuelva. Cuando eso pasa, Next ya no puede cambiar el código de respuesta
+  // y este permanentRedirect se degrada a un redirect client-side con 200 (lo
+  // mismo le pasa hoy al notFound() de esta ruta: es un soft 404). El visitante
+  // igual termina en la URL correcta, y el canonical apunta a la región real.
+  // Para que sea un 308 de verdad hay que sacar esos loading.tsx y mover los
+  // esqueletos a un <Suspense> dentro de cada page — decisión de producto,
+  // afecta el perceived performance de los listados.
+  //
+  // Si la región no se puede resolver (paquete sin destinos cargados), no
+  // redirigimos: la página se sirve igual que siempre bajo la región pedida.
+  const regionReal = resolveRegionSlugPaquete(paquete, regionResolver);
+  if (regionReal && regionReal !== params.region) {
+    // `?preview=1` se preserva para no romper la vista de borradores del admin.
+    permanentRedirect(
+      `/destinos/${regionReal}/${params.slug}${isPreview ? "?preview=1" : ""}`,
+    );
+  }
 
   // Related packages — same region as the current package's first destino.
   const regionId =
@@ -87,23 +145,13 @@ export default async function PackageDetailPage({
       destinos: p.destinos.map((d) => ({
         ciudad: { nombre: d.ciudad?.nombre ?? "" },
       })),
-      // The public detail page resolves by slug (region segment is cosmetic),
-      // so using the current region slug for every related card's href is safe.
-      regionSlug: params.region,
+      // Cada card relacionada linkea a SU región real, no a la del paquete
+      // actual: el slider mezcla regiones cuando la región propia trae menos
+      // de 3 resultados, y arrastrar `params.region` era otra fuente de
+      // /destinos/europa/<paquete-de-Miami>.
+      regionSlug: resolveRegionSlugParaListado(p, regionResolver),
     };
   });
-
-  // Drafts are visible only when ?preview=1 is set AND the request comes from
-  // an authenticated admin session. Public visitors still get a 404 for
-  // unpublished packages.
-  const wantsPreview = searchParams.preview === "1";
-  let isPreview = false;
-  if (!paquete.publicado) {
-    if (!wantsPreview) notFound();
-    const session = await auth();
-    if (!session?.user) notFound();
-    isPreview = true;
-  }
 
   // Lista "Incluye" derivada de los servicios estructurados que el operador
   // cargó al crear el paquete. Se usa como fallback cuando no hay una lista

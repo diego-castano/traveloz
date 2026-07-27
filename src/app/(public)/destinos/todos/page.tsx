@@ -1,10 +1,11 @@
-import { getRegionesPublicas, getPaquetesPublicos } from "@/lib/public-data";
+import { getPaquetesPublicos, getRegionResolver } from "@/lib/public-data";
 import { RegionExplorer } from "@/components/public/RegionExplorer";
 import { buildSeoMetadata } from "@/lib/seo";
 import {
   projectPaqueteParaListado,
   buildCiudadesUnicas,
 } from "@/lib/paquete-listing";
+import { resolveRegionSlugParaListado } from "@/lib/region-paquete";
 
 // ---------------------------------------------------------------------------
 // /destinos/todos — listado de TODOS los paquetes publicados (sin filtro de
@@ -30,25 +31,20 @@ export async function generateMetadata() {
 }
 
 export default async function TodosDestinosPage() {
-  const [paquetesRaw, regiones] = await Promise.all([
+  const [paquetesRaw, regionResolver] = await Promise.all([
     getPaquetesPublicos(),
-    getRegionesPublicas(),
+    getRegionResolver(),
   ]);
 
   // El href de cada card necesita /destinos/<region>/<slug>: como acá no hay
-  // una única región de referencia, resolvemos la región de CADA paquete a
-  // partir de su destino primario (mismo criterio que usa src/app/sitemap.ts
-  // para armar la URL canónica del paquete). Fallback a la primera región
-  // publicada si el paquete no tiene destino/ciudad/país cargado.
-  const slugPorRegionId = new Map(regiones.map((r) => [r.id, r.slug]));
-  const fallbackRegionSlug = regiones[0]?.slug ?? "";
-
-  const paquetes = paquetesRaw.map((p) => {
-    const regionId = p.destinos[0]?.ciudad?.pais?.regionId ?? null;
-    const regionSlug =
-      (regionId && slugPorRegionId.get(regionId)) || fallbackRegionSlug;
-    return { ...projectPaqueteParaListado(p), regionSlug };
-  });
+  // una única región de referencia, resolvemos la región de CADA paquete con
+  // el helper compartido (src/lib/region-paquete.ts), el mismo criterio que
+  // usan el detalle y src/app/sitemap.ts. Si un paquete no tiene destino
+  // cargado cae a la primera región publicada, pero dejando un warn en el log.
+  const paquetes = paquetesRaw.map((p) => ({
+    ...projectPaqueteParaListado(p),
+    regionSlug: resolveRegionSlugParaListado(p, regionResolver),
+  }));
 
   // Distinct city list (id, nombre, paisNombre) for the typeahead, unión de
   // todos los paquetes (sin acotar a una región).

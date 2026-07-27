@@ -2,13 +2,14 @@ import {
   getRegionesPublicas,
   getTipoPaqueteBySlug,
   getPaquetesByTipo,
-  getRegionBySlug,
+  getRegionResolver,
   getSiteSettings,
 } from "@/lib/public-data";
 import { DestinosGrid } from "@/components/public/DestinosGrid";
 import { PackageCard } from "@/components/public/PackageCard";
 import { buildSeoMetadata } from "@/lib/seo";
 import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import { resolveRegionSlugParaListado } from "@/lib/region-paquete";
 
 export async function generateMetadata() {
   return buildSeoMetadata("destinos", { path: "/destinos" });
@@ -25,14 +26,15 @@ export default async function DestinosPage({
   if (tipoSlug) {
     const tipo = await getTipoPaqueteBySlug(tipoSlug);
     if (tipo) {
-      const [paquetes, regiones, settings] = await Promise.all([
+      const [paquetes, regionResolver, settings] = await Promise.all([
         getPaquetesByTipo(tipo.id),
-        // Resolver region slug para el href de cada paquete (toma la primera
-        // región disponible; cae a una default si no tiene).
-        getRegionesPublicas(),
+        // El href de cada card sale de la región REAL de ese paquete
+        // (src/lib/region-paquete.ts). Antes esta grilla usaba la primera
+        // región publicada para todos, y por eso los paquetes de Miami
+        // salían linkeados como /destinos/europa/….
+        getRegionResolver(),
         getSiteSettings("destinos"),
       ]);
-      const defaultRegionSlug = regiones[0]?.slug ?? "ver";
       // Plantilla del subtítulo de categoría — {tipo} se reemplaza por el
       // nombre de la categoría. Editable desde /backend/web/destinos.
       const subtituloTpl =
@@ -74,7 +76,10 @@ export default async function DestinosPage({
                     <div className="col-lg-4 col-md-6 mb-4" key={p.id}>
                       <PackageCard
                         paquete={cardData}
-                        regionSlug={defaultRegionSlug}
+                        regionSlug={resolveRegionSlugParaListado(
+                          p,
+                          regionResolver,
+                        )}
                       />
                     </div>
                   );
