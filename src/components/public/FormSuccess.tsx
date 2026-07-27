@@ -20,6 +20,7 @@ export function FormSuccess({
   text = "Gracias por escribirnos. Te vamos a contactar a la brevedad.",
   compact = false,
   accent = "coral",
+  titleAs = "h3",
 }: {
   variant?: "onGradient" | "onLight";
   title?: string;
@@ -29,7 +30,11 @@ export function FormSuccess({
   /** Color del check en la variante onLight. Por defecto coral (marca);
    *  "violet" para páginas de línea violeta (ej. corporativo). */
   accent?: "coral" | "violet";
+  /** Nivel del encabezado. h3 dentro de un form; h1 cuando la tarjeta ES la
+   *  página (ej. /gracias), para no dejar la ruta sin título de documento. */
+  titleAs?: "h1" | "h3";
 }) {
+  const Title = titleAs;
   return (
     <div
       className={`form-success form-success--${variant}${
@@ -56,7 +61,7 @@ export function FormSuccess({
           d="M14 27 l8 8 l16 -18"
         />
       </svg>
-      <h3 className="form-success__title">{title}</h3>
+      <Title className="form-success__title">{title}</Title>
       <p className="form-success__text">{text}</p>
     </div>
   );

@@ -1,31 +1,33 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import { submitContactForm } from "@/actions/public-forms.actions";
-import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
 
-function SubmitButton() {
+// `done` mantiene el botón bloqueado entre el ok del action y la navegación a
+// /gracias: si no, vuelve a "Enviar" habilitado por un instante y se puede
+// mandar el lead dos veces.
+function SubmitButton({ done }: { done: boolean }) {
   const { pending } = useFormStatus();
+  const busy = pending || done;
   return (
-    <button type="submit" className="contact-btn" disabled={pending}>
-      {pending ? "Enviando…" : "Enviar"}
+    <button type="submit" className="contact-btn" disabled={busy}>
+      {busy ? "Enviando…" : "Enviar"}
     </button>
   );
 }
 
 export function ContactForm() {
+  const router = useRouter();
   const [result, formAction] = useFormState(submitContactForm, null);
 
-  if (result?.ok) {
-    return (
-      <FormSuccess
-        variant="onGradient"
-        title="¡Mensaje enviado!"
-        text="Gracias por contactarte con nosotros. Te vamos a responder a la brevedad."
-      />
-    );
-  }
+  // Envío exitoso → página de conversión dedicada (el cliente mide el pageview
+  // en GTM). Los errores siguen mostrándose inline, sin navegar.
+  useEffect(() => {
+    if (result?.ok) router.push("/gracias?form=contacto");
+  }, [result, router]);
 
   return (
     <form id="contact-form" action={formAction}>
@@ -66,7 +68,7 @@ export function ContactForm() {
         </li>
       </ul>
       <div className="text-center">
-        <SubmitButton />
+        <SubmitButton done={result?.ok === true} />
       </div>
       {result && !result.ok && (
         <p style={{ color: "#ffb8bf", marginTop: 15 }} className="text-center" role="alert">

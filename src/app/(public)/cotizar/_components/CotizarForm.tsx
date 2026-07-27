@@ -1,41 +1,38 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import { submitQuoteForm } from "@/actions/public-forms.actions";
 import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
 import { SelectField } from "@/components/public/SelectField";
 import { FormStatus } from "@/components/public/FormStatus";
-import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
 
 // --- Botón de envío con estado pending (mismo patrón que ContactForm /
 // CorporativoView). Hereda el look píldora blanca de `.contact-btn`.
-function SubmitButton() {
+// `done` lo deja bloqueado entre el ok del action y la navegación a /gracias,
+// para que no rebote a "Enviar consulta" habilitado por un instante.
+function SubmitButton({ done }: { done: boolean }) {
   const { pending } = useFormStatus();
+  const busy = pending || done;
   return (
-    <button type="submit" className="contact-btn" disabled={pending}>
-      {pending ? "Enviando…" : "Enviar consulta"}
+    <button type="submit" className="contact-btn" disabled={busy}>
+      {busy ? "Enviando…" : "Enviar consulta"}
     </button>
   );
 }
 
 export function CotizarForm() {
+  const router = useRouter();
   const [result, action] = useFormState(submitQuoteForm, null);
 
-  // --- Éxito: reemplazamos el formulario por una tarjeta de confirmación
-  // animada (check + copy), en vez de dejar el form relleno con un mensajito
-  // abajo (confundía al cliente). Mantiene el branding del degradado violeta
-  // con texto blanco. Ver `.quote-success` en site.css.
-  if (result?.ok) {
-    return (
-      <FormSuccess
-        variant="onGradient"
-        title="¡Consulta enviada!"
-        text="Gracias por escribirnos. Nuestro equipo te va a contactar a la brevedad, en menos de 24 horas, con tu propuesta de viaje."
-      />
-    );
-  }
+  // --- Éxito: navegamos a /gracias, la página de conversión que el cliente
+  // mide en GTM. Los errores se siguen mostrando inline (FormStatus).
+  useEffect(() => {
+    if (result?.ok) router.push("/gracias?form=cotizar");
+  }, [result, router]);
 
   // --- Sin tarjeta blanca ni estilos inline: el form vive dentro de
   // `.contact-form-wrapper` (page.tsx) y hereda los inputs translúcidos con
@@ -121,9 +118,9 @@ export function CotizarForm() {
         </li>
       </ul>
       <div className="text-center">
-        <SubmitButton />
+        <SubmitButton done={result?.ok === true} />
       </div>
-      <FormStatus result={result} />
+      {result && !result.ok && <FormStatus result={result} />}
     </form>
   );
 }

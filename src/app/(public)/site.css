@@ -2791,6 +2791,36 @@ strong {
     color: #6a6a78 !important;
 }
 
+/* --- /gracias: página de conversión a la que caen los forms de leads tras un
+   envío exitoso. Reusa el degradado violeta de /contact y la tarjeta
+   `.form-success--onGradient`; abajo, los dos accesos de vuelta al sitio. --- */
+.gracias-area {
+    display: flex;
+    align-items: center;
+    min-height: 70vh;
+}
+
+.gracias-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 36px;
+}
+
+.gracias-actions .hero-btn {
+    font-size: 17px !important;
+    text-shadow: none;
+}
+
+@media (max-width: 575px) {
+    .gracias-actions .hero-btn {
+        width: 100%;
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
+
 /* Acento violeta (páginas de línea violeta, ej. corporativo): el check y el
    borde usan el violeta #A05ED3 en vez del coral. */
 .form-success--accentViolet {

@@ -1,21 +1,24 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import { submitQuoteForm } from "@/actions/public-forms.actions";
 import { DateRangePicker } from "@/components/public/DateRangePicker";
 import { PassengerCounter } from "@/components/public/PassengerCounter";
 import { SelectField } from "@/components/public/SelectField";
 import { FormStatus } from "@/components/public/FormStatus";
-import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
 
 // Botón con estado pending: se deshabilita mientras se envía para que no se
-// puedan disparar varios leads con clicks repetidos (bug reportado).
-function SubmitButton() {
+// puedan disparar varios leads con clicks repetidos (bug reportado). `done`
+// extiende el bloqueo hasta que la navegación a /gracias toma el control.
+function SubmitButton({ done }: { done: boolean }) {
   const { pending } = useFormStatus();
+  const busy = pending || done;
   return (
-    <button type="submit" className="btns" disabled={pending}>
-      {pending ? "Enviando…" : "Enviar consulta"}
+    <button type="submit" className="btns" disabled={busy}>
+      {busy ? "Enviando…" : "Enviar consulta"}
     </button>
   );
 }
@@ -50,7 +53,14 @@ export function QuoteSidebar({
   precioDesde: number | null;
   precioDesdeMoneda: string | null;
 }) {
+  const router = useRouter();
   const [result, action] = useFormState(submitQuoteForm, null);
+
+  // Envío exitoso → /gracias, la página de conversión que el cliente mide en
+  // GTM. Los errores se siguen mostrando abajo del botón, sin navegar.
+  useEffect(() => {
+    if (result?.ok) router.push("/gracias?form=paquete");
+  }, [result, router]);
 
   // Always render the price block — the reference always shows it. When
   // precioDesde is null, fall back to a "Consultar" pill so the layout stays
@@ -79,15 +89,6 @@ export function QuoteSidebar({
           : "Cotización personalizada según fechas y pasajeros"}
       </span>
 
-      {result?.ok ? (
-        <FormSuccess
-          variant="onLight"
-          compact
-          title="¡Consulta enviada!"
-          text="Recibimos tu consulta. Nuestro equipo te va a contactar a la brevedad con la propuesta de tu viaje."
-        />
-      ) : (
-        <>
       <span className="d-block form-title">Contactate con nosotros</span>
 
       <form action={action}>
@@ -169,12 +170,10 @@ export function QuoteSidebar({
           </li>
         </ul>
         <div className="text-center">
-          <SubmitButton />
+          <SubmitButton done={result?.ok === true} />
         </div>
         {result && !result.ok && <FormStatus result={result} />}
       </form>
-        </>
-      )}
     </div>
   );
 }

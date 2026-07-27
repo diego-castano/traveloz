@@ -10,9 +10,10 @@
 // mobile sliders, contact form) need to run on the client.
 // ---------------------------------------------------------------------------
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useFormState, useFormStatus } from "react-dom";
 import { submitCorporateForm } from "@/actions/public-forms.actions";
-import { FormSuccess } from "@/components/public/FormSuccess";
 import HoneypotField from "@/components/public/HoneypotField";
 import { EmblaSlider } from "@/components/public/EmblaSlider";
 import { Typewriter } from "@/components/public/Typewriter";
@@ -35,11 +36,14 @@ type Persona = {
   photoUrl: string | null;
 };
 
-function SubmitButton() {
+// `done` mantiene el botón bloqueado entre el ok del action y la navegación a
+// /gracias, para que no rebote a "Enviar" habilitado por un instante.
+function SubmitButton({ done }: { done: boolean }) {
   const { pending } = useFormStatus();
+  const busy = pending || done;
   return (
-    <button type="submit" className="contact-btn" disabled={pending}>
-      {pending ? "Enviando…" : "Enviar"}
+    <button type="submit" className="contact-btn" disabled={busy}>
+      {busy ? "Enviando…" : "Enviar"}
     </button>
   );
 }
@@ -53,7 +57,14 @@ export function CorporativoView({
   clientes: Cliente[];
   equipo: Persona[];
 }) {
+  const router = useRouter();
   const [result, formAction] = useFormState(submitCorporateForm, null);
+
+  // Envío exitoso → /gracias, la página de conversión que el cliente mide en
+  // GTM. Los errores se siguen mostrando inline, sin navegar.
+  useEffect(() => {
+    if (result?.ok) router.push("/gracias?form=corporativo");
+  }, [result, router]);
 
   const heroTitulo =
     s.corporativo_hero_titulo?.trim() || "Viajes que impulsan negocios.";
@@ -209,15 +220,6 @@ export function CorporativoView({
           <div className="row">
             <div className="col-lg-5 col-sm-6 mx-auto">
               <div className="content-box style2 ver2">
-                {result?.ok ? (
-                  <FormSuccess
-                    variant="onLight"
-                    accent="violet"
-                    title="¡Mensaje enviado!"
-                    text="Gracias por tu interés. Nuestro equipo corporativo se va a poner en contacto con vos a la brevedad."
-                  />
-                ) : (
-                  <>
                 <div className="text-center mb_50">
                   <h2 className="section-heading">{formTitulo}</h2>
                 </div>
@@ -282,7 +284,7 @@ export function CorporativoView({
                     </li>
                   </ul>
                   <div className="text-start">
-                    <SubmitButton />
+                    <SubmitButton done={result?.ok === true} />
                   </div>
                   {result && !result.ok && (
                     <p
@@ -293,8 +295,6 @@ export function CorporativoView({
                     </p>
                   )}
                 </form>
-                  </>
-                )}
               </div>
             </div>
             <div className="col-lg-8 mx-auto">
