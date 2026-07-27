@@ -5311,6 +5311,24 @@ header.header-area.header-dark {
   font-weight: 600;
 }
 
+/* Separador del typeahead: arriba las ciudades de la página actual, abajo el
+   resto del catálogo (elegir una de esas navega a /destinos/todos). */
+.city-suggest li.city-suggest-group {
+  display: block;
+  padding: 7px 14px 5px;
+  background: #faf9ff;
+  color: #9b93b5;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: default;
+}
+
+.city-suggest li.city-suggest-group:hover {
+  background: #faf9ff;
+}
+
 .city-suggest-name {
   font-weight: 600;
   color: #222;

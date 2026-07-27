@@ -297,6 +297,44 @@ export const getPaquetesPublicos = unstable_cache(
   { revalidate: 60, tags: ["paquetes"] },
 );
 
+/**
+ * Ciudades DISTINCT que aparecen como destino de algún paquete publicado y
+ * vigente de la marca. Alimenta el typeahead global del filtro de destinos:
+ * desde cualquier listado (ej. /destinos/europa) el usuario puede buscar una
+ * ciudad de otra región y saltar a /destinos/todos?ciudad=<id>.
+ *
+ * Tabla chica (decenas de filas), así que se ordena en memoria con collation
+ * español en vez de delegar el orderBy a Postgres.
+ */
+export const getCiudadesConPaquetesPublicados = unstable_cache(
+  async (): Promise<{ id: string; nombre: string; paisNombre: string }[]> => {
+    const ciudades = await prisma.ciudad.findMany({
+      where: {
+        paqueteDestinos: {
+          some: {
+            paquete: {
+              publicado: true,
+              deletedAt: null,
+              brandId: PUBLIC_BRAND_ID,
+              ...vigenciaActivaWhere(),
+            },
+          },
+        },
+      },
+      select: { id: true, nombre: true, pais: { select: { nombre: true } } },
+    });
+    return ciudades
+      .map((c) => ({
+        id: c.id,
+        nombre: c.nombre,
+        paisNombre: c.pais?.nombre ?? "",
+      }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  },
+  ["ciudades-con-paquetes-publicados"],
+  { revalidate: 60, tags: ["paquetes"] },
+);
+
 export const getFaqTopics = unstable_cache(
   async () =>
     prisma.faqTopic.findMany({

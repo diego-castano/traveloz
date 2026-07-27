@@ -1,5 +1,9 @@
 import { notFound } from "next/navigation";
-import { getRegionBySlug, getPaquetesByRegion } from "@/lib/public-data";
+import {
+  getRegionBySlug,
+  getPaquetesByRegion,
+  getCiudadesConPaquetesPublicados,
+} from "@/lib/public-data";
 import { RegionExplorer } from "@/components/public/RegionExplorer";
 import { buildSeoMetadata } from "@/lib/seo";
 import {
@@ -31,7 +35,10 @@ export default async function RegionListingPage({
 }) {
   const region = await getRegionBySlug(params.region);
   if (!region) notFound();
-  const paquetesRaw = await getPaquetesByRegion(region.id);
+  const [paquetesRaw, ciudadesGlobales] = await Promise.all([
+    getPaquetesByRegion(region.id),
+    getCiudadesConPaquetesPublicados(),
+  ]);
 
   // Project to the shape RegionExplorer expects (helper compartido con
   // /destinos/todos). Acá se pasa `regionId` para anclar las ciudades del
@@ -53,6 +60,9 @@ export default async function RegionListingPage({
       }}
       paquetes={paquetes}
       ciudades={ciudades}
+      // Catálogo completo: el typeahead también sugiere ciudades de otras
+      // regiones (grupo "Otros destinos" → /destinos/todos?ciudad=<id>).
+      ciudadesGlobales={ciudadesGlobales}
     />
   );
 }
