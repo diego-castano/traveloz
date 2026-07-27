@@ -29,8 +29,13 @@ export interface CotizadorLeadEmailOpts {
   fecha?: string;
 }
 
-// Dominio del servicio (el mismo que Railway/Resend). Cambiar acá si migra.
-export const SITE_BASE_URL = "https://app.traveloz.com.uy";
+// Dominio del sitio, tomado de la env como el resto del sistema (getBaseUrl
+// en seo.ts). Fallback: el apex definitivo.
+export const SITE_BASE_URL = (
+  process.env.APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  "https://traveloz.com.uy"
+).replace(/\/+$/, "");
 
 // Logo de la plataforma (TravelOz). No usamos header-logo.webp: mismo motivo
 // que en email.ts (proxy de Gmail rompe el alpha del webp → fondo negro;
