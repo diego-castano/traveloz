@@ -18,10 +18,13 @@ const csp = [
   "media-src 'self' blob: https:",
   "font-src 'self' data:",
   "connect-src 'self' https:",
-  "frame-src 'self' https://www.google.com https://maps.google.com",
+  // www.facebook.com en frame-src y form-action: el pixel de Meta (vía GTM)
+  // usa un iframe y un POST de formulario a facebook.com/tr como fallback de
+  // entrega; sin estos orígenes la CSP los bloquea y el pixel no mide.
+  "frame-src 'self' https://www.google.com https://maps.google.com https://www.facebook.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://www.facebook.com",
   "object-src 'none'",
 ].join("; ");
 
