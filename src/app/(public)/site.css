@@ -4842,8 +4842,9 @@ header.header-area.header-dark {
         top: 26vw;
     }
 
-    /* Mobile: el comentario se muestra entero (sin truncar ni flechita),
-       igual que en desktop y como pidió el cliente. */
+    /* El clamp a 7 renglones y la flechita de "desplegar" viven al final del
+       archivo, en su propio bloque @media (max-width: 767px). Acá queda solo
+       el espaciado del párrafo. */
     .expand-content {
         margin-bottom: 15px;
         padding-right: 15px
@@ -5465,4 +5466,73 @@ header.header-area.header-dark {
   color: #fff;
   text-decoration: underline;
   text-underline-offset: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Testimonios en mobile: relato clampeado a 7 renglones + flechita para
+   desplegar (pedido del cliente). Solo <768px; en tablet ancha y desktop el
+   relato sigue entero como hasta hoy.
+
+   El botón lo monta TestimonioTexto (HomeTestimonios.tsx) únicamente cuando
+   el texto no entra en las 7 líneas. El display:none de acá abajo es el
+   cinturón extra: si alguien deja el relato desplegado y agranda la ventana
+   a >=768px, la flecha desaparece igual.
+   ───────────────────────────────────────────────────────────────────────── */
+.expand-toggle {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .expand-wrapper {
+    position: relative;
+  }
+
+  .expand-content p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 7;
+    line-clamp: 7;
+    overflow: hidden;
+  }
+
+  .expand-wrapper.expanded .expand-content p {
+    display: block;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+  }
+
+  .expand-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Centrada bajo el relato: es donde cae el ojo al terminar de leer y,
+       a diferencia del borde derecho, nunca queda debajo del botón flotante
+       de WhatsApp. 40px de lado = área táctil cómoda; el margin negativo se
+       come el aire que deja el line-height del párrafo. */
+    margin: -4px auto 6px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #F43E55;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .expand-toggle .arrow {
+    display: block;
+    transition: transform 0.25s ease;
+  }
+
+  .expand-wrapper.expanded .expand-toggle .arrow {
+    transform: rotate(180deg);
+  }
+}
+
+@media (max-width: 767px) and (prefers-reduced-motion: reduce) {
+  .expand-toggle .arrow {
+    transition: none;
+  }
 }
