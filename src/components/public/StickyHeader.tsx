@@ -40,20 +40,24 @@ export function StickyHeader({
 
     let lastY = window.scrollY;
     let ticking = false;
-    const headerHeight = header.offsetHeight;
 
     const update = () => {
       const y = window.scrollY;
       const isDesktop = window.innerWidth > 991;
 
+      // Solo la clase: NO tocar el padding del body. La lógica original del
+      // template compensaba con `body { padding-top: <alto del header> }` el
+      // hueco que dejaba el header al pasar de estático a fixed. Pero acá el
+      // header ya es `position: fixed` SIEMPRE (la regla de .header-area de
+      // site.css:2445 pisa a la original de la 205) y el espacio lo reserva
+      // `.main-wrapper` con su padding-top. Esa compensación quedó de más y
+      // empujaba TODO el contenido 105px hacia abajo en un solo frame justo
+      // al cruzar los 100px de scroll: el usuario bajaba y la página lo
+      // devolvía, que es el "se tranca al arrancar a bajar" que reportaron.
       if (y > 100 && isDesktop) {
-        if (!header.classList.contains("scrolled")) {
-          header.classList.add("scrolled");
-          document.body.style.paddingTop = `${headerHeight}px`;
-        }
-      } else if (header.classList.contains("scrolled")) {
+        header.classList.add("scrolled");
+      } else {
         header.classList.remove("scrolled");
-        document.body.style.paddingTop = "0";
       }
 
       if (y > 400 && isDesktop) {
@@ -82,7 +86,6 @@ export function StickyHeader({
 
     return () => {
       window.removeEventListener("scroll", onScroll);
-      document.body.style.paddingTop = "0";
     };
   }, []);
 
