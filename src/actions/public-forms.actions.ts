@@ -37,6 +37,7 @@ import {
   paqueteConsultaEmail,
 } from "@/lib/email";
 import { getBaseUrl } from "@/lib/seo";
+import { crearNegocioLead } from "@/lib/bitrix";
 import { resumenPauta } from "@/lib/atribucion";
 import { leerAtribucion } from "@/lib/atribucion-server";
 
@@ -763,6 +764,9 @@ export async function submitQuoteForm(
     // fetch del paquete falla o no arma bien, caemos al aviso genérico —
     // nunca rompemos ni perdemos el lead.
     let handledByPaquete = false;
+    // Datos del paquete que también necesita el push a Bitrix (más abajo).
+    let paqueteTitulo: string | null = null;
+    let paqueteSitioUrl: string | null = null;
     if (paqueteId) {
       try {
         const paquete = await prisma.paquete.findUnique({
@@ -796,6 +800,8 @@ export async function submitQuoteForm(
           // (pedido del cliente): el dashboard aplica `?paquete={id}` como deep
           // link y abre el panel de ese paquete.
           const adminUrl = `${base}/backend/dashboard?vista=vendedor&paquete=${paqueteId}`;
+          paqueteTitulo = paquete.titulo;
+          paqueteSitioUrl = sitioUrl;
           const fechaEnvio = new Intl.DateTimeFormat("es-UY", {
             dateStyle: "long",
             timeStyle: "short",
@@ -846,6 +852,46 @@ export async function submitQuoteForm(
         ],
       });
     }
+
+    // ── CRM Bitrix24 ────────────────────────────────────────────────────
+    // Hoy solo mandamos las consultas nacidas del detalle de un paquete: son
+    // las que recepción trabaja en la columna ENTRADA CALIENTE. El cotizador
+    // general (/cotizar, sin paqueteId) queda preparado pero apagado — el
+    // resto del código ya soporta paquete nulo (el TITLE cae al destino), así
+    // que para activarlo alcanza con setear BITRIX_COTIZADOR_GENERAL=1.
+    const enviarABitrix =
+      Boolean(paqueteId) || process.env.BITRIX_COTIZADOR_GENERAL === "1";
+    if (enviarABitrix) {
+      // Best-effort, igual que notifyLead: si Bitrix está caído, sin permisos
+      // o tarda de más, el pasajero recibe su confirmación igual, el lead ya
+      // quedó en nuestra DB y el mail interno ya salió.
+      try {
+        await crearNegocioLead({
+          tituloPaquete: paqueteTitulo,
+          paqueteUrl: paqueteSitioUrl,
+          nombre: data.nombre,
+          email: data.email,
+          telefono: telefonoDisplay || data.telefono,
+          destino: data.destino,
+          fechaDesde: date(formData, "fechaDesde"),
+          fechaHasta: date(formData, "fechaHasta"),
+          adultos: m("adultos"),
+          ninos: m("ninos"),
+          infantes: m("infantes"),
+          preferencia: validPref,
+          comentarios: data.comentarios,
+          origen: s(formData, "origen") ?? captureOrigen(),
+          pauta,
+          aceptaPromos: formData.get("aceptaPromos") === "on",
+          canal: paqueteId
+            ? "Sitio web — consulta de paquete"
+            : "Sitio web — cotizador general",
+        });
+      } catch (err) {
+        log.error("submitQuoteForm bitrix failed", err);
+      }
+    }
+
     return { ok: true, message: SUCCESS_MSG };
   } catch (err) {
     log.error("submitQuoteForm failed", err);
