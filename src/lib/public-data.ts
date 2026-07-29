@@ -1,7 +1,11 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { BRAND_ID } from "@/lib/brand";
-import { buildRegionResolver, type RegionResolver } from "@/lib/region-paquete";
+import {
+  buildRegionResolver,
+  resolveRegionSlugDesdeBreadcrumb,
+  type RegionResolver,
+} from "@/lib/region-paquete";
 
 // Single-tenant: every public query filters by the constant brandId. The
 // PUBLIC_BRAND_ID alias is kept for callers that imported it before Fase 7.
@@ -223,39 +227,117 @@ export const getRegionBySlug = unstable_cache(
   { revalidate: 300, tags: ["regiones"] },
 );
 
+/**
+ * Mismo criterio que el `orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }]`
+ * de las queries: Postgres ordena ASC con NULLS LAST, de ahí el Infinity.
+ */
+function compararParaListado(
+  a: { precioDesde: number | null; titulo: string },
+  b: { precioDesde: number | null; titulo: string },
+): number {
+  const pa = a.precioDesde ?? Number.POSITIVE_INFINITY;
+  const pb = b.precioDesde ?? Number.POSITIVE_INFINITY;
+  if (pa !== pb) return pa - pb;
+  return a.titulo.localeCompare(b.titulo, "es");
+}
+
+/**
+ * Intercala dos listas YA ordenadas por `compararParaListado` conservando el
+ * orden relativo que trajo cada una de la base. Preferido a re-sortear todo:
+ * los empates mantienen exactamente el orden de Postgres, así que sumar los
+ * paquetes por breadcrumb no reacomoda el listado que el cliente ya conocía.
+ */
+function mergeOrdenado<T extends { precioDesde: number | null; titulo: string }>(
+  a: T[],
+  b: T[],
+): T[] {
+  const out: T[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    out.push(compararParaListado(a[i], b[j]) <= 0 ? a[i++] : b[j++]);
+  }
+  while (i < a.length) out.push(a[i++]);
+  while (j < b.length) out.push(b[j++]);
+  return out;
+}
+
 export const getPaquetesByRegion = unstable_cache(
   async (regionId: string) => {
-    // Prisma `some` brings in any paquete with AT LEAST ONE city in the region —
-    // that includes "CURAZAO" packages that happen to have a Madrid stopover.
-    // We narrow it client-side to only paquetes whose PRIMARY destino (lowest
-    // orden) is in the region. Multi-region packages are then anchored to a
-    // single region for listing purposes.
-    const candidates = await prisma.paquete.findMany({
-      where: {
-        publicado: true,
-        deletedAt: null,
-        brandId: PUBLIC_BRAND_ID,
-        destinos: { some: { ciudad: { pais: { regionId } } } },
-        ...vigenciaActivaWhere(),
+    const include = {
+      fotos: { take: 1, orderBy: { orden: "asc" as const } },
+      destinos: {
+        orderBy: { orden: "asc" as const },
+        include: { ciudad: { include: { pais: true } } },
       },
-      orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
-      include: {
-        fotos: { take: 1, orderBy: { orden: "asc" } },
-        destinos: {
-          orderBy: { orden: "asc" },
-          include: { ciudad: { include: { pais: true } } },
-        },
-        // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
-        // con noches propias): las noches reales viven en el circuito asignado.
-        circuitos: {
-          take: 1,
-          orderBy: { orden: "asc" },
-          select: { circuito: { select: { noches: true } } },
-        },
+      // Fallback de noches para tarjetas de paquetes CIRCUITO (sin destinos
+      // con noches propias): las noches reales viven en el circuito asignado.
+      circuitos: {
+        take: 1,
+        orderBy: { orden: "asc" as const },
+        select: { circuito: { select: { noches: true } } },
       },
-    });
-    return candidates.filter(
+    };
+    const base = {
+      publicado: true,
+      deletedAt: null,
+      brandId: PUBLIC_BRAND_ID,
+      ...vigenciaActivaWhere(),
+    };
+    const orderBy = [
+      { precioDesde: "asc" as const },
+      { titulo: "asc" as const },
+    ];
+
+    // Dos poblaciones distintas:
+    //  · `some` trae cualquier paquete con AL MENOS una ciudad en la región —
+    //    incluye los "CURAZAO" con escala en Madrid, que después se descartan.
+    //  · `none` trae los que no tienen ninguna fila en PaqueteDestino. Son los
+    //    CIRCUITO (el destino se cargó como Región › País, sin ciudad, y esa
+    //    tabla exige ciudadId), invisibles hasta ahora en TODOS los listados
+    //    por región. Hoy son ~7 filas: traerlas enteras no cuesta nada.
+    const [candidates, sinDestinos, regionResolver] = await Promise.all([
+      prisma.paquete.findMany({
+        where: {
+          ...base,
+          destinos: { some: { ciudad: { pais: { regionId } } } },
+        },
+        orderBy,
+        include,
+      }),
+      prisma.paquete.findMany({
+        where: { ...base, destinos: { none: {} } },
+        orderBy,
+        include,
+      }),
+      getRegionResolver(),
+    ]);
+
+    // Narrow client-side al destino PRIMARIO (menor `orden`): un paquete
+    // multi-región se ancla a una sola región para el listado.
+    const conDestinos = candidates.filter(
       (p) => p.destinos[0]?.ciudad?.pais?.regionId === regionId,
+    );
+
+    // Y los sin destinos, por breadcrumb ("Europa › Turquía" → europa). El
+    // match es contra el SLUG porque el breadcrumb guarda nombres, no ids.
+    const slugRegion = regionResolver.slugPublicoPorId.get(regionId) ?? null;
+    const porBreadcrumb = slugRegion
+      ? sinDestinos.filter(
+          (p) =>
+            resolveRegionSlugDesdeBreadcrumb(p.destino, regionResolver) ===
+            slugRegion,
+        )
+      : [];
+    // Camino sin cambios cuando no hay nada que sumar.
+    if (porBreadcrumb.length === 0) return conDestinos;
+
+    // Las dos poblaciones son disjuntas por construcción (`some` vs `none`),
+    // pero el guard mantiene el invariante si alguna where cambia.
+    const vistos = new Set(conDestinos.map((p) => p.id));
+    return mergeOrdenado(
+      conDestinos,
+      porBreadcrumb.filter((p) => !vistos.has(p.id)),
     );
   },
   ["paquetes-by-region"],

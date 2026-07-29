@@ -87,6 +87,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         select: {
           slug: true,
           updatedAt: true,
+          // Breadcrumb "Región › País › Ciudad": el helper lo usa para deducir
+          // la región de los paquetes sin destinos estructurados (CIRCUITO).
+          destino: true,
           destinos: {
             orderBy: { orden: "asc" },
             take: 1,
