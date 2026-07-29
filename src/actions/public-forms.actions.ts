@@ -854,13 +854,13 @@ export async function submitQuoteForm(
     }
 
     // ── CRM Bitrix24 ────────────────────────────────────────────────────
-    // Hoy solo mandamos las consultas nacidas del detalle de un paquete: son
-    // las que recepción trabaja en la columna ENTRADA CALIENTE. El cotizador
-    // general (/cotizar, sin paqueteId) queda preparado pero apagado — el
-    // resto del código ya soporta paquete nulo (el TITLE cae al destino), así
-    // que para activarlo alcanza con setear BITRIX_COTIZADOR_GENERAL=1.
-    const enviarABitrix =
-      Boolean(paqueteId) || process.env.BITRIX_COTIZADOR_GENERAL === "1";
+    // Los DOS formularios de cotización van al CRM (pedido del cliente): el
+    // del detalle de un paquete y el general de /cotizar, que comparten esta
+    // action. Sin paquete el TITLE cae al destino que escribió el visitante.
+    // BITRIX_OFF=1 corta el push sin necesidad de deploy si alguna vez hace
+    // falta (el resto del flujo — lead en la DB, mail, /gracias — no depende
+    // de esto).
+    const enviarABitrix = process.env.BITRIX_OFF !== "1";
     if (enviarABitrix) {
       // Best-effort, igual que notifyLead: si Bitrix está caído, sin permisos
       // o tarda de más, el pasajero recibe su confirmación igual, el lead ya
