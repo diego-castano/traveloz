@@ -20,14 +20,18 @@ export type PublicacionModuloId =
   | "condiciones"
   | "seo";
 
-/** Orden por defecto (el histórico, antes de que fuera reordenable). */
+/**
+ * Orden por defecto. Arranca con lo que el operador toca primero al armar un
+ * paquete: qué incluye, las fotos del slider y los renglones de la tarjeta.
+ * El resto queda abajo en el orden histórico.
+ */
 export const DEFAULT_PUBLICACION_ORDEN: PublicacionModuloId[] = [
+  "incluye",
+  "slider",
+  "tarjeta",
   "estado",
   "etiquetas",
-  "slider",
   "textos",
-  "incluye",
-  "tarjeta",
   "condiciones",
   "seo",
 ];

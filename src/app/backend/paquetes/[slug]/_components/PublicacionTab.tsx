@@ -944,6 +944,150 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           sus handlers, sólo su posición. */}
       {(() => {
         const moduleNodes: Record<PublicacionModuloId, React.ReactNode> = {
+          // Qué incluye
+          incluye: (
+      <Section
+        title="Qué incluye (vista del cliente)"
+        description="La lista que ve el viajero en la ficha pública. Tocá «Generar incluido» para armarla desde los servicios del paquete (aéreos, traslados, noches por destino con régimen, circuitos, seguros), después reordená arrastrando, editá el texto, cambiá el ícono o agregá items a mano."
+      >
+        <IncluyeEditor
+          items={incluyeItems}
+          onChange={handleIncluyeChange}
+          catalog={catalogServicios}
+          onGenerate={handleGenerarIncluye}
+          disabled={disabled}
+        />
+        <p className="text-[11px] text-neutral-400 mt-2">
+          Gestioná el catálogo de servicios reutilizables en{" "}
+          <a
+            href="/backend/catalogos/servicios"
+            className="text-violet-600 hover:underline"
+          >
+            Catálogo de servicios
+          </a>
+          .
+        </p>
+      </Section>
+
+          ),
+          // Slider de fotos
+          slider: (
+      <Section
+        title="Slider de fotos"
+        description="El carrusel del detalle público. Subí, ordená y borrá las fotos acá mismo, y marcá con la estrella cuál es la destacada — esa aparece primera, sin importar el orden."
+      >
+        <div
+          ref={heroFieldRef}
+          className={`rounded-md transition-shadow ${
+            flashField === "hero"
+              ? "ring-2 ring-red-400 ring-offset-2 ring-offset-white p-2 -m-2"
+              : ""
+          }`}
+        >
+          <ImageUploader
+            images={galleryImages}
+            principalId={principalFotoId}
+            onAdd={canEdit ? handleAddFotos : undefined}
+            onRemove={canEdit ? handleRemoveFoto : undefined}
+            onReorder={canEdit ? handleReorderFotos : undefined}
+            onSetPrincipal={canEdit ? handleSetPrincipalFoto : undefined}
+            onUpdateFocal={canEdit ? handleUpdateFocal : undefined}
+            folder="paquetes"
+            maxImages={20}
+          />
+          {galleryImages.length > 0 && !principalFotoId && (
+            <p className="mt-2 text-xs text-amber-700">
+              Elegí una foto destacada con la estrella — es la que abre el
+              slider y se usa como portada del paquete.
+            </p>
+          )}
+          {galleryImages.length === 0 && !canEdit && (
+            <p className="mt-2 text-center text-[13px] text-neutral-400">
+              No hay fotos para este paquete
+            </p>
+          )}
+        </div>
+      </Section>
+
+          ),
+          // Renglones de la tarjeta (listados/grillas)
+          tarjeta: (
+      <Section
+        title="Renglones de la tarjeta"
+        description="Los 4 renglones que se ven en la tarjeta del paquete en listados y grillas. Opcional: si los dejás vacíos, se arman automáticos desde el Incluye."
+      >
+        {/* Vista previa de lo que se muestra hoy en la tarjeta. */}
+        <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-3">
+          <p className="text-[10px] uppercase tracking-wide text-neutral-400 mb-2">
+            {hasCustomBullets
+              ? "Personalizados"
+              : "Automáticos (lo que se muestra hoy)"}
+          </p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {(hasCustomBullets ? customBullets : autoBullets).length === 0 ? (
+              <li className="text-[13px] text-neutral-400 italic">
+                Sin renglones
+              </li>
+            ) : (
+              (hasCustomBullets ? customBullets : autoBullets).map((b, i) => (
+                <li
+                  key={`${b}-${i}`}
+                  className="flex items-center gap-1.5 text-[13px] text-neutral-600"
+                >
+                  <span className="inline-block h-1 w-1 rounded-full bg-neutral-400" />
+                  {b}
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+
+        {/* Editor de 4 slots. El placeholder de cada uno es el renglón
+            automático que ocuparía ese lugar, para orientar al operador. */}
+        <div className="space-y-2">
+          {cardBulletsSlots.map((slot, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-center text-[11px] font-medium text-neutral-400">
+                {i + 1}
+              </span>
+              <div className="flex-1">
+                <Input
+                  value={slot}
+                  onChange={(e) => handleCardBulletChange(i, e.target.value)}
+                  maxLength={CARD_BULLET_MAX}
+                  placeholder={autoBullets[i] ?? "Renglón opcional"}
+                  disabled={disabled}
+                />
+              </div>
+              <span className="w-12 shrink-0 text-right text-[10px] text-neutral-300 tabular-nums">
+                {slot.length}/{CARD_BULLET_MAX}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {canEdit && (
+          <div className="flex flex-wrap items-center gap-4 pt-1">
+            <button
+              type="button"
+              onClick={handleUsarAutomaticos}
+              className="text-[11px] text-violet-600 hover:underline"
+            >
+              Usar los automáticos como base
+            </button>
+            <button
+              type="button"
+              onClick={handleVolverAutomaticos}
+              disabled={cardBulletsSlots.every((s) => !s.trim())}
+              className="text-[11px] text-neutral-500 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+            >
+              Volver a automáticos
+            </button>
+          </div>
+        )}
+      </Section>
+
+          ),
           // Estado y visibilidad
           estado: (
       <Section
@@ -1110,46 +1254,6 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       </Section>
 
           ),
-          // Slider de fotos
-          slider: (
-      <Section
-        title="Slider de fotos"
-        description="El carrusel del detalle público. Subí, ordená y borrá las fotos acá mismo, y marcá con la estrella cuál es la destacada — esa aparece primera, sin importar el orden."
-      >
-        <div
-          ref={heroFieldRef}
-          className={`rounded-md transition-shadow ${
-            flashField === "hero"
-              ? "ring-2 ring-red-400 ring-offset-2 ring-offset-white p-2 -m-2"
-              : ""
-          }`}
-        >
-          <ImageUploader
-            images={galleryImages}
-            principalId={principalFotoId}
-            onAdd={canEdit ? handleAddFotos : undefined}
-            onRemove={canEdit ? handleRemoveFoto : undefined}
-            onReorder={canEdit ? handleReorderFotos : undefined}
-            onSetPrincipal={canEdit ? handleSetPrincipalFoto : undefined}
-            onUpdateFocal={canEdit ? handleUpdateFocal : undefined}
-            folder="paquetes"
-            maxImages={20}
-          />
-          {galleryImages.length > 0 && !principalFotoId && (
-            <p className="mt-2 text-xs text-amber-700">
-              Elegí una foto destacada con la estrella — es la que abre el
-              slider y se usa como portada del paquete.
-            </p>
-          )}
-          {galleryImages.length === 0 && !canEdit && (
-            <p className="mt-2 text-center text-[13px] text-neutral-400">
-              No hay fotos para este paquete
-            </p>
-          )}
-        </div>
-      </Section>
-
-          ),
           // Textos del paquete
           textos: (
       <Section
@@ -1205,110 +1309,6 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             disabled={disabled}
           />
         </div>
-      </Section>
-
-          ),
-          // Qué incluye
-          incluye: (
-      <Section
-        title="Qué incluye (vista del cliente)"
-        description="La lista que ve el viajero en la ficha pública. Tocá «Generar incluido» para armarla desde los servicios del paquete (aéreos, traslados, noches por destino con régimen, circuitos, seguros), después reordená arrastrando, editá el texto, cambiá el ícono o agregá items a mano."
-      >
-        <IncluyeEditor
-          items={incluyeItems}
-          onChange={handleIncluyeChange}
-          catalog={catalogServicios}
-          onGenerate={handleGenerarIncluye}
-          disabled={disabled}
-        />
-        <p className="text-[11px] text-neutral-400 mt-2">
-          Gestioná el catálogo de servicios reutilizables en{" "}
-          <a
-            href="/backend/catalogos/servicios"
-            className="text-violet-600 hover:underline"
-          >
-            Catálogo de servicios
-          </a>
-          .
-        </p>
-      </Section>
-
-          ),
-          // Renglones de la tarjeta (listados/grillas)
-          tarjeta: (
-      <Section
-        title="Renglones de la tarjeta"
-        description="Los 4 renglones que se ven en la tarjeta del paquete en listados y grillas. Opcional: si los dejás vacíos, se arman automáticos desde el Incluye."
-      >
-        {/* Vista previa de lo que se muestra hoy en la tarjeta. */}
-        <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-3">
-          <p className="text-[10px] uppercase tracking-wide text-neutral-400 mb-2">
-            {hasCustomBullets
-              ? "Personalizados"
-              : "Automáticos (lo que se muestra hoy)"}
-          </p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
-            {(hasCustomBullets ? customBullets : autoBullets).length === 0 ? (
-              <li className="text-[13px] text-neutral-400 italic">
-                Sin renglones
-              </li>
-            ) : (
-              (hasCustomBullets ? customBullets : autoBullets).map((b, i) => (
-                <li
-                  key={`${b}-${i}`}
-                  className="flex items-center gap-1.5 text-[13px] text-neutral-600"
-                >
-                  <span className="inline-block h-1 w-1 rounded-full bg-neutral-400" />
-                  {b}
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-
-        {/* Editor de 4 slots. El placeholder de cada uno es el renglón
-            automático que ocuparía ese lugar, para orientar al operador. */}
-        <div className="space-y-2">
-          {cardBulletsSlots.map((slot, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="w-5 shrink-0 text-center text-[11px] font-medium text-neutral-400">
-                {i + 1}
-              </span>
-              <div className="flex-1">
-                <Input
-                  value={slot}
-                  onChange={(e) => handleCardBulletChange(i, e.target.value)}
-                  maxLength={CARD_BULLET_MAX}
-                  placeholder={autoBullets[i] ?? "Renglón opcional"}
-                  disabled={disabled}
-                />
-              </div>
-              <span className="w-12 shrink-0 text-right text-[10px] text-neutral-300 tabular-nums">
-                {slot.length}/{CARD_BULLET_MAX}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {canEdit && (
-          <div className="flex flex-wrap items-center gap-4 pt-1">
-            <button
-              type="button"
-              onClick={handleUsarAutomaticos}
-              className="text-[11px] text-violet-600 hover:underline"
-            >
-              Usar los automáticos como base
-            </button>
-            <button
-              type="button"
-              onClick={handleVolverAutomaticos}
-              disabled={cardBulletsSlots.every((s) => !s.trim())}
-              className="text-[11px] text-neutral-500 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
-            >
-              Volver a automáticos
-            </button>
-          </div>
-        )}
       </Section>
 
           ),
