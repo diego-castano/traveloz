@@ -14,10 +14,16 @@ import {
   createCategoriaDestacada,
   updateCategoriaDestacada,
   deleteCategoriaDestacada,
+  getLinkTargetOptions,
 } from "@/actions/categorias-destacadas.actions";
 import { SortableList } from "../_components/SortableList";
 import { RichEditorDialog } from "../_components/RichEditorDialog";
 import { useWebEdit } from "../_components/web-edit-context";
+import {
+  describeLinkTarget,
+  EMPTY_LINK_TARGET_OPTIONS,
+  type LinkTargetOptions,
+} from "@/lib/link-target";
 
 type Row = Awaited<ReturnType<typeof listCategoriasDestacadas>>[number];
 
@@ -25,6 +31,9 @@ export default function WebCategoriasPage() {
   const { refreshPreview } = useWebEdit();
   const [items, setItems] = useState<Row[]>([]);
   const [editing, setEditing] = useState<Row | "new" | null>(null);
+  // Opciones del selector de destino (tipos, etiquetas, regiones). Se cargan
+  // una vez al montar; el drawer las recibe ya resueltas.
+  const [linkOptions, setLinkOptions] = useState<LinkTargetOptions | null>(null);
 
   const refresh = () =>
     listCategoriasDestacadas().then((rows) => {
@@ -33,6 +42,10 @@ export default function WebCategoriasPage() {
     });
   useEffect(() => {
     refresh();
+    getLinkTargetOptions()
+      .then(setLinkOptions)
+      // Si falla, el editor igual abre con "URL personalizada" como salida.
+      .catch(() => setLinkOptions(EMPTY_LINK_TARGET_OPTIONS));
   }, []);
 
   const onSave = async (values: Record<string, string>) => {
@@ -70,7 +83,10 @@ export default function WebCategoriasPage() {
         items={items.map((i) => ({
           id: i.id,
           title: i.titulo,
-          subtitle: i.link,
+          subtitle: describeLinkTarget(
+            i.link,
+            linkOptions ?? EMPTY_LINK_TARGET_OPTIONS,
+          ),
           thumbUrl: i.imagen || "",
           activo: i.activa,
           orden: i.orden,
@@ -98,8 +114,11 @@ export default function WebCategoriasPage() {
         createLabel="+ Nueva"
       />
 
-      {editing && (
+      {editing && linkOptions && (
         <RichEditorDialog
+          // Remonta el drawer al cambiar de fila: los campos toman su estado
+          // inicial del valor guardado (el selector de destino deduce el tipo).
+          key={editing === "new" ? "new" : editing.id}
           title={editing === "new" ? "Nueva categoría" : "Editar categoría"}
           fields={[
             {
@@ -120,11 +139,11 @@ export default function WebCategoriasPage() {
               aspect: 400 / 487,
             },
             {
-              type: "text",
+              type: "link-target",
               key: "link",
-              label: "Link",
-              placeholder: "/destinos?tipo=lunas-de-miel",
+              label: "¿Adónde lleva?",
               required: true,
+              options: linkOptions,
             },
           ]}
           values={initialValues}

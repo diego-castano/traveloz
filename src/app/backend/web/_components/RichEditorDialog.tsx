@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { MediaPicker } from "./MediaPicker";
 import { WysiwygEditor } from "./WysiwygEditor";
+import { LinkTargetField } from "./LinkTargetField";
+import type { LinkTargetOptions } from "@/lib/link-target";
 
 export type RichField =
   | { type: "text"; key: string; label: string; placeholder?: string; required?: boolean }
@@ -23,7 +25,19 @@ export type RichField =
     }
   | { type: "html"; key: string; label: string; placeholder?: string; rows?: number }
   | { type: "textarea"; key: string; label: string; rows?: number }
-  | { type: "rating"; key: string; label: string; max?: number };
+  | { type: "rating"; key: string; label: string; max?: number }
+  /**
+   * Selector de destino interno (categorías destacadas). Guarda una URL como
+   * "/destinos?tipo=cruceros" pero la elige de desplegables. `options` llega ya
+   * resuelta desde la página — el drawer no consulta la DB.
+   */
+  | {
+      type: "link-target";
+      key: string;
+      label: string;
+      required?: boolean;
+      options: LinkTargetOptions;
+    };
 
 type Props = {
   title: string;
@@ -50,6 +64,10 @@ export function RichEditorDialog({
 }: Props) {
   const [values, setValues] = useState<Record<string, string>>(initial);
   const [saving, setSaving] = useState(false);
+  // Errores de validación por campo. Hoy solo los produce "link-target": el
+  // resto de los editores mantiene el comportamiento de siempre (guardan sin
+  // validar).
+  const [errors, setErrors] = useState<Record<string, string>>({});
   // Estado de apertura para animar el slide-in/out sin desmontar de golpe.
   const [open, setOpen] = useState(false);
   const closingRef = useRef(false);
@@ -74,9 +92,23 @@ export function RichEditorDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const set = (k: string, v: string) => setValues((p) => ({ ...p, [k]: v }));
+  const set = (k: string, v: string) => {
+    setValues((p) => ({ ...p, [k]: v }));
+    setErrors((p) => (p[k] ? { ...p, [k]: "" } : p));
+  };
 
   const handleSave = async () => {
+    // Un destino vacío deja la categoría sin adónde ir: se frena acá.
+    const missing = fields.filter(
+      (f) =>
+        f.type === "link-target" && f.required && !(values[f.key] ?? "").trim(),
+    );
+    if (missing.length > 0) {
+      setErrors(
+        Object.fromEntries(missing.map((f) => [f.key, "Elegí un destino."])),
+      );
+      return;
+    }
     setSaving(true);
     try {
       await onSave(values);
@@ -204,6 +236,18 @@ export function RichEditorDialog({
                     placeholder={f.placeholder}
                     minRows={f.rows ?? 8}
                   />
+                )}
+                {f.type === "link-target" && (
+                  <LinkTargetField
+                    value={values[f.key] ?? ""}
+                    onChange={(v) => set(f.key, v)}
+                    options={f.options}
+                  />
+                )}
+                {errors[f.key] && (
+                  <p className="mt-1 text-[11.5px] font-medium text-[#CC2030]">
+                    {errors[f.key]}
+                  </p>
                 )}
               </div>
             ))}
