@@ -884,8 +884,8 @@ export async function submitQuoteForm(
           pauta,
           aceptaPromos: formData.get("aceptaPromos") === "on",
           canal: paqueteId
-            ? "Sitio web — consulta de paquete"
-            : "Sitio web — cotizador general",
+            ? "Sitio web - consulta de paquete"
+            : "Sitio web - cotizador general",
         });
       } catch (err) {
         log.error("submitQuoteForm bitrix failed", err);

@@ -293,7 +293,7 @@ export async function upsertContacto(
 }
 
 // ──────────────────────────────────────────────
-// Armado del Negocio (funciones puras — testeables sin red)
+// Armado del Negocio (funciones puras - testeables sin red)
 // ──────────────────────────────────────────────
 
 const MESES_ES = [
@@ -340,7 +340,7 @@ export interface ConsultaLead {
   canal?: string | null;
 }
 
-/** Fechas del form vienen como medianoche UTC — las leemos en UTC para no correr un día. */
+/** Fechas del form vienen como medianoche UTC - las leemos en UTC para no correr un día. */
 function fmtFecha(d: Date | null | undefined): string {
   if (!d || Number.isNaN(d.getTime())) return "";
   return d.toISOString().slice(0, 10);
@@ -356,23 +356,18 @@ function totalPax(lead: ConsultaLead): number {
 }
 
 /**
- * TITLE con la convención que usa recepción a mano:
- *   "Destino - N PAX - MES"   (ej. "Río de Janeiro - 2 PAX - OCTUBRE")
+ * TITLE del negocio, formato pedido por el cliente:
+ *   "Consulta Web - TITULO DEL PAQUETE"
  *
- * Los tramos que no tenemos se omiten: sin pasajeros y sin fecha queda solo el
- * nombre del paquete. `BITRIX_TITLE_PREFIX` antepone una marca (se usa para
- * los negocios de prueba) y en producción está vacío.
+ * Sin paquete (cotizador general de /cotizar) usa el destino que escribió el
+ * visitante. Si tampoco hay destino, queda solo "Consulta Web".
+ * `BITRIX_TITLE_PREFIX` antepone una marca (se usa para los negocios de
+ * prueba) y en producción está vacío.
  */
 export function construirTitulo(lead: ConsultaLead): string {
-  const base =
-    lead.tituloPaquete?.trim() || lead.destino?.trim() || "Consulta desde la web";
-  const partes = [base];
-
-  const pax = totalPax(lead);
-  if (pax > 0) partes.push(`${pax} PAX`);
-
-  const mes = mesEnMayusculas(lead.fechaDesde);
-  if (mes) partes.push(mes);
+  const base = lead.tituloPaquete?.trim() || lead.destino?.trim() || "";
+  const partes = ["Consulta Web"];
+  if (base) partes.push(base);
 
   // Sin trim: el prefijo se usa tal cual se configuró (normalmente termina en
   // un espacio, ej. "[PRUEBA] ").
@@ -436,7 +431,7 @@ export interface CrearNegocioResult {
  * Crea el Negocio en ENTRADA CALIENTE con el contacto asociado.
  *
  * Devuelve `null` si el webhook no está configurado. Tira `BitrixError` si
- * Bitrix rechaza la operación — el caller decide qué hacer (en el formulario
+ * Bitrix rechaza la operación - el caller decide qué hacer (en el formulario
  * público se traga el error: el lead ya está en nuestra DB).
  */
 export async function crearNegocioLead(
