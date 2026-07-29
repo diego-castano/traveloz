@@ -25,6 +25,21 @@
 }
 
 /* ---------------------------------------------------------------------- */
+/*  CTAs flotantes vs. popovers de formulario                              */
+/*  El CTA "¡Cotizá a medida acá!" y el botón de WhatsApp son fixed con     */
+/*  z-index 111 en el stacking context raíz. Los desplegables de los forms  */
+/*  (calendario, pasajeros, select) viven dentro de tarjetas que ya crean   */
+/*  su propio stacking context (`.sidebar-form.sticky` es sticky + z-index  */
+/*  10), así que desde adentro ningún z-index les gana. Mientras haya un    */
+/*  popover abierto los flotantes se apartan; ver useFloatingCtaSuppress.   */
+/* ---------------------------------------------------------------------- */
+body[data-popover-open] .cotizar-cta,
+body[data-popover-open] .footer-whatsapp {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------- */
 /*  Typography — mono fonts get tabular numbers globally                  */
 /* ---------------------------------------------------------------------- */
 .font-mono,

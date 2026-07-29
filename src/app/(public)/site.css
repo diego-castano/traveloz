@@ -5145,6 +5145,20 @@ header.header-area.header-dark {
   color: #3c3c3c;
 }
 
+/* Días pasados: grises y sin cursor de click. El `color` de arriba pisaba el
+   atenuado por defecto de react-day-picker, así que lo declaramos explícito
+   en vez de confiar solo en la opacidad de la lib. */
+.date-range-picker .rdp-day[data-disabled="true"] {
+  opacity: 1;
+}
+
+.date-range-picker .rdp-day[data-disabled="true"] .rdp-day_button,
+.date-range-picker .rdp-day_button:disabled {
+  color: #c9c9c9;
+  background: transparent;
+  cursor: not-allowed;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Relatos de viajeros (image-text-slider) — el mockup usa una foto
    apaisada que llena la columna. El admin puede subir imágenes de

@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import styles from "./SelectField.module.css";
+import { useFloatingCtaSuppress } from "./useFloatingCtaSuppress";
 
 export type SelectOption = { value: string; label: string };
 
@@ -53,6 +54,10 @@ export function SelectField({
   const baseId = useId();
 
   const selected = options.find((o) => o.value === value) ?? null;
+
+  // Mismo problema que el contador de pasajeros: los CTAs flotantes tapan el
+  // panel abierto en la parte baja del form.
+  useFloatingCtaSuppress(open);
 
   // Cerrar al click fuera.
   useEffect(() => {

@@ -9,6 +9,7 @@
   border-radius: 50%;
   overflow: hidden;
   z-index: 111;
+  transition: opacity 0.15s ease;
 }
 
 @media (max-width: 767px) {

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import styles from "./PassengerCounter.module.css";
+import { useFloatingCtaSuppress } from "./useFloatingCtaSuppress";
 
 type Counts = { adultos: number; ninos: number; infantes: number };
 
@@ -55,6 +56,10 @@ export function PassengerCounter({
   const [open, setOpen] = useState(false);
   const [counts, setCounts] = useState<Counts>(initial);
   const ref = useRef<HTMLDivElement>(null);
+
+  // El CTA flotante tapaba la fila de bebés (la última del panel) y no dejaba
+  // tocar el stepper. Mientras el panel está abierto, los flotantes se apartan.
+  useFloatingCtaSuppress(open);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
