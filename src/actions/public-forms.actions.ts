@@ -767,6 +767,7 @@ export async function submitQuoteForm(
     // Datos del paquete que también necesita el push a Bitrix (más abajo).
     let paqueteTitulo: string | null = null;
     let paqueteSitioUrl: string | null = null;
+    let paqueteDestino: string | null = null;
     if (paqueteId) {
       try {
         const paquete = await prisma.paquete.findUnique({
@@ -774,6 +775,9 @@ export async function submitQuoteForm(
           select: {
             titulo: true,
             slug: true,
+            // Breadcrumb "Región › País › Ciudad": el título del negocio en
+            // Bitrix usa la ciudad (último tramo).
+            destino: true,
             // El detalle público resuelve por slug (el segmento de región es
             // cosmético), pero armamos la región real cuando existe.
             destinos: {
@@ -802,6 +806,7 @@ export async function submitQuoteForm(
           const adminUrl = `${base}/backend/dashboard?vista=vendedor&paquete=${paqueteId}`;
           paqueteTitulo = paquete.titulo;
           paqueteSitioUrl = sitioUrl;
+          paqueteDestino = paquete.destino;
           const fechaEnvio = new Intl.DateTimeFormat("es-UY", {
             dateStyle: "long",
             timeStyle: "short",
@@ -872,7 +877,9 @@ export async function submitQuoteForm(
           nombre: data.nombre,
           email: data.email,
           telefono: telefonoDisplay || data.telefono,
-          destino: data.destino,
+          // El visitante escribe el destino solo en el cotizador general; desde
+          // el detalle de un paquete lo tomamos del breadcrumb del paquete.
+          destino: data.destino || paqueteDestino,
           fechaDesde: date(formData, "fechaDesde"),
           fechaHasta: date(formData, "fechaHasta"),
           adultos: m("adultos"),

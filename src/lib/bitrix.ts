@@ -356,18 +356,38 @@ function totalPax(lead: ConsultaLead): number {
 }
 
 /**
- * TITLE del negocio, formato pedido por el cliente:
- *   "Consulta Web - TITULO DEL PAQUETE"
+ * Destino legible para el título. El paquete guarda un breadcrumb
+ * ("Brasil › Brasil › Búzios"): nos quedamos con el último tramo, que es la
+ * ciudad. El cotizador general manda texto libre, que pasa tal cual.
+ */
+export function destinoLegible(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const tramos = raw
+    .split(/[›>]/)
+    .map((t) => t.trim())
+    .filter(Boolean);
+  return tramos.length ? tramos[tramos.length - 1] : "";
+}
+
+/**
+ * TITLE del negocio con el mismo formato que usa recepción a mano:
+ *   "Destino - N PAX - MES"   (ej. "Búzios - 2 PAX - OCTUBRE")
  *
- * Sin paquete (cotizador general de /cotizar) usa el destino que escribió el
- * visitante. Si tampoco hay destino, queda solo "Consulta Web".
+ * Los tramos que no tenemos se omiten. Si no hay destino, cae al título del
+ * paquete y, en última instancia, a "Consulta Web".
  * `BITRIX_TITLE_PREFIX` antepone una marca (se usa para los negocios de
  * prueba) y en producción está vacío.
  */
 export function construirTitulo(lead: ConsultaLead): string {
-  const base = lead.tituloPaquete?.trim() || lead.destino?.trim() || "";
-  const partes = ["Consulta Web"];
-  if (base) partes.push(base);
+  const base =
+    destinoLegible(lead.destino) || lead.tituloPaquete?.trim() || "Consulta Web";
+  const partes = [base];
+
+  const pax = totalPax(lead);
+  if (pax > 0) partes.push(`${pax} PAX`);
+
+  const mes = mesEnMayusculas(lead.fechaDesde);
+  if (mes) partes.push(mes);
 
   // Sin trim: el prefijo se usa tal cual se configuró (normalmente termina en
   // un espacio, ej. "[PRUEBA] ").
