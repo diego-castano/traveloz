@@ -35,7 +35,7 @@ import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import type { Aereo } from "@/lib/types";
-import { matchesSearch } from "@/lib/search";
+import { matchesId, matchesSearch } from "@/lib/search";
 import { sortByRecency } from "@/lib/recency";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
 import { useAereosQueryState } from "./searchParams";
@@ -120,8 +120,15 @@ export default function AereosPage() {
   // Default order: newest first by createdAt (the user can still click a
   // header to override this via useTableSort).
   const filteredAereos = useMemo(() => {
+    // El ID va por prefijo (matchesId) y los campos de texto por substring:
+    // escribir "177" trae el aéreo 177, "17" abre el rango 17x, y "Madrid"
+    // sigue filtrando por destino como siempre.
     const base = search.trim()
-      ? aereos.filter((a) => matchesSearch(search, a.ruta, a.destino, a.aerolinea))
+      ? aereos.filter(
+          (a) =>
+            matchesId(search, a.id) ||
+            matchesSearch(search, a.ruta, a.destino, a.aerolinea),
+        )
       : aereos;
     return sortByRecency(base);
   }, [aereos, search]);
@@ -211,7 +218,7 @@ export default function AereosPage() {
         search={{
           value: search,
           onChange: setSearch,
-          placeholder: "Buscar por ruta, destino o aerolínea...",
+          placeholder: "Buscar por ID, ruta, destino o aerolínea...",
         }}
         className="mb-4"
       >

@@ -21,3 +21,36 @@ export function matchesSearch(query: string, ...values: unknown[]): boolean {
     normalizeSearchValue(value).includes(normalizedQuery),
   );
 }
+
+// Quita los ceros de relleno de un id secuencial ("003" → "3") sin dejar la
+// cadena vacía ("000" → "0").
+function stripPadding(s: string): string {
+  return s.replace(/^0+(?=\d)/, "");
+}
+
+/**
+ * ¿El término apunta a este ID? Es un match por PREFIJO, no por substring: el
+ * ID de un aéreo es un secuencial corto ("177", "003"), y buscar "77" trayendo
+ * 177, 277 y 770 es puro ruido. Con prefijo, "177" cae exacto y "17" abre el
+ * rango 17x.
+ *
+ * Complementa a `matchesSearch` — nunca lo reemplaza. La búsqueda de un listado
+ * se arma como `matchesId(q, row.id) || matchesSearch(q, ...campos de texto)`,
+ * así que los catálogos que no lo usan siguen funcionando igual.
+ *
+ * Devuelve false con término vacío (al revés que `matchesSearch`, que ahí deja
+ * pasar todo): es una condición extra dentro de un OR, no un filtro por sí sola.
+ */
+export function matchesId(query: string, id: unknown): boolean {
+  const q = normalizeSearchValue(query).trim();
+  if (!q) return false;
+  const value = normalizeSearchValue(id).trim();
+  if (!value) return false;
+  // Caso normal: id secuencial numérico y término numérico. Se comparan sin
+  // ceros de relleno para que "3" encuentre "003".
+  if (/^\d+$/.test(q) && /^\d+$/.test(value)) {
+    return stripPadding(value).startsWith(stripPadding(q));
+  }
+  // Ids no numéricos (cuid legacy): prefijo textual, sin acentos.
+  return value.startsWith(q);
+}
