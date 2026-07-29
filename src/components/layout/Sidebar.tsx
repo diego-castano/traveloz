@@ -198,6 +198,46 @@ export function Sidebar() {
     router.prefetch(href);
   };
 
+  // Bordes difuminados de la lista: sólo aparecen cuando hay contenido fuera de
+  // vista. En pantallas altas la lista entra completa y no se dibuja nada; en
+  // pantallas bajas el corte se lee como "hay más", no como un ícono tajeado.
+  const navRef = useRef<HTMLElement | null>(null);
+  const [navEdges, setNavEdges] = useState({ top: false, bottom: false });
+
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const overflow = el.scrollHeight - el.clientHeight;
+      const top = el.scrollTop > 4;
+      const bottom = overflow > 4 && el.scrollTop < overflow - 4;
+      setNavEdges((prev) =>
+        prev.top === top && prev.bottom === bottom ? prev : { top, bottom },
+      );
+    };
+
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    if (el.firstElementChild) observer.observe(el.firstElementChild);
+
+    return () => {
+      el.removeEventListener("scroll", update);
+      observer.disconnect();
+    };
+  }, [effectiveCollapsed, filteredGroups]);
+
+  const navMask =
+    navEdges.top || navEdges.bottom
+      ? `linear-gradient(to bottom, ${
+          navEdges.top ? "transparent 0px, #000 18px" : "#000 0px"
+        }, ${
+          navEdges.bottom ? "#000 calc(100% - 18px), transparent 100%" : "#000 100%"
+        })`
+      : undefined;
+
   return (
     <Tooltip.Provider delayDuration={300}>
       {/* Mobile backdrop overlay */}
@@ -250,19 +290,20 @@ export function Sidebar() {
         {/* ----------------------------------------------------------------- */}
         <div
           className={cn(
-            "relative flex h-16 flex-shrink-0 items-center justify-between",
-            effectiveCollapsed ? "px-3 justify-center" : "px-5",
+            "relative flex h-16 flex-shrink-0 items-center",
+            effectiveCollapsed ? "justify-center px-3" : "justify-between px-5",
           )}
         >
           {effectiveCollapsed ? (
-            /* Collapsed: isotipo cuadrado */
+            /* Collapsed: isotipo de marca (mismo símbolo que el favicon) */
             <Image
-              src="/site/img/isotipo.png"
+              src="/site/img/traveloz-isotipo.png"
               alt="TravelOz"
-              width={34}
-              height={34}
-              className="rounded-lg object-contain"
+              width={30}
+              height={30}
+              className="h-[30px] w-[30px] object-contain"
               unoptimized
+              priority
             />
           ) : (
             /* Expanded: logo completo */
@@ -290,13 +331,28 @@ export function Sidebar() {
         {/* ----------------------------------------------------------------- */}
         {/* Nav section (scrollable) */}
         {/* ----------------------------------------------------------------- */}
-        <nav className="relative flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3 pt-1">
+        <nav
+          ref={navRef}
+          className={cn(
+            "relative flex-1 overflow-y-auto overflow-x-hidden overscroll-contain",
+            // Colapsado: la columna de íconos es compacta y entra sin scroll en
+            // pantallas normales. Menos padding vertical = menos altura muerta.
+            // px-4 deja el cuadrado de 36px exactamente centrado en los 68px.
+            effectiveCollapsed ? "px-4 pb-2 pt-1" : "px-3 pb-3 pt-1",
+          )}
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(255,255,255,0.14) transparent",
+            maskImage: navMask,
+            WebkitMaskImage: navMask,
+          }}
+        >
           {filteredGroups.map((group, groupIndex) => (
             <div key={group.group}>
               {/* Group separation: label when expanded, hairline when collapsed */}
               {effectiveCollapsed ? (
                 groupIndex > 0 && (
-                  <div className="mx-auto my-3 h-px w-7 bg-white/10" />
+                  <div className="mx-auto my-2 h-px w-6 bg-white/[0.12]" />
                 )
               ) : (
                 <div
@@ -320,13 +376,15 @@ export function Sidebar() {
                       href={item.href}
                       prefetch={false}
                       className={cn(
-                        "group relative flex items-center rounded-lg text-[13.5px] font-medium transition-colors duration-150",
+                        "group relative flex items-center rounded-lg text-[13.5px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/25",
                         effectiveCollapsed
-                          ? "justify-center px-0 py-2.5"
+                          ? // Cuadrado de 36px centrado en la columna de 68px:
+                            // todos los íconos comparten eje y área de toque.
+                            "mx-auto h-9 w-9 justify-center"
                           : "gap-3 px-3 py-2",
                         active
                           ? "text-white"
-                          : "text-white/60 hover:bg-white/[0.05] hover:text-white/95",
+                          : "text-white/60 hover:bg-white/[0.06] hover:text-white/95",
                       )}
                       onMouseEnter={() => prefetchRoute(item.href)}
                       onFocus={() => prefetchRoute(item.href)}
@@ -343,15 +401,20 @@ export function Sidebar() {
                             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
                           }}
                         >
-                          {/* Rail de acento de marca */}
+                          {/* Rail de acento de marca. Colapsado, el ítem está
+                              centrado en la columna: el rail se corre al borde
+                              del sidebar para no comerse el cuadrado del ícono. */}
                           <span
-                            className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full"
+                            className={cn(
+                              "absolute top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full",
+                              effectiveCollapsed ? "-left-4" : "left-0",
+                            )}
                             style={{ background: "#A78BFA" }}
                           />
                         </motion.span>
                       )}
                       <Icon
-                        size={17}
+                        size={effectiveCollapsed ? 18 : 17}
                         strokeWidth={1.75}
                         className={cn(
                           "relative flex-shrink-0 transition-transform duration-150",
@@ -379,8 +442,10 @@ export function Sidebar() {
                         <Tooltip.Portal>
                           <Tooltip.Content
                             side="right"
-                            sideOffset={8}
-                            className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                            align="center"
+                            sideOffset={10}
+                            collisionPadding={8}
+                            className="z-[200] whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-white"
                             style={{
                               background: "rgba(26,26,46,0.94)",
                               backdropFilter: "blur(12px)",
@@ -412,7 +477,12 @@ export function Sidebar() {
         {/* vendedor en pestaña nueva vía `?vista=vendedor`.                    */}
         {/* ----------------------------------------------------------------- */}
         {isAdmin && (
-          <div className="relative flex-shrink-0 px-3 pb-2 pt-1">
+          <div
+            className={cn(
+              "relative flex-shrink-0",
+              effectiveCollapsed ? "px-4 pb-1.5 pt-1" : "px-3 pb-2 pt-1",
+            )}
+          >
             {effectiveCollapsed ? (
               <Tooltip.Root>
                 <Tooltip.Trigger asChild>
@@ -420,17 +490,19 @@ export function Sidebar() {
                     href="/backend/dashboard?vista=vendedor"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-center justify-center rounded-lg bg-brand-teal-600 py-2.5 text-white shadow-[0_4px_14px_-4px_rgba(31,125,112,0.7)] transition-colors hover:bg-brand-teal-500 focus-visible:outline-none focus-visible:shadow-focus-teal"
+                    className="group mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-brand-teal-600 text-white shadow-[0_4px_14px_-4px_rgba(31,125,112,0.7)] transition-colors hover:bg-brand-teal-500 focus-visible:outline-none focus-visible:shadow-focus-teal"
                     aria-label="Módulo de vendedores"
                   >
-                    <Store size={17} strokeWidth={1.9} className="flex-shrink-0" />
+                    <Store size={18} strokeWidth={1.9} className="flex-shrink-0" />
                   </a>
                 </Tooltip.Trigger>
                 <Tooltip.Portal>
                   <Tooltip.Content
                     side="right"
-                    sideOffset={8}
-                    className="z-[200] rounded-lg px-3 py-1.5 text-xs text-white"
+                    align="center"
+                    sideOffset={10}
+                    collisionPadding={8}
+                    className="z-[200] whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium text-white"
                     style={{
                       background: "rgba(26,26,46,0.94)",
                       backdropFilter: "blur(12px)",
@@ -468,15 +540,20 @@ export function Sidebar() {
         {/* ----------------------------------------------------------------- */}
         {/* Footer: usuario + colapso — ancla el fondo del sidebar             */}
         {/* ----------------------------------------------------------------- */}
-        <div className="relative flex-shrink-0 border-t border-white/[0.07] px-3 py-3">
+        <div
+          className={cn(
+            "relative flex-shrink-0 border-t border-white/[0.07] px-3",
+            effectiveCollapsed ? "py-2.5" : "py-3",
+          )}
+        >
           {effectiveCollapsed ? (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-1.5">
               <Avatar name={user?.name} size="sm" />
               {!isMobile && (
                 <button
                   onClick={() => setCollapsed(false)}
                   aria-label="Expandir menú"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/90"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-white/45 transition-colors hover:bg-white/[0.08] hover:text-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/25"
                 >
                   <motion.span
                     animate={{ rotate: 180 }}
@@ -503,7 +580,7 @@ export function Sidebar() {
                 <button
                   onClick={() => setCollapsed(true)}
                   aria-label="Colapsar menú"
-                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white/40 transition-colors hover:bg-white/[0.06] hover:text-white/90"
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white/45 transition-colors hover:bg-white/[0.08] hover:text-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/25"
                 >
                   <motion.span
                     animate={{ rotate: 0 }}
