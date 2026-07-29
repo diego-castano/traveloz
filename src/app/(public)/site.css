@@ -2546,19 +2546,20 @@ strong {
     font-weight: 700;
 }
 
+/* Toda card .image-box.style1 (categorías de la home y regiones de /destinos)
+   se pinta con imágenes que el admin sube desde el CMS, con cualquier relación
+   de aspecto. Sin aspect-ratio el alto de la card lo dictaba la imagen, así que
+   una foto apaisada dejaba su card 100+ px más baja que las vecinas y la fila
+   quedaba despareja. Fijamos el formato vertical del template original
+   (400×487 ≈ 573×698, las imágenes de referencia) y recortamos con cover: la
+   imagen llena siempre el mismo recuadro, se recorta, nunca se estira. */
 .image-box.style1 img {
     width: 100%;
-    /* Mismo placeholder gris que las cards, para el carrusel de regiones. */
-    background-color: #f2f2f4;
-}
-
-/* Las imágenes de región vienen de la DB con cualquier relación de aspecto.
-   Forzamos el formato vertical del template original (400×487) recortando con
-   cover, solo en el slider de /destinos. */
-.image-box-slider.v2 .image-box.style1 img {
     aspect-ratio: 400 / 487;
     object-fit: cover;
     display: block;
+    /* Placeholder gris mientras carga, para que la card no flashee en blanco. */
+    background-color: #f2f2f4;
 }
 
 /* Placeholder en la línea violeta de la sección, para que si una imagen tarda

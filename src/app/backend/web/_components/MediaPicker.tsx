@@ -11,9 +11,17 @@ import {
   Info,
   AlertTriangle,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { uploadFile } from "@/components/lib/upload";
 import { useToast } from "@/components/ui/Toast";
 import { getMediaHint } from "./media-hints";
+
+// react-easy-crop solo hace falta en los campos que declaran `aspect`, y son
+// pocos. Lo cargamos aparte para no meterlo en el bundle de cada página del CMS.
+const ImageCropper = dynamic(
+  () => import("@/components/ui/ImageCropper").then((m) => m.ImageCropper),
+  { ssr: false },
+);
 
 // ---------------------------------------------------------------------------
 // MediaPicker — modern drag-and-drop uploader for SiteSetting / package fields.
@@ -34,6 +42,13 @@ type Props = {
   hideUrl?: boolean;
   /** Preview chico y centrado, para íconos/logos en vez de banners full-width. */
   compact?: boolean;
+  /**
+   * Proporción fija (ancho/alto) que exige el sitio público para este campo.
+   * Cuando viene, elegir una imagen abre el ImageCropper antes de subir, así el
+   * admin decide qué parte se conserva en vez de que el recorte lo haga el CSS.
+   * Sin esta prop el MediaPicker sube el archivo crudo, como siempre.
+   */
+  aspect?: number;
 };
 
 export function MediaPicker({
@@ -43,6 +58,7 @@ export function MediaPicker({
   settingKey,
   hideUrl = false,
   compact = false,
+  aspect,
 }: Props) {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +67,9 @@ export function MediaPicker({
   const [dragActive, setDragActive] = useState(false);
   const [showUrl, setShowUrl] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
+  // Archivo esperando recorte. Solo se llena cuando hay `aspect` y el archivo
+  // elegido es una imagen; mientras tanto el ImageCropper queda cerrado.
+  const [pendingCrop, setPendingCrop] = useState<File | null>(null);
   const hint = getMediaHint(settingKey);
 
   const isVideo =
@@ -116,16 +135,43 @@ export function MediaPicker({
     }
   };
 
+  /**
+   * Punto único de entrada para click y drag & drop. Con `aspect` definido y un
+   * archivo de imagen, desviamos al cropper; el upload real lo dispara
+   * `onCropConfirm`. En cualquier otro caso (sin aspect, o un video/SVG que el
+   * canvas no puede recortar bien) va derecho al pipeline de siempre.
+   */
+  const pickFile = (file: File) => {
+    const croppable =
+      aspect !== undefined &&
+      file.type.startsWith("image/") &&
+      file.type !== "image/svg+xml";
+    if (croppable) {
+      setPendingCrop(file);
+      // Liberamos el input para que elegir el mismo archivo otra vez (después
+      // de cancelar el recorte) vuelva a disparar el change.
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
+    handleFile(file);
+  };
+
+  const onCropConfirm = async (blob: Blob, fileName: string) => {
+    const cropped = new File([blob], fileName, { type: blob.type });
+    setPendingCrop(null);
+    await handleFile(cropped);
+  };
+
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (file) pickFile(file);
   };
 
   const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragActive(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    if (file) pickFile(file);
   };
 
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -273,6 +319,18 @@ export function MediaPicker({
         onChange={onInputChange}
         className="hidden"
       />
+
+      {/* Solo se monta cuando este campo declara `aspect`: el resto del CMS
+          sigue subiendo el archivo tal cual. */}
+      {aspect !== undefined && (
+        <ImageCropper
+          file={pendingCrop}
+          aspect={aspect}
+          title="Recortar imagen"
+          onCancel={() => setPendingCrop(null)}
+          onConfirm={onCropConfirm}
+        />
+      )}
 
       {warnings.length > 0 && (
         <div className="flex items-start gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5">

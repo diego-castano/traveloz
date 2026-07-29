@@ -12,7 +12,15 @@ export type RichField =
   | { type: "text"; key: string; label: string; placeholder?: string; required?: boolean }
   | { type: "email"; key: string; label: string; required?: boolean }
   | { type: "url"; key: string; label: string }
-  | { type: "image"; key: string; label: string; hideUrl?: boolean; compact?: boolean }
+  | {
+      type: "image";
+      key: string;
+      label: string;
+      hideUrl?: boolean;
+      compact?: boolean;
+      /** Proporción ancho/alto fija: abre el recortador antes de subir. */
+      aspect?: number;
+    }
   | { type: "html"; key: string; label: string; placeholder?: string; rows?: number }
   | { type: "textarea"; key: string; label: string; rows?: number }
   | { type: "rating"; key: string; label: string; max?: number };
@@ -149,6 +157,7 @@ export function RichEditorDialog({
                     accept="image/*"
                     hideUrl={f.hideUrl}
                     compact={f.compact}
+                    aspect={f.aspect}
                   />
                 )}
                 {f.type === "textarea" && (

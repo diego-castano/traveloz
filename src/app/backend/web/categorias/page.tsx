@@ -114,6 +114,10 @@ export default function WebCategoriasPage() {
               key: "imagen",
               label: "Imagen (se sube al bucket)",
               hideUrl: true,
+              // Las cards del slider de la home son verticales 400×487. Al
+              // elegir el archivo se abre el recortador con esa proporción,
+              // así el admin decide el encuadre en vez de dejárselo al CSS.
+              aspect: 400 / 487,
             },
             {
               type: "text",

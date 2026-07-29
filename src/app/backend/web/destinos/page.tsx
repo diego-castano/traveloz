@@ -160,6 +160,9 @@ export default function WebDestinosPage() {
                   value={heroImage}
                   onChange={(v) => patch(r.id, { heroImage: v })}
                   accept="image/*"
+                  // Misma proporción vertical que las cards del carrusel de
+                  // /destinos (400×487): se recorta al elegir el archivo.
+                  aspect={400 / 487}
                 />
               </div>
 
