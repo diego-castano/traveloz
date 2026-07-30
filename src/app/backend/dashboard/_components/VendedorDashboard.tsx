@@ -48,6 +48,7 @@ import {
   useTemporadas,
   usePaises,
   useRegiones,
+  useProveedores,
 } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { proxyThumbUrl } from "@/components/lib/image-loader";
@@ -88,6 +89,7 @@ import type {
   OpcionHotelera,
   OpcionHotel,
   PaqueteDestino,
+  Proveedor,
 } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -192,6 +194,136 @@ interface DetailPanelProps {
   ciudadById: Map<string, { id: string; nombre: string; paisId: string }>;
 }
 
+// ---------------------------------------------------------------------------
+// Operador (proveedor) de un circuito — pedido del cliente: en el módulo de
+// vendedores, debajo de cada circuito tiene que verse QUIÉN lo opera, y el
+// nombre desplegar los datos de contacto ya cargados en el proveedor
+// (ejecutivo, contacto, email, teléfono, WhatsApp y las notas libres).
+// Email/teléfono/WhatsApp salen como links para poder escribir desde acá.
+// ---------------------------------------------------------------------------
+function CircuitoOperador({ proveedor }: { proveedor: Proveedor | undefined }) {
+  const [open, setOpen] = useState(false);
+
+  // El cliente pidió verlo "en todos los casos": si el circuito todavía no
+  // tiene proveedor asignado lo decimos, así el hueco de carga es visible en
+  // vez de quedar en silencio.
+  if (!proveedor) {
+    return (
+      <div className="mt-0.5 flex items-center gap-1 text-[11px] text-neutral-300">
+        <Users size={10} strokeWidth={2} className="flex-shrink-0" />
+        <span>Operador: sin asignar</span>
+      </div>
+    );
+  }
+
+  const filas: { label: string; value: string; href?: string }[] = [
+    proveedor.ejecutivo?.trim()
+      ? { label: "Ejecutivo", value: proveedor.ejecutivo.trim() }
+      : null,
+    proveedor.contacto?.trim()
+      ? { label: "Contacto", value: proveedor.contacto.trim() }
+      : null,
+    proveedor.email?.trim()
+      ? {
+          label: "Email",
+          value: proveedor.email.trim(),
+          href: `mailto:${proveedor.email.trim()}`,
+        }
+      : null,
+    proveedor.telefono?.trim()
+      ? {
+          label: "Teléfono",
+          value: proveedor.telefono.trim(),
+          href: `tel:${proveedor.telefono.replace(/[^\d+]/g, "")}`,
+        }
+      : null,
+    proveedor.whatsapp?.trim()
+      ? {
+          label: "WhatsApp",
+          value: proveedor.whatsapp.trim(),
+          href: `https://wa.me/${proveedor.whatsapp.replace(/[^\d]/g, "")}`,
+        }
+      : null,
+  ].filter(Boolean) as { label: string; value: string; href?: string }[];
+
+  const notas = proveedor.notas?.trim();
+  const hayDetalle = filas.length > 0 || !!notas;
+
+  return (
+    <div className="mt-0.5">
+      <button
+        type="button"
+        onClick={() => hayDetalle && setOpen((o) => !o)}
+        aria-expanded={hayDetalle ? open : undefined}
+        className={`flex max-w-full items-center gap-1 text-[11px] text-neutral-400 ${
+          hayDetalle
+            ? "cursor-pointer transition-colors hover:text-[#8B5CF6]"
+            : "cursor-default"
+        }`}
+        title={hayDetalle ? "Ver datos del operador" : undefined}
+      >
+        <Users size={10} strokeWidth={2} className="flex-shrink-0" />
+        <span className="truncate">
+          Operador: <span className="font-medium">{proveedor.nombre}</span>
+        </span>
+        {hayDetalle && (
+          <ChevronRight
+            size={10}
+            strokeWidth={2.5}
+            className={`flex-shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
+          />
+        )}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && hayDetalle && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="mt-1 space-y-1 rounded-[8px] border border-hairline bg-neutral-50 px-2.5 py-2 text-[11px]">
+              {filas.map((f) => (
+                <div key={f.label} className="flex items-baseline gap-2">
+                  <span className="w-[62px] flex-shrink-0 text-neutral-400">
+                    {f.label}
+                  </span>
+                  {f.href ? (
+                    <a
+                      href={f.href}
+                      target={f.href.startsWith("http") ? "_blank" : undefined}
+                      rel={f.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                      className="min-w-0 break-all text-[#8B5CF6] hover:underline"
+                    >
+                      {f.value}
+                    </a>
+                  ) : (
+                    <span className="min-w-0 break-words text-neutral-700">
+                      {f.value}
+                    </span>
+                  )}
+                </div>
+              ))}
+              {notas && (
+                <div className="flex items-baseline gap-2">
+                  <span className="w-[62px] flex-shrink-0 text-neutral-400">
+                    Notas
+                  </span>
+                  <span className="min-w-0 whitespace-pre-line break-words text-neutral-700">
+                    {notas}
+                  </span>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function DetailPanel({
   paquete,
   breakdown,
@@ -202,6 +334,16 @@ function DetailPanel({
 }: DetailPanelProps) {
   const safeIdx = Math.min(selectedOpcionIdx, Math.max(0, breakdown.opcionesDetail.length - 1));
   const opcionDetail = breakdown.opcionesDetail[safeIdx];
+
+  // Proveedores por id para mostrar el operador de cada circuito (ver
+  // CircuitoOperador). El circuito guarda `proveedorId`; los datos de contacto
+  // viven en el proveedor, así que se resuelven acá en el cliente.
+  const proveedores = useProveedores();
+  const proveedorById = useMemo(() => {
+    const m = new Map<string, Proveedor>();
+    for (const p of proveedores) m.set(p.id, p);
+    return m;
+  }, [proveedores]);
 
   // Todo se cotiza POR PERSONA en base doble: el neto es exactamente el que
   // usa el motor de precios del paquete (aereo + traslado + seguro + circuito,
@@ -381,14 +523,23 @@ function DetailPanel({
               Circuitos
             </h5>
             {breakdown.circuitos.map((c) => (
-              <div key={c.circuito.id} className="flex items-baseline justify-between gap-2 text-[12px]">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-neutral-600">{c.circuito.nombre}</span>
-                  {c.tarifaFallback && <TarifaFallbackChip />}
-                </span>
-                <span className="flex-shrink-0 font-mono font-semibold tabular-nums text-neutral-900">
-                  USD {fmt(c.neto)}
-                </span>
+              <div key={c.circuito.id} className="mb-2 last:mb-0">
+                <div className="flex items-baseline justify-between gap-2 text-[12px]">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-neutral-600">{c.circuito.nombre}</span>
+                    {c.tarifaFallback && <TarifaFallbackChip />}
+                  </span>
+                  <span className="flex-shrink-0 font-mono font-semibold tabular-nums text-neutral-900">
+                    USD {fmt(c.neto)}
+                  </span>
+                </div>
+                <CircuitoOperador
+                  proveedor={
+                    c.circuito.proveedorId
+                      ? proveedorById.get(c.circuito.proveedorId)
+                      : undefined
+                  }
+                />
               </div>
             ))}
           </div>
