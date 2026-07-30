@@ -3506,7 +3506,14 @@ header.header-area.header-dark {
        `hidden` en un eje convierte el otro en `auto` (spec) y eso cortaría el
        drawer abierto, que baja 100vh por debajo del header. Mismo criterio que
        `.main-wrapper`. */
-    .header-area {
+    /* OJO: el recorte NO va en `.header-area`. El header es `position: fixed` y
+       el drawer vive adentro, bajando 100vh por debajo suyo; recortar ahí deja
+       el menú ABIERTO a merced de cómo cada motor resuelva `overflow-x: clip` +
+       `overflow-y: visible` (en WebKit puede recortar también en vertical y el
+       menú no se ve = "le doy clic y se cierra"). El paneo lateral se corta en
+       la raíz, que no tiene descendientes que deban desbordar. */
+    html,
+    body {
         overflow-x: clip;
     }
 
@@ -3523,8 +3530,24 @@ header.header-area.header-dark {
         transition: 0.3s all;
     }
 
+    /* El drawer cerrado NO puede quedar tocable ni pintado.
+       `width:100%` + `padding: 0 20px` en content-box hacían un panel de 430px,
+       pero `right:-100%` solo lo corre 390px: quedaban 40px del panel DENTRO de
+       la pantalla, sobre el borde derecho, desde debajo del header hasta el pie.
+       Esa franja (fondo #282828) se comía los taps y los swipes — el gesto caía
+       en el drawer, que es `overflow:auto`, así que la página no scrolleaba y el
+       menú se comportaba errático. box-sizing lo deja del ancho real y
+       visibility/pointer-events garantizan que cerrado no reciba nada. */
+    nav#menu {
+        box-sizing: border-box;
+        visibility: hidden;
+        pointer-events: none;
+    }
+
     nav#menu.active {
-        right: 0
+        right: 0;
+        visibility: visible;
+        pointer-events: auto;
     }
 
     .mainmenu ul {
