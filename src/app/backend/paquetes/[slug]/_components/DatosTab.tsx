@@ -38,6 +38,7 @@ import {
   useTemporadas,
   useTiposPaquete,
   useEtiquetas,
+  useRegiones,
 } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -57,6 +58,7 @@ import {
   Hotel,
   Route,
   Check,
+  ExternalLink,
 } from "lucide-react";
 import { springs } from "@/components/lib/animations";
 import { cn } from "@/components/lib/cn";
@@ -366,6 +368,28 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     () => allEtiquetas.filter((e) => !assignedEtiquetaIds.has(e.id)),
     [allEtiquetas, assignedEtiquetaIds],
   );
+
+  // Resuelve la página pública del destino: el campo guarda un texto libre que
+  // sale del autocomplete (region, país o ciudad), y la landing pública siempre
+  // es la de la REGIÓN (/destinos/<slug>). Buscamos por región, país y ciudad
+  // para que el link funcione se haya elegido el nivel que se haya elegido.
+  const regionesCatalogo = useRegiones();
+  const destinoRegion = useMemo(() => {
+    const q = destino.trim().toLowerCase();
+    if (!q) return null;
+    const norm = (t: string) => t.trim().toLowerCase();
+    for (const r of regionesCatalogo) {
+      if (norm(r.nombre) === q) return r;
+      for (const pais of r.paises) {
+        if (norm(pais.nombre) === q) return r;
+        for (const c of pais.ciudades) if (norm(c.nombre) === q) return r;
+      }
+    }
+    // El autocomplete también deja pegar el breadcrumb completo ("Region > Pais").
+    return (
+      regionesCatalogo.find((r) => q.startsWith(norm(r.nombre))) ?? null
+    );
+  }, [destino, regionesCatalogo]);
 
   const assignedEtiquetasFull = useMemo(
     () =>
@@ -781,6 +805,29 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 placeholder="Buscar region, pais o ciudad..."
                 readOnly={isReadOnly}
               />
+              {/* Link directo a la landing pública del destino, para no tener
+                  que adivinar la URL (la pública es siempre la de la REGIÓN). */}
+              {destinoRegion ? (
+                <a
+                  href={`/destinos/${destinoRegion.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-[11px] text-violet-600 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" strokeWidth={2} />
+                  Abrir página de destino
+                  <span className="font-mono text-neutral-400">
+                    /destinos/{destinoRegion.slug}
+                  </span>
+                </a>
+              ) : (
+                destino.trim() && (
+                  <p className="mt-1 text-[11px] text-neutral-400">
+                    Sin página pública: este destino no coincide con ninguna
+                    región del catálogo.
+                  </p>
+                )
+              )}
             </Field>
 
             <Field>
@@ -851,17 +898,37 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                     // El title va en el wrapper porque Tag no reenvía props
                     // extra al <span> que renderiza — es la URL pública real
                     // de esta etiqueta (/tag/<slug>).
-                    <span
+                    // Cada chip abre su página pública en una pestaña nueva:
+                    // así no hay que adivinar ni preguntar cuál es la URL.
+                    <a
                       key={etq.assignmentId}
-                      title={`/tag/${etq.slug}`}
+                      href={`/tag/${etq.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Abrir tag · /tag/${etq.slug}`}
+                      className="inline-flex items-center gap-1 rounded-full transition-opacity hover:opacity-80"
                     >
                       <Tag color={resolveTagColor(etq.color)}>
                         {etq.nombre}
                       </Tag>
-                    </span>
+                      <ExternalLink
+                        className="h-3 w-3 text-neutral-400"
+                        strokeWidth={2}
+                      />
+                    </a>
                   ))
                 )}
               </div>
+              {assignedEtiquetasFull.length > 0 && (
+                <p className="mt-1.5 text-[11px] text-violet-600">
+                  Cliqueá una etiqueta para{" "}
+                  <span className="font-medium">abrir su tag</span> (
+                  <span className="font-mono text-neutral-400">
+                    /tag/&lt;slug&gt;
+                  </span>
+                  ) en una pestaña nueva.
+                </p>
+              )}
               <p className="text-[11px] text-neutral-400 mt-1.5">
                 Las etiquetas se administran desde la pestaña{" "}
                 <a

@@ -1251,17 +1251,40 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             </p>
           ) : (
             assignedEtiquetas.map((pe) => (
-              <Tag
-                key={pe.id}
-                color={getTagColor(pe.etiqueta.color)}
-                removable={canEdit}
-                onRemove={() => handleRemoveEtiqueta(pe.id)}
-              >
-                {pe.etiqueta.nombre}
-              </Tag>
+              // Junto al chip, un acceso directo a la página pública de la
+              // etiqueta: evita tener que adivinar o preguntar la URL. Va
+              // aparte del Tag porque este ya usa su propio botón de quitar.
+              <span key={pe.id} className="inline-flex items-center gap-1">
+                <Tag
+                  color={getTagColor(pe.etiqueta.color)}
+                  removable={canEdit}
+                  onRemove={() => handleRemoveEtiqueta(pe.id)}
+                >
+                  {pe.etiqueta.nombre}
+                </Tag>
+                <a
+                  href={`/tag/${pe.etiqueta.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Abrir tag · /tag/${pe.etiqueta.slug}`}
+                  className="text-neutral-400 transition-colors hover:text-violet-600"
+                  aria-label={`Abrir tag ${pe.etiqueta.nombre}`}
+                >
+                  <ExternalLink className="h-3 w-3" strokeWidth={2} />
+                </a>
+              </span>
             ))
           )}
         </div>
+
+        {assignedEtiquetas.length > 0 && (
+          <p className="-mt-2 mb-4 text-[11px] text-violet-600">
+            Tocá el ícono <ExternalLink className="inline h-3 w-3" strokeWidth={2} />{" "}
+            para <span className="font-medium">abrir el tag</span> (
+            <span className="font-mono text-neutral-400">/tag/&lt;slug&gt;</span>
+            ), la página pública que lista los paquetes con esa etiqueta.
+          </p>
+        )}
 
         {canEdit && availableEtiquetas.length > 0 && (
           <div className="max-w-xs">
