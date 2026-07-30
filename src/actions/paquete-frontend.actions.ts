@@ -10,6 +10,7 @@ import {
   iconForTrasladoTexto,
 } from "@/lib/incluye";
 import { checkPaquetePublicable } from "@/lib/paquete-publicable";
+import { ensureUniqueSlug } from "@/lib/paquete-slug";
 import { slugify } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -22,22 +23,6 @@ import { slugify } from "@/lib/utils";
 // The `?preview=1` flag is honored by the public page only for authenticated
 // users — draft packages stay invisible to the public.
 // ---------------------------------------------------------------------------
-
-async function ensureUniqueSlug(
-  base: string,
-  paqueteId: string,
-): Promise<string> {
-  if (!base) base = "paquete";
-  const existing = await prisma.paquete.findMany({
-    where: { slug: { startsWith: base }, NOT: { id: paqueteId } },
-    select: { slug: true },
-  });
-  const taken = new Set(existing.map((e) => e.slug).filter(Boolean) as string[]);
-  if (!taken.has(base)) return base;
-  let n = 2;
-  while (taken.has(`${base}-${n}`)) n++;
-  return `${base}-${n}`;
-}
 
 export async function getPaquetePreviewUrl(
   paqueteId: string,
@@ -176,9 +161,10 @@ export async function updatePaqueteFrontend(
   await requireCanEdit();
 
   // cardBullets es una columna Json, así que la sacamos del spread de campos
-  // String y la tratamos aparte (Prisma exige DbNull para vaciarla). El resto
-  // del payload (`data`) queda intacto para el publish gate de más abajo.
-  const { cardBullets: cardBulletsInput, ...frontendData } = data;
+  // String y la tratamos aparte (Prisma exige DbNull para vaciarla). El slug
+  // también sale del spread: lo resuelve `resolveSlugFinal` más abajo (nunca
+  // se escribe crudo lo que mandó el form).
+  const { cardBullets: cardBulletsInput, slug: slugInput, ...frontendData } = data;
   let cardBulletsToWrite: Prisma.PaqueteUpdateInput["cardBullets"];
   if (cardBulletsInput !== undefined) {
     // Sanitizado: array → sólo strings → trim → cap 60 chars → filtrar vacíos
@@ -193,6 +179,46 @@ export async function updatePaqueteFrontend(
     cardBulletsToWrite = limpios.length > 0 ? limpios : Prisma.DbNull;
   }
 
+  // ---------------------------------------------------------------------------
+  // Slug — automático, nunca vacío, nunca destructivo.
+  //
+  //   • El operador dejó el campo vacío (o el form ni lo manda): generamos el
+  //     slug desde el título. Si el paquete ya está publicado conservamos el que
+  //     tiene: vaciar el campo no puede tirar abajo una URL viva.
+  //   • Escribió un slug que coincide con el autogenerado del título (piloto
+  //     automático o botón "Auto"): pasa por `ensureUniqueSlug`, así una colisión
+  //     se resuelve sola con `-2` en vez de frenar el guardado.
+  //   • Escribió otro slug: se guarda tal cual. Si choca con otro paquete, el
+  //     índice único tira P2002 y devolvemos "slug en uso" (abajo) — preferimos
+  //     avisarle antes que renombrarle la URL por atrás.
+  //
+  // `slugToWrite === undefined` ⇒ no tocamos la columna.
+  // ---------------------------------------------------------------------------
+  const current = await prisma.paquete.findUnique({
+    where: { id: paqueteId },
+    select: { slug: true, titulo: true, publicado: true, estado: true },
+  });
+  if (!current) throw new Error("Paquete no encontrado.");
+  const yaPublicado = current.publicado || current.estado === "ACTIVO";
+
+  let slugToWrite: string | undefined;
+  // `slug` ausente en el payload ⇒ el caller no lo gestiona: sólo completamos
+  // el hueco si falta. `slug: ""` ⇒ el operador lo vació a propósito.
+  const slugEntrante = typeof slugInput === "string" ? slugify(slugInput) : null;
+  if (!slugEntrante) {
+    const debeRegenerar =
+      !current.slug || (slugEntrante === "" && !yaPublicado);
+    if (debeRegenerar) {
+      slugToWrite = await ensureUniqueSlug(slugify(current.titulo), paqueteId);
+    }
+  } else if (slugEntrante !== current.slug) {
+    slugToWrite =
+      slugEntrante === slugify(current.titulo)
+        ? await ensureUniqueSlug(slugEntrante, paqueteId)
+        : slugEntrante;
+  }
+  if (slugToWrite === current.slug) slugToWrite = undefined;
+
   // Publishing gate (invariante estado ACTIVO ⇔ publicado): cuando el payload
   // trae `publicado=true` (path legacy del toggle, mientras exista), validamos
   // con el helper compartido `checkPaquetePublicable` que el paquete esté listo.
@@ -205,7 +231,6 @@ export async function updatePaqueteFrontend(
 
   if (data.publicado === true) {
     const gate = await checkPaquetePublicable(paqueteId, {
-      slug: data.slug,
       heroImage: data.heroImage,
     });
     if (!gate.ok) {
@@ -222,21 +247,16 @@ export async function updatePaqueteFrontend(
     bumpEstadoToActivo = true;
   }
 
-  const dataToWrite: typeof frontendData & { estado?: "ACTIVO" } =
-    bumpEstadoToActivo
-      ? { ...frontendData, estado: "ACTIVO" }
-      : { ...frontendData };
-
-  // Slug vacío → null. La columna es @@unique([brandId, slug]); en Postgres
-  // conviven varios NULL, pero múltiples "" colisionan. La pestaña Publicación
-  // inicializa el form con `slug: d.slug ?? ""`, así que CUALQUIER paquete sin
-  // slug manda "" en el autosave. El primero que guarda ocupa el slot ("brandId",
-  // "") y todos los demás chocan con P2002 → "Error al guardar" (se veía al tocar
-  // "Generar incluido", que fuerza un autosave). Guardando null en vez de ""
-  // eliminamos la colisión.
-  if (typeof dataToWrite.slug === "string" && dataToWrite.slug.trim() === "") {
-    dataToWrite.slug = null;
-  }
+  // El slug ya viene resuelto (`slugToWrite`): o un valor no vacío, o undefined
+  // para no tocar la columna. Nunca se escribe "" — la columna es @unique y en
+  // Postgres conviven varios NULL pero no varios "".
+  const dataToWrite: typeof frontendData & {
+    estado?: "ACTIVO";
+    slug?: string;
+  } = bumpEstadoToActivo
+    ? { ...frontendData, estado: "ACTIVO" }
+    : { ...frontendData };
+  if (slugToWrite !== undefined) dataToWrite.slug = slugToWrite;
 
   try {
     const updated = await prisma.paquete.update({

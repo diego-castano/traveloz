@@ -12,6 +12,7 @@ import {
   recomputeForOpcionHotelera,
 } from "@/lib/recompute-prices";
 import { checkPaquetePublicable } from "@/lib/paquete-publicable";
+import { resolveSlugOnSave } from "@/lib/paquete-slug";
 import type { EstadoPaquete, ModalidadPaquete, Prisma } from "@prisma/client";
 
 const log = logger.child({ module: "package.actions" });
@@ -491,6 +492,9 @@ export async function updatePaquete(
         estado: true,
         // publicado: necesario para decidir el scope de invalidación (draft/full).
         publicado: true,
+        // titulo + slug: alimentan el slug automático (ver más abajo).
+        titulo: true,
+        slug: true,
       },
     });
     if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
@@ -526,7 +530,30 @@ export async function updatePaquete(
     // Sólo corremos el gate en la TRANSICIÓN a ACTIVO (no en cada autosave que
     // reenvía el estado ya vigente).
     let publishBlocked: string[] | null = null;
-    const dataToWrite: typeof data & { publicado?: boolean } = { ...data };
+    const dataToWrite: typeof data & { publicado?: boolean; slug?: string } = {
+      ...data,
+    };
+
+    // El slug no se gestiona desde este action (el cliente manda el paquete
+    // entero como payload). Si viniera colado, lo descartamos: escribir un slug
+    // stale/vacío desde acá tiraría abajo una URL viva.
+    delete (dataToWrite as { slug?: unknown }).slug;
+
+    // Slug automático: el operador nunca lo escribe. Se deriva del título y se
+    // persiste en este mismo update, así cualquier paquete que se guarde (y en
+    // particular cualquiera que se publique) sale con URL pública. Un paquete ya
+    // publicado NUNCA cambia de slug acá: como mucho se le completa si le falta
+    // (sin slug la grilla pública renderiza href="#"). Detalle en
+    // src/lib/paquete-slug.ts.
+    const slugAuto = await resolveSlugOnSave({
+      paqueteId: id,
+      slugActual: owner.slug,
+      tituloActual: owner.titulo,
+      tituloEntrante: data.titulo,
+      publicado: owner.publicado || owner.estado === "ACTIVO",
+    });
+    if (slugAuto) dataToWrite.slug = slugAuto;
+
     if (data.estado !== undefined) {
       if (data.estado === "ACTIVO") {
         if (owner.estado !== "ACTIVO") {
@@ -579,7 +606,7 @@ export async function updatePaquete(
       updated.estado === "ACTIVO" ||
       data.estado !== undefined ||
       "publicado" in data ||
-      "slug" in data;
+      dataToWrite.slug !== undefined;
     bustDashboardCache(brandId, affectsPublicSite ? "full" : "draft");
     if (publishBlocked) {
       // Mismo canal estructurado que updatePaqueteFrontend: en producción Next

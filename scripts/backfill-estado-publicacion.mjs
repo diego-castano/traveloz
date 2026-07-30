@@ -48,7 +48,8 @@ const DRY = process.argv.includes("--dry");
 function evaluarGate(p) {
   const missing = [];
 
-  if (!p.slug) missing.push("slug (URL pública)");
+  // El slug no se exige: se autogenera desde el título en cada guardado
+  // (src/lib/paquete-slug.ts), igual que en el gate de src/lib/paquete-publicable.ts.
   if (!p.titulo || !p.titulo.trim()) missing.push("título");
   if (p.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
   if (!p.heroImage) missing.push("foto principal del slider");

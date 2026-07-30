@@ -8,8 +8,10 @@
 // que el paquete tenga todo lo necesario para salir al sitio público antes de
 // permitir la transición a ACTIVO.
 //
-// Exigencias comunes a ambas modalidades: slug, título, al menos 1 aéreo, foto
-// principal del slider y período de viaje. Por modalidad:
+// Exigencias comunes a ambas modalidades: título, al menos 1 aéreo, foto
+// principal del slider y período de viaje. El slug NO se exige: se autogenera
+// desde el título en cada guardado (ver `src/lib/paquete-slug.ts`), así que
+// nunca es un faltante que el operador tenga que resolver. Por modalidad:
 //   • CLASICO  → al menos 1 destino, al menos 1 opción hotelera y coherencia de
 //                noches (la suma por destino iguala las noches del paquete).
 //   • CIRCUITO → un circuito asignado con precio vigente, itinerario y noches>0.
@@ -29,18 +31,17 @@ export interface PublicableResult {
  * lista de faltantes cuando no puede.
  *
  * @param overrides Valores del formulario que todavía no se persistieron pero
- *   se están por guardar en el mismo request (slug / heroImage). Cuando se pasan
- *   se usan en lugar del valor en DB, para que publicar y setear el slug en el
+ *   se están por guardar en el mismo request (heroImage). Cuando se pasan se
+ *   usan en lugar del valor en DB, para que publicar y cargar la foto en el
  *   mismo save no falle por leer el valor viejo.
  */
 export async function checkPaquetePublicable(
   paqueteId: string,
-  overrides?: { slug?: string | null; heroImage?: string | null },
+  overrides?: { heroImage?: string | null },
 ): Promise<PublicableResult> {
   const current = await prisma.paquete.findUnique({
     where: { id: paqueteId },
     select: {
-      slug: true,
       titulo: true,
       noches: true,
       heroImage: true,
@@ -78,10 +79,6 @@ export async function checkPaquetePublicable(
   });
   if (!current) return { ok: false, missing: ["paquete no encontrado"] };
 
-  const incomingSlug =
-    overrides && typeof overrides.slug === "string"
-      ? overrides.slug.trim()
-      : current.slug;
   const heroImage =
     overrides && typeof overrides.heroImage === "string"
       ? overrides.heroImage.trim()
@@ -89,8 +86,9 @@ export async function checkPaquetePublicable(
 
   const missing: string[] = [];
 
-  // Exigencias comunes a ambas modalidades.
-  if (!incomingSlug) missing.push("slug (URL pública)");
+  // Exigencias comunes a ambas modalidades. El slug queda afuera a propósito:
+  // se autogenera desde el título en el mismo guardado que publica, así que
+  // pedírselo al operador sólo agregaba fricción.
   if (!current.titulo?.trim()) missing.push("título");
   if (current.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
   if (!heroImage) missing.push("foto principal del slider");

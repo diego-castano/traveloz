@@ -453,6 +453,20 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     [],
   );
 
+  // El slug lo resuelve el server: lo autogenera desde el título cuando el campo
+  // está vacío y le agrega el sufijo de unicidad (-2, -3…) cuando hace falta. Si
+  // vuelve distinto del que mandamos, lo reflejamos en el campo para que el
+  // operador vea la URL real. No marcamos dirty: ya está persistido. Si el
+  // operador siguió escribiendo mientras viajaba el request, no lo pisamos.
+  const syncSlugFromServer = useCallback(
+    (enviado: string, guardado: string | null) => {
+      if (!guardado || guardado === enviado) return;
+      if (formRef.current.slug !== enviado) return;
+      setForm((prev) => ({ ...prev, slug: guardado }));
+    },
+    [],
+  );
+
   // ---------------------------------------------------------------------------
   // Save — frontend fields (slug/publicado/textos/SEO) + servicios. Lifecycle
   // fields go through their own action so we can keep the publish gate scoped
@@ -462,8 +476,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     // La publicación NO se controla acá: el flag `publicado` lo maneja el Estado
     // en la pestaña Datos (invariante ACTIVO ⇔ publicado). Este tab sólo guarda
     // slug + contenido público, así que no mandamos `publicado`.
+    const slugEnviado = form.slug;
     const res = await updatePaqueteFrontend(paqueteId, {
-      slug: form.slug,
+      slug: slugEnviado,
       metaTitle: form.metaTitle,
       metaDescription: form.metaDescription,
       heroImage: form.heroImage,
@@ -479,6 +494,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       // muestre. El publish_blocked ya no se dispara desde este tab.
       return { ok: false, reason: res.reason, missing: res.missing };
     }
+    syncSlugFromServer(slugEnviado, res.updated.slug);
     // Mismo wrap que handleAutoSave: la sync secundaria de PaqueteServicio
     // es opcional (la lista visible la arma el front desde textoIncluye,
     // ya guardada arriba). Si falla, los cambios del formulario ya
@@ -493,7 +509,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
     }
     syncDescripcionToCache(form.descripcion);
     return { ok: true };
-  }, [paqueteId, form, incluyeItems, cardBulletsSlots, serviciosFromIncluye, syncDescripcionToCache]);
+  }, [paqueteId, form, incluyeItems, cardBulletsSlots, serviciosFromIncluye, syncDescripcionToCache, syncSlugFromServer]);
 
   // Surface a publish-blocker visually: scroll the relevant field into
   // view + flash it. Picks the highest-priority issue from the missing list.
@@ -550,9 +566,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
 
   const handleAutoSave = useCallback(async () => {
     const f = formRef.current;
+    const slugEnviado = f.slug;
     // Sin `publicado`: la publicación la controla el Estado (pestaña Datos).
     const res = await updatePaqueteFrontend(paqueteId, {
-      slug: f.slug,
+      slug: slugEnviado,
       metaTitle: f.metaTitle,
       metaDescription: f.metaDescription,
       heroImage: f.heroImage,
@@ -570,6 +587,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       toast("error", "Slug en uso", res.missing[0]);
       return;
     }
+    syncSlugFromServer(slugEnviado, res.updated.slug);
     setPublishBlockers([]);
     // Sincronización secundaria: la tabla `PaqueteServicio` (catálogo → paquete)
     // es opcional. La lista visible la arma el front desde `textoIncluye` (el
@@ -590,7 +608,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
       );
     }
     syncDescripcionToCache(formRef.current.descripcion);
-  }, [paqueteId, toast, focusBlockerField, serviciosFromIncluye, syncDescripcionToCache]);
+  }, [paqueteId, toast, focusBlockerField, serviciosFromIncluye, syncDescripcionToCache, syncSlugFromServer]);
 
   const { status: autoSaveStatus, markDirty, saveNow } = useAutoSave({
     onSave: handleAutoSave,
@@ -862,6 +880,10 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   const previewUrl =
     form.publicado && form.slug ? `/destinos/ver/${form.slug}` : null;
   const disabled = !canEdit;
+  // Lo que el server va a generar si el campo queda vacío: lo mostramos como
+  // placeholder y en la previsualización de la URL, así el operador siempre ve
+  // qué slug va a quedar sin tener que escribirlo.
+  const slugAutoPreview = slugify(data.titulo);
 
   return (
     <div className="p-6 max-w-4xl space-y-5">
@@ -1116,7 +1138,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
                   slugAutoRef.current = next === "";
                   patch("slug", next);
                 }}
-                placeholder="ej. buzios-7-noches"
+                placeholder={slugAutoPreview || "ej. buzios-7-noches"}
                 className="flex-1"
                 disabled={disabled}
               />
@@ -1136,7 +1158,11 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               </button>
             </div>
             <p className="text-[11px] text-neutral-500 mt-1 font-mono">
-              /destinos/[región]/{form.slug || "<slug>"}
+              /destinos/[región]/{form.slug || slugAutoPreview || "<slug>"}
+            </p>
+            <p className="text-[11px] text-neutral-500 mt-1">
+              Se genera solo desde el título. Editalo si querés otra URL; si lo
+              dejás vacío, al guardar vuelve al automático.
             </p>
           </div>
           <div className="flex flex-col justify-center pt-6">
@@ -1382,7 +1408,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               {form.metaTitle || data.titulo} — TravelOz
             </div>
             <div className="text-green-800 text-[11px] mt-0.5">
-              traveloz.com.uy/destinos/.../{form.slug || "<slug>"}
+              {`traveloz.com.uy/destinos/.../${form.slug || slugAutoPreview || "<slug>"}`}
             </div>
             {(form.metaDescription || form.descripcion) && (
               <div className="text-neutral-600 text-[12px] mt-1 line-clamp-2">

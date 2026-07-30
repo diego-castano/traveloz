@@ -103,12 +103,12 @@ function buildSteps(args: {
       },
       {
         key: "publicar",
-        label: "Publicar en el sitio (slug y toggle)",
+        label: "Publicar en el sitio",
         tab: "publicacion",
         done: paquete.estado === "ACTIVO",
         blocker:
           paquete.estado !== "ACTIVO"
-            ? "Cuando esté todo listo, andá a Publicación, completá el slug y prendé el toggle Publicar."
+            ? "Cuando esté todo listo, poné el estado en Activo desde la pestaña Datos. El slug se genera solo."
             : undefined,
       },
     ];
@@ -163,15 +163,15 @@ function buildSteps(args: {
     },
     {
       key: "publicar",
-      // The publish gate (server-side in updatePaqueteFrontend) requires
-      // slug + heroImage already, so once the toggle is on we know those
-      // are set. That's why this single step covers foto, slug and publish.
-      label: "Publicar en el sitio (foto, slug y toggle)",
+      // El gate de publicación exige heroImage, así que si el paquete está
+      // ACTIVO sabemos que la foto está cargada. El slug no entra: se autogenera
+      // desde el título en cada guardado (src/lib/paquete-slug.ts).
+      label: "Publicar en el sitio (foto y estado Activo)",
       tab: "publicacion",
       done: paquete.estado === "ACTIVO",
       blocker:
         paquete.estado !== "ACTIVO"
-          ? "Cuando esté todo listo, andá a Publicación, completá foto principal + slug y prendé el toggle Publicar."
+          ? "Cuando esté todo listo, cargá la foto principal y poné el estado en Activo desde la pestaña Datos."
           : undefined,
     },
   ];
