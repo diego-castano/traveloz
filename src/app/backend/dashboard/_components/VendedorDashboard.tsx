@@ -209,9 +209,11 @@ function CircuitoOperador({ proveedor }: { proveedor: Proveedor | undefined }) {
   // vez de quedar en silencio.
   if (!proveedor) {
     return (
-      <div className="mt-0.5 flex items-center gap-1 text-[11px] text-neutral-300">
-        <Users size={10} strokeWidth={2} className="flex-shrink-0" />
-        <span>Operador: sin asignar</span>
+      <div className="mt-1.5 flex items-center gap-1.5 rounded-[8px] border border-dashed border-neutral-200 bg-neutral-50/60 px-2.5 py-1.5 text-[11px] text-neutral-400">
+        <Users size={12} strokeWidth={2} className="flex-shrink-0" />
+        <span>
+          Operador <span className="font-semibold">sin asignar</span>
+        </span>
       </div>
     );
   }
@@ -250,28 +252,43 @@ function CircuitoOperador({ proveedor }: { proveedor: Proveedor | undefined }) {
   const hayDetalle = filas.length > 0 || !!notas;
 
   return (
-    <div className="mt-0.5">
+    <div className="mt-1.5">
+      {/* Bloque destacado: el cliente pidió que el operador "quede muy claro a
+          nivel visual", así que va en una caja con el violeta del módulo, la
+          etiqueta OPERADOR y un CTA explícito para desplegar el contacto. */}
       <button
         type="button"
         onClick={() => hayDetalle && setOpen((o) => !o)}
         aria-expanded={hayDetalle ? open : undefined}
-        className={`flex max-w-full items-center gap-1 text-[11px] text-neutral-400 ${
+        className={`flex w-full items-center gap-2 rounded-[8px] border px-2.5 py-1.5 text-left transition-colors ${
           hayDetalle
-            ? "cursor-pointer transition-colors hover:text-[#8B5CF6]"
-            : "cursor-default"
+            ? "cursor-pointer border-[#DCD6FF] bg-[#F1EEFF] hover:border-[#8B5CF6] hover:bg-[#E9E3FF]"
+            : "cursor-default border-[#DCD6FF] bg-[#F1EEFF]"
         }`}
-        title={hayDetalle ? "Ver datos del operador" : undefined}
+        title={hayDetalle ? "Ver datos de contacto del operador" : undefined}
       >
-        <Users size={10} strokeWidth={2} className="flex-shrink-0" />
-        <span className="truncate">
-          Operador: <span className="font-medium">{proveedor.nombre}</span>
+        <Users
+          size={13}
+          strokeWidth={2.2}
+          className="flex-shrink-0 text-[#8B5CF6]"
+        />
+        <span className="flex min-w-0 flex-col leading-tight">
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-[#8B5CF6]">
+            Operador
+          </span>
+          <span className="truncate text-[12px] font-semibold text-neutral-800">
+            {proveedor.nombre}
+          </span>
         </span>
         {hayDetalle && (
-          <ChevronRight
-            size={10}
-            strokeWidth={2.5}
-            className={`flex-shrink-0 transition-transform ${open ? "rotate-90" : ""}`}
-          />
+          <span className="ml-auto flex flex-shrink-0 items-center gap-0.5 text-[10px] font-medium text-[#8B5CF6]">
+            {open ? "Ocultar" : "Ver contacto"}
+            <ChevronRight
+              size={11}
+              strokeWidth={2.5}
+              className={`transition-transform ${open ? "rotate-90" : ""}`}
+            />
+          </span>
         )}
       </button>
 
@@ -284,7 +301,7 @@ function CircuitoOperador({ proveedor }: { proveedor: Proveedor | undefined }) {
             transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            <div className="mt-1 space-y-1 rounded-[8px] border border-hairline bg-neutral-50 px-2.5 py-2 text-[11px]">
+            <div className="mt-1 space-y-1 rounded-[8px] border border-[#DCD6FF] bg-white px-2.5 py-2 text-[11px]">
               {filas.map((f) => (
                 <div key={f.label} className="flex items-baseline gap-2">
                   <span className="w-[62px] flex-shrink-0 text-neutral-400">
