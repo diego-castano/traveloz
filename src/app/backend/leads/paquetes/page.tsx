@@ -269,7 +269,16 @@ export default function LeadsPaquetePage() {
                   open.paquete?.destino
                     ? { label: "Destino", value: open.paquete.destino }
                     : { label: "", value: null },
-                  { label: "Email", value: open.email, href: `mailto:${open.email}`, icon: Mail },
+                  // El email dejó de ser obligatorio en el cotizador: sin dato
+                  // se guarda vacío y la fila (con su mailto: roto) no se muestra.
+                  open.email
+                    ? {
+                        label: "Email",
+                        value: open.email,
+                        href: `mailto:${open.email}`,
+                        icon: Mail,
+                      }
+                    : { label: "", value: null },
                   open.telefono
                     ? {
                         label: "Teléfono",

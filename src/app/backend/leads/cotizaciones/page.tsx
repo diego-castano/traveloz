@@ -216,7 +216,16 @@ export default function CotizacionesPage() {
                 createdAt: open.createdAt,
                 estado: open.estado,
                 fields: [
-                  { label: "Email", value: open.email, href: `mailto:${open.email}`, icon: Mail },
+                  // El email dejó de ser obligatorio en el cotizador: sin dato
+                  // se guarda vacío y la fila (con su mailto: roto) no se muestra.
+                  open.email
+                    ? {
+                        label: "Email",
+                        value: open.email,
+                        href: `mailto:${open.email}`,
+                        icon: Mail,
+                      }
+                    : { label: "", value: null },
                   open.telefono
                     ? {
                         label: "Teléfono",

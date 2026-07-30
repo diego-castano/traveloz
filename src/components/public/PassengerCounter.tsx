@@ -149,6 +149,18 @@ export function PassengerCounter({
               </div>
             </div>
           ))}
+          {/* Cierre explícito, igual que el calendario. En el celular no hay
+              nada que indique que ya terminaste de elegir: el clic afuera
+              funciona pero no se descubre solo (reporte del cliente). */}
+          <div className="picker-done-row">
+            <button
+              type="button"
+              className="picker-done"
+              onClick={() => setOpen(false)}
+            >
+              Listo
+            </button>
+          </div>
         </div>
       )}
     </div>

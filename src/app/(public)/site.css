@@ -3496,6 +3496,20 @@ header.header-area.header-dark {
 }
 
 @media(max-width:991px) {
+    /* El drawer del menú espera cerrado en `right: -100%`, o sea un panel de
+       390x774 px parado justo afuera del borde derecho del header. En Chrome no
+       se nota porque el header es `position: fixed` y no suma al scroll del
+       documento, pero iOS Safari SÍ deja panear de costado hasta ese panel: es
+       la "barrita negra" y el "se va el ícono de WhatsApp" que reportó el
+       cliente (se veía en el detalle de paquete y en /gracias por igual).
+       Recortamos solo el eje horizontal — con `clip` y no `hidden`, porque
+       `hidden` en un eje convierte el otro en `auto` (spec) y eso cortaría el
+       drawer abierto, que baja 100vh por debajo del header. Mismo criterio que
+       `.main-wrapper`. */
+    .header-area {
+        overflow-x: clip;
+    }
+
     nav#menu {
         position: absolute;
         top: 99%;
@@ -5157,6 +5171,73 @@ header.header-area.header-dark {
   color: #c9c9c9;
   background: transparent;
   cursor: not-allowed;
+}
+
+/* Fecha de ida ya elegida, vuelta todavía no. react-day-picker v9 solo aplica
+   range_start / range_middle / range_end cuando el rango tiene ida Y vuelta
+   (ver rangeIncludesDate), así que con `min={1}` — que deja `to` vacío en el
+   primer click para que el calendario no se cierre antes de tiempo — el día de
+   salida se quedaba con el borde finito de `.rdp-selected` y sin relleno: el
+   cliente lo vio como "dejó de pintar". Le devolvemos la píldora coral, la
+   misma que usa range_start, excluyendo los días del medio (que también son
+   `selected` y llevan fondo rosa claro con el número en coral).
+   La especificidad tiene que superar a la del CSS de la lib, que se inyecta
+   después de site.css. */
+.date-range-picker .rdp-day.rdp-selected:not(.rdp-range_middle) .rdp-day_button {
+  background-color: var(--rdp-accent-color);
+  border-color: var(--rdp-accent-color);
+  color: #fff;
+}
+
+/* Los días del medio del rango: fondo rosa claro y número en coral. Declarado
+   con más peso que `.date-range-picker .rdp-day_button`, que si no les pisaba
+   el color con el gris de los días normales. */
+.date-range-picker .rdp-day.rdp-range_middle {
+  background-color: var(--rdp-range_middle-background-color);
+}
+
+.date-range-picker .rdp-day.rdp-range_middle .rdp-day_button {
+  color: var(--rdp-range_middle-color);
+  background: transparent;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Botón "Listo" de los popovers de los formularios de cotización —
+   calendario (DateRangePicker) y selector de pasajeros (PassengerCounter).
+   Un solo estilo para los dos: el cliente pidió el mismo botón, en el mismo
+   lugar, en ambos paneles. Píldora coral con área de toque de 44px, que es
+   el mínimo cómodo en un celular.
+   ───────────────────────────────────────────────────────────────────────── */
+.picker-done-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+button.picker-done {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 40px;
+  padding: 10px 26px;
+  border: 1px solid #f43e55;
+  border-radius: 999px;
+  background: #f43e55;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+button.picker-done:hover,
+button.picker-done:focus-visible {
+  background: #d92f45;
+  border-color: #d92f45;
+  color: #fff;
+  outline: none;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

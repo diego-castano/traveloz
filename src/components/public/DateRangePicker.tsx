@@ -35,6 +35,7 @@ export function DateRangePicker({
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<DateRange | undefined>();
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // "Hoy" en la zona horaria del visitante, a medianoche local. Usar UTC haría
   // que de noche en Uruguay (UTC-3) el día en curso quedara bloqueado. El
@@ -49,20 +50,29 @@ export function DateRangePicker({
   // El CTA flotante tapa el calendario abierto; se aparta mientras esté abierto.
   useFloatingCtaSuppress(open);
 
+  const close = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setOpen(false);
+  };
+
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setOpen(false);
+        close();
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") close();
     };
     document.addEventListener("click", onClick);
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("click", onClick);
       document.removeEventListener("keydown", onKey);
+      if (closeTimer.current) clearTimeout(closeTimer.current);
     };
   }, []);
 
@@ -70,9 +80,21 @@ export function DateRangePicker({
   // el primer click deja `to` vacío, así que este handler no se dispara hasta
   // el segundo click; sin `min`, react-day-picker devuelve from === to en el
   // primer click y el calendario se cerraría antes de elegir la vuelta.
+  //
+  // El cierre espera un instante a propósito: react-day-picker recién marca
+  // range_start / range_middle / range_end cuando el rango tiene ida Y vuelta,
+  // así que cerrar en el mismo frame hacía que el período pintado nunca se
+  // llegara a ver (lo que reportó el cliente). Con la pausa, el usuario ve el
+  // tramo resaltado y después el calendario se va solo.
   const handleSelect = (next: DateRange | undefined) => {
     setRange(next);
-    if (next?.from && next?.to) setOpen(false);
+    if (next?.from && next?.to) {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+      closeTimer.current = setTimeout(() => {
+        closeTimer.current = null;
+        setOpen(false);
+      }, 450);
+    }
   };
 
   const display =
@@ -102,7 +124,7 @@ export function DateRangePicker({
         type="text"
         readOnly
         value={display}
-        onClick={() => setOpen(!open)}
+        onClick={() => (open ? close() : setOpen(true))}
         placeholder={placeholder}
         className="date-range-display"
       />
@@ -121,8 +143,8 @@ export function DateRangePicker({
             disabled={{ before: today }}
             startMonth={today}
           />
-          <div style={{ textAlign: "right", padding: 8 }}>
-            <button type="button" onClick={() => setOpen(false)}>
+          <div className="picker-done-row">
+            <button type="button" className="picker-done" onClick={close}>
               Listo
             </button>
           </div>

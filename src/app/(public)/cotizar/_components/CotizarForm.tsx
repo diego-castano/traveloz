@@ -72,26 +72,33 @@ export function CotizarForm() {
             id="q_name"
             name="nombre"
             placeholder="Nombre completo *"
+            autoComplete="name"
             required
           />
         </li>
+        {/* Igual que el form del detalle de paquete: el obligatorio es el
+            teléfono y el email pasa a opcional (pedido del cliente). */}
         <li className="col-sm-12">
           <label htmlFor="q_email">Email</label>
           <input
             type="email"
             id="q_email"
             name="email"
-            placeholder="Email *"
-            required
+            placeholder="Email"
+            autoComplete="email"
           />
         </li>
         <li className="col-sm-12">
           <label htmlFor="q_phone">Teléfono</label>
+          {/* type/inputMode "tel" → teclado numérico del celular, no QWERTY. */}
           <input
-            type="text"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
             id="q_phone"
             name="telefono"
-            placeholder="Teléfono"
+            placeholder="Teléfono *"
+            required
           />
         </li>
         <li className="col-sm-12">

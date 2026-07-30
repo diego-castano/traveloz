@@ -116,6 +116,7 @@ export function QuoteSidebar({
               id="quote-nombre"
               name="nombre"
               placeholder="Nombre completo *"
+              autoComplete="name"
               required
             />
           </li>
@@ -132,31 +133,45 @@ export function QuoteSidebar({
               ]}
             />
           </li>
+          {/* El teléfono es el obligatorio y el e-mail el opcional: el equipo
+              contacta por teléfono/WhatsApp, así que pedir el mail como
+              requisito frenaba consultas (pedido del cliente). El asterisco de
+              los placeholders acompaña — las <label> están ocultas por CSS en
+              esta tarjeta. */}
           <li>
-            <label htmlFor="quote-email">E-mail*</label>
+            <label htmlFor="quote-email">E-mail</label>
             <input
               type="email"
               id="quote-email"
               name="email"
-              placeholder="Tu Email *"
-              required
+              placeholder="Tu Email"
+              autoComplete="email"
             />
           </li>
           <li>
             <label htmlFor="quote-telefono">Teléfono*</label>
             <div className="phone-field">
-              <select name="telefonoCodigo" defaultValue="+598">
+              <select
+                name="telefonoCodigo"
+                defaultValue="+598"
+                aria-label="Código de país"
+              >
                 {PHONE_CODES.map((p) => (
                   <option value={p.code} key={p.code}>
                     {p.code} {p.flag}
                   </option>
                 ))}
               </select>
+              {/* type/inputMode "tel" abre el teclado numérico del celular con
+                  + y símbolos, en vez del QWERTY. */}
               <input
-                type="text"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 id="quote-telefono"
                 name="telefono"
-                placeholder="Teléfono"
+                placeholder="Teléfono *"
+                required
               />
             </div>
           </li>

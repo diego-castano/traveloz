@@ -644,10 +644,23 @@ export async function submitNewsletterForm(
 // Cotización (sidebar of /destinos/[region]/[slug] and standalone /cotizar)
 // → Cotizacion
 // ---------------------------------------------------------------------------
+// Los dos formularios de cotización invierten los obligatorios respecto del
+// resto del sitio: el teléfono es el canal real por el que el equipo devuelve
+// la consulta, así que va requerido, y el email queda opcional (pedido del
+// cliente). Contacto, corporativo, newsletter y "trabajá con nosotros" siguen
+// con el email obligatorio y sus schemas compartidos sin tocar.
+const emailOpcionalSchema = emailSchema.nullable();
+
+const telefonoRequeridoSchema = z
+  .string()
+  .trim()
+  .min(1, "Ingresá tu teléfono.")
+  .max(50, "El teléfono es demasiado largo.");
+
 const quoteSchema = z.object({
   nombre: nombreSchema,
-  email: emailSchema,
-  telefono: telefonoSchema,
+  email: emailOpcionalSchema,
+  telefono: telefonoRequeridoSchema,
   paisCodigo: codigoPaisSchema,
   comentarios: comentariosSchema,
   destino: z
@@ -667,8 +680,10 @@ export async function submitQuoteForm(
 
     const parsed = quoteSchema.safeParse({
       nombre: s(formData, "nombre") ?? "",
-      email: s(formData, "email") ?? "",
-      telefono: s(formData, "telefono"),
+      // `s()` ya devuelve null cuando el campo viene vacío: el email opcional
+      // entra como null y el schema lo acepta sin validar formato.
+      email: s(formData, "email"),
+      telefono: s(formData, "telefono") ?? "",
       // El sidebar de paquete manda el prefijo como "telefonoCodigo"; el
       // form standalone podría mandarlo como "paisCodigo". Aceptamos ambos.
       paisCodigo: s(formData, "paisCodigo") ?? s(formData, "telefonoCodigo"),
@@ -717,7 +732,10 @@ export async function submitQuoteForm(
       data: {
         paqueteId,
         nombre: data.nombre,
-        email: data.email,
+        // Cotizacion.email es NOT NULL en la DB y el email pasó a ser
+        // opcional: guardamos "" en vez de migrar la columna. El admin y los
+        // emails ya tratan el vacío como "sin dato".
+        email: data.email ?? "",
         telefono: data.telefono,
         paisCodigo: data.paisCodigo,
         fechaDesde: date(formData, "fechaDesde"),
@@ -851,7 +869,7 @@ export async function submitQuoteForm(
         pauta,
         campos: [
           { label: "Nombre", value: data.nombre },
-          { label: "Email", value: data.email },
+          { label: "Email", value: data.email ?? "" },
           { label: "Teléfono", value: telefonoDisplay },
           ...camposDetalle,
         ],
