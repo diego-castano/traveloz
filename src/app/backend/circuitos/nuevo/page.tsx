@@ -50,6 +50,7 @@ export default function NuevoCircuitoPage() {
   const [nombre, setNombre] = useState("");
   const [noches, setNoches] = useState("7");
   const [proveedorId, setProveedorId] = useState("");
+  const [notas, setNotas] = useState("");
   const [itinerarioDraft, setItinerarioDraft] = useState<
     Array<{ titulo: string; descripcion: string }>
   >([{ titulo: "", descripcion: "" }]);
@@ -93,6 +94,7 @@ export default function NuevoCircuitoPage() {
       nombre: nombre.trim(),
       noches: Number(noches),
       proveedorId: proveedorId,
+      notas: notas.trim() ? notas.trim() : null,
       itinerarioInicial: itinerarioDraft
         .map((dia, index) => {
           const titulo = dia.titulo.trim();
@@ -180,6 +182,22 @@ export default function NuevoCircuitoPage() {
                     label: p.nombre,
                   }))}
                 />
+              </Field>
+
+              {/* Texto libre que se despliega en el módulo de vendedores. */}
+              <Field span={2}>
+                <FieldLabel>Notas internas</FieldLabel>
+                <textarea
+                  className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
+                  rows={4}
+                  value={notas}
+                  onChange={(e) => setNotas(e.target.value)}
+                  placeholder="Ej: operador que maneja el circuito, contacto directo, aclaraciones de la salida… Se muestra en el módulo de vendedores."
+                />
+                <p className="mt-1 text-[11px] text-neutral-400">
+                  Uso interno: se despliega en el módulo de vendedores, no se
+                  publica en el sitio.
+                </p>
               </Field>
             </FieldGroup>
           </FormSection>

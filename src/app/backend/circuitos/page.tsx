@@ -155,6 +155,8 @@ export default function CircuitosPage() {
         nombre: "Copia de " + c.nombre,
         noches: c.noches,
         proveedorId: c.proveedorId,
+        // La copia se lleva también las notas internas del original.
+        notas: c.notas,
       });
       // Await all sub-entity creates so the user doesn't navigate away before
       // the deep clone finishes — otherwise orphans.

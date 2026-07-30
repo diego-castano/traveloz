@@ -177,6 +177,13 @@ const CircuitoSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
   noches: z.number().int().nonnegative("Las noches deben ser un número no negativo"),
   proveedorId: optionalIdStringEarly,
+  // Texto libre interno del circuito (operador, contacto, aclaraciones de la
+  // salida). Se muestra en el módulo de vendedores.
+  notas: z
+    .string()
+    .max(5000, "Las notas no pueden superar los 5000 caracteres")
+    .nullable()
+    .optional(),
 });
 
 const CircuitoDiaDraftSchema = z.object({
@@ -763,6 +770,7 @@ export async function createCircuito(data: {
   nombre: string;
   noches: number;
   proveedorId?: string | null;
+  notas?: string | null;
   itinerarioInicial?: Array<{
     titulo: string;
     descripcion?: string | null;
@@ -778,6 +786,7 @@ export async function createCircuito(data: {
           nombre: parsed.nombre,
           noches: parsed.noches,
           proveedorId: parsed.proveedorId,
+          notas: parsed.notas ?? null,
           id,
           brandId,
         },
@@ -812,11 +821,15 @@ export async function updateCircuito(
     nombre?: string;
     noches?: number;
     proveedorId?: string | null;
+    notas?: string | null;
   }
 ) {
   try {
     await requireCanEdit();
-    const __res = await prisma.circuito.update({ where: { id }, data }); bustServicesCacheGlobal(); return __res;
+    // Solo campos escalares conocidos: el caller manda el Circuito enriquecido
+    // (con `itinerario`), y Prisma rompe si le llega una relación en `data`.
+    const clean = CircuitoSchema.partial().parse(data);
+    const __res = await prisma.circuito.update({ where: { id }, data: clean }); bustServicesCacheGlobal(); return __res;
   } catch (error) {
     log.error("updating circuito", error);
     throw new Error("No se pudo actualizar el circuito.");

@@ -353,6 +353,9 @@ model Circuito {
   nombre      String
   noches      Int
   proveedorId String?
+  /// Texto libre interno del circuito (operador que lo maneja, contacto,
+  /// aclaraciones de la salida). Se muestra en el módulo de vendedores.
+  notas       String?   @db.Text
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?

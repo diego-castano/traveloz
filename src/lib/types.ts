@@ -155,6 +155,8 @@ export interface Circuito {
   noches: number;
   /** Optional FK — schema is `String?`. */
   proveedorId: string | null;
+  /** Texto libre interno (operador, contacto, aclaraciones). Se ve en vendedores. */
+  notas: string | null;
   itinerario?: CircuitoDia[];
   createdAt: string;
   updatedAt: string;

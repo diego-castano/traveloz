@@ -28,6 +28,7 @@ import {
   MapPin,
   Clock,
   Ticket,
+  Info,
 } from "lucide-react";
 import {
   usePaquetes,
@@ -201,20 +202,32 @@ interface DetailPanelProps {
 // (ejecutivo, contacto, email, teléfono, WhatsApp y las notas libres).
 // Email/teléfono/WhatsApp salen como links para poder escribir desde acá.
 // ---------------------------------------------------------------------------
-function CircuitoOperador({ proveedor }: { proveedor: Proveedor | undefined }) {
+function CircuitoOperador({
+  proveedor,
+  notasCircuito,
+}: {
+  proveedor: Proveedor | undefined;
+  /** Texto libre cargado en el circuito (Circuito.notas). */
+  notasCircuito?: string | null;
+}) {
   const [open, setOpen] = useState(false);
+  const notasInternas = notasCircuito?.trim() || "";
 
   // El cliente pidió verlo "en todos los casos": si el circuito todavía no
   // tiene proveedor asignado lo decimos, así el hueco de carga es visible en
-  // vez de quedar en silencio.
+  // vez de quedar en silencio. Las notas del circuito se muestran igual, que
+  // es donde cargan quién opera el circuito cuando no hay proveedor formal.
   if (!proveedor) {
     return (
-      <div className="mt-1.5 flex items-center gap-1.5 rounded-[8px] border border-dashed border-neutral-200 bg-neutral-50/60 px-2.5 py-1.5 text-[11px] text-neutral-400">
-        <Users size={12} strokeWidth={2} className="flex-shrink-0" />
-        <span>
-          Operador <span className="font-semibold">sin asignar</span>
-        </span>
-      </div>
+      <>
+        <div className="mt-1.5 flex items-center gap-1.5 rounded-[8px] border border-dashed border-neutral-200 bg-neutral-50/60 px-2.5 py-1.5 text-[11px] text-neutral-400">
+          <Users size={12} strokeWidth={2} className="flex-shrink-0" />
+          <span>
+            Operador <span className="font-semibold">sin asignar</span>
+          </span>
+        </div>
+        <NotasCircuito notas={notasInternas} />
+      </>
     );
   }
 
@@ -337,6 +350,27 @@ function CircuitoOperador({ proveedor }: { proveedor: Proveedor | undefined }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <NotasCircuito notas={notasInternas} />
+    </div>
+  );
+}
+
+// Notas internas del circuito (Circuito.notas) — el espacio de texto libre que
+// pidió el cliente para dejar quién opera el circuito, el contacto y cualquier
+// aclaración de la salida. Siempre visible (no colapsado): es la info que el
+// vendedor necesita a mano mientras cotiza.
+function NotasCircuito({ notas }: { notas: string }) {
+  if (!notas) return null;
+  return (
+    <div className="mt-1.5 rounded-[8px] border border-amber-200 bg-amber-50 px-2.5 py-2">
+      <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-amber-700">
+        <Info size={11} strokeWidth={2.2} className="flex-shrink-0" />
+        Notas del circuito
+      </div>
+      <p className="whitespace-pre-line break-words text-[11.5px] leading-snug text-amber-900">
+        {notas}
+      </p>
     </div>
   );
 }
@@ -556,6 +590,7 @@ function DetailPanel({
                       ? proveedorById.get(c.circuito.proveedorId)
                       : undefined
                   }
+                  notasCircuito={c.circuito.notas}
                 />
               </div>
             ))}

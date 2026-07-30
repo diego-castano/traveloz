@@ -127,6 +127,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
     nombre: circuito?.nombre ?? "",
     noches: circuito?.noches ?? 0,
     proveedorId: circuito?.proveedorId ?? "",
+    notas: circuito?.notas ?? "",
   }));
 
   function handleSaveHeader() {
@@ -396,6 +397,26 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
                 }))}
                 disabled={!canEdit}
               />
+            </Field>
+            {/* Texto libre que los vendedores ven desplegado en su módulo:
+                quién opera el circuito, con quién hablar, aclaraciones de la
+                salida. Pedido del cliente. */}
+            <Field span={2}>
+              <FieldLabel>Notas internas</FieldLabel>
+              <textarea
+                className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 disabled:bg-neutral-50"
+                rows={4}
+                value={headerForm.notas}
+                onChange={(e) =>
+                  setHeaderForm((f) => ({ ...f, notas: e.target.value }))
+                }
+                placeholder="Ej: operador que maneja el circuito, contacto directo, aclaraciones de la salida… Se muestra en el módulo de vendedores."
+                readOnly={!canEdit}
+              />
+              <p className="mt-1 text-[11px] text-neutral-400">
+                Uso interno: se despliega en el módulo de vendedores, no se
+                publica en el sitio.
+              </p>
             </Field>
           </FieldGroup>
 
