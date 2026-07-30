@@ -29,6 +29,7 @@ import {
   Clock,
   Ticket,
   Info,
+  Lock,
 } from "lucide-react";
 import {
   usePaquetes,
@@ -226,7 +227,7 @@ function CircuitoOperador({
             Operador <span className="font-semibold">sin asignar</span>
           </span>
         </div>
-        <NotasCircuito notas={notasInternas} />
+        <NotasInternas notasCircuito={notasInternas} />
       </>
     );
   }
@@ -336,41 +337,76 @@ function CircuitoOperador({
                   )}
                 </div>
               ))}
-              {notas && (
-                <div className="flex items-baseline gap-2">
-                  <span className="w-[62px] flex-shrink-0 text-neutral-400">
-                    Notas
-                  </span>
-                  <span className="min-w-0 whitespace-pre-line break-words text-neutral-700">
-                    {notas}
-                  </span>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <NotasCircuito notas={notasInternas} />
+      {/* Las notas (del circuito y del operador) van juntas abajo, siempre
+          visibles y bajo el sello de "uso interno" — el panel de arriba queda
+          solo con los datos de contacto. */}
+      <NotasInternas
+        notasCircuito={notasInternas}
+        notasOperador={notas}
+        operadorNombre={proveedor.nombre}
+      />
     </div>
   );
 }
 
-// Notas internas del circuito (Circuito.notas) — el espacio de texto libre que
-// pidió el cliente para dejar quién opera el circuito, el contacto y cualquier
-// aclaración de la salida. Siempre visible (no colapsado): es la info que el
-// vendedor necesita a mano mientras cotiza.
-function NotasCircuito({ notas }: { notas: string }) {
-  if (!notas) return null;
+// Notas internas que ve el vendedor: las del CIRCUITO (Circuito.notas, texto
+// libre de esta salida) y las del OPERADOR (Proveedor.notas, que valen para
+// todos sus circuitos). Van juntas pero etiquetadas por separado, para que
+// siempre quede claro cuál se está leyendo, y bajo un encabezado que avisa que
+// son de uso interno y no se comparten con el cliente.
+function NotasInternas({
+  notasCircuito,
+  notasOperador,
+  operadorNombre,
+}: {
+  notasCircuito: string;
+  notasOperador?: string;
+  operadorNombre?: string;
+}) {
+  const tieneCircuito = !!notasCircuito;
+  const tieneOperador = !!notasOperador;
+  if (!tieneCircuito && !tieneOperador) return null;
+
   return (
-    <div className="mt-1.5 rounded-[8px] border border-amber-200 bg-amber-50 px-2.5 py-2">
-      <div className="mb-0.5 flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider text-amber-700">
-        <Info size={11} strokeWidth={2.2} className="flex-shrink-0" />
-        Notas del circuito
+    <div className="mt-1.5 overflow-hidden rounded-[8px] border border-amber-200 bg-amber-50">
+      <div className="flex items-center gap-1 border-b border-amber-200/80 bg-amber-100/70 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
+        <Lock size={10} strokeWidth={2.5} className="flex-shrink-0" />
+        Uso interno · no se comparte con el cliente
       </div>
-      <p className="whitespace-pre-line break-words text-[11.5px] leading-snug text-amber-900">
-        {notas}
-      </p>
+      <div className="px-2.5 py-2">
+        {tieneCircuito && (
+          <div>
+            <div className="mb-0.5 flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-amber-700">
+              <Info size={10} strokeWidth={2.4} className="flex-shrink-0" />
+              Notas del circuito
+            </div>
+            <p className="whitespace-pre-line break-words text-[11.5px] leading-snug text-amber-900">
+              {notasCircuito}
+            </p>
+          </div>
+        )}
+        {tieneOperador && (
+          <div
+            className={
+              tieneCircuito ? "mt-2 border-t border-amber-200/80 pt-2" : ""
+            }
+          >
+            <div className="mb-0.5 flex items-center gap-1 text-[9.5px] font-semibold uppercase tracking-wider text-amber-700">
+              <Users size={10} strokeWidth={2.4} className="flex-shrink-0" />
+              Notas del operador
+              {operadorNombre ? ` · ${operadorNombre}` : ""}
+            </div>
+            <p className="whitespace-pre-line break-words text-[11.5px] leading-snug text-amber-900">
+              {notasOperador}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

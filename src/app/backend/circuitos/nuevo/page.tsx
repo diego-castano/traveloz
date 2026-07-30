@@ -195,8 +195,9 @@ export default function NuevoCircuitoPage() {
                   placeholder="Ej: operador que maneja el circuito, contacto directo, aclaraciones de la salida… Se muestra en el módulo de vendedores."
                 />
                 <p className="mt-1 text-[11px] text-neutral-400">
-                  Uso interno: se despliega en el módulo de vendedores, no se
-                  publica en el sitio.
+                  <span className="font-medium text-amber-700">Uso interno.</span>{" "}
+                  Lo ven los vendedores en su módulo; no se publica en el sitio
+                  ni se comparte con el cliente.
                 </p>
               </Field>
             </FieldGroup>
