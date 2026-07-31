@@ -90,7 +90,8 @@ export const getTipoPaqueteBySlug = unstable_cache(
  */
 export const getPaquetesByTipo = unstable_cache(
   async (tipoPaqueteId: string) =>
-    prisma.paquete.findMany({
+    conPrecioDesdeReal(
+      await prisma.paquete.findMany({
       where: {
         publicado: true,
         deletedAt: null,
@@ -116,8 +117,12 @@ export const getPaquetesByTipo = unstable_cache(
           orderBy: { orden: "asc" },
           select: { circuito: { select: { noches: true } } },
         },
+        // Opciones hoteleras: fuente REAL del precio "desde" de la card
+        // (ver conPrecioDesdeReal). Solo el precio, no infla el payload.
+        opcionesHoteleras: { select: { precioVenta: true } },
       },
     }),
+    ),
   ["paquetes-by-tipo"],
   { revalidate: 60, tags: ["paquetes"] },
 );
@@ -145,7 +150,8 @@ export const getEtiquetaBySlug = unstable_cache(
  */
 export const getPaquetesByEtiqueta = unstable_cache(
   async (etiquetaId: string) =>
-    prisma.paquete.findMany({
+    conPrecioDesdeReal(
+      await prisma.paquete.findMany({
       where: {
         publicado: true,
         deletedAt: null,
@@ -171,8 +177,12 @@ export const getPaquetesByEtiqueta = unstable_cache(
           orderBy: { orden: "asc" },
           select: { circuito: { select: { noches: true } } },
         },
+        // Opciones hoteleras: fuente REAL del precio "desde" de la card
+        // (ver conPrecioDesdeReal). Solo el precio, no infla el payload.
+        opcionesHoteleras: { select: { precioVenta: true } },
       },
     }),
+    ),
   ["paquetes-by-etiqueta"],
   { revalidate: 60, tags: ["paquetes"] },
 );
@@ -242,6 +252,34 @@ function compararParaListado(
 }
 
 /**
+ * Corrige el precio "desde" de las cards. `Paquete.precioDesde` es un campo
+ * DENORMALIZADO que queda desincronizado si un recompute falló: la card leía
+ * ese campo crudo y mostraba "Consultar precio" en paquetes que sí tienen
+ * precio (el detalle no fallaba porque ya calculaba el mínimo real de las
+ * opciones hoteleras — ver /destinos/[region]/[slug]/page.tsx). Acá aplicamos
+ * ese mismo criterio a TODOS los listados, así card y detalle nunca discrepan.
+ *
+ * Re-ordena porque el `orderBy` de Postgres usó el valor viejo: al corregir el
+ * precio, el orden "más barato primero" cambia.
+ */
+function conPrecioDesdeReal<
+  T extends {
+    precioDesde: number | null;
+    titulo: string;
+    opcionesHoteleras: { precioVenta: number }[];
+  },
+>(rows: T[]): T[] {
+  return rows
+    .map((p) => {
+      const ventas = p.opcionesHoteleras
+        .map((o) => o.precioVenta)
+        .filter((v) => v > 0);
+      return ventas.length ? { ...p, precioDesde: Math.min(...ventas) } : p;
+    })
+    .sort(compararParaListado);
+}
+
+/**
  * Intercala dos listas YA ordenadas por `compararParaListado` conservando el
  * orden relativo que trajo cada una de la base. Preferido a re-sortear todo:
  * los empates mantienen exactamente el orden de Postgres, así que sumar los
@@ -277,6 +315,9 @@ export const getPaquetesByRegion = unstable_cache(
         orderBy: { orden: "asc" as const },
         select: { circuito: { select: { noches: true } } },
       },
+      // Opciones hoteleras: fuente REAL del precio "desde" (ver
+      // conPrecioDesdeReal). Solo el precio, no infla el payload.
+      opcionesHoteleras: { select: { precioVenta: true as const } },
     };
     const base = {
       publicado: true,
@@ -330,14 +371,16 @@ export const getPaquetesByRegion = unstable_cache(
         )
       : [];
     // Camino sin cambios cuando no hay nada que sumar.
-    if (porBreadcrumb.length === 0) return conDestinos;
+    if (porBreadcrumb.length === 0) return conPrecioDesdeReal(conDestinos);
 
     // Las dos poblaciones son disjuntas por construcción (`some` vs `none`),
     // pero el guard mantiene el invariante si alguna where cambia.
     const vistos = new Set(conDestinos.map((p) => p.id));
+    // Cada lista se normaliza (y re-ordena) por separado antes de intercalar:
+    // mergeOrdenado asume que ambas entradas ya vienen ordenadas.
     return mergeOrdenado(
-      conDestinos,
-      porBreadcrumb.filter((p) => !vistos.has(p.id)),
+      conPrecioDesdeReal(conDestinos),
+      conPrecioDesdeReal(porBreadcrumb.filter((p) => !vistos.has(p.id))),
     );
   },
   ["paquetes-by-region"],
@@ -352,7 +395,8 @@ export const getPaquetesByRegion = unstable_cache(
  */
 export const getPaquetesPublicos = unstable_cache(
   async () =>
-    prisma.paquete.findMany({
+    conPrecioDesdeReal(
+      await prisma.paquete.findMany({
       where: {
         publicado: true,
         deletedAt: null,
@@ -373,8 +417,12 @@ export const getPaquetesPublicos = unstable_cache(
           orderBy: { orden: "asc" },
           select: { circuito: { select: { noches: true } } },
         },
+        // Opciones hoteleras: fuente REAL del precio "desde" de la card
+        // (ver conPrecioDesdeReal). Solo el precio, no infla el payload.
+        opcionesHoteleras: { select: { precioVenta: true } },
       },
     }),
+    ),
   ["paquetes-publicos"],
   { revalidate: 60, tags: ["paquetes"] },
 );
@@ -485,6 +533,9 @@ export const getPaquetesRelacionados = unstable_cache(
         orderBy: { orden: "asc" as const },
         select: { circuito: { select: { noches: true } } },
       },
+      // Opciones hoteleras: fuente REAL del precio "desde" (ver
+      // conPrecioDesdeReal). Solo el precio, no infla el payload.
+      opcionesHoteleras: { select: { precioVenta: true as const } },
     };
     let rows = regionId
       ? await prisma.paquete.findMany({
@@ -510,7 +561,7 @@ export const getPaquetesRelacionados = unstable_cache(
         if (!seen.has(e.id)) rows.push(e);
       }
     }
-    return rows;
+    return conPrecioDesdeReal(rows);
   },
   ["paquetes-relacionados"],
   { revalidate: 120, tags: ["paquetes"] },
