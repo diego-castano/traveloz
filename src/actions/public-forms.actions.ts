@@ -785,6 +785,7 @@ export async function submitQuoteForm(
     // Datos del paquete que también necesita el push a Bitrix (más abajo).
     let paqueteTitulo: string | null = null;
     let paqueteSitioUrl: string | null = null;
+    let paqueteAdminUrl: string | null = null;
     let paqueteDestino: string | null = null;
     if (paqueteId) {
       try {
@@ -824,6 +825,7 @@ export async function submitQuoteForm(
           const adminUrl = `${base}/backend/dashboard?vista=vendedor&paquete=${paqueteId}`;
           paqueteTitulo = paquete.titulo;
           paqueteSitioUrl = sitioUrl;
+          paqueteAdminUrl = adminUrl;
           paqueteDestino = paquete.destino;
           const fechaEnvio = new Intl.DateTimeFormat("es-UY", {
             dateStyle: "long",
@@ -892,6 +894,7 @@ export async function submitQuoteForm(
         await crearNegocioLead({
           tituloPaquete: paqueteTitulo,
           paqueteUrl: paqueteSitioUrl,
+          paqueteAdminUrl,
           nombre: data.nombre,
           email: data.email,
           telefono: telefonoDisplay || data.telefono,

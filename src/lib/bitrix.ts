@@ -317,6 +317,12 @@ export interface ConsultaLead {
   tituloPaquete?: string | null;
   /** URL pública del paquete en el sitio. */
   paqueteUrl?: string | null;
+  /**
+   * URL del paquete en el portal de vendedores. El vendedor abre el lead y con
+   * un clic ve cómo está armado el producto (aéreos, hoteles, precios), sin
+   * tener que buscarlo. Es el mismo link que ya lleva el aviso por mail.
+   */
+  paqueteAdminUrl?: string | null;
   nombre: string;
   email?: string | null;
   /** Teléfono ya formateado para mostrar (prefijo de país + número). */
@@ -417,7 +423,10 @@ export function construirComentarios(lead: ConsultaLead): string {
   };
 
   opcional("Paquete", lead.tituloPaquete);
-  opcional("Link del paquete", lead.paqueteUrl);
+  // Los dos links que pidió el cliente: el que vio el pasajero y el de cómo
+  // está armado el producto para el vendedor.
+  opcional("Link del paquete (web)", lead.paqueteUrl);
+  opcional("Ver en portal de vendedores", lead.paqueteAdminUrl);
   opcional("Destino", lead.destino);
   opcional("Salida", fmtFecha(lead.fechaDesde));
   opcional("Regreso", fmtFecha(lead.fechaHasta));
