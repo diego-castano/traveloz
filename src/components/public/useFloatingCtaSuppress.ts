@@ -6,8 +6,8 @@ import { useEffect } from "react";
 // Los botones flotantes (CTA "¡Cotizá a medida acá!" y WhatsApp) son
 // `position: fixed` con z-index 111 en el stacking context raíz. Cualquier
 // popover de formulario (calendario, pasajeros, select) vive adentro de una
-// tarjeta que ya creó su propio stacking context — por ejemplo
-// `.sidebar-form.sticky`, que es `position: sticky; z-index: 10` — así que
+// tarjeta que ya creó su propio stacking context - por ejemplo
+// `.sidebar-form.sticky`, que es `position: sticky; z-index: 10` - así que
 // ningún z-index desde adentro puede ganarle al CTA: la tarjeta entera pintó
 // en la capa 10 y el CTA en la 111. Subir el z-index de la tarjeta tampoco
 // sirve, porque taparía el CTA de forma permanente.

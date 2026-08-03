@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// /gracias — página de conversión. Los formularios de leads (paquete,
+// /gracias - página de conversión. Los formularios de leads (paquete,
 // cotizador, contacto, corporativo) navegan acá tras un envío exitoso en vez
 // de mostrar la confirmación inline, así el cliente puede medir la conversión
 // en GTM con un pageview propio.

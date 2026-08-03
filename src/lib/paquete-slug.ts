@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Slug del paquete — generación automática y unicidad.
+// Slug del paquete - generación automática y unicidad.
 //
 // Regla de producto: el operador NUNCA tiene que escribir el slug. Se deriva del
 // título y se persiste solo en cualquier guardado. Sigue siendo visible y
@@ -7,7 +7,7 @@
 // `src/lib/paquete-publicable.ts`, que ya no lo exige).
 //
 // Regla dura: un paquete YA publicado nunca cambia de slug de forma automática
-// —rompería links vivos y el SEO—. Sólo cambia si el operador escribe otro a
+// -rompería links vivos y el SEO-. Sólo cambia si el operador escribe otro a
 // mano. Lo único que sí hacemos sobre un publicado es COMPLETAR el slug cuando
 // falta: sin slug la grilla pública renderiza `href="#"` (PackageCard) y la
 // tarjeta no lleva a ningún lado, así que generarlo sólo puede mejorar.

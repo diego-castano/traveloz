@@ -1,7 +1,7 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// LinkTargetField — selector de destino para los links del CMS.
+// LinkTargetField - selector de destino para los links del CMS.
 //
 // Reemplaza el input de texto libre donde el admin tenía que adivinar
 // "/destinos?tipo=cruceros". Ahora elige "Categoría de paquete" → "Cruceros" y

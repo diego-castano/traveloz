@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// link-target — destinos internos que puede apuntar un item del CMS.
+// link-target - destinos internos que puede apuntar un item del CMS.
 //
 // Las "categorías destacadas" de la home guardan su destino como un string
 // (`/destinos?tipo=cruceros`). Escribir ese string a mano es inusable para el
@@ -20,7 +20,7 @@ export type LinkTargetOption = {
 };
 
 export type LinkTargetOptions = {
-  /** TipoPaquete — el slug se deriva del nombre (el modelo no tiene columna). */
+  /** TipoPaquete - el slug se deriva del nombre (el modelo no tiene columna). */
   tipos: LinkTargetOption[];
   etiquetas: LinkTargetOption[];
   regiones: LinkTargetOption[];
@@ -82,7 +82,7 @@ function findSlug(list: LinkTargetOption[], slug: string): boolean {
 /**
  * Deduce el tipo de destino desde el link guardado. Todo lo que no matchee un
  * patrón conocido (o apunte a un slug que ya no existe) cae en "custom" con el
- * valor intacto — nunca se reescribe un link que no entendemos.
+ * valor intacto - nunca se reescribe un link que no entendemos.
  *
  * @example parseLinkTarget("/destinos?tipo=cruceros", opts) // { kind: "tipo", slug: "cruceros" }
  * @example parseLinkTarget("https://otra-cosa.com/x", opts) // { kind: "custom", slug: "" }

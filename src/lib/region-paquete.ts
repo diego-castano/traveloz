@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Resolución de la región de un paquete — criterio ÚNICO para todo el sitio.
+// Resolución de la región de un paquete - criterio ÚNICO para todo el sitio.
 //
 // La URL pública de un paquete es /destinos/<region>/<slug>, y la región sale
 // de su destino primario: destinos[0] → ciudad → pais → regionId. Ese criterio
@@ -105,7 +105,7 @@ export function buildRegionResolver(
  * Región deducida del breadcrumb `destino` ("Europa › Turquía" → "europa").
  * Toma el primer segmento, separando por "›" (lo que escribe el panel) o ">"
  * por si alguna carga vieja usó el ASCII. Null si no hay breadcrumb o si el
- * primer segmento no es ninguna región del brand público — p.ej. "África",
+ * primer segmento no es ninguna región del brand público - p.ej. "África",
  * que hoy no existe como región.
  */
 export function resolveRegionSlugDesdeBreadcrumb(
@@ -177,7 +177,7 @@ export function resolveRegionSlugParaListado(
       `[region-paquete] no pude resolver la región de "${id}" ` +
         `(destino[0] sin ciudad/país/región, y el breadcrumb "${paquete.destino ?? ""}" ` +
         `no matchea ninguna región publicada): se publica bajo "${resolver.fallbackSlug}". ` +
-        `Cargale el destino desde el backend — ver scripts/audit-regiones-paquetes.ts.`,
+        `Cargale el destino desde el backend - ver scripts/audit-regiones-paquetes.ts.`,
     );
   }
   return resolver.fallbackSlug;
