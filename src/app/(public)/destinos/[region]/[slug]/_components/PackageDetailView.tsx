@@ -388,6 +388,16 @@ const SCOPED_STYLES = `
   @media (max-width: 767px) {
     .pkg-detail .content-box.style3 .top-heading { padding: 18px 18px 12px; }
 
+    /* iOS Safari hace zoom automatico al enfocar un campo cuya letra mide menos
+       de 16px, y ese zoom NO se deshace al navegar: el visitante completa la
+       consulta, vuelve al inicio y ve la pagina corrida y cortada por los
+       costados (lo reporto el cliente con una captura). La regla de arriba deja
+       estos campos en 13.5px para la version compacta de escritorio; en mobile
+       los subimos al umbral exacto de Safari. */
+    .pkg-detail .sidebar-form form input,
+    .pkg-detail .sidebar-form form select,
+    .pkg-detail .sidebar-form form textarea { font-size: 16px; }
+
     /* Header: título (col-7) y precio (col-5) quedan en la misma fila, igual
        que la referencia — no forzamos el stack a 100% ni el align del precio.
        Sólo achicamos el título un escalón y permitimos wrap normal (nunca

@@ -4339,6 +4339,31 @@ header.header-area.header-dark {
         mask-image: linear-gradient(135deg, transparent 8%, #000 52%)
     }
 
+    /* iOS Safari hace zoom automatico al enfocar un campo cuya letra mide menos
+       de 16px, y ese zoom NO se deshace al navegar: el visitante completa el
+       formulario de una ficha, vuelve al inicio y ve toda la pagina corrida y
+       cortada por los costados (reportado por el cliente con una captura).
+       16px es el umbral exacto de Safari, asi que subimos todos los campos del
+       sitio publico. No tocamos el meta viewport con maximum-scale: eso evita
+       el zoom pero tambien bloquea el pinch del usuario, que es un problema de
+       accesibilidad. Solo aplica en mobile; en escritorio el diseno no cambia. */
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    /* El formulario de /cotizar fija 15px con !important (ver .contact-form-wrapper
+       mas arriba), asi que la regla de arriba no le gana. Misma fuerza para que
+       tampoco dispare el zoom de iOS. */
+    .contact-form-wrapper form input,
+    .contact-form-wrapper form select,
+    .contact-form-wrapper form textarea,
+    .contact-form-wrapper .passenger-input,
+    .date-range-picker.on-gradient .date-range-display {
+        font-size: 16px !important;
+    }
+
     .contact-area {
         padding: 20px 0
     }
