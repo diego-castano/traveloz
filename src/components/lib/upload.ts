@@ -8,13 +8,14 @@
  *   - `uploadFiles`       Concurrency-capped parallel batch with per-file
  *                         progress.
  *   - `compressImage`     browser-image-compression wrapper (client-side
- *                         shrink before upload — saves 5–10× bytes for phone
+ *                         shrink before upload - saves 5–10× bytes for phone
  *                         photos at no perceptible quality loss).
  *   - `uploadByUrl`       Pastes an external URL → server fetches + re-hosts.
  *   - `presignedUpload`   Direct browser → bucket via S3 presigned PUT URL.
  *                         Skips the Next.js server entirely; meant for already-
  *                         processed payloads (e.g. cropper output).
- *   - `deleteFile`        Best-effort bucket cleanup.
+ *   - `deleteFile`        Borrado inmediato del bucket. Ver la advertencia
+ *                         sobre cuándo se puede usar, abajo.
  */
 
 import imageCompression from "browser-image-compression";
@@ -39,7 +40,7 @@ export type UploadProgress = (percent: number, loaded: number, total: number) =>
 export interface UploadOptions {
   folder?: string;
   onProgress?: UploadProgress;
-  /** AbortSignal — cancels the in-flight request mid-upload. */
+  /** AbortSignal - cancels the in-flight request mid-upload. */
   signal?: AbortSignal;
   /** Disable server WebP conversion when you absolutely need the original. */
   convertToWebp?: boolean;
@@ -111,7 +112,7 @@ export async function compressImage(
       fileType: file.type,
       initialQuality: 0.86,
     });
-    // imageCompression returns a Blob — wrap to keep `name`.
+    // imageCompression returns a Blob - wrap to keep `name`.
     return new File([compressed], file.name, {
       type: compressed.type || file.type,
       lastModified: Date.now(),
@@ -124,7 +125,7 @@ export async function compressImage(
 }
 
 // ---------------------------------------------------------------------------
-// uploadFile — XHR with progress
+// uploadFile - XHR with progress
 // ---------------------------------------------------------------------------
 
 export function uploadFile(
@@ -190,7 +191,7 @@ export function uploadFile(
 }
 
 // ---------------------------------------------------------------------------
-// uploadFiles — concurrency-capped batch
+// uploadFiles - concurrency-capped batch
 // ---------------------------------------------------------------------------
 
 export interface UploadFilesOptions extends Omit<UploadOptions, "onProgress"> {
@@ -204,7 +205,7 @@ export interface UploadFilesOptions extends Omit<UploadOptions, "onProgress"> {
   concurrency?: number;
   /** Compress images client-side before uploading. Default enabled. */
   compress?: CompressionOptions | false;
-  /** Telemetry hook — receives one summary event after all files settle. */
+  /** Telemetry hook - receives one summary event after all files settle. */
   onTelemetry?: (event: UploadTelemetryEvent) => void;
 }
 
@@ -277,7 +278,7 @@ export async function uploadFiles(
 }
 
 // ---------------------------------------------------------------------------
-// uploadByUrl — server-side fetch + re-host
+// uploadByUrl - server-side fetch + re-host
 // ---------------------------------------------------------------------------
 
 export async function uploadByUrl(params: {
@@ -366,9 +367,30 @@ export async function presignedUpload(
 }
 
 // ---------------------------------------------------------------------------
-// deleteFile — best-effort bucket cleanup
+// deleteFile - borrado inmediato del bucket
 // ---------------------------------------------------------------------------
 
+/**
+ * Borra un objeto del bucket ya mismo.
+ *
+ * ⚠️ NO la llames desde un flujo de "quitar imagen/documento" de un formulario.
+ * En esos flujos la fila de la base recién se actualiza cuando el operador
+ * guarda: si borrás el archivo al sacarlo del estado local y el guardado no
+ * llega a pasar, la base queda apuntando a un archivo que ya no existe (foto
+ * rota, sin vuelta atrás). Ya nos costó imágenes en producción. El patrón que
+ * usamos es borrado diferido: el archivo queda huérfano y lo limpia
+ * /api/files/gc-orphans, que solo borra lo que ninguna fila referencia y
+ * respeta una ventana de gracia de 24 h.
+ *
+ * Se puede usar cuando el archivo con seguridad no está referenciado por
+ * ninguna fila y no lo va a estar. Por ejemplo:
+ *   - deshacer una subida que falló a mitad de camino o que el usuario canceló
+ *     antes de que la URL llegue a cualquier estado persistible;
+ *   - descartar el archivo temporal de un reemplazo que el server rechazó;
+ *   - herramientas de mantenimiento donde el operador borra a conciencia un
+ *     archivo puntual.
+ * Si tenés la más mínima duda, no la uses: dejá el huérfano para el recolector.
+ */
 export async function deleteFile(urlOrKey: string): Promise<boolean> {
   if (!urlOrKey) return false;
   try {

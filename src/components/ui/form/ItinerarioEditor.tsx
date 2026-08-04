@@ -15,7 +15,7 @@ import {
 import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
-import { deleteFile, uploadFile } from "@/components/lib/upload";
+import { uploadFile } from "@/components/lib/upload";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 
 interface ItinerarioEditorProps {
@@ -162,7 +162,7 @@ export function ItinerarioEditor({
       }
       // Always paste as plain text so Amadeus/terminal dumps keep their line
       // breaks and column spacing. Rich-text sources lose their inline
-      // formatting on the way in — users re-apply bold/italic via the toolbar.
+      // formatting on the way in - users re-apply bold/italic via the toolbar.
       e.preventDefault();
       const textOnly = e.clipboardData.getData("text/plain") ?? "";
       const escaped = textOnly
@@ -201,12 +201,14 @@ export function ItinerarioEditor({
     if (files.length > 0) await handleFiles(files);
   };
 
+  // ⚠️ NO borrar del bucket acá. Sacar la imagen solo cambia el estado del
+  // formulario: la columna de la base recién se actualiza cuando el operador
+  // guarda. Si borrábamos el archivo en el momento y el guardado no llegaba a
+  // pasar, la base quedaba apuntando a un archivo inexistente. El archivo
+  // queda huérfano y lo limpia el recolector (/api/files/gc-orphans).
   const handleRemove = (url: string) => {
     if (readOnly) return;
     onImagesChange(images.filter((u) => u !== url));
-    // Best-effort bucket cleanup. The DB row is the source of truth — if the
-    // bucket delete fails, the user-visible state is still consistent.
-    void deleteFile(url);
   };
 
   return (
@@ -416,7 +418,7 @@ function ToolbarButton({
     <button
       type="button"
       // Use mousedown (not click) so the contentEditable div retains focus and
-      // the active selection survives — execCommand needs a live selection.
+      // the active selection survives - execCommand needs a live selection.
       onMouseDown={(e) => {
         e.preventDefault();
         onClick();

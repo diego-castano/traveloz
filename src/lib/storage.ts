@@ -131,12 +131,23 @@ export async function getPresignedPutUrl(params: {
   return { url, key, expiresIn };
 }
 
+export interface StorageObject {
+  key: string;
+  /** Fecha de última escritura del objeto. null si el provider no la manda. */
+  lastModified: Date | null;
+  size: number;
+}
+
 /**
- * List every key under a prefix. Used by the GC orphan cleanup route.
+ * Lista todos los objetos bajo un prefijo, con su fecha de modificación.
+ * La usa el recolector de huérfanos: necesita `lastModified` para no borrar
+ * archivos recién subidos cuya fila todavía no se guardó.
  */
-export async function listAllKeys(prefix?: string): Promise<string[]> {
+export async function listAllObjects(
+  prefix?: string,
+): Promise<StorageObject[]> {
   const client = getClient();
-  const keys: string[] = [];
+  const objects: StorageObject[] = [];
   let continuationToken: string | undefined;
   while (true) {
     const res: import("@aws-sdk/client-s3").ListObjectsV2CommandOutput =
@@ -148,12 +159,24 @@ export async function listAllKeys(prefix?: string): Promise<string[]> {
         }),
       );
     for (const obj of res.Contents ?? []) {
-      if (obj.Key) keys.push(obj.Key);
+      if (!obj.Key) continue;
+      objects.push({
+        key: obj.Key,
+        lastModified: obj.LastModified ?? null,
+        size: obj.Size ?? 0,
+      });
     }
     if (!res.IsTruncated || !res.NextContinuationToken) break;
     continuationToken = res.NextContinuationToken;
   }
-  return keys;
+  return objects;
+}
+
+/**
+ * List every key under a prefix. Used by the GC orphan cleanup route.
+ */
+export async function listAllKeys(prefix?: string): Promise<string[]> {
+  return (await listAllObjects(prefix)).map((o) => o.key);
 }
 
 /** Read an object back into memory (admin / GC operations only). */
@@ -196,12 +219,12 @@ export async function deleteObjects(keys: string[]): Promise<void> {
       }),
     );
   } catch {
-    // Fallback — sequential single-object deletes. Best-effort.
+    // Fallback - sequential single-object deletes. Best-effort.
     for (const k of keys) {
       try {
         await deleteObject(k);
       } catch {
-        /* ignore — orphan is preferable to user-visible error */
+        /* ignore - orphan is preferable to user-visible error */
       }
     }
   }

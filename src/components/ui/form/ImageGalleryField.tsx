@@ -6,7 +6,7 @@ import { Image as ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
-import { deleteFile, uploadFile } from "@/components/lib/upload";
+import { uploadFile } from "@/components/lib/upload";
 import { ImageLightbox } from "@/components/ui/ImageLightbox";
 
 interface ImageGalleryFieldProps {
@@ -168,19 +168,21 @@ export function ImageGalleryField({
     if (readOnly) return;
     const files = e.dataTransfer.files;
     // Si no hay archivos, es un drop de reordenamiento (lo manejan las
-    // miniaturas con stopPropagation) — no hacemos nada acá.
+    // miniaturas con stopPropagation) - no hacemos nada acá.
     if (files.length === 0) return;
     e.preventDefault();
     e.stopPropagation();
     await handleFiles(files);
   };
 
+  // ⚠️ NO borrar del bucket acá. Sacar la imagen solo cambia el estado del
+  // formulario: la columna de la base recién se actualiza cuando el operador
+  // guarda. Si borrábamos el archivo en el momento y el guardado no llegaba a
+  // pasar, la base quedaba apuntando a un archivo inexistente. El archivo
+  // queda huérfano y lo limpia el recolector (/api/files/gc-orphans).
   const handleRemove = (url: string) => {
     if (readOnly) return;
     onImagesChange(images.filter((u) => u !== url));
-    // Limpieza best-effort del bucket. El estado visible es la fuente de verdad:
-    // si el borrado del bucket falla, la UI queda igual consistente.
-    void deleteFile(url);
   };
 
   // -- Reordenamiento --
@@ -301,7 +303,7 @@ export function ImageGalleryField({
                     className="h-full w-full object-cover"
                   />
                 </button>
-                {/* Número de orden — ayuda visual de la secuencia. */}
+                {/* Número de orden - ayuda visual de la secuencia. */}
                 <span className="pointer-events-none absolute left-1 top-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-black/55 px-1 text-[10px] font-semibold text-white">
                   {i + 1}
                 </span>

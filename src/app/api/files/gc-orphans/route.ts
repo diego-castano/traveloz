@@ -1,33 +1,32 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth.config";
-import { prisma } from "@/lib/db";
-import { deleteObjects, listAllKeys, keyFromUrl } from "@/lib/storage";
+import { deleteObjects } from "@/lib/storage";
+import { collectOrphans, RATIO_MAXIMO_HUERFANOS } from "@/lib/gc-orphans";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Garbage-collect orphan bucket objects.
+ * Recolector de objetos huérfanos del bucket. La lógica vive en
+ * `@/lib/gc-orphans` (así se puede auditar con un script de solo lectura sin
+ * levantar el server); acá queda la capa HTTP.
  *
- *   1. List every key under each managed prefix in the bucket.
- *   2. Build a Set of every URL referenced by the DB (PaqueteFoto.url,
- *      AlojamientoFoto.url, Aereo.itinerarioImagenes[]).
- *   3. Diff → any bucket key not in the referenced set is an orphan.
+ * GET  → reporta sin tocar el bucket. Muestra qué protege cada fuente para
+ *        poder auditar antes de ejecutar. Siempre seguro de correr.
+ * POST → borra de verdad. Exige `?confirm=1` y pasa dos controles antes de
+ *        tocar nada: que el barrido genérico de la base haya corrido bien, y
+ *        que la proporción de huérfanos no dispare el freno de mano.
  *
- * GET  → reports orphan keys without touching the bucket. Always safe to run.
- * POST → actually deletes the orphans. Requires `?confirm=1` to avoid
- *        accidental wipes during tab refreshes.
- *
- * Auth-protected. There's no `cron` here — fire it from a Railway scheduled
- * job, or hit it manually from the admin console.
+ * Pide sesión. No hay `cron` acá: se dispara desde un scheduled job de Railway
+ * o a mano desde el admin.
  */
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-  const stats = await collectOrphans();
-  return NextResponse.json(stats);
+  const reporte = await collectOrphans();
+  return NextResponse.json(reporte);
 }
 
 export async function POST(req: Request) {
@@ -45,44 +44,42 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const stats = await collectOrphans();
-  if (stats.orphans.length > 0) {
-    await deleteObjects(stats.orphans);
-  }
-  return NextResponse.json({ ...stats, deleted: stats.orphans.length });
-}
 
-async function collectOrphans() {
-  // 1. Bucket — every managed prefix. Using a generic empty prefix lists the
-  //    whole bucket, fine while volume is small.
-  const allKeys = await listAllKeys();
+  const reporte = await collectOrphans();
 
-  // 2. DB — every URL/key referenced. Anything that lands as a `/api/image/...`
-  //    URL or as a raw key is mapped back to a key.
-  const referenced = new Set<string>();
-  const addUrl = (u: string | null | undefined) => {
-    const k = keyFromUrl(u);
-    if (k) referenced.add(k);
-  };
-
-  const [paqueteFotos, alojamientoFotos, aereos] = await Promise.all([
-    prisma.paqueteFoto.findMany({ select: { url: true } }),
-    prisma.alojamientoFoto.findMany({ select: { url: true } }),
-    prisma.aereo.findMany({ select: { itinerarioImagenes: true } }),
-  ]);
-
-  for (const f of paqueteFotos) addUrl(f.url);
-  for (const f of alojamientoFotos) addUrl(f.url);
-  for (const a of aereos) {
-    for (const u of a.itinerarioImagenes ?? []) addUrl(u);
+  // Fail-closed: si el barrido genérico no pudo correr, el set de archivos en
+  // uso está incompleto y borrar sería a ciegas.
+  if (!reporte.scanGenerico.ok) {
+    return NextResponse.json(
+      {
+        ...reporte,
+        deleted: 0,
+        error:
+          "El barrido genérico de la base falló, así que el set de archivos en uso está incompleto. No se borró nada. Revisá el error y volvé a intentar.",
+      },
+      { status: 500 },
+    );
   }
 
-  const orphans = allKeys.filter((k) => !referenced.has(k));
+  if (reporte.frenoDeMano.activado) {
+    return NextResponse.json(
+      {
+        ...reporte,
+        deleted: 0,
+        error:
+          `Freno de mano: ${reporte.orphanCount} de ${reporte.bucket.objetos} objetos ` +
+          `(${(reporte.frenoDeMano.ratio * 100).toFixed(1)}%) darían huérfanos, por encima del ` +
+          `${(RATIO_MAXIMO_HUERFANOS * 100).toFixed(0)}% permitido. Eso no es basura acumulada, ` +
+          "parece un error de configuración (base equivocada, bucket equivocado, o una fuente de " +
+          "referencias que dejó de leerse). No se borró nada. Revisá el GET de este mismo endpoint " +
+          "y, si de verdad son huérfanos, hacé la limpieza a mano y revisada.",
+      },
+      { status: 409 },
+    );
+  }
 
-  return {
-    bucketKeys: allKeys.length,
-    referencedKeys: referenced.size,
-    orphanCount: orphans.length,
-    orphans,
-  };
+  if (reporte.orphans.length > 0) {
+    await deleteObjects(reporte.orphans);
+  }
+  return NextResponse.json({ ...reporte, deleted: reporte.orphans.length });
 }

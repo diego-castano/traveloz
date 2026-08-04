@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ImageUploader — modern admin image gallery with:
+ * ImageUploader - modern admin image gallery with:
  *
  *   • drag & drop dropzone with on-screen progress per file
  *   • client-side compression before each upload (browser-image-compression)
@@ -12,7 +12,9 @@
  *   • replace flow per item
  *   • paste-from-URL flow ("añadir por URL")
  *   • optional "Generar con IA" CTA in the empty state
- *   • best-effort bucket cleanup on remove
+ *
+ * Borrado: sacar una foto acá NO toca el bucket. Ver la nota en
+ * handleRemoveImage.
  */
 
 import * as React from "react";
@@ -57,7 +59,6 @@ import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
 import {
   compressImage,
-  deleteFile,
   presignedUpload,
   uploadByUrl,
   uploadFile,
@@ -91,7 +92,7 @@ export interface ImageUploaderProps {
   /**
    * Marks the "principal" image by id instead of by position. When set (even to
    * an empty string), the principal badge/star follow this id rather than the
-   * first item — so the featured photo can be any photo, independent of order.
+   * first item - so the featured photo can be any photo, independent of order.
    * Leave undefined to keep the default "first image is principal" behavior.
    */
   principalId?: string;
@@ -116,11 +117,9 @@ export interface ImageUploaderProps {
   /** Output type when cropping. */
   cropOutput?: "image/webp" | "image/jpeg" | "image/png";
   cropTitle?: string;
-  /** Default true — best-effort delete from the bucket on remove. */
-  deleteFromBucket?: boolean;
-  /** Default true — show the lightbox on thumbnail click. */
+  /** Default true - show the lightbox on thumbnail click. */
   enableLightbox?: boolean;
-  /** Default true — show the bulk-select checkboxes. */
+  /** Default true - show the bulk-select checkboxes. */
   enableBulkSelect?: boolean;
   /** When set, the empty state shows a "Generar con IA" CTA. */
   onGenerateWithAI?: () => void;
@@ -130,7 +129,7 @@ interface UploadingItem {
   id: string;
   name: string;
   size: number;
-  /** 0..100 — 100 means bytes flushed, server still processing. */
+  /** 0..100 - 100 means bytes flushed, server still processing. */
   percent: number;
   error?: string | null;
   abort: () => void;
@@ -156,7 +155,6 @@ export function ImageUploader({
   aspect = null,
   cropOutput = "image/webp",
   cropTitle = "Recortar imagen",
-  deleteFromBucket = true,
   enableLightbox = true,
   enableBulkSelect = true,
   onGenerateWithAI,
@@ -326,23 +324,31 @@ export function ImageUploader({
   };
   const clearSelection = () => setSelected(new Set());
   const selectAll = () => setSelected(new Set(images.map((i) => i.id)));
+  // Igual que el remove individual: solo sale del estado local. Nada de tocar
+  // el bucket acá (ver la nota en handleRemoveImage).
   const handleBulkRemove = () => {
     if (selected.size === 0 || !onRemove) return;
     Array.from(selected).forEach((id) => {
       const item = images.find((i) => i.id === id);
       if (!item) return;
       onRemove(id);
-      if (deleteFromBucket && item.url) void deleteFile(item.url);
     });
     clearSelection();
   };
 
   // ---------------------------- Single remove ----------------------------
 
+  // ⚠️ NO borrar del bucket acá. Sacar la foto solo la quita del estado local
+  // de React: la fila de la base recién se va cuando el operador guarda. Si
+  // borrábamos el archivo en este momento y el guardado no llegaba a pasar
+  // (se fue de la pantalla, canceló, se le cortó la sesión), la base quedaba
+  // apuntando a un archivo inexistente = foto rota para siempre. Ya nos pasó
+  // en producción. El archivo queda huérfano y lo limpia el recolector
+  // (/api/files/gc-orphans), que solo borra lo que nadie referencia y respeta
+  // una ventana de gracia de 24 h.
   const handleRemoveImage = React.useCallback(
     (item: ImageItem) => {
       onRemove?.(item.id);
-      if (deleteFromBucket && item.url) void deleteFile(item.url);
       setSelected((prev) => {
         if (!prev.has(item.id)) return prev;
         const next = new Set(prev);
@@ -353,7 +359,7 @@ export function ImageUploader({
       // If the lightbox was on this image, close it.
       setLightboxIdx((idx) => (idx == null ? idx : Math.min(idx, images.length - 2)));
     },
-    [onRemove, deleteFromBucket, images.length],
+    [onRemove, images.length],
   );
 
   // ---------------------------- Replace ----------------------------
@@ -486,7 +492,7 @@ export function ImageUploader({
             : `Arrastra o haz clic para agregar (${images.length}/${maxImages})`}
         </p>
         <p className="text-[11px] text-neutral-400">
-          PNG · JPG · WEBP · AVIF · GIF · HEIC — hasta 25 MB
+          PNG · JPG · WEBP · AVIF · GIF · HEIC - hasta 25 MB
         </p>
 
         {isEmpty && onGenerateWithAI && (
@@ -1011,7 +1017,7 @@ function Lightbox({
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
-      /* clipboard blocked — silently fail */
+      /* clipboard blocked - silently fail */
     }
   };
 
@@ -1126,7 +1132,7 @@ function Lightbox({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                 }}
-                placeholder="Texto alternativo (alt) — descripción para accesibilidad y SEO"
+                placeholder="Texto alternativo (alt) - descripción para accesibilidad y SEO"
                 className="flex-1 bg-transparent text-[13px] text-white placeholder:text-white/40 outline-none"
               />
             </footer>

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * DocumentUploader — list-style uploader for non-image attachments.
+ * DocumentUploader - list-style uploader for non-image attachments.
  *
  * Used for: vouchers, contracts, brochures, fichas técnicas, supplier docs.
  * Renders one row per file with name, size, type icon, download link, and a
@@ -29,7 +29,7 @@ import {
 import { cn } from "@/components/lib/cn";
 import { glassMaterials } from "@/components/lib/glass";
 import { springs } from "@/components/lib/animations";
-import { deleteFile, uploadFile, type UploadedFile } from "@/components/lib/upload";
+import { uploadFile, type UploadedFile } from "@/components/lib/upload";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -60,8 +60,6 @@ export interface DocumentUploaderProps {
   folder?: string;
   /** MIME accept string for the input. Default: PDFs. */
   accept?: string;
-  /** Best-effort bucket cleanup on remove. Default true. */
-  deleteFromBucket?: boolean;
   className?: string;
 }
 
@@ -78,7 +76,6 @@ export function DocumentUploader({
   maxDocuments = 10,
   folder = "documentos",
   accept = DEFAULT_ACCEPT,
-  deleteFromBucket = true,
   className,
 }: DocumentUploaderProps) {
   const [dragActive, setDragActive] = React.useState(false);
@@ -160,9 +157,13 @@ export function DocumentUploader({
     [accept, documents.length, folder, inFlight, maxDocuments, onAdd],
   );
 
+  // ⚠️ NO borrar del bucket acá. Quitar el documento solo lo saca del estado
+  // local: la fila de la base recién se va cuando el operador guarda. Si el
+  // guardado no llega a pasar, la base queda apuntando a un archivo que ya no
+  // existe. El archivo queda huérfano y lo limpia el recolector
+  // (/api/files/gc-orphans), que solo borra lo que nadie referencia.
   const handleRemove = (doc: DocumentItem) => {
     onRemove?.(doc.id);
-    if (deleteFromBucket && doc.url) void deleteFile(doc.url);
   };
 
   // ---------------------------- Render ----------------------------
@@ -216,7 +217,7 @@ export function DocumentUploader({
           Arrastra documentos o haz clic para subir
         </p>
         <p className="text-[11px] text-neutral-400">
-          PDF — máx 25 MB · {documents.length}/{maxDocuments}
+          PDF - máx 25 MB · {documents.length}/{maxDocuments}
         </p>
       </motion.div>
 
