@@ -11,6 +11,9 @@ import {
 import { Popover } from "radix-ui";
 import { ChevronDown, Check } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+// Filtro insensible a tildes: sin esto cmdk no encuentra "México" si el
+// operador tipea "mexico" (ver src/lib/search.ts).
+import { cmdkAccentFilter } from "@/lib/search";
 
 /**
  * SearchableSelect — single-select dropdown that the operator can filter by
@@ -150,7 +153,7 @@ export function SearchableSelect({
                 "0 16px 40px -8px rgba(17,17,36,0.18), 0 4px 12px -4px rgba(17,17,36,0.08)",
             }}
           >
-            <Command shouldFilter>
+            <Command shouldFilter filter={cmdkAccentFilter}>
               <div className="border-b border-neutral-200/70 px-2 py-1.5">
                 <CommandInput
                   ref={inputRef}

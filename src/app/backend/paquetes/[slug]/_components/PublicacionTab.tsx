@@ -196,9 +196,9 @@ function RichField({
   );
 }
 
-// Resumen de vigencia — la baja la calcula el sistema (15 días antes del
-// inicio del viaje). Acá sólo mostramos la fecha de baja persistida para que
-// el operador sepa qué tiene guardado sin ir a la pestaña Datos.
+// Resumen de vigencia - la baja sale calculada (15 días antes del inicio del
+// viaje) y se edita en la pestaña Datos. Acá sólo mostramos la fecha
+// persistida para que el operador sepa qué tiene guardado sin cambiar de tab.
 function VigenciaResumen({
   validezHasta,
 }: {
@@ -208,7 +208,7 @@ function VigenciaResumen({
   return (
     <div className="rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2">
       <p className="text-[10px] uppercase tracking-wide text-neutral-400">
-        Baja automática
+        Baja del paquete
       </p>
       <p className="text-[13px] text-neutral-700 font-medium">
         {d
@@ -1224,9 +1224,9 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
           </label>
           <VigenciaResumen validezHasta={data.validezHasta} />
           <p className="text-[11px] text-neutral-500 mt-1">
-            El paquete está activo desde que se crea y se da de baja
-            automáticamente 15 días antes del inicio del viaje. El período de
-            viaje se carga en la pestaña{" "}
+            El paquete está activo desde que se crea y se da de baja 15 días
+            antes del inicio del viaje, salvo que le pongas otra fecha. La baja
+            y el período de viaje se editan en la pestaña{" "}
             <a
               href="?tab=datos"
               className="text-violet-600 hover:underline"

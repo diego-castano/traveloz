@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
-import { parseStoredDate, formatStoredDate, addDays } from "@/lib/date";
+import { resolveBajaOnSave } from "@/lib/paquete-baja";
 import {
   recomputePaqueteOpciones,
   recomputeForOpcionHotelera,
@@ -495,6 +495,10 @@ export async function updatePaquete(
         // titulo + slug: alimentan el slug automático (ver más abajo).
         titulo: true,
         slug: true,
+        // viajeDesde + validezHasta: deciden si la baja guardada es la
+        // automática o una que el operador pisó a mano (ver más abajo).
+        viajeDesde: true,
+        validezHasta: true,
       },
     });
     if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
@@ -508,16 +512,23 @@ export async function updatePaquete(
       assertMargenPositivo(nextNeto, nextVenta, nextFactor);
     }
 
-    // Vigencia autoritativa: el paquete se da de baja 15 días antes del inicio
-    // del viaje (validezHasta = viajeDesde − 15 días). Se deriva acá, en el
-    // server, cada vez que el payload trae viajeDesde, para que ninguna ruta de
-    // guardado pueda divergir. Sin viajeDesde → sin fecha de baja (activo
-    // indefinido). validezDesde ya no se gestiona: se conserva lo que haya.
-    if (data.viajeDesde !== undefined) {
-      const desde = parseStoredDate(data.viajeDesde);
-      data.validezHasta = desde
-        ? formatStoredDate(addDays(desde, -15)) ?? null
-        : null;
+    // Vigencia: por defecto el paquete se da de baja 15 días antes del inicio
+    // del viaje (validezHasta = viajeDesde − 15 días), y ese cálculo se rehace
+    // cada vez que cambia el período. El operador puede pisar la fecha desde la
+    // pestaña Datos (promos cortas), y ahí el valor manual manda: se detecta
+    // comparando contra la derivada, sin columna extra, igual que el slug.
+    // Detalle en src/lib/paquete-baja.ts. validezDesde no se gestiona: se
+    // conserva lo que haya.
+    const bajaResuelta = resolveBajaOnSave({
+      viajeDesdeActual: owner.viajeDesde,
+      validezHastaActual: owner.validezHasta,
+      viajeDesdeEntrante: data.viajeDesde,
+      validezHastaEntrante: data.validezHasta,
+    });
+    if (bajaResuelta === undefined) {
+      delete data.validezHasta;
+    } else {
+      data.validezHasta = bajaResuelta;
     }
 
     // Invariante estado ACTIVO ⇔ publicado. El Estado (pestaña Datos) es el

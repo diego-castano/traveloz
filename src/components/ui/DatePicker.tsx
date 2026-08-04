@@ -154,6 +154,10 @@ const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
               <DayPicker
                 mode="single"
                 selected={value}
+                // Sin esto el calendario abre siempre en el mes actual, aunque
+                // la fecha guardada sea de otro mes: el operador tenía que
+                // navegar hasta ella para verla.
+                defaultMonth={value}
                 onSelect={handleSelect}
                 locale={es}
                 classNames={dayPickerClassNames}

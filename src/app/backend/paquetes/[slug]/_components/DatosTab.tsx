@@ -17,6 +17,7 @@ import { DestinoAutocomplete } from "@/components/ui/form/DestinoAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Toggle } from "@/components/ui/Toggle";
 import { PeriodPicker } from "@/components/ui/form/PeriodPicker";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Tag } from "@/components/ui/Tag";
 import type { TagColor } from "@/components/ui/Tag";
 import {
@@ -49,8 +50,9 @@ import { validateForActivation } from "@/lib/validation";
 import {
   formatStoredDate,
   parseStoredDate,
-  addDays,
+  startOfLocalDay,
 } from "@/lib/date";
+import { bajaAutomatica, esBajaAutomatica } from "@/lib/paquete-baja";
 import {
   Star,
   ChevronDown,
@@ -313,10 +315,22 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const [viajeHastaDate, setViajeHastaDate] = useState<Date | undefined>(
     parseStoredDate(paquete.viajeHasta),
   );
-  // Vigencia: ya NO la gestiona el operador. El paquete se da de baja
-  // automáticamente 15 días antes del inicio del viaje (validezHasta =
-  // viajeDesde − 15d). La regla la aplica el server al guardar; acá sólo
-  // mostramos la fecha resultante como línea informativa de solo lectura.
+  // Baja del paquete (validezHasta): por defecto la calcula el sistema
+  // (viajeDesde − 15d) y se rehace cuando cambia el período del viaje. El
+  // operador puede pisarla; si borra el campo, vuelve al automático. Mismo
+  // criterio de "automático vs manual" que el slug: se compara contra la
+  // derivada, sin columna extra (ver src/lib/paquete-baja.ts).
+  const [bajaDate, setBajaDate] = useState<Date | undefined>(() =>
+    parseStoredDate(
+      paquete.validezHasta ?? bajaAutomatica(paquete.viajeDesde) ?? undefined,
+    ),
+  );
+  // Va en estado (no en un ref como Salidas) porque el chip «Automática /
+  // Fecha propia» y el atajo para volver al automático se renderizan a partir
+  // de él.
+  const [bajaManual, setBajaManual] = useState(
+    () => !esBajaAutomatica(paquete.validezHasta, paquete.viajeDesde),
+  );
   // Salidas: leyenda libre que se muestra bajo el título en el frontend
   // (ej. "Salidas semanales todo el año"). Vive junto al período del viaje.
   // Se autocompleta desde "Desde y hasta" salvo que el operador la edite a mano.
@@ -414,16 +428,20 @@ export default function DatosTab({ paquete }: DatosTabProps) {
     destinos,
   );
 
-  // -- Fecha de baja automática: viajeDesde − 15 días (solo lectura) --
-  // Si no hay período de viaje cargado, no hay fecha de baja (activo indefinido).
-  const bajaDate = viajeDesdeDate ? addDays(viajeDesdeDate, -15) : undefined;
+  // Aviso (no bloqueo): una baja ya vencida saca el paquete del sitio, porque
+  // la grilla pública filtra por validezHasta >= hoy (vigenciaActivaWhere).
+  const bajaVencida = useMemo(() => {
+    if (!bajaDate) return false;
+    const hoy = startOfLocalDay(new Date())!;
+    return bajaDate.getTime() < hoy.getTime();
+  }, [bajaDate]);
 
   const persistPaquete = useCallback(
     (overrides: Partial<Paquete> = {}) => {
       // Período de viaje: cuándo viaja el cliente (matchea servicios y precios).
-      // Vigencia: el paquete se da de baja 15 días antes del inicio del viaje.
-      // validezHasta lo deriva el server de forma autoritativa; lo enviamos ya
-      // calculado para que la cache del cliente quede coherente al instante.
+      // Baja: la fecha que muestra el campo, sea la automática (viajeDesde −
+      // 15d) o la que el operador puso a mano. El server respeta lo que llega
+      // acá; un campo vacío lo devuelve al automático (ver paquete-baja.ts).
       // validezDesde no se gestiona: se conserva el valor existente.
       const viajeDesdeStr = viajeDesdeDate
         ? formatStoredDate(viajeDesdeDate)
@@ -431,9 +449,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       const viajeHastaStr = viajeHastaDate
         ? formatStoredDate(viajeHastaDate)
         : null;
-      const validezHastaStr = viajeDesdeDate
-        ? formatStoredDate(addDays(viajeDesdeDate, -15))!
-        : null;
+      const validezHastaStr = bajaDate ? formatStoredDate(bajaDate)! : null;
       return updatePaquete({
         ...paquete,
         titulo,
@@ -447,7 +463,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         modalidad,
         destacado,
         moneda,
-        // validezDesde se conserva (no se gestiona); validezHasta se deriva.
+        // validezDesde se conserva (no se gestiona).
         validezHasta: validezHastaStr,
         viajeDesde: viajeDesdeStr,
         viajeHasta: viajeHastaStr,
@@ -468,6 +484,7 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       moneda,
       viajeDesdeDate,
       viajeHastaDate,
+      bajaDate,
       updatePaquete,
     ],
   );
@@ -554,6 +571,20 @@ export default function DatosTab({ paquete }: DatosTabProps) {
   const setModalidadDirty = (v: string) => { setModalidad(v as ModalidadPaquete); markDirty(); };
   const setDestacadoDirty = (v: boolean) => { setDestacado(v); markDirty(); };
   const setMonedaDirty = (v: string) => { setMoneda(v); markDirty(); };
+  // Baja: fecha propia → modo manual; campo vacío → vuelve al automático (y se
+  // recalcula al toque desde el período de viaje que haya cargado).
+  const setBajaDirty = (d: Date | undefined) => {
+    if (d) {
+      setBajaManual(true);
+      setBajaDate(d);
+    } else {
+      setBajaManual(false);
+      setBajaDate(
+        parseStoredDate(bajaAutomatica(formatStoredDate(viajeDesdeDate))),
+      );
+    }
+    markDirty();
+  };
   const setViajeDates = (desde: Date | undefined, hasta: Date | undefined) => {
     setViajeDesdeDate(desde);
     setViajeHastaDate(hasta);
@@ -562,9 +593,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
       const auto = formatSalidasFromRange(desde, hasta);
       if (auto) setSalidas(auto);
     }
-    // La fecha de baja (validezHasta = viajeDesde − 15d) se deriva sola en el
-    // render (bajaDate) y en el guardado (server + persistPaquete). No hay
-    // estado de vigencia que actualizar acá.
+    // Y la baja automática (viajeDesde − 15d), salvo que esté pisada a mano.
+    if (!bajaManual) {
+      setBajaDate(parseStoredDate(bajaAutomatica(formatStoredDate(desde))));
+    }
     markDirty();
   };
 
@@ -591,14 +623,13 @@ export default function DatosTab({ paquete }: DatosTabProps) {
 
       <FormSections>
         {/* ================================================================ */}
-        {/* Período del viaje, baja automática y estado.                      */}
-        {/* El viaje es la fuente de la baja automática: el paquete se da de   */}
-        {/* baja 15 días antes de su inicio. La vigencia ya no la gestiona el  */}
-        {/* operador (regla del negocio); acá sólo se informa la fecha.        */}
+        {/* Período del viaje, baja del paquete y estado.                     */}
+        {/* El viaje es la fuente de la baja: el paquete sale del sitio 15     */}
+        {/* días antes de su inicio, salvo que el operador ponga otra fecha.   */}
         {/* ================================================================ */}
         <FormSection
           title="Período del viaje"
-          description="Fechas en que viaja el cliente (matchean servicios y tarifas). La baja del paquete se calcula sola: 15 días antes del inicio del viaje."
+          description="Fechas en que viaja el cliente (matchean servicios y tarifas). La baja del paquete se calcula sola 15 días antes del inicio del viaje, y se puede cambiar a mano."
         >
           <FieldGroup columns={2}>
             {/* 1) Período del viaje — la fuente de la baja automática. */}
@@ -615,46 +646,59 @@ export default function DatosTab({ paquete }: DatosTabProps) {
               />
               <p className="text-[11px] text-neutral-400 mt-1">
                 Define qué servicios y tarifas aplican. También fija la baja
-                automática: el paquete se da de baja 15 días antes del inicio
-                del viaje.
+                automática: 15 días antes del inicio del viaje. Si la baja tiene
+                una fecha propia, cambiar el período no la toca.
               </p>
             </Field>
 
-            {/* 2-3) Baja automática (solo lectura) + Salidas — misma fila, con
-                un hairline vertical entre ambos en desktop. En mobile quedan
-                apiladas sin separador, como el resto de FieldGroup. */}
+            {/* 2-3) Baja del paquete + Salidas - misma fila, con un hairline
+                vertical entre ambos en desktop. En mobile quedan apiladas sin
+                separador, como el resto de FieldGroup. */}
             <div className="md:col-span-2 flex flex-col gap-4 md:grid md:grid-cols-2 md:gap-0">
-              {/* 2) Baja automática — informativa, derivada del viaje. */}
+              {/* 2) Baja del paquete - automática, pero editable. */}
               <Field className="md:pr-6">
-                <FieldLabel>Baja automática</FieldLabel>
-                <div className="rounded-[8px] border border-[rgba(17,17,36,0.14)] bg-neutral-50 px-3 py-2.5">
-                  {bajaDate ? (
-                    <>
-                      <p className="text-[13.5px] font-medium text-neutral-800">
-                        {bajaDate.toLocaleDateString("es-AR", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </p>
-                      <p className="text-[11px] text-neutral-400 mt-0.5">
-                        15 días antes del inicio del viaje.
-                      </p>
-                    </>
+                <FieldLabel className="flex items-center gap-2">
+                  <span>Baja del paquete</span>
+                  {bajaManual ? (
+                    <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[10.5px] font-medium text-violet-700">
+                      Fecha propia
+                    </span>
                   ) : (
-                    <p className="text-[13px] text-neutral-500">
-                      Se define al cargar el período del viaje.
-                    </p>
+                    <span className="inline-flex items-center rounded-full bg-neutral-100 px-2 py-0.5 text-[10.5px] font-medium text-neutral-500">
+                      Automática
+                    </span>
                   )}
-                </div>
+                </FieldLabel>
+                <DatePicker
+                  value={bajaDate}
+                  onChange={setBajaDirty}
+                  placeholder="Se define al cargar el período del viaje"
+                  disabled={isReadOnly}
+                />
+                {bajaManual && bajaDate && !isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setBajaDirty(undefined)}
+                    className="mt-1 self-start text-[11px] text-violet-600 underline hover:text-violet-800"
+                  >
+                    Volver al automático
+                  </button>
+                )}
+                {bajaVencida && (
+                  <p className="mt-1 text-[11.5px] font-medium text-amber-600">
+                    Esta fecha ya pasó: con esta baja el paquete no se muestra
+                    en el sitio.
+                  </p>
+                )}
                 <p className="text-[11px] text-neutral-400 mt-1">
-                  El paquete queda activo desde que se crea. La baja la calcula
-                  el sistema; no se edita a mano.
+                  Se calcula sola: 15 días antes del inicio del viaje. Podés
+                  poner otra fecha (una promo de una semana, por ejemplo); para
+                  volver al automático, borrá el campo.
                 </p>
               </Field>
 
               {/* 3) Salidas — separada por el hairline en desktop. El span
-                  invisible alinea el input con el baseline de Baja automática. */}
+                  invisible alinea el input con el baseline de la baja. */}
               <Field className="md:border-l md:border-hairline md:pl-6">
                 <FieldLabel>Salidas</FieldLabel>
                 <Input

@@ -5,6 +5,7 @@ import { Command, CommandInput, CommandList, CommandItem } from "cmdk";
 import { Popover } from "radix-ui";
 import { ChevronDown, Check, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+import { cmdkAccentFilter, normalizeSearchValue } from "@/lib/search";
 
 export interface CreatableSelectOption {
   value: string;
@@ -30,12 +31,10 @@ interface Props {
   createLabel?: (query: string) => string;
 }
 
+// Misma normalización que usa el filtro y el resto del panel: sin tildes y en
+// minúsculas, así "mexico" no ofrece crear una "México" que ya existe.
 function normalize(str: string): string {
-  return str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .trim();
+  return normalizeSearchValue(str).trim();
 }
 
 /**
@@ -130,7 +129,7 @@ export function CreatableSelect({
                 "0 16px 40px -8px rgba(17,17,36,0.18), 0 4px 12px -4px rgba(17,17,36,0.08)",
             }}
           >
-            <Command shouldFilter>
+            <Command shouldFilter filter={cmdkAccentFilter}>
               <div className="border-b border-neutral-200/70 px-2 py-1.5">
                 <CommandInput
                   ref={inputRef}

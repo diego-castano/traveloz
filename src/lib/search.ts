@@ -22,6 +22,33 @@ export function matchesSearch(query: string, ...values: unknown[]): boolean {
   );
 }
 
+/**
+ * Filtro para los desplegables de cmdk (`<Command filter={...}>`). El default
+ * de cmdk ignora mayúsculas pero NO los diacríticos: tipear "mexico" no
+ * encontraba "México". Acá normalizamos los dos lados con `normalizeSearchValue`
+ * y comparamos por substring, igual que los listados del panel.
+ *
+ * cmdk espera un puntaje y descarta la opción con 0. Damos 1 al prefijo y 0.5
+ * al substring, así "per" pone a Perú arriba de Chipre. Los `keywords` de un
+ * item (sinónimos) puntúan igual que su texto visible.
+ */
+export function cmdkAccentFilter(
+  value: string,
+  search: string,
+  keywords?: string[],
+): number {
+  const q = normalizeSearchValue(search).trim();
+  if (!q) return 1;
+  const candidatos = [value, ...(keywords ?? [])];
+  let best = 0;
+  for (const c of candidatos) {
+    const v = normalizeSearchValue(c);
+    if (v.startsWith(q)) return 1;
+    if (v.includes(q)) best = Math.max(best, 0.5);
+  }
+  return best;
+}
+
 // Quita los ceros de relleno de un id secuencial ("003" → "3") sin dejar la
 // cadena vacía ("000" → "0").
 function stripPadding(s: string): string {
@@ -34,7 +61,7 @@ function stripPadding(s: string): string {
  * 177, 277 y 770 es puro ruido. Con prefijo, "177" cae exacto y "17" abre el
  * rango 17x.
  *
- * Complementa a `matchesSearch` — nunca lo reemplaza. La búsqueda de un listado
+ * Complementa a `matchesSearch` - nunca lo reemplaza. La búsqueda de un listado
  * se arma como `matchesId(q, row.id) || matchesSearch(q, ...campos de texto)`,
  * así que los catálogos que no lo usan siguen funcionando igual.
  *

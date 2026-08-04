@@ -10,6 +10,9 @@ import {
 } from "cmdk";
 import { Popover } from "radix-ui";
 import { X } from "lucide-react";
+// Filtro insensible a tildes: sin esto cmdk no encuentra "México" si el
+// operador tipea "mexico" (ver src/lib/search.ts).
+import { cmdkAccentFilter } from "@/lib/search";
 
 export type Option = { value: string; label: string; icon?: ReactNode };
 
@@ -81,7 +84,7 @@ export function MultiSelectCombobox({
             sideOffset={4}
             className="z-[100] bg-white rounded shadow-xl border w-[var(--radix-popover-trigger-width)]"
           >
-            <Command shouldFilter>
+            <Command shouldFilter filter={cmdkAccentFilter}>
               <CommandInput
                 value={query}
                 onValueChange={setQuery}
