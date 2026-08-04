@@ -12,13 +12,14 @@ import {
   recomputeForOpcionHotelera,
 } from "@/lib/recompute-prices";
 import { checkPaquetePublicable } from "@/lib/paquete-publicable";
+import { parseIncluyeItems, legacyTextToIncluye } from "@/lib/incluye";
 import { resolveSlugOnSave } from "@/lib/paquete-slug";
 import type { EstadoPaquete, ModalidadPaquete, Prisma } from "@prisma/client";
 
 const log = logger.child({ module: "package.actions" });
 
 /** Best-effort price propagation. Swallows errors so the caller's mutation
- *  always returns success — recompute failures are logged internally. */
+ *  always returns success - recompute failures are logged internally. */
 async function safePropagate(paqueteId: string): Promise<void> {
   try {
     await recomputePaqueteOpciones(paqueteId);
@@ -71,7 +72,7 @@ const PACKAGES_GLOBAL_TAG = "paquetes-global";
 // (getPaqueteBySlug, getPaquetesByRegion, getPaquetesByTipo,
 // getPaquetesRelacionados) se etiquetan con el literal "paquetes" y tienen
 // `revalidate: 60`. Si una mutación del backend NO invalida este tag, la página
-// pública del paquete —y su "Previsualizar"— sigue sirviendo datos viejos hasta
+// pública del paquete -y su "Previsualizar"- sigue sirviendo datos viejos hasta
 // que vence esa ventana de 60 s. Ese era el bug de "actualización retardada":
 // el operador editaba título / agregaba opciones u hoteles, abría el preview y
 // no veía los cambios hasta esperar un rato y refrescar varias veces.
@@ -89,11 +90,11 @@ function bustPackagesGlobal() {
 // moment the user commits a change.
 //
 // `scope`:
-//   • "full"  (default) — invalida TODO: dashboard, metrics, reports, las dos
+//   • "full"  (default) - invalida TODO: dashboard, metrics, reports, las dos
 //     lecturas cacheadas del backend (paquetes / paquete-sub) y el tag del sitio
 //     público. Es el comportamiento histórico; lo usan create/delete/clone y
 //     cualquier guardado que pueda impactar el sitio público.
-//   • "draft" — invalida SOLO las dos lecturas del backend por marca
+//   • "draft" - invalida SOLO las dos lecturas del backend por marca
 //     (`paquetes:${brandId}` y `paquete-sub:${brandId}`). Es lo mínimo para que
 //     el admin vea sus propios cambios frescos SIN tirar la caché de 60 s del
 //     sitio público ni la de dashboard/metrics/reports en cada tecla del
@@ -115,13 +116,13 @@ function bustDashboardCache(brandId: string, scope: "full" | "draft" = "full") {
 }
 
 // ──────────────────────────────────────────────
-// Paquete — Main entity (soft delete)
+// Paquete - Main entity (soft delete)
 // ──────────────────────────────────────────────
 
 // ---------------------------------------------------------------------------
 // Two-wave loading for paquetes.
-// Wave 1 — getBasePackages: only the Paquete rows. Fast; lifts the skeleton.
-// Wave 2 — getPackageSubEntities: all paquete-X join rows. Background fill.
+// Wave 1 - getBasePackages: only the Paquete rows. Fast; lifts the skeleton.
+// Wave 2 - getPackageSubEntities: all paquete-X join rows. Background fill.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -237,7 +238,7 @@ async function fetchBasePackagesUncached(
  * ARCHIVADO, así el paquete no queda ACTIVO con publicado=false.
  *
  * Gate por proceso (ver `lastReconcileAt` en el call site de getBasePackages):
- * antes esto corría en CADA getBasePackages — y getBasePackages se invoca varias
+ * antes esto corría en CADA getBasePackages - y getBasePackages se invoca varias
  * veces por navegación (CacheWarmer server-side + wave 1 + wave 2 con skip + cada
  * refetch por foco). El resultado real (dar de baja vencidos) cambia como mucho
  * una vez por día, así que sólo lo corremos si pasaron >5 min desde el último run
@@ -377,7 +378,7 @@ export async function getPackageSubEntities(requestedBrandId?: string) {
   }
 }
 
-// Compat wrapper — still used by legacy callers that want everything at once.
+// Compat wrapper - still used by legacy callers that want everything at once.
 export async function getAllPackageData(requestedBrandId?: string) {
   const [base, sub] = await Promise.all([
     getBasePackages(requestedBrandId),
@@ -422,7 +423,7 @@ export async function createPaquete(data: {
     });
     schema.parse(data);
 
-    // Margin guardrail — only enforced when both prices are present and positive,
+    // Margin guardrail - only enforced when both prices are present and positive,
     // so half-filled drafts still save (the writer will fill numbers later).
     const { assertMargenPositivo } = await import("./package-lifecycle.utils");
     if ((data.netoCalculado ?? 0) > 0 && (data.precioVenta ?? 0) > 0) {
@@ -661,6 +662,227 @@ export async function deletePaquete(id: string) {
   }
 }
 
+// ──────────────────────────────────────────────
+// Papelera - paquetes con borrado suave (deletedAt != null)
+//
+// `deletePaquete` nunca borra la fila: sólo marca `deletedAt`. Hasta ahora esos
+// paquetes quedaban invisibles (todas las lecturas filtran por `deletedAt:
+// null`) y no había forma de recuperarlos desde el panel. Estas tres funciones
+// son la papelera: listar, contar y restaurar. NO hay borrado definitivo a
+// propósito: es irreversible y el cliente no lo pidió.
+// ──────────────────────────────────────────────
+
+/** Fila de la papelera: lo justo para la tabla + el quick view previo a recuperar. */
+export interface PaqueteEliminado {
+  id: string;
+  titulo: string;
+  destino: string;
+  estado: EstadoPaquete;
+  publicado: boolean;
+  modalidad: ModalidadPaquete;
+  noches: number;
+  /** ISO string - el server component la serializa hacia el cliente. */
+  deletedAt: string;
+  createdAt: string;
+  viajeDesde: string | null;
+  viajeHasta: string | null;
+  /** Foto principal para el quick view (heroImage, o la primera del slider). */
+  foto: string | null;
+  /**
+   * Renglones de la lista "Incluye" ya resueltos a texto plano. La columna
+   * `textoIncluye` guarda un JSON con envelope (`{__incluye, items}`) o, en
+   * paquetes viejos, texto/HTML libre: acá se normalizan los dos formatos con
+   * los helpers de `lib/incluye` para que el quick view no tenga que saberlo.
+   */
+  incluye: string[];
+  /** Ciudades del itinerario, en orden. */
+  destinos: string[];
+  /** Precio desde ya resuelto (ver `resolvePrecioDesdeEliminado`). */
+  precioDesde: number;
+  moneda: string;
+}
+
+/**
+ * "Precio desde" para la papelera. El listado principal usa
+ * `computePaquetePrecios`, que necesita TODO el estado de paquetes y servicios
+ * cargado en el cliente (aéreos, alojamientos, traslados, seguros, circuitos y
+ * sus precios vigentes). Traer eso para una pantalla que se abre de vez en
+ * cuando es carísimo, así que acá aproximamos con lo que ya está persistido en
+ * el paquete: la opción hotelera más barata, y si no hay opciones, el
+ * `precioDesde` publicado o el `precioVenta` calculado. Es un dato de
+ * referencia para que el operador reconozca el paquete, no una cotización.
+ */
+function resolvePrecioDesdeEliminado(row: {
+  opcionesHoteleras: { precioVenta: number }[];
+  precioDesde: number | null;
+  precioVenta: number;
+}): number {
+  const precios = row.opcionesHoteleras
+    .map((o) => o.precioVenta)
+    .filter((p) => p > 0);
+  if (precios.length > 0) return Math.min(...precios);
+  if (row.precioDesde && row.precioDesde > 0) return row.precioDesde;
+  return row.precioVenta;
+}
+
+/**
+ * Lista los paquetes en la papelera, del borrado más reciente al más viejo.
+ *
+ * Pide `requireCanEdit` porque recuperar es una mutación y la pantalla no tiene
+ * otro uso: a un rol de sólo lectura no le sirve de nada ver la papelera.
+ */
+export async function getPaquetesEliminados(): Promise<PaqueteEliminado[]> {
+  try {
+    const { brandId } = await requireCanEdit();
+    const rows = await prisma.paquete.findMany({
+      where: { brandId, deletedAt: { not: null } },
+      orderBy: { deletedAt: "desc" },
+      select: {
+        id: true,
+        titulo: true,
+        destino: true,
+        estado: true,
+        publicado: true,
+        modalidad: true,
+        noches: true,
+        deletedAt: true,
+        createdAt: true,
+        viajeDesde: true,
+        viajeHasta: true,
+        heroImage: true,
+        textoIncluye: true,
+        precioDesde: true,
+        precioVenta: true,
+        moneda: true,
+        fotos: { select: { url: true }, orderBy: { orden: "asc" }, take: 1 },
+        destinos: {
+          select: { ciudad: { select: { nombre: true } } },
+          orderBy: { orden: "asc" },
+        },
+        opcionesHoteleras: { select: { precioVenta: true } },
+      },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      titulo: row.titulo,
+      destino: row.destino,
+      estado: row.estado,
+      publicado: row.publicado,
+      modalidad: row.modalidad,
+      noches: row.noches,
+      // `deletedAt` no puede ser null acá (lo filtra el where), pero Prisma lo
+      // tipa opcional igual.
+      deletedAt: (row.deletedAt ?? new Date()).toISOString(),
+      createdAt: row.createdAt.toISOString(),
+      viajeDesde: row.viajeDesde,
+      viajeHasta: row.viajeHasta,
+      foto: row.heroImage?.trim() || row.fotos[0]?.url || null,
+      incluye: (
+        parseIncluyeItems(row.textoIncluye) ??
+        legacyTextToIncluye(row.textoIncluye)
+      )
+        .map((it) => it.texto.trim())
+        .filter(Boolean)
+        .slice(0, 12),
+      destinos: row.destinos.map((d) => d.ciudad.nombre),
+      precioDesde: resolvePrecioDesdeEliminado(row),
+      moneda: row.moneda,
+    }));
+  } catch (error) {
+    log.error("fetching paquetes eliminados", error);
+    if (error instanceof Error && /permisos|autorizado/i.test(error.message)) {
+      throw error;
+    }
+    throw new Error("No se pudieron obtener los paquetes de la papelera.");
+  }
+}
+
+/** Cuántos paquetes hay en la papelera. Alimenta el badge del botón del listado. */
+export async function countPaquetesEliminados(): Promise<number> {
+  try {
+    const { brandId } = await requireAuth();
+    return await prisma.paquete.count({
+      where: { brandId, deletedAt: { not: null } },
+    });
+  } catch (error) {
+    log.error("counting paquetes eliminados", error);
+    return 0;
+  }
+}
+
+export interface RestorePaqueteResult {
+  id: string;
+  titulo: string;
+  /** Estado con el que quedó el paquete después de recuperarlo. */
+  estado: EstadoPaquete;
+  /**
+   * Faltantes del gate de publicación cuando hubo que bajarlo a BORRADOR.
+   * `null` = volvió tal cual estaba.
+   */
+  degradado: string[] | null;
+}
+
+/**
+ * Recupera un paquete de la papelera: `deletedAt = null` y nada más, para que
+ * vuelva exactamente como estaba (estado, publicado, precios, fotos, todo).
+ *
+ * Única excepción, y es a propósito: si el paquete estaba ACTIVO o publicado,
+ * recuperarlo lo devuelve al sitio público EN EL ACTO. Si mientras estaba en la
+ * papelera dejó de cumplir los requisitos de publicación (le borraron el aéreo,
+ * la foto principal, la opción hotelera, se le venció el precio del circuito…),
+ * publicarlo de nuevo dejaría el invariante "ACTIVO ⇔ publicable" roto y el
+ * sitio mostrando un paquete incompleto o con "Desde $0". En ese caso lo
+ * recuperamos como BORRADOR + despublicado y devolvemos los faltantes para que
+ * la UI se lo explique al operador. Un paquete que ya estaba en BORRADOR,
+ * EN_REVISION o ARCHIVADO no pasa por el gate: no toca el sitio público, así
+ * que vuelve intacto.
+ */
+export async function restorePaquete(id: string): Promise<RestorePaqueteResult> {
+  try {
+    const { brandId } = await requireCanEdit();
+    const owner = await prisma.paquete.findFirst({
+      where: { id, brandId, deletedAt: { not: null } },
+      select: { id: true, titulo: true, estado: true, publicado: true },
+    });
+    if (!owner) {
+      throw new Error(
+        "Paquete no encontrado en la papelera o no pertenece a tu marca.",
+      );
+    }
+
+    const data: Prisma.PaqueteUpdateInput = { deletedAt: null };
+    let degradado: string[] | null = null;
+    if (owner.estado === "ACTIVO" || owner.publicado) {
+      const gate = await checkPaquetePublicable(id);
+      if (!gate.ok) {
+        data.estado = "BORRADOR";
+        data.publicado = false;
+        degradado = gate.missing;
+      }
+    }
+
+    const restored = await prisma.paquete.update({ where: { id }, data });
+    // "full" (el default) invalida dashboard, métricas, reportes, las lecturas
+    // del backend y el tag "paquetes" del sitio público. Ese último es el que
+    // importa acá: sin él, un paquete recuperado y publicado tardaba hasta 60 s
+    // en reaparecer en la web. Es la misma llamada que hace `deletePaquete`.
+    bustDashboardCache(brandId);
+    return {
+      id: restored.id,
+      titulo: restored.titulo,
+      estado: restored.estado,
+      degradado,
+    };
+  } catch (error) {
+    log.error("restoring paquete", error);
+    if (error instanceof Error && /pertenece|permisos/i.test(error.message)) {
+      throw error;
+    }
+    throw new Error("No se pudo recuperar el paquete.");
+  }
+}
+
 export async function clonePaquete(sourceId: string) {
   try {
     await requireCanEdit();
@@ -821,7 +1043,7 @@ export async function clonePaquete(sourceId: string) {
         opcionIdMap.set(o.id, created.id);
       }
 
-      // Clone destinos — keep oldId → newId map for OpcionHotel link-through.
+      // Clone destinos - keep oldId → newId map for OpcionHotel link-through.
       const destinoIdMap = new Map<string, string>();
       for (const d of sourceDestinos) {
         const created = await tx.paqueteDestino.create({
@@ -908,7 +1130,7 @@ export async function clonePaquete(sourceId: string) {
 }
 
 // ──────────────────────────────────────────────
-// PaqueteAereo — Junction CRUD
+// PaqueteAereo - Junction CRUD
 // ──────────────────────────────────────────────
 
 export async function assignAereo(data: {
@@ -970,7 +1192,7 @@ export async function updateAereoAssignment(
 }
 
 // ──────────────────────────────────────────────
-// Bulk-reorder service assignments — used by the Servicios tab drag-and-drop.
+// Bulk-reorder service assignments - used by the Servicios tab drag-and-drop.
 // Updates the `orden` column on each junction row inside a single transaction
 // so the reordering survives F5 (the old implementation wrote a flat array
 // on Paquete.ordenServicios which never round-tripped to the junction rows).
@@ -1003,7 +1225,7 @@ export async function reorderPaqueteAssignments(
 }
 
 // ──────────────────────────────────────────────
-// PaqueteAlojamiento — Junction CRUD
+// PaqueteAlojamiento - Junction CRUD
 // ──────────────────────────────────────────────
 
 export async function assignAlojamiento(data: {
@@ -1067,7 +1289,7 @@ export async function updateAlojamientoAssignment(
 }
 
 // ──────────────────────────────────────────────
-// PaqueteTraslado — Junction CRUD
+// PaqueteTraslado - Junction CRUD
 // ──────────────────────────────────────────────
 
 export async function assignTraslado(data: {
@@ -1127,7 +1349,7 @@ export async function updateTrasladoAssignment(
 }
 
 // ──────────────────────────────────────────────
-// PaqueteSeguro — Junction CRUD
+// PaqueteSeguro - Junction CRUD
 // ──────────────────────────────────────────────
 
 export async function assignSeguro(data: {
@@ -1177,7 +1399,7 @@ export async function updateSeguroAssignment(
   try {
     await requireCanEdit();
     const res = await prisma.paqueteSeguro.update({ where: { id }, data });
-    // Only diasCobertura affects pricing — textoDisplay/orden are cosmetic.
+    // Only diasCobertura affects pricing - textoDisplay/orden are cosmetic.
     if (data.diasCobertura !== undefined) {
       await safePropagate(res.paqueteId);
     }
@@ -1190,7 +1412,7 @@ export async function updateSeguroAssignment(
 }
 
 // ──────────────────────────────────────────────
-// PaqueteCircuito — Junction CRUD
+// PaqueteCircuito - Junction CRUD
 // ──────────────────────────────────────────────
 
 export async function assignCircuito(data: {
@@ -1250,7 +1472,7 @@ export async function updateCircuitoAssignment(
 }
 
 // ──────────────────────────────────────────────
-// PaqueteFoto — Photo CRUD
+// PaqueteFoto - Photo CRUD
 // ──────────────────────────────────────────────
 
 export async function addPaqueteFoto(data: {
@@ -1308,7 +1530,7 @@ export async function updatePaqueteFoto(
 }
 
 // ──────────────────────────────────────────────
-// PaqueteEtiqueta — Etiqueta assignment
+// PaqueteEtiqueta - Etiqueta assignment
 // ──────────────────────────────────────────────
 
 export async function assignEtiqueta(data: {
@@ -1339,7 +1561,7 @@ export async function removeEtiqueta(id: string) {
 }
 
 // ──────────────────────────────────────────────
-// OpcionHotelera — CRUD
+// OpcionHotelera - CRUD
 // ──────────────────────────────────────────────
 
 export async function createOpcionHotelera(data: {
@@ -1377,7 +1599,7 @@ export async function updateOpcionHotelera(
     await requireCanEdit();
     const res = await prisma.opcionHotelera.update({ where: { id }, data });
     // Recompute when the factor changes. We skip when only precioVenta was sent
-    // — that's a manual override the propagator would overwrite. nombre/orden/
+    // - that's a manual override the propagator would overwrite. nombre/orden/
     // proveedorId are cosmetic.
     if (data.factor !== undefined) await safePropagate(res.paqueteId);
     bustPackagesGlobal();
@@ -1405,7 +1627,7 @@ export async function deleteOpcionHotelera(id: string) {
 }
 
 // ──────────────────────────────────────────────
-// PaqueteDestino — itinerary row CRUD
+// PaqueteDestino - itinerary row CRUD
 // ──────────────────────────────────────────────
 
 export async function createPaqueteDestino(data: {
@@ -1522,7 +1744,7 @@ export async function reorderPaqueteDestinos(
 }
 
 // ──────────────────────────────────────────────
-// OpcionHotel — per-destino hotel assignment CRUD
+// OpcionHotel - per-destino hotel assignment CRUD
 // ──────────────────────────────────────────────
 
 export async function createOpcionHotel(data: {

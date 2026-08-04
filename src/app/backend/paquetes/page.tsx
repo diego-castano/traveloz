@@ -100,6 +100,7 @@ import { sortByRecency } from "@/lib/recency";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
 import type { Paquete, PaqueteFoto, Pais } from "@/lib/types";
 import { PaqueteGridCard } from "./_components/PaqueteGridCard";
+import { countPaquetesEliminados } from "@/actions/package.actions";
 import {
   bulkPublish as serverBulkPublish,
   bulkUnpublish as serverBulkUnpublish,
@@ -111,7 +112,7 @@ import { Send as SendIcon, Archive as ArchiveIcon } from "lucide-react";
 // Constants
 // ---------------------------------------------------------------------------
 
-// Lifecycle badges — four-state model BORRADOR / EN_REVISION / ACTIVO /
+// Lifecycle badges - four-state model BORRADOR / EN_REVISION / ACTIVO /
 // ARCHIVADO. Each entry maps to a Badge variant + color used in the
 // segmented control and chip rendering.
 const estadoBadge = {
@@ -199,7 +200,7 @@ function usePaisResolver(
 }
 
 // ---------------------------------------------------------------------------
-// Price formatting helper — keeps only the final sale price visible in the table.
+// Price formatting helper - keeps only the final sale price visible in the table.
 // ---------------------------------------------------------------------------
 
 function formatPaquetePrice(
@@ -268,6 +269,24 @@ export default function PaquetesPage() {
   const { hydratingPaquetes, totalPaquetes, loadedPaquetes } =
     usePackageProgress();
 
+  // Contador de la papelera para el badge del botón. Es un COUNT solo, y sólo
+  // se pide cuando el rol puede editar (los demás no ven el botón). Si falla,
+  // la acción devuelve 0 y el botón queda sin badge: no vale romper el listado
+  // por un número decorativo.
+  const [papeleraCount, setPapeleraCount] = useState(0);
+  useEffect(() => {
+    if (!canEdit) return;
+    let cancelled = false;
+    countPaquetesEliminados()
+      .then((n) => {
+        if (!cancelled) setPapeleraCount(n);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [canEdit]);
+
   // Map paqueteId → total nights (sum of its destinos.noches)
   const nochesPorPaquete = useMemo(() => {
     const map = new Map<string, number>();
@@ -296,7 +315,7 @@ export default function PaquetesPage() {
     return regiones.find((r) => r.id === regionParam) ?? null;
   }, [regionParam, regiones]);
 
-  // Lookup indices for pricing — built once per relevant-state slice change
+  // Lookup indices for pricing - built once per relevant-state slice change
   // (not on every provider dispatch) instead of computePaquetePrecios's
   // per-paquete .filter/.find over the full arrays. Deps are the exact
   // slices computePaquetePrecios reads, not the whole packageState/
@@ -330,7 +349,7 @@ export default function PaquetesPage() {
 
   // Per-paquete price derivation. Covers ALL paquetes (not just the current
   // page) because the "precio" column is sortable and useTableSort sorts
-  // over filteredPaquetes before pagination is applied — see sortColumns
+  // over filteredPaquetes before pagination is applied - see sortColumns
   // below. computePaquetePreciosIndexed returns numerically identical
   // results to computePaquetePrecios, just via the index above instead of
   // per-paquete linear scans.
@@ -459,7 +478,7 @@ export default function PaquetesPage() {
     [destinoCounts],
   );
 
-  // Set of paquete ids that already have at least one opción hotelera —
+  // Set of paquete ids that already have at least one opción hotelera -
   // reused by the "alerta=sin-opcion" filter below (same source the
   // dashboard's countPaquetesSinOpcion card reads from).
   const paqueteIdsConOpcion = useMemo(
@@ -481,7 +500,7 @@ export default function PaquetesPage() {
       );
     }
 
-    // Estado (segmented — exclusive)
+    // Estado (segmented - exclusive)
     if (estadoFilter !== "all") {
       result = result.filter((p) => p.estado === estadoFilter);
     }
@@ -496,7 +515,7 @@ export default function PaquetesPage() {
       result = result.filter((p) => tipoFilter.includes(p.tipoPaqueteId));
     }
 
-    // Destino (multi — país nombre)
+    // Destino (multi - país nombre)
     if (destinoFilter.length > 0) {
       result = result.filter((p) => {
         const nombre = resolver.paisNombreFor(p.id);
@@ -513,7 +532,7 @@ export default function PaquetesPage() {
       });
     }
 
-    // Alerta (from dashboard card ?alerta=sin-opcion) — activos sin opción
+    // Alerta (from dashboard card ?alerta=sin-opcion) - activos sin opción
     // hotelera, excluyendo CIRCUITO (no le aplica: precio por markup).
     if (alertaFilter === "sin-opcion") {
       result = result.filter((p) =>
@@ -811,7 +830,12 @@ export default function PaquetesPage() {
       next.delete(id);
       return next;
     });
-    toast("success", "Paquete eliminado", `"${titulo}" fue eliminado correctamente`);
+    setPapeleraCount((n) => n + 1);
+    toast(
+      "success",
+      "Paquete eliminado",
+      `"${titulo}" fue a la papelera. Podés recuperarlo desde ahí.`,
+    );
   }
 
   function handleBulkDelete() {
@@ -820,12 +844,13 @@ export default function PaquetesPage() {
     for (const id of ids) deletePaquete(id);
     setSelected(new Set());
     setBulkDeleteOpen(false);
+    setPapeleraCount((n) => n + ids.length);
     toast(
       "success",
       "Paquetes eliminados",
-      `${ids.length} paquete${ids.length === 1 ? "" : "s"} eliminado${
-        ids.length === 1 ? "" : "s"
-      } correctamente`,
+      `${ids.length} paquete${ids.length === 1 ? "" : "s"} fue${
+        ids.length === 1 ? "" : "ron"
+      } a la papelera. Podés recuperarlos desde ahí.`,
     );
   }
 
@@ -844,7 +869,7 @@ export default function PaquetesPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Lifecycle bulk actions — server-side transitions enforce the matrix in
+  // Lifecycle bulk actions - server-side transitions enforce the matrix in
   // package-lifecycle.actions.ts (e.g. ARCHIVADO can't be re-published in one
   // step). The toast surfaces partial-success counts when some rows are
   // rejected by the transition guard.
@@ -964,12 +989,28 @@ export default function PaquetesPage() {
           subtitle={packageSubtitle}
           action={
             canEdit ? (
-              <Button
-                leftIcon={<Plus className="h-4 w-4" />}
-                onClick={() => router.push("/backend/paquetes/nuevo")}
-              >
-                Nuevo Paquete
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Papelera en secundario para que no le compita a la acción
+                    principal. Muestra cuántos paquetes hay para recuperar. */}
+                <Button
+                  variant="secondary"
+                  leftIcon={<Trash2 className="h-4 w-4" />}
+                  onClick={() => router.push("/backend/paquetes/papelera")}
+                >
+                  Papelera
+                  {papeleraCount > 0 && (
+                    <span className="ml-1 rounded-full bg-neutral-100 px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-neutral-500">
+                      {papeleraCount}
+                    </span>
+                  )}
+                </Button>
+                <Button
+                  leftIcon={<Plus className="h-4 w-4" />}
+                  onClick={() => router.push("/backend/paquetes/nuevo")}
+                >
+                  Nuevo Paquete
+                </Button>
+              </div>
             ) : undefined
           }
         />
@@ -1178,7 +1219,7 @@ export default function PaquetesPage() {
               paquete={paquete}
               foto={fotoByPaquete.get(paquete.id)}
               destino={
-                resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "—"
+                resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "-"
               }
               regionNombre={resolver.regionNombreFor(paquete.id) ?? undefined}
               temporada={
@@ -1320,7 +1361,7 @@ export default function PaquetesPage() {
                 {paginatedPaquetes.map((paquete) => {
                 const pricing = preciosMap[paquete.id];
                 const destinoNombre =
-                  resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "—";
+                  resolver.paisNombreFor(paquete.id) ?? paquete.destino ?? "-";
                 const regionNombre = resolver.regionNombreFor(paquete.id);
                 const temporada = paquete.temporadaId
                   ? temporadaById.get(paquete.temporadaId)
@@ -1393,7 +1434,7 @@ export default function PaquetesPage() {
                             {temporada.nombre.replace(/\s*\(.*\)/, "").trim()}
                           </span>
                         ) : (
-                          <span className="text-[12px] text-neutral-300">—</span>
+                          <span className="text-[12px] text-neutral-300">-</span>
                         )}
                       </TableCell>
                     )}
@@ -1405,7 +1446,7 @@ export default function PaquetesPage() {
                             {tipo.nombre}
                           </span>
                         ) : (
-                          <span className="text-[12px] text-neutral-300">—</span>
+                          <span className="text-[12px] text-neutral-300">-</span>
                         )}
                       </TableCell>
                     )}
@@ -1414,7 +1455,7 @@ export default function PaquetesPage() {
                       <TableCell className="text-center font-mono text-[12px] tabular-nums text-neutral-600">
                         {(() => {
                           const n = nochesPorPaquete.get(paquete.id) ?? 0;
-                          return n > 0 ? n : "—";
+                          return n > 0 ? n : "-";
                         })()}
                       </TableCell>
                     )}
@@ -1533,7 +1574,7 @@ export default function PaquetesPage() {
               ¿Eliminar {selected.size} paquete{selected.size === 1 ? "" : "s"}?
             </p>
             <p className="mt-2 text-sm text-neutral-400">
-              Esta acción no se puede deshacer.
+              Van a la papelera, así que podés recuperarlos después.
             </p>
           </ModalBody>
           <ModalFooter>
@@ -1561,7 +1602,7 @@ export default function PaquetesPage() {
             &rdquo;?
           </p>
           <p className="mt-2 text-sm text-neutral-400">
-            Esta acción no se puede deshacer.
+            Va a la papelera, así que podés recuperarlo después.
           </p>
         </ModalBody>
         <ModalFooter>
