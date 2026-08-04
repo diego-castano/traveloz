@@ -123,7 +123,21 @@ export async function GET(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error";
-    const isNotFound = /not ?found|NoSuchKey/i.test(message);
+    // El SDK de S3 avisa "archivo inexistente" por el NOMBRE del error
+    // (`NotFound` en HeadObject, `NoSuchKey` en GetObject) y a veces deja el
+    // message vacio. Mirando solo el message, una imagen borrada del bucket
+    // salia 500: parecia una falla nuestra, ensuciaba los logs y escondia el
+    // problema real, que es un dato apuntando a un archivo que ya no esta.
+    const name = err instanceof Error ? err.name : "";
+    const httpStatus =
+      typeof err === "object" && err !== null
+        ? (err as { $metadata?: { httpStatusCode?: number } }).$metadata
+            ?.httpStatusCode
+        : undefined;
+    const isNotFound =
+      /not ?found|NoSuchKey/i.test(message) ||
+      /^(NotFound|NoSuchKey)$/i.test(name) ||
+      httpStatus === 404;
     if (!isNotFound) console.error("[api/image] failed:", err);
     // No devolver message: puede contener keys/paths del bucket.
     return NextResponse.json(

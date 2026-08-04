@@ -58,31 +58,23 @@ export default async function TagPage({
   const etiqueta = await getEtiquetaBySlug(params.slug);
   if (!etiqueta) notFound();
 
-  const [paquetes, regionResolver, settings] = await Promise.all([
+  const [paquetes, regionResolver] = await Promise.all([
     getPaquetesByEtiqueta(etiqueta.id),
     // El href de cada card sale de la región REAL de ese paquete
     // (src/lib/region-paquete.ts). Esta landing es la que reportó el cliente:
     // /tag/miami-combinados linkeaba todo a /destinos/europa/… porque usaba la
     // primera región publicada para cualquier paquete.
     getRegionResolver(),
-    getSiteSettings("destinos"),
   ]);
-  // Misma plantilla del subtítulo de categoría que usa /destinos?tipo= — ver
-  // comentario en generateMetadata sobre el reuso deliberado.
-  const subtituloTpl =
-    settings.destinos_categoria_subtitulo?.trim() ||
-    "Paquetes de {tipo} disponibles.";
-  const subtitulo = subtituloTpl.replace(
-    /\{tipo\}/gi,
-    etiqueta.nombre.toLowerCase(),
-  );
 
   return (
     <section className="content-area">
       <div className="container">
+        {/* Sin subtitulo: el cliente pidio dejar solo el titulo en las landings
+            de etiqueta. La plantilla sigue armando la meta description (ver
+            generateMetadata), que si le sirve a Google. */}
         <div className="text-center mb_50">
           <h1 className="section-heading">{etiqueta.nombre}</h1>
-          <p>{subtitulo}</p>
         </div>
         {paquetes.length === 0 ? (
           <p className="text-center py-12">
