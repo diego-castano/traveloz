@@ -94,16 +94,29 @@ function LoginPageInner() {
   const [pinError, setPinError] = useState("");
   const [pinLoading, setPinLoading] = useState(false);
 
-  // True while we hand off to /backend/dashboard. Shown as a full-screen loader
+  // True while we hand off to la pantalla destino. Shown as a full-screen loader
   // so the user doesn't see a blank page while the next segment compiles/mounts.
   const [redirecting, setRedirecting] = useState(false);
+
+  // A donde volver despues de loguearse. El middleware nos pasa la ruta que el
+  // operador quiso abrir (`?next=`), asi un link directo a un paquete termina
+  // en ese paquete y no en el dashboard. Solo aceptamos rutas internas del
+  // panel: cualquier otra cosa (una URL absoluta a otro dominio, un //host)
+  // seria un open redirect.
+  const destino = (() => {
+    const next = search?.get("next");
+    if (!next || !next.startsWith("/backend/")) return "/backend/dashboard";
+    if (next.startsWith("//")) return "/backend/dashboard";
+    if (next.startsWith("/backend/login")) return "/backend/dashboard";
+    return next;
+  })();
 
   useEffect(() => {
     if (auth.isAuthenticated) {
       setRedirecting(true);
-      router.push("/backend/dashboard");
+      router.push(destino);
     }
-  }, [auth.isAuthenticated, router]);
+  }, [auth.isAuthenticated, router, destino]);
 
   if (redirecting || auth.isAuthenticated) {
     return <LoginTransition background={activeBrand.loginBackground} />;

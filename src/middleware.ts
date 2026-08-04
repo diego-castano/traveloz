@@ -10,10 +10,16 @@ const PUBLIC_BACKEND_ROUTES = new Set([
 ]);
 
 export default auth((req) => {
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl;
   if (PUBLIC_BACKEND_ROUTES.has(pathname)) return;
   if (!req.auth) {
-    return Response.redirect(new URL("/backend/login", req.nextUrl.origin));
+    // Nos guardamos a donde queria ir para devolverlo despues de loguearse.
+    // Sin esto, entrar por un link directo (el que mandamos en el aviso de
+    // Bitrix, o uno pegado en WhatsApp) terminaba SIEMPRE en el dashboard y el
+    // operador tenia que buscar el paquete a mano.
+    const login = new URL("/backend/login", req.nextUrl.origin);
+    login.searchParams.set("next", `${pathname}${search}`);
+    return Response.redirect(login);
   }
 });
 
