@@ -28,6 +28,17 @@ const ALLOWED_TAGS = new Set([
   "ol",
   "li",
   "a",
+  // Encabezados: el contenido del CMS (preguntas frecuentes, terminos) los usa
+  // para separar secciones dentro de una respuesta larga. Estaban afuera de la
+  // lista, y como esto tambien corre AL GUARDAR, editar un tema desde el panel
+  // le borraba los subtitulos para siempre: 4 de los 6 temas de FAQ ya los
+  // habian perdido. No hay riesgo de seguridad en un encabezado (no ejecuta
+  // nada y no lleva atributos, que se filtran aparte).
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
 ]);
 
 // Attributes kept per tag. Anything not listed (style, on*, data-*, …) is
