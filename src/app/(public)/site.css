@@ -1772,6 +1772,16 @@ section {
     display: none;
 }
 
+/* El body del acordeon arranca con un h2 que repite el titulo del tema (viene
+   asi desde el CMS), y quedaba visible: en /faq se leia "Documentacion" dos
+   veces seguidas, una en la solapa y otra como primer renglon del texto. La
+   regla de arriba lo tapaba, pero cuelga de `.plain-content`, una clase que el
+   sanitizador borra del HTML guardado, asi que estaba muerta. Esta version
+   cuelga del contenedor real, que siempre existe. */
+.faq-accordion .accordion-body h2:first-child {
+    display: none;
+}
+
 .faq-tab-content .plain-content h3 {
     font-size: 18px;
     margin-bottom: 5px;
