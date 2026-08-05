@@ -26,31 +26,23 @@ export default async function DestinosPage({
   if (tipoSlug) {
     const tipo = await getTipoPaqueteBySlug(tipoSlug);
     if (tipo) {
-      const [paquetes, regionResolver, settings] = await Promise.all([
+      const [paquetes, regionResolver] = await Promise.all([
         getPaquetesByTipo(tipo.id),
         // El href de cada card sale de la región REAL de ese paquete
         // (src/lib/region-paquete.ts). Antes esta grilla usaba la primera
         // región publicada para todos, y por eso los paquetes de Miami
         // salían linkeados como /destinos/europa/….
         getRegionResolver(),
-        getSiteSettings("destinos"),
       ]);
-      // Plantilla del subtítulo de categoría — {tipo} se reemplaza por el
-      // nombre de la categoría. Editable desde /backend/web/destinos.
-      const subtituloTpl =
-        settings.destinos_categoria_subtitulo?.trim() ||
-        "Paquetes de {tipo} disponibles.";
-      const subtitulo = subtituloTpl.replace(
-        /\{tipo\}/gi,
-        tipo.nombre.toLowerCase(),
-      );
-
       return (
         <section className="content-area">
           <div className="container">
+            {/* Sin subtitulo: el cliente pidio dejar solo el titulo en estas
+                landings, igual que en las de etiqueta (/tag/[slug]). La
+                plantilla sigue armando la meta description, que si le sirve a
+                Google. */}
             <div className="text-center mb_50">
               <h1 className="section-heading">{tipo.nombre}</h1>
-              <p>{subtitulo}</p>
             </div>
             {paquetes.length === 0 ? (
               <p className="text-center py-12">

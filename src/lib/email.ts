@@ -151,12 +151,13 @@ function stripHtml(html: string): string {
 const BRAND_ACCENT = "#F43E55";
 const BRAND_INK = "#23232b";
 const BRAND_MUTED = "#8a8f98";
-// Dominio que sirve la app (y el logo del email). Usa el de Railway por
-// defecto porque es el asset host confirmado; se puede pisar con APP_URL.
+// Dominio que sirve la app (y el logo del email). El fallback es el dominio
+// definitivo: si alguna vez falta la env, preferimos mandar links a
+// traveloz.com.uy antes que exponer la URL interna de Railway.
 const SITE_BASE_URL = (
   process.env.APP_URL ||
   process.env.NEXTAUTH_URL ||
-  "https://traveloz-production.up.railway.app"
+  "https://traveloz.com.uy"
 ).replace(/\/+$/, "");
 // No usamos header-logo.webp acá: el proxy de imágenes de Gmail convierte los
 // webp con transparencia a JPEG, y el canal alpha queda como un rectángulo
