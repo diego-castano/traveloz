@@ -127,7 +127,10 @@ export function PackageCard({
                       </span>
                     </div>
                   </div>
-                  <span className="d-block text-end">
+                  {/* .price-note distingue la bajada del precio del fallback
+                      "Consultar precio" de abajo, que también es .text-end pero
+                      hace las veces del monto y conserva su cuerpo. */}
+                  <span className="d-block text-end price-note">
                     Precio por persona <br className="keep" /> en base doble
                   </span>
                 </>

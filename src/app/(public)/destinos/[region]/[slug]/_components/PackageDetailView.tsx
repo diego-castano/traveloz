@@ -408,6 +408,11 @@ const SCOPED_STYLES = `
        doble" venía text-align:left del template; la alineamos a la derecha para
        que todo el bloque comparta el mismo borde derecho de la columna. */
     .pkg-detail .top-heading .pr_notes { text-align: right !important; }
+    /* Misma jerarquía que la tarjeta de paquete: cifras juntas y bajada chica
+       debajo del número. El template dejaba el monto sin tracking y la leyenda
+       en 14px, casi la mitad del número. El text-align de arriba no se toca. */
+    .pkg-detail .top-heading .main-price { letter-spacing: -0.9px; }
+    .pkg-detail .top-heading .pr_notes { font-size: 12px; line-height: 15px; }
     .pkg-detail .box-tab-content.style1 .nav-tabs { padding: 10px 18px 0; }
     .pkg-detail .box-tab-content.style1 .nav-link { font-size: 15px; }
     .pkg-detail .box-tab-content.style1 .content-inner { padding: 16px 18px; }

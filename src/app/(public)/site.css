@@ -1389,6 +1389,11 @@ section {
     font-size: 38px;
     line-height: 0.9;
     font-weight: 700;
+    /* El numero venia sin tracking y las cifras quedaban sueltas: se leian
+       como digitos separados en vez de un precio. El resto del template ya
+       usa tracking negativo en los precios grandes (-1.5px sobre 78px en
+       .sidebar-form, -0.5px sobre 28px en mobile); esto lo alinea. */
+    letter-spacing: -1px;
 }
 
 .box-card .price-left {
@@ -1411,6 +1416,16 @@ section {
     line-height: 18px;
     font-size: 14px;
     font-weight: 400;
+}
+
+/* Bajada del precio ("Precio por persona en base doble"). Iba a 14px, el mismo
+   cuerpo que los bullets de al lado, y le competia al numero. En la referencia
+   (Desktop-detalle-destino.pdf) mide ~11px contra un numero de ~39px, o sea
+   menos de un tercio. Va sobre .price-note y no sobre .text-end para no
+   achicar el fallback "Consultar precio", que ocupa el lugar del monto. */
+.box-card .text .price-note {
+    line-height: 15px;
+    font-size: 11.5px;
 }
 
 .litepicker .is-start-date,
@@ -4264,13 +4279,25 @@ header.header-area.header-dark {
     }
 
     /* Padding parejo del cuerpo: mismo inset horizontal que el header (22px) y
-       separación clara del borde del card, sin el desfasaje que tenía antes
-       (header 20 / cuerpo 30). */
-    .faq-accordion.alt .accordion-body .faq-tab-content .plain-content {
+       separación clara del borde del card.
+       El padding va sobre .accordion-body, que lo pinta el componente. El HTML
+       del CMS pasa por sanitizeRichHtml, que borra el class de los <div>: en
+       mobile los envoltorios .faq-tab-content y .plain-content no llegan al DOM
+       y toda regla colgada de ellos queda muerta (por eso el texto terminaba
+       tocando el borde del card). Los resets siguen listados por si el
+       envoltorio vuelve. */
+    .faq-accordion.alt .accordion-body {
         border: none !important;
         margin: 0;
         background: transparent;
         padding: 6px 22px 22px;
+    }
+
+    .faq-accordion.alt .accordion-body .faq-tab-content .plain-content {
+        border: none !important;
+        margin: 0;
+        background: transparent;
+        padding: 0;
     }
 
     .faq-accordion.alt .accordion-item {
@@ -4997,11 +5024,19 @@ header.header-area.header-dark {
     .box-card.alt .main-price {
         font-size: 44px;
         line-height: 1;
+        /* La regla de <=767px deja -0.5px, que sobre 44px casi no se nota.
+           Mismo tracking relativo que el desktop (-0.027em). */
+        letter-spacing: -1.2px;
     }
 
     .box-card.alt .text .text-end {
         font-size: 13px;
         line-height: 17px;
+    }
+
+    .box-card.alt .text .price-note {
+        font-size: 12px;
+        line-height: 15px;
     }
 
     .box-card.alt .text {
