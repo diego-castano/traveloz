@@ -41,6 +41,25 @@ export function WorkForm() {
   return (
     <form action={formAction} encType="multipart/form-data">
       <HoneypotField />
+      {/* El aviso de error va ARRIBA del formulario, no abajo del boton: el
+          form es largo y en el celular el mensaje quedaba fuera de pantalla,
+          asi que el visitante creia que no habia pasado nada (lo reporto el
+          cliente cuando le corto el limite de envios). */}
+      {result && !result.ok && (
+        <p
+          role="alert"
+          style={{
+            color: "#c0392b",
+            background: "#fdecea",
+            border: "1px solid #f5c6c2",
+            borderRadius: 8,
+            padding: "12px 16px",
+            marginBottom: 18,
+          }}
+        >
+          {result.message}
+        </p>
+      )}
       <ul className="row">
         <li className="col-sm-12">
           <label htmlFor="f_name">Nombre Completo</label>
@@ -87,11 +106,6 @@ export function WorkForm() {
       <div className="text-start mt-4">
         <SubmitButton />
       </div>
-      {result && !result.ok && (
-        <p style={{ color: "#c0392b", marginTop: 15 }} role="alert">
-          {result.message}
-        </p>
-      )}
     </form>
   );
 }

@@ -69,7 +69,11 @@ export function resetLoginRate(ip: string | null | undefined): void {
 // ──────────────────────────────────────────────
 
 const FORM_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const FORM_MAX_HITS = 5; // 5 envíos por form por IP por hora
+// 20 envíos por form por IP por hora. Estaba en 5 y le pegaba al equipo del
+// cliente: toda la agencia sale por una sola IP, asi que probar los
+// formularios un par de veces ya frenaba los envios reales de una oficina
+// entera. 20 sigue cortando el abuso automatizado, que llega de a cientos.
+const FORM_MAX_HITS = 20;
 
 const formBuckets = new Map<string, Bucket>();
 
