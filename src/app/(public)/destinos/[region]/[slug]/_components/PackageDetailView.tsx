@@ -346,6 +346,23 @@ const SCOPED_STYLES = `
   }
 
   .pkg-detail .sidebar-form { padding: 28px; }
+  /* Bloque de precio: "DESDE USD 550" y la bajada forman un grupo que se achica
+     al contenido y se centra entero en la tarjeta. Asi la bajada arranca en el
+     mismo borde izquierdo que "DESDE" en vez de quedar centrada por su cuenta
+     (el cliente la veia "suelta abajo"). Como el grupo mide lo que el texto mas
+     ancho, la bajada entra en un solo renglon siempre que el ancho de la tarjeta
+     lo permita; si no entra, balance reparte los renglones parejos y el espacio
+     duro del JSX evita la palabra huerfana. */
+  .pkg-detail .sidebar-form .price-block {
+    width: max-content;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+  .pkg-detail .sidebar-form .price-block .large-price { justify-content: flex-start; }
+  .pkg-detail .sidebar-form .price-desc {
+    text-align: left;
+    text-wrap: balance;
+  }
   .pkg-detail .sidebar-form .main-price { font-size: 56px; }
   .pkg-detail .sidebar-form .price-left .title { font-size: 14px; }
   .pkg-detail .sidebar-form .price-left .title2 { font-size: 22px; }

@@ -55,20 +55,42 @@ export function PassengerCounter({
 }: Props) {
   const [open, setOpen] = useState(false);
   const [counts, setCounts] = useState<Counts>(initial);
+  // El campo arranca como un placeholder ("Cantidad de pasajeros") y recién
+  // muestra el resumen cuando el visitante pasó por el panel: mostrar de entrada
+  // "2 pasajeros" hacía creer que el dato ya estaba cargado (pedido del cliente).
+  // El input oculto en cambio SIEMPRE manda los conteos, tocados o no, así la
+  // cotización sigue llegando con el default de adultos como hasta ahora.
+  const [elegido, setElegido] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // Espejo de `open` para los listeners de documento, que se registran una sola
+  // vez y de otro modo leerían el valor viejo del closure.
+  const openRef = useRef(false);
 
   // El CTA flotante tapaba la fila de bebés (la última del panel) y no dejaba
   // tocar el stepper. Mientras el panel está abierto, los flotantes se apartan.
   useFloatingCtaSuppress(open);
 
   useEffect(() => {
+    openRef.current = open;
+  }, [open]);
+
+  // Cerrar el panel cuenta como "ya elegí": el disparador pasa del placeholder
+  // al resumen real, incluso si el visitante dejó los valores por defecto.
+  const cerrar = () => {
+    if (!openRef.current) return;
+    openRef.current = false;
+    setOpen(false);
+    setElegido(true);
+  };
+
+  useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
+        cerrar();
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") cerrar();
     };
     document.addEventListener("click", onClick);
     document.addEventListener("keydown", onKey);
@@ -76,11 +98,14 @@ export function PassengerCounter({
       document.removeEventListener("click", onClick);
       document.removeEventListener("keydown", onKey);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const total = counts.adultos + counts.ninos + counts.infantes;
-  const adjust = (k: keyof Counts, delta: number, min: number) =>
+  const adjust = (k: keyof Counts, delta: number, min: number) => {
     setCounts((c) => ({ ...c, [k]: Math.max(min, c[k] + delta) }));
+    setElegido(true);
+  };
 
   const serialized = `adultos:${counts.adultos}|ninos:${counts.ninos}|infantes:${counts.infantes}`;
   const summary = summarize(counts);
@@ -94,14 +119,20 @@ export function PassengerCounter({
       <button
         type="button"
         className={`${styles.trigger} ${open ? styles.triggerOpen : ""}`}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (open) cerrar();
+          else {
+            openRef.current = true;
+            setOpen(true);
+          }
+        }}
         aria-haspopup="true"
         aria-expanded={open}
       >
-        <span className={summary ? undefined : styles.placeholder}>
-          {summary
+        <span className={elegido ? undefined : styles.placeholder}>
+          {elegido
             ? `${total} ${total === 1 ? "pasajero" : "pasajeros"} · ${summary}`
-            : "Seleccioná los pasajeros"}
+            : "Cantidad de pasajeros"}
         </span>
         <svg
           className={`${styles.chevron} ${open ? styles.chevronOpen : ""}`}
@@ -153,11 +184,7 @@ export function PassengerCounter({
               nada que indique que ya terminaste de elegir: el clic afuera
               funciona pero no se descubre solo (reporte del cliente). */}
           <div className="picker-done-row">
-            <button
-              type="button"
-              className="picker-done"
-              onClick={() => setOpen(false)}
-            >
+            <button type="button" className="picker-done" onClick={cerrar}>
               Listo
             </button>
           </div>

@@ -35,8 +35,11 @@
   border-color: #f43e55;
 }
 
+/* Mismo gris que los ::placeholder de los inputs vecinos (#9ca3af, el que
+   define el preflight de Tailwind), para que "Cantidad de pasajeros" se lea
+   igual que "Nombre completo *" o "Tu Email" cuando el campo está sin tocar. */
 .placeholder {
-  color: #9a9a9a;
+  color: #9ca3af;
 }
 
 .chevron {

@@ -5725,3 +5725,27 @@ button.picker-done:focus-visible {
     transition: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Titulo de las paginas de listado (.listing-heading). Pedido del cliente:
+   en mobile el h1 se comia media pantalla. Con el h1 base en 50px, "Explorá
+   todos los destinos" ocupaba 2 renglones a 390px y 3 a 360px, y empujaba el
+   buscador y las tarjetas fuera del primer scroll.
+
+   Lo achicamos SOLO en mobile y SOLO en estas landings: /destinos/todos,
+   /destinos/[region] (RegionExplorer), /destinos?tipo=… y /tag/[slug]. Por eso
+   la clase propia en vez de tocar .section-heading, que tambien la usan el home
+   ("Relatos de nuestros viajeros"), corporativo, contacto, cotizar y
+   work-with-us; esos titulos el cliente no los pidio tocar.
+
+   El tamaño es fluido: el texto sale del CMS y varia mucho ("Brasil" contra
+   "Explorá todos los destinos"), asi que escala con el ancho del viewport y
+   queda acotado entre 24px (celulares angostos) y 30px (mobile ancho, mismo
+   escalon que el h2 del template). Escritorio y tablet no cambian.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .section-heading.listing-heading {
+    font-size: clamp(24px, 7.2vw, 30px);
+    line-height: 120%;
+  }
+}

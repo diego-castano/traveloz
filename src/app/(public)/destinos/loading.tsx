@@ -7,7 +7,10 @@ export default function Loading() {
     <section className="content-area">
       <div className="container">
         <div className="text-center mb_50">
-          <h1 className="section-heading" style={{ visibility: "hidden" }}>
+          {/* Mismas clases que el h1 real para que el hueco reservado mida
+              igual que el titulo definitivo (listing-heading lo achica en
+              mobile). */}
+          <h1 className="section-heading listing-heading" style={{ visibility: "hidden" }}>
             &nbsp;
           </h1>
         </div>

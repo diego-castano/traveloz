@@ -242,7 +242,12 @@ export function RegionExplorer({
     <section className="listing-area">
       <div className="container wide">
         <div className="listing-filter">
-          <h1 className="section-heading text-center">{titulo ?? "Explorá todos los destinos"}</h1>
+          {/* listing-heading achica el titulo SOLO en mobile (ver site.css). Va
+              como clase propia y no tocando .section-heading a secas, porque esa
+              clase la comparten home, corporativo, contacto y work-with-us. */}
+          <h1 className="section-heading listing-heading text-center">
+            {titulo ?? "Explorá todos los destinos"}
+          </h1>
           <div className="filter-form">
             <div className="inner-flex">
               {/* City typeahead (multi) */}

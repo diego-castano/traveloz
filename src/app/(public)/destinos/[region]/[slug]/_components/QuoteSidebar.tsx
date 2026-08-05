@@ -69,25 +69,33 @@ export function QuoteSidebar({
 
   return (
     <div className="sidebar-form sticky">
-      <div className="large-price">
-        <div className="price-left">
-          <span className="d-block title">DESDE</span>
-          <span className="d-block title2">{precioDesdeMoneda ?? "USD"}</span>
+      {/* El monto y su bajada viajan juntos en un contenedor que se achica al
+          contenido: la bajada arranca en el mismo borde que "DESDE" en vez de
+          quedar centrada suelta, y el grupo entero se centra en la tarjeta
+          (pedido del cliente). El espacio duro que va antes de la ultima
+          palabra la ata a la anterior: si el ancho no alcanza, el corte cae
+          antes y no queda una palabra sola en el ultimo renglon. */}
+      <div className="price-block">
+        <div className="large-price">
+          <div className="price-left">
+            <span className="d-block title">DESDE</span>
+            <span className="d-block title2">{precioDesdeMoneda ?? "USD"}</span>
+          </div>
+          <div className="price-right">
+            <span
+              className="main-price d-block"
+              style={!hasPrice ? { fontSize: 38, lineHeight: 1 } : undefined}
+            >
+              {hasPrice ? precioDesde : "Consultar"}
+            </span>
+          </div>
         </div>
-        <div className="price-right">
-          <span
-            className="main-price d-block"
-            style={!hasPrice ? { fontSize: 38, lineHeight: 1 } : undefined}
-          >
-            {hasPrice ? precioDesde : "Consultar"}
-          </span>
-        </div>
+        <span className="d-block price-desc">
+          {hasPrice
+            ? "Por persona en base doble"
+            : "Cotización personalizada según fechas y pasajeros"}
+        </span>
       </div>
-      <span className="d-block price-desc text-center">
-        {hasPrice
-          ? "Por persona en base doble"
-          : "Cotización personalizada según fechas y pasajeros"}
-      </span>
 
       <span className="d-block form-title">Contactate con nosotros</span>
 
@@ -106,7 +114,9 @@ export function QuoteSidebar({
           <li>
             <label>Pasajeros*</label>
             {/* Default 2 adultos: el precio se muestra "por persona en base
-                doble", así que la consulta parte de una pareja. */}
+                doble", así que la consulta parte de una pareja. El campo lo
+                muestra como placeholder hasta que el visitante abre el panel,
+                pero el valor enviado sigue siendo este default. */}
             <PassengerCounter initial={{ adultos: 2, ninos: 0, infantes: 0 }} />
           </li>
           <li>

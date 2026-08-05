@@ -42,7 +42,8 @@ export default async function DestinosPage({
                 plantilla sigue armando la meta description, que si le sirve a
                 Google. */}
             <div className="text-center mb_50">
-              <h1 className="section-heading">{tipo.nombre}</h1>
+              {/* listing-heading: titulo mas chico en mobile (ver site.css). */}
+              <h1 className="section-heading listing-heading">{tipo.nombre}</h1>
             </div>
             {paquetes.length === 0 ? (
               <p className="text-center py-12">
