@@ -2,9 +2,11 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import { PackageCard } from "@/components/public/PackageCard";
+import { normalizarTexto } from "@/lib/normalizar-texto";
 
 // ---------------------------------------------------------------------------
 // RegionExplorer — listados de paquetes por región (/destinos/<region>).
@@ -146,11 +148,15 @@ export function RegionExplorer({
   // /destinos/todos). Con el input vacío mostramos solo las locales: sin
   // búsqueda, listar ciudades de otras regiones es ruido.
   const { sugLocales, sugOtras } = useMemo(() => {
-    const q = ciudadInput.trim().toLowerCase();
+    // normalizarTexto saca las tildes de los dos lados de la comparación: sin
+    // esto, "turquia" no encontraba "Turquía" y "mexico" no encontraba
+    // "México", el dropdown ni se abría y parecía que el buscador estaba
+    // limitado a la región en la que estabas.
+    const q = normalizarTexto(ciudadInput);
     const selIds = new Set(ciudadesSel.map((c) => c.id));
     const matchea = (c: Ciudad) =>
-      c.nombre.toLowerCase().includes(q) ||
-      c.paisNombre.toLowerCase().includes(q);
+      normalizarTexto(c.nombre).includes(q) ||
+      normalizarTexto(c.paisNombre).includes(q);
 
     if (!q) {
       return {
@@ -169,6 +175,12 @@ export function RegionExplorer({
         .slice(0, MAX_SUGERENCIAS_OTRAS),
     };
   }, [ciudadInput, ciudades, globales, localIds, ciudadesSel]);
+
+  const haySugerencias = sugLocales.length > 0 || sugOtras.length > 0;
+  // Con el input vacío y sin sugerencias no abrimos nada (no hay nada que
+  // decir); apenas escribieron algo, siempre contestamos, aunque sea para
+  // avisar que no hay match.
+  const estaBuscando = ciudadInput.trim().length > 0;
 
   const addCiudad = (c: Ciudad) => {
     if (ciudadesSel.some((x) => x.id === c.id)) return;
@@ -309,8 +321,30 @@ export function RegionExplorer({
                       }}
                     />
                   </div>
-                  {ciudadOpen && (sugLocales.length > 0 || sugOtras.length > 0) && (
+                  {ciudadOpen && (haySugerencias || estaBuscando) && (
                     <ul className="city-suggest" role="listbox">
+                      {/* Sin resultados el dropdown antes no se renderizaba y la
+                          persona no recibía ninguna señal: parecía que el campo
+                          estaba roto. Ahora contestamos y ofrecemos la salida. */}
+                      {!haySugerencias && (
+                        <li className="city-suggest-empty" role="presentation">
+                          <span className="city-suggest-empty-title">
+                            No encontramos ese destino
+                          </span>
+                          <span className="city-suggest-empty-hint">
+                            Probá con el país o mirá{" "}
+                            <Link
+                              href="/destinos/todos"
+                              // El onBlur del input cierra el dropdown a los
+                              // 150ms; sin este preventDefault el mousedown le
+                              // saca el foco al input y el click se pierde.
+                              onMouseDown={(e) => e.preventDefault()}
+                            >
+                              todos los destinos
+                            </Link>
+                          </span>
+                        </li>
+                      )}
                       {sugLocales.map((c) => (
                         <CiudadSuggestItem
                           key={c.id}

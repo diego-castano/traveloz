@@ -5354,224 +5354,562 @@ button.picker-done:focus-visible {
 
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Region listing — typeahead de ciudad + input-dropdown de temporada.
-   Replica 1:1 del reference: 2 inputs lado a lado (Destino + Temporada)
-   con icono a la izquierda, y un botón Buscar. Ambos inputs aceptan
-   chips adentro para multi-select.
+   Buscador de destinos (/destinos/todos, /destinos/<region>, /destinos?tipo=,
+   /tag/<slug>): campo de ciudad con chips + selector de temporada + botón
+   Buscar, más la barra de "Ordenar por" que va debajo.
+
+   Rediseño conservando la marca. El violeta de TravelOz (#A05ED3) sigue
+   siendo el mismo y la tipografía es la del template; lo que cambia es que
+   los tres controles pasan a compartir UN sistema: mismo alto, mismo radio,
+   misma familia de bordes y los mismos estados (reposo / hover / foco /
+   abierto). Antes cada uno venía de un lado distinto: los campos con el borde
+   violeta azulado del template, los chips con otro violeta (#785AE5) y el
+   botón con el violeta de marca, cada uno con su radio y su altura.
+
+   Las variables van acotadas a .listing-area para no pisar el resto del
+   sitio, que sigue con los colores del template tal cual.
    ───────────────────────────────────────────────────────────────────────── */
-.filter-form .inner-field.city-field {
-  overflow: visible;
-  height: auto;
-  min-height: 55px;
-  width: 360px;
-  min-width: 360px;
+.listing-area {
+  /* Un solo alto y un solo radio para los tres controles. */
+  --tvz-alto-control: 56px;
+  --tvz-radio: 12px;
+  --tvz-radio-chico: 8px;
+
+  /* Familia del violeta de marca. */
+  --tvz-primario: #A05ED3;
+  --tvz-primario-fuerte: #7A3FA9;
+  /* Violeta oscuro para TEXTO sobre fondo claro: el #A05ED3 pleno queda en
+     4.2:1 contra el blanco y no pasa AA; este da 7:1. */
+  --tvz-primario-tinta: #6B2E9E;
+  --tvz-borde: #E3D3F1;
+  --tvz-borde-fuerte: #C9A7E6;
+  --tvz-anillo: rgba(160, 94, 211, 0.22);
+  --tvz-tinte: #F6EDFC;
+  --tvz-tinte-fuerte: #EEDFF9;
+
+  /* Texto. El gris del template (#9a9a99) daba 2.6:1: ilegible. */
+  --tvz-tinta: #211C2B;
+  --tvz-tinta-suave: #5B5470;
+  --tvz-placeholder: #6B6480;
+
+  --tvz-sombra-control: 0 1px 2px rgba(45, 22, 74, 0.05);
+  --tvz-sombra-menu: 0 14px 34px rgba(45, 22, 74, 0.14);
+}
+
+/* Ritmo del bloque: título, controles, barra de orden y grilla a distancias
+   parejas. Antes el filtro se despegaba 70px de la barra de orden y esa
+   quedaba flotando sola contra el margen derecho. */
+.listing-area .listing-filter {
+  margin-bottom: 26px;
+}
+
+.listing-area .filter-form {
+  margin-top: 36px;
+}
+
+.listing-area .filter-form .inner-flex {
+  gap: 12px;
+  align-items: stretch;
+}
+
+.listing-area .filter-fields {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* ── Los dos campos ─────────────────────────────────────────────────────── */
+.listing-area .filter-form .inner-field.city-field {
+  position: relative;
   display: flex;
   align-items: center;
+  overflow: visible;
+  height: auto;
+  min-height: var(--tvz-alto-control);
+  flex: 0 1 360px;
+  width: 360px;
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--tvz-borde);
+  border-radius: var(--tvz-radio);
+  background: #fff;
+  box-shadow: var(--tvz-sombra-control);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.filter-form .inner-field.city-field.season-field {
+.listing-area .filter-form .inner-field.city-field.season-field {
+  flex: 0 1 280px;
   width: 280px;
-  min-width: 280px;
 }
 
-.filter-form .inner-field.city-field.season-field .city-input-wrap {
-  cursor: pointer;
+.listing-area .filter-form .inner-field.city-field:hover {
+  border-color: var(--tvz-borde-fuerte);
 }
 
-.filter-form .inner-field.city-field.season-field input {
-  cursor: pointer;
+/* Foco con la marca en vez del borde azul del navegador. Va con :focus-within
+   para que valga igual entrando con el mouse o con Tab, y el anillo de 4px se
+   ve claro para quien navega con teclado. */
+.listing-area .filter-form .inner-field.city-field:focus-within,
+.listing-area .filter-form .inner-field.city-field.is-open {
+  border-color: var(--tvz-primario);
+  box-shadow: 0 0 0 4px var(--tvz-anillo);
 }
 
-.filter-form .inner-field.city-field .city-input-wrap {
+/* Los dos iconos (pin y calendario) vienen de SVGs de distinto alto: los
+   centramos verticalmente en vez de empujar cada uno con su top fijo. */
+.listing-area .filter-form .inner-field label,
+.listing-area .filter-form .inner-field label.file-label {
+  top: 50%;
+  left: 18px;
+  width: 20px;
+  margin: 0;
+  line-height: 0;
+  transform: translateY(-50%);
+}
+
+.listing-area .filter-form .inner-field label img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.listing-area .filter-form .inner-field.city-field .city-input-wrap,
+.listing-area .filter-form .inner-field.city-field.season-field .city-input-wrap {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
   width: 100%;
-  padding: 6px 12px 6px 50px;
-  min-height: 53px;
+  gap: 8px;
+  padding: 9px 14px 9px 48px;
+  min-height: calc(var(--tvz-alto-control) - 2px);
 }
 
-.filter-form .inner-field.city-field.season-field .city-input-wrap {
-  /* El file.svg es más chico, recentramos el icono y dejamos más espacio. */
-  padding-left: 50px;
+/* La temporada no se escribe, se elige: el campo entero es clickeable. */
+.listing-area .filter-form .inner-field.city-field.season-field .city-input-wrap,
+.listing-area .filter-form .inner-field.city-field.season-field input {
+  cursor: pointer;
 }
 
-.filter-form .inner-field.city-field input {
+.listing-area .filter-form .inner-field.city-field input {
   position: static;
-  width: auto;
   flex: 1 1 120px;
+  width: auto;
   min-width: 120px;
-  height: 28px;
+  height: 30px;
   padding: 0;
   border: 0;
   background: transparent;
-  font-size: 15px;
   outline: none;
+  /* 16px: abajo de eso iOS hace zoom al enfocar el input. */
+  font-size: 16px;
+  color: var(--tvz-tinta);
 }
 
-.filter-form .inner-field.city-field.is-open {
-  border-color: #785AE5;
-  box-shadow: 0 0 0 3px rgba(120, 90, 229, 0.15);
+.listing-area .filter-form .inner-field.city-field input::placeholder {
+  color: var(--tvz-placeholder);
+  opacity: 1;
 }
 
-.city-chip {
+/* ── Botón Buscar ───────────────────────────────────────────────────────── */
+/* Va por hijo directo de .inner-flex a propósito: ".filter-form button" a
+   secas también agarra los botones de quitar de los chips. */
+.listing-area .filter-form .inner-flex > button {
+  height: var(--tvz-alto-control);
+  min-height: var(--tvz-alto-control);
+  margin: 0;
+  padding: 0 30px;
+  border: 0;
+  border-radius: var(--tvz-radio);
+  background: var(--tvz-primario);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(160, 94, 211, 0.28);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.listing-area .filter-form .inner-flex > button:hover {
+  background: var(--tvz-primario-fuerte);
+  box-shadow: 0 6px 16px rgba(122, 63, 169, 0.30);
+  transform: translateY(-1px);
+}
+
+.listing-area .filter-form .inner-flex > button:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(122, 63, 169, 0.30);
+}
+
+.listing-area .filter-form .inner-flex > button:focus-visible {
+  outline: 3px solid var(--tvz-primario-tinta);
+  outline-offset: 3px;
+}
+
+.listing-area .filter-form .inner-flex > button img {
+  width: 22px;
+  margin-right: 10px;
+}
+
+/* ── Chips (ciudad elegida / mes elegido) ───────────────────────────────── */
+/* Mismo tinte violeta que la fila activa de los desplegables: lo elegido se
+   ve igual esté donde esté. Antes eran violeta pleno #785AE5, un color que no
+   aparece en ningún otro lado del sitio. */
+.listing-area .city-chip {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: #785AE5;
-  color: #fff;
-  border-radius: 6px;
-  padding: 0 4px 0 10px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 26px;
-  height: 28px;
+  height: 32px;
+  gap: 4px;
+  padding: 0 5px 0 12px;
+  border: 1px solid var(--tvz-borde-fuerte);
+  border-radius: var(--tvz-radio-chico);
+  background: var(--tvz-tinte);
+  color: var(--tvz-primario-tinta);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 30px;
   white-space: nowrap;
 }
 
-.city-chip button {
+.listing-area .city-chip button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  border: 0;
-  color: #fff;
-  cursor: pointer;
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  opacity: 0.75;
-  padding: 0;
+  /* El min-width:100% que el template le pone a ".filter-form button" en
+     mobile también agarra este botón (vive adentro del form): sin este 0 el
+     chip se estiraba a lo ancho del campo abajo de 575px. */
+  width: 22px;
+  min-width: 0;
+  height: 22px;
   margin: 0;
-  transition: background 0.12s, opacity 0.12s;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--tvz-primario-tinta);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease;
 }
 
-.city-chip button:hover {
+.listing-area .city-chip button:hover {
   opacity: 1;
-  background: rgba(255, 255, 255, 0.20);
+  background: rgba(160, 94, 211, 0.18);
 }
 
-.city-chip button:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 1px;
+.listing-area .city-chip button:focus-visible {
+  outline: 2px solid var(--tvz-primario);
+  outline-offset: 2px;
 }
 
-.city-suggest {
+/* Área táctil de 44px sin agrandar el chip: un ::after invisible estira el
+   golpe. Solo en pantallas táctiles, así en desktop no se come el chip de al
+   lado. */
+@media (pointer: coarse), (max-width: 767px) {
+  .listing-area .city-chip button::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* ── Los dos desplegables (sugerencias de ciudad y meses) ───────────────── */
+/* Mismo radio, misma sombra, mismo alto de fila y el mismo tratamiento de lo
+   elegido, incluido el del orden. Antes uno era una caja con filas separadas
+   por líneas y el otro una lista centrada con borde gris del template. */
+.listing-area .city-suggest,
+.listing-area .filter_select .cs_options {
+  padding: 6px;
+  border: 1px solid var(--tvz-borde);
+  border-radius: var(--tvz-radio);
+  background: #fff;
+  box-shadow: var(--tvz-sombra-menu);
+}
+
+.listing-area .city-suggest {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
-  list-style: none;
   margin: 0;
-  padding: 4px 0;
-  background: #fff;
-  border: 1px solid rgba(120, 89, 228, 0.39);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
-  z-index: 50;
-  max-height: 280px;
+  max-height: 320px;
   overflow-y: auto;
+  list-style: none;
+  z-index: 50;
 }
 
-.city-suggest li {
+.listing-area .city-suggest li,
+.listing-area .filter_select .cs_options li {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 14px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--tvz-radio-chico);
+  color: var(--tvz-tinta);
+  font-size: 15px;
+  text-align: left;
   cursor: pointer;
-  font-size: 14px;
-  border-bottom: 1px solid #f0f0f0;
 }
 
-.city-suggest li:last-child {
-  border-bottom: 0;
+.listing-area .city-suggest li:hover,
+.listing-area .filter_select .cs_options li:hover {
+  background: var(--tvz-tinte);
+  color: var(--tvz-primario-tinta);
 }
 
-.city-suggest li:hover,
-.city-suggest li:focus-visible {
-  background: #f4f0ff;
+.listing-area .city-suggest li:focus-visible,
+.listing-area .filter_select .cs_options li:focus-visible {
   outline: none;
+  background: var(--tvz-tinte);
+  box-shadow: inset 0 0 0 2px var(--tvz-primario);
 }
 
-.city-suggest li.is-active {
-  background: rgba(120, 90, 229, 0.10);
-  color: #5B21B6;
+.listing-area .city-suggest li.is-active,
+.listing-area .filter_select .cs_options li[aria-selected="true"] {
+  background: var(--tvz-tinte-fuerte);
+  color: var(--tvz-primario-tinta);
   font-weight: 600;
 }
 
-/* Separador del typeahead: arriba las ciudades de la página actual, abajo el
-   resto del catálogo (elegir una de esas navega a /destinos/todos). */
-.city-suggest li.city-suggest-group {
+/* El tilde del mes elegido y el del orden elegido, iguales. */
+.listing-area .city-suggest li.is-active .city-suggest-pais {
+  color: var(--tvz-primario-tinta);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.listing-area .filter_select .cs_options li[aria-selected="true"]::after {
+  content: "✓";
+  color: var(--tvz-primario-tinta);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* Separador de grupo: arriba las ciudades de esta página, abajo el resto del
+   catálogo (elegir una de esas navega a /destinos/todos). */
+.listing-area .city-suggest li.city-suggest-group {
   display: block;
-  padding: 7px 14px 5px;
-  background: #faf9ff;
-  color: #9b93b5;
+  min-height: 0;
+  margin: 6px 0 2px;
+  padding: 10px 12px 4px;
+  border-top: 1px solid var(--tvz-borde);
+  border-radius: 0;
+  background: transparent;
+  color: var(--tvz-tinta-suave);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: default;
 }
 
-.city-suggest li.city-suggest-group:hover {
-  background: #faf9ff;
+.listing-area .city-suggest li.city-suggest-group:hover {
+  background: transparent;
+  color: var(--tvz-tinta-suave);
 }
 
-.city-suggest-name {
+/* Si el grupo global es lo único que hay, no va la línea de arriba. */
+.listing-area .city-suggest li.city-suggest-group:first-child {
+  margin-top: 0;
+  padding-top: 4px;
+  border-top: 0;
+}
+
+.listing-area .city-suggest-name {
+  color: var(--tvz-tinta);
   font-weight: 600;
-  color: #222;
 }
 
-.city-suggest-pais {
-  color: #888;
-  font-size: 12px;
+.listing-area .city-suggest-pais {
+  color: var(--tvz-tinta-suave);
+  font-size: 13px;
 }
 
-/* La regla de los bullets del .box-card (list-style: disc) vive una sola vez,
-   junto a las demás reglas de .box-card más arriba en este archivo. Se quitó de
-   acá el duplicado que causaba confusión. */
+/* Estado vacío: misma caja y mismo lenguaje que las sugerencias, sin cursor
+   de opción porque no hay nada para elegir. */
+.listing-area .city-suggest li.city-suggest-empty,
+.listing-area .city-suggest li.city-suggest-empty:hover {
+  display: block;
+  min-height: 0;
+  padding: 12px;
+  background: transparent;
+  cursor: default;
+}
 
-/* Clear filters link, a la izquierda del sort */
-.clear-filters {
+.listing-area .city-suggest-empty-title {
+  display: block;
+  color: var(--tvz-tinta);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.listing-area .city-suggest-empty-hint {
+  display: block;
+  margin-top: 2px;
+  color: var(--tvz-tinta-suave);
+  font-size: 13px;
+}
+
+.listing-area .city-suggest-empty-hint a {
+  color: var(--tvz-primario-tinta);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.listing-area .city-suggest-empty-hint a:hover {
+  color: var(--tvz-primario-fuerte);
+}
+
+/* ── Barra de orden ─────────────────────────────────────────────────────── */
+/* La línea de arriba la ata al buscador: "Limpiar filtros" a la izquierda y
+   "Ordenar por" a la derecha leen como una sola barra de herramientas, y no
+   como un control suelto colgado del margen. */
+.listing-area .filter_select {
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+  border-top: 1px solid #E7E2EE;
+}
+
+.listing-area .filter_select strong {
+  color: var(--tvz-tinta-suave);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.listing-area .filter_select .cs_dropdown {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  min-width: 168px;
+  margin-left: 0;
+  padding: 0 14px;
+  border: 1px solid var(--tvz-borde);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--tvz-sombra-control);
+  color: var(--tvz-tinta);
+  font-family: inherit;
+  font-size: 15px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.listing-area .filter_select .cs_dropdown:hover {
+  border-color: var(--tvz-borde-fuerte);
+}
+
+.listing-area .filter_select .cs_dropdown.open {
+  border-color: var(--tvz-primario);
+  box-shadow: 0 0 0 4px var(--tvz-anillo);
+}
+
+.listing-area .filter_select .cs_selected {
+  width: 100%;
+  gap: 10px;
+}
+
+.listing-area .filter_select .cs_arrow {
+  border-color: var(--tvz-primario);
+  padding: 3px;
+  margin-left: 0;
+}
+
+/* El menú de orden nunca llegaba a verse: el template define .cs_options en
+   display:none y la regla que lo muestra al abrir no existía en ningún lado
+   (en el HTML original eso lo hacía un script). Acá está. */
+.listing-area .filter_select .cs_dropdown.open .cs_options {
+  display: block;
+}
+
+.listing-area .filter_select .cs_options {
+  top: calc(100% + 6px);
+  left: 0;
+  border-top: 1px solid var(--tvz-borde);
+  z-index: 50;
+}
+
+.listing-area .clear-filters {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  background: transparent;
-  border: 0;
-  color: #785AE5;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
   margin-right: auto;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--tvz-radio-chico);
+  background: transparent;
+  color: var(--tvz-primario-tinta);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.clear-filters:hover {
-  background: rgba(120, 90, 229, 0.10);
+.listing-area .clear-filters:hover {
+  background: var(--tvz-tinte);
 }
 
-/* Responsive: en mobile los 2 inputs se apilan a ancho completo */
+.listing-area .clear-filters:focus-visible {
+  outline: 2px solid var(--tvz-primario);
+  outline-offset: 2px;
+}
+
+/* ── Mobile: los tres controles apilados y a ancho completo ─────────────── */
 @media (max-width: 767px) {
-  .filter-form .inner-flex {
+  .listing-area .filter-form {
+    margin-top: 24px;
+  }
+
+  .listing-area .filter-form .inner-flex {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
+    gap: 10px;
   }
-  .filter-form .filter-fields {
+
+  .listing-area .filter-fields {
+    display: flex;
     flex-direction: column;
+    gap: 10px;
   }
-  .filter-form .inner-field.city-field,
-  .filter-form .inner-field.city-field.season-field {
+
+  .listing-area .filter-form .inner-field.city-field,
+  .listing-area .filter-form .inner-field.city-field.season-field {
+    flex: 1 1 auto;
     width: 100%;
     min-width: 0;
+    margin: 0;
   }
-  .filter-form .inner-field.city-field.season-field {
-    margin-top: 12px;
+
+  .listing-area .filter-form .inner-flex > button {
+    width: 100%;
+    margin: 2px 0 0;
+    font-size: 18px;
   }
-  .filter-form button {
-    margin: 12px 0 0 0;
+
+  .listing-area .filter_select {
+    justify-content: flex-end;
+    row-gap: 6px;
+  }
+
+  /* "Limpiar filtros" se lleva su propia línea: compartiendo fila con
+     "Ordenar por" el selector se caía solo abajo y quedaba desprolijo. */
+  .listing-area .clear-filters {
+    flex: 1 1 100%;
+    margin-right: 0;
+    padding-left: 0;
+  }
+
+  /* El chip crece un toque: 32px de alto en el pulgar es incómodo. */
+  .listing-area .city-chip {
+    height: 34px;
+    line-height: 32px;
   }
 }
 
