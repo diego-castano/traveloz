@@ -46,6 +46,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useUnsavedWarn } from "@/hooks/useUnsavedWarn";
 import { AutoSaveIndicator } from "@/components/ui/AutoSaveIndicator";
+import { CircuitoCiudadesField } from "./CircuitoCiudadesField";
 import { validateForActivation } from "@/lib/validation";
 import {
   formatStoredDate,
@@ -884,6 +885,24 @@ export default function DatosTab({ paquete }: DatosTabProps) {
                 placeholder="Seleccionar moneda..."
               />
             </Field>
+
+            {/* Ciudades del circuito: van pegadas al campo Destino porque
+                responden la misma pregunta ("¿a dónde va este viaje?"), y
+                porque en modalidad CIRCUITO la pestaña Alojamientos no carga
+                nada. Los paquetes CLASICO cargan sus ciudades con noches en el
+                itinerario de Alojamientos, así que este bloque no les aplica.
+                Se mira el estado local `modalidad` y no `paquete.modalidad`
+                para que aparezca ni bien el operador cambia la modalidad
+                arriba, sin esperar al guardado. */}
+            {modalidad === "CIRCUITO" && (
+              <Field span={2}>
+                <CircuitoCiudadesField
+                  paqueteId={paquete.id}
+                  destinoBreadcrumb={destino}
+                  canEdit={!isReadOnly}
+                />
+              </Field>
+            )}
           </FieldGroup>
         </FormSection>
 

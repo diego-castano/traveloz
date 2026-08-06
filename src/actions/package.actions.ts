@@ -39,6 +39,12 @@ async function safePropagate(paqueteId: string): Promise<void> {
  *
  * The operator can still see/edit paquete.noches manually elsewhere, but the
  * itinerary is the source of truth: any change there overrides the manual value.
+ *
+ * Excepción CIRCUITO: en esa modalidad las noches reales viven en el circuito
+ * asignado y las filas de PaqueteDestino son solo ciudades para el buscador,
+ * cargadas con `noches: 0` (ver CircuitoCiudadesField). Sin este corte, agregar
+ * una ciudad pisaría `paquete.noches` con 0 y le borraría el dato a cualquier
+ * circuito que lo tuviera cargado a mano.
  */
 async function syncPaqueteNoches(paqueteId: string): Promise<void> {
   try {
@@ -46,6 +52,12 @@ async function syncPaqueteNoches(paqueteId: string): Promise<void> {
     // mutaciones de destino en paralelo (una crea con N noches, otra borra)
     // podían intercalar read-then-write y persistir un total desactualizado.
     await prisma.$transaction(async (tx) => {
+      const paquete = await tx.paquete.findUnique({
+        where: { id: paqueteId },
+        select: { modalidad: true },
+      });
+      if (!paquete || paquete.modalidad === "CIRCUITO") return;
+
       const destinos = await tx.paqueteDestino.findMany({
         where: { paqueteId },
         select: { noches: true },
