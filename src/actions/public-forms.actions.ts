@@ -891,7 +891,7 @@ export async function submitQuoteForm(
       // o tarda de más, el pasajero recibe su confirmación igual, el lead ya
       // quedó en nuestra DB y el mail interno ya salió.
       try {
-        await crearNegocioLead({
+        const res = await crearNegocioLead({
           tituloPaquete: paqueteTitulo,
           paqueteUrl: paqueteSitioUrl,
           paqueteAdminUrl,
@@ -915,6 +915,17 @@ export async function submitQuoteForm(
             ? "Sitio web - consulta de paquete"
             : "Sitio web - cotizador general",
         });
+        // `modo` es lo que miramos en los logs de producción para saber si la
+        // regla de las 24 horas está frenando los negocios repetidos:
+        // "negocio-nuevo" abrió tarjeta, "comentario-en-negocio" sumó la
+        // consulta a una que ya existía.
+        if (res) {
+          log.info("submitQuoteForm bitrix ok", {
+            modo: res.modo,
+            dealId: res.dealId,
+            contactId: res.contactId,
+          });
+        }
       } catch (err) {
         log.error("submitQuoteForm bitrix failed", err);
       }
