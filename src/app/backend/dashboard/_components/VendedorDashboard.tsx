@@ -122,6 +122,25 @@ interface OpcionDetail {
   ventaPorAdulto: number;
 }
 
+/**
+ * Nombre de una opción hotelera tal como lo necesita leer el vendedor: el
+ * hotel cotizado (o los hoteles unidos con " + " en paquetes multidestino),
+ * no la etiqueta interna "Opcion N" que guarda la base. Pedido del cliente:
+ * en el módulo tiene que verse QUÉ hotel se está cotizando. Es el mismo
+ * criterio que ya aplica la web pública (PackageDetailView), donde el título
+ * de cada opción es directamente el nombre del hotel.
+ *
+ * Cae a la etiqueta interna sólo si la opción no tiene hoteles asignados
+ * todavía (o el catálogo aún no terminó de hidratar).
+ */
+function nombreComercialOpcion(od: OpcionDetail, idx: number): string {
+  const hoteles = od.hoteles
+    .map((h) => h.alojamiento.nombre.trim())
+    .filter(Boolean);
+  if (hoteles.length > 0) return hoteles.join(" + ");
+  return od.opcion.nombre?.trim() || `Opción ${idx + 1}`;
+}
+
 interface PaqueteBreakdown {
   aereos: AeroLine[];
   alojamientoNeto: number; // sum across all OpcionHotelera (per pax, base case before factor)
@@ -512,15 +531,21 @@ function DetailPanel({
                     : "border-hairline bg-white hover:border-[#8B5CF6]/60"
                 }`}
               >
+                {/* Título = hotel cotizado (pedido del cliente), no "OPCION N".
+                    El número queda como sobrelínea chica: sirve de referencia
+                    rápida al hablar por teléfono ("te paso la opción 2"). */}
                 <span
                   className={`text-[9px] font-bold uppercase tracking-wider ${
                     idx === safeIdx ? "text-[#8B5CF6]" : "text-neutral-400"
                   }`}
                 >
-                  {od.opcion.nombre || `Opción ${idx + 1}`}
+                  Opción {idx + 1}
                 </span>
-                <span className="truncate text-[11px] font-semibold text-neutral-800">
-                  {od.hoteles[0]?.alojamiento.nombre ?? "—"}
+                <span
+                  className="truncate text-[11px] font-semibold text-neutral-800"
+                  title={nombreComercialOpcion(od, idx)}
+                >
+                  {nombreComercialOpcion(od, idx)}
                 </span>
                 <span className={`font-mono text-[11px] tabular-nums ${idx === safeIdx ? "font-bold text-[#8B5CF6]" : "text-neutral-500"}`}>
                   USD {fmt(od.netoAloj)}
@@ -666,9 +691,9 @@ function DetailPanel({
           <div className="text-[26px] font-extrabold leading-tight tracking-tight text-[#8B5CF6] lining-nums tabular-nums">
             USD {fmt(ventaTotal)}
           </div>
-          {opcionDetail?.opcion.nombre && (
+          {opcionDetail && (
             <div className="text-[11.5px] text-neutral-500">
-              {opcionDetail.opcion.nombre}
+              {nombreComercialOpcion(opcionDetail, safeIdx)}
             </div>
           )}
         </div>
@@ -1172,6 +1197,15 @@ export default function VendedorDashboard() {
   const breakdownCache = useRef<Map<string, PaqueteBreakdown>>(new Map());
 
   // Invalidate cache when underlying data changes (cheap: just clear the map).
+  //
+  // Los catálogos de servicios (alojamientoById & cía.) TIENEN que estar en
+  // esta lista: los alojamientos hidratan por tandas (INITIAL_ALOJAMIENTOS_CHUNK
+  // y waves del ServiceProvider), y un breakdown calculado antes de que llegara
+  // la tanda con ese hotel quedaba cacheado con el hotel perdido — la tarjeta
+  // mostraba el precio (que sale de las tarifas, no del catálogo) pero "—" en
+  // lugar del nombre del hotel, congelado para siempre. Con el catálogo en las
+  // dependencias, el caché se limpia al terminar la hidratación y el nombre
+  // aparece.
   useEffect(() => {
     breakdownCache.current.clear();
   }, [
@@ -1183,6 +1217,11 @@ export default function VendedorDashboard() {
     packageState.destinos,
     allOpciones,
     allOpcionHoteles,
+    aereoById,
+    alojamientoById,
+    trasladoById,
+    seguroById,
+    circuitoById,
     serviceState.preciosAereo,
     serviceState.preciosAlojamiento,
     serviceState.preciosCircuito,
@@ -1255,7 +1294,15 @@ export default function VendedorDashboard() {
       );
       const ventaCircuito = esCircuito ? calcularVenta(netoFijos, paquete.markup) : 0;
       const opcionesDetail: OpcionDetail[] = opciones.map((opcion) => {
-        const ohs = (opcionHotelesByOpcion.get(opcion.id) ?? []).slice().sort((a, b) => a.orden - b.orden);
+        // Orden de itinerario (el `orden` del PaqueteDestino), no el `orden`
+        // propio del OpcionHotel: en multidestino el nombre compuesto
+        // ("Hotel Río + Pousada Búzios") tiene que leerse en el orden en que
+        // se viaja. Desempata por oh.orden para mantener estabilidad.
+        const ordenDestino = (oh: OpcionHotel) =>
+          destinos.find((d) => d.id === oh.destinoId)?.orden ?? 0;
+        const ohs = (opcionHotelesByOpcion.get(opcion.id) ?? [])
+          .slice()
+          .sort((a, b) => ordenDestino(a) - ordenDestino(b) || a.orden - b.orden);
         const hoteles: OpcionDetail["hoteles"] = [];
         for (const oh of ohs) {
           const alo = alojamientoById.get(oh.alojamientoId);
@@ -1698,7 +1745,7 @@ export default function VendedorDashboard() {
                     isOpen={isOpen}
                     onToggle={() => setOpenId((cur) => (cur === p.id ? null : p.id))}
                     totalVenta={totalVenta}
-                    opcionNombre={opcion?.opcion.nombre}
+                    opcionNombre={opcion ? nombreComercialOpcion(opcion, safeIdx) : undefined}
                     breakdown={breakdown}
                     selectedOpcionIdx={safeIdx}
                     onSelectOpcion={(idx) =>

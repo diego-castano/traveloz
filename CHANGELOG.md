@@ -15,6 +15,18 @@ del catálogo, CRM).
 
 ### Arreglado
 
+**El módulo de vendedores muestra el hotel cotizado, no "OPCION 1".** Pedido
+del cliente: las opciones hoteleras aparecían como "OPCION 1 / OPCION 2" y no
+se sabía qué hotel se estaba cotizando. Ahora el nombre del hotel es el título
+de cada opción (en multidestino se unen: "Windsor Excelsior + Pousada
+Corsário"), y aparece también bajo el precio por persona del panel de
+cotización y en la fila cerrada de la tabla. El número de opción queda como
+etiqueta chica de referencia. De paso se arregló el motivo por el que a veces
+se veía "—" en lugar del hotel: los hoteles cargan por tandas y el cálculo
+quedaba cacheado antes de que llegara la tanda con ese hotel; ahora el caché
+se refresca al terminar la carga. En paquetes multidestino los hoteles se
+listan en el orden del itinerario.
+
 **Las tarjetas de una fila quedaban de alturas distintas.** En los listados de
 destinos, un paquete con título de una línea ("Búzios") dibujaba una tarjeta más
 baja que la de al lado con título de dos ("Río de Janeiro & Búzios"), y la fila
