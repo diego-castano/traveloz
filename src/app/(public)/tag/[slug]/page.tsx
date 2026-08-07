@@ -98,7 +98,9 @@ export default async function TagPage({
                 }),
               };
               return (
-                <div className="col-lg-4 col-md-6 mb-4" key={p.id}>
+                // tvz-card-col: estira la card al alto de la fila (site.css,
+                // "Tarjetas de paquete del grid — todas al mismo alto").
+                <div className="col-lg-4 col-md-6 mb-4 tvz-card-col" key={p.id}>
                   <PackageCard
                     paquete={cardData}
                     regionSlug={resolveRegionSlugParaListado(p, regionResolver)}

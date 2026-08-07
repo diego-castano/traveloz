@@ -6087,3 +6087,86 @@ button.picker-done:focus-visible {
     line-height: 120%;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Tarjetas de paquete del grid — todas al mismo alto (pedido del cliente).
+
+   Sintoma: en /destinos/todos, /destinos/[region], /destinos?tipo=… y
+   /tag/[slug], una tarjeta con titulo de UNA linea ("Búzios") quedaba mas
+   baja que la de al lado con titulo de DOS ("Río de Janeiro & Búzios"), y la
+   fila se veia despareja. El slider del detalle ya tenia resuelto lo mismo
+   (RelatedPackages inyecta su propia cadena flex); esto lo lleva al grid.
+
+   Tres piezas:
+
+   1. Cadena de alturas. Bootstrap ya estira las columnas de una .row, pero
+      entre la columna y la card hay DOS divs que mete <Skeleton>, asi que el
+      `height:100%` de .box-card.alt no resolvia contra nada y la card
+      terminaba midiendo su contenido. La clase .tvz-card-col (la ponen los
+      tres grids en su columna) hace flex esa cadena hasta la card.
+
+   2. La card como columna flex: la imagen queda fija arriba y .text se
+      estira; la fila de bullets + precio se ancla abajo con margin-top:auto.
+      Asi el bloque de precio de todas las tarjetas de la fila queda a la
+      misma altura, tengan 4 o 5 renglones de "Incluye".
+
+   3. El titulo reserva dos renglones (2 lineas x 1.2 de line-height = 2.4em,
+      en em para que acompañe los tamaños distintos de cada breakpoint). Sin
+      esto el alto exterior coincidia igual, pero la bajada de temporada y los
+      bullets arrancaban ~29px mas arriba en las tarjetas de titulo corto y se
+      leia como desalineado. Es min-height, no height: un titulo de tres
+      lineas sigue creciendo sin recortarse.
+   ───────────────────────────────────────────────────────────────────────── */
+.tvz-card-col,
+.tvz-card-col > *,
+.tvz-card-col > * > * {
+  display: flex;
+  flex-direction: column;
+}
+
+/* `flex: 1 1 auto` y no `height: 100%`: adentro de un contenedor flex en
+   columna el porcentaje no siempre resuelve, y era justamente lo que dejaba a
+   .box-card.alt midiendo su contenido en vez del alto de la fila. */
+.tvz-card-col > *,
+.tvz-card-col > * > *,
+.tvz-card-col > * > * > * {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.box-card {
+  display: flex;
+  flex-direction: column;
+}
+
+/* La imagen nunca se comprime: sin esto, un titulo largo la achataba en vez
+   de crecer la card. */
+.box-card img {
+  flex-shrink: 0;
+}
+
+.box-card .text {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.box-card .text > .row {
+  margin-top: auto;
+}
+
+/* Bullets arriba, precio abajo dentro de su columna: el numero grande queda
+   pegado al piso de la tarjeta aunque la lista de al lado sea mas corta. */
+.box-card .text > .row > [class*="col-"] {
+  display: flex;
+  flex-direction: column;
+}
+
+.box-card .text > .row > [class*="col-"]:last-child {
+  justify-content: flex-end;
+}
+
+.box-card .title {
+  min-height: 2.4em;
+}

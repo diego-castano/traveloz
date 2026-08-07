@@ -37,6 +37,7 @@ import { RowActions } from "@/components/ui/data/RowActions";
 import { StatusDot } from "@/components/ui/data/StatusDot";
 import { EmptyState } from "@/components/ui/data/EmptyState";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/form/Field";
+import { useConfirmarCiudad } from "@/components/ui/ConfirmarCiudad";
 import {
   Modal,
   ModalHeader,
@@ -591,6 +592,7 @@ function RegionesPaisesTab() {
   const { canEdit } = useAuth();
   const { activeBrandId } = useBrand();
   const { toast } = useToast();
+  const { confirmarCiudad, confirmarCiudadUI } = useConfirmarCiudad();
   const regiones = useRegiones();
   const { hydratingGeography, loadedPaises, loadedCiudades } =
     useCatalogProgress();
@@ -803,20 +805,44 @@ function RegionesPaisesTab() {
 
   // ---- Ciudad handlers ----
 
-  async function handleSaveCiudad(paisId: string) {
-    if (!newCiudadNombre.trim()) return;
-    await createCiudad({ paisId, nombre: newCiudadNombre.trim() });
-    toast("success", "Ciudad agregada", `"${newCiudadNombre.trim()}" fue agregada correctamente`);
-    setAddingCiudad(null);
-    setNewCiudadNombre("");
+  // El alta pasa sí o sí por el modal de confirmación: este atajo era el que
+  // llenaba el catálogo de ciudades basura ("nas" abajo de Bahamas) porque
+  // alcanzaba con tipear cualquier cosa y apretar Enter.
+  async function handleSaveCiudad(pais: Pais & { ciudades: Ciudad[] }) {
+    const nombre = await confirmarCiudad({
+      nombre: newCiudadNombre,
+      paisNombre: pais.nombre,
+      ciudadesDelPais: pais.ciudades.map((c) => c.nombre),
+    });
+    if (!nombre) return;
+    try {
+      await createCiudad({ paisId: pais.id, nombre });
+      toast("success", "Ciudad agregada", `"${nombre}" fue agregada correctamente`);
+      setAddingCiudad(null);
+      setNewCiudadNombre("");
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo agregar la ciudad",
+        err instanceof Error ? err.message : "Intentá nuevamente",
+      );
+    }
   }
 
   async function handleSaveEditCiudad(ciudad: Ciudad) {
     if (!ciudadDraft.trim()) return;
-    await updateCiudad({ ...ciudad, nombre: ciudadDraft.trim() });
-    toast("success", "Ciudad actualizada", `"${ciudadDraft.trim()}" fue actualizada correctamente`);
-    setEditingCiudadId(null);
-    setCiudadDraft("");
+    try {
+      await updateCiudad({ ...ciudad, nombre: ciudadDraft.trim() });
+      toast("success", "Ciudad actualizada", `"${ciudadDraft.trim()}" fue actualizada correctamente`);
+      setEditingCiudadId(null);
+      setCiudadDraft("");
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo actualizar la ciudad",
+        err instanceof Error ? err.message : "Intentá nuevamente",
+      );
+    }
   }
 
   async function handleDeleteCiudad(ciudad: Ciudad) {
@@ -1115,7 +1141,14 @@ function RegionesPaisesTab() {
                                           placeholder="Nombre de la ciudad"
                                           autoFocus
                                           onKeyDown={(e) => {
-                                            if (e.key === "Enter") handleSaveCiudad(p.id);
+                                            if (e.key === "Enter") {
+                                              // Sin esto el mismo Enter sigue
+                                              // viajando y le pega al botón que
+                                              // el modal de confirmación acaba
+                                              // de enfocar.
+                                              e.preventDefault();
+                                              handleSaveCiudad(p);
+                                            }
                                             if (e.key === "Escape") {
                                               setAddingCiudad(null);
                                               setNewCiudadNombre("");
@@ -1125,7 +1158,7 @@ function RegionesPaisesTab() {
                                         <Button
                                           variant="icon"
                                           size="xs"
-                                          onClick={() => handleSaveCiudad(p.id)}
+                                          onClick={() => handleSaveCiudad(p)}
                                           aria-label="Guardar ciudad"
                                         >
                                           <Check className="h-3 w-3" />
@@ -1395,6 +1428,8 @@ function RegionesPaisesTab() {
           </Button>
         </ModalFooter>
       </Modal>
+
+      {confirmarCiudadUI}
     </>
   );
 }

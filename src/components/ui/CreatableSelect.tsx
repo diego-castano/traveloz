@@ -77,10 +77,18 @@ export function CreatableSelect({
   const handleCreate = async () => {
     if (!canCreate) return;
     setCreating(true);
+    // Cerramos el desplegable antes de delegar: `onCreate` puede abrir un modal
+    // de confirmación (ver useConfirmarCiudad) y este popover se dibuja por
+    // encima. Si el alta no prospera reabrimos con lo tipeado intacto, así
+    // cancelar no cuesta volver a escribir todo.
+    setOpen(false);
     try {
       const created = await onCreate(q);
       if (typeof created === "string") onValueChange?.(created);
-      setOpen(false);
+      else {
+        setOpen(true);
+        setQuery(q);
+      }
     } finally {
       setCreating(false);
     }

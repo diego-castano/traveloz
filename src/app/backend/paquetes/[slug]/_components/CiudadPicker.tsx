@@ -26,6 +26,8 @@ import {
   useRegiones,
   useCatalogActions,
 } from "@/components/providers/CatalogProvider";
+import { useConfirmarCiudad } from "@/components/ui/ConfirmarCiudad";
+import { useToast } from "@/components/ui/Toast";
 import type { Pais, Region, Ciudad } from "@/lib/types";
 
 const DESTINO_BREADCRUMB_SEPARATOR = "›";
@@ -201,6 +203,8 @@ export function CiudadPicker({
   const paises = usePaises();
   const regiones = useRegiones();
   const { createCiudad } = useCatalogActions();
+  const { toast } = useToast();
+  const { confirmarCiudad, confirmarCiudadUI } = useConfirmarCiudad();
 
   // Region metadata by id (nombre + orden) so we can look up region info for
   // any país without relying on the region→país nesting in useRegiones (which
@@ -384,8 +388,24 @@ export function CiudadPicker({
   }, [search, recommendedRows, groupedResults, paisesPlanos]);
 
   const handleCreate = async (paisId: string, paisNombre: string) => {
-    const nombre = search.trim();
-    if (!nombre) return;
+    const tipeado = search.trim();
+    if (!tipeado) return;
+
+    // Cerramos el desplegable ANTES de confirmar: se dibuja en un portal con
+    // z-index 1000 y taparía el modal. Si el operador cancela lo reabrimos —
+    // `search` no se limpia al cerrar, así que recupera lo que venía tipeando.
+    setOpen(false);
+    const nombre = await confirmarCiudad({
+      nombre: tipeado,
+      paisNombre,
+      ciudadesDelPais:
+        paises.find((p) => p.id === paisId)?.ciudades.map((c) => c.nombre) ?? [],
+    });
+    if (!nombre) {
+      setOpen(true);
+      return;
+    }
+
     setCreatingInPaisId(paisId);
     try {
       const created = (await createCiudad({ paisId, nombre })) as unknown as {
@@ -394,10 +414,14 @@ export function CiudadPicker({
         paisId: string;
       };
       onCreated(created, paisNombre);
-      setOpen(false);
       setSearch("");
-    } catch {
-      // Toast handled upstream via package actions; we keep silent here.
+    } catch (err) {
+      toast(
+        "error",
+        "No se pudo agregar la ciudad",
+        err instanceof Error ? err.message : "Intentá nuevamente",
+      );
+      setOpen(true);
     } finally {
       setCreatingInPaisId(null);
     }
@@ -584,6 +608,8 @@ export function CiudadPicker({
             document.body,
           )
         : null}
+
+      {confirmarCiudadUI}
     </div>
   );
 }

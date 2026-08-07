@@ -38,6 +38,7 @@ import {
 } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
+import { useConfirmarCiudad } from "@/components/ui/ConfirmarCiudad";
 import { formatCurrency } from "@/lib/utils";
 import { formatStoredDate, parseStoredDate } from "@/lib/date";
 import type { Alojamiento, PrecioAlojamiento } from "@/lib/types";
@@ -131,6 +132,7 @@ function AlojamientoDetailForm({
   const paises = usePaises();
   const regimenes = useRegimenes();
   const { createCiudad } = useCatalogActions();
+  const { confirmarCiudad, confirmarCiudadUI } = useConfirmarCiudad();
 
   // ---------------------------------------------------------------------------
   // Card 1: Hotel form state
@@ -141,11 +143,20 @@ function AlojamientoDetailForm({
   const [ciudadId, setCiudadId] = useState(alojamiento?.ciudadId ?? "");
 
   // Crea una ciudad "in situ" bajo el país elegido y la deja seleccionada.
+  // Pasa por el modal de confirmación: sin ese paso alcanzaba un Enter para
+  // sumar una ciudad inventada al catálogo que ven todas las pantallas.
   async function handleCreateCiudad(nombre: string): Promise<string | void> {
-    if (!paisId) return;
+    const pais = paises.find((p) => p.id === paisId);
+    if (!pais) return;
+    const confirmado = await confirmarCiudad({
+      nombre,
+      paisNombre: pais.nombre,
+      ciudadesDelPais: pais.ciudades.map((c) => c.nombre),
+    });
+    if (!confirmado) return;
     try {
-      const ciudad = await createCiudad({ paisId, nombre: nombre.trim() });
-      toast("success", "Ciudad agregada", `"${nombre.trim()}" quedó disponible.`);
+      const ciudad = await createCiudad({ paisId: pais.id, nombre: confirmado });
+      toast("success", "Ciudad agregada", `"${confirmado}" quedó disponible.`);
       return ciudad.id;
     } catch (err) {
       toast(
@@ -571,6 +582,7 @@ function AlojamientoDetailForm({
         </FormSection>
       </FormSections>
 
+      {confirmarCiudadUI}
     </>
   );
 }

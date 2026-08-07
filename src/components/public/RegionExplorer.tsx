@@ -499,7 +499,9 @@ export function RegionExplorer({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.22, ease: "easeOut" }}
-                  className="col-xxl-3 col-lg-4 col-sm-6"
+                  // tvz-card-col: estira la card al alto de la fila (site.css,
+                  // "Tarjetas de paquete del grid — todas al mismo alto").
+                  className="col-xxl-3 col-lg-4 col-sm-6 tvz-card-col"
                 >
                   <PackageCard
                     paquete={p}

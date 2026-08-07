@@ -6,7 +6,22 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import type { CategoriaServicio } from "@prisma/client";
 import { logger } from "@/lib/logger";
+import {
+  ciudadKey,
+  normalizeCiudadNombre,
+  validarCiudadNombre,
+} from "@/lib/ciudad-nombre";
 const log = logger.child({ module: "catalog.actions" });
+
+/**
+ * Errores de alta/edición de ciudad que SÍ tienen que llegarle al operador con
+ * su texto original (nombre inválido, ciudad repetida). Todo lo demás se
+ * loguea y sale como mensaje genérico, como el resto del archivo.
+ *
+ * No se exporta a propósito: en un módulo "use server" sólo pueden salir
+ * funciones async.
+ */
+class CiudadInvalidaError extends Error {}
 
 /** Global catalog-cache tag. Same rationale as services-global: lets every
  *  mutation invalidate without resolving brandId first. Catalogs are tiny
@@ -65,10 +80,54 @@ const PaisSchema = z.object({
   regionId: z.string().nullable().optional(),
 });
 
+// El nombre se normaliza (trim + espacios colapsados) y se valida con las
+// mismas reglas que usa el modal de confirmación del panel, así el servidor no
+// acepta nada que la UI hubiera rechazado — ni al revés.
+const CiudadNombreSchema = z
+  .string()
+  .transform(normalizeCiudadNombre)
+  .superRefine((nombre, ctx) => {
+    const error = validarCiudadNombre(nombre);
+    if (error) ctx.addIssue({ code: "custom", message: error });
+  });
+
 const CiudadSchema = z.object({
   paisId: z.string().min(1, "El paisId es requerido"),
-  nombre: z.string().min(1, "El nombre es requerido"),
+  nombre: CiudadNombreSchema,
 });
+
+/**
+ * Traduce lo que salga del alta/edición de ciudad a un error mostrable.
+ * Devuelve el error listo para `throw`.
+ */
+function errorDeCiudad(error: unknown, fallback: string): Error {
+  if (error instanceof CiudadInvalidaError) return error;
+  if (error instanceof z.ZodError) {
+    return new CiudadInvalidaError(
+      error.issues[0]?.message ?? "El nombre de la ciudad no es válido.",
+    );
+  }
+  return new Error(fallback);
+}
+
+/**
+ * Ciudad ya cargada en ese país que sea "la misma" ignorando tildes,
+ * mayúsculas y puntuación ("Río de Janeiro" == "rio de janeiro"). Un UNIQUE de
+ * Postgres no sirve para esto porque compara byte a byte, así que la
+ * comparación real vive en `ciudadKey`.
+ */
+async function ciudadRepetida(
+  paisId: string,
+  nombre: string,
+  ignorarId?: string,
+): Promise<string | null> {
+  const hermanas = await prisma.ciudad.findMany({
+    where: { paisId, ...(ignorarId ? { id: { not: ignorarId } } : {}) },
+    select: { nombre: true },
+  });
+  const clave = ciudadKey(nombre);
+  return hermanas.find((c) => ciudadKey(c.nombre) === clave)?.nombre ?? null;
+}
 
 const ProveedorSchema = z.object({
   nombre: z.string().min(1, "El nombre es requerido"),
@@ -475,10 +534,26 @@ export async function createCiudad(data: { paisId: string; nombre: string }) {
   try {
     await requireCanEdit();
     const parsed = CiudadSchema.parse(data);
+
+    // Última barrera contra el catálogo basura. El panel ya confirma y avisa de
+    // parecidas antes de llegar acá, pero el repetido exacto se corta igual del
+    // lado del servidor: es el único punto por el que pasan los tres atajos.
+    const repetida = await ciudadRepetida(parsed.paisId, parsed.nombre);
+    if (repetida) {
+      throw new CiudadInvalidaError(
+        `Ese país ya tiene la ciudad «${repetida}».`,
+      );
+    }
+
     const __res = await prisma.ciudad.create({ data: parsed }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
-    log.error("creating ciudad", error);
-    throw new Error("No se pudo crear la ciudad.");
+    const mostrable = errorDeCiudad(error, "No se pudo crear la ciudad.");
+    // Un nombre inválido o repetido es una decisión del sistema, no una falla:
+    // no va al log de errores o lo llenaríamos de ruido operativo.
+    if (!(mostrable instanceof CiudadInvalidaError)) {
+      log.error("creating ciudad", error);
+    }
+    throw mostrable;
   }
 }
 
@@ -489,10 +564,30 @@ export async function updateCiudad(
   try {
     await requireCanEdit();
     const clean = CiudadSchema.partial().parse(data);
+
+    // Renombrar tampoco puede dejar dos veces la misma ciudad en un país.
+    if (clean.nombre) {
+      const actual = await prisma.ciudad.findUnique({
+        where: { id },
+        select: { paisId: true },
+      });
+      if (actual) {
+        const repetida = await ciudadRepetida(actual.paisId, clean.nombre, id);
+        if (repetida) {
+          throw new CiudadInvalidaError(
+            `Ese país ya tiene la ciudad «${repetida}».`,
+          );
+        }
+      }
+    }
+
     const __res = await prisma.ciudad.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
-    log.error("updating ciudad", error);
-    throw new Error("No se pudo actualizar la ciudad.");
+    const mostrable = errorDeCiudad(error, "No se pudo actualizar la ciudad.");
+    if (!(mostrable instanceof CiudadInvalidaError)) {
+      log.error("updating ciudad", error);
+    }
+    throw mostrable;
   }
 }
 

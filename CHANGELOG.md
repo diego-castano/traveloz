@@ -11,6 +11,49 @@ del catálogo, CRM).
 
 ---
 
+## 7 de agosto de 2026
+
+### Arreglado
+
+**Las tarjetas de una fila quedaban de alturas distintas.** En los listados de
+destinos, un paquete con título de una línea ("Búzios") dibujaba una tarjeta más
+baja que la de al lado con título de dos ("Río de Janeiro & Búzios"), y la fila
+se veía despareja. Ahora el título reserva siempre dos renglones, así la
+temporada y los renglones de "Incluye" arrancan a la misma altura en todas, y
+el bloque de precio se ancla al pie: todas las tarjetas de una fila miden lo
+mismo y los precios quedan alineados, tengan 4 o 5 renglones de "Incluye". Un
+título de tres líneas sigue creciendo, no se recorta. Aplica a las cuatro
+grillas del sitio (todos los destinos, por región, por categoría y por
+etiqueta); el carrusel del detalle ya lo tenía resuelto.
+
+### Nuevo
+
+**Crear una ciudad ahora pide confirmación.** Era el problema que reportó el
+cliente: se escribía cualquier palabra, se apretaba Enter y la ciudad quedaba
+creada, sin lectura ni vuelta atrás. Así aparecieron ciudades como "nas" al lado
+de "Nassau". Ahora, desde los tres atajos donde se puede crear una ciudad
+—el árbol de Catálogos, el picker de ciudades del paquete y el alta de hotel—
+aparece un cartel que pregunta si se quiere agregar esa ciudad a ese país, y
+muestra el nombre exacto que se va a guardar. El foco arranca en "Cancelar" a
+propósito, para que un Enter de más no confirme solo.
+
+**Aviso de ciudades parecidas.** Si en ese país ya hay una ciudad que se parece
+a la que se está por crear, el cartel la nombra y sugiere elegir la existente.
+Detecta tanto abreviaturas ("nas" contra "Nassau") como errores de tipeo
+("Buens Aires" contra "Buenos Aires").
+
+### Cambiado
+
+**No se puede repetir una ciudad dentro del mismo país.** La comparación ignora
+tildes, mayúsculas y puntuación, así que "Río de Janeiro" y "rio de janeiro" son
+la misma y la segunda se rechaza con un mensaje que dice cuál es la que ya
+existe. También se limpian los espacios sobrantes del nombre y se rechaza lo que
+no puede ser una ciudad (vacío, un solo carácter, o algo sin ninguna letra como
+"123"). Vale para el alta y para el renombre, y el chequeo está también del lado
+del servidor, no solo en la pantalla.
+
+---
+
 ## 6 de agosto de 2026
 
 ### Arreglado

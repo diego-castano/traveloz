@@ -28,6 +28,7 @@ import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
 import { useToast } from "@/components/ui/Toast";
+import { useConfirmarCiudad } from "@/components/ui/ConfirmarCiudad";
 
 // ---------------------------------------------------------------------------
 // NuevoAlojamientoPage
@@ -43,14 +44,24 @@ export default function NuevoAlojamientoPage() {
   const catalogLoading = useCatalogLoading();
   const { createCiudad } = useCatalogActions();
   const { toast } = useToast();
+  const { confirmarCiudad, confirmarCiudadUI } = useConfirmarCiudad();
 
   // Crea una ciudad "in situ" bajo el país elegido y la deja seleccionada, sin
-  // salir del alta del hotel. Devuelve el id para autoseleccionarla.
+  // salir del alta del hotel. Devuelve el id para autoseleccionarla — o nada si
+  // el operador cancela la confirmación, que es lo que evita que un Enter de
+  // más meta una ciudad inventada en el catálogo global.
   async function handleCreateCiudad(nombre: string): Promise<string | void> {
-    if (!paisId) return;
+    const pais = paises.find((p) => p.id === paisId);
+    if (!pais) return;
+    const confirmado = await confirmarCiudad({
+      nombre,
+      paisNombre: pais.nombre,
+      ciudadesDelPais: pais.ciudades.map((c) => c.nombre),
+    });
+    if (!confirmado) return;
     try {
-      const ciudad = await createCiudad({ paisId, nombre: nombre.trim() });
-      toast("success", "Ciudad agregada", `"${nombre.trim()}" quedó disponible.`);
+      const ciudad = await createCiudad({ paisId: pais.id, nombre: confirmado });
+      toast("success", "Ciudad agregada", `"${confirmado}" quedó disponible.`);
       return ciudad.id;
     } catch (err) {
       toast(
@@ -310,6 +321,8 @@ export default function NuevoAlojamientoPage() {
           </Button>
         </div>
       </form>
+
+      {confirmarCiudadUI}
     </>
   );
 }
