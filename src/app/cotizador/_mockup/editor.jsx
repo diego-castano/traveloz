@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import {
   MESES, ANIO_BASE, REGIMENES, HABITACIONES, SUG, MODALIDADES, SUG_ALL, CIUDADES, AEROLINEAS,
-  PNR_DEMO, CLIENTES, uid, hotelById, clamp, toISO, fmtCorto, money, venta, margenPct,
+  PNR_DEMO, CLIENTES, VENDEDORES, uid, hotelById, clamp, toISO, fmtCorto, money, venta, margenPct,
   limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, FRECUENTES, hotelesCotizadosEn,
   snippetMensaje, redactarMensaje
 } from "./data";
@@ -848,25 +848,36 @@ function BloqueServicios({ q, set, refEl, toast }) {
   );
 }
 
-/* ── 7 · Notas internas — nunca salen ────────────────────────────────── */
-function BloqueNotas({ q, set, refEl, toast, vistaPasajero }) {
+/* ── 7 · Notas internas — bitácora del equipo + costos fijos; nunca salen ── */
+function BloqueNotas({ q, set, refEl, toast, vistaPasajero, vendedor }) {
   const [c, setC] = useState(""); const [n, setN] = useState("");
+  const [txt, setTxt] = useState("");
   const inp = useRef(null);
+  const bitacora = q.bitacora || [];
+  const cuenta = q.notas.length + bitacora.length;
   const total = q.notas.reduce((a, x) => a + Number(x.neto || 0), 0);
   const agregar = () => { if (!c.trim()) return;
     set((d) => { d.notas.push({ id:uid("nt"), concepto:c.trim(), neto:Number(n) || 0 }); });
     setC(""); setN(""); requestAnimationFrame(() => inp.current?.focus()); };
 
-  /* v2B · en "Ver como pasajero" el bloque queda atenuado y sin números a la vista */
+  /* v2F · la bitácora anota, no edita: cada entrada queda firmada y fechada */
+  const anotar = () => {
+    const t = txt.trim(); if (!t) return;
+    set((d) => { d.bitacora = d.bitacora || []; d.bitacora.unshift({ id:uid("bt"), autor:vendedor, hace:"recién", texto:t }); });
+    setTxt("");
+  };
+  const autorDe = (id) => VENDEDORES.find((v) => v.id === id) || VENDEDORES[0];
+
+  /* v2B · en "Ver como pasajero" el bloque queda atenuado y sin nada a la vista */
   if (vistaPasajero) {
     return (
-      <Block id="b-notas" forwardRef={refEl} icon={Lock} title="Notas internas" count={q.notas.length}
+      <Block id="b-notas" forwardRef={refEl} icon={Lock} title="Notas internas" count={cuenta}
         right={<Pill tone="n"><EyeOff size={9} /> Escondido</Pill>}>
         <div className="oculto-pas">
           <EyeOff size={15} style={{ color:"var(--n300)", flexShrink:0 }} />
-          <span>{q.notas.length
-            ? `${q.notas.length} ${q.notas.length === 1 ? "nota interna guardada" : "notas internas guardadas"} — el pasajero nunca las ve.`
-            : "Acá van los netos y costos fijos. El pasajero nunca los ve."}
+          <span>{cuenta
+            ? `${cuenta} ${cuenta === 1 ? "apunte interno guardado" : "apuntes internos guardados"} — el pasajero nunca los ve.`
+            : "Acá van la bitácora del equipo y los costos fijos. El pasajero nunca los ve."}
           </span>
         </div>
       </Block>
@@ -874,10 +885,54 @@ function BloqueNotas({ q, set, refEl, toast, vistaPasajero }) {
   }
 
   return (
-    <Block id="b-notas" forwardRef={refEl} icon={Lock} title="Notas internas" count={q.notas.length}
+    <Block id="b-notas" forwardRef={refEl} icon={Lock} title="Notas internas" count={cuenta}
       right={<Pill tone="coral"><Lock size={9} /> No se comparte</Pill>}>
+
+      {/* ── v2F · bitácora ── */}
+      <div className="lbl" style={{ marginBottom:7 }}>Bitácora del equipo</div>
+      <div style={{ display:"flex", gap:8, alignItems:"flex-end", marginBottom: bitacora.length ? 10 : 4 }}>
+        <textarea className="in" rows={2} value={txt} style={{ flex:1, resize:"vertical", minHeight:52, paddingTop:8 }}
+          placeholder={"Anotá para el equipo: pedidos especiales, qué quedó hablado, a qué estar atentos…"}
+          onChange={(e) => setTxt(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); anotar(); } }} />
+        <Btn size="sm" onClick={anotar} style={{ height:38, flexShrink:0 }} disabled={!txt.trim()}>
+          <PenLine size={13} /> Anotar</Btn>
+      </div>
+      {bitacora.length === 0 ? (
+        <div style={{ fontSize:11, color:"var(--n400)", marginBottom:12 }}>
+          Todavía no hay anotaciones. Quedan firmadas y fechadas, solo para el equipo. <span className="mono" style={{ fontSize:10 }}>Ctrl+Enter anota</span>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:7, marginBottom:13 }}>
+          {bitacora.map((b, i) => {
+            const a = autorDe(b.autor);
+            return (
+              <div key={b.id} className="a-pop" style={{ display:"flex", gap:9, padding:"9px 11px", borderRadius:11,
+                background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderLeft:"3px solid var(--violet)" }}>
+                <span style={{ width:22, height:22, borderRadius:99, flexShrink:0, display:"inline-flex", alignItems:"center",
+                  justifyContent:"center", fontSize:9.5, fontWeight:800, color:"#fff",
+                  background:"linear-gradient(135deg,var(--violet),var(--violet-2))" }}>{a.inicial}</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                    <span style={{ fontSize:11.5, fontWeight:700 }}>{a.nombre}</span>
+                    <span className="mono" style={{ fontSize:10, color:"var(--n400)" }}>{b.hace}</span>
+                  </div>
+                  <div style={{ fontSize:12.5, lineHeight:1.5, whiteSpace:"pre-wrap", overflowWrap:"anywhere" }}>{b.texto}</div>
+                </div>
+                <button className="btn btn-g btn-ico" style={{ width:25, height:25, flexShrink:0 }} title="Borrar anotación"
+                  onClick={() => { const cp = { ...b }; set((d) => { d.bitacora.splice(i, 1); });
+                    toast({ msg:"Anotación borrada", tone:"warn", undo:() => set((d) => { d.bitacora.splice(i, 0, cp); }) }); }}>
+                  <Trash2 size={12} /></button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── costos fijos (lo de siempre) ── */}
+      <div className="lbl" style={{ marginBottom:7 }}>Costos fijos</div>
       {q.notas.length === 0
-        ? <Vacio icon={Lock} titulo="Sin notas internas" accion="Netos y costos fijos que el pasajero nunca ve" />
+        ? <div style={{ fontSize:11, color:"var(--n400)", marginBottom:8 }}>Netos y costos que respaldan el precio — tampoco se comparten.</div>
         : (
         <div style={{ border:"1px solid var(--hair-soft)", borderRadius:12, overflow:"hidden", marginBottom:10 }}>
           {q.notas.map((x, i) => (
