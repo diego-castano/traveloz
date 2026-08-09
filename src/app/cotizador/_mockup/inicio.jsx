@@ -194,6 +194,7 @@ const EJEMPLOS_IA = [
   { l:"Familia a Brasil",   t:"Hola! somos 2 adultos y un nene de 8, queremos ir a Río en octubre, una semana mas o menos, algo con desayuno" },
   { l:"Pareja al Caribe",   t:"Buenas! con mi señora queremos escaparnos a Punta Cana en noviembre, all inclusive, 7 noches" },
   { l:"Grupo a Europa",     t:"Hola Agustina! te escribo por el viaje a Madrid y Barcelona de marzo que vi en la web, somos 4 adultos" },
+  { l:"Brasil, a elegir",   t:"Hola! queremos ir a Brasil en enero con los chicos, somos 2 adultos y 2 nenas, mi número es 091 555 010" },
 ];
 
 function ModalIA({ onClose, onArmar }) {
@@ -214,14 +215,22 @@ function ModalIA({ onClose, onArmar }) {
   /* si la consulta no trae mes, mandan las fechas del paquete */
   const salidaMes = det?.paquete ? (det.mes != null ? det.mes : det.paquete.mes) : det?.mes;
   const salidaAnio = det?.paquete ? (det.mes != null ? det.anio : det.paquete.anio) : det?.anio;
+  const varios = !det?.paquete && (det?.candidatos?.length || 0) > 1;
   const pasos = det ? [
     { l:"Leyendo tu consulta…" },
     { l:`Buscando entre tus ${PAQUETES.length} paquetes publicados…` },
     det.paquete
       ? { l:`Encontré: ${det.paquete.nombre} · ${MESES[salidaMes].slice(0,3)} ${salidaAnio}` }
-      : { l:"No encontré un paquete que coincida — la armo en blanco" },
-    { l:"Armando el borrador…" },
+      : varios
+      ? { l:`Encontré ${det.candidatos.length} paquetes que encajan — elegís vos` }
+      : { l:"No encontré un paquete que coincida" },
+    { l: det.paquete ? "Armando el borrador…" : "Preparando lo que entendí…" },
   ] : [];
+
+  /* v2E · lo que se ofrece en el paso de elección: los candidatos que empataron,
+     o —si no encajó ninguno— los primeros paquetes publicados como sugerencia */
+  const lista = useMemo(() => (!det ? [] : varios ? det.candidatos.slice(0, 4) : PAQUETES.slice(0, 3)),
+    [det, varios]);
 
   const armar = () => { if (!texto.trim()) return; setDet(detectarConsulta(texto)); setPaso(0); setFase("corriendo"); };
 
@@ -230,9 +239,21 @@ function ModalIA({ onClose, onArmar }) {
     const durs = [600, 800, 620, 640];
     const ts = []; let acum = 0;
     for (let i = 1; i <= durs.length; i++) { acum += durs[i - 1]; ts.push(setTimeout(() => setPaso(i), acum)); }
-    ts.push(setTimeout(() => armarRef.current(det), acum + 220));
+    /* con un ganador claro arma directo; si no, el vendedor elige el paquete */
+    ts.push(setTimeout(() => (det.paquete ? armarRef.current(det) : setFase("elegir")), acum + 220));
     return () => ts.forEach(clearTimeout);
   }, [fase, det]);
+
+  /* v2E · teclado del paso de elección: 1…n elige, Escape vuelve al texto */
+  useEffect(() => {
+    if (fase !== "elegir") return;
+    const h = (e) => {
+      if (e.key === "Escape") { setFase("edit"); return; }
+      const n = Number(e.key);
+      if (n >= 1 && n <= lista.length) armarRef.current({ ...det, paquete: lista[n - 1] });
+    };
+    document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
+  }, [fase, det, lista]);
 
   return (
     <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && fase === "edit" && onClose()}>
@@ -243,7 +264,7 @@ function ModalIA({ onClose, onArmar }) {
           <div className="disp" style={{ fontSize:17, fontWeight:600, letterSpacing:"-.02em", flex:1 }}>
             Pegá la consulta del pasajero
           </div>
-          {fase === "edit" && <button className="btn btn-g btn-ico" onClick={onClose}><X size={15} /></button>}
+          {fase !== "corriendo" && <button className="btn btn-g btn-ico" onClick={onClose}><X size={15} /></button>}
         </div>
 
         {fase === "edit" ? (
@@ -274,8 +295,49 @@ function ModalIA({ onClose, onArmar }) {
               <Sparkles size={16} /> Armar borrador
             </button>
             <div style={{ fontSize:11, color:"var(--n400)", textAlign:"center", marginTop:8, lineHeight:1.5 }}>
-              Lee el destino, el mes, cuántos viajan y cuántas noches. Después lo revisás y ajustás vos.
+              Lee destino, mes, cuántos viajan y cuántas noches. Si el destino es amplio
+              (Brasil, el Caribe…) te muestra los paquetes que encajan y elegís vos.
             </div>
+          </div>
+        ) : fase === "elegir" ? (
+          <div style={{ padding:"16px 17px 18px" }}>
+            <div className="disp" style={{ fontSize:15.5, fontWeight:600, letterSpacing:"-.015em", marginBottom:3 }}>
+              {varios ? "¿Desde cuál paquete lo armamos?" : "No encontré un paquete que coincida"}
+            </div>
+            <div style={{ fontSize:11.5, color:"var(--n400)", marginBottom:12, lineHeight:1.5 }}>
+              {varios
+                ? "La consulta encaja con más de uno. Elegí y todo lo demás queda precargado."
+                : "¿Era alguno de estos? También podés seguir en blanco con lo que entendí."}
+            </div>
+
+            {lista.map((p, i) => (
+              <button key={p.id} className="cam" style={{ width:"100%", marginBottom:7 }}
+                onClick={() => armarRef.current({ ...det, paquete:p })}>
+                <Foto seed={p.seed} w={54} h={40} r={9} />
+                <div style={{ flex:1, minWidth:0, textAlign:"left" }}>
+                  <div style={{ fontSize:13, fontWeight:700 }}>{p.nombre}</div>
+                  <div style={{ fontSize:11, color:"var(--n400)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.resumen}</div>
+                </div>
+                <span className="mono" style={{ fontSize:11.5, color:"var(--teal-3)", flexShrink:0 }}>
+                  desde {money(venta(p.opciones[0].neto, p.opciones[0].factor))}
+                </span>
+                <span className="cam-n">{i + 1}</span>
+              </button>
+            ))}
+
+            <button className="btn btn-g" style={{ width:"100%", height:40, borderRadius:11, marginTop:3 }}
+              onClick={() => armarRef.current(det)}>
+              <FileText size={13} /> Armar en blanco con lo que entendí
+            </button>
+
+            {det?.chips?.length > 0 && (
+              <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginTop:12 }}>
+                <span className="lbl" style={{ marginRight:2 }}>Entendí</span>
+                {det.chips.map((c) => (
+                  <span key={c} className="pill" data-tone="violet">{c}</span>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ padding:"16px 17px 18px" }}>
@@ -300,11 +362,11 @@ function ModalIA({ onClose, onArmar }) {
                 <CheckCheck size={16} style={{ color:"var(--teal-2)", flexShrink:0 }} />
               </div>
             )}
-            {det && !det.paquete && paso >= 2 && (
+            {det && !det.paquete && !varios && paso >= 2 && (
               <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:9, marginTop:8, padding:"9px 11px",
                 borderRadius:12, background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.32)" }}>
                 <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
-                <span style={{ fontSize:11.5, color:"var(--ink-amber)" }}>La armo en blanco con lo que entendí — vos la completás.</span>
+                <span style={{ fontSize:11.5, color:"var(--ink-amber)" }}>Igual no arrancás de cero: te sugiero paquetes y me guardo lo que entendí.</span>
               </div>
             )}
 

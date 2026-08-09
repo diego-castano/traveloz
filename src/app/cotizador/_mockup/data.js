@@ -332,9 +332,24 @@ function detectarNoches(t) {
   return null;
 }
 
-/* puntaje: ciudad completa vale más que una palabra suelta; el mes que coincide desempata */
-function detectarPaquete(t, mes) {
-  let mejor = null, top = 0;
+/* v2E · destinos amplios: "Brasil" o "el Caribe" no eligen un paquete solo —
+   suman puntaje a todos los suyos y el vendedor elige desde cuál armar */
+const REGIONES_IA = [
+  { alias:["brasil"],                                ciudades:["Río de Janeiro","Búzios","Florianópolis"] },
+  { alias:["caribe"],                                ciudades:["Punta Cana","Cancún","Cartagena"] },
+  { alias:["europa"],                                ciudades:["Madrid","Barcelona","Lisboa","París","Roma"] },
+  { alias:["argentina"],                             ciudades:["Buenos Aires","Bariloche"] },
+  { alias:["estados unidos","eeuu","usa","disney"],  ciudades:["Miami","Orlando"] },
+];
+
+/* puntaje: ciudad completa vale más que una palabra suelta; la región suma a
+   todos sus paquetes; el mes que coincide desempata. Devuelve TODOS los que
+   encajan, ordenados de mejor a peor. */
+function detectarPaquetes(t, mes) {
+  const regiones = REGIONES_IA.filter((r) =>
+    r.alias.some((a) => (a.includes(" ") ? t.includes(a) : palabraEn(t, a))));
+  const enRegion = new Set(regiones.flatMap((r) => r.ciudades).map(norm));
+  const lista = [];
   for (const p of PAQUETES) {
     let sc = 0;
     for (const d of p.destinos) {
@@ -344,14 +359,22 @@ function detectarPaquete(t, mes) {
       const hits = toks.filter((w) => palabraEn(t, w)).length;
       if (hits) sc += hits === toks.length ? 3 : 1.5;
     }
+    if (p.destinos.some((d) => enRegion.has(norm(d.ciudad)))) sc += 2;
     if (sc > 0) {
       const pal = norm(p.nombre).split(/\s+/).filter((w) => w.length >= 5 && !STOP_IA.has(w));
       sc += pal.filter((w) => palabraEn(t, w)).length * 0.5;
       if (mes != null && p.mes === mes) sc += 1.5;
     }
-    if (sc > top) { top = sc; mejor = p; }
+    if (sc >= 1.5) lista.push({ p, sc });
   }
-  return top >= 1.5 ? mejor : null;
+  return lista.sort((a, b) => b.sc - a.sc);
+}
+
+/* un teléfono adentro de la consulta identifica al cliente (≥8 dígitos,
+   así un "2026" suelto no se confunde con un número) */
+function detectarTelefono(crudo) {
+  const m = crudo.match(/\+?\d[\d\s().-]{6,}\d/g) || [];
+  return m.map((x) => x.trim()).find((x) => x.replace(/\D/g, "").length >= 8) || "";
 }
 
 function detectarDestino(t, crudo) {
@@ -391,20 +414,28 @@ function detectarConsulta(texto) {
     : mes != null && mes < hoy.getMonth() ? ANIO_BASE + 1 : ANIO_BASE;
   if (anio !== ANIO_BASE && anio !== ANIO_BASE + 1) anio = ANIO_BASE;
 
-  const paquete = detectarPaquete(t, mes);
+  const rank = detectarPaquetes(t, mes);
+  const candidatos = rank.map((x) => x.p);
+  /* un solo claro ganador precarga directo; empate o destino amplio → elige el vendedor */
+  const paquete =
+    rank.length === 1 || (rank.length > 1 && rank[0].sc >= rank[1].sc + 2) ? rank[0].p : null;
   const destino = paquete ? paquete.destinos[0].ciudad : detectarDestino(t, crudo);
   const { adultos, menores } = detectarPax(t);
   const noches = detectarNoches(t);
   const cliente = detectarCliente(crudo);
+  const telefono = detectarTelefono(crudo);
 
   const chips = [];
   if (destino) chips.push(destino);
+  else if (candidatos.length > 1) chips.push(`${candidatos.length} paquetes posibles`);
   if (mes != null) chips.push(`${MESES[mes]} ${anio}`);
   const pax = etiquetaPax(adultos, menores);
   if (pax) chips.push(pax);
   if (noches) chips.push(`${noches} noches`);
+  if (telefono) chips.push(telefono);
 
-  return { texto:crudo, paquete, destino, mes, anio, adultos, menores, noches, cliente, chips };
+  return { texto:crudo, paquete, candidatos, destino, mes, anio, adultos, menores, noches,
+    cliente, telefono, paxTxt:pax, chips };
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -518,7 +549,7 @@ export {
   SUG_ALL, CIUDADES, AEROLINEAS, AEROPUERTOS, PNR_DEMO, PAQUETES, PAQUETES_EXTRA, PLANTILLAS,
   CLIENTES, VENDEDORES, HISTORIAL, semaforo, fmtHace, uid, hotelById, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
-  NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquete,
+  NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,
   /* v2B */
   telDigitos, pareceTel, matchTel, filaPorNum, ultimaDe, FRECUENTES, hotelesCotizadosEn,
