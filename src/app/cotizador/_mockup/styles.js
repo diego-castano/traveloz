@@ -380,6 +380,74 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   border-bottom:1px solid var(--hair-soft); }
 .atj-row:last-child { border-bottom:none; }
 @media (max-width:640px){ .ctz .atj-cols { grid-template-columns:1fr; gap:14px; } }
+
+/* ══ v2C: teléfono y envío ════════════════════════════════════════════ */
+
+/* ── switcher de opciones (lo ve el pasajero, no el vendedor) ────────── */
+.opt-seg { display:flex; gap:5px; padding:4px; margin-bottom:13px; border-radius:15px;
+  background:#F5F6FA; border:1px solid rgba(17,17,36,.055); overflow-x:auto; }
+.opt-seg::-webkit-scrollbar { height:0; width:0; }
+.opt-seg > button { flex:1 1 0; min-width:76px; padding:8px 7px 9px; border-radius:12px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  color:#6B6F99; transition:background .22s, box-shadow .22s, color .22s, transform .16s; }
+.opt-seg > button > span { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+.opt-seg > button:active { transform:scale(.97); }
+.opt-seg > button[data-on="1"] { background:#fff; color:#1A1A2E;
+  box-shadow:0 2px 9px rgba(26,26,46,.13), 0 0 0 1px rgba(120,90,229,.18); }
+.opt-n { font-size:10.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap; }
+.opt-p { font-size:13px; font-weight:800; letter-spacing:-.02em; white-space:nowrap; }
+.opt-seg > button[data-on="1"] .opt-p { color:#785AE5; }
+.opt-d { font-size:9.5px; font-weight:700; color:#8A8DB5; white-space:nowrap; }
+.opt-seg[data-desk="1"] > button { min-width:118px; padding:10px 14px 11px; }
+.opt-seg[data-desk="1"] .opt-n { font-size:11.5px; }
+.opt-seg[data-desk="1"] .opt-p { font-size:15px; }
+.opt-seg[data-desk="1"] .opt-d { font-size:10.5px; }
+
+/* ── odómetro del precio: solo ruedan los dígitos ────────────────────── */
+.odo { display:inline-flex; align-items:flex-end; font-variant-numeric:tabular-nums; }
+.odo-s { display:inline-block; height:1.1em; line-height:1.1; }
+.odo-d { display:inline-block; height:1.1em; line-height:1.1; overflow:hidden; }
+.odo-col { display:block; transition:transform .35s cubic-bezier(.2,.8,.2,1); will-change:transform; }
+.odo-col > span { display:block; height:1.1em; line-height:1.1; text-align:center; }
+@media (prefers-reduced-motion:reduce){ .odo-col { transition:none !important; } }
+
+/* ── pre-flight de Compartir: informa, nunca bloquea ─────────────────── */
+.pref { margin:12px 17px 0; padding:10px 12px; border-radius:13px;
+  background:#FBFBFE; border:1px solid var(--hair-soft); }
+.pref-i { display:flex; align-items:flex-start; gap:8px; padding:3px 0; font-size:11.5px; line-height:1.55; }
+.pref-i > svg { flex-shrink:0; margin-top:2px; }
+.pref-i[data-t="ok"] { color:var(--teal-3); }
+.pref-i[data-t="warn"] { color:#8A5A16; }
+.pref-i[data-t="info"] { color:var(--n400); }
+.pref-cta { flex-shrink:0; margin-left:auto; padding:2px 8px; border-radius:7px; font-size:11px; font-weight:700;
+  color:#8A5A16; background:rgba(247,178,103,.22); transition:background .15s; }
+.pref-cta:hover { background:rgba(247,178,103,.38); }
+.pref-ok { display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; color:var(--teal-3); }
+
+/* ── vía de envío apagada (WhatsApp sin teléfono) ────────────────────── */
+.via-off { opacity:.5; cursor:default; background:rgba(17,17,36,.03); border-style:dashed; }
+.via-off:hover { border-color:var(--hair); box-shadow:none; }
+
+/* ── envío por pasos: link → copiar → enviada ────────────────────────── */
+.env { margin-top:14px; padding:12px 13px; border-radius:13px; background:#FBFBFE;
+  border:1px solid var(--hair-soft); }
+.env-p { display:flex; align-items:center; gap:9px; font-size:12.5px; font-weight:600; color:var(--n500); }
+.env-p[data-on="2"] { color:var(--teal-3); }
+.env-link { display:flex; align-items:center; gap:8px; margin-top:10px; padding:8px 9px 8px 12px;
+  border-radius:11px; background:#fff; border:1px solid var(--hair); }
+.env-link .mono { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:12px; color:var(--n600); }
+.env-ok { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:11px; padding:9px;
+  border-radius:11px; font-size:13px; font-weight:800; color:#fff;
+  background:linear-gradient(145deg,#45D4C0,#2A9E8E);
+  box-shadow:0 8px 20px -8px rgba(42,158,142,.55), inset 0 1px 0 rgba(255,255,255,.3); }
+
+/* ── toast "lo abrieron": el momento en vivo ─────────────────────────── */
+@keyframes latido { 0%{box-shadow:0 0 0 0 rgba(69,212,192,.6)} 70%{box-shadow:0 0 0 8px rgba(69,212,192,0)} 100%{box-shadow:0 0 0 0 rgba(69,212,192,0)} }
+.ts-live { width:9px; height:9px; border-radius:99px; background:#45D4C0; flex-shrink:0;
+  animation:latido 1.8s cubic-bezier(.2,.8,.2,1) infinite; }
+.ts-vivo { box-shadow:0 18px 44px -12px rgba(17,17,36,.5), 0 0 0 1px rgba(69,212,192,.35),
+  0 0 26px -8px rgba(69,212,192,.55) !important; }
 `;
 
 export { CSS };

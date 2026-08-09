@@ -31,6 +31,13 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
     if (!q.opciones.some((o) => o.id === abierta)) setAbierta(q.opciones[0].id);
   }, [q.opciones, abierta]);
 
+  /* v2C · el pasajero cambia de opción desde el switcher (solo vista, no toca el editor) */
+  const [sel, setSel] = useState(q.opciones[0]?.id || null);
+  useEffect(() => {
+    if (!q.opciones.length) { setSel(null); return; }
+    if (!q.opciones.some((o) => o.id === sel)) setSel(q.opciones[0].id);
+  }, [q.opciones, sel]);
+
   const desk = modo === "desk";
   const G = { a:"#F43E55", b:"#785AE5", web:"traveloz.com.uy" };
   const grad = `linear-gradient(87deg, ${G.a} 0%, ${G.b} 100%)`;
@@ -38,6 +45,12 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
     .filter(Boolean).join(", ").replace(/, (\w+), (\d{4})$/, ", $1 $2");
   const V = VENDEDORES.find((v) => v.id === vendedor) || VENDEDORES[0];
   const totalNoches = tramos.reduce((a, t) => a + t.noches, 0);
+
+  /* v2C · comparación: la opción 1 es la base, las demás muestran cuánto suben o bajan */
+  const varias = q.opciones.length > 1;
+  const base = q.opciones[0] ? Math.round(venta(q.opciones[0].neto, q.opciones[0].factor)) : 0;
+  const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
+  const visibles = !q.opciones.length ? [] : varias ? [elegida] : q.opciones;
 
   /* escala: en escritorio todo un punto más grande */
   const fz = (cel, d) => desk ? d : cel;
@@ -169,15 +182,37 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
           <div ref={(el) => { anclas.current["b-alojamiento"] = el; }}>
             <SecTitulo texto="Opciones de alojamiento" color={G.b} />
             <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", margin:"-4px 0 12px" }}>
-              Tocá cada opción para ver el detalle de hoteles y fechas.
+              {varias
+                ? "Cambiá de opción para comparar precios, hoteles y régimen."
+                : "Tocá la opción para ver el detalle de hoteles y fechas."}
             </div>
+
+            {/* v2C · switcher del pasajero: precio de cada opción y diferencia contra la 1 */}
+            {varias && (
+              <div className="opt-seg" data-desk={desk ? "1" : "0"}>
+                {q.opciones.map((o, i) => {
+                  const pv = venta(o.neto, o.factor);
+                  return (
+                    <button key={o.id} data-on={elegida?.id === o.id ? "1" : "0"}
+                      onClick={() => { setSel(o.id); setAbierta(o.id); }}>
+                      <span className="opt-n">{tabNombre(o, i)}</span>
+                      <span className="opt-p">{money(pv)}</span>
+                      {i > 0 && <span className="opt-d">{delta(pv, base)}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:24 }}>
-              {q.opciones.map((o, oi) => {
+              {visibles.map((o) => {
+                const oi = q.opciones.indexOf(o);
                 const on = abierta === o.id;
                 const pv = venta(o.neto, o.factor);
                 const H0 = hotelById(o.hoteles?.[0]?.hotelId);
                 return (
-                  <div key={o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
+                  /* con switcher hay una sola card: la clave fija deja que el precio ruede al cambiar */
+                  <div key={varias ? "op-visible" : o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
                     border: on ? `1.5px solid ${G.b}55` : "1px solid rgba(17,17,36,.09)",
                     boxShadow: on ? `0 14px 34px -14px ${G.b}45` : "0 2px 6px rgba(17,17,36,.06)",
                     transition:"box-shadow .28s, border-color .28s, transform .28s" }}>
@@ -196,7 +231,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                         <span style={{ position:"absolute", right:10, bottom:10, padding:"6px 13px", borderRadius:12,
                           background:"rgba(255,255,255,.96)", boxShadow:"0 4px 14px rgba(0,0,0,.2)", textAlign:"right" }}>
                           <span style={{ display:"block", fontSize:fz(15.5, 17), fontWeight:800, color:G.b,
-                            letterSpacing:"-.025em", lineHeight:1.1 }}>{money(pv)}</span>
+                            letterSpacing:"-.025em", lineHeight:1.1 }}><Odometro valor={pv} /></span>
                           <span style={{ display:"block", fontSize:fz(8.5, 9), color:"#6B6F99", fontWeight:600 }}>por adulto · base doble</span>
                         </span>
                       </Foto>
@@ -259,7 +294,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
                           padding:"12px 14px", borderRadius:13, background:grad, color:"#fff" }}>
                           <span style={{ fontSize:fz(11.5, 12), fontWeight:600, opacity:.92 }}>Precio final por adulto</span>
-                          <span style={{ fontSize:fz(19, 21), fontWeight:800, letterSpacing:"-.03em" }}>{money(pv)}</span>
+                          <span style={{ fontSize:fz(19, 21), fontWeight:800, letterSpacing:"-.03em" }}><Odometro valor={pv} /></span>
                         </div>
                         {confirmada === o.id ? (
                           <div className="a-pop" style={{ marginTop:9, padding:"12px 14px", borderRadius:13,
@@ -366,6 +401,46 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color:"#B0B4CD", marginTop:4 }}>{G.web}</div>
       </div>
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2C · SWITCHER Y PRECIO QUE RUEDA
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* "Opción 2 · Superior" → "Opción 2": el nombre largo va en la card, no en la pestaña */
+function tabNombre(o, i) {
+  const n = String(o.nombre || "").trim();
+  if (!n) return `Opción ${i + 1}`;
+  const corto = n.split("·")[0].trim();
+  return corto.length > 2 ? corto : n;
+}
+
+/* diferencia contra la opción 1, ya redondeada */
+function delta(pv, base) {
+  const d = Math.round(pv) - base;
+  if (!d) return "mismo precio";
+  return `${d > 0 ? "+" : "−"}${money(Math.abs(d))}`;
+}
+
+/* Odómetro: cada dígito es una columna 0-9 que rueda; "USD" y los puntos quedan quietos */
+const DIGITOS = ["0","1","2","3","4","5","6","7","8","9"];
+function Odometro({ valor }) {
+  const txt = money(valor);
+  return (
+    <span className="odo" title={txt}>
+      {txt.split("").map((c, i) => (
+        c >= "0" && c <= "9" ? (
+          <span key={i} className="odo-d">
+            <span className="odo-col" style={{ transform:`translateY(-${Number(c) * 10}%)` }}>
+              {DIGITOS.map((d) => <span key={d}>{d}</span>)}
+            </span>
+          </span>
+        ) : (
+          <span key={i} className="odo-s">{c === " " ? " " : c}</span>
+        )
+      ))}
+    </span>
   );
 }
 

@@ -209,8 +209,19 @@ export default function Cotizador() {
   const toast = useCallback((t) => {
     const id = uid("ts");
     setToasts((l) => [...l, { ...t, id }]);
-    setTimeout(() => setToasts((l) => l.filter((x) => x.id !== id)), t.undo ? 5200 : 2800);
+    setTimeout(() => setToasts((l) => l.filter((x) => x.id !== id)), t.ms || (t.undo ? 5200 : 2800));
   }, []);
+
+  /* ── v2C · el pasajero abre la cotización a los 8 s del envío (una sola vez) ── */
+  const apertura = useRef(null);
+  useEffect(() => () => clearTimeout(apertura.current), []);
+  const avisarApertura = useCallback((nombre) => {
+    clearTimeout(apertura.current);
+    apertura.current = setTimeout(() => {
+      toast({ msg: nombre ? `👀 ${nombre} abrió la cotización` : "👀 El pasajero abrió la cotización",
+        tone:"vivo", ms:6200 });
+    }, 8000);
+  }, [toast]);
 
   /* ── v2B · arrancar desde la última cotización del cliente ─────────── */
   const usarBase = useCallback((r) => {
@@ -588,8 +599,10 @@ export default function Cotizador() {
 
       {compartir && (
         <ModalCompartir q={q} marca={marca} toast={toast} onClose={() => setCompartir(false)}
+          onIr={(id) => { setCompartir(false); irA(id); }}
           onVigencia={(h) => set((d) => { d.vigencia = h; })}
-          onEnviada={() => set((d) => { d.estado = "enviada"; })} />
+          onEnviada={() => { set((d) => { d.estado = "enviada"; });
+            avisarApertura(q.cliente.nombre.trim()); }} />
       )}
       {paleta && <Paleta acciones={acciones} onClose={() => setPaleta(false)} />}
       {atajos && <HojaAtajos onClose={() => setAtajos(false)} />}

@@ -114,11 +114,14 @@ function Toasts({ items, onUndo, onClose }) {
     <div style={{ position:"fixed", bottom:20, left:"50%", transform:"translateX(-50%)", zIndex:120,
       display:"flex", flexDirection:"column", gap:8, alignItems:"center", pointerEvents:"none" }}>
       {items.map((t) => (
-        <div key={t.id} className="a-pop" style={{ pointerEvents:"auto", display:"flex", alignItems:"center", gap:11,
+        <div key={t.id} className={`a-pop ${t.tone === "vivo" ? "ts-vivo" : ""}`}
+          style={{ pointerEvents:"auto", display:"flex", alignItems:"center", gap:11,
           background:"rgba(26,26,46,.96)", color:"#fff", padding:"10px 12px 10px 15px", borderRadius:13,
           boxShadow:"0 18px 44px -12px rgba(17,17,36,.5)", fontSize:13, fontWeight:500, backdropFilter:"blur(10px)" }}>
           {t.tone === "ok" && <CheckCheck size={15} style={{ color:"#45D4C0" }} />}
           {t.tone === "warn" && <AlertCircle size={15} style={{ color:"#F7B267" }} />}
+          {/* v2C · "lo están mirando ahora": punto verde latiendo */}
+          {t.tone === "vivo" && <span className="ts-live" />}
           <span>{t.msg}</span>
           {t.undo && (
             <button onClick={() => onUndo(t)} style={{ display:"inline-flex", alignItems:"center", gap:5,
