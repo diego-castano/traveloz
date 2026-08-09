@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import {
-  MESES, ANIO_BASE, PLANTILLAS, VENDEDORES, uid, toISO, addDays, venta, norm, ESTADOS
+  MESES, ANIO_BASE, PLANTILLAS, VENDEDORES, uid, toISO, addDays, venta, norm, ESTADOS,
+  CLIENTES, matchTel
 } from "./_mockup/data";
 import { Btn, Pill, Toasts } from "./_mockup/ui";
 import { SalidaPasajero } from "./_mockup/telefono";
@@ -133,6 +134,15 @@ function desdeIA(det) {
     q.destinos = [{ id:uid("dst"), ciudad:det.destino, noches: det.noches || 7, checkinManual:null }];
   }
   if (det.cliente) q.cliente.nombre = det.cliente;
+  /* v2E · un teléfono en la consulta identifica al pasajero; si ya es cliente
+     de la casa, se completa entero (y el bloque Cliente va a ofrecer su última) */
+  if (det.telefono) {
+    q.cliente.telefono = det.telefono;
+    const cli = CLIENTES.find((c) => matchTel(c.telefono, det.telefono));
+    if (cli) q.cliente = { nombre: det.cliente || cli.nombre, apellido: cli.apellido, email: cli.email, telefono: cli.telefono };
+  }
+  /* v2E · los pax leídos quedan escritos en la cotización, no solo en el banner */
+  if (det.paxTxt) q.notasCliente.push({ id: uid("nc"), texto: `Cotización pensada para ${det.paxTxt}.` });
   q.ia = { consulta:det.texto, chips:det.chips, paquete: det.paquete ? det.paquete.nombre : null };
   return q;
 }
