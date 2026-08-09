@@ -176,9 +176,9 @@ function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = fa
                   {copiado ? <><Check size={13} /> Copiado</> : <><Copy size={13} /> Copiar</>}
                 </Btn>
               </div>
-              <div style={{ marginTop:13, padding:"12px 13px", borderRadius:12, background:"#E6F8F5",
+              <div style={{ marginTop:13, padding:"12px 13px", borderRadius:12, background:"var(--wa-bg)",
                 border:"1px solid rgba(59,191,173,.28)" }}>
-                <div style={{ fontSize:12, lineHeight:1.6, color:"#165C53" }}>
+                <div style={{ fontSize:12, lineHeight:1.6, color:"var(--wa-fg)" }}>
                   {recordatorio
                     ? <>Hola{q.cliente.nombre ? ` ${q.cliente.nombre}` : ""} 👋 ¿pudiste ver la cotización de{" "}
                         <strong>{q.titulo.destino || "tu viaje"}</strong>? Te la dejo de nuevo por acá 👇<br />{linkCorto}</>
@@ -221,8 +221,8 @@ function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = fa
           {tab === "pdf" && (
             <>
               <div style={{ display:"flex", gap:12, alignItems:"center", padding:"13px", borderRadius:12,
-                border:"1px solid var(--hair-soft)", background:"#FCFCFE", marginBottom:12 }}>
-                <div style={{ width:44, height:56, borderRadius:7, background:"#fff", border:"1px solid var(--hair)",
+                border:"1px solid var(--hair-soft)", background:"var(--card-3)", marginBottom:12 }}>
+                <div style={{ width:44, height:56, borderRadius:7, background:"var(--pop)", border:"1px solid var(--hair)",
                   display:"grid", placeItems:"center", flexShrink:0, boxShadow:"0 3px 10px rgba(26,26,46,.07)" }}>
                   <FileText size={19} style={{ color:"var(--coral)" }} />
                 </div>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Plus, Send, ArrowLeft, Command, Zap, X,
   Smartphone, LayoutGrid, Loader2, CheckCheck, Lock, Gauge, Ticket, Files, Monitor, StickyNote,
-  ListChecks, Eye, EyeOff, Keyboard
+  ListChecks, Eye, EyeOff, Keyboard, Sun, Moon
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import {
@@ -154,6 +154,9 @@ export default function Cotizador() {
   const [prev, setPrev] = useState(null);                  // overlay de vista previa: null | "cel" | "tab" | "desk" 
   const [plantillas, setPlantillas] = useState(PLANTILLAS);
   const [homeTab, setHomeTab] = useState("cotizar");
+  /* v2D · D5 · tema de la herramienta. Arranca claro y vive solo en memoria.
+     La vista del pasajero (teléfono y vista previa) NO se oscurece nunca. */
+  const [oscuro, setOscuro] = useState(false);
   const pantallaRef = useRef("inicio");
   const [crono, setCrono] = useState(0);
   const [activo, setActivo] = useState("b-cliente");
@@ -302,6 +305,8 @@ export default function Cotizador() {
     { label: vistaPasajero ? "Volver a la vista del vendedor" : "Ver como pasajero (sin márgenes ni notas)",
       grupo:"acción", Icon: vistaPasajero ? EyeOff : Eye, run:() => setVistaPasajero((v) => !v) },
     { label:"Ver los atajos de teclado", grupo:"acción", Icon:Keyboard, run:() => setAtajos(true) },
+    { label: oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro", grupo:"acción",
+      Icon: oscuro ? Sun : Moon, run:() => setOscuro((v) => !v) },
     { label:"Duplicar esta cotización", grupo:"acción", Icon:Copy, run:() => {
         const c = JSON.parse(JSON.stringify(q)); c.numero = `COT-2026-${String(CORRELATIVO++).padStart(4,"0")}`;
         c.estado = "borrador"; abrir(c); toast({ msg:"Cotización duplicada — cambiá las fechas y listo", tone:"ok" }); } },
@@ -322,11 +327,12 @@ export default function Cotizador() {
 
   /* ── render ────────────────────────────────────────────────────────── */
   return (
-    <div className="ctz" data-brand={marca} style={{ minHeight:"100vh" }}>
+    <div className={`ctz${oscuro ? " dark" : ""}`} data-brand={marca} style={{ minHeight:"100vh" }}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {pantalla === "inicio" && (
         <Inicio
+          oscuro={oscuro} onTema={() => setOscuro((v) => !v)}
           onPaquete={(p) => abrir(desdePaquete(p))}
           onBlanco={() => abrir(cotizacionVacia())}
           onPlantilla={(t) => abrir(desdePlantilla(t))}
@@ -362,7 +368,7 @@ export default function Cotizador() {
       {pantalla === "editor" && (
         <>
           {/* ── barra superior ────────────────────────────────────────── */}
-          <header style={{ position:"sticky", top:0, zIndex:50, background:"rgba(245,246,250,.86)",
+          <header className="ed-head" style={{ position:"sticky", top:0, zIndex:50, background:"var(--glass)",
             backdropFilter:"blur(18px)", WebkitBackdropFilter:"blur(18px)", borderBottom:"1px solid var(--hair-soft)" }}>
             <div style={{ display:"flex", alignItems:"center", gap:11, padding:"11px 18px", maxWidth:1460, margin:"0 auto" }}>
               <button className="btn btn-g btn-ico" onClick={() => setPantalla("inicio")}><ArrowLeft size={16} /></button>
@@ -379,7 +385,7 @@ export default function Cotizador() {
 
               {/* cronómetro */}
               <div className="mono" title="Tiempo de armado" style={{ display:"flex", alignItems:"center", gap:6, marginLeft:8,
-                padding:"5px 10px", borderRadius:9, background:"rgba(17,17,36,.04)", fontSize:11.5,
+                padding:"5px 10px", borderRadius:9, background:"var(--sunk)", fontSize:11.5,
                 color: crono > meta ? "var(--coral)" : "var(--n500)" }}>
                 <Gauge size={12} /> {mm}:{ss}
                 <span style={{ opacity:.5 }}>/ meta {meta === 60 ? "1:00" : "4:00"}</span>
@@ -407,6 +413,13 @@ export default function Cotizador() {
                 <span className="only-ancho">{vistaPasajero ? "Vista pasajero" : "Ver como pasajero"}</span>
               </button>
 
+              {/* v2D · D5 · el mismo interruptor que en el inicio */}
+              <button className="btn btn-s btn-sm btn-ico" onClick={() => setOscuro((v) => !v)}
+                title={oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro"}
+                aria-label={oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro"}>
+                {oscuro ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
+
               <button className="btn btn-s btn-sm" onClick={() => setAtajos(true)} title="Atajos de teclado">
                 <Keyboard size={13} /><span className="kbd" style={{ marginLeft:-2 }}>?</span>
               </button>
@@ -422,13 +435,13 @@ export default function Cotizador() {
           <div style={{ display:"flex", gap:20, maxWidth:1460, margin:"0 auto", padding:"18px 18px 60px", alignItems:"flex-start" }}>
 
             {/* rail */}
-            <aside className="rail-col" style={{ width:172, flexShrink:0, position:"sticky", top:74 }}>
+            <aside className="rail-col ed-rail" style={{ width:172, flexShrink:0, position:"sticky", top:74 }}>
               <div className="card" style={{ padding:9 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 7px 8px" }}>
                   <span className="lbl">Bloques</span>
                   <span className="mono" style={{ fontSize:10.5, color:"var(--n400)" }}>{listos}/{bloques.length}</span>
                 </div>
-                <div style={{ height:3, borderRadius:9, background:"rgba(17,17,36,.06)", margin:"0 7px 9px", overflow:"hidden" }}>
+                <div style={{ height:3, borderRadius:9, background:"var(--sunk)", margin:"0 7px 9px", overflow:"hidden" }}>
                   <div style={{ height:"100%", borderRadius:9, width:`${(listos / bloques.length) * 100}%`,
                     background:"linear-gradient(90deg,#45D4C0,#2A9E8E)", transition:"width .5s cubic-bezier(.2,.8,.2,1)" }} />
                 </div>
@@ -451,7 +464,7 @@ export default function Cotizador() {
             </aside>
 
             {/* formulario */}
-            <main ref={scroller} style={{ flex:1, minWidth:0 }}>
+            <main ref={scroller} className="ed-main" style={{ flex:1, minWidth:0 }}>
               {vistaPasajero && <BannerPasajero onSalir={() => setVistaPasajero(false)} />}
               {q.ia && <BannerIA ia={q.ia} />}
 
@@ -501,11 +514,11 @@ export default function Cotizador() {
               <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10, paddingLeft:4 }}>
                 <span className="lbl" style={{ whiteSpace:"nowrap" }}>Lo que ve el pasajero</span>
                 <span title="Las notas internas no aparecen acá" style={{ display:"grid", placeItems:"center",
-                  width:20, height:20, borderRadius:7, background:"rgba(244,62,85,.1)", color:"#CC2030" }}>
+                  width:20, height:20, borderRadius:7, background:"rgba(244,62,85,.12)", color:"var(--ink-coral)" }}>
                   <Lock size={10} /></span>
-                <div style={{ marginLeft:"auto", display:"flex", gap:3, padding:3, background:"rgba(17,17,36,.05)", borderRadius:9 }}>
+                <div style={{ marginLeft:"auto", display:"flex", gap:3, padding:3, background:"var(--sunk)", borderRadius:9 }}>
                   <button title="Vista celular" style={{ width:26, height:24, borderRadius:7, display:"grid", placeItems:"center",
-                    background:"#fff", color:"var(--ink)", boxShadow:"0 1px 3px rgba(26,26,46,.12)" }}>
+                    background:"var(--pop)", color:"var(--ink)", boxShadow:"0 1px 3px rgba(26,26,46,.12)" }}>
                     <Smartphone size={12} /></button>
                   <button title="Ver en tablet" onClick={() => setPrev("tab")}
                     style={{ width:26, height:24, borderRadius:7, display:"grid", placeItems:"center", color:"var(--n400)" }}>
@@ -515,7 +528,7 @@ export default function Cotizador() {
                     <Monitor size={12} /></button>
                 </div>
               </div>
-              <div className="phone">
+              <div className="phone ed-phone">
                 <div className="phone-scr" ref={phoneScroll}>
                   <div className="notch" />
                   <SalidaPasajero q={q} marca={marca} vendedor={vendedor} tramos={tramos}
@@ -542,7 +555,7 @@ export default function Cotizador() {
                       style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"8px 16px", borderRadius:10,
                         fontSize:13, fontWeight:700, transition:"all .18s",
                         background: prev === k ? "#fff" : "transparent",
-                        color: prev === k ? "var(--ink)" : "rgba(255,255,255,.75)",
+                        color: prev === k ? "#1A1A2E" : "rgba(255,255,255,.75)",
                         boxShadow: prev === k ? "0 4px 14px rgba(0,0,0,.25)" : "none" }}>
                       {I ? <I size={13} /> : <Smartphone size={15} style={{ transform:"rotate(90deg)" }} />}
                       {l}
@@ -589,8 +602,7 @@ export default function Cotizador() {
                   </div>
                 )}
 
-                <Btn onClick={() => setPrev(null)} style={{ background:"rgba(255,255,255,.92)" }}>
-                  <X size={14} /> Cerrar vista previa</Btn>
+                <Btn onClick={() => setPrev(null)}><X size={14} /> Cerrar vista previa</Btn>
               </div>
             </div>
           )}

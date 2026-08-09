@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sparkles, MessageSquare, FileText, Copy, Trash2, Plus, Check, ChevronDown, ChevronRight, Search,
   Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, LayoutGrid, Loader2, CheckCheck, AlertCircle,
-  RefreshCw, Link2, TrendingUp, Ticket, Files, ListChecks
+  RefreshCw, Link2, TrendingUp, Ticket, Files, ListChecks, Sun, Moon
 } from "lucide-react";
 import {
   MESES, PAQUETES, VENDEDORES, HISTORIAL, semaforo, money, venta, limpiarPegado, detectarConsulta,
@@ -303,15 +303,15 @@ function ModalIA({ onClose, onArmar }) {
             {det && !det.paquete && paso >= 2 && (
               <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:9, marginTop:8, padding:"9px 11px",
                 borderRadius:12, background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.32)" }}>
-                <AlertCircle size={14} style={{ color:"#8A5A16", flexShrink:0 }} />
-                <span style={{ fontSize:11.5, color:"#8A5A16" }}>La armo en blanco con lo que entendí — vos la completás.</span>
+                <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
+                <span style={{ fontSize:11.5, color:"var(--ink-amber)" }}>La armo en blanco con lo que entendí — vos la completás.</span>
               </div>
             )}
 
             {det?.chips?.length > 0 && (
               <div className="a-rise" style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:11 }}>
                 {det.chips.map((c) => (
-                  <span key={c} className="pill" style={{ background:"rgba(120,90,229,.1)", color:"#5B3FBF" }}>{c}</span>
+                  <span key={c} className="pill" data-tone="violet">{c}</span>
                 ))}
               </div>
             )}
@@ -326,7 +326,7 @@ function ModalIA({ onClose, onArmar }) {
    PANTALLA DE INICIO
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual }) {
+function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual, oscuro, onTema }) {
   const G = ["#F43E55","#785AE5"];
   const [busq, setBusq] = useState("");
   const [creando, setCreando] = useState(false);
@@ -355,7 +355,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
   ];
 
   return (
-    <div style={{ maxWidth:1080, margin:"0 auto", padding:"28px 22px 60px" }}>
+    <div className="home-wrap" style={{ maxWidth:1080, margin:"0 auto", padding:"28px 22px 60px" }}>
 
       {/* ── barra superior: identidad + acción primaria ── */}
       <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:13, marginBottom:20, flexWrap:"wrap" }}>
@@ -370,7 +370,13 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
           </div>
           <div style={{ fontSize:12, color:"var(--n400)" }}>Módulo del backend · mismo login, mismo sistema</div>
         </div>
-        <button className="btn btn-hero" onClick={() => setModalNueva(true)}
+        {/* v2D · D5 · claro / oscuro — el mismo estado en el inicio y en el editor */}
+        <button className="btn btn-s btn-ico" style={{ width:40, height:40, borderRadius:12 }}
+          onClick={onTema} title={oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro"}
+          aria-label={oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro"}>
+          {oscuro ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button className="btn btn-hero home-cta" onClick={() => setModalNueva(true)}
           style={{ height:46, paddingInline:22, fontSize:14, borderRadius:13 }}>
           <Plus size={17} /> Nueva cotización
         </button>
@@ -379,7 +385,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
       {/* ── card única con tabs ── */}
       <div className="card a-rise" style={{ padding:0, overflow:"visible", animationDelay:".05s" }}>
 
-        <div style={{ display:"flex", gap:2, padding:"10px 12px 0", borderBottom:"1px solid var(--hair-soft)" }}>
+        <div className="home-tabs" style={{ display:"flex", gap:2, padding:"10px 12px 0", borderBottom:"1px solid var(--hair-soft)" }}>
           {TABS.map((t) => {
             const on = tab === t.id;
             return (
@@ -391,14 +397,14 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
                 <t.Icon size={14} style={{ color: on ? "var(--violet)" : "var(--n300)" }} />
                 {t.l}
                 <span className="mono" style={{ fontSize:10, padding:"2px 7px", borderRadius:99,
-                  background: on ? "rgba(120,90,229,.12)" : "rgba(17,17,36,.05)",
-                  color: on ? "var(--violet)" : "var(--n400)" }}>{t.badge}</span>
+                  background: on ? "rgba(120,90,229,.14)" : "var(--sunk)",
+                  color: on ? "var(--violet-ink)" : "var(--n400)" }}>{t.badge}</span>
               </button>
             );
           })}
         </div>
 
-        <div style={{ padding:"18px 20px 20px" }}>
+        <div className="home-pad" style={{ padding:"18px 20px 20px" }}>
 
           {/* ══ TAB PAQUETES ══ */}
           {tab === "cotizar" && (
@@ -413,7 +419,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
                 {buscando ? (
                   <button onClick={() => setBusq("")} style={{ position:"absolute", right:12, top:"50%",
                     transform:"translateY(-50%)", display:"inline-flex", alignItems:"center", gap:5,
-                    padding:"5px 11px", borderRadius:9, background:"rgba(17,17,36,.06)", fontSize:11.5,
+                    padding:"5px 11px", borderRadius:9, background:"var(--sunk)", fontSize:11.5,
                     fontWeight:600, color:"var(--n500)" }}><X size={11} /> Limpiar</button>
                 ) : (
                   <span style={{ position:"absolute", right:14, top:"50%", transform:"translateY(-50%)",
@@ -433,17 +439,17 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11 }}>
                 <span className="lbl">{buscando ? `${resultados.length} resultado${resultados.length === 1 ? "" : "s"}` : "Últimos publicados"}</span>
                 <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
-                <span style={{ fontSize:11, color:"var(--n300)", display:"inline-flex", alignItems:"center", gap:5 }}>
+                <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)", display:"inline-flex", alignItems:"center", gap:5 }}>
                   <Zap size={10} style={{ color:"var(--teal-2)" }} /> precarga todo: destinos, servicios, opciones, fotos</span>
               </div>
 
-              <div key={busq} style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(226px,1fr))", gap:12 }}>
+              <div key={busq} className="pq-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(226px,1fr))", gap:12 }}>
                 {resultados.map((p, i) => {
                   const desde = p.opciones.length ? Math.min(...p.opciones.map((o) => venta(o.neto, o.factor))) : null;
                   return (
                   <button key={p.id} onClick={() => onPaquete(p)} className="a-pop"
                     style={{ padding:0, overflow:"hidden", textAlign:"left", animationDelay:`${i * .05}s`,
-                      background:"#fff", border:"1px solid var(--hair-soft)", borderRadius:16,
+                      background:"var(--card)", border:"1px solid var(--hair-soft)", borderRadius:16,
                       boxShadow:"0 1px 2px rgba(26,26,46,.04)",
                       transition:"transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s" }}
                     onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px) scale(1.008)";
@@ -454,13 +460,14 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
                         <div style={{ fontSize:13.5, fontWeight:700, letterSpacing:"-.015em", textShadow:"0 1px 8px rgba(0,0,0,.45)" }}>{p.nombre}</div>
                       </div>
                       <div style={{ position:"absolute", right:9, top:9 }}>
-                        <Pill style={{ background:"rgba(255,255,255,.93)", color:"var(--ink)" }}>{MESES[p.mes].slice(0,3)} {p.anio}</Pill>
+                        {/* va sobre la foto: queda claro siempre, en los dos temas */}
+                        <Pill style={{ background:"rgba(255,255,255,.93)", color:"#1A1A2E" }}>{MESES[p.mes].slice(0,3)} {p.anio}</Pill>
                       </div>
                     </Foto>
                     <div style={{ padding:"10px 12px 12px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:5, flexWrap:"wrap", marginBottom:9 }}>
                         {p.destinos.map((d) => (
-                          <span key={d.ciudad} className="pill" style={{ background:"rgba(120,90,229,.10)", color:"#5B3FBF" }}>
+                          <span key={d.ciudad} className="pill" data-tone="violet">
                             {d.ciudad} · {d.noches}n</span>
                         ))}
                       </div>
@@ -475,7 +482,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
                   );
                 })}
                 {buscando && resultados.length === 0 && (
-                  <div className="a-fade" style={{ gridColumn:"1/-1", textAlign:"center", padding:"26px 0" }}>
+                  <div className="a-fade pq-vacio" style={{ gridColumn:"1/-1", textAlign:"center", padding:"26px 0" }}>
                     <Search size={20} style={{ color:"var(--n300)", marginBottom:8 }} />
                     <div style={{ fontSize:13.5, fontWeight:600, color:"var(--n600)" }}>No hay paquetes para “{busq.trim()}”</div>
                     <div style={{ fontSize:12, color:"var(--n400)", margin:"4px 0 12px" }}>Se puede cotizar igual, arrancando de cero.</div>
@@ -490,7 +497,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
                   background:"rgba(120,90,229,.11)", color:"var(--violet)" }}><ListChecks size={13} /></div>
                 <span style={{ fontSize:13, fontWeight:800, letterSpacing:"-.01em" }}>Seguimiento de cotizaciones</span>
                 <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
-                <span style={{ fontSize:11, color:"var(--n300)" }}>búsqueda instantánea por cualquier campo</span>
+                <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)" }}>búsqueda instantánea por cualquier campo</span>
               </div>
               <ListadoContenido actual={actual} toast={toast} onDuplicar={onFila} />
             </div>
@@ -529,7 +536,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:9 }}>
                 {plantillas.map((t, i) => (
                   <div key={t.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:9, padding:"11px 12px",
-                    borderRadius:13, border:"1px solid var(--hair-soft)", background:"#FCFCFE",
+                    borderRadius:13, border:"1px solid var(--hair-soft)", background:"var(--card-3)",
                     animationDelay:`${i * .04}s`, transition:"border-color .16s, box-shadow .16s" }}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(120,90,229,.3)";
                       e.currentTarget.style.boxShadow = "0 8px 20px -10px rgba(26,26,46,.14)"; }}
@@ -541,9 +548,8 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
                       <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                         {t.destino} · {t.detalle}</div>
                       <div style={{ display:"flex", gap:6, marginTop:5 }}>
-                        <span className="pill" style={{ background:"rgba(59,191,173,.1)", color:"#1F7D70" }}>
-                          <Zap size={8} /> usada {t.usos ?? 0} veces</span>
-                        <span className="pill" style={{ background:"rgba(17,17,36,.05)", color:"var(--n400)" }}>{t.ultimo || "sin usar"}</span>
+                        <span className="pill" data-tone="teal"><Zap size={8} /> usada {t.usos ?? 0} veces</span>
+                        <span className="pill" data-tone="n">{t.ultimo || "sin usar"}</span>
                       </div>
                     </button>
                     <Btn variant="p" size="xs" onClick={() => onPlantilla(t)}>Usar</Btn>
@@ -608,7 +614,7 @@ function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbri
         <span style={{ fontSize:13, fontWeight:800, letterSpacing:"-.01em" }}>Para hoy</span>
         <Pill tone={hay ? "coral" : "teal"}>{items.length}</Pill>
         <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
-        <span style={{ fontSize:11, color:"var(--n300)" }}>lo que conviene mover antes de que se enfríe</span>
+        <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)" }}>lo que conviene mover antes de que se enfríe</span>
         <button className="btn btn-g btn-ico" style={{ width:27, height:27 }}
           title={abierta ? "Ocultar la lista" : "Mostrar la lista"} onClick={() => setAbierta((v) => !v)}>
           <ChevronDown size={14} style={{ transform: abierta ? "none" : "rotate(-90deg)", transition:"transform .2s" }} />
@@ -624,20 +630,20 @@ function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbri
                 style={{ flex:1, minWidth:0, textAlign:"left", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
                 <span style={{ fontSize:12.5, fontWeight:700 }}>{it.r.cliente}</span>
                 <span style={{ fontSize:11.5, color:"var(--n400)" }}>{it.r.destino}</span>
-                <span className="pill" style={{ background:it.bg, color:it.fg }}>{it.motivo}</span>
+                <Pill tone={it.tone}>{it.motivo}</Pill>
               </button>
 
               {it.tipo === "vencida" && (
-                <Btn size="xs" style={{ flexShrink:0, color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
+                <Btn size="xs" className="cola-acc" style={{ flexShrink:0, color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
                   borderColor:"rgba(59,191,173,.4)", fontWeight:700 }}
                   onClick={() => onReactivar(it.r)}><RefreshCw size={11} /> Reactivar</Btn>
               )}
               {it.tipo === "recordatorio" && (
-                <Btn size="xs" style={{ flexShrink:0 }} onClick={() => onRecordatorio(it.r)}>
+                <Btn size="xs" className="cola-acc" style={{ flexShrink:0 }} onClick={() => onRecordatorio(it.r)}>
                   <Send size={11} /> Mandar recordatorio</Btn>
               )}
               {it.tipo === "seguimiento" && (
-                <Btn size="xs" style={{ flexShrink:0 }} onClick={() => onSeguimiento(it.r)}>
+                <Btn size="xs" className="cola-acc" style={{ flexShrink:0 }} onClick={() => onSeguimiento(it.r)}>
                   <Smartphone size={11} /> Hacer seguimiento</Btn>
               )}
             </div>
@@ -664,12 +670,14 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
   const [ovEst, setOvEst] = useState({});      // estados pisados a mano por el vendedor
   const [ovReact, setOvReact] = useState({});  // v2 · reactivadas: link nuevo por 48 h
   const [hechos, setHechos] = useState({});    // v2 · lo ya resuelto en la cola de hoy
+  const [ovHist, setOvHist] = useState({});    // v2D · lo hecho desde el drawer, anotado en la historia
 
   const base = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL)
     .map((r) => ov[r.num] ? { ...r, estado:"confirmada", confOpcion:ov[r.num].op, confVia:ov[r.num].via } : r)
     .map((r) => ovReact[r.num] ? { ...r, ...ovReact[r.num] } : r)
+    .map((r) => ovHist[r.num] ? { ...r, hist:ovHist[r.num] } : r)
     .map((r) => ({ ...r, estadoManual: ovEst[r.num] || null, estado: estadoEfectivo({ ...r, estadoManual: ovEst[r.num] || null }) })),
-    [actual, ov, ovEst, ovReact]);
+    [actual, ov, ovEst, ovReact, ovHist]);
   const sel = base.find((r) => r.num === selNum) || null;
 
   /* ── v2 · A5 · reactivar: link nuevo por 48 h, semáforo de vuelta en verde ── */
@@ -681,6 +689,32 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
       undo:() => { setOvReact((o) => { const c = { ...o }; delete c[r.num]; return c; });
                    setOvEst((o) => ({ ...o, [r.num]:antes })); } });
   }, [ovEst, toast]);
+
+  /* ── v2D · D3 · anotar en la historia de la fila lo que se hace desde el drawer ── */
+  const anotar = useCallback((num, ev) => {
+    setOvHist((h) => ({ ...h, [num]:[...(h[num] || []), ev] }));
+  }, []);
+
+  /* +48 h: el link vuelve a arrancar (hEnvio a 0) y deja de estar vencido */
+  const extenderVigencia = useCallback((r) => {
+    const antesReact = ovReact[r.num];
+    const antesEst = ovEst[r.num] || null;
+    const ev = { c:"#785AE5", t:"Vigencia extendida 48 h", s:"recién · el link vuelve a estar activo" };
+    setOvReact((o) => ({ ...o, [r.num]:{ ...(o[r.num] || {}), hEnvio:0 } }));
+    if (antesEst === "vencida") setOvEst((o) => ({ ...o, [r.num]:null }));
+    anotar(r.num, ev);
+    toast?.({ msg:"Vigencia extendida — el link vuelve a estar activo 48 h", tone:"ok",
+      undo:() => {
+        setOvReact((o) => { const c = { ...o }; if (antesReact) c[r.num] = antesReact; else delete c[r.num]; return c; });
+        setOvEst((o) => ({ ...o, [r.num]:antesEst }));
+        setOvHist((h) => ({ ...h, [r.num]:(h[r.num] || []).filter((x) => x !== ev) }));
+      } });
+  }, [ovReact, ovEst, anotar, toast]);
+
+  /* el recordatorio sale por el mismo modal de Compartir: acá solo queda el rastro */
+  const recordatorioDrawer = useCallback((r) => {
+    anotar(r.num, { c:"#785AE5", t:"Recordatorio enviado", s:"recién · WhatsApp" });
+  }, [anotar]);
 
   const marcarHecho = useCallback((r, motivo, msg) => {
     setHechos((h) => ({ ...h, [r.num]:motivo }));
@@ -702,15 +736,15 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
         : venc < 24 ? "El link venció hoy"
         : venc < 48 ? "El link venció ayer"
         : `El link venció hace ${Math.round(venc / 24)} días`;
-      return { r, tipo:"vencida", c:"#F43E55", bg:"rgba(244,62,85,.10)", fg:"#CC2030", motivo };
+      return { r, tipo:"vencida", c:"#F43E55", tone:"coral", motivo };
     }
     if (r.estado === "enviada" && r.aperturas === 0 && r.hEnvio != null && r.hEnvio >= 24) {
       const d = Math.max(1, Math.round(r.hEnvio / 24));
-      return { r, tipo:"recordatorio", c:"#E8A13C", bg:"rgba(247,178,103,.20)", fg:"#8A5A16",
+      return { r, tipo:"recordatorio", c:"#E8A13C", tone:"amber",
         motivo:`Hace ${d} ${d === 1 ? "día" : "días"} que no la abre` };
     }
     if (r.estado === "abierta" && r.aperturas > 0) {
-      return { r, tipo:"seguimiento", c:"#2A9E8E", bg:"rgba(59,191,173,.13)", fg:"#1F7D70",
+      return { r, tipo:"seguimiento", c:"#2A9E8E", tone:"teal",
         motivo:`La abrió ${r.aperturas === 1 ? "una vez" : `${r.aperturas} veces`} — buen momento para llamar` };
     }
     return null;
@@ -749,7 +783,7 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
         onSeguimiento={seguimiento} onAbrir={(r) => setSelNum(r.num)} />
 
       {/* reportes por vendedor */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginBottom:14 }}>
+      <div className="vend-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginBottom:14 }}>
         {porVendedor.map((v, i) => (
           <div key={v.id} className="card a-rise" style={{ padding:12, animationDelay:`${i * .04}s` }}>
             <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
@@ -791,8 +825,8 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
 
       {/* tabla — la fila entera abre el drawer */}
       <div className="card" style={{ overflow:"visible" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:11, padding:"9px 14px",
-          borderBottom:"1px solid var(--hair-soft)", background:"#FAFBFE", borderRadius:"16px 16px 0 0" }}>
+        <div className="tabla-head" style={{ display:"flex", alignItems:"center", gap:11, padding:"9px 14px",
+          borderBottom:"1px solid var(--hair-soft)", background:"var(--card-2)", borderRadius:"16px 16px 0 0" }}>
           <span className="lbl" style={{ width:110, flexShrink:0 }}>Nº</span>
           <span className="lbl" style={{ flex:"1 1 150px" }}>Cliente y destino</span>
           <span className="lbl" style={{ width:110, flexShrink:0 }}>Vendedor</span>
@@ -818,35 +852,36 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
                 animationDelay:`${i * .03}s`, transition:"background .14s", borderRadius: i === 0 ? "16px 16px 0 0" : 0 }}
               onMouseEnter={(e) => e.currentTarget.style.background = "rgba(120,90,229,.035)"}
               onMouseLeave={(e) => e.currentTarget.style.background = ""}>
-              <div className="mono" style={{ fontSize:11, color:"var(--n400)", width:110, flexShrink:0 }}>{r.num}</div>
-              <div style={{ flex:"1 1 150px", minWidth:0 }}>
-                <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.cliente}</div>
-                <div style={{ fontSize:11.5, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.destino}</div>
+              <div className="mono fs-num" style={{ fontSize:11, color:"var(--n400)", width:110, flexShrink:0 }}>{r.num}</div>
+              <div className="fs-cli" style={{ flex:"1 1 150px", minWidth:0 }}>
+                <div className="fs-cli-n" style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.cliente}</div>
+                <div className="fs-cli-d" style={{ fontSize:11.5, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.destino}</div>
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:6, width:110, flexShrink:0 }}>
-                <div style={{ width:22, height:22, borderRadius:"50%", background:"rgba(120,90,229,.13)", color:"var(--violet)",
+              <div className="fs-vend" style={{ display:"flex", alignItems:"center", gap:6, width:110, flexShrink:0 }}>
+                <div style={{ width:22, height:22, borderRadius:"50%", background:"rgba(120,90,229,.16)", color:"var(--violet-ink)",
                   display:"grid", placeItems:"center", fontSize:9.5, fontWeight:700, flexShrink:0 }}>{V?.inicial}</div>
                 <span style={{ fontSize:11.5, color:"var(--n500)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                   {V?.nombre.split(" ")[0]}</span>
               </div>
-              <div style={{ width:92, flexShrink:0, textAlign:"right" }} className="mono">
+              <div style={{ width:92, flexShrink:0, textAlign:"right" }} className="mono fs-monto">
                 {r.monto ? money(r.monto) : <span style={{ color:"var(--n300)" }}>—</span>}
               </div>
-              <div style={{ width:128, flexShrink:0, display:"flex", justifyContent:"flex-end" }}>
+              <div className="fs-estado" style={{ width:128, flexShrink:0, display:"flex", justifyContent:"flex-end" }}>
                 <Pill tone={E.tone} style={{ flexShrink:0 }}><E.Icon size={9} /> {E.l}
                   {r.aperturas > 0 && <span className="mono" style={{ opacity:.7 }}>·{r.aperturas}</span>}
                 </Pill>
               </div>
-              {/* semáforo con tooltip */}
-              <div className="sem" style={{ width:26, flexShrink:0, justifyContent:"center" }}
+              {/* semáforo con tooltip — en mobile el tooltip no sirve, así que se ve el texto */}
+              <div className="sem fs-sem" style={{ width:26, flexShrink:0, justifyContent:"center" }}
                 onClick={(e) => e.stopPropagation()}>
                 <span className="sem-dot" style={{ background:S.c }} />
+                <span className="sem-txt">{S.l}</span>
                 <div className="tip"><b style={{ color:S.c }}>{S.l}</b>{S.d}</div>
               </div>
-              <div style={{ width:52, flexShrink:0, fontSize:11, color:"var(--n300)", textAlign:"right" }}>
-                {r.dias === 0 ? "hoy" : `${r.dias}d`}
+              <div className="fs-dias" style={{ width:52, flexShrink:0, fontSize:11, color:"var(--n300)", textAlign:"right" }}>
+                {r.dias === 0 ? "hoy" : `hace ${r.dias}d`}
               </div>
-              <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
+              <ChevronRight className="fs-chev" size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
 
               {/* v2 · A4 y A5 · lo más usado, sin abrir la cotización */}
               <div className="fila-acc" onClick={(e) => e.stopPropagation()}>
@@ -881,9 +916,10 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
         </span>
       </div>
 
-      {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)}
+      {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
         onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
-        onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))} />}
+        onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
+        onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}
     </div>
   );
 }
@@ -896,7 +932,7 @@ function BarraH({ label, pct, right, color = "linear-gradient(90deg,#45D4C0,#2A9
         <span style={{ fontSize:12, fontWeight:600 }}>{label}</span>
         <span className="mono" style={{ fontSize:11, color:"var(--n500)" }}>{right}</span>
       </div>
-      <div style={{ height:7, borderRadius:99, background:"rgba(17,17,36,.06)", overflow:"hidden" }}>
+      <div style={{ height:7, borderRadius:99, background:"var(--sunk)", overflow:"hidden" }}>
         <div className="a-fade" style={{ height:"100%", width:`${pct}%`, borderRadius:99, background:color, transition:"width .7s cubic-bezier(.2,.8,.2,1)" }} />
       </div>
     </div>
@@ -976,7 +1012,7 @@ function TabAnalytics() {
               return (
                 <div key={i} className="sem" style={{ flex:1, height:"100%", alignItems:"flex-end" }}>
                   <div style={{ width:"100%", height:`${(h / maxH) * 100}%`, borderRadius:"4px 4px 0 0",
-                    background: pico ? "linear-gradient(180deg,#A05ED3,#785AE5)" : "rgba(17,17,36,.1)",
+                    background: pico ? "linear-gradient(180deg,#A05ED3,#785AE5)" : "var(--sunk-2)",
                     transition:"height .5s" }} />
                   <div className="tip"><b>{6 + i}:00 h</b>{h} aperturas atribuidas a envíos de esta hora.</div>
                 </div>
@@ -1008,18 +1044,18 @@ function TabAnalytics() {
         <div className="card" style={{ padding:16 }}>
           <div className="lbl" style={{ marginBottom:10 }}>Cómo la reciben y la leen</div>
           <BarraH label="WhatsApp" right="82%" pct={82} color="linear-gradient(90deg,#45D4C0,#2A9E8E)" />
-          <BarraH label="Email" right="18%" pct={18} color="rgba(17,17,36,.22)" />
+          <BarraH label="Email" right="18%" pct={18} color="var(--sunk-2)" />
           <div className="hairline" style={{ margin:"10px 0" }} />
           <BarraH label="iPhone" right="54%" pct={54} color="linear-gradient(90deg,#A05ED3,#785AE5)" />
           <BarraH label="Android" right="31%" pct={31} color="linear-gradient(90deg,#A05ED3,#785AE5)" />
-          <BarraH label="Computadora" right="15%" pct={15} color="rgba(17,17,36,.22)" />
+          <BarraH label="Computadora" right="15%" pct={15} color="var(--sunk-2)" />
           <div style={{ fontSize:11, color:"var(--n400)", marginTop:4 }}>
             85% se lee en celular: la salida mobile-first no es opcional.
           </div>
         </div>
 
         {/* insights accionables */}
-        <div className="card" style={{ padding:16, background:"linear-gradient(160deg,#fff,#FAF9FF)" }}>
+        <div className="card" style={{ padding:16, background:"linear-gradient(160deg,var(--card),var(--card-2))" }}>
           <div className="lbl" style={{ marginBottom:10 }}>Para accionar esta semana</div>
           {["7 cotizaciones en rojo (+48 h sin abrir): mandar recordatorio hoy — el drawer lo hace en dos clics.",
             "Gerónimo tiene 58% de apertura vs 74% del equipo: comparar el texto del mensaje de WhatsApp.",

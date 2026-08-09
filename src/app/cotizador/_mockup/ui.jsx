@@ -55,15 +55,9 @@ function Label({ children, hint }) {
   );
 }
 
+/* v2D · el tono vive en el CSS (.pill[data-tone]) para que el modo oscuro lo ajuste */
 function Pill({ tone = "n", children, style }) {
-  const T = {
-    teal:   { bg:"rgba(59,191,173,.13)",  c:"#1F7D70" },
-    violet: { bg:"rgba(120,90,229,.13)",  c:"#5B3FBF" },
-    coral:  { bg:"rgba(244,62,85,.11)",   c:"#CC2030" },
-    amber:  { bg:"rgba(247,178,103,.20)", c:"#8A5A16" },
-    n:      { bg:"rgba(17,17,36,.06)",    c:"var(--n500)" },
-  }[tone];
-  return <span className="pill" style={{ background:T.bg, color:T.c, ...style }}>{children}</span>;
+  return <span className="pill" data-tone={tone} style={style}>{children}</span>;
 }
 
 /* Identificador de todo lo que arma la IA — mismo chip en el modal y en el editor */
@@ -99,8 +93,8 @@ function Block({ id, icon:Icon, title, count, right, children, forwardRef }) {
 
 function Vacio({ icon:Icon, titulo, accion }) {
   return (
-    <div style={{ border:"1px dashed rgba(17,17,36,.16)", borderRadius:13, padding:"22px 18px",
-      textAlign:"center", background:"rgba(17,17,36,.012)" }}>
+    <div style={{ border:"1px dashed var(--hair)", borderRadius:13, padding:"22px 18px",
+      textAlign:"center", background:"var(--wash)" }}>
       <Icon size={19} style={{ color:"var(--n300)", marginBottom:8 }} />
       <div style={{ fontSize:13, fontWeight:600, color:"var(--n600)", marginBottom:3 }}>{titulo}</div>
       {accion && <div style={{ fontSize:12, color:"var(--n400)" }}>{accion}</div>}
@@ -117,6 +111,7 @@ function Toasts({ items, onUndo, onClose }) {
         <div key={t.id} className={`a-pop ${t.tone === "vivo" ? "ts-vivo" : ""}`}
           style={{ pointerEvents:"auto", display:"flex", alignItems:"center", gap:11,
           background:"rgba(26,26,46,.96)", color:"#fff", padding:"10px 12px 10px 15px", borderRadius:13,
+          border:"1px solid rgba(255,255,255,.09)",
           boxShadow:"0 18px 44px -12px rgba(17,17,36,.5)", fontSize:13, fontWeight:500, backdropFilter:"blur(10px)" }}>
           {t.tone === "ok" && <CheckCheck size={15} style={{ color:"#45D4C0" }} />}
           {t.tone === "warn" && <AlertCircle size={15} style={{ color:"#F7B267" }} />}
@@ -220,7 +215,7 @@ function Calendario({ value, onChange, placeholder = "Elegir fecha", grande = fa
                 <button key={d.getFullYear() + "-" + d.getMonth()}
                   onClick={() => setVm(new Date(d.getFullYear(), d.getMonth(), 1))}
                   style={{ flexShrink:0, padding:"5px 10px", borderRadius:9, fontSize:11, fontWeight:700,
-                    background: on ? "linear-gradient(145deg,#A05ED3,#785AE5)" : "rgba(17,17,36,.045)",
+                    background: on ? "linear-gradient(145deg,#A05ED3,#785AE5)" : "var(--sunk)",
                     color: on ? "#fff" : "var(--n500)", transition:"all .15s" }}>
                   {MES_AB[d.getMonth()]}
                   {d.getMonth() === 0 || on ? <span style={{ opacity:.7, marginLeft:3 }}>{String(d.getFullYear()).slice(2)}</span> : null}
@@ -255,7 +250,7 @@ function Calendario({ value, onChange, placeholder = "Elegir fecha", grande = fa
                   <button key={mn} disabled={pasado}
                     onClick={() => { setVm(new Date(y, i, 1)); setVista("dias"); }}
                     style={{ padding:"10px 4px", borderRadius:10, fontSize:12.5, fontWeight:600,
-                      background: on ? "linear-gradient(145deg,#45D4C0,#2A9E8E)" : i === m ? "rgba(120,90,229,.09)" : "rgba(17,17,36,.028)",
+                      background: on ? "linear-gradient(145deg,#45D4C0,#2A9E8E)" : i === m ? "rgba(120,90,229,.14)" : "var(--wash)",
                       color: on ? "#fff" : pasado ? "var(--n300)" : "var(--n600)",
                       opacity: pasado ? .45 : 1, transition:"all .14s" }}>{mn.slice(0, 3)}</button>
                 );
@@ -398,7 +393,7 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
       </div>
       {open && (
         <div className="a-slide" style={{ position:"absolute", top:"calc(100% + 5px)", left:0, right:0, zIndex:40,
-          background:"#fff", border:"1px solid var(--hair)", borderRadius:13, overflow:"hidden",
+          background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:13, overflow:"hidden",
           boxShadow:"0 22px 50px -14px rgba(17,17,36,.28)" }}>
           {res.map((h, i) => (
             <button key={h.id} onMouseEnter={() => setIdx(i)}
@@ -418,9 +413,9 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
             onClick={() => { if (q.trim()) { onLibre(q.trim()); setOpen(false); setQ(""); } }}
             style={{ display:"flex", alignItems:"center", gap:9, width:"100%", padding:"9px 10px", textAlign:"left",
               borderTop:"1px solid var(--hair-soft)",
-              background: idx === res.length ? "rgba(120,90,229,.07)" : "rgba(17,17,36,.018)" }}>
+              background: idx === res.length ? "rgba(120,90,229,.09)" : "var(--wash)" }}>
             <div style={{ width:40, height:30, borderRadius:7, display:"grid", placeItems:"center",
-              background:"rgba(17,17,36,.05)", color:"var(--n400)" }}><PenLine size={13} /></div>
+              background:"var(--sunk)", color:"var(--n400)" }}><PenLine size={13} /></div>
             <div>
               <div style={{ fontSize:12.5, fontWeight:600, color:"var(--n600)" }}>
                 {q.trim() ? `Usar “${q.trim()}” como texto libre` : "Escribí para usar texto libre"}

@@ -208,6 +208,11 @@ const HISTORIAL = [
   /* v2: caso ámbar (+24 h sin abrir) — es el que dispara "Mandar recordatorio" en la cola de hoy */
   { num:"COT-2026-0142", cliente:"Valentina Souza", destino:"Florianópolis, Enero 2027", vendedor:"v3", estado:"enviada",
     monto:1290, dias:7, hEnvio:30, aperturas:0, hasta:null, lectura:null, hastaSec:null, apDet:[] },
+  /* v2D: la abrió pero la dejó por la mitad — es el caso que muestra el funnel de lectura incompleto */
+  { num:"COT-2026-0141", cliente:"Ramiro Pintos", destino:"Cancún, Diciembre 2026", vendedor:"v2", estado:"abierta",
+    monto:1850, dias:8, hEnvio:40, aperturas:2, hasta:"6 h 20 m", lectura:"48 s", hastaSec:"Hoteles",
+    apDet:[{ hace:"hace 34 h", disp:"Android · WhatsApp", lugar:"Montevideo, UY" },
+           { hace:"hace 5 h",  disp:"Android · Chrome",   lugar:"Montevideo, UY" }] },
 ];
 
 /* Semáforo de seguimiento: cuánto hace que se envió y si el pasajero la abrió */
@@ -228,7 +233,8 @@ function semaforo(r) {
   return { c:"#F43E55", l:"Sin abrir +48 h",
     d:"Más de 48 h sin abrir: el link ya venció. Reactivalo y reenviá, o llamá al pasajero." };
 }
-function fmtHace(h) { if (h == null) return "—"; return h < 24 ? `hace ${h} h` : `hace ${Math.round(h / 24)} d`; }
+function fmtHace(h) { if (h == null) return "—"; if (h <= 0) return "recién";
+  return h < 24 ? `hace ${h} h` : `hace ${Math.round(h / 24)} d`; }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════

@@ -2,15 +2,56 @@
 
 import { useState, useMemo } from "react";
 import {
-  Sparkles, Copy, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2
+  Sparkles, Copy, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2, Clock3, TrendingUp
 } from "lucide-react";
 import { VENDEDORES, semaforo, fmtHace, money, ESTADOS } from "./data";
 import { Btn, Pill } from "./ui";
 import { SalidaPasajero } from "./telefono";
 import { ModalCompartir } from "./compartir";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2D · D1 · FUNNEL DE LECTURA
+   Las secciones tal como las ve el pasajero, en el mismo orden que la salida.
+   ═══════════════════════════════════════════════════════════════════════════ */
+const SECCIONES = ["Encabezado", "Hoteles", "Vuelos", "Servicios", "Formas de pago"];
+
+/* la sección alcanzada manda: lo de antes lo leyó, lo de después no lo vio */
+function indiceSeccion(hastaSec) {
+  if (!hastaSec) return -1;
+  const i = SECCIONES.findIndex((s) => s.toLowerCase() === String(hastaSec).toLowerCase());
+  return i >= 0 ? i : SECCIONES.length - 1;      /* "Confirmó desde el link" = la leyó entera */
+}
+
+function FunnelLectura({ hastaSec }) {
+  const idx = indiceSeccion(hastaSec);
+  return (
+    <div style={{ marginTop:11 }}>
+      {SECCIONES.map((s, i) => {
+        const visto = i <= idx;
+        return (
+          <div key={s} className="fun-row" data-on={visto ? "1" : "0"} data-fin={i === idx ? "1" : "0"}>
+            <span className="fun-l">{s}</span>
+            <span className="fun-t">
+              <span className="fun-b" style={{ width: visto ? `${100 - i * 13}%` : "14%" }} />
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Insight de lectura: sale del número de cotización, así que es siempre el
+   mismo para la misma fila (nada de random que cambie al reabrir el drawer). */
+function insightLectura(num) {
+  const n = Number(String(num).replace(/\D/g, "").slice(-2)) || 0;
+  const op = 2 + (n % 2);
+  const cuanto = ["el doble de tiempo", "un 70% más de tiempo", "casi el triple de tiempo"][n % 3];
+  return `Miró la Opción ${op} ${cuanto} — mencionala en el seguimiento.`;
+}
+
 /* ── Drawer de analytics de una cotización ─────────────────────────────── */
-function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
+function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, toast }) {
   const V = VENDEDORES.find((v) => v.id === r.vendedor) || VENDEDORES[0];
   const S = semaforo(r);
   const E = ESTADOS[r.estado];
@@ -57,10 +98,12 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
     ...(r.estado === "confirmada" ? [{ c:"#2A9E8E",
       t: r.confOpcion ? `Confirmada · ${r.confOpcion}` : "Confirmada desde el link",
       s: r.confVia ? `recién · vía ${r.confVia} · por ${V.nombre.split(" ")[0]}` : "hace 2 d" }] : []),
+    /* v2D · D3 · lo que se hizo desde este drawer queda escrito en la historia */
+    ...(r.hist || []),
   ];
 
   const stat = (l, v) => (
-    <div style={{ padding:"9px 11px", borderRadius:11, background:"#F5F6FA" }}>
+    <div style={{ padding:"9px 11px", borderRadius:11, background:"var(--tile)" }}>
       <div className="lbl" style={{ marginBottom:3 }}>{l}</div>
       <div style={{ fontSize:13, fontWeight:700 }}>{v ?? <span style={{ color:"var(--n300)", fontWeight:500 }}>—</span>}</div>
     </div>
@@ -82,7 +125,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
           </button>
           {editEst && (
             <div className="a-slide" style={{ position:"absolute", top:"calc(100% - 6px)", left:100, zIndex:10,
-              background:"#fff", border:"1px solid var(--hair)", borderRadius:12, padding:6, width:190,
+              background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:12, padding:6, width:190,
               boxShadow:"0 18px 44px -14px rgba(17,17,36,.3)" }}>
               {Object.entries(ESTADOS).map(([k, e]) => (
                 <button key={k} onClick={() => { onEstado?.(r.num, k); setEditEst(false); }}
@@ -98,7 +141,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
               </div>
             </div>
           )}
-          <button className="btn btn-g btn-ico" style={{ marginLeft:"auto" }} onClick={onClose}><X size={15} /></button>
+          <button className="btn btn-g btn-ico drawer-x" style={{ marginLeft:"auto" }} onClick={onClose}><X size={15} /></button>
         </div>
 
         <div style={{ flex:1, overflowY:"auto", padding:"16px 17px 20px" }}>
@@ -124,7 +167,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
           {/* ficha */}
           <div className="lbl" style={{ margin:"16px 0 8px" }}>Ficha</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            <div style={{ padding:"9px 11px", borderRadius:11, background:"#F5F6FA" }}>
+            <div style={{ padding:"9px 11px", borderRadius:11, background:"var(--tile)" }}>
               <div className="lbl" style={{ marginBottom:3 }}>Creada por</div>
               <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                 <span style={{ width:20, height:20, borderRadius:99, background:"linear-gradient(145deg,#A05ED3,#785AE5)",
@@ -132,26 +175,30 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
                 <span style={{ fontSize:12.5, fontWeight:700 }}>{V.nombre.split(" ")[0]}</span>
               </div>
             </div>
-            <div style={{ padding:"9px 11px", borderRadius:11, background:"#F5F6FA" }}>
+            <div style={{ padding:"9px 11px", borderRadius:11, background:"var(--tile)" }}>
               <div className="lbl" style={{ marginBottom:3 }}>Canal de envío</div>
               <div style={{ fontSize:12.5, fontWeight:700 }}>{r.hEnvio != null ? "WhatsApp" : "—"}</div>
             </div>
           </div>
           {vigResta != null && (
-            <div style={{ marginTop:8, padding:"10px 12px", borderRadius:11, background:"#F5F6FA" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
+            <div style={{ marginTop:8, padding:"10px 12px", borderRadius:11, background:"var(--tile)" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                 <span className="lbl">Vigencia del link</span>
-                <span className="mono" style={{ fontSize:11, fontWeight:600,
+                <span className="mono" style={{ marginLeft:"auto", fontSize:11, fontWeight:600,
                   color: vigResta === 0 ? "var(--coral)" : "var(--n600)" }}>
                   {vigResta === 0 ? "vencido" : `quedan ${vigResta} h de ${vigTotal}`}</span>
+                {/* v2D · D3 · la vigencia se arregla acá mismo, sin volver a compartir */}
+                <button className="btn btn-g btn-xs" style={{ marginRight:-4 }}
+                  title="Dejar el link activo 48 h más desde ahora"
+                  onClick={() => onExtender?.(r)}><Clock3 size={11} /> +48 h</button>
               </div>
-              <div style={{ height:5, borderRadius:99, background:"rgba(17,17,36,.08)", overflow:"hidden" }}>
+              <div style={{ height:5, borderRadius:99, background:"var(--sunk-2)", overflow:"hidden" }}>
                 <div style={{ height:"100%", width:`${(vigResta / vigTotal) * 100}%`, borderRadius:99,
                   background: vigResta === 0 ? "var(--coral)" : vigResta < 12 ? "#E8A13C" : "linear-gradient(90deg,#45D4C0,#2A9E8E)",
                   transition:"width .6s" }} />
               </div>
               {vigResta === 0 && <div style={{ fontSize:10.5, color:"var(--coral)", marginTop:5 }}>
-                El recordatorio lo reactiva automáticamente por 48 h más.</div>}
+                Con <strong>+48 h</strong> o con un recordatorio vuelve a estar activo.</div>}
             </div>
           )}
 
@@ -163,6 +210,19 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
             {stat("Tiempo de lectura", r.lectura)}
             {stat("Llegó hasta", r.hastaSec)}
           </div>
+
+          {/* v2D · D1 · hasta dónde llegó, sección por sección */}
+          {r.aperturas > 0 && (
+            <>
+              <FunnelLectura hastaSec={r.hastaSec} />
+              {r.aperturas > 1 && (
+                <div className="ins ins-lee a-rise">
+                  <Sparkles size={13} style={{ color:"var(--violet-ink)" }} />
+                  <span>{insightLectura(r.num)}</span>
+                </div>
+              )}
+            </>
+          )}
 
           {/* timeline */}
           <div className="lbl" style={{ margin:"16px 0 8px" }}>Historia</div>
@@ -194,10 +254,20 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
               </div>
             </div>
           )}
+
+          {/* v2D · D2 · el dato del negocio, una sola línea y sin vender nada */}
+          <div className="ins ins-neg">
+            <TrendingUp size={13} style={{ color:"var(--teal-2)" }} />
+            <span>
+              {r.aperturas > 0
+                ? <>Las cotizaciones abiertas 3+ veces confirman <b>2,4× más</b> — esta va {r.aperturas}.</>
+                : <>Las que se mandan antes de las 48 h se abren el doble — <b>esta todavía está a tiempo</b>.</>}
+            </span>
+          </div>
         </div>
 
         {/* acciones */}
-        <div style={{ display:"flex", gap:8, padding:"13px 17px", borderTop:"1px solid var(--hair-soft)" }}>
+        <div className="drawer-acc" style={{ display:"flex", gap:8, padding:"13px 17px", borderTop:"1px solid var(--hair-soft)" }}>
           <button className="btn btn-s btn-ico" style={{ width:38, height:38 }} title="Vista previa de la cotización"
             onClick={() => setPreview(true)}><Eye size={15} /></button>
           <button className="btn btn-s btn-ico" style={{ width:38, height:38 }} title="Duplicar cotización — abre una copia lista para cambiar fechas"
@@ -219,7 +289,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
 
         {/* panel de confirmación */}
         {confOpen && (
-          <div className="a-slide" style={{ position:"absolute", left:0, right:0, bottom:0, background:"#fff",
+          <div className="a-slide" style={{ position:"absolute", left:0, right:0, bottom:0, background:"var(--card)",
             borderTop:"1px solid var(--hair)", borderRadius:"18px 18px 0 0", padding:"16px 17px 18px",
             boxShadow:"0 -20px 50px -18px rgba(17,17,36,.3)", zIndex:5 }}>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
@@ -248,8 +318,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado }) {
           </div>
         )}
       </div>
-      {comp && <ModalCompartir q={qLite} marca="traveloz" recordatorio
-        onClose={() => setComp(false)} onEnviada={() => {}} />}
+      {comp && <ModalCompartir q={qLite} marca="traveloz" recordatorio toast={toast}
+        onClose={() => setComp(false)} onEnviada={() => onRecordatorio?.(r)} />}
       {preview && (
         <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && setPreview(false)}>
           <div className="a-zoom" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12 }}>

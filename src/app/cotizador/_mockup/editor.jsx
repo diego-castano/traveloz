@@ -172,7 +172,7 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
             <>
               <div style={{ position:"fixed", inset:0, zIndex:29 }} onClick={() => setOpenMes(false)} />
               <div className="a-slide" style={{ position:"absolute", top:"calc(100% + 5px)", left:0, zIndex:30, width:230,
-                background:"#fff", border:"1px solid var(--hair)", borderRadius:13, padding:7,
+                background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:13, padding:7,
                 boxShadow:"0 22px 50px -14px rgba(17,17,36,.28)", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:4 }}>
                 {MESES.map((m, i) => (
                   <button key={m} onClick={() => { set((d) => { d.titulo.mes = i; }); setOpenMes(false); saltar(anioRef); }}
@@ -191,9 +191,9 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
               <button key={a} ref={ai === 0 ? anioRef : null}
                 onClick={() => { set((d) => { d.titulo.anio = a; }); saltar(fechaRef); }}
                 className="in in-lg" style={{ flex:1, fontWeight:700, padding:0,
-                  background: q.titulo.anio === a ? "linear-gradient(145deg,#45D4C0,#2A9E8E)" : "#fff",
+                  background: q.titulo.anio === a ? "linear-gradient(145deg,#45D4C0,#2A9E8E)" : "var(--field)",
                   color: q.titulo.anio === a ? "#fff" : "var(--n500)",
-                  borderColor: q.titulo.anio === a ? "transparent" : "rgba(17,17,36,.14)" }}>{a}</button>
+                  borderColor: q.titulo.anio === a ? "transparent" : "var(--field-brd)" }}>{a}</button>
             ))}
           </div>
         </div>
@@ -241,8 +241,8 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
       {hayManual && (
         <div className="a-slide" style={{ display:"flex", alignItems:"center", gap:10, marginTop:12, padding:"10px 12px",
           background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.34)", borderRadius:11 }}>
-          <AlertCircle size={14} style={{ color:"#8A5A16", flexShrink:0 }} />
-          <span style={{ fontSize:12, color:"#8A5A16", flex:1 }}>
+          <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
+          <span style={{ fontSize:12, color:"var(--ink-amber)", flex:1 }}>
             Hay fechas editadas a mano que no siguen a la fecha de salida.
           </span>
           <Btn size="sm" onClick={onRepropagar}><RefreshCw size={12} /> Actualizar todo</Btn>
@@ -272,7 +272,7 @@ function SeccionDestinos({ q, set, tramos, toast }) {
             const t = tramos[i];
             return (
               <div key={dd.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:9, padding:"8px 10px",
-                background:"#FCFCFE", border:"1px solid var(--hair-soft)", borderRadius:11 }}>
+                background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11 }}>
                 <div className="mono" style={{ width:20, height:20, borderRadius:6, display:"grid", placeItems:"center",
                   background:"rgba(120,90,229,.11)", color:"var(--violet)", fontSize:10, fontWeight:600 }}>{i + 1}</div>
                 <input className="in" style={{ flex:"1 1 130px", height:32 }} value={dd.ciudad}
@@ -294,12 +294,12 @@ function SeccionDestinos({ q, set, tramos, toast }) {
                   </span>
                   {t?.manual ? (
                     <button className="pill" title="Volver a la fecha automática"
-                      style={{ background:"rgba(247,178,103,.2)", color:"#8A5A16", cursor:"pointer" }}
+                      style={{ background:"rgba(247,178,103,.2)", color:"var(--ink-amber)", cursor:"pointer" }}
                       onClick={() => set((d) => { d.destinos[i].checkinManual = null; })}>
                       manual <RefreshCw size={9} />
                     </button>
                   ) : (
-                    <span className="pill" style={{ background:"rgba(59,191,173,.12)", color:"#1F7D70" }}
+                    <span className="pill" style={{ background:"rgba(59,191,173,.12)", color:"var(--teal-3)" }}
                       title={i === 0 ? "Sigue a la fecha de salida" : "Sigue al check-out del destino anterior"}>
                       <Zap size={9} /> {i === 0 ? "= salida" : "sigue al anterior"}
                     </span>
@@ -427,8 +427,8 @@ function BloqueMensaje({ q, set, refEl, toast }) {
       {confirmar && (
         <div className="a-slide" style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", marginBottom:9,
           padding:"9px 12px", background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.34)", borderRadius:11 }}>
-          <AlertCircle size={14} style={{ color:"#8A5A16", flexShrink:0 }} />
-          <span style={{ fontSize:12, color:"#8A5A16", flex:"1 1 200px" }}>
+          <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
+          <span style={{ fontSize:12, color:"var(--ink-amber)", flex:"1 1 200px" }}>
             Ya hay un mensaje escrito. ¿Lo reemplazo?
           </span>
           <Btn size="sm" variant="p" onClick={escribir}>Sí, reemplazalo</Btn>
@@ -529,7 +529,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
       }>
       {modo === "texto" ? (
         <textarea className="in mono" rows={q.pnrRaw ? 5 : 3} value={q.pnrRaw}
-          style={{ fontSize:11.5, lineHeight:1.55, background: estado === "error" ? "rgba(244,62,85,.04)" : "#fff" }}
+          style={{ fontSize:11.5, lineHeight:1.55, background: estado === "error" ? "rgba(244,62,85,.07)" : "var(--field)" }}
           placeholder="Pegá acá el PNR tal como sale del GDS… (igual que en el sistema actual)"
           onChange={(e) => { set((d) => { d.pnrRaw = e.target.value; }); setEstado("idle"); }}
           onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text/plain");
@@ -590,7 +590,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
         <div className="a-slide" style={{ display:"flex", alignItems:"flex-start", gap:9, marginTop:10, padding:"10px 12px",
           background:"rgba(244,62,85,.07)", border:"1px solid rgba(244,62,85,.24)", borderRadius:11 }}>
           <AlertCircle size={14} style={{ color:"var(--coral)", flexShrink:0, marginTop:1 }} />
-          <div style={{ fontSize:12, color:"#A8192A", flex:1 }}>
+          <div style={{ fontSize:12, color:"var(--ink-coral)", flex:1 }}>
             <strong>No se reconoció ningún tramo en ese texto.</strong> Lo pegado quedó intacto arriba:
             corregilo y volvé a convertir, o cargá los tramos a mano.
             <div style={{ marginTop:7 }}>
@@ -607,7 +607,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
         <div style={{ marginTop:12, border:"1px solid var(--hair-soft)", borderRadius:12, overflow:"hidden" }}>
           {q.vuelos.map((v, i) => (
             <div key={v.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px",
-              borderBottom: i < q.vuelos.length - 1 ? "1px solid var(--hair-soft)" : "none", background:"#FCFCFE" }}>
+              borderBottom: i < q.vuelos.length - 1 ? "1px solid var(--hair-soft)" : "none", background:"var(--card-3)" }}>
               <div style={{ width:26, height:26, borderRadius:8, background:"rgba(120,90,229,.11)", color:"var(--violet)",
                 display:"grid", placeItems:"center", flexShrink:0 }}><Plane size={12} /></div>
               <input className="in mono" style={{ width:80, height:30, textAlign:"center", fontSize:11.5 }} value={v.cia + v.nro}
@@ -636,8 +636,8 @@ function BloqueVuelos({ q, set, refEl, toast }) {
       {choque && (
         <div className="a-slide" style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, padding:"10px 12px",
           background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.34)", borderRadius:11 }}>
-          <AlertCircle size={14} style={{ color:"#8A5A16", flexShrink:0 }} />
-          <span style={{ fontSize:12, color:"#8A5A16", flex:1 }}>
+          <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
+          <span style={{ fontSize:12, color:"var(--ink-amber)", flex:1 }}>
             El vuelo sale el <b>{fmtCorto(choque)}</b> pero la fecha de salida cargada es <b>{fmtCorto(q.fechaSalida)}</b>.
           </span>
           <Btn size="sm" onClick={() => { set((d) => { d.fechaSalida = choque; }); setChoque(null);
@@ -760,7 +760,7 @@ function BloqueServicios({ q, set, refEl, toast }) {
                   <span style={{ width:22, height:22, borderRadius:7, display:"grid", placeItems:"center",
                     background:"rgba(120,90,229,.1)", color:"var(--violet)", flexShrink:0 }}><C.Icon size={11} /></span>
                   <span style={{ flex:1 }}>{x.texto}</span>
-                  <span className="pill" style={{ background:"rgba(17,17,36,.05)", color:"var(--n400)", flexShrink:0 }}>{C.label}</span>
+                  <span className="pill" data-tone="n" style={{ flexShrink:0 }}>{C.label}</span>
                   {i === acIdx && <span className="kbd">{"\u21B5"}</span>}
                 </button>
                 );
@@ -802,7 +802,7 @@ function BloqueServicios({ q, set, refEl, toast }) {
                   onDragOver={(e) => { e.preventDefault(); setOver(i); }}
                   className={drag === i ? "drag-on" : ""}
                   style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px", marginBottom:5,
-                    background:"#FCFCFE", border:"1px solid var(--hair-soft)", borderRadius:11, transition:"box-shadow .16s" }}>
+                    background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11, transition:"box-shadow .16s" }}>
                   <GripVertical size={14} style={{ color:"var(--n300)", cursor:"grab", flexShrink:0 }}
                     onMouseDown={() => setArmado(i)} onMouseUp={() => setArmado(null)} />
                   <div style={{ width:24, height:24, borderRadius:7, flexShrink:0, display:"grid", placeItems:"center",
@@ -882,7 +882,7 @@ function BloqueNotas({ q, set, refEl, toast, vistaPasajero }) {
         <div style={{ border:"1px solid var(--hair-soft)", borderRadius:12, overflow:"hidden", marginBottom:10 }}>
           {q.notas.map((x, i) => (
             <div key={x.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px",
-              borderBottom:"1px solid var(--hair-soft)", background:"#FCFCFE" }}>
+              borderBottom:"1px solid var(--hair-soft)", background:"var(--card-3)" }}>
               <input className="in" style={{ flex:1, height:29, border:"1px solid transparent", background:"transparent", paddingLeft:2 }}
                 value={x.concepto} onChange={(e) => set((d) => { d.notas[i].concepto = e.target.value; })} />
               <input className="in mono" style={{ width:104, height:29, textAlign:"right" }} type="number" value={x.neto}
@@ -894,7 +894,7 @@ function BloqueNotas({ q, set, refEl, toast, vistaPasajero }) {
             </div>
           ))}
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px",
-            background:"rgba(17,17,36,.028)" }}>
+            background:"var(--wash)" }}>
             <span className="lbl">Total de costos fijos</span>
             <span className="mono" style={{ fontSize:14, fontWeight:600 }}>{money(total)}</span>
           </div>
@@ -959,11 +959,11 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
 function LineaMargen({ neto, factor }) {
   const f = Number(factor);
   if (!Number.isFinite(f) || f <= 0) return (
-    <span className="mono" style={{ fontSize:10.5, color:"#8A5A16" }}>Falta el factor para calcular el margen</span>
+    <span className="mono" style={{ fontSize:10.5, color:"var(--ink-amber)" }}>Falta el factor para calcular el margen</span>
   );
   const pv = venta(neto, factor);
   const m = margenPct(factor);
-  const col = m >= 12 ? "var(--teal-3)" : m >= 8 ? "#8A5A16" : "var(--coral)";
+  const col = m >= 12 ? "var(--teal-3)" : m >= 8 ? "var(--ink-amber)" : "var(--coral)";
   const fTxt = f.toFixed(2).replace(".", ",");
   const mTxt = String(m).replace(".", ",");
   return (
@@ -1032,12 +1032,12 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                 onDragEnd={() => { mover(drag, over); setDrag(null); setOver(null); setArmado(null); }}
                 onDragOver={(e) => { e.preventDefault(); setOver(i); }}
                 className={`a-pop ${drag === i ? "drag-on" : ""}`}
-                style={{ border:"1px solid var(--hair-soft)", borderRadius:14, overflow:"hidden", background:"#fff",
+                style={{ border:"1px solid var(--hair-soft)", borderRadius:14, overflow:"hidden", background:"var(--card)",
                   boxShadow:"0 1px 2px rgba(26,26,46,.03)" }}>
 
                 {/* cabecera de la opción */}
                 <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 11px",
-                  background:"linear-gradient(180deg,#FCFCFE,#F8F9FC)", borderBottom:"1px solid var(--hair-soft)" }}>
+                  background:"linear-gradient(180deg,var(--card-3),var(--card-2))", borderBottom:"1px solid var(--hair-soft)" }}>
                   <GripVertical size={14} style={{ color:"var(--n300)", cursor:"grab", flexShrink:0 }}
                     onMouseDown={() => setArmado(i)} onMouseUp={() => setArmado(null)} />
                   <input ref={(el) => { nombreRefs.current[o.id] = el; }}
@@ -1138,7 +1138,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6, flexWrap:"wrap" }}>
                     {!Number(o.neto) && (
-                      <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"#8A5A16" }}>
+                      <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"var(--ink-amber)" }}>
                         <AlertCircle size={11} /> Falta el neto de esta opción
                       </span>
                     )}
@@ -1192,26 +1192,26 @@ function BannerIA({ ia }) {
 
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:9 }}>
         {ia.paquete && (
-          <span className="pill" style={{ background:"rgba(59,191,173,.14)", color:"#1F7D70" }}>
+          <span className="pill" style={{ background:"rgba(59,191,173,.14)", color:"var(--teal-3)" }}>
             <Zap size={8} /> Precargado desde {ia.paquete}
           </span>
         )}
         {(ia.chips || []).map((c) => (
-          <span key={c} className="pill" style={{ background:"#fff", color:"var(--n600)", border:"1px solid var(--hair)" }}>
+          <span key={c} className="pill" style={{ background:"var(--pop)", color:"var(--n600)", border:"1px solid var(--hair)" }}>
             <Check size={8} style={{ color:"var(--teal-2)" }} /> {c}
           </span>
         ))}
       </div>
 
       {!ia.paquete && (
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:9, fontSize:11.5, color:"#8A5A16" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:9, fontSize:11.5, color:"var(--ink-amber)" }}>
           <AlertCircle size={12} style={{ flexShrink:0 }} />
           No encontré un paquete que coincida — la armé en blanco con lo que entendí.
         </div>
       )}
 
       {ver && (
-        <div className="a-slide" style={{ marginTop:10, padding:"11px 13px", borderRadius:12, background:"#fff",
+        <div className="a-slide" style={{ marginTop:10, padding:"11px 13px", borderRadius:12, background:"var(--card)",
           border:"1px solid var(--hair-soft)" }}>
           <div className="lbl" style={{ marginBottom:6 }}>Lo que escribió el pasajero</div>
           <div style={{ fontSize:12.5, lineHeight:1.65, color:"var(--n600)", whiteSpace:"pre-wrap" }}>{ia.consulta}</div>

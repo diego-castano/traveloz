@@ -10,6 +10,14 @@ const CSS = `
   --n300:#B0B4CD; --n400:#8A8DB5; --n500:#6B6F99; --n600:#3D4066; --n100:#ECEDF5; --n50:#F5F6FA;
   --hair:rgba(17,17,36,0.09); --hair-soft:rgba(17,17,36,0.055);
   --brand-a:#F43E55; --brand-b:#785AE5;
+  /* v2D · superficies y tintas con nombre: son las que cambian en modo oscuro.
+     Los gradientes de marca (coral→violeta) y la acción teal NO se tocan nunca. */
+  --card-2:#FAFBFE; --card-3:#FCFCFE; --pop:#FFFFFF; --tile:#F5F6FA;
+  --field:#FFFFFF; --field-brd:rgba(17,17,36,.14);
+  --sunk:rgba(17,17,36,.05); --sunk-2:rgba(17,17,36,.09); --wash:rgba(17,17,36,.025);
+  --glass:rgba(245,246,250,.86);
+  --violet-ink:#5B3FBF; --ink-amber:#8A5A16; --ink-coral:#CC2030;
+  --wa-bg:#E6F8F5; --wa-fg:#165C53;
   font-family:'DM Sans',system-ui,sans-serif;
   color:var(--ink); background:var(--page);
   font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
@@ -41,7 +49,7 @@ const CSS = `
 .blk-t { font-size:13.5px; font-weight:700; letter-spacing:-.01em; }
 
 /* ── inputs ──────────────────────────────────────────────────────────── */
-.in { width:100%; height:38px; padding:0 12px; background:#fff; border:1px solid rgba(17,17,36,.14);
+.in { width:100%; height:38px; padding:0 12px; background:var(--field); border:1px solid var(--field-brd);
   border-radius:9px; font-size:13.5px; box-shadow:inset 0 1px 0 rgba(17,17,36,.03);
   transition:border-color .16s, box-shadow .16s; }
 .in:hover { border-color:rgba(17,17,36,.24); }
@@ -78,6 +86,12 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .chip-on { border-color:var(--teal-2); background:rgba(59,191,173,.07); color:var(--teal-3); font-weight:600; }
 .pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; white-space:nowrap;
   font-size:10.5px; font-weight:700; letter-spacing:.03em; }
+/* v2D · los tonos viven acá (y no inline) para que el modo oscuro los pueda ajustar */
+.pill[data-tone="teal"]   { background:rgba(59,191,173,.13);  color:var(--teal-3); }
+.pill[data-tone="violet"] { background:rgba(120,90,229,.13);  color:var(--violet-ink); }
+.pill[data-tone="coral"]  { background:rgba(244,62,85,.11);   color:var(--ink-coral); }
+.pill[data-tone="amber"]  { background:rgba(247,178,103,.20); color:var(--ink-amber); }
+.pill[data-tone="n"]      { background:var(--sunk);           color:var(--n500); }
 
 /* ── animaciones ─────────────────────────────────────────────────────── */
 @keyframes popIn { 0%{opacity:0;transform:translateY(8px) scale(.97)} 60%{transform:translateY(-2px) scale(1.006)} 100%{opacity:1;transform:none} }
@@ -153,6 +167,8 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 /* ── semáforo con tooltip ────────────────────────────────────────────── */
 .sem { position:relative; display:inline-flex; align-items:center; }
 .sem-dot { width:10px; height:10px; border-radius:99px; box-shadow:0 0 0 3px rgba(17,17,36,.05); }
+/* el texto del semáforo solo aparece en mobile, donde no hay hover que valga */
+.sem-txt { display:none; }
 .sem .tip { display:none; position:absolute; bottom:calc(100% + 9px); right:-10px; width:216px;
   background:rgba(26,26,46,.97); color:#fff; padding:10px 12px; border-radius:11px; font-size:11px;
   line-height:1.55; z-index:70; box-shadow:0 14px 34px -10px rgba(17,17,36,.5); text-align:left; }
@@ -172,7 +188,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .tl-line { width:2px; flex:1; background:rgba(17,17,36,.08); border-radius:9px; margin:3px 0; }
 
 /* ── segmentos ───────────────────────────────────────────────────────── */
-.seg { display:inline-flex; gap:3, padding:3px; background:rgba(17,17,36,.055); border-radius:11px; padding:3px; }
+.seg { display:inline-flex; gap:3px; background:rgba(17,17,36,.055); border-radius:11px; padding:3px; }
 .seg button { padding:6px 13px; border-radius:8px; font-size:12px; font-weight:600; color:var(--n400);
   display:inline-flex; align-items:center; gap:6px; transition:all .18s; }
 .seg button[data-on="1"] { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(26,26,46,.14); }
@@ -183,12 +199,12 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .dz:hover { border-color:rgba(120,90,229,.55); background:rgba(120,90,229,.06); transform:translateY(-1px); }
 
 /* ── wysiwyg ─────────────────────────────────────────────────────────── */
-.wys { min-height:88px; padding:11px 13px; background:#fff; border:1px solid rgba(17,17,36,.14);
+.wys { min-height:88px; padding:11px 13px; background:var(--field); border:1px solid var(--field-brd);
   border-radius:0 0 11px 11px; font-size:13.5px; line-height:1.65; outline:none; }
 .wys:focus { border-color:var(--teal-2); box-shadow:0 0 0 3px rgba(59,191,173,.13); }
 .wys ul { margin:4px 0; padding-left:20px; }
 .wys:empty::before { content:attr(data-ph); color:var(--n300); }
-.wys-bar { display:flex; gap:3px; padding:6px 8px; background:#FAFBFE; border:1px solid rgba(17,17,36,.14);
+.wys-bar { display:flex; gap:3px; padding:6px 8px; background:var(--card-2); border:1px solid var(--field-brd);
   border-bottom:none; border-radius:11px 11px 0 0; }
 .wys-b { width:28px; height:26px; border-radius:7px; display:grid; place-items:center; color:var(--n500);
   font-size:12.5px; font-weight:700; transition:all .14s; }
@@ -448,6 +464,212 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   animation:latido 1.8s cubic-bezier(.2,.8,.2,1) infinite; }
 .ts-vivo { box-shadow:0 18px 44px -12px rgba(17,17,36,.5), 0 0 0 1px rgba(69,212,192,.35),
   0 0 26px -8px rgba(69,212,192,.55) !important; }
+
+/* ══ v2D: drawer — funnel de lectura e insights ═══════════════════════ */
+
+/* mini embudo: hasta dónde llegó el pasajero leyendo la cotización */
+.fun-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.fun-l { width:96px; flex-shrink:0; font-size:10px; font-weight:700; letter-spacing:.02em;
+  color:var(--n400); text-align:right; white-space:nowrap; transition:color .25s; }
+.fun-row[data-on="1"] .fun-l { color:var(--n600); }
+.fun-t { flex:1; min-width:0; height:9px; border-radius:99px; background:var(--sunk); overflow:hidden; }
+.fun-b { display:block; height:100%; border-radius:99px; background:var(--sunk-2);
+  transition:width .55s cubic-bezier(.2,.8,.2,1), background .3s; }
+.fun-row[data-on="1"] .fun-b { background:linear-gradient(90deg,#45D4C0,#2A9E8E); }
+.fun-row[data-fin="1"] .fun-b { box-shadow:0 0 0 2px rgba(69,212,192,.22); }
+
+/* línea de insight: informa, no vende */
+.ins { display:flex; align-items:flex-start; gap:8px; font-size:11.5px; line-height:1.55; }
+.ins > svg { flex-shrink:0; margin-top:2px; }
+.ins-lee { margin-top:10px; padding:9px 11px; border-radius:11px;
+  background:rgba(120,90,229,.07); border:1px solid rgba(120,90,229,.18); color:var(--n600); }
+.ins-neg { margin-top:16px; padding-top:13px; border-top:1px solid var(--hair-soft); color:var(--n400); }
+.ins-neg b { color:var(--n600); font-weight:700; }
+
+/* ══ v2D: transición paquete → editor ═════════════════════════════════ */
+@keyframes edIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+@keyframes edHead { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:none} }
+.ed-head { animation:edHead .34s cubic-bezier(.16,1,.3,1) both; }
+.ed-main { animation:edIn .35s cubic-bezier(.16,1,.3,1) both; animation-delay:.04s; }
+/* el rail y la columna del teléfono son sticky: solo opacidad, nada de transform */
+.ed-rail { animation:fadeIn .4s ease both; animation-delay:.10s; }
+.ed-phone { animation:edIn .42s cubic-bezier(.16,1,.3,1) both; animation-delay:.14s; }
+@media (prefers-reduced-motion:reduce){
+  .ctz .ed-head,.ctz .ed-main,.ctz .ed-rail,.ctz .ed-phone { animation:none !important; opacity:1 !important; transform:none !important; }
+}
+
+/* ══ v2D: modo oscuro ═════════════════════════════════════════════════
+   Es el tema de la HERRAMIENTA. La vista del pasajero (el teléfono, la
+   tablet y el navegador de la vista previa) queda SIEMPRE clara: es lo que
+   ve el cliente, no la herramienta. Por eso acá no se toca ninguna clase
+   que viva dentro de SalidaPasajero (.opt-seg, .odo, .phone-scr, .foto…).
+   Los gradientes de marca y la acción teal quedan intactos.
+   ══════════════════════════════════════════════════════════════════════ */
+.ctz.dark {
+  --ink:#F0F1FA; --ink-2:#FFFFFF;
+  --page:#0F1024; --card:#191B36;
+  --n600:#DDDFF2; --n500:#B6BAD9; --n400:#9095BE; --n300:#696E9B;
+  --n100:#272A4C; --n50:#1E2140;
+  --hair:rgba(255,255,255,.14); --hair-soft:rgba(255,255,255,.08);
+  --teal-3:#63DCC7;
+  --card-2:#1F2242; --card-3:#1C1F3C; --pop:#232748; --tile:#1F2242; --field:#12142C;
+  --sunk:rgba(255,255,255,.06); --sunk-2:rgba(255,255,255,.13); --wash:rgba(255,255,255,.03);
+  --glass:rgba(15,16,36,.82);
+  --field-brd:rgba(255,255,255,.16);
+  --violet-ink:#BFAEFF; --ink-amber:#F2C078; --ink-coral:#FF93A0;
+  --wa-bg:rgba(69,212,192,.09); --wa-fg:#8FE3D4;
+  color-scheme:dark;
+}
+
+/* superficies */
+.ctz.dark .card { box-shadow:0 1px 2px rgba(0,0,0,.35), 0 14px 34px -16px rgba(0,0,0,.65); }
+.ctz.dark .blk { box-shadow:0 1px 2px rgba(0,0,0,.3), 0 16px 40px -22px rgba(0,0,0,.7); }
+.ctz.dark .blk:focus-within { border-color:rgba(160,94,211,.45);
+  box-shadow:0 1px 2px rgba(0,0,0,.3), 0 16px 44px -20px rgba(120,90,229,.6); }
+.ctz.dark .blk-ico { background:linear-gradient(145deg,rgba(160,94,211,.26),rgba(120,90,229,.12));
+  color:var(--violet-ink); }
+.ctz.dark .hairline { background:var(--hair-soft); }
+
+/* campos y botones */
+.ctz.dark .in { box-shadow:inset 0 1px 0 rgba(255,255,255,.03); }
+.ctz.dark .in:hover { border-color:rgba(255,255,255,.28); }
+.ctz.dark .in::placeholder { color:var(--n300); }
+.ctz.dark .btn-s { background:var(--card-2); border-color:var(--hair); color:var(--n600);
+  box-shadow:0 1px 2px rgba(0,0,0,.3); }
+.ctz.dark .btn-s:hover { background:var(--pop); border-color:rgba(255,255,255,.24); }
+.ctz.dark .btn-g:hover { background:rgba(255,255,255,.07); color:var(--ink); }
+.ctz.dark .kbd { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); color:var(--n500); }
+.ctz.dark :focus-visible { box-shadow:0 0 0 2px var(--page), 0 0 0 4px rgba(69,212,192,.55) !important; }
+.ctz.dark ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.16); background-clip:content-box; }
+.ctz.dark ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,.3); background-clip:content-box; }
+
+/* chips, píldoras y segmentos */
+.ctz.dark .chip { background:var(--card-2); border-color:var(--hair); }
+.ctz.dark .chip:hover { border-color:rgba(255,255,255,.26); box-shadow:0 2px 10px rgba(0,0,0,.4); }
+.ctz.dark .chip-on { background:rgba(69,212,192,.14); border-color:var(--teal-2); color:var(--teal-3); }
+.ctz.dark .chip-off { background:rgba(255,255,255,.05); border-color:transparent; color:var(--n400); }
+.ctz.dark .pill[data-tone="teal"]   { background:rgba(69,212,192,.16); }
+.ctz.dark .pill[data-tone="violet"] { background:rgba(160,94,211,.22); }
+.ctz.dark .pill[data-tone="coral"]  { background:rgba(244,62,85,.20); }
+.ctz.dark .pill[data-tone="amber"]  { background:rgba(247,178,103,.20); }
+.ctz.dark .seg { background:rgba(255,255,255,.07); }
+.ctz.dark .seg button[data-on="1"] { background:var(--pop); color:var(--ink); box-shadow:0 1px 4px rgba(0,0,0,.5); }
+
+/* popovers, listas y autocompletes */
+.ctz.dark .cal-pop, .ctz.dark .ac-pop { background:var(--pop); border-color:var(--hair);
+  box-shadow:0 26px 60px -16px rgba(0,0,0,.75); }
+.ctz.dark .cal-d:hover { background:rgba(160,94,211,.2); }
+.ctz.dark .cal-nav:hover { background:rgba(255,255,255,.08); color:var(--ink); }
+.ctz.dark .ac-i[data-on="1"] { background:rgba(160,94,211,.2); }
+.ctz.dark .ac-i b { color:var(--violet-ink); }
+.ctz.dark .lst-i:hover { background:rgba(160,94,211,.16); }
+.ctz.dark .cam { background:var(--card-2); }
+.ctz.dark .cam:hover { border-color:rgba(160,94,211,.5); box-shadow:0 18px 38px -18px rgba(0,0,0,.8); }
+.ctz.dark .cam-ico { background:rgba(160,94,211,.2); color:var(--violet-ink); }
+.ctz.dark .cam-hero { background:linear-gradient(var(--card-2),var(--card-2)) padding-box,
+  linear-gradient(90deg,rgba(244,62,85,.75),rgba(120,90,229,.75)) border-box; }
+.ctz.dark .cam-hero .cam-ico { background:linear-gradient(87deg,var(--coral),var(--violet)); color:#fff; }
+.ctz.dark .ia-bar { background:linear-gradient(var(--card-2),var(--card-2)) padding-box,
+  linear-gradient(90deg,rgba(244,62,85,.5),rgba(120,90,229,.5)) border-box; }
+.ctz.dark .ia-dot { background:rgba(255,255,255,.07); color:var(--n300); }
+.ctz.dark .ia-paso[data-on="1"] .ia-dot { background:rgba(160,94,211,.24); color:var(--violet-ink); }
+.ctz.dark .ia-paso[data-on="2"] .ia-dot { background:rgba(69,212,192,.18); color:var(--teal-3); }
+
+/* editor: rail, wysiwyg, dropzone */
+.ctz.dark .rail-i:hover { background:rgba(255,255,255,.06); }
+.ctz.dark .rail-i[data-on="1"] { background:rgba(160,94,211,.18); color:var(--violet-ink); }
+.ctz.dark .rail-k { background:linear-gradient(90deg,rgba(25,27,54,0),var(--card) 34%); }
+.ctz.dark .rail-i[data-on="1"]:hover .rail-k { background:linear-gradient(90deg,rgba(41,35,74,0),#2A2450 34%); }
+.ctz.dark .rail-help:hover { color:var(--violet-ink); }
+.ctz.dark .wys:focus { box-shadow:0 0 0 3px rgba(69,212,192,.18); }
+.ctz.dark .wys-b:hover { background:rgba(160,94,211,.2); color:var(--violet-ink); }
+.ctz.dark .dz { border-color:rgba(160,94,211,.42); background:rgba(160,94,211,.07); }
+.ctz.dark .dz:hover { border-color:rgba(160,94,211,.7); background:rgba(160,94,211,.13); }
+.ctz.dark .oculto-pas { border-color:rgba(255,255,255,.16); background:rgba(255,255,255,.03); }
+.ctz.dark .mrg:hover, .ctz.dark .mrg:focus-visible { background:rgba(255,255,255,.06); }
+.ctz.dark .acc-row { border-bottom-color:var(--hair-soft); }
+.ctz.dark .sug-base { background:linear-gradient(90deg,rgba(120,90,229,.16),rgba(69,212,192,.10));
+  border-color:rgba(160,94,211,.38); }
+.ctz.dark .sug-ico { background:rgba(160,94,211,.24); color:var(--violet-ink); }
+.ctz.dark .btn-ia { border-color:rgba(160,94,211,.45); }
+.ctz.dark .btn-ia:hover:not(:disabled) { border-color:rgba(160,94,211,.7); background:rgba(160,94,211,.14); }
+
+/* seguimiento, drawer y compartir */
+.ctz.dark .cola-i { background:var(--card-2); }
+.ctz.dark .cola-i:hover { border-color:rgba(160,94,211,.4); box-shadow:0 10px 24px -14px rgba(0,0,0,.9); }
+.ctz.dark .fila-acc { background:linear-gradient(90deg,rgba(30,31,61,0),#1E1F3D 30%); }
+.ctz.dark .drawer { background:var(--card); box-shadow:-24px 0 70px -20px rgba(0,0,0,.8); }
+.ctz.dark .drawer-bg { background:rgba(5,6,18,.6); }
+.ctz.dark .tl-line { background:rgba(255,255,255,.13); }
+.ctz.dark .pref { background:var(--card-2); border-color:var(--hair-soft); }
+.ctz.dark .pref-cta { background:rgba(247,178,103,.22); color:var(--ink-amber); }
+.ctz.dark .pref-cta:hover { background:rgba(247,178,103,.34); }
+.ctz.dark .env { background:var(--card-2); }
+.ctz.dark .env-link { background:var(--pop); border-color:var(--hair); }
+.ctz.dark .via-off { background:rgba(255,255,255,.04); }
+.ctz.dark .ov { background:rgba(5,6,18,.6); }
+.ctz.dark .sem .tip, .ctz.dark .mrg .tip { background:#2B2E52; box-shadow:0 16px 38px -10px rgba(0,0,0,.8),
+  0 0 0 1px rgba(255,255,255,.09); }
+.ctz.dark .sem .tip::after { border-top-color:#2B2E52; }
+.ctz.dark .mrg .tip::after { border-top-color:#2B2E52; }
+.ctz.dark .sem-dot { box-shadow:0 0 0 3px rgba(255,255,255,.06); }
+
+/* marco del navegador de la vista previa: el CROMO oscurece, el contenido no */
+.ctz.dark .browser-bar { background:#22254A; border-bottom-color:rgba(255,255,255,.1); }
+.ctz.dark .browser-url { background:#161834; border-color:rgba(255,255,255,.1); color:var(--n500); }
+/* .wordmark NO se toca: el mismo componente se usa dentro del teléfono (fondo claro) */
+
+/* ══ v2D: mobile — el seguimiento entra en el celular ═════════════════
+   Objetivo: home + seguimiento usables con una mano. El editor es de
+   escritorio: acá no se toca (el rail ya se esconde a 900px).
+   ══════════════════════════════════════════════════════════════════════ */
+@media (max-width:700px){
+  .ctz .home-wrap { padding:20px 16px 48px !important; }
+  .ctz .home-cta { flex:1 1 100%; }
+  .ctz .home-tabs { overflow-x:auto; scrollbar-width:none; }
+  .ctz .home-tabs::-webkit-scrollbar { height:0; }
+  .ctz .home-pad { padding:15px 16px 18px !important; }
+  /* las ayudas largas de cada encabezado no entran en el ancho del celular */
+  .ctz .hint-desk { display:none !important; }
+
+  /* paquetes y vendedores: carrusel con snap en vez de una torre de cards */
+  .ctz .pq-grid, .ctz .vend-grid { display:flex !important; gap:10px; overflow-x:auto;
+    scroll-snap-type:x mandatory; margin:0 -16px; padding:2px 16px 8px; scrollbar-width:none; }
+  .ctz .pq-grid::-webkit-scrollbar, .ctz .vend-grid::-webkit-scrollbar { height:0; }
+  .ctz .pq-grid > * { flex:0 0 76%; scroll-snap-align:start; }
+  .ctz .vend-grid > * { flex:0 0 62%; scroll-snap-align:start; }
+  .ctz .pq-vacio { flex:1 1 100% !important; }
+
+  /* "Para hoy": la acción abajo, ancha y cómoda al dedo */
+  .ctz .cola-i { flex-wrap:wrap; padding:10px 12px; }
+  .ctz .cola-acc { flex:1 1 100%; height:36px; font-size:12.5px; }
+
+  /* la tabla de seguimiento pasa a cards apiladas */
+  .ctz .tabla-head { display:none !important; }
+  .ctz .fila-seg { display:grid !important; grid-template-columns:minmax(0,1fr) auto;
+    gap:3px 10px !important; padding:12px 13px !important; }
+  .ctz .fs-cli { display:contents; }
+  .ctz .fs-num, .ctz .fs-vend, .ctz .fs-chev { display:none !important; }
+  .ctz .fs-cli-n { grid-column:1; grid-row:1; font-size:14px !important; }
+  .ctz .fs-estado { grid-column:2; grid-row:1; width:auto !important; }
+  .ctz .fs-cli-d { grid-column:1; grid-row:2; }
+  .ctz .fs-monto { grid-column:2; grid-row:2; width:auto !important; }
+  .ctz .fs-sem { grid-column:1; grid-row:3; width:auto !important; gap:7px; margin-top:5px;
+    justify-content:flex-start !important; }
+  .ctz .fs-sem .tip { display:none !important; }
+  .ctz .sem-txt { display:inline; font-size:11.5px; font-weight:600; color:var(--n500); }
+  .ctz .fs-dias { grid-column:2; grid-row:3; width:auto !important; margin-top:5px; }
+  .ctz .fila-acc { position:static !important; grid-column:1 / -1; grid-row:4;
+    transform:none !important; opacity:1 !important; pointer-events:auto !important;
+    background:none !important; padding-left:0 !important; margin-top:9px; gap:7px; }
+  .ctz .fila-acc > .btn { flex:1 1 0; width:auto !important; height:36px !important; }
+
+  /* el drawer ocupa la pantalla entera */
+  .ctz .drawer { width:100% !important; border-radius:0; animation:riseUp .26s cubic-bezier(.16,1,.3,1); }
+  .ctz .drawer-x { width:40px !important; height:40px !important; }
+  .ctz .drawer-acc { flex-wrap:wrap; }
+  .ctz .drawer-acc > .btn { min-height:42px; }
+}
 `;
 
 export { CSS };
