@@ -82,6 +82,9 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           "/backend/",
           "/api/",
           "/presentacion_traveloz",
+          // Mockup del cotizador para validar con el cliente. Ruta no listada
+          // (no esta en menus ni sitemap); se saca de aca cuando se borre.
+          "/cotizador",
           ...extra,
         ],
       },
