@@ -318,6 +318,68 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   opacity:0; pointer-events:none; transition:opacity .18s ease;
   background:linear-gradient(90deg,rgba(250,249,254,0),#FAF9FE 30%); }
 .fila-seg:hover .fila-acc, .fila-seg:focus-within .fila-acc { opacity:1; pointer-events:auto; }
+
+/* ══ v2B: editor ══════════════════════════════════════════════════════ */
+
+/* ── sugerencia "su última cotización" (bloque Cliente) ──────────────── */
+.sug-base { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:11px;
+  padding:9px 11px; border-radius:12px;
+  background:linear-gradient(90deg,rgba(120,90,229,.07),rgba(59,191,173,.06));
+  border:1px solid rgba(120,90,229,.2); }
+.sug-ico { width:26px; height:26px; border-radius:9px; display:grid; place-items:center; flex-shrink:0;
+  background:rgba(120,90,229,.13); color:var(--violet); }
+
+/* ── chips apagados: "ya está puesto" ────────────────────────────────── */
+.chip-frec { max-width:100%; }
+.chip-off { background:rgba(17,17,36,.035); border-color:transparent; color:var(--n400);
+  cursor:default; font-weight:500; }
+.chip-off:hover { border-color:transparent; box-shadow:none; }
+.chip-mini { height:25px; padding:0 9px; font-size:11px; gap:5px; border-radius:8px; }
+
+/* ── botón "Escribir por mí" (identidad IA) ──────────────────────────── */
+.btn-ia { gap:8px; padding-left:8px; border-color:rgba(120,90,229,.3); }
+.btn-ia:hover:not(:disabled) { border-color:rgba(120,90,229,.55); background:rgba(120,90,229,.05); }
+.btn-ia:disabled { opacity:.7; cursor:default; transform:none; }
+.seg-xs { padding:2px; border-radius:9px; }
+.seg-xs button { padding:4px 10px; font-size:11.5px; border-radius:7px; }
+
+/* ── lectura del margen (solo vendedor) ──────────────────────────────── */
+.mrg { position:relative; display:inline-flex; align-items:center; font-size:10.5px; line-height:1.5;
+  text-align:right; border-radius:7px; padding:2px 4px; margin:-2px -4px; cursor:help;
+  transition:background .15s; }
+.mrg:hover, .mrg:focus-visible { background:rgba(17,17,36,.035); }
+.mrg .tip { display:none; position:absolute; bottom:calc(100% + 9px); right:0; width:250px;
+  background:rgba(26,26,46,.97); color:#fff; padding:10px 12px; border-radius:11px;
+  font-family:'DM Sans',system-ui,sans-serif; font-size:11px; line-height:1.55; font-weight:400;
+  text-align:left; z-index:70; box-shadow:0 14px 34px -10px rgba(17,17,36,.5); }
+.mrg .tip b { display:block; font-size:11.5px; margin-bottom:3px; }
+.mrg .tip::after { content:''; position:absolute; top:100%; right:16px; border:5px solid transparent;
+  border-top-color:rgba(26,26,46,.97); }
+.mrg:hover .tip, .mrg:focus-visible .tip { display:block; animation:fadeIn .15s; }
+
+/* ── bloque escondido en "Ver como pasajero" ─────────────────────────── */
+.oculto-pas { display:flex; align-items:center; gap:10px; padding:13px 14px; border-radius:12px;
+  border:1px dashed rgba(17,17,36,.14); background:rgba(17,17,36,.018);
+  font-size:12px; color:var(--n400); }
+
+/* ── atajo Alt+n en el rail ──────────────────────────────────────────── */
+.rail-i { position:relative; }
+.rail-k { position:absolute; right:7px; top:50%; transform:translateY(-50%); font-size:9px;
+  letter-spacing:.02em; color:var(--n400); opacity:0; padding-left:10px;
+  background:linear-gradient(90deg,rgba(255,255,255,0),#fff 34%);
+  transition:opacity .16s; pointer-events:none; }
+.rail-i:hover .rail-k, .rail-i:focus-visible .rail-k { opacity:.55; }
+.rail-i[data-on="1"]:hover .rail-k { background:linear-gradient(90deg,rgba(243,241,253,0),#F3F1FD 34%); }
+.rail-help { display:flex; align-items:center; gap:6px; width:100%; margin-top:9px; padding:0;
+  font-size:10.5px; color:var(--n400); text-align:left; transition:color .15s; }
+.rail-help:hover { color:var(--violet); }
+
+/* ── hoja de atajos ──────────────────────────────────────────────────── */
+.atj-cols { display:grid; grid-template-columns:1fr 1fr; gap:0 26px; padding:15px 17px 6px; }
+.atj-row { display:flex; align-items:center; gap:12px; padding:6px 0;
+  border-bottom:1px solid var(--hair-soft); }
+.atj-row:last-child { border-bottom:none; }
+@media (max-width:640px){ .ctz .atj-cols { grid-template-columns:1fr; gap:14px; } }
 `;
 
 export { CSS };

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Plus, Send, ArrowLeft, Command, Zap, X,
   Smartphone, LayoutGrid, Loader2, CheckCheck, Lock, Gauge, Ticket, Files, Monitor, StickyNote,
-  ListChecks
+  ListChecks, Eye, EyeOff, Keyboard
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import {
@@ -14,7 +14,7 @@ import { Btn, Pill, Toasts } from "./_mockup/ui";
 import { SalidaPasajero } from "./_mockup/telefono";
 import {
   BloqueCliente, BloqueEncabezado, BloqueAlojamiento, BloqueMensaje, BloqueVuelos, BloqueServicios,
-  BloqueNotas, BloqueNotasCliente, BannerIA, Paleta
+  BloqueNotas, BloqueNotasCliente, BannerIA, Paleta, BannerPasajero, HojaAtajos
 } from "./_mockup/editor";
 import { Inicio } from "./_mockup/inicio";
 import { ModalCompartir } from "./_mockup/compartir";
@@ -137,6 +137,9 @@ function desdeIA(det) {
   return q;
 }
 
+/* v2B · orden fijo de los bloques: lo usan el rail y los atajos Alt+1…Alt+8 */
+const IDS_BLOQUES = ["b-cliente","b-encabezado","b-alojamiento","b-mensaje","b-vuelos","b-servicios","b-notas","b-notascliente"];
+
 export default function Cotizador() {
   const [pantalla, setPantalla] = useState("inicio");     // inicio | editor | listado
   const marca = "traveloz";
@@ -145,6 +148,8 @@ export default function Cotizador() {
   const [guardado, setGuardado] = useState("ok");          // ok | guardando
   const [toasts, setToasts] = useState([]);
   const [paleta, setPaleta] = useState(false);
+  const [atajos, setAtajos] = useState(false);             // v2B · hoja de atajos (tecla ?)
+  const [vistaPasajero, setVistaPasajero] = useState(false); // v2B · "Ver como pasajero"
   const [compartir, setCompartir] = useState(false);
   const [prev, setPrev] = useState(null);                  // overlay de vista previa: null | "cel" | "tab" | "desk" 
   const [plantillas, setPlantillas] = useState(PLANTILLAS);
@@ -179,11 +184,24 @@ export default function Cotizador() {
 
   /* atajos globales */
   useEffect(() => { pantallaRef.current = pantalla; }, [pantalla]);
+  /* v2B · ¿el foco está en un campo de texto? la tecla "?" no debe robarlo */
+  const enCampo = () => {
+    const a = typeof document !== "undefined" ? document.activeElement : null;
+    return !!a && (a.isContentEditable || ["INPUT","TEXTAREA","SELECT"].includes(a.tagName));
+  };
   useEffect(() => {
     const h = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaleta((v) => !v); }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && pantallaRef.current === "editor") {
         e.preventDefault(); setCompartir(true); }
+      /* v2B · Alt+1…Alt+8 salta al bloque N (e.code aguanta el Alt raro de macOS) */
+      if (e.altKey && !e.metaKey && !e.ctrlKey && pantallaRef.current === "editor") {
+        const n = /^Digit[1-8]$/.test(e.code || "") ? Number(e.code.slice(5))
+          : /^[1-8]$/.test(e.key) ? Number(e.key) : 0;
+        if (n) { e.preventDefault(); irA(IDS_BLOQUES[n - 1]); }
+      }
+      /* v2B · "?" abre la hoja de atajos, salvo que estés escribiendo */
+      if (e.key === "?" && !enCampo()) { e.preventDefault(); setAtajos((v) => !v); }
     };
     document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
   }, []);
@@ -193,6 +211,25 @@ export default function Cotizador() {
     setToasts((l) => [...l, { ...t, id }]);
     setTimeout(() => setToasts((l) => l.filter((x) => x.id !== id)), t.undo ? 5200 : 2800);
   }, []);
+
+  /* ── v2B · arrancar desde la última cotización del cliente ─────────── */
+  const usarBase = useCallback((r) => {
+    const base = desdeFila(r);
+    CORRELATIVO -= 1;                               // seguimos con el número actual: no gastamos uno nuevo
+    base.origen = `Base de ${r.num}`;
+    setQ((prev) => {
+      base.numero = prev.numero;
+      base.estado = prev.estado;
+      base.ia = prev.ia;
+      if (prev.cliente.nombre || prev.cliente.email) base.cliente = { ...prev.cliente };
+      return { ...base };
+    });
+    setGuardado("guardando");
+    setActivo("b-encabezado");
+    requestAnimationFrame(() => document.getElementById("b-encabezado")
+      ?.scrollIntoView({ behavior:"smooth", block:"start" }));
+    toast({ msg:`Base cargada desde ${r.num} — ajustá lo que cambie`, tone:"ok" });
+  }, [toast]);
 
   /* ── propagación de fechas ─────────────────────────────────────────── */
   const tramos = useMemo(() => {
@@ -251,6 +288,9 @@ export default function Cotizador() {
         nombre:`Opción ${d.opciones.length + 1}`, hoteles:d.destinos.map(() => ({ hotelId:null, libre:"" })),
         habitacion:"Doble estándar", regimen:"Desayuno", neto:0, factor:0.88 }); }); irA("b-alojamiento"); } },
     { label:"Compartir cotización", grupo:"acción", Icon:Send, run:() => setCompartir(true) },
+    { label: vistaPasajero ? "Volver a la vista del vendedor" : "Ver como pasajero (sin márgenes ni notas)",
+      grupo:"acción", Icon: vistaPasajero ? EyeOff : Eye, run:() => setVistaPasajero((v) => !v) },
+    { label:"Ver los atajos de teclado", grupo:"acción", Icon:Keyboard, run:() => setAtajos(true) },
     { label:"Duplicar esta cotización", grupo:"acción", Icon:Copy, run:() => {
         const c = JSON.parse(JSON.stringify(q)); c.numero = `COT-2026-${String(CORRELATIVO++).padStart(4,"0")}`;
         c.estado = "borrador"; abrir(c); toast({ msg:"Cotización duplicada — cambiá las fechas y listo", tone:"ok" }); } },
@@ -348,6 +388,17 @@ export default function Cotizador() {
                 {VENDEDORES.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
               </select>
 
+              {/* v2B · ver la pantalla sin nada interno */}
+              <button className={`btn btn-sm ${vistaPasajero ? "btn-v" : "btn-s"}`}
+                onClick={() => setVistaPasajero((v) => !v)}
+                title={vistaPasajero ? "Volver a la vista del vendedor" : "Ver la pantalla sin márgenes ni notas internas"}>
+                {vistaPasajero ? <EyeOff size={13} /> : <Eye size={13} />}
+                <span className="only-ancho">{vistaPasajero ? "Vista pasajero" : "Ver como pasajero"}</span>
+              </button>
+
+              <button className="btn btn-s btn-sm" onClick={() => setAtajos(true)} title="Atajos de teclado">
+                <Keyboard size={13} /><span className="kbd" style={{ marginLeft:-2 }}>?</span>
+              </button>
               <button className="btn btn-s btn-sm" onClick={() => setPaleta(true)} title="Paleta de comandos">
                 <Command size={13} /><span className="kbd" style={{ marginLeft:-2 }}>K</span>
               </button>
@@ -370,21 +421,27 @@ export default function Cotizador() {
                   <div style={{ height:"100%", borderRadius:9, width:`${(listos / bloques.length) * 100}%`,
                     background:"linear-gradient(90deg,#45D4C0,#2A9E8E)", transition:"width .5s cubic-bezier(.2,.8,.2,1)" }} />
                 </div>
-                {bloques.map((b) => (
-                  <button key={b.id} className="rail-i" data-on={activo === b.id ? "1" : "0"} onClick={() => irA(b.id)}>
+                {bloques.map((b, i) => (
+                  <button key={b.id} className="rail-i" data-on={activo === b.id ? "1" : "0"} onClick={() => irA(b.id)}
+                    title={`Ir a ${b.l} · Alt+${i + 1}`}>
                     <span className="rail-dot" data-ok={b.ok ? "1" : "0"} />
                     <b.Icon size={13} style={{ opacity:.75, flexShrink:0 }} />
                     <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.l}</span>
+                    <span className="rail-k mono">alt {i + 1}</span>
                   </button>
                 ))}
               </div>
               <div style={{ padding:"11px 9px 0", fontSize:10.5, color:"var(--n300)", lineHeight:1.5 }}>
                 Un solo scroll. El rail es para saltar, no un asistente por pasos.
+                <button className="rail-help" onClick={() => setAtajos(true)}>
+                  Ver todos los atajos <span className="kbd">?</span>
+                </button>
               </div>
             </aside>
 
             {/* formulario */}
             <main ref={scroller} style={{ flex:1, minWidth:0 }}>
+              {vistaPasajero && <BannerPasajero onSalir={() => setVistaPasajero(false)} />}
               {q.ia && <BannerIA ia={q.ia} />}
 
               {q.origen && !q.ia && (
@@ -399,13 +456,13 @@ export default function Cotizador() {
                 </div>
               )}
 
-              <BloqueCliente q={q} set={set} refEl={primerCampo} />
+              <BloqueCliente q={q} set={set} refEl={primerCampo} onUsarBase={usarBase} />
               <BloqueEncabezado q={q} set={set} tramos={tramos} hayManual={hayManual} onRepropagar={repropagar} />
-              <BloqueAlojamiento q={q} set={set} tramos={tramos} toast={toast} />
+              <BloqueAlojamiento q={q} set={set} tramos={tramos} toast={toast} vistaPasajero={vistaPasajero} />
               <BloqueMensaje q={q} set={set} toast={toast} />
               <BloqueVuelos q={q} set={set} toast={toast} />
               <BloqueServicios q={q} set={set} toast={toast} />
-              <BloqueNotas q={q} set={set} toast={toast} />
+              <BloqueNotas q={q} set={set} toast={toast} vistaPasajero={vistaPasajero} />
               <BloqueNotasCliente q={q} set={set} toast={toast} />
 
               <div style={{ display:"flex", gap:9, marginTop:18, flexWrap:"wrap" }}>
@@ -535,6 +592,7 @@ export default function Cotizador() {
           onEnviada={() => set((d) => { d.estado = "enviada"; })} />
       )}
       {paleta && <Paleta acciones={acciones} onClose={() => setPaleta(false)} />}
+      {atajos && <HojaAtajos onClose={() => setAtajos(false)} />}
 
       <Toasts items={toasts} onClose={(id) => setToasts((l) => l.filter((x) => x.id !== id))}
         onUndo={(t) => { t.undo?.(); setToasts((l) => l.filter((x) => x.id !== t.id)); }} />
@@ -543,6 +601,7 @@ export default function Cotizador() {
         @media (max-width:1320px){ .ctz .phone-col{ display:none } }
         @media (min-width:1321px){ .ctz .only-wide{ display:none } }
         @media (max-width:900px){ .ctz .rail-col{ display:none } }
+        @media (max-width:1240px){ .ctz .only-ancho{ display:none } }
       `}} />
     </div>
   );

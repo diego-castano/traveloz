@@ -172,12 +172,13 @@ const PLANTILLAS = [
   { id:"t3", nombre:"Europa clásica",       destino:"Madrid", detalle:"Aéreo + traslados privados + trenes entre ciudades", usos:9, ultimo:"hace 6 d" },
 ];
 
+/* `ultima` apunta a una cotización del HISTORIAL: es la historia previa del cliente */
 const CLIENTES = [
   { nombre:"María", apellido:"Pérez", email:"maria.perez@gmail.com", telefono:"+598 99 123 456" },
   { nombre:"Juan", apellido:"Rodríguez", email:"juanrod@hotmail.com", telefono:"+598 98 654 321" },
-  { nombre:"Lucía", apellido:"Fernández", email:"lucia.f@gmail.com", telefono:"+598 91 555 010" },
-  { nombre:"Martín", apellido:"Olivera", email:"molivera@outlook.com", telefono:"+598 94 777 220" },
-  { nombre:"Sofía", apellido:"Methol", email:"sofimethol@gmail.com", telefono:"+598 92 303 404" },
+  { nombre:"Lucía", apellido:"Fernández", email:"lucia.f@gmail.com", telefono:"+598 91 555 010", ultima:"COT-2026-0146" },
+  { nombre:"Martín", apellido:"Olivera", email:"molivera@outlook.com", telefono:"+598 94 777 220", ultima:"COT-2026-0145" },
+  { nombre:"Sofía", apellido:"Methol", email:"sofimethol@gmail.com", telefono:"+598 92 303 404", ultima:"COT-2026-0144" },
 ];
 
 const VENDEDORES = [
@@ -400,6 +401,98 @@ function detectarConsulta(texto) {
   return { texto:crudo, paquete, destino, mes, anio, adultos, menores, noches, cliente, chips };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2B · MEMORIA DEL VENDEDOR
+   Teléfonos que matchean aunque el formato cambie, la última cotización de cada
+   cliente, los servicios que más se repiten y los hoteles ya cotizados por ciudad.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* "+598 99 123 456", "099123456" y "99123456" son el mismo teléfono */
+function telDigitos(s) {
+  return String(s || "").replace(/\D/g, "").replace(/^0*598/, "").replace(/^0+/, "");
+}
+/* ¿lo que pegaron parece un teléfono? dígitos, +, espacios, guiones y paréntesis */
+function pareceTel(s) {
+  const t = String(s || "").trim();
+  return !!t && /^[+\d][\d\s().+-]*$/.test(t) && t.replace(/\D/g, "").length >= 3;
+}
+/* el cliente escribe cualquier formato; comparamos solo los dígitos que importan */
+function matchTel(guardado, buscado) {
+  const b = telDigitos(buscado); if (b.length < 3) return false;
+  return telDigitos(guardado).includes(b);
+}
+
+const filaPorNum = (num) => HISTORIAL.find((r) => r.num === num) || null;
+/* la última cotización de un cliente del catálogo, lista para mostrar */
+const ultimaDe = (c) => (c && c.ultima ? filaPorNum(c.ultima) : null);
+
+/* Los cinco servicios que el vendedor pone en casi todas las cotizaciones */
+const FRECUENTES = [
+  { cat:"aereo",       texto:"Aéreo ida y vuelta con valija en bodega 23kg" },
+  { cat:"traslado",    texto:"Traslado llegada y salida" },
+  { cat:"alojamiento", texto:"Alojamiento en base doble" },
+  { cat:"seguro",      texto:"Asistencia al viajero cobertura premium" },
+  { cat:"aereo",       texto:"Tasas e impuestos incluidos" },
+];
+
+/* Hoteles que ya se cotizaron en esa ciudad — salen de los paquetes publicados */
+function hotelesCotizadosEn(ciudad, max = 3) {
+  const c = norm(ciudad || ""); if (!c) return [];
+  const ids = [];
+  for (const p of PAQUETES) {
+    if (!p.destinos.some((d) => norm(d.ciudad) === c)) continue;
+    for (const o of p.opciones) for (const id of o.hoteles) if (!ids.includes(id)) ids.push(id);
+  }
+  return ids.map(hotelById).filter((h) => h && norm(h.ciudad) === c).slice(0, max);
+}
+
+/* Textos listos para pegar al final del mensaje */
+function snippetMensaje(tipo, q) {
+  const nom = (q?.cliente?.nombre || "").trim();
+  const hs = Number(q?.vigencia) || 48;
+  if (tipo === "saludo")
+    return `${nom ? `¡Hola ${nom}!` : "¡Hola!"} Gracias por escribirnos. Te paso la propuesta que armamos con todo lo que hablamos.`;
+  if (tipo === "urgencia")
+    return `Los precios y los lugares se confirman recién al reservar, así que esta propuesta queda en pie por ${hs} horas. Si te sirve, la dejamos señada hoy mismo y te aseguramos la tarifa.`;
+  return "Para reservar se abona una seña del 30% y el saldo hasta 30 días antes de la salida. Podés pagar por transferencia, débito o tarjeta en cuotas.";
+}
+
+/* ── el "Escribir por mí": arma el mensaje con lo que ya hay cargado ────── */
+function encabezadoTono(tono, nom) {
+  if (tono === "formal") {
+    if (!nom) return "Estimados:";
+    return `${/a$/i.test(nom) ? "Estimada" : "Estimado"} ${nom}:`;
+  }
+  return nom ? `Hola ${nom}!` : "¡Hola!";
+}
+function redactarMensaje(q, tono = "cercano") {
+  const nom = (q.cliente?.nombre || "").trim();
+  const destino = (q.titulo?.destino || q.destinos?.[0]?.ciudad || "").trim();
+  const mes = q.titulo?.mes != null ? MESES[q.titulo.mes].toLowerCase() : "";
+  const ciudades = (q.destinos || []).map((d) => d.ciudad).filter(Boolean);
+  const noches = (q.destinos || []).reduce((a, d) => a + (Number(d.noches) || 0), 0);
+  const entre = ciudades.length > 1
+    ? ` entre ${ciudades.slice(0, -1).join(", ")} y ${ciudades[ciudades.length - 1]}`
+    : ciudades.length === 1 ? ` en ${ciudades[0]}` : "";
+  const tramo = noches ? ` — ${noches} ${noches === 1 ? "noche" : "noches"}${entre}` : "";
+  const viaje = destino ? `para ${destino}${mes ? ` en ${mes}` : ""}` : "para el viaje que estás pensando";
+  const ops = (q.opciones || []).length;
+
+  if (tono === "formal") {
+    const l1 = `${encabezadoTono("formal", nom)}`;
+    const l2 = `Le enviamos la cotización ${viaje}${tramo}.`;
+    const l3 = ops > 1
+      ? `En el detalle encontrará ${ops} opciones de alojamiento con el precio por persona en base doble.`
+      : "En el detalle encontrará el alojamiento propuesto con el precio por persona en base doble.";
+    return `${l1}\n\n${l2} ${l3}\n\nQuedamos a disposición por cualquier consulta.`;
+  }
+  const l1 = `${encabezadoTono("cercano", nom)} Como lo hablamos, te paso la cotización ${viaje}${tramo}.`;
+  const l2 = ops > 1
+    ? `Adentro vas a ver ${ops} opciones de hotel con el precio por persona en base doble.`
+    : "Adentro vas a ver el hotel y el precio por persona en base doble.";
+  return `${l1}\n\n${l2}\n\nCualquier duda me escribís 😊`;
+}
+
 const ESTADOS = {
   borrador:   { l:"Borrador",   tone:"n",      Icon:PenLine },
   enviada:    { l:"Enviada",    tone:"violet", Icon:Send },
@@ -421,4 +514,7 @@ export {
   addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquete,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,
+  /* v2B */
+  telDigitos, pareceTel, matchTel, filaPorNum, ultimaDe, FRECUENTES, hotelesCotizadosEn,
+  snippetMensaje, encabezadoTono, redactarMensaje,
 };
