@@ -56,6 +56,7 @@ function cotizacionVacia() {
     destinos: [],
     servicios: [],
     notas: [],
+    bitacora: [],             /* v2F · anotaciones libres del equipo, con autor y hora */
     notasCliente: [],
     vigencia: 48,
     opciones: [],
@@ -204,6 +205,8 @@ export default function Cotizador() {
   };
   useEffect(() => {
     const h = (e) => {
+      /* v2F · si un campo ya usó la tecla (Ctrl+Enter de la bitácora), acá no se pisa */
+      if (e.defaultPrevented) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaleta((v) => !v); }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && pantallaRef.current === "editor") {
         e.preventDefault(); setCompartir(true); }
@@ -280,7 +283,7 @@ export default function Cotizador() {
     { id:"b-mensaje",    l:"Mensaje",     Icon:MessageSquare, ok: !!q.mensaje },
     { id:"b-vuelos",     l:"Vuelos",      Icon:Plane,       ok: q.vuelos.length > 0 },
     { id:"b-servicios",  l:"Servicios",   Icon:LayoutGrid,  ok: q.servicios.length > 0 },
-    { id:"b-notas",      l:"Notas internas", Icon:Lock,     ok: q.notas.length > 0 },
+    { id:"b-notas",      l:"Notas internas", Icon:Lock,     ok: q.notas.length > 0 || (q.bitacora?.length || 0) > 0 },
     { id:"b-notascliente", l:"Notas pasajero", Icon:StickyNote, ok: q.notasCliente.length > 0 },
   ];
   const listos = bloques.filter((b) => b.ok).length;
@@ -496,7 +499,7 @@ export default function Cotizador() {
               <BloqueMensaje q={q} set={set} toast={toast} />
               <BloqueVuelos q={q} set={set} toast={toast} />
               <BloqueServicios q={q} set={set} toast={toast} />
-              <BloqueNotas q={q} set={set} toast={toast} vistaPasajero={vistaPasajero} />
+              <BloqueNotas q={q} set={set} toast={toast} vistaPasajero={vistaPasajero} vendedor={vendedor} />
               <BloqueNotasCliente q={q} set={set} toast={toast} />
 
               <div style={{ display:"flex", gap:9, marginTop:18, flexWrap:"wrap" }}>
