@@ -28,6 +28,15 @@ const csp = [
   "object-src 'none'",
 ].join("; ");
 
+// Variante de la CSP solo para /cotizador (mockup de validacion): suma los dos
+// origenes de Google Fonts. Todo lo demas queda igual que la CSP del sitio.
+const cspCotizador = csp
+  .replace(
+    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  )
+  .replace("font-src 'self' data:", "font-src 'self' data: https://fonts.gstatic.com");
+
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -66,6 +75,20 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+      {
+        // TEMPORAL — mockup del cotizador (/cotizador). El mockup trae su CSS
+        // embebido con un @import a Google Fonts (DM Sans, Playfair Display,
+        // JetBrains Mono); la CSP del sitio no permite esos origenes y la
+        // tipografia se caia a las fuentes del sistema. Va DESPUES de la
+        // catch-all a proposito: ante la misma clave gana la ultima entrada que
+        // matchea, asi que solo /cotizador recibe la CSP ampliada y el resto del
+        // sitio queda intacto. Borrar junto con la ruta cuando termine la
+        // validacion con el cliente.
+        source: "/cotizador",
+        headers: [
+          { key: "Content-Security-Policy", value: cspCotizador },
+        ],
       },
       {
         // Assets estáticos del template (css/js/fonts/img/video). No tienen
