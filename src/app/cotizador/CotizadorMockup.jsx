@@ -276,6 +276,75 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 
 .ov { position:fixed; inset:0; background:rgba(17,17,36,.42); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:120; display:grid; place-items:center; padding:20px; }
 .hairline { height:1px; background:var(--hair-soft); }
+
+/* ── v2: chip de IA (identificador compartido) ───────────────────────── */
+.chip-ia { display:inline-flex; align-items:center; gap:5px; flex-shrink:0; padding:3px 10px; border-radius:999px;
+  background:linear-gradient(90deg,var(--coral),var(--violet)); color:#fff;
+  font-size:10px; font-weight:800; letter-spacing:.04em;
+  box-shadow:0 4px 12px -5px rgba(120,90,229,.8); }
+
+/* ── v2: modal "¿Cómo arrancamos?" (caminos de entrada) ──────────────── */
+.cam { position:relative; display:block; width:100%; padding:14px 15px 13px; text-align:left;
+  background:#fff; border:1px solid var(--hair-soft); border-radius:15px;
+  box-shadow:0 1px 2px rgba(26,26,46,.04);
+  transition:transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s, border-color .18s; }
+.cam:hover { transform:translateY(-2px); border-color:rgba(120,90,229,.34);
+  box-shadow:0 16px 34px -18px rgba(26,26,46,.34); }
+.cam-ico { width:32px; height:32px; border-radius:10px; display:grid; place-items:center; margin-bottom:8px;
+  background:rgba(120,90,229,.10); color:var(--violet); transition:transform .18s; }
+.cam:hover .cam-ico { transform:scale(1.06); }
+.cam-t { font-size:13.5px; font-weight:700; letter-spacing:-.01em; }
+.cam-d { font-size:11.5px; color:var(--n400); line-height:1.45; margin-top:2px; }
+.cam-n { position:absolute; top:11px; right:11px; }
+.cam-hero { border-color:transparent;
+  background:linear-gradient(#fff,#fff) padding-box,
+             linear-gradient(90deg,rgba(244,62,85,.55),rgba(120,90,229,.55)) border-box; }
+.cam-hero:hover { border-color:transparent; box-shadow:0 18px 40px -18px rgba(120,90,229,.55); }
+.cam-hero .cam-ico { background:linear-gradient(87deg,var(--coral),var(--violet)); color:#fff;
+  box-shadow:0 6px 16px -6px rgba(120,90,229,.7); }
+
+/* lista compacta del segundo paso */
+.lst-i { display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; border-radius:11px;
+  text-align:left; transition:background .14s; }
+.lst-i:hover { background:rgba(120,90,229,.07); }
+
+/* ── v2: barra "pegá la consulta" del home ───────────────────────────── */
+.ia-bar { display:flex; align-items:center; gap:10px; width:100%; padding:9px 11px; text-align:left;
+  border:1px solid transparent; border-radius:13px;
+  background:linear-gradient(#fff,#fff) padding-box,
+             linear-gradient(90deg,rgba(244,62,85,.40),rgba(120,90,229,.40)) border-box;
+  box-shadow:0 1px 2px rgba(26,26,46,.04);
+  transition:transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .2s; }
+.ia-bar:hover { transform:translateY(-1px); box-shadow:0 14px 30px -16px rgba(120,90,229,.5); }
+.ia-bar-t { flex:1; min-width:0; font-size:12.5px; color:var(--n600); font-weight:500; }
+.ia-bar-b { display:inline-flex; align-items:center; gap:5px; flex-shrink:0; padding:7px 13px; border-radius:9px;
+  font-size:12px; font-weight:700; color:#fff; background:linear-gradient(87deg,var(--coral),var(--violet));
+  box-shadow:0 6px 16px -8px rgba(120,90,229,.65); }
+
+/* ── v2: loader por pasos de la IA ───────────────────────────────────── */
+.ia-paso { display:flex; align-items:center; gap:10px; padding:7px 2px; font-size:13px;
+  color:var(--n300); transition:color .3s; }
+.ia-paso[data-on="1"] { color:var(--ink); font-weight:600; }
+.ia-paso[data-on="2"] { color:var(--n500); }
+.ia-dot { width:21px; height:21px; border-radius:99px; display:grid; place-items:center; flex-shrink:0;
+  background:rgba(17,17,36,.05); color:var(--n300); transition:background .3s, color .3s; }
+.ia-paso[data-on="1"] .ia-dot { background:rgba(120,90,229,.13); color:var(--violet); }
+.ia-paso[data-on="2"] .ia-dot { background:rgba(59,191,173,.15); color:var(--teal-3); }
+
+/* ── v2: cola de trabajo "Para hoy" ──────────────────────────────────── */
+.cola-i { display:flex; align-items:center; gap:10px; padding:8px 11px; border-radius:12px;
+  border:1px solid var(--hair-soft); background:#fff;
+  transition:border-color .16s, box-shadow .16s, transform .16s; }
+.cola-i:hover { border-color:rgba(120,90,229,.26); transform:translateX(2px);
+  box-shadow:0 8px 20px -13px rgba(26,26,46,.3); }
+
+/* ── v2: acciones rápidas al hover en las filas de seguimiento ───────── */
+.fila-seg { position:relative; cursor:pointer; }
+.fila-acc { position:absolute; top:50%; right:31px; transform:translateY(-50%);
+  display:flex; align-items:center; gap:4px; padding-left:32px;
+  opacity:0; pointer-events:none; transition:opacity .18s ease;
+  background:linear-gradient(90deg,rgba(250,249,254,0),#FAF9FE 30%); }
+.fila-seg:hover .fila-acc, .fila-seg:focus-within .fila-acc { opacity:1; pointer-events:auto; }
 `;
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -510,6 +579,9 @@ const HISTORIAL = [
     monto:1704, dias:5, hEnvio:120, aperturas:0, hasta:null, lectura:null, hastaSec:null, apDet:[] },
   { num:"COT-2026-0143", cliente:"Diego Castaño", destino:"Barcelona, Abril 2027", vendedor:"v2", estado:"borrador",
     monto:0, dias:6, hEnvio:null, aperturas:0, hasta:null, lectura:null, hastaSec:null, apDet:[] },
+  /* v2: caso ámbar (+24 h sin abrir) — es el que dispara "Mandar recordatorio" en la cola de hoy */
+  { num:"COT-2026-0142", cliente:"Valentina Souza", destino:"Florianópolis, Enero 2027", vendedor:"v3", estado:"enviada",
+    monto:1290, dias:7, hEnvio:30, aperturas:0, hasta:null, lectura:null, hastaSec:null, apDet:[] },
 ];
 
 /* Semáforo de seguimiento: cuánto hace que se envió y si el pasajero la abrió */
@@ -588,6 +660,122 @@ function parsePNR(raw) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   v2 · LECTURA DE CONSULTAS DE WHATSAPP
+   Todo acá es JavaScript común: no hay ningún servicio detrás. Alcanza para la
+   demo porque el vendedor pega textos cortos y siempre parecidos.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const norm = (s) => String(s).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const STOP_IA = new Set(["de","la","el","los","las","del","y","en","a","al","con"]);
+const NUM_PAL = { un:1, una:1, uno:1, dos:2, tres:3, cuatro:4, cinco:5, seis:6, siete:7, ocho:8, nueve:9, diez:10 };
+const numPal = (x) => (NUM_PAL[x] != null ? NUM_PAL[x] : Number(x)) || 0;
+
+/* palabra suelta, no pedazo de otra palabra */
+function palabraEn(t, w) {
+  const e = String(w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${e}([^a-z0-9]|$)`).test(t);
+}
+
+function detectarMes(t) {
+  for (let i = 0; i < MESES.length; i++) if (palabraEn(t, norm(MESES[i]))) return i;
+  for (let i = 0; i < MES_AB.length; i++) if (MES_AB[i] !== "mar" && palabraEn(t, MES_AB[i])) return i;
+  return null;
+}
+
+function detectarPax(t) {
+  let adultos = null, menores = 0;
+  const ad = t.match(/(\d+|un|una|dos|tres|cuatro|cinco|seis|siete|ocho)\s+(adultos?|personas?|pasajeros?|pax)\b/);
+  if (ad) adultos = numPal(ad[1]);
+  if (adultos == null) { const s = t.match(/somos\s+(\d+|dos|tres|cuatro|cinco|seis|siete|ocho)\b/); if (s) adultos = numPal(s[1]); }
+  if (adultos == null && /(mi (senora|esposa|esposo|marido|mujer|novia|novio|pareja))|en pareja|los dos/.test(t)) adultos = 2;
+  const re = /(\d+|un|una|dos|tres|cuatro)\s+(nenes?|nenas?|ninos?|ninas?|menores?|chicos?|chicas?|hijos?|bebes?)\b/g;
+  let m; while ((m = re.exec(t))) menores += numPal(m[1]);
+  return { adultos, menores };
+}
+
+function detectarNoches(t) {
+  const n = t.match(/(\d+)\s*noches?\b/);            if (n) return Number(n[1]);
+  const s = t.match(/(\d+|una|dos|tres)\s*semanas?\b/); if (s) return numPal(s[1]) * 7;
+  const d = t.match(/(\d+)\s*dias?\b/);              if (d) return Math.max(1, Number(d[1]) - 1);
+  return null;
+}
+
+/* puntaje: ciudad completa vale más que una palabra suelta; el mes que coincide desempata */
+function detectarPaquete(t, mes) {
+  let mejor = null, top = 0;
+  for (const p of PAQUETES) {
+    let sc = 0;
+    for (const d of p.destinos) {
+      const c = norm(d.ciudad);
+      if (t.includes(c)) { sc += 3; continue; }
+      const toks = c.split(/\s+/).filter((w) => w.length >= 3 && !STOP_IA.has(w));
+      const hits = toks.filter((w) => palabraEn(t, w)).length;
+      if (hits) sc += hits === toks.length ? 3 : 1.5;
+    }
+    if (sc > 0) {
+      const pal = norm(p.nombre).split(/\s+/).filter((w) => w.length >= 5 && !STOP_IA.has(w));
+      sc += pal.filter((w) => palabraEn(t, w)).length * 0.5;
+      if (mes != null && p.mes === mes) sc += 1.5;
+    }
+    if (sc > top) { top = sc; mejor = p; }
+  }
+  return top >= 1.5 ? mejor : null;
+}
+
+function detectarDestino(t, crudo) {
+  const pool = [...new Set([...CIUDADES, ...PAQUETES.flatMap((p) => p.destinos.map((d) => d.ciudad))])];
+  for (const c of pool) if (t.includes(norm(c))) return c;
+  for (const c of pool) {
+    const toks = norm(c).split(/\s+/).filter((w) => w.length >= 3 && !STOP_IA.has(w));
+    if (toks.length && toks.some((w) => palabraEn(t, w))) return c;
+  }
+  const m = crudo.match(/(?:ir a|viajar a|vamos a|escaparnos a|viaje a|conocer)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,}(?:\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,})?)/);
+  return m ? m[1] : "";
+}
+
+/* el "Hola Agustina!" del arranque es el vendedor, no el pasajero: se descarta */
+function detectarCliente(crudo) {
+  const m = crudo.match(/(?:soy|me llamo|mi nombre es|te habla|habla)\s+([A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,})/);
+  if (!m) return "";
+  const n = m[1];
+  if (VENDEDORES.some((v) => norm(v.nombre).split(" ")[0] === norm(n))) return "";
+  return n;
+}
+
+function etiquetaPax(adultos, menores) {
+  const p = [];
+  if (adultos) p.push(`${adultos} ${adultos === 1 ? "adulto" : "adultos"}`);
+  if (menores) p.push(`${menores} ${menores === 1 ? "menor" : "menores"}`);
+  return p.join(" + ");
+}
+
+function detectarConsulta(texto) {
+  const crudo = limpiarPegado(texto);
+  const t = norm(crudo);
+  const mes = detectarMes(t);
+  const hoy = new Date();
+  const explicito = crudo.match(/\b(20\d{2})\b/);
+  let anio = explicito ? Number(explicito[1])
+    : mes != null && mes < hoy.getMonth() ? ANIO_BASE + 1 : ANIO_BASE;
+  if (anio !== ANIO_BASE && anio !== ANIO_BASE + 1) anio = ANIO_BASE;
+
+  const paquete = detectarPaquete(t, mes);
+  const destino = paquete ? paquete.destinos[0].ciudad : detectarDestino(t, crudo);
+  const { adultos, menores } = detectarPax(t);
+  const noches = detectarNoches(t);
+  const cliente = detectarCliente(crudo);
+
+  const chips = [];
+  if (destino) chips.push(destino);
+  if (mes != null) chips.push(`${MESES[mes]} ${anio}`);
+  const pax = etiquetaPax(adultos, menores);
+  if (pax) chips.push(pax);
+  if (noches) chips.push(`${noches} noches`);
+
+  return { texto:crudo, paquete, destino, mes, anio, adultos, menores, noches, cliente, chips };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    PRIMITIVAS DE UI
    ═══════════════════════════════════════════════════════════════════════════ */
 
@@ -615,6 +803,13 @@ function Pill({ tone = "n", children, style }) {
     n:      { bg:"rgba(17,17,36,.06)",    c:"var(--n500)" },
   }[tone];
   return <span className="pill" style={{ background:T.bg, color:T.c, ...style }}>{children}</span>;
+}
+
+/* Identificador de todo lo que arma la IA — mismo chip en el modal y en el editor */
+function ChipIA({ texto = "IA", style }) {
+  return (
+    <span className="chip-ia" style={style}><Sparkles size={11} /> {texto}</span>
+  );
 }
 
 function Estrellas({ n = 0, size = 11 }) {
@@ -2256,15 +2451,378 @@ function BloqueAlojamiento({ q, set, tramos, refEl, toast }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   v2 · ENTRADA — cómo arranca una cotización
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── A1 · modal "¿Cómo arrancamos?" — cinco caminos, teclas 1 a 5 ────── */
+function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPlantilla, onFila, onIA }) {
+  const [paso, setPaso] = useState("menu");     // menu | paquete | plantilla | reciente
+  const [busq, setBusq] = useState("");
+  const inp = useRef(null);
+
+  const CAMINOS = [
+    { k:"ia",        n:1, Icon:MessageSquare, t:"Desde una consulta de WhatsApp",
+      d:"Pegá lo que te escribió el pasajero y la IA arma el borrador" },
+    { k:"blanco",    n:2, Icon:FileText,   t:"En blanco",             d:"Formulario vacío, listo para escribir" },
+    { k:"paquete",   n:3, Icon:LayoutGrid, t:"Desde un paquete",      d:"Todo precargado: destinos, hoteles y precios" },
+    { k:"plantilla", n:4, Icon:Files,      t:"Desde una plantilla",   d:"Lo repetitivo ya viene cargado" },
+    { k:"reciente",  n:5, Icon:Copy,       t:"Duplicar una reciente", d:"Arrancá desde una cotización ya armada" },
+  ];
+
+  const elegir = useCallback((k) => {
+    if (k === "ia") onIA();
+    else if (k === "blanco") onBlanco();
+    else { setPaso(k); setBusq(""); }
+  }, [onIA, onBlanco]);
+
+  const volver = useCallback(() => { setPaso("menu"); setBusq(""); }, []);
+
+  useEffect(() => {
+    const h = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); onClose(); return; }
+      if (paso === "menu") {
+        const i = ["1","2","3","4","5"].indexOf(e.key);
+        if (i >= 0) { e.preventDefault(); elegir(CAMINOS[i].k); }
+      } else if (e.key === "ArrowLeft") {
+        const el = e.target;
+        if (!(el && el.tagName === "INPUT" && el.value)) { e.preventDefault(); volver(); }
+      }
+    };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [paso, elegir, volver, onClose]);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (paso !== "menu") { const t = setTimeout(() => inp.current?.focus(), 80); return () => clearTimeout(t); } }, [paso]);
+
+  /* ── segundo paso: elegir de qué exactamente ── */
+  const b = busq.trim().toLowerCase();
+  const paquetes  = PAQUETES.filter((p) => !b || `${p.nombre} ${p.resumen} ${p.destinos.map((d) => d.ciudad).join(" ")}`.toLowerCase().includes(b));
+  const plantis   = plantillas.filter((t) => !b || `${t.nombre} ${t.destino} ${t.detalle || ""}`.toLowerCase().includes(b));
+  const recis     = recientes.filter((r) => !b || `${r.num} ${r.cliente} ${r.destino}`.toLowerCase().includes(b));
+  const CAB = { paquete:{ t:"Elegí el paquete", ph:`Buscá entre los ${PAQUETES.length} paquetes publicados…` },
+                plantilla:{ t:"Elegí la plantilla", ph:"Buscá entre tus plantillas…" },
+                reciente:{ t:"Elegí cuál duplicar", ph:"Buscá por cliente, destino o número…" } }[paso];
+
+  return (
+    <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="a-zoom card" style={{ width:"min(620px,100%)", padding:0, overflow:"hidden" }}>
+
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"15px 17px", borderBottom:"1px solid var(--hair-soft)" }}>
+          {paso !== "menu" && (
+            <button className="btn btn-g btn-ico" title="Volver a los caminos (←)" onClick={volver}><ArrowLeft size={15} /></button>
+          )}
+          <div className="disp" style={{ fontSize:17, fontWeight:600, letterSpacing:"-.02em", flex:1 }}>
+            {paso === "menu" ? "¿Cómo arrancamos?" : CAB.t}
+          </div>
+          {paso === "menu" && <span style={{ fontSize:11, color:"var(--n400)" }}>elegí con el mouse o con los números</span>}
+          <button className="btn btn-g btn-ico" onClick={onClose}><X size={15} /></button>
+        </div>
+
+        {paso === "menu" ? (
+          <div style={{ padding:"15px 17px 17px" }}>
+            {/* camino destacado */}
+            {(() => { const C = CAMINOS[0]; return (
+              <button className="cam cam-hero a-rise" onClick={() => elegir(C.k)} style={{ marginBottom:11 }}>
+                <span className="kbd cam-n">{C.n}</span>
+                <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+                  <div className="cam-ico" style={{ marginBottom:0, width:36, height:36, borderRadius:12 }}><C.Icon size={17} /></div>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                      <span className="cam-t">{C.t}</span>
+                      <ChipIA />
+                    </div>
+                    <div className="cam-d">{C.d}</div>
+                  </div>
+                </div>
+              </button>
+            ); })()}
+
+            {/* los otros cuatro */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))", gap:10 }}>
+              {CAMINOS.slice(1).map((C, i) => (
+                <button key={C.k} className="cam a-rise" onClick={() => elegir(C.k)} style={{ animationDelay:`${(i + 1) * .04}s` }}>
+                  <span className="kbd cam-n">{C.n}</span>
+                  <div className="cam-ico"><C.Icon size={15} /></div>
+                  <div className="cam-t">{C.t}</div>
+                  <div className="cam-d">{C.d}</div>
+                </button>
+              ))}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:13, fontSize:11, color:"var(--n400)" }}>
+              <span className="kbd">1</span>…<span className="kbd">5</span> para elegir
+              <span style={{ opacity:.4 }}>·</span>
+              <span className="kbd">esc</span> para cerrar
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding:"14px 17px 17px" }}>
+            <div style={{ position:"relative", marginBottom:11 }}>
+              <Search size={14} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"var(--n300)" }} />
+              <input ref={inp} className="in" style={{ paddingLeft:34 }} value={busq}
+                placeholder={CAB.ph} onChange={(e) => setBusq(e.target.value)} />
+            </div>
+
+            <div style={{ maxHeight:330, overflowY:"auto", margin:"0 -4px" }}>
+              {paso === "paquete" && paquetes.map((p) => (
+                <button key={p.id} className="lst-i" onClick={() => onPaquete(p)}>
+                  <Foto seed={p.seed} w={46} h={34} r={9} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.nombre}</div>
+                    <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                      {p.destinos.map((d) => `${d.ciudad} · ${d.noches}n`).join("   ·   ")}</div>
+                  </div>
+                  <Pill tone="violet" style={{ flexShrink:0 }}>{MESES[p.mes].slice(0,3)} {p.anio}</Pill>
+                  <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
+                </button>
+              ))}
+
+              {paso === "plantilla" && plantis.map((t) => (
+                <button key={t.id} className="lst-i" onClick={() => onPlantilla(t)}>
+                  <div style={{ width:32, height:32, borderRadius:10, flexShrink:0, display:"grid", placeItems:"center",
+                    background:"rgba(120,90,229,.1)", color:"var(--violet)" }}><Files size={14} /></div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:600 }}>{t.nombre}</div>
+                    <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                      {t.destino} · {t.detalle}</div>
+                  </div>
+                  <Pill tone="teal" style={{ flexShrink:0 }}><Zap size={8} /> {t.usos ?? 0}</Pill>
+                  <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
+                </button>
+              ))}
+
+              {paso === "reciente" && recis.map((r) => {
+                const V = VENDEDORES.find((v) => v.id === r.vendedor);
+                return (
+                  <button key={r.num} className="lst-i" onClick={() => onFila(r)}>
+                    <div style={{ width:32, height:32, borderRadius:10, flexShrink:0, display:"grid", placeItems:"center",
+                      background:"rgba(59,191,173,.12)", color:"var(--teal-3)" }}><Copy size={14} /></div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.cliente}</div>
+                      <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                        {r.destino}{V ? ` · ${V.nombre.split(" ")[0]}` : ""}</div>
+                    </div>
+                    <span className="mono" style={{ fontSize:10.5, color:"var(--n300)", flexShrink:0 }}>{r.num}</span>
+                    <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
+                  </button>
+                );
+              })}
+
+              {((paso === "paquete" && !paquetes.length) || (paso === "plantilla" && !plantis.length) || (paso === "reciente" && !recis.length)) && (
+                <div style={{ padding:"22px 6px" }}>
+                  <Vacio icon={Search} titulo={`Nada para “${busq.trim()}”`} accion="Probá con otra palabra, o arrancá en blanco" />
+                </div>
+              )}
+            </div>
+
+            <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:11, fontSize:11, color:"var(--n400)" }}>
+              <span className="kbd">←</span> volver a los caminos
+              <span style={{ opacity:.4 }}>·</span>
+              <span className="kbd">esc</span> cerrar
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── A2 · modal "Pegá la consulta del pasajero" ──────────────────────── */
+const EJEMPLOS_IA = [
+  { l:"Familia a Brasil",   t:"Hola! somos 2 adultos y un nene de 8, queremos ir a Río en octubre, una semana mas o menos, algo con desayuno" },
+  { l:"Pareja al Caribe",   t:"Buenas! con mi señora queremos escaparnos a Punta Cana en noviembre, all inclusive, 7 noches" },
+  { l:"Grupo a Europa",     t:"Hola Agustina! te escribo por el viaje a Madrid y Barcelona de marzo que vi en la web, somos 4 adultos" },
+];
+
+function ModalIA({ onClose, onArmar }) {
+  const [texto, setTexto] = useState("");
+  const [fase, setFase] = useState("edit");     // edit | corriendo
+  const [paso, setPaso] = useState(0);
+  const [det, setDet] = useState(null);
+  const ta = useRef(null);
+  const armarRef = useRef(onArmar);
+  useEffect(() => { armarRef.current = onArmar; });
+
+  useEffect(() => { const t = setTimeout(() => ta.current?.focus(), 90); return () => clearTimeout(t); }, []);
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape" && fase === "edit") onClose(); };
+    document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
+  }, [onClose, fase]);
+
+  /* si la consulta no trae mes, mandan las fechas del paquete */
+  const salidaMes = det?.paquete ? (det.mes != null ? det.mes : det.paquete.mes) : det?.mes;
+  const salidaAnio = det?.paquete ? (det.mes != null ? det.anio : det.paquete.anio) : det?.anio;
+  const pasos = det ? [
+    { l:"Leyendo tu consulta…" },
+    { l:`Buscando entre tus ${PAQUETES.length} paquetes publicados…` },
+    det.paquete
+      ? { l:`Encontré: ${det.paquete.nombre} · ${MESES[salidaMes].slice(0,3)} ${salidaAnio}` }
+      : { l:"No encontré un paquete que coincida — la armo en blanco" },
+    { l:"Armando el borrador…" },
+  ] : [];
+
+  const armar = () => { if (!texto.trim()) return; setDet(detectarConsulta(texto)); setPaso(0); setFase("corriendo"); };
+
+  useEffect(() => {
+    if (fase !== "corriendo" || !det) return;
+    const durs = [600, 800, 620, 640];
+    const ts = []; let acum = 0;
+    for (let i = 1; i <= durs.length; i++) { acum += durs[i - 1]; ts.push(setTimeout(() => setPaso(i), acum)); }
+    ts.push(setTimeout(() => armarRef.current(det), acum + 220));
+    return () => ts.forEach(clearTimeout);
+  }, [fase, det]);
+
+  return (
+    <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && fase === "edit" && onClose()}>
+      <div className="a-zoom card" style={{ width:"min(560px,100%)", padding:0, overflow:"hidden" }}>
+
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"15px 17px", borderBottom:"1px solid var(--hair-soft)" }}>
+          <ChipIA />
+          <div className="disp" style={{ fontSize:17, fontWeight:600, letterSpacing:"-.02em", flex:1 }}>
+            Pegá la consulta del pasajero
+          </div>
+          {fase === "edit" && <button className="btn btn-g btn-ico" onClick={onClose}><X size={15} /></button>}
+        </div>
+
+        {fase === "edit" ? (
+          <div style={{ padding:"14px 17px 17px" }}>
+            <textarea ref={ta} className="in" rows={6} value={texto}
+              placeholder={"Pegá acá el mensaje tal cual te llegó. Por ejemplo:\n“Hola! somos 2 adultos y un nene de 8, queremos ir a Río en octubre, una semana mas o menos, algo con desayuno”"}
+              onChange={(e) => setTexto(e.target.value)}
+              onPaste={(e) => {
+                e.preventDefault();
+                const el = e.target;
+                const t = limpiarPegado(e.clipboardData.getData("text/plain"));
+                const a = el.selectionStart ?? texto.length, b = el.selectionEnd ?? texto.length;
+                setTexto(texto.slice(0, a) + t + texto.slice(b));
+              }} />
+
+            <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginTop:11 }}>
+              <span className="lbl">Probá con un ejemplo</span>
+              {EJEMPLOS_IA.map((x) => (
+                <button key={x.l} className="chip" style={{ height:27, fontSize:11.5 }}
+                  onClick={() => { setTexto(x.t); ta.current?.focus(); }}>
+                  <MessageSquare size={11} style={{ color:"var(--violet)" }} /> {x.l}
+                </button>
+              ))}
+            </div>
+
+            <button className="btn btn-hero" style={{ width:"100%", height:44, borderRadius:12, fontSize:14, marginTop:14 }}
+              onClick={armar} disabled={!texto.trim()}>
+              <Sparkles size={16} /> Armar borrador
+            </button>
+            <div style={{ fontSize:11, color:"var(--n400)", textAlign:"center", marginTop:8, lineHeight:1.5 }}>
+              Lee el destino, el mes, cuántos viajan y cuántas noches. Después lo revisás y ajustás vos.
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding:"16px 17px 18px" }}>
+            {pasos.map((p, i) => (
+              <div key={i} className="ia-paso" data-on={paso === i ? "1" : paso > i ? "2" : "0"}>
+                <span className="ia-dot">
+                  {paso > i ? <Check size={12} /> : paso === i ? <Loader2 size={12} className="spin" /> : <span style={{ width:5, height:5, borderRadius:99, background:"currentColor" }} />}
+                </span>
+                <span style={{ flex:1 }}>{p.l}</span>
+              </div>
+            ))}
+
+            {/* mini-card del paquete encontrado */}
+            {det?.paquete && paso >= 2 && (
+              <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:10, marginTop:8, padding:"9px 10px",
+                borderRadius:13, background:"rgba(59,191,173,.06)", border:"1px solid rgba(59,191,173,.22)" }}>
+                <Foto seed={det.paquete.seed} w={54} h={40} r={9} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontSize:13, fontWeight:700 }}>{det.paquete.nombre}</div>
+                  <div style={{ fontSize:11, color:"var(--n400)" }}>{det.paquete.resumen}</div>
+                </div>
+                <CheckCheck size={16} style={{ color:"var(--teal-2)", flexShrink:0 }} />
+              </div>
+            )}
+            {det && !det.paquete && paso >= 2 && (
+              <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:9, marginTop:8, padding:"9px 11px",
+                borderRadius:12, background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.32)" }}>
+                <AlertCircle size={14} style={{ color:"#8A5A16", flexShrink:0 }} />
+                <span style={{ fontSize:11.5, color:"#8A5A16" }}>La armo en blanco con lo que entendí — vos la completás.</span>
+              </div>
+            )}
+
+            {det?.chips?.length > 0 && (
+              <div className="a-rise" style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:11 }}>
+                {det.chips.map((c) => (
+                  <span key={c} className="pill" style={{ background:"rgba(120,90,229,.1)", color:"#5B3FBF" }}>{c}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── A2 · banner del editor: qué entendió la IA + la consulta original ── */
+function BannerIA({ ia }) {
+  const [ver, setVer] = useState(false);
+  return (
+    <div className="a-rise" style={{ marginBottom:14, padding:"12px 14px", borderRadius:14,
+      background:"linear-gradient(90deg,rgba(244,62,85,.06),rgba(120,90,229,.08))",
+      border:"1px solid rgba(120,90,229,.24)" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+        <ChipIA />
+        <div style={{ fontSize:12.5, flex:"1 1 260px" }}>
+          La IA armó este borrador leyendo tu consulta — revisá y ajustá.
+          <span style={{ color:"var(--n400)" }}> Todo editable.</span>
+        </div>
+        <button className="btn btn-g btn-xs" onClick={() => setVer((v) => !v)}>
+          {ver ? "Ocultar la consulta" : "Ver la consulta original"}
+          <ChevronDown size={11} style={{ transform: ver ? "rotate(180deg)" : "none", transition:"transform .2s" }} />
+        </button>
+      </div>
+
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:9 }}>
+        {ia.paquete && (
+          <span className="pill" style={{ background:"rgba(59,191,173,.14)", color:"#1F7D70" }}>
+            <Zap size={8} /> Precargado desde {ia.paquete}
+          </span>
+        )}
+        {(ia.chips || []).map((c) => (
+          <span key={c} className="pill" style={{ background:"#fff", color:"var(--n600)", border:"1px solid var(--hair)" }}>
+            <Check size={8} style={{ color:"var(--teal-2)" }} /> {c}
+          </span>
+        ))}
+      </div>
+
+      {!ia.paquete && (
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:9, fontSize:11.5, color:"#8A5A16" }}>
+          <AlertCircle size={12} style={{ flexShrink:0 }} />
+          No encontré un paquete que coincida — la armé en blanco con lo que entendí.
+        </div>
+      )}
+
+      {ver && (
+        <div className="a-slide" style={{ marginTop:10, padding:"11px 13px", borderRadius:12, background:"#fff",
+          border:"1px solid var(--hair-soft)" }}>
+          <div className="lbl" style={{ marginBottom:6 }}>Lo que escribió el pasajero</div>
+          <div style={{ fontSize:12.5, lineHeight:1.65, color:"var(--n600)", whiteSpace:"pre-wrap" }}>{ia.consulta}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    PANTALLA DE INICIO
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function Inicio({ onPaquete, onBlanco, onPlantilla, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual }) {
+function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual }) {
   const G = ["#F43E55","#785AE5"];
   const [busq, setBusq] = useState("");
   const [creando, setCreando] = useState(false);
   const [nomPl, setNomPl] = useState("");
   const [destPl, setDestPl] = useState("");
+  /* v2 · caminos de entrada */
+  const [modalNueva, setModalNueva] = useState(false);
+  const [modalIA, setModalIA] = useState(false);
+  const recientes = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL).slice(0, 5), [actual]);
 
   const resultados = useMemo(() => {
     const t = busq.trim().toLowerCase();
@@ -2299,7 +2857,8 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, tab, setTab, plantillas, onC
           </div>
           <div style={{ fontSize:12, color:"var(--n400)" }}>Módulo del backend · mismo login, mismo sistema</div>
         </div>
-        <button className="btn btn-hero" onClick={onBlanco} style={{ height:46, paddingInline:22, fontSize:14, borderRadius:13 }}>
+        <button className="btn btn-hero" onClick={() => setModalNueva(true)}
+          style={{ height:46, paddingInline:22, fontSize:14, borderRadius:13 }}>
           <Plus size={17} /> Nueva cotización
         </button>
       </div>
@@ -2349,6 +2908,14 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, tab, setTab, plantillas, onC
                     instantánea <Sparkles size={11} style={{ color:"var(--violet)" }} /></span>
                 )}
               </div>
+
+              {/* ── v2 · A2 · entrada por consulta de WhatsApp ── */}
+              <button className="ia-bar a-rise" style={{ marginBottom:14, animationDelay:".06s" }}
+                onClick={() => setModalIA(true)}>
+                <ChipIA />
+                <span className="ia-bar-t">¿Te escribieron por WhatsApp? Pegá la consulta y te armo el borrador</span>
+                <span className="ia-bar-b">Pegar consulta <ChevronRight size={13} /></span>
+              </button>
 
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11 }}>
                 <span className="lbl">{buscando ? `${resultados.length} resultado${resultados.length === 1 ? "" : "s"}` : "Últimos publicados"}</span>
@@ -2412,7 +2979,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, tab, setTab, plantillas, onC
                 <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
                 <span style={{ fontSize:11, color:"var(--n300)" }}>búsqueda instantánea por cualquier campo</span>
               </div>
-              <ListadoContenido actual={actual} />
+              <ListadoContenido actual={actual} toast={toast} onDuplicar={onFila} />
             </div>
           )}
 
@@ -2491,6 +3058,22 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, tab, setTab, plantillas, onC
         <span style={{ opacity:.4 }}>·</span>
         <span className="kbd">⌘</span><span className="kbd">↵</span> compartir desde el editor
       </div>
+
+      {/* ── v2 · A1 y A2 · de dónde sale una cotización nueva ── */}
+      {modalNueva && (
+        <ModalNueva
+          plantillas={plantillas} recientes={recientes}
+          onClose={() => setModalNueva(false)}
+          onBlanco={() => { setModalNueva(false); onBlanco(); }}
+          onPaquete={(p) => { setModalNueva(false); onPaquete(p); }}
+          onPlantilla={(t) => { setModalNueva(false); onPlantilla(t); }}
+          onFila={(r) => { setModalNueva(false); onFila(r); }}
+          onIA={() => { setModalNueva(false); setModalIA(true); }} />
+      )}
+      {modalIA && (
+        <ModalIA onClose={() => setModalIA(false)}
+          onArmar={(det) => { setModalIA(false); onIA(det); }} />
+      )}
     </div>
   );
 }
@@ -2513,19 +3096,126 @@ function estadoEfectivo(r) {
   return r.estado;
 }
 
-function ListadoContenido({ actual }) {
+/* ── v2 · A3 · cola de trabajo del día ───────────────────────────────── */
+function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbrir }) {
+  const [abierta, setAbierta] = useState(true);
+  const hay = items.length > 0;
+  return (
+    <div style={{ marginBottom:15 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom: abierta ? 10 : 0 }}>
+        <div style={{ width:24, height:24, borderRadius:8, display:"grid", placeItems:"center",
+          background: hay ? "rgba(244,62,85,.1)" : "rgba(59,191,173,.13)",
+          color: hay ? "var(--coral)" : "var(--teal-3)" }}><ListChecks size={13} /></div>
+        <span style={{ fontSize:13, fontWeight:800, letterSpacing:"-.01em" }}>Para hoy</span>
+        <Pill tone={hay ? "coral" : "teal"}>{items.length}</Pill>
+        <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
+        <span style={{ fontSize:11, color:"var(--n300)" }}>lo que conviene mover antes de que se enfríe</span>
+        <button className="btn btn-g btn-ico" style={{ width:27, height:27 }}
+          title={abierta ? "Ocultar la lista" : "Mostrar la lista"} onClick={() => setAbierta((v) => !v)}>
+          <ChevronDown size={14} style={{ transform: abierta ? "none" : "rotate(-90deg)", transition:"transform .2s" }} />
+        </button>
+      </div>
+
+      {abierta && (hay ? (
+        <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+          {items.map((it, i) => (
+            <div key={it.r.num} className="cola-i a-rise" style={{ animationDelay:`${i * .04}s` }}>
+              <span className="sem-dot" style={{ background:it.c, flexShrink:0 }} />
+              <button onClick={() => onAbrir(it.r)} title="Ver el detalle de esta cotización"
+                style={{ flex:1, minWidth:0, textAlign:"left", display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                <span style={{ fontSize:12.5, fontWeight:700 }}>{it.r.cliente}</span>
+                <span style={{ fontSize:11.5, color:"var(--n400)" }}>{it.r.destino}</span>
+                <span className="pill" style={{ background:it.bg, color:it.fg }}>{it.motivo}</span>
+              </button>
+
+              {it.tipo === "vencida" && (
+                <Btn size="xs" style={{ flexShrink:0, color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
+                  borderColor:"rgba(59,191,173,.4)", fontWeight:700 }}
+                  onClick={() => onReactivar(it.r)}><RefreshCw size={11} /> Reactivar</Btn>
+              )}
+              {it.tipo === "recordatorio" && (
+                <Btn size="xs" style={{ flexShrink:0 }} onClick={() => onRecordatorio(it.r)}>
+                  <Send size={11} /> Mandar recordatorio</Btn>
+              )}
+              {it.tipo === "seguimiento" && (
+                <Btn size="xs" style={{ flexShrink:0 }} onClick={() => onSeguimiento(it.r)}>
+                  <Smartphone size={11} /> Hacer seguimiento</Btn>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="a-fade" style={{ display:"flex", alignItems:"center", gap:9, padding:"12px 13px", borderRadius:13,
+          background:"rgba(59,191,173,.07)", border:"1px solid rgba(59,191,173,.22)" }}>
+          <CheckCheck size={16} style={{ color:"var(--teal-2)", flexShrink:0 }} />
+          <span style={{ fontSize:12.5, fontWeight:700, color:"var(--teal-3)" }}>Nada urgente por hoy ✓</span>
+          <span style={{ fontSize:11.5, color:"var(--n400)" }}>Todas las cotizaciones están al día.</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ListadoContenido({ actual, toast, onDuplicar }) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todas");
   const [vendedor, setVendedor] = useState("todos");
   const [selNum, setSelNum] = useState(null);  // fila abierta en el drawer
   const [ov, setOv] = useState({});            // confirmaciones hechas en esta sesión
   const [ovEst, setOvEst] = useState({});      // estados pisados a mano por el vendedor
+  const [ovReact, setOvReact] = useState({});  // v2 · reactivadas: link nuevo por 48 h
+  const [hechos, setHechos] = useState({});    // v2 · lo ya resuelto en la cola de hoy
 
   const base = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL)
     .map((r) => ov[r.num] ? { ...r, estado:"confirmada", confOpcion:ov[r.num].op, confVia:ov[r.num].via } : r)
+    .map((r) => ovReact[r.num] ? { ...r, ...ovReact[r.num] } : r)
     .map((r) => ({ ...r, estadoManual: ovEst[r.num] || null, estado: estadoEfectivo({ ...r, estadoManual: ovEst[r.num] || null }) })),
-    [actual, ov, ovEst]);
+    [actual, ov, ovEst, ovReact]);
   const sel = base.find((r) => r.num === selNum) || null;
+
+  /* ── v2 · A5 · reactivar: link nuevo por 48 h, semáforo de vuelta en verde ── */
+  const reactivar = useCallback((r) => {
+    const antes = ovEst[r.num] || null;
+    setOvReact((o) => ({ ...o, [r.num]:{ estado:"enviada", hEnvio:0, aperturas:0, apDet:[], hasta:null, lectura:null, hastaSec:null } }));
+    setOvEst((o) => ({ ...o, [r.num]:null }));
+    toast?.({ msg:"Reactivada con link nuevo por 48 h ✓", tone:"ok",
+      undo:() => { setOvReact((o) => { const c = { ...o }; delete c[r.num]; return c; });
+                   setOvEst((o) => ({ ...o, [r.num]:antes })); } });
+  }, [ovEst, toast]);
+
+  const marcarHecho = useCallback((r, motivo, msg) => {
+    setHechos((h) => ({ ...h, [r.num]:motivo }));
+    toast?.({ msg, tone:"ok",
+      undo:() => setHechos((h) => { const c = { ...h }; delete c[r.num]; return c; }) });
+  }, [toast]);
+
+  const recordatorio = useCallback((r) => marcarHecho(r, "recordatorio", "Recordatorio listo en WhatsApp ✓"), [marcarHecho]);
+  const seguimiento  = useCallback((r) => marcarHecho(r, "seguimiento", `Seguimiento anotado — llamá a ${String(r.cliente).split(" ")[0]} hoy ✓`), [marcarHecho]);
+  const copiarLink   = useCallback(() => toast?.({ msg:"Link copiado ✓", tone:"ok" }), [toast]);
+  const porWhatsapp  = useCallback((r) => toast?.({ msg:`Mensaje listo en WhatsApp para ${String(r.cliente).split(" ")[0]} ✓`, tone:"ok" }), [toast]);
+
+  /* ── v2 · A3 · qué entra en la cola de hoy y por qué ── */
+  const cola = useMemo(() => base.map((r) => {
+    if (hechos[r.num]) return null;
+    if (r.estado === "vencida") {
+      const venc = r.hEnvio != null ? r.hEnvio - 48 : null;
+      const motivo = venc == null ? "El link ya no está vigente"
+        : venc < 24 ? "El link venció hoy"
+        : venc < 48 ? "El link venció ayer"
+        : `El link venció hace ${Math.round(venc / 24)} días`;
+      return { r, tipo:"vencida", c:"#F43E55", bg:"rgba(244,62,85,.10)", fg:"#CC2030", motivo };
+    }
+    if (r.estado === "enviada" && r.aperturas === 0 && r.hEnvio != null && r.hEnvio >= 24) {
+      const d = Math.max(1, Math.round(r.hEnvio / 24));
+      return { r, tipo:"recordatorio", c:"#E8A13C", bg:"rgba(247,178,103,.20)", fg:"#8A5A16",
+        motivo:`Hace ${d} ${d === 1 ? "día" : "días"} que no la abre` };
+    }
+    if (r.estado === "abierta" && r.aperturas > 0) {
+      return { r, tipo:"seguimiento", c:"#2A9E8E", bg:"rgba(59,191,173,.13)", fg:"#1F7D70",
+        motivo:`La abrió ${r.aperturas === 1 ? "una vez" : `${r.aperturas} veces`} — buen momento para llamar` };
+    }
+    return null;
+  }).filter(Boolean), [base, hechos]);
 
   /* búsqueda instantánea por CUALQUIER campo */
   const filas = useMemo(() => {
@@ -2554,6 +3244,10 @@ function ListadoContenido({ actual }) {
 
   return (
     <div className="a-fade">
+
+      {/* v2 · A3 · la cola del día, antes que cualquier número */}
+      <ColaParaHoy items={cola} onReactivar={reactivar} onRecordatorio={recordatorio}
+        onSeguimiento={seguimiento} onAbrir={(r) => setSelNum(r.num)} />
 
       {/* reportes por vendedor */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginBottom:14 }}>
@@ -2617,7 +3311,9 @@ function ListadoContenido({ actual }) {
           const E = ESTADOS[r.estado]; const V = VENDEDORES.find((v) => v.id === r.vendedor);
           const S = semaforo(r);
           return (
-            <button key={r.num + q} onClick={() => setSelNum(r.num)} className="a-rise"
+            <div key={r.num + q} role="button" tabIndex={0} onClick={() => setSelNum(r.num)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelNum(r.num); } }}
+              className="a-rise fila-seg"
               style={{ display:"flex", alignItems:"center", gap:11, padding:"11px 14px", width:"100%", textAlign:"left",
                 borderBottom: i < filas.length - 1 ? "1px solid var(--hair-soft)" : "none",
                 animationDelay:`${i * .03}s`, transition:"background .14s", borderRadius: i === 0 ? "16px 16px 0 0" : 0 }}
@@ -2652,7 +3348,25 @@ function ListadoContenido({ actual }) {
                 {r.dias === 0 ? "hoy" : `${r.dias}d`}
               </div>
               <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
-            </button>
+
+              {/* v2 · A4 y A5 · lo más usado, sin abrir la cotización */}
+              <div className="fila-acc" onClick={(e) => e.stopPropagation()}>
+                {r.estado === "vencida" && (
+                  <Btn size="xs" title="Generar un link nuevo y volver a dejarla vigente 48 h"
+                    style={{ color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
+                      borderColor:"rgba(59,191,173,.4)", fontWeight:700 }}
+                    onClick={(e) => { e.stopPropagation(); reactivar(r); }}>
+                    <RefreshCw size={11} /> Reactivar
+                  </Btn>
+                )}
+                <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Copiar link"
+                  onClick={(e) => { e.stopPropagation(); copiarLink(r); }}><Link2 size={12} /></button>
+                <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Mandar por WhatsApp"
+                  onClick={(e) => { e.stopPropagation(); porWhatsapp(r); }}><Send size={12} /></button>
+                <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Duplicar"
+                  onClick={(e) => { e.stopPropagation(); onDuplicar?.(r); }}><Files size={12} /></button>
+              </div>
+            </div>
           );
         })}
         {!filas.length && <div style={{ padding:30, textAlign:"center", color:"var(--n400)", fontSize:13 }}>
@@ -3309,6 +4023,7 @@ function cotizacionVacia() {
     numero: `COT-2026-${String(CORRELATIVO++).padStart(4, "0")}`,
     estado: "borrador",
     origen: null,
+    ia: null,                 /* v2 · lo que la IA leyó de la consulta de WhatsApp */
     cliente: { nombre:"", apellido:"", email:"", telefono:"" },
     titulo: { destino:"", mes:null, anio:ANIO_BASE },
     fechaSalida: "",
@@ -3361,6 +4076,43 @@ function desdePlantilla(t) {
     { id:uid("srv"), categoria:"alojamiento", texto:"Alojamiento en base doble", ciudad:null, modalidad:null },
     { id:uid("srv"), categoria:"seguro", texto:"Asistencia al viajero cobertura premium", ciudad:null, modalidad:null },
   ];
+  return q;
+}
+
+/* ── v2 · duplicar una fila del seguimiento (cliente y destino precargados) ── */
+function desdeFila(r) {
+  const q = cotizacionVacia();
+  q.origen = `Duplicada de ${r.num}`;
+  const [dest = "", resto = ""] = String(r.destino || "").split(",").map((x) => x.trim());
+  const mes = MESES.findIndex((m) => norm(resto).startsWith(norm(m)));
+  const anio = (resto.match(/(20\d{2})/) || [])[1];
+  q.titulo = { destino:dest, mes: mes >= 0 ? mes : null, anio: anio ? Number(anio) : ANIO_BASE };
+  const cli = String(r.cliente || "").trim();
+  if (/^(familia|flia)\b/i.test(cli)) q.cliente.nombre = cli;
+  else { const p = cli.split(/\s+/); q.cliente.nombre = p[0] || ""; q.cliente.apellido = p.slice(1).join(" "); }
+  if (dest) q.destinos = [{ id:uid("dst"), ciudad:dest, noches:7, checkinManual:null }];
+  if (q.titulo.mes != null) {
+    const hoy = new Date(); const salida = new Date(q.titulo.anio, q.titulo.mes, 15);
+    q.fechaSalida = toISO(salida > hoy ? salida : new Date(hoy.getFullYear(), hoy.getMonth() + 2, 15));
+  }
+  return q;
+}
+
+/* ── v2 · borrador armado a partir de una consulta de WhatsApp ─────────── */
+function desdeIA(det) {
+  const q = det.paquete ? desdePaquete(det.paquete) : cotizacionVacia();
+  if (det.mes != null) {
+    q.titulo.mes = det.mes;
+    q.titulo.anio = det.anio;
+    const hoy = new Date(); const salida = new Date(det.anio, det.mes, 15);
+    q.fechaSalida = toISO(salida > hoy ? salida : new Date(hoy.getFullYear(), hoy.getMonth() + 2, 15));
+  }
+  if (!det.paquete && det.destino) {
+    q.titulo.destino = det.destino;
+    q.destinos = [{ id:uid("dst"), ciudad:det.destino, noches: det.noches || 7, checkinManual:null }];
+  }
+  if (det.cliente) q.cliente.nombre = det.cliente;
+  q.ia = { consulta:det.texto, chips:det.chips, paquete: det.paquete ? det.paquete.nombre : null };
   return q;
 }
 
@@ -3506,6 +4258,17 @@ export default function Cotizador() {
           onPaquete={(p) => abrir(desdePaquete(p))}
           onBlanco={() => abrir(cotizacionVacia())}
           onPlantilla={(t) => abrir(desdePlantilla(t))}
+          onIA={(det) => {
+            abrir(desdeIA(det));
+            toast({ msg: det.paquete
+              ? `Borrador armado desde “${det.paquete.nombre}” — revisalo y ajustá`
+              : "No encontré un paquete que coincida — la armé en blanco con lo que entendí", tone: det.paquete ? "ok" : "warn" });
+          }}
+          onFila={(r) => {
+            abrir(desdeFila(r));
+            toast({ msg:`Duplicada desde ${r.num} — cambiá las fechas y listo`, tone:"ok" });
+          }}
+          toast={toast}
           tab={homeTab} setTab={setHomeTab}
           actual={actualEnListado}
           plantillas={plantillas}
@@ -3601,7 +4364,9 @@ export default function Cotizador() {
 
             {/* formulario */}
             <main ref={scroller} style={{ flex:1, minWidth:0 }}>
-              {q.origen && (
+              {q.ia && <BannerIA ia={q.ia} />}
+
+              {q.origen && !q.ia && (
                 <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 14px", marginBottom:14,
                   borderRadius:14, background:"linear-gradient(90deg,rgba(59,191,173,.11),rgba(120,90,229,.07))",
                   border:"1px solid rgba(59,191,173,.24)" }}>
