@@ -795,6 +795,13 @@ export function usePaqueteById(id: string): Paquete | undefined {
 // ---------------------------------------------------------------------------
 // CRUD + clone + assign action hook
 // ---------------------------------------------------------------------------
+
+/** Campos de precio que calcula y persiste el server (recompute-prices.ts). */
+type PreciosDerivados = Pick<
+  Paquete,
+  "netoCalculado" | "precioVenta" | "precioDesde" | "precioDesdeMoneda"
+>;
+
 export function usePackageActions() {
   const dispatch = usePackageDispatch();
 
@@ -837,12 +844,30 @@ export function usePackageActions() {
         if (res && (res as { ok?: boolean }).ok === false) {
           return res as { ok: false; reason: string; missing: string[] };
         }
+        // Precios derivados: netoCalculado, precioVenta, precioDesde y
+        // precioDesdeMoneda los escribe el motor de recompute en el server, no
+        // este payload. Si el update los devuelve, pisamos SOLO esos cuatro con
+        // lo que quedó en la base; el resto sigue siendo optimista para no
+        // borrarle al operador el texto que está tipeando. Sin esto el store
+        // arrastra el precio viejo hasta el próximo refetch y lo reenvía en cada
+        // autosave.
+        const precios = (res as { updated?: PreciosDerivados } | undefined)
+          ?.updated;
         // Invariante estado ACTIVO ⇔ publicado: alineamos `publicado` con el
         // estado en el payload optimista para que la caché no muestre un
         // publicado stale hasta la próxima lectura del server.
         dispatch({
           type: "UPDATE_PAQUETE",
-          payload: { ...paquete, publicado: paquete.estado === "ACTIVO" },
+          payload: {
+            ...paquete,
+            publicado: paquete.estado === "ACTIVO",
+            ...(precios && {
+              netoCalculado: precios.netoCalculado,
+              precioVenta: precios.precioVenta,
+              precioDesde: precios.precioDesde,
+              precioDesdeMoneda: precios.precioDesdeMoneda,
+            }),
+          },
         });
         return res as { ok: true };
       },

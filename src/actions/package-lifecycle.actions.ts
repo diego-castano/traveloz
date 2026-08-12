@@ -22,6 +22,8 @@ import { prisma } from "@/lib/db";
 import { requireCanEdit } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger, withLogging } from "@/lib/logger";
+import { recomputePaqueteOpciones } from "@/lib/recompute-prices";
+import { calcularVenta } from "@/lib/utils";
 import type { EstadoPaquete } from "@prisma/client";
 import { canTransition, type CloneOptions } from "./package-lifecycle.utils";
 
@@ -148,32 +150,78 @@ export async function bulkUpdateMarkup(input: {
 
     const rows = await prisma.paquete.findMany({
       where: { id: { in: parsed.ids }, brandId, deletedAt: null },
-      select: { id: true, netoCalculado: true },
+      select: { id: true, netoCalculado: true, modalidad: true, moneda: true },
     });
+    const ids = rows.map((r) => r.id);
 
-    let updated = 0;
-    if (parsed.recomputeVenta) {
-      // Per-row update because precioVenta depends on each row's neto.
-      await prisma.$transaction(
-        rows.map((r) =>
-          prisma.paquete.update({
-            where: { id: r.id },
-            data: {
-              markup: parsed.factor,
-              precioVenta: r.netoCalculado > 0
-                ? Math.round(r.netoCalculado / parsed.factor)
-                : 0,
-            },
-          }),
-        ),
+    // El markup es el mismo para todas las filas: una sola escritura.
+    const res = await prisma.paquete.updateMany({
+      where: { id: { in: ids } },
+      data: { markup: parsed.factor },
+    });
+    const updated = res.count;
+
+    if (parsed.recomputeVenta && ids.length > 0) {
+      // Qué paquetes tienen opciones hoteleras: define quién sabe recalcularse.
+      const conOpciones = new Set(
+        (
+          await prisma.opcionHotelera.findMany({
+            where: { paqueteId: { in: ids } },
+            select: { paqueteId: true },
+            distinct: ["paqueteId"],
+          })
+        ).map((o) => o.paqueteId),
       );
-      updated = rows.length;
-    } else {
-      const res = await prisma.paquete.updateMany({
-        where: { id: { in: parsed.ids }, brandId, deletedAt: null },
-        data: { markup: parsed.factor },
-      });
-      updated = res.count;
+
+      // Los precios derivados los escribe el motor (src/lib/recompute-prices.ts).
+      // Antes acá se recalculaba precioVenta a mano y nunca se tocaba
+      // precioDesde, que es el campo que lee el sitio público: un cambio masivo
+      // de markup movía el precio del backend y dejaba el del público viejo.
+      // Ahora corremos el motor para todo lo que sabe manejar (CIRCUITO, o
+      // CLASICO con opciones) en vez de repetir la fórmula.
+      const porMotor = rows.filter(
+        (r) => r.modalidad === "CIRCUITO" || conOpciones.has(r.id),
+      );
+      // Concurrencia acotada, igual que las cascadas de recompute-prices, para
+      // no llenar el pool con 500 recálculos en paralelo.
+      const CONCURRENCIA = 3;
+      for (let i = 0; i < porMotor.length; i += CONCURRENCIA) {
+        const chunk = porMotor.slice(i, i + CONCURRENCIA);
+        await Promise.all(
+          chunk.map(async (r) => {
+            try {
+              await recomputePaqueteOpciones(r.id);
+            } catch (err) {
+              // Contrato del motor: nunca voltear la operación que lo disparó.
+              log.error("bulkUpdateMarkup: recompute falló", { id: r.id, err });
+            }
+          }),
+        );
+      }
+
+      // CLASICO sin opciones: el motor no toca esos paquetes (precios legacy,
+      // cargados a mano o venidos de un clon). Ahí sí aplicamos la fórmula, la
+      // misma que usa el motor en modalidad CIRCUITO, incluyendo precioDesde y
+      // su moneda para que el público quede coherente con el markup nuevo.
+      const legacy = rows.filter(
+        (r) => r.modalidad !== "CIRCUITO" && !conOpciones.has(r.id),
+      );
+      if (legacy.length > 0) {
+        await prisma.$transaction(
+          legacy.map((r) => {
+            const venta =
+              r.netoCalculado > 0 ? calcularVenta(r.netoCalculado, parsed.factor) : 0;
+            return prisma.paquete.update({
+              where: { id: r.id },
+              data: {
+                precioVenta: venta,
+                precioDesde: venta > 0 ? venta : null,
+                precioDesdeMoneda: r.moneda,
+              },
+            });
+          }),
+        );
+      }
     }
     return { updated, skipped: parsed.ids.length - updated };
   });

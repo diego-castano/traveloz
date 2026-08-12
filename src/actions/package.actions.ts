@@ -516,9 +516,12 @@ export async function updatePaquete(
     });
     if (!owner) throw new Error("Paquete no encontrado o no pertenece a tu marca.");
 
-    // Margin guardrail using the merged values (incoming-or-existing).
-    const nextNeto = data.netoCalculado ?? owner.netoCalculado;
-    const nextVenta = data.precioVenta ?? owner.precioVenta;
+    // Guardarraíl de margen. Los precios que se validan son los guardados, no
+    // los que manda el cliente: netoCalculado/precioVenta son del motor de
+    // recompute y acá se descartan (ver dataToWrite más abajo), así que validar
+    // el eco del cliente sería validar números que este update no escribe.
+    const nextNeto = owner.netoCalculado;
+    const nextVenta = owner.precioVenta;
     const nextFactor = data.markup ?? owner.markup;
     if (nextNeto > 0 && nextVenta > 0) {
       const { assertMargenPositivo } = await import("./package-lifecycle.utils");
@@ -563,6 +566,19 @@ export async function updatePaquete(
     // stale/vacío desde acá tiraría abajo una URL viva.
     delete (dataToWrite as { slug?: unknown }).slug;
 
+    // Misma idea con los precios derivados: netoCalculado, precioVenta,
+    // precioDesde y precioDesdeMoneda son propiedad exclusiva del motor de
+    // recompute (src/lib/recompute-prices.ts). El cliente los manda de vuelta
+    // porque el autosave reenvía el paquete entero del store, y ese eco suele
+    // estar desactualizado: alcanza con que el operador cambie el markup (el
+    // motor reescribe los precios) para que el próximo autosave devuelva los
+    // viejos y los pise. Se descartan siempre; el único que escribe acá es el
+    // markup, y cambiarlo dispara el motor unas líneas más abajo.
+    delete (dataToWrite as { netoCalculado?: unknown }).netoCalculado;
+    delete (dataToWrite as { precioVenta?: unknown }).precioVenta;
+    delete (dataToWrite as { precioDesde?: unknown }).precioDesde;
+    delete (dataToWrite as { precioDesdeMoneda?: unknown }).precioDesdeMoneda;
+
     // Slug automático: el operador nunca lo escribe. Se deriva del título y se
     // persiste en este mismo update, así cualquier paquete que se guarde (y en
     // particular cualquiera que se publique) sale con URL pública. Un paquete ya
@@ -596,7 +612,7 @@ export async function updatePaquete(
       }
     }
 
-    const updated = await prisma.paquete.update({ where: { id }, data: dataToWrite });
+    let updated = await prisma.paquete.update({ where: { id }, data: dataToWrite });
 
     // Cambiar la modalidad conmuta el motor de precios (opciones ↔ circuito) y
     // el markup del paquete es el divisor de venta en modalidad CIRCUITO, así
@@ -608,6 +624,20 @@ export async function updatePaquete(
       data.markup !== undefined && data.markup !== owner.markup;
     if (modalidadChanged || markupChanged) {
       await safePropagate(id);
+      // El motor escribe los precios DESPUÉS de este update, así que `updated`
+      // quedó con los valores previos. Releemos los cuatro campos derivados para
+      // devolverle al cliente el precio real: el store se sincroniza con esto
+      // (ver usePackageActions.updatePaquete) en vez de quedarse con el suyo.
+      const recalculado = await prisma.paquete.findUnique({
+        where: { id },
+        select: {
+          netoCalculado: true,
+          precioVenta: true,
+          precioDesde: true,
+          precioDesdeMoneda: true,
+        },
+      });
+      if (recalculado) updated = { ...updated, ...recalculado };
     }
     // Scope de invalidación (perf del autosave): el autosave (debounce 800 ms)
     // llama a updatePaquete en cada tecla, así que hacer "full" siempre tira la
