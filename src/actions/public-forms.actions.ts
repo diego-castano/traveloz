@@ -897,7 +897,11 @@ export async function submitQuoteForm(
           paqueteAdminUrl,
           nombre: data.nombre,
           email: data.email,
+          // `telefono` es el texto que se ve en la tarjeta (lo que escribió la
+          // persona); `paisCodigo` va aparte para que bitrix.ts pueda armar la
+          // versión normalizada con la que busca y guarda el contacto.
           telefono: telefonoDisplay || data.telefono,
+          paisCodigo: data.paisCodigo,
           // El visitante escribe el destino solo en el cotizador general; desde
           // el detalle de un paquete lo tomamos del breadcrumb del paquete.
           destino: data.destino || paqueteDestino,

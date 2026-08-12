@@ -226,32 +226,207 @@ export function partirNombre(nombre: string): { name: string; lastName: string }
   return { name: partes[0], lastName: partes.slice(1).join(" ") };
 }
 
+// ──────────────────────────────────────────────
+// Teléfonos: un mismo número, una sola forma
+//
+// El formulario deja el teléfono como lo tipeó la persona pegado al prefijo del
+// selector de país, así que el mismo celular llegaba al CRM como "+59895315328"
+// una vez y como "+598 095315328" la otra. Bitrix los guarda como dos contactos
+// distintos, y la regla de deduplicación de negocios (que agrupa por CONTACT_ID)
+// ya no los puede juntar: el pasajero termina con dos tarjetas y dos vendedores.
+// Medido sobre los contactos creados desde el 13/7: 53 teléfonos apuntaban a más
+// de un contacto.
+//
+// Dos arreglos, uno para adelante y otro para atrás:
+//   • Guardamos siempre en E.164 ("+" + país + nacional sin ceros a la
+//     izquierda), así los contactos nuevos no vuelven a bifurcarse.
+//   • Antes de crear, buscamos con TODAS las formas en que el mismo número pudo
+//     haber quedado guardado, que es lo que rescata los contactos viejos.
+//
+// Cómo compara Bitrix (probado contra el portal en vivo con
+// crm.duplicate.findbycomm, sólo lectura): compara la cadena de DÍGITOS, nada
+// más. "+59895315328", "59895315328" y "598 95315328" devuelven los mismos dos
+// contactos, o sea que el "+" y los espacios no cambian nada. Pero "+598
+// 095315328" (dígitos 598095315328) devuelve otro contacto y "95315328" no
+// devuelve ninguno: no hay match por sufijo. Por eso las variantes sólo tienen
+// sentido si cambian los dígitos (con y sin país, con y sin el cero nacional) y
+// no hace falta gastar valores en formas con espacios o con "+".
+// ──────────────────────────────────────────────
+
+/** Dígitos sueltos: se van "+", espacios, guiones y paréntesis. */
+function soloDigitos(raw: string): string {
+  return raw.replace(/\D+/g, "");
+}
+
+/**
+ * Prefijo de país como dígitos ("+598" → "598"). Devuelve "" cuando no vino o
+ * cuando no parece un código de país (E.164 los define de 1 a 3 dígitos): sin
+ * país confiable preferimos no tocar el número antes que inventar uno.
+ */
+function digitosCodigoPais(codigoPais?: string | null): string {
+  const d = soloDigitos(codigoPais ?? "");
+  return d.length >= 1 && d.length <= 3 ? d : "";
+}
+
+/**
+ * Saca el código de país y el cero nacional de adelante del número.
+ *
+ * El código puede venir tipeado adentro del número, y hasta duplicado (la
+ * persona escribe "+598 99..." con el selector ya en +598), por eso el bucle.
+ * El corte por longitud es la red de seguridad: si al recortar queda algo
+ * demasiado corto para ser un teléfono, el prefijo era parte del número
+ * nacional y lo dejamos como estaba.
+ */
+function nacionalSinCodigoPais(digitos: string, cc: string): string {
+  let resto = digitos;
+  for (let i = 0; cc && i < 3 && resto.startsWith(cc); i++) {
+    const recorte = resto.slice(cc.length).replace(/^0+/, "");
+    if (recorte.length < 6) break;
+    resto = resto.slice(cc.length);
+  }
+  // El cero es prefijo de discado nacional en Uruguay y en la región (la gente
+  // escribe "095315328"), no parte del número. Ojo: en Italia el cero sí es
+  // parte del número; ahí guardaríamos un valor de menos, pero la búsqueda
+  // igual lo encuentra porque `variantesTelefono` manda también los dígitos
+  // crudos.
+  return resto.replace(/^0+/, "");
+}
+
+/**
+ * Teléfono en formato único y estable (E.164): `+` + código de país + número
+ * nacional, sin espacios, guiones ni ceros de discado.
+ *
+ * `codigoPais` es el prefijo que eligió la persona en el selector del
+ * formulario. Sin código de país no inventamos ninguno: devolvemos los dígitos
+ * tal cual (o con "+" si la persona marcó el número como internacional).
+ * Función pura, sin red: se puede ejercitar sin tocar Bitrix.
+ */
+export function normalizarTelefono(
+  telefono?: string | null,
+  codigoPais?: string | null,
+): string {
+  const raw = (telefono ?? "").trim();
+  if (!raw) return "";
+
+  const cc = digitosCodigoPais(codigoPais);
+  let digitos = soloDigitos(raw);
+  // "00" es el prefijo internacional de discado: equivale a haber escrito "+".
+  // Sólo lo sacamos si atrás viene el país que corresponde (o si no sabemos de
+  // qué país es), para no destripar un teléfono que arranca con ceros por
+  // basura tipeada ("000000").
+  let internacional = raw.startsWith("+");
+  if (digitos.startsWith("00") && (!cc || digitos.slice(2).startsWith(cc))) {
+    digitos = digitos.slice(2);
+    internacional = true;
+  }
+  if (!digitos) return "";
+
+  if (!cc) return internacional ? `+${digitos}` : digitos;
+
+  // Un "+" escrito a mano le gana al selector: si la persona marcó el número
+  // como internacional y no arranca con el país del selector, es que está
+  // consultando con un número de otro lado y el selector quedó en el default.
+  if (internacional && !digitos.startsWith(cc)) return `+${digitos}`;
+
+  const nacional = nacionalSinCodigoPais(digitos, cc);
+  if (!nacional) return "";
+  return `+${cc}${nacional}`;
+}
+
+/**
+ * Todas las formas en que el mismo número puede estar guardado en el CRM, para
+ * mandarlas juntas a `crm.duplicate.findbycomm` (que acepta una lista en
+ * `values`). Sin esto sólo encontramos los contactos guardados exactamente como
+ * los escribimos hoy, y los viejos quedan huérfanos.
+ *
+ * Como Bitrix compara dígitos, cada variante cambia los dígitos: con país, con
+ * país y cero nacional, sin país con cero, sin país sin cero, con el país
+ * duplicado (6% de las cotizaciones de la última campaña vinieron así, del
+ * estilo "+598 +59893579305": la persona escribe el prefijo que el selector ya
+ * puso) y lo que escribió la persona por si quedó guardado así. Función pura,
+ * sin red.
+ */
+export function variantesTelefono(
+  telefono?: string | null,
+  codigoPais?: string | null,
+): string[] {
+  const out: string[] = [];
+  const push = (v: string) => {
+    const d = soloDigitos(v);
+    // Los teléfonos basura ("000000", "999999999") no pueden entrar a la
+    // búsqueda: matchearían con la basura de otro y nos harían fusionar dos
+    // pasajeros distintos en un mismo contacto.
+    if (d.length < 6 || /^(\d)\1+$/.test(d)) return;
+    if (!out.includes(v)) out.push(v);
+  };
+
+  // La normalizada primero: es la forma en que guardamos desde ahora, así que
+  // es la que más va a pegar con el correr de los meses.
+  const normalizado = normalizarTelefono(telefono, codigoPais);
+  push(normalizado);
+
+  const cc = digitosCodigoPais(codigoPais);
+  if (cc && normalizado.startsWith(`+${cc}`)) {
+    const nacional = normalizado.slice(cc.length + 1);
+    if (nacional) {
+      push(`+${cc}0${nacional}`); // "+598 095315328", el caso que nos rompió
+      push(`0${nacional}`); // guardado sin país, como lo tipea la gente
+      push(nacional); // guardado sin país ni cero
+      push(`+${cc}${cc}${nacional}`); // "+598 +59895315328"
+      push(`+${cc}${cc}0${nacional}`); // "+598 +598095315328"
+      push(`00${cc}${nacional}`); // marcado como se disca desde afuera
+    }
+  }
+
+  // Último recurso: los dígitos tal cual llegaron. Cubre los números de otros
+  // países, donde no tocamos nada, y cualquier forma rara que no previmos.
+  push(soloDigitos(telefono ?? ""));
+
+  return out;
+}
+
 type DuplicateResult = {
   CONTACT?: (number | string)[];
   LEAD?: (number | string)[];
   COMPANY?: (number | string)[];
 };
 
-/** Busca un CONTACT existente por email o teléfono. `null` si no hay match. */
+/**
+ * Busca un CONTACT existente por email o teléfono, probando varios valores en
+ * una sola llamada. `null` si no hay match.
+ *
+ * Cuando varios contactos matchean (pasa seguido: son justamente los duplicados
+ * que estamos tratando de reunir) nos quedamos con el ID más chico, o sea el más
+ * viejo. Es determinístico y es el contacto con historia, el que recepción
+ * reconoce.
+ */
 async function buscarContactoPorComunicacion(
   type: "EMAIL" | "PHONE",
-  value: string,
+  values: string[],
 ): Promise<number | null> {
+  if (values.length === 0) return null;
   const res = await bitrixCall<DuplicateResult>("crm.duplicate.findbycomm", {
     type,
-    values: [value],
+    values,
     entity_type: "CONTACT",
   });
-  const ids = res?.CONTACT ?? [];
+  const ids = (res?.CONTACT ?? [])
+    .map((v) => Number(v))
+    .filter((n) => Number.isFinite(n));
   if (ids.length === 0) return null;
-  const id = Number(ids[0]);
-  return Number.isFinite(id) ? id : null;
+  return Math.min(...ids);
 }
 
 export interface UpsertContactoInput {
   nombre: string;
   email?: string | null;
+  /**
+   * Teléfono como lo mostramos (puede traer el prefijo de país adelante). Se
+   * normaliza antes de buscar y de guardar.
+   */
   telefono?: string | null;
+  /** Prefijo de país del selector del formulario ("+598"). */
+  paisCodigo?: string | null;
 }
 
 /**
@@ -269,17 +444,38 @@ export async function upsertContacto(
   const email = input.email?.trim() || "";
   const telefono = input.telefono?.trim() || "";
 
+  // Si la normalización llegara a fallar, el camino viejo gana: buscamos y
+  // guardamos con el string crudo, como antes. Perder el lead sería peor que
+  // volver a crear un duplicado.
+  let telefonoNormalizado = telefono;
+  let telefonoVariantes = telefono ? [telefono] : [];
+  try {
+    telefonoNormalizado = normalizarTelefono(telefono, input.paisCodigo) || telefono;
+    // Lista vacía significa que el número no es buscable (basura tipeada): ahí
+    // no buscamos nada, en vez de salir a pescar con un valor que puede
+    // matchear con la basura de otro pasajero.
+    telefonoVariantes = variantesTelefono(telefono, input.paisCodigo);
+  } catch (err) {
+    log.error("bitrix.telefono.normalizar.fail", err);
+  }
+
+  // El email primero: es el dato más confiable para decir "es la misma
+  // persona". El teléfono recién después, con todas sus variantes.
   if (email) {
-    const existente = await buscarContactoPorComunicacion("EMAIL", email);
+    const existente = await buscarContactoPorComunicacion("EMAIL", [email]);
     if (existente) {
       log.debug("bitrix.contacto.reuse", { by: "email", contactId: existente });
       return existente;
     }
   }
-  if (telefono) {
-    const existente = await buscarContactoPorComunicacion("PHONE", telefono);
+  if (telefonoVariantes.length) {
+    const existente = await buscarContactoPorComunicacion("PHONE", telefonoVariantes);
     if (existente) {
-      log.debug("bitrix.contacto.reuse", { by: "phone", contactId: existente });
+      log.debug("bitrix.contacto.reuse", {
+        by: "phone",
+        contactId: existente,
+        variantes: telefonoVariantes,
+      });
       return existente;
     }
   }
@@ -295,7 +491,11 @@ export async function upsertContacto(
     SOURCE_ID: envStr("BITRIX_SOURCE_ID", DEFAULT_SOURCE_ID),
   };
   if (email) fields.EMAIL = [{ VALUE: email, VALUE_TYPE: "WORK" }];
-  if (telefono) fields.PHONE = [{ VALUE: telefono, VALUE_TYPE: "WORK" }];
+  // Guardamos el normalizado, no lo que tipeó la persona: es el único formato
+  // que la próxima consulta va a poder encontrar sin adivinar.
+  if (telefonoNormalizado) {
+    fields.PHONE = [{ VALUE: telefonoNormalizado, VALUE_TYPE: "WORK" }];
+  }
 
   const id = await bitrixCall<number>("crm.contact.add", { fields });
   const contactId = Number(id);
@@ -337,8 +537,20 @@ export interface ConsultaLead {
   paqueteAdminUrl?: string | null;
   nombre: string;
   email?: string | null;
-  /** Teléfono ya formateado para mostrar (prefijo de país + número). */
+  /**
+   * Teléfono ya formateado para mostrar (prefijo de país + número), tal cual lo
+   * escribió la persona. Es lo que va a la línea "Cel:" del COMMENTS: el
+   * vendedor lee el número como se lo dictaron, igual que en el mail interno.
+   * Para buscar y para guardar el contacto usamos la versión normalizada (ver
+   * `normalizarTelefono`), que no se muestra en ningún lado.
+   */
   telefono?: string | null;
+  /**
+   * Prefijo de país del selector del formulario ("+598"). No se muestra: sólo
+   * sirve para normalizar el teléfono, porque sin él no se puede saber qué
+   * parte del número es el país.
+   */
+  paisCodigo?: string | null;
   destino?: string | null;
   fechaDesde?: Date | null;
   fechaHasta?: Date | null;
@@ -671,6 +883,7 @@ export async function crearNegocioLead(
       nombre: lead.nombre,
       email: lead.email,
       telefono: lead.telefono,
+      paisCodigo: lead.paisCodigo,
     });
   } catch (err) {
     log.error("bitrix.contacto.fail", err);
