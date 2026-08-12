@@ -75,6 +75,27 @@ hay circuitos sin vuelo.
 
 ### Nuevo
 
+**Ahora se puede ver si un lead llegó al CRM.** Hasta hoy el número de negocio
+de Bitrix se escribía en un registro técnico y en ningún lado más, así que para
+contestar "¿se perdió algún lead?" había que cruzar el CRM a mano, consulta por
+consulta. Cada cotización guarda cómo terminó su envío: el número de negocio, si
+entró como tarjeta nueva o como comentario dentro de otra, el error si falló, y
+cuántos intentos lleva. Los dos listados de cotizaciones muestran esa columna con
+un contador arriba del estilo "48 de 50 en el CRM", filtros para ver solo los
+problemáticos, y un botón para reintentar el envío. La exportación a Excel lleva
+las mismas columnas.
+
+El lead nace pendiente y recién el envío lo pasa a enviado o con error. Si el
+proceso se corta en el medio queda en pendiente, que es justamente el caso que
+antes era invisible. Las consultas anteriores a este cambio quedan marcadas como
+"sin dato", no como fallidas, porque de esas no sabemos.
+
+**El aviso por mail dejó de poder tumbar el envío al CRM.** En el cotizador
+general, si el proveedor de correo fallaba, el error se llevaba puesto todo lo
+que venía después: la consulta quedaba guardada, el CRM no se enteraba y el
+pasajero veía un error igual. Es lo que pasó durante la caída de correo del 5 de
+agosto.
+
 **La hora de cada consulta, a la vista en el listado de leads.** Debajo del "hace
 cuánto" aparece la hora exacta, y pasando el mouse el día completo. En los seis
 listados. La exportación a Excel también: escribía la fecha en horario universal,
