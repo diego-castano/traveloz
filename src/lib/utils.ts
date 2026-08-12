@@ -209,12 +209,17 @@ export function resolvePrecioCircuitoConMeta(
 
 /**
  * Calculate fixed costs shared across all hotel options (flights + transfers + insurance + circuits).
+ *
+ * Los parámetros declaran sólo los campos que la función lee, no los tipos de
+ * dominio completos: así el helper compartido de precio "desde"
+ * (src/lib/precio-desde.ts) le pasa filas de Prisma sin castear, y el admin
+ * sigue pasando sus objetos del store, que los satisfacen igual.
  */
 export function calcularNetoFijos(
-  assignedAereos: { aereo: Aereo; precioAereo?: PrecioAereo }[],
-  assignedTraslados: Traslado[],
-  assignedSeguros: { seguro: Seguro; diasCobertura?: number }[],
-  assignedCircuitos: { circuito: Circuito; precioCircuito?: PrecioCircuito }[],
+  assignedAereos: { precioAereo?: { precioAdulto: number } | null }[],
+  assignedTraslados: { precio: number }[],
+  assignedSeguros: { seguro: { costoPorDia: number }; diasCobertura?: number | null }[],
+  assignedCircuitos: { precioCircuito?: { precio: number } | null }[],
   noches: number,
 ): number {
   let neto = 0;
@@ -728,8 +733,11 @@ export function slugify(text: string): string {
 /**
  * Total nights in a package = sum of its PaqueteDestino nights.
  * Returns 0 when the package has no destinos configured yet.
+ *
+ * Estructural por el mismo motivo que `calcularNetoFijos`: el público le pasa
+ * filas de Prisma con `select: { noches: true }`.
  */
-export function computeNochesTotales(destinos: PaqueteDestino[]): number {
+export function computeNochesTotales(destinos: { noches: number }[]): number {
   return destinos.reduce((sum, d) => sum + (d.noches || 0), 0);
 }
 

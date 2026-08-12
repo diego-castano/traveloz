@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { BRAND_ID } from "@/lib/brand";
+import { precioDesdeDePaquete } from "@/lib/precio-desde";
 import {
   buildRegionResolver,
   resolveRegionSlugDesdeBreadcrumb,
@@ -90,7 +91,7 @@ export const getTipoPaqueteBySlug = unstable_cache(
  */
 export const getPaquetesByTipo = unstable_cache(
   async (tipoPaqueteId: string) =>
-    conPrecioDesdeReal(
+    await conPrecioDesdeReal(
       await prisma.paquete.findMany({
       where: {
         publicado: true,
@@ -150,7 +151,7 @@ export const getEtiquetaBySlug = unstable_cache(
  */
 export const getPaquetesByEtiqueta = unstable_cache(
   async (etiquetaId: string) =>
-    conPrecioDesdeReal(
+    await conPrecioDesdeReal(
       await prisma.paquete.findMany({
       where: {
         publicado: true,
@@ -252,29 +253,103 @@ function compararParaListado(
 }
 
 /**
+ * Servicios que necesita `precioDesdeDePaquete` para recalcular el precio de un
+ * paquete sin opciones hoteleras (los CIRCUITO). Va en una consulta aparte, con
+ * los ids justos: son ~10 paquetes contra los ~100 publicados, así que sumarle
+ * estos joins a TODAS las cards del listado sería pagar el costo de más.
+ */
+const serviciosParaPrecio = {
+  modalidad: true,
+  markup: true,
+  noches: true,
+  viajeDesde: true,
+  validezDesde: true,
+  destinos: { select: { noches: true } },
+  opcionesHoteleras: { select: { precioVenta: true } },
+  aereos: {
+    select: {
+      aereo: {
+        select: {
+          deletedAt: true,
+          precios: {
+            select: { periodoDesde: true, periodoHasta: true, precioAdulto: true },
+          },
+        },
+      },
+    },
+  },
+  traslados: { select: { traslado: { select: { deletedAt: true, precio: true } } } },
+  seguros: {
+    select: {
+      diasCobertura: true,
+      seguro: { select: { deletedAt: true, costoPorDia: true } },
+    },
+  },
+  circuitos: {
+    orderBy: { orden: "asc" as const },
+    select: {
+      circuito: {
+        select: {
+          deletedAt: true,
+          noches: true,
+          precios: {
+            select: { periodoDesde: true, periodoHasta: true, precio: true },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
  * Corrige el precio "desde" de las cards. `Paquete.precioDesde` es un campo
- * DENORMALIZADO que queda desincronizado si un recompute falló: la card leía
- * ese campo crudo y mostraba "Consultar precio" en paquetes que sí tienen
- * precio (el detalle no fallaba porque ya calculaba el mínimo real de las
- * opciones hoteleras — ver /destinos/[region]/[slug]/page.tsx). Acá aplicamos
- * ese mismo criterio a TODOS los listados, así card y detalle nunca discrepan.
+ * DENORMALIZADO: una copia del resultado del motor (src/lib/recompute-prices.ts)
+ * que queda vieja apenas cambia un servicio sin que el motor vuelva a correr. La
+ * copia se conserva porque el `ORDER BY precioDesde` de Postgres necesita una
+ * columna, pero el número que se MUESTRA sale siempre de `precioDesdeDePaquete`
+ * (src/lib/precio-desde.ts), la misma regla que aplica la pestaña Precios del
+ * backend. Así card, ficha y panel no pueden discrepar.
  *
  * Re-ordena porque el `orderBy` de Postgres usó el valor viejo: al corregir el
  * precio, el orden "más barato primero" cambia.
  */
-function conPrecioDesdeReal<
+async function conPrecioDesdeReal<
   T extends {
+    id: string;
     precioDesde: number | null;
     titulo: string;
     opcionesHoteleras: { precioVenta: number }[];
   },
->(rows: T[]): T[] {
+>(rows: T[]): Promise<T[]> {
+  const ventasPorPaquete = new Map<string, number[]>(
+    rows.map((p) => [
+      p.id,
+      p.opcionesHoteleras.map((o) => o.precioVenta).filter((v) => v > 0),
+    ]),
+  );
+
+  // Sólo los que no resuelven por opciones necesitan el recálculo con costos
+  // fijos, y para eso hay que ir a buscar los servicios asignados.
+  const idsARecalcular = rows
+    .filter((p) => (ventasPorPaquete.get(p.id) ?? []).length === 0)
+    .map((p) => p.id);
+
+  const recalculados = new Map<string, number | null>();
+  if (idsARecalcular.length > 0) {
+    const conServicios = await prisma.paquete.findMany({
+      where: { id: { in: idsARecalcular } },
+      select: { id: true, ...serviciosParaPrecio },
+    });
+    for (const p of conServicios) {
+      recalculados.set(p.id, precioDesdeDePaquete(p));
+    }
+  }
+
   return rows
     .map((p) => {
-      const ventas = p.opcionesHoteleras
-        .map((o) => o.precioVenta)
-        .filter((v) => v > 0);
-      return ventas.length ? { ...p, precioDesde: Math.min(...ventas) } : p;
+      const ventas = ventasPorPaquete.get(p.id) ?? [];
+      if (ventas.length > 0) return { ...p, precioDesde: Math.min(...ventas) };
+      return { ...p, precioDesde: recalculados.get(p.id) ?? null };
     })
     .sort(compararParaListado);
 }
@@ -371,17 +446,18 @@ export const getPaquetesByRegion = unstable_cache(
         )
       : [];
     // Camino sin cambios cuando no hay nada que sumar.
-    if (porBreadcrumb.length === 0) return conPrecioDesdeReal(conDestinos);
+    if (porBreadcrumb.length === 0) return await conPrecioDesdeReal(conDestinos);
 
     // Las dos poblaciones son disjuntas por construcción (`some` vs `none`),
     // pero el guard mantiene el invariante si alguna where cambia.
     const vistos = new Set(conDestinos.map((p) => p.id));
     // Cada lista se normaliza (y re-ordena) por separado antes de intercalar:
     // mergeOrdenado asume que ambas entradas ya vienen ordenadas.
-    return mergeOrdenado(
+    const [conPrecio, porBreadcrumbConPrecio] = await Promise.all([
       conPrecioDesdeReal(conDestinos),
       conPrecioDesdeReal(porBreadcrumb.filter((p) => !vistos.has(p.id))),
-    );
+    ]);
+    return mergeOrdenado(conPrecio, porBreadcrumbConPrecio);
   },
   ["paquetes-by-region"],
   { revalidate: 60, tags: ["paquetes"] },
@@ -395,7 +471,7 @@ export const getPaquetesByRegion = unstable_cache(
  */
 export const getPaquetesPublicos = unstable_cache(
   async () =>
-    conPrecioDesdeReal(
+    await conPrecioDesdeReal(
       await prisma.paquete.findMany({
       where: {
         publicado: true,
@@ -537,6 +613,13 @@ export const getPaquetesRelacionados = unstable_cache(
       // conPrecioDesdeReal). Solo el precio, no infla el payload.
       opcionesHoteleras: { select: { precioVenta: true as const } },
     };
+    // El `take` corre en Postgres sobre `ORDER BY precioDesde`, o sea sobre la
+    // copia denormalizada: con take 6 la copia vieja no decidía sólo el orden,
+    // decidía QUÉ paquetes entraban al slider. Traemos el doble y recortamos a 6
+    // recién después de corregir el precio, así el corte lo hace el número real.
+    // Son 6 filas de más en una query cacheada 120s: barato para el problema.
+    const CUPO = 6;
+    const CANDIDATOS = CUPO * 2;
     let rows = regionId
       ? await prisma.paquete.findMany({
           where: {
@@ -545,7 +628,7 @@ export const getPaquetesRelacionados = unstable_cache(
           },
           orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
           include,
-          take: 6,
+          take: CANDIDATOS,
         })
       : [];
     if (rows.length < 3) {
@@ -553,15 +636,15 @@ export const getPaquetesRelacionados = unstable_cache(
         where: base,
         orderBy: [{ precioDesde: "asc" }, { titulo: "asc" }],
         include,
-        take: 6,
+        take: CANDIDATOS,
       });
       const seen = new Set(rows.map((r) => r.id));
       for (const e of extra) {
-        if (rows.length >= 6) break;
+        if (rows.length >= CANDIDATOS) break;
         if (!seen.has(e.id)) rows.push(e);
       }
     }
-    return conPrecioDesdeReal(rows);
+    return (await conPrecioDesdeReal(rows)).slice(0, CUPO);
   },
   ["paquetes-relacionados"],
   { revalidate: 120, tags: ["paquetes"] },
@@ -580,7 +663,13 @@ export const getPaqueteBySlug = unstable_cache(
         // Servicios estructurados cargados en las pestañas Servicios/Alojamientos.
         // Se usan como fallback de la lista pública "Incluye" cuando el operador
         // no curó una lista manual (serviciosIncluidos / textoIncluye).
-        aereos: { orderBy: { orden: "asc" }, include: { aereo: true } },
+        // Las tarifas de aéreo y circuito viajan con el servicio porque la ficha
+        // recalcula el precio "desde" con ellas (ver precioDesdeDePaquete): la
+        // modalidad CIRCUITO no tiene opciones hoteleras de dónde sacarlo.
+        aereos: {
+          orderBy: { orden: "asc" },
+          include: { aereo: { include: { precios: true } } },
+        },
         traslados: { orderBy: { orden: "asc" }, include: { traslado: true } },
         seguros: { orderBy: { orden: "asc" }, include: { seguro: true } },
         circuitos: {
@@ -591,6 +680,7 @@ export const getPaqueteBySlug = unstable_cache(
                 // Itinerario día a día (modalidad CIRCUITO) — mismo orden que
                 // usa el admin en circuitos/[id] (orderBy orden asc).
                 itinerario: { orderBy: { orden: "asc" } },
+                precios: true,
               },
             },
           },

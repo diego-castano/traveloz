@@ -31,7 +31,6 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import {
   calcularNetoFijos,
-  calcularVenta,
   calcularVentaOpcion,
   fechaAnclaPaquete,
   formatCurrency,
@@ -39,6 +38,7 @@ import {
   resolvePrecioAlojamientoConMeta,
   resolvePrecioCircuitoConMeta,
 } from "@/lib/utils";
+import { resolverPrecioDesde } from "@/lib/precio-desde";
 import { TarifaFallbackChip } from "@/components/ui/TarifaFallbackChip";
 import { checkMargen } from "@/actions/package-lifecycle.utils";
 import type { Paquete, OpcionHotelera } from "@/lib/types";
@@ -304,12 +304,26 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   // -------------------------------------------------------------------------
   // Modalidad CIRCUITO — el neto son los costos fijos (circuito por persona
   // vigente + aéreos + traslados + seguros) y la venta se deriva del markup del
-  // paquete. La duración de referencia para los seguros sin diasCobertura es la
-  // del circuito asignado (misma lógica que el motor), fallback a paquete.noches.
+  // paquete. El número sale de `resolverPrecioDesde` (src/lib/precio-desde.ts),
+  // el mismo helper que usa el sitio público: lo que ve acá el operador es,
+  // literalmente, lo que se publica. El desglose de abajo usa el neto y las
+  // noches de referencia que devuelve ese cálculo, no una copia propia.
   // -------------------------------------------------------------------------
   const circuitPricing = useMemo(() => {
-    const nochesRef =
-      assignedCircuitos[0]?.circuito.noches ?? paquete.noches ?? nochesTotales;
+    const { precioDesde, neto, nochesRef } = resolverPrecioDesde({
+      modalidad: paquete.modalidad,
+      markup: paquete.markup,
+      noches: paquete.noches,
+      nochesTotales,
+      // La rama CIRCUITO es la de los paquetes sin opciones hoteleras.
+      ventasOpciones: [],
+      servicios: {
+        aereos: assignedAereos,
+        traslados: assignedTraslados,
+        seguros: assignedSeguros,
+        circuitos: assignedCircuitos,
+      },
+    });
     const circuitosTotal = assignedCircuitos.reduce(
       (sum, c) => sum + (c.precioCircuito?.precio ?? 0),
       0,
@@ -323,15 +337,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
       const dias = s.diasCobertura ?? nochesRef;
       return sum + s.seguro.costoPorDia * dias;
     }, 0);
-    const neto = calcularNetoFijos(
-      assignedAereos,
-      assignedTraslados,
-      assignedSeguros,
-      assignedCircuitos,
-      nochesRef,
-    );
-    const venta = calcularVenta(neto, paquete.markup);
-    const precioDesde = venta > 0 ? venta : null;
+    const venta = precioDesde ?? 0;
     const margen = checkMargen(neto, venta, paquete.markup);
     return {
       nochesRef,
@@ -349,6 +355,7 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
     assignedAereos,
     assignedTraslados,
     assignedSeguros,
+    paquete.modalidad,
     paquete.noches,
     paquete.markup,
     nochesTotales,
@@ -456,11 +463,39 @@ export default function PreciosTab({ paquete }: PreciosTabProps) {
   // Price range for header
   // -------------------------------------------------------------------------
 
+  // El "desde" del rango sale del mismo helper que publica la web, así el
+  // extremo izquierdo del rango y el precio de la card son el mismo número por
+  // construcción. Sin precio real (todas las opciones en 0) no se dibuja el
+  // header: es el "Consultar" que muestra el público.
   const priceRange = useMemo(() => {
     if (opcionPricing.length === 0) return null;
     const precios = opcionPricing.map((op) => op.ventaCalc);
-    return { min: Math.min(...precios), max: Math.max(...precios) };
-  }, [opcionPricing]);
+    const { precioDesde } = resolverPrecioDesde({
+      modalidad: paquete.modalidad,
+      markup: paquete.markup,
+      noches: paquete.noches,
+      nochesTotales,
+      ventasOpciones: precios,
+      servicios: {
+        aereos: assignedAereos,
+        traslados: assignedTraslados,
+        seguros: assignedSeguros,
+        circuitos: assignedCircuitos,
+      },
+    });
+    if (precioDesde == null) return null;
+    return { min: precioDesde, max: Math.max(...precios) };
+  }, [
+    opcionPricing,
+    assignedAereos,
+    assignedTraslados,
+    assignedSeguros,
+    assignedCircuitos,
+    paquete.modalidad,
+    paquete.markup,
+    paquete.noches,
+    nochesTotales,
+  ]);
 
   // -------------------------------------------------------------------------
   // Handlers: factor and venta editing (strategic pricing)

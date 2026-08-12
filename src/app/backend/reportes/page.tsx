@@ -408,12 +408,12 @@ function buildPackageRows(
       .map((item) => {
         const aereo = serviceState.aereos.find((candidate) => candidate.id === item.aereoId);
         if (!aereo) return null;
-        return {
-          aereo,
-          net: resolvePrecioAereo(serviceState.preciosAereo, item.aereoId, fecha)?.precioAdulto ?? 0,
-        };
+        // `precioAereo` es el campo que lee calcularNetoFijos; `net` queda para
+        // el desglose de costo aéreo de más abajo.
+        const precioAereo = resolvePrecioAereo(serviceState.preciosAereo, item.aereoId, fecha);
+        return { aereo, precioAereo, net: precioAereo?.precioAdulto ?? 0 };
       })
-      .filter((item): item is { aereo: ReturnType<typeof useAereos>[number]; net: number } => item !== null);
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
     const assignedTraslados = packageState.paqueteTraslados
       .filter((item) => item.paqueteId === paquete.id)
@@ -434,12 +434,15 @@ function buildPackageRows(
       .map((item) => {
         const circuito = serviceState.circuitos.find((candidate) => candidate.id === item.circuitoId);
         if (!circuito) return null;
-        return {
-          circuito,
-          net: resolvePrecioCircuito(serviceState.preciosCircuito, item.circuitoId, fecha)?.precio ?? 0,
-        };
+        // Idem aéreos: `precioCircuito` es el nombre que espera calcularNetoFijos.
+        const precioCircuito = resolvePrecioCircuito(
+          serviceState.preciosCircuito,
+          item.circuitoId,
+          fecha,
+        );
+        return { circuito, precioCircuito, net: precioCircuito?.precio ?? 0 };
       })
-      .filter((item): item is { circuito: ReturnType<typeof useServiceState>["circuitos"][number]; net: number } => item !== null);
+      .filter((item): item is NonNullable<typeof item> => item !== null);
 
     const nochesTotales = destinos.reduce((sum, destino) => sum + (destino.noches || 0), 0);
     const netoFijos = calcularNetoFijos(

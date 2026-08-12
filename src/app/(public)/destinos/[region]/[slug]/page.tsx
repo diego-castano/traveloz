@@ -14,6 +14,7 @@ import { PackageDetailView } from "./_components/PackageDetailView";
 import { buildFormasDePagoData } from "./_components/FormasDePago";
 import { RelatedPackages } from "./_components/RelatedPackages";
 import { buildSeoMetadata } from "@/lib/seo";
+import { precioDesdeDePaquete } from "@/lib/precio-desde";
 import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
 import { iconForTrasladoTexto } from "@/lib/incluye";
 
@@ -226,16 +227,11 @@ export default async function PackageDetailPage({
       : []),
   ].filter((s) => s.texto && s.texto.trim());
 
-  // Precio "DESDE" robusto: el menor precioVenta entre las opciones hoteleras.
-  // `paquete.precioDesde` es un campo denormalizado que puede quedar
-  // desincronizado si un recompute falló; las opciones hoteleras son la fuente
-  // real del precio que ve el cliente, así que leemos el mínimo directo de ahí.
-  const ventasOpciones = paquete.opcionesHoteleras
-    .map((o) => o.precioVenta)
-    .filter((v) => v > 0);
-  const precioDesdeReal = ventasOpciones.length
-    ? Math.min(...ventasOpciones)
-    : paquete.precioDesde;
+  // Precio "DESDE": la misma regla que aplica la pestaña Precios del backend
+  // (ver src/lib/precio-desde.ts). `paquete.precioDesde` es una copia
+  // denormalizada que sólo sirve para el ORDER BY de los listados; mostrarla
+  // cruda es lo que hacía que la ficha y el panel dijeran números distintos.
+  const precioDesdeReal = precioDesdeDePaquete(paquete);
 
   // Itinerario estructurado día a día: solo aplica a modalidad CIRCUITO, y
   // toma el primer circuito asignado al paquete (el motor de precios ya
