@@ -27,6 +27,7 @@ import { headers } from "next/headers";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { uploadBuffer } from "@/lib/storage";
 import { checkFormRate } from "@/lib/rate-limit";
 import { logger } from "@/lib/logger";
@@ -37,7 +38,7 @@ import {
   paqueteConsultaEmail,
 } from "@/lib/email";
 import { getBaseUrl } from "@/lib/seo";
-import { crearNegocioLead } from "@/lib/bitrix";
+import { crearNegocioLead, mensajeErrorCrm } from "@/lib/bitrix";
 import { resumenPauta } from "@/lib/atribucion";
 import { leerAtribucion } from "@/lib/atribucion-server";
 
@@ -670,6 +671,23 @@ const quoteSchema = z.object({
     .nullable(),
 });
 
+/**
+ * Deja escrito en la cotización cómo terminó el push al CRM.
+ *
+ * Nunca tira: si el update falla, se loguea y listo. El pasajero ya tiene su
+ * lead guardado y no puede ver un error por una columna de auditoría.
+ */
+async function marcarResultadoCrm(
+  cotizacionId: string,
+  data: Prisma.CotizacionUpdateInput,
+): Promise<void> {
+  try {
+    await prisma.cotizacion.update({ where: { id: cotizacionId }, data });
+  } catch (err) {
+    log.error("marcarResultadoCrm failed", err);
+  }
+}
+
 export async function submitQuoteForm(
   _prev: FormResult | null,
   formData: FormData,
@@ -728,7 +746,8 @@ export async function submitQuoteForm(
       ? `Destino: ${data.destino}${data.comentarios ? `\n\n${data.comentarios}` : ""}`
       : data.comentarios;
 
-    await prisma.cotizacion.create({
+    const cotizacion = await prisma.cotizacion.create({
+      select: { id: true },
       data: {
         paqueteId,
         nombre: data.nombre,
@@ -750,6 +769,10 @@ export async function submitQuoteForm(
         atribFirst: atrib?.first ?? undefined,
         atribLast: atrib?.last ?? undefined,
         visitanteId: atrib?.vid,
+        // El lead nace PENDIENTE de CRM y recién el bloque de Bitrix (más
+        // abajo) lo pasa a OK o ERROR. Si el request se muere en el medio, la
+        // fila queda en PENDIENTE: justamente el caso que queremos poder ver.
+        crmEstado: "PENDIENTE",
       },
     });
 
@@ -861,21 +884,29 @@ export async function submitQuoteForm(
     // Aviso genérico: siempre para /cotizar sin paquete, y como fallback si el
     // camino premium no pudo resolver.
     if (!handledByPaquete) {
-      await notifyLead({
-        settingKey: paqueteId
-          ? ["notificaciones_email_paquete", "notificaciones_email_cotizacion"]
-          : "notificaciones_email_cotizacion",
-        tipo: "Cotización",
-        replyTo: data.email,
-        origen: s(formData, "origen") ?? captureOrigen(),
-        pauta,
-        campos: [
-          { label: "Nombre", value: data.nombre },
-          { label: "Email", value: data.email ?? "" },
-          { label: "Teléfono", value: telefonoDisplay },
-          ...camposDetalle,
-        ],
-      });
+      // Con su propio try/catch, igual que el camino de paquete. Sin esto un
+      // fallo de Resend saltaba al catch general: el push a Bitrix nunca
+      // corría (lead sin CRM) y el pasajero veía un error aunque su consulta
+      // ya estuviera guardada.
+      try {
+        await notifyLead({
+          settingKey: paqueteId
+            ? ["notificaciones_email_paquete", "notificaciones_email_cotizacion"]
+            : "notificaciones_email_cotizacion",
+          tipo: "Cotización",
+          replyTo: data.email,
+          origen: s(formData, "origen") ?? captureOrigen(),
+          pauta,
+          campos: [
+            { label: "Nombre", value: data.nombre },
+            { label: "Email", value: data.email ?? "" },
+            { label: "Teléfono", value: telefonoDisplay },
+            ...camposDetalle,
+          ],
+        });
+      } catch (err) {
+        log.error("submitQuoteForm lead email failed", err);
+      }
     }
 
     // ── CRM Bitrix24 ────────────────────────────────────────────────────
@@ -929,9 +960,33 @@ export async function submitQuoteForm(
             dealId: res.dealId,
             contactId: res.contactId,
           });
+          // Además del log, queda en la fila: así se puede auditar desde el
+          // panel qué leads llegaron al CRM y con qué negocio.
+          await marcarResultadoCrm(cotizacion.id, {
+            crmEstado: "OK",
+            crmDealId: String(res.dealId),
+            crmContactId: res.contactId === null ? null : String(res.contactId),
+            crmModo: res.modo,
+            crmError: null,
+            crmEnviadoEn: new Date(),
+            crmIntentos: { increment: 1 },
+          });
+        } else {
+          // `null` = no hay BITRIX_WEBHOOK_URL. El lead no llegó al CRM, así
+          // que vale lo mismo que un fallo: hay que poder verlo y reintentar.
+          await marcarResultadoCrm(cotizacion.id, {
+            crmEstado: "ERROR",
+            crmError: "Bitrix sin webhook configurado (BITRIX_WEBHOOK_URL).",
+            crmIntentos: { increment: 1 },
+          });
         }
       } catch (err) {
         log.error("submitQuoteForm bitrix failed", err);
+        await marcarResultadoCrm(cotizacion.id, {
+          crmEstado: "ERROR",
+          crmError: mensajeErrorCrm(err),
+          crmIntentos: { increment: 1 },
+        });
       }
     }
 

@@ -69,6 +69,15 @@ enum CanalContacto {
   WHATSAPP
 }
 
+// Cómo terminó el push del lead al CRM (Bitrix24). PENDIENTE se escribe al
+// crear la cotización, antes de intentar el envío: si el request se muere en
+// el medio, la marca queda y se ve que nunca se confirmó.
+enum CrmEstado {
+  PENDIENTE
+  OK
+  ERROR
+}
+
 // ──────────────────────────────────────────────
 // Models
 // ──────────────────────────────────────────────
@@ -807,11 +816,28 @@ model Cotizacion {
   atribLast   Json?
   visitanteId String?
 
+  // Estado del push a Bitrix24. Va NULLABLE y SIN default a propósito: los
+  // registros anteriores a esta instrumentación quedan en NULL, que significa
+  // "no sabemos si llegó al CRM". Un default PENDIENTE mostraría los leads
+  // históricos como si nunca hubieran llegado, y eso sería mentira.
+  crmEstado    CrmEstado?
+  crmDealId    String?
+  crmContactId String?
+  // Camino que tomó crearNegocioLead: "negocio-nuevo" o "comentario-en-negocio".
+  crmModo      String?
+  // Mensaje del último fallo, recortado a 500 caracteres y sin el token del
+  // webhook (ver mensajeErrorCrm en src/lib/bitrix.ts).
+  crmError     String?
+  crmEnviadoEn DateTime?
+  crmIntentos  Int       @default(0)
+
   paquete Paquete? @relation(fields: [paqueteId], references: [id])
 
   @@index([estado])
   @@index([createdAt(sort: Desc)])
   @@index([email])
+  // Auditoría del CRM: "los últimos N días con crmEstado PENDIENTE o ERROR".
+  @@index([crmEstado, createdAt(sort: Desc)])
 }
 
 model MensajeContacto {

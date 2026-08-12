@@ -83,6 +83,27 @@ export function bitrixEnabled(): boolean {
   return webhookBase() !== null;
 }
 
+/** Largo máximo del error que guardamos en `Cotizacion.crmError`. */
+const CRM_ERROR_MAX = 500;
+
+/**
+ * Mensaje de error listo para guardar en la DB (`Cotizacion.crmError`): sin
+ * stack y sin el token del webhook, recortado a 500 caracteres.
+ *
+ * La URL del webhook lleva el token en la ruta (`/rest/{userId}/{token}/`), y
+ * puede colarse en el mensaje si falla el transporte o si Bitrix devuelve
+ * HTML. Lo tapamos siempre, no sólo cuando coincide con la env configurada.
+ */
+export function mensajeErrorCrm(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  const base = webhookBase();
+  let limpio = base ? raw.split(base).join("[webhook]") : raw;
+  limpio = limpio.replace(/(https?:\/\/[^\s/]+\/rest\/)\S*/gi, "$1***");
+  return limpio.length > CRM_ERROR_MAX
+    ? `${limpio.slice(0, CRM_ERROR_MAX - 1)}…`
+    : limpio;
+}
+
 // ──────────────────────────────────────────────
 // Transporte
 // ──────────────────────────────────────────────

@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Mail,
   Phone,
@@ -26,6 +26,12 @@ import {
 import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { EstadoBadge } from "../_components/EstadoBadge";
 import { LeadsTable, CeldaFecha } from "../_components/LeadsTable";
+import {
+  CeldaCrm,
+  ResumenCrm,
+  filtraCrm,
+  type FiltroCrm,
+} from "../_components/CeldaCrm";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
 import { ExportButton } from "../_components/ExportButton";
 import { parseAtribJson } from "../_components/atribucion-admin";
@@ -38,6 +44,7 @@ export default function LeadsPaquetePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState<Row | null>(null);
+  const [filtroCrm, setFiltroCrm] = useState<FiltroCrm>(null);
   const [recorrido, setRecorrido] = useState<{ url: string; ts: Date }[] | null>(
     null,
   );
@@ -88,6 +95,12 @@ export default function LeadsPaquetePage() {
 
   const total = (r: Row) => r.adultos + r.ninos + r.infantes;
 
+  // Estable entre renders para no recalcular el filtrado de la tabla al pedo.
+  const filtrarPorCrm = useCallback(
+    (r: Row) => filtraCrm(r, filtroCrm),
+    [filtroCrm],
+  );
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -110,6 +123,14 @@ export default function LeadsPaquetePage() {
           onRowClick={setOpen}
           searchableFields={["nombre", "email", "telefono", "comentarios"]}
           searchPlaceholder="Buscar por nombre, email, teléfono…"
+          filter={filtrarPorCrm}
+          toolbar={
+            <ResumenCrm
+              filas={rows}
+              filtro={filtroCrm}
+              onFiltro={setFiltroCrm}
+            />
+          }
           columns={[
             {
               key: "fecha",
@@ -131,6 +152,12 @@ export default function LeadsPaquetePage() {
                 />
               ),
               className: "w-32",
+            },
+            {
+              key: "crm",
+              label: "CRM",
+              cell: (r) => <CeldaCrm fila={r} onReintento={refresh} />,
+              className: "w-24",
             },
             {
               key: "paquete",

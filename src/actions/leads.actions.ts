@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
-import type { EstadoMensaje } from "@prisma/client";
-import { touchSchema, type Touch } from "@/lib/atribucion";
+import type { CrmEstado, EstadoMensaje } from "@prisma/client";
+import { touchSchema, resumenPauta, type Touch } from "@/lib/atribucion";
+import { crearNegocioLead, mensajeErrorCrm } from "@/lib/bitrix";
+import { getBaseUrl } from "@/lib/seo";
 
 // ---------------------------------------------------------------------------
 // Lead admin server actions — list/detail/transition for the 5 form
@@ -294,6 +296,182 @@ export async function assignLead(
 }
 
 // ---------------------------------------------------------------------------
+// Reintento del push al CRM (Bitrix24)
+//
+// Las cotizaciones guardan cómo terminó su envío (crmEstado + crmDealId). Las
+// que quedaron en ERROR (Bitrix caído, timeout, sin webhook) o colgadas en
+// PENDIENTE (el request murió antes de confirmar) se pueden volver a empujar
+// desde el panel con esta acción, reconstruyendo el lead desde la fila.
+// ---------------------------------------------------------------------------
+
+export interface ReintentoCrmResult {
+  ok: boolean;
+  /** `true` cuando ya estaba en el CRM y no se volvió a empujar. */
+  yaEstaba: boolean;
+  /** Negocio de Bitrix, cuando hay. */
+  dealId: string | null;
+  message: string;
+}
+
+/**
+ * Vuelve a empujar una Cotizacion a Bitrix con los datos guardados.
+ *
+ * Idempotente: si ya está en OK con dealId, no la toca y avisa que ya estaba.
+ * El contador `crmIntentos` sube en cada intento real.
+ */
+export async function reintentarCrmCotizacion(
+  id: string,
+): Promise<ReintentoCrmResult> {
+  await requireCanEdit();
+
+  const cot = await prisma.cotizacion.findUnique({
+    where: { id },
+    include: {
+      paquete: {
+        select: {
+          titulo: true,
+          slug: true,
+          destino: true,
+          destinos: {
+            orderBy: { orden: "asc" },
+            take: 1,
+            select: {
+              ciudad: {
+                select: { pais: { select: { region: { select: { slug: true } } } } },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!cot) {
+    return {
+      ok: false,
+      yaEstaba: false,
+      dealId: null,
+      message: "No se encontró la cotización.",
+    };
+  }
+
+  // Ya llegó: no duplicamos el negocio en el CRM.
+  if (cot.crmEstado === "OK" && cot.crmDealId) {
+    return {
+      ok: true,
+      yaEstaba: true,
+      dealId: cot.crmDealId,
+      message: `Ya estaba en el CRM (negocio ${cot.crmDealId}).`,
+    };
+  }
+
+  // El submit antepone "Destino: X" a los comentarios porque Cotizacion no
+  // tiene columna propia de destino. Lo separamos para mandar cada cosa a su
+  // campo, igual que en el envío original.
+  let destino: string | null = cot.paquete?.destino ?? null;
+  let comentarios = cot.comentarios;
+  const conDestino = comentarios?.match(/^Destino: (.*?)(?:\n\n([\s\S]*))?$/);
+  if (conDestino) {
+    destino = destino ?? conDestino[1].trim();
+    comentarios = conDestino[2] ?? null;
+  }
+
+  const base = getBaseUrl();
+  const regionSlug =
+    cot.paquete?.destinos[0]?.ciudad?.pais?.region?.slug ?? "destinos";
+  const paqueteUrl = cot.paquete
+    ? cot.paquete.slug
+      ? `${base}/destinos/${regionSlug}/${cot.paquete.slug}`
+      : `${base}/destinos`
+    : null;
+  const paqueteAdminUrl = cot.paqueteId
+    ? `${base}/backend/dashboard?vista=vendedor&paquete=${cot.paqueteId}`
+    : null;
+
+  try {
+    const res = await crearNegocioLead({
+      tituloPaquete: cot.paquete?.titulo ?? null,
+      paqueteUrl,
+      paqueteAdminUrl,
+      nombre: cot.nombre,
+      email: cot.email || null,
+      telefono:
+        [cot.paisCodigo, cot.telefono].filter(Boolean).join(" ") || cot.telefono,
+      paisCodigo: cot.paisCodigo,
+      destino,
+      fechaDesde: cot.fechaDesde,
+      fechaHasta: cot.fechaHasta,
+      adultos: cot.adultos,
+      ninos: cot.ninos,
+      infantes: cot.infantes,
+      preferencia: cot.preferencia,
+      comentarios,
+      origen: cot.origen,
+      pauta: resumenPauta(
+        parseTouchJson(cot.atribFirst),
+        parseTouchJson(cot.atribLast),
+      ),
+      aceptaPromos: cot.aceptaPromos,
+      canal: cot.paqueteId
+        ? "Sitio web - consulta de paquete"
+        : "Sitio web - cotizador general",
+    });
+
+    if (!res) {
+      await prisma.cotizacion.update({
+        where: { id },
+        data: {
+          crmEstado: "ERROR",
+          crmError: "Bitrix sin webhook configurado (BITRIX_WEBHOOK_URL).",
+          crmIntentos: { increment: 1 },
+        },
+      });
+      revalidateLead("cotizaciones");
+      return {
+        ok: false,
+        yaEstaba: false,
+        dealId: null,
+        message: "Bitrix no está configurado en este entorno.",
+      };
+    }
+
+    await prisma.cotizacion.update({
+      where: { id },
+      data: {
+        crmEstado: "OK",
+        crmDealId: String(res.dealId),
+        crmContactId: res.contactId === null ? null : String(res.contactId),
+        crmModo: res.modo,
+        crmError: null,
+        crmEnviadoEn: new Date(),
+        crmIntentos: { increment: 1 },
+      },
+    });
+    revalidateLead("cotizaciones");
+    return {
+      ok: true,
+      yaEstaba: false,
+      dealId: String(res.dealId),
+      message:
+        res.modo === "negocio-nuevo"
+          ? `Negocio ${res.dealId} creado en el CRM.`
+          : `La consulta se sumó al negocio ${res.dealId} que ya estaba abierto.`,
+    };
+  } catch (err) {
+    const message = mensajeErrorCrm(err);
+    await prisma.cotizacion.update({
+      where: { id },
+      data: {
+        crmEstado: "ERROR",
+        crmError: message,
+        crmIntentos: { increment: 1 },
+      },
+    });
+    revalidateLead("cotizaciones");
+    return { ok: false, yaEstaba: false, dealId: null, message };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Atribución de pauta — recorrido de navegación de un visitante anónimo
 // (histórico de PaginaVista antes de convertir), para mostrar en el drawer
 // de leads junto al snapshot first/last touch que ya quedó guardado en el
@@ -470,6 +648,62 @@ function touchToRow(first: unknown, last: unknown): unknown[] {
   ];
 }
 
+// ---------------------------------------------------------------------------
+// Estado del CRM en el CSV — 5 columnas, solo para los dos kinds que van a
+// Bitrix (leads de paquete y cotizaciones generales). La agencia pidió más de
+// una vez la prueba de qué llegó al CRM: acá va, exportable.
+// ---------------------------------------------------------------------------
+
+const CRM_HEADERS = [
+  "CRM estado",
+  "CRM negocio",
+  "CRM cómo entró",
+  "CRM enviado",
+  "CRM último error",
+];
+
+type FilaCrmCsv = {
+  crmEstado: CrmEstado | null;
+  crmDealId: string | null;
+  crmModo: string | null;
+  crmError: string | null;
+  crmEnviadoEn: Date | null;
+};
+
+/**
+ * `crmEstado` en castellano. NULL sale "Sin dato" y no "Error": son las
+ * cotizaciones anteriores a que empezáramos a registrar el envío, de las que
+ * no sabemos si llegaron.
+ */
+function estadoCrmTexto(estado: CrmEstado | null): string {
+  switch (estado) {
+    case "OK":
+      return "En el CRM";
+    case "ERROR":
+      return "Sin enviar";
+    case "PENDIENTE":
+      return "Sin confirmar";
+    default:
+      return "Sin dato";
+  }
+}
+
+function modoCrmTexto(modo: string | null): string {
+  if (modo === "negocio-nuevo") return "Negocio nuevo";
+  if (modo === "comentario-en-negocio") return "Comentario en un negocio abierto";
+  return modo ?? "";
+}
+
+function crmToRow(r: FilaCrmCsv): unknown[] {
+  return [
+    estadoCrmTexto(r.crmEstado),
+    r.crmDealId ?? "",
+    modoCrmTexto(r.crmModo),
+    r.crmEnviadoEn,
+    r.crmError ?? "",
+  ];
+}
+
 export async function exportLeads(
   kind: ExportKind,
 ): Promise<{ filename: string; csv: string }> {
@@ -519,6 +753,7 @@ export async function exportLeads(
         "Comentarios",
         "Asignado a",
         "Última actualización",
+        ...CRM_HEADERS,
         ...TOUCH_HEADERS,
       ];
       const data = rows.map((r) => [
@@ -544,6 +779,7 @@ export async function exportLeads(
         r.comentarios,
         userLabel(r.asignadoAUserId),
         r.updatedAt,
+        ...crmToRow(r),
         ...touchToRow(r.atribFirst, r.atribLast),
       ]);
       return {
@@ -578,6 +814,7 @@ export async function exportLeads(
         "Comentarios",
         "Asignado a",
         "Última actualización",
+        ...CRM_HEADERS,
         ...TOUCH_HEADERS,
       ];
       const data = rows.map((r) => [
@@ -600,6 +837,7 @@ export async function exportLeads(
         r.comentarios,
         userLabel(r.asignadoAUserId),
         r.updatedAt,
+        ...crmToRow(r),
         ...touchToRow(r.atribFirst, r.atribLast),
       ]);
       return {

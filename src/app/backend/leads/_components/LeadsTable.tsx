@@ -22,6 +22,13 @@ type Props<T> = {
   emptyDescription?: string;
   searchableFields?: (keyof T)[];
   searchPlaceholder?: string;
+  /**
+   * Filtro extra que aplica el listado (ej. "solo los que no llegaron al CRM").
+   * Corre antes del buscador, así se pueden combinar los dos.
+   */
+  filter?: (row: T) => boolean;
+  /** Contenido al lado del buscador, alineado a la derecha (ej. un contador). */
+  toolbar?: ReactNode;
 };
 
 export function LeadsTable<T>({
@@ -33,35 +40,51 @@ export function LeadsTable<T>({
   emptyDescription = "Cuando lleguen envíos de este formulario aparecerán acá.",
   searchableFields,
   searchPlaceholder = "Buscar…",
+  filter,
+  toolbar,
 }: Props<T>) {
   const [q, setQ] = useState("");
 
   const filtered = useMemo(() => {
-    if (!q.trim() || !searchableFields) return rows;
+    const base = filter ? rows.filter(filter) : rows;
+    if (!q.trim() || !searchableFields) return base;
     const needle = q.toLowerCase();
-    return rows.filter((r) =>
+    return base.filter((r) =>
       searchableFields.some((f) => {
         const v = r[f];
         return v != null && String(v).toLowerCase().includes(needle);
       }),
     );
-  }, [rows, q, searchableFields]);
+  }, [rows, q, searchableFields, filter]);
 
   return (
     <div className="space-y-3">
-      {searchableFields && (
-        <div className="relative max-w-sm">
-          <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="pl-8"
-          />
+      {(searchableFields || toolbar) && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {searchableFields ? (
+            <div className="relative flex-1 min-w-[11rem] max-w-sm">
+              <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="pl-8"
+              />
+            </div>
+          ) : (
+            <span />
+          )}
+          {toolbar}
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+      {/*
+        `overflow-x-auto` en vez de `overflow-hidden`: con la columna CRM el
+        listado de leads pasa de 8 columnas y, en pantallas angostas, las
+        últimas quedaban recortadas sin forma de llegar a ellas. Ahora la tabla
+        scrollea de costado.
+      */}
+      <div className="bg-white rounded-lg border border-neutral-200 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-neutral-50/80 text-neutral-600 text-[11px] uppercase tracking-wider">
             <tr>
@@ -112,7 +135,7 @@ export function LeadsTable<T>({
 
       <div className="text-[11px] text-neutral-400 px-1">
         {filtered.length} {filtered.length === 1 ? "registro" : "registros"}
-        {q && ` (filtrado de ${rows.length})`}
+        {filtered.length !== rows.length && ` (filtrado de ${rows.length})`}
       </div>
     </div>
   );
