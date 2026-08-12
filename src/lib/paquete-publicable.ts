@@ -8,13 +8,20 @@
 // que el paquete tenga todo lo necesario para salir al sitio público antes de
 // permitir la transición a ACTIVO.
 //
-// Exigencias comunes a ambas modalidades: título, al menos 1 aéreo, foto
-// principal del slider y período de viaje. El slug NO se exige: se autogenera
-// desde el título en cada guardado (ver `src/lib/paquete-slug.ts`), así que
-// nunca es un faltante que el operador tenga que resolver. Por modalidad:
-//   • CLASICO  → al menos 1 destino, al menos 1 opción hotelera y coherencia de
-//                noches (la suma por destino iguala las noches del paquete).
+// Exigencias comunes a ambas modalidades: título, foto principal del slider y
+// período de viaje. El slug NO se exige: se autogenera desde el título en cada
+// guardado (ver `src/lib/paquete-slug.ts`), así que nunca es un faltante que el
+// operador tenga que resolver. Por modalidad:
+//   • CLASICO  → al menos 1 aéreo, al menos 1 destino, al menos 1 opción
+//                hotelera y coherencia de noches (la suma por destino iguala
+//                las noches del paquete).
 //   • CIRCUITO → un circuito asignado con precio vigente, itinerario y noches>0.
+//
+// El aéreo se exige sólo en CLASICO: ahí el producto se arma como vuelo + hotel
+// + extras, así que sin aéreo el paquete está a medio cargar. En CIRCUITO el
+// producto y el precio salen del circuito asignado, y hay circuitos genuinamente
+// terrestres (Florianópolis en ómnibus, Natal Luz) que nunca van a tener un
+// aéreo. Pedírselo ahí trababa la publicación sin motivo.
 // ---------------------------------------------------------------------------
 
 import { prisma } from "@/lib/db";
@@ -90,7 +97,6 @@ export async function checkPaquetePublicable(
   // se autogenera desde el título en el mismo guardado que publica, así que
   // pedírselo al operador sólo agregaba fricción.
   if (!current.titulo?.trim()) missing.push("título");
-  if (current.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
   if (!heroImage) missing.push("foto principal del slider");
   // Sin período de viaje el resolver de precios cae al fallback y el sitio
   // público puede mostrar "Desde $0". Exigirlo antes de publicar.
@@ -122,7 +128,10 @@ export async function checkPaquetePublicable(
       }
     }
   } else {
-    // Modalidad CLASICO: opciones + destinos + coherencia de noches.
+    // Modalidad CLASICO: aéreo + opciones + destinos + coherencia de noches.
+    // El aéreo va acá y no arriba porque en esta modalidad el precio se arma
+    // como vuelo + hotel + extras; sin vuelo el paquete está incompleto.
+    if (current.aereos.length === 0) missing.push("al menos 1 aéreo asignado");
     if (current.destinos.length === 0)
       missing.push("al menos 1 destino en el itinerario");
     if (current.opcionesHoteleras.length === 0)

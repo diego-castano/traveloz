@@ -55,8 +55,10 @@ function buildSteps(args: {
 
   // ── Modalidad CIRCUITO: el circuito incluye alojamiento/comidas/paseos, así
   // que se ocultan los pasos de destinos y opciones hoteleras. El operador solo
-  // asigna el circuito (con precio vigente e itinerario), el aéreo, la foto y
-  // publica.
+  // asigna el circuito (con precio vigente e itinerario), la foto y publica.
+  // El aéreo tampoco es un paso acá: hay circuitos terrestres (Florianópolis en
+  // ómnibus) y el gate de publicación ya no lo exige en esta modalidad, así que
+  // marcarlo como pendiente era una tilde que nunca se iba a poder completar.
   if (paquete.modalidad === "CIRCUITO") {
     return [
       {
@@ -81,16 +83,6 @@ function buildSteps(args: {
         blocker: !circuitoOk
           ? "Asigná un circuito con precio vigente e itinerario cargado. El circuito y su itinerario se gestionan desde el módulo Circuitos."
           : undefined,
-      },
-      {
-        key: "aereo",
-        label: "Al menos 1 aéreo",
-        tab: "servicios",
-        done: aereoCount > 0,
-        blocker:
-          aereoCount === 0
-            ? "Sin aéreos asignados. Asigná al menos uno desde la pestaña Servicios."
-            : undefined,
       },
       {
         key: "hero",

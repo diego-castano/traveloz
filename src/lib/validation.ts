@@ -12,6 +12,11 @@ export interface ValidationResult {
  * BORRADOR: only titulo required.
  * ACTIVO: titulo + destino + at least 1 aereo + at least 1 hotel option with factor > 0
  *         + total destino nights match `paquete.noches` (when noches > 0).
+ *
+ * El aéreo sólo cuenta en modalidad CLASICO, igual que en el gate del server
+ * (`src/lib/paquete-publicable.ts`). En CIRCUITO el producto y el precio salen
+ * del circuito asignado y hay circuitos terrestres sin vuelo, así que mostrar
+ * el ítem en rojo era pedir algo que el gate ya no bloquea.
  */
 export function validateForActivation(
   paquete: Paquete,
@@ -26,10 +31,20 @@ export function validateForActivation(
   const nochesOk =
     nochesPaquete === 0 ? true : nochesDestinos === nochesPaquete;
 
+  const exigeAereo = paquete.modalidad !== 'CIRCUITO';
+
   const checks = [
     { key: 'titulo', label: 'Titulo del paquete', completed: !!paquete.titulo.trim() },
     { key: 'destino', label: 'Destino', completed: !!paquete.destino?.trim() },
-    { key: 'aereo', label: 'Al menos 1 aereo asignado', completed: assignedAereoCount > 0 },
+    ...(exigeAereo
+      ? [
+          {
+            key: 'aereo',
+            label: 'Al menos 1 aereo asignado',
+            completed: assignedAereoCount > 0,
+          },
+        ]
+      : []),
     { key: 'opcion', label: 'Al menos 1 opcion hotelera', completed: opciones.length > 0 },
     {
       key: 'noches',
