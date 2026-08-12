@@ -30,6 +30,32 @@ el precio del backend y dejaba intacto el campo que lee la web, así que el
 público seguía viendo el precio anterior. Es el mismo cálculo de siempre, ahora
 aplicado a los dos lugares.
 
+**El panel y la web hacían dos cuentas distintas.** La pestaña Precios recalcula
+el precio en vivo con los costos cargados en ese momento. La web leía una copia
+guardada de ese resultado, que queda vieja apenas cambia el costo de un servicio
+sin que nadie vuelva a recalcular. Dos cuentas separadas terminan discrepando
+siempre. Ahora hay una sola regla, y la usan la pestaña Precios, la tarjeta del
+listado y la ficha pública: la opción hotelera más barata, o los costos vigentes
+sobre el markup si el paquete no tiene opciones. La copia guardada queda para
+ordenar los listados por precio, que es lo único para lo que hace falta.
+
+Los paquetes clásicos ya venían salvados de casualidad, porque la tarjeta
+corregía el precio leyendo las opciones hoteleras. Los circuitos no tienen
+opciones y quedaban expuestos: tres publicados mostraban mal. Fin de año en
+Florianópolis se publicaba a 798 cuando el panel decía 750, y Caribe Colombiano
+y Egipto y Jordania tenían un dólar de diferencia, que resultó ser un aéreo de
+USD 1 que nunca se había sumado al costo guardado.
+
+**El reporte de márgenes no contaba los vuelos ni los circuitos.** Los armaba con
+un nombre de campo que el cálculo de costos no lee, así que los sumaba como cero:
+el costo salía incompleto y el margen, inflado. Los números de `/backend/reportes`
+van a bajar y los nuevos son los reales.
+
+**Los paquetes relacionados se elegían por el precio viejo.** El listado del pie
+de la ficha recortaba a seis en la base de datos ordenando por la copia guardada,
+así que esa copia decidía qué paquetes entraban, no solo en qué orden. Ahora el
+corte se hace con el precio real.
+
 **Al vencerse la sesión, el panel te mandaba a otro dominio.** Trabajando en la
 dirección de Railway, cualquier acción que hablara con el servidor (previsualizar,
 por ejemplo) redirigía al login de traveloz.com.uy, donde la sesión no existe: se
