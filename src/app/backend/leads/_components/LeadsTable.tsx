@@ -118,6 +118,11 @@ export function LeadsTable<T>({
   );
 }
 
+// Zona horaria fija de Uruguay. Sin esto, el formato sale en la zona de quien
+// renderiza: el contenedor de Railway corre en UTC, así que un lead de las 23:17
+// del sábado se mostraría como las 02:17 del domingo, y encima con otra fecha.
+const TZ_UY = "America/Montevideo";
+
 // Helper for the relative-date column
 export function relativeTime(d: Date): string {
   const now = Date.now();
@@ -129,5 +134,47 @@ export function relativeTime(d: Date): string {
   if (h < 24) return `${h} h`;
   const days = Math.floor(h / 24);
   if (days < 7) return `${days}d`;
-  return d.toLocaleDateString("es-UY", { day: "numeric", month: "short" });
+  return d.toLocaleDateString("es-UY", { day: "numeric", month: "short", timeZone: TZ_UY });
+}
+
+/** Hora exacta del lead ("23:17"), en hora de Uruguay. */
+export function horaUY(d: Date): string {
+  return d.toLocaleTimeString("es-UY", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: TZ_UY,
+  });
+}
+
+/** Día y hora completos para el tooltip ("sábado, 8 de agosto, 23:17"). */
+export function fechaHoraLargaUY(d: Date): string {
+  return d.toLocaleString("es-UY", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: TZ_UY,
+  });
+}
+
+/**
+ * Celda de fecha de los listados de leads: arriba el "hace cuánto" (que es lo
+ * que se mira de un vistazo) y abajo la hora exacta, que el equipo necesita para
+ * saber a qué hora entró cada consulta. El título muestra el día completo.
+ */
+export function CeldaFecha({ fecha }: { fecha: Date }) {
+  return (
+    <span
+      className="flex flex-col leading-tight tabular-nums"
+      title={fechaHoraLargaUY(fecha)}
+    >
+      <span className="text-[11px] text-neutral-400">{relativeTime(fecha)}</span>
+      <span className="text-[11px] font-medium text-neutral-600">
+        {horaUY(fecha)}
+      </span>
+    </span>
+  );
 }

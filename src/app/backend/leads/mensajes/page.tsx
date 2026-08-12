@@ -9,7 +9,7 @@ import {
   getRecorridoVisitante,
 } from "@/actions/leads.actions";
 import { EstadoBadge } from "../_components/EstadoBadge";
-import { LeadsTable, relativeTime } from "../_components/LeadsTable";
+import { LeadsTable, CeldaFecha } from "../_components/LeadsTable";
 import { LeadDetailDrawer } from "../_components/LeadDetailDrawer";
 import { ExportButton } from "../_components/ExportButton";
 import { parseAtribJson } from "../_components/atribucion-admin";
@@ -105,9 +105,7 @@ export default function MensajesPage() {
               key: "fecha",
               label: "",
               cell: (r) => (
-                <span className="text-[11px] text-neutral-400 tabular-nums">
-                  {relativeTime(r.createdAt)}
-                </span>
+                <CeldaFecha fecha={r.createdAt} />
               ),
               className: "w-12",
             },

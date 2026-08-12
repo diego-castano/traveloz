@@ -343,11 +343,33 @@ const CSV_DELIMITER = ";";
 // abajo) para no perder la señal cuando el trigger ES un tab o un CR.
 const CSV_FORMULA_TRIGGER_RE = /^[=+\-@\t\r]/;
 
+/**
+ * Fecha y hora como las lee el equipo: "08/08/2026 23:17", en hora de Uruguay.
+ *
+ * Antes salía el ISO crudo, que está en UTC: un lead del sábado a las 23:17
+ * aparecía como "2026-08-09T02:17:00.000Z", con la hora corrida tres horas y
+ * encima con el día siguiente. Justo lo que rompe cualquier análisis por
+ * horario o por día.
+ */
+function fechaHoraUY(d: Date): string {
+  const partes = new Intl.DateTimeFormat("es-UY", {
+    timeZone: "America/Montevideo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(d);
+  const v = (t: string) => partes.find((p) => p.type === t)?.value ?? "";
+  return `${v("day")}/${v("month")}/${v("year")} ${v("hour")}:${v("minute")}`;
+}
+
 function csvEscape(value: unknown): string {
   if (value === null || value === undefined) return "";
   let s: string;
   if (value instanceof Date) {
-    s = value.toISOString();
+    s = fechaHoraUY(value);
   } else if (typeof value === "boolean") {
     s = value ? "Sí" : "No";
   } else {
@@ -434,7 +456,9 @@ function touchCells(touch: Touch | null): unknown[] {
     touch?.trm ?? "",
     click ? `${click.label}: ${click.value}` : "",
     touch?.lp ?? "",
-    touch ? new Date(touch.ts).toISOString() : "",
+    // Misma hora de Uruguay que el resto de las fechas del export, para poder
+    // cruzar el momento del click de pauta con el momento del lead.
+    touch ? fechaHoraUY(new Date(touch.ts)) : "",
   ];
 }
 

@@ -8,7 +8,7 @@ import {
   deleteLead,
 } from "@/actions/leads.actions";
 import { useToast } from "@/components/ui/Toast";
-import { LeadsTable, relativeTime } from "../_components/LeadsTable";
+import { LeadsTable, CeldaFecha } from "../_components/LeadsTable";
 import { ExportButton } from "../_components/ExportButton";
 import {
   parseAtribJson,
@@ -76,9 +76,7 @@ export default function NewsletterPage() {
               key: "fecha",
               label: "Suscrito",
               cell: (r) => (
-                <span className="text-[11px] text-neutral-400 tabular-nums">
-                  {relativeTime(r.createdAt)}
-                </span>
+                <CeldaFecha fecha={r.createdAt} />
               ),
               className: "w-20",
             },
