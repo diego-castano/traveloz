@@ -11,6 +11,59 @@ del catálogo, CRM).
 
 ---
 
+## 11 y 12 de agosto de 2026
+
+### Arreglado
+
+**El precio del panel y el de la web no coincidían.** Un paquete con markup
+0,85 mostraba 895 en la pestaña Precios y 951 en la página pública. El 951
+estaba de verdad guardado: era el precio del markup anterior. El precio de
+venta lo calcula el sistema a partir del costo y el markup, pero el guardado
+automático del panel devolvía al servidor el paquete entero, incluido el precio
+que tenía en pantalla desde antes, y lo pisaba. Alcanzaba con cambiar el markup
+una vez para que el próximo guardado restaurara el número viejo. Ahora el precio
+es propiedad exclusiva del cálculo del servidor: el panel no lo puede sobrescribir
+y la pantalla se sincroniza con lo que quedó guardado.
+
+**El cambio masivo de markup no movía el precio del sitio público.** Actualizaba
+el precio del backend y dejaba intacto el campo que lee la web, así que el
+público seguía viendo el precio anterior. Es el mismo cálculo de siempre, ahora
+aplicado a los dos lugares.
+
+**Al vencerse la sesión, el panel te mandaba a otro dominio.** Trabajando en la
+dirección de Railway, cualquier acción que hablara con el servidor (previsualizar,
+por ejemplo) redirigía al login de traveloz.com.uy, donde la sesión no existe: se
+salía sin explicación. Ahora el login queda siempre en la dirección desde la que
+estás entrando. La previsualización nunca tuvo un dominio fijo, el salto lo hacía
+el control de acceso.
+
+**Los iconos de "Incluye" se veían distintos a los del diseñador.** Dos cosas
+distintas pasando a la vez. El borde redondo del círculo recortaba el dibujo:
+la punta del avión salía cortada al ras y a la cama le faltaban las patas. Y el
+icono de tren mostraba un auto. Los iconos son los mismos de siempre, ahora se
+ven enteros.
+
+**Los circuitos terrestres no se podían publicar** porque el sistema exigía un
+aéreo asignado. En esa modalidad el producto y el precio salen del circuito, y
+hay circuitos sin vuelo.
+
+### Nuevo
+
+**La hora de cada consulta, a la vista en el listado de leads.** Debajo del "hace
+cuánto" aparece la hora exacta, y pasando el mouse el día completo. En los seis
+listados. La exportación a Excel también: escribía la fecha en horario universal,
+tres horas adelantada, así que una consulta del sábado a las 23:17 salía como
+domingo a las 02:17, con el día cambiado.
+
+### Cambiado
+
+**Bitrix reconoce al mismo pasajero aunque escriba el teléfono distinto.** Antes
+comparaba el número tal cual llegaba, así que la misma persona escribiendo
+099 375 840 y +598 99 375 840 entraba como dos contactos. Ahora se guarda
+normalizado y se buscan las variantes conocidas.
+
+---
+
 ## 7 de agosto de 2026
 
 ### Arreglado
