@@ -15,6 +15,7 @@ import { buildFormasDePagoData } from "./_components/FormasDePago";
 import { RelatedPackages } from "./_components/RelatedPackages";
 import { buildSeoMetadata } from "@/lib/seo";
 import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import { iconForTrasladoTexto } from "@/lib/incluye";
 
 export async function generateMetadata({
   params,
@@ -207,10 +208,13 @@ export default async function PackageDetailPage({
         ? [{ texto: pa.aereo.equipaje, icon: "equipaje" }]
         : []),
     ]),
-    ...paquete.traslados.map((pt) => ({
-      texto: pt.textoDisplay ?? pt.traslado.nombre,
-      icon: "traslado",
-    })),
+    ...paquete.traslados.map((pt) => {
+      // El ícono depende del medio que diga el texto, igual que en el generador
+      // del Incluye: acá estaba fijo en "traslado" (auto), así que un renglón
+      // como "Tren París - Amsterdam" mostraba un auto en la ficha pública.
+      const texto = pt.textoDisplay ?? pt.traslado.nombre;
+      return { texto, icon: iconForTrasladoTexto(texto) };
+    }),
     ...nochesBullets,
     ...paquete.circuitos.map((pc) => ({
       texto: pc.textoDisplay ?? pc.circuito.nombre,
