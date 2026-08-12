@@ -245,19 +245,30 @@ const SCOPED_STYLES = `
     color: #2b2b2b;
   }
   /* Icon sits inside a white circle with a violet ring ("redondel"), as in the
-     reference: white background, round violet border, nothing else. */
-  .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
+     reference: white background, round violet border, nothing else.
+     El redondel va en este span y NO en el propio <svg>: cuando el borde
+     redondo estaba sobre el SVG, el dibujo se pintaba ocupando toda la caja
+     (el relleno no achica el arte de un SVG raíz) y el recorte circular le
+     comía las esquinas. Se veía en el avión, al que le cortaba la punta de la
+     nariz, y en la cama, a la que le cortaba las patas. */
+  .pkg-detail .box-tab-content.style1 .content-inner > li > .incluye-icono {
     width: 44px;
     height: 44px;
-    padding: 10px;
     box-sizing: border-box;
     border-radius: 9999px;
     background: #ffffff;
     border: 2px solid #a05ed3;
     color: #a05ed3;
-    stroke-width: 2;
     margin-right: 16px;
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pkg-detail .box-tab-content.style1 .content-inner > li > .incluye-icono > svg {
+    width: 22px;
+    height: 22px;
+    color: #a05ed3;
   }
   .pkg-detail .box-tab-content.style1 .content-inner > li img {
     width: 32px;
@@ -437,11 +448,14 @@ const SCOPED_STYLES = `
       font-size: 16px;
       margin-bottom: 14px;
     }
-    .pkg-detail .box-tab-content.style1 .content-inner > li > svg {
-      width: 32px;
-      height: 32px;
-      padding: 8px;
+    .pkg-detail .box-tab-content.style1 .content-inner > li > .incluye-icono {
+      width: 34px;
+      height: 34px;
       margin-right: 12px;
+    }
+    .pkg-detail .box-tab-content.style1 .content-inner > li > .incluye-icono > svg {
+      width: 17px;
+      height: 17px;
     }
     .pkg-detail .box-tab-content.style1 .content-inner > li img {
       width: 26px;
@@ -830,7 +844,9 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                       <ul className="content-inner">
                         {incluyeItems!.map((it) => (
                           <li key={it.id}>
-                            <ServiceIcon icon={it.icon} />
+                            <span className="incluye-icono">
+                              <ServiceIcon icon={it.icon} />
+                            </span>
                             {it.texto}
                           </li>
                         ))}
@@ -845,7 +861,9 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                       <ul className="content-inner">
                         {paquete.serviciosDerivados.map((s, i) => (
                           <li key={`d-${i}`}>
-                            <ServiceIcon icon={s.icon} />
+                            <span className="incluye-icono">
+                              <ServiceIcon icon={s.icon} />
+                            </span>
                             {s.texto}
                           </li>
                         ))}
@@ -854,13 +872,17 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                       <ul className="content-inner">
                         {paquete.serviciosIncluidos.map((s) => (
                           <li key={s.id}>
-                            <ServiceIcon icon={s.servicio.icon} />
+                            <span className="incluye-icono">
+                              <ServiceIcon icon={s.servicio.icon} />
+                            </span>
                             {s.textoCustom ?? s.servicio.nombre}
                           </li>
                         ))}
                         {includeBullets.map((b, i) => (
                           <li key={`b-${i}`}>
-                            <ServiceIcon icon={detectIconForBullet(b.text)} />
+                            <span className="incluye-icono">
+                              <ServiceIcon icon={detectIconForBullet(b.text)} />
+                            </span>
                             <span
                               dangerouslySetInnerHTML={{
                                 __html: sanitizeRichHtml(b.html),
