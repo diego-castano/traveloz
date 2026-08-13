@@ -11,6 +11,49 @@ del catálogo, CRM).
 
 ---
 
+## 13 de agosto de 2026
+
+### Cambiado
+
+**El mockup del cotizador incorpora todo lo pedido en la reunión del 11/08 y el
+mail de Gero.** Sigue siendo un mockup sin conexión al sistema, pero ya muestra
+el flujo completo que se acordó con el cliente:
+
+- **Inicio más simple.** El tab principal quedó solo con los paquetes de la web
+  (que funcionan como plantillas precargadas) y la tabla de cotizaciones. El
+  seguimiento del día y los reportes por vendedor se mudaron a un tab propio,
+  fuera de la vista diaria del vendedor. La tabla suma filtros por destino y
+  por mes de salida, además de la búsqueda por cliente, y un selector "Ver
+  como" que anticipa el modelo de usuarios: cada vendedor ve lo suyo, el
+  máster ve todo.
+- **Tres caminos para arrancar.** Consulta de WhatsApp con IA, en blanco, o
+  desde un paquete o plantilla — paquetes de la web y plantillas propias
+  centralizados en una sola lista.
+- **Bloques en el orden pedido.** Cliente, mensaje al pasajero (con la línea
+  fija "De acuerdo a lo conversado…" a la vista), encabezado, servicios
+  incluidos, vuelos, opciones hoteleras y notas para el pasajero.
+- **Servicios estándar de entrada.** Toda cotización nueva arranca con aéreo
+  ida y vuelta con equipaje de mano, traslados de llegada y salida, 07 noches
+  de alojamiento y seguro de asistencia al viajero. La línea de alojamiento
+  replica sola las noches cargadas y la de aéreo se arma con la cabina y el
+  equipaje que se elijan en el bloque de vuelos (turista a primera clase,
+  artículo personal a bodega). Si el vendedor edita el texto a mano, deja de
+  seguirlos.
+- **La fecha de salida manda.** Ata el mes y el año del encabezado y baja como
+  check-in del alojamiento, como ya venía haciendo.
+- **Habitaciones y tarifas desglosadas.** Cada opción hotelera admite varias
+  habitaciones (Single, Doble y de 3 a 15 personas, con tipo libre opcional) y
+  cada habitación sus tarifas: por adulto, por menor, por familia u otras. La
+  venta se calcula sola con el markup 0,88 pero se puede pisar a mano, con
+  vuelta al automático en un clic. La vista del pasajero muestra el desglose.
+- **Notas internas ancladas.** Salieron del formulario y viven como block de
+  notas fijo en la columna izquierda, con escritura libre y un botón para
+  expandirlas junto a los costos fijos. Nunca llegan al pasajero.
+- **Previsualizar antes de mandar.** El modal de compartir suma un botón de
+  previsualización que no cuenta como apertura en los analytics.
+
+---
+
 ## 11 y 12 de agosto de 2026
 
 ### Arreglado
