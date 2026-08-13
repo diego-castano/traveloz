@@ -8,14 +8,14 @@ import {
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import {
-  MESES, ANIO_BASE, PLANTILLAS, VENDEDORES, uid, toISO, addDays, venta, norm, ESTADOS,
-  CLIENTES, matchTel
+  MESES, ANIO_BASE, PLANTILLAS, VENDEDORES, uid, toISO, addDays, parseISO, norm, ESTADOS,
+  CLIENTES, matchTel, serviciosDefault, habitacionNueva, precioOpcion
 } from "./_mockup/data";
 import { Btn, Pill, Toasts } from "./_mockup/ui";
 import { SalidaPasajero } from "./_mockup/telefono";
 import {
   BloqueCliente, BloqueEncabezado, BloqueAlojamiento, BloqueMensaje, BloqueVuelos, BloqueServicios,
-  BloqueNotas, BloqueNotasCliente, BannerIA, Paleta, BannerPasajero, HojaAtajos
+  NotasRail, BloqueNotasCliente, BannerIA, Paleta, BannerPasajero, HojaAtajos
 } from "./_mockup/editor";
 import { Inicio } from "./_mockup/inicio";
 import { ModalCompartir } from "./_mockup/compartir";
@@ -53,14 +53,22 @@ function cotizacionVacia() {
     mensajeHtml: "",
     pnrRaw: "",
     vuelos: [],
+    cabina: null,             /* v3 · se replica en la línea de Aéreo de los servicios */
+    equipaje: null,
     destinos: [],
-    servicios: [],
+    servicios: serviciosDefault(7),
     notas: [],
-    bitacora: [],             /* v2F · anotaciones libres del equipo, con autor y hora */
+    notasLibres: "",          /* v3 · block de notas internas de la columna izquierda */
     notasCliente: [],
     vigencia: 48,
     opciones: [],
   };
+}
+
+/* el encabezado sigue a la fecha de salida */
+function atarTitulo(q) {
+  const f = parseISO(q.fechaSalida);
+  if (f) { q.titulo.mes = f.getMonth(); q.titulo.anio = f.getFullYear(); }
 }
 
 function desdePaquete(p) {
@@ -69,12 +77,17 @@ function desdePaquete(p) {
   q.titulo = { destino:p.destinos[0].ciudad, mes:p.mes, anio:p.anio };
   const hoy = new Date(); const salida = new Date(p.anio, p.mes, 15);
   q.fechaSalida = toISO(salida > hoy ? salida : new Date(hoy.getFullYear(), hoy.getMonth() + 2, 15));
+  atarTitulo(q);
   q.destinos = p.destinos.map((d) => ({ id:uid("dst"), ciudad:d.ciudad, noches:d.noches, checkinManual:null }));
+  /* los servicios del paquete vienen de la web: se respetan tal cual, sin flags auto */
   q.servicios = p.servicios.map((s) => ({ id:uid("srv"), categoria:s.cat, texto:s.texto,
     ciudad:s.ciudad ?? null, modalidad:s.modalidad ?? null }));
+  /* el catálogo guarda un neto por opción: se convierte a una habitación con una tarifa */
   q.opciones = p.opciones.map((o) => ({ id:uid("op"), nombre:o.nombre,
     hoteles:o.hoteles.map((h) => ({ hotelId:h, libre:"" })),
-    habitacion:o.habitacion, regimen:o.regimen, neto:o.neto, factor:o.factor }));
+    regimen:o.regimen, factor:o.factor,
+    habitaciones:[{ id:uid("hab"), ocupacion:"Doble", tipo:o.habitacion || "",
+      tarifas:[{ id:uid("tf"), tipo:"Por adulto", tipoLibre:"", neto:o.neto, venta:null }] }] }));
   q.notas = [
     { id:uid("nt"), concepto:"Neto aéreo por pasajero", neto:Math.round(o0(p) * 0.42) },
     { id:uid("nt"), concepto:"Traslados", neto:64 },
@@ -92,13 +105,7 @@ function desdePlantilla(t) {
   q.origen = `Plantilla · ${t.nombre}`;
   q.titulo = { destino:t.destino, mes:null, anio:ANIO_BASE };
   q.destinos = [{ id:uid("dst"), ciudad:t.destino, noches:7, checkinManual:null }];
-  const cat = t.destino === "Madrid" ? "Privado" : "Regular";
-  q.servicios = [
-    { id:uid("srv"), categoria:"aereo", texto:"Aéreo ida y vuelta con valija en bodega 23kg", ciudad:null, modalidad:null },
-    { id:uid("srv"), categoria:"traslado", texto:"Traslado llegada y salida", ciudad:t.destino, modalidad:cat },
-    { id:uid("srv"), categoria:"alojamiento", texto:"Alojamiento en base doble", ciudad:null, modalidad:null },
-    { id:uid("srv"), categoria:"seguro", texto:"Asistencia al viajero cobertura premium", ciudad:null, modalidad:null },
-  ];
+  q.servicios = serviciosDefault(7);
   return q;
 }
 
@@ -117,6 +124,7 @@ function desdeFila(r) {
   if (q.titulo.mes != null) {
     const hoy = new Date(); const salida = new Date(q.titulo.anio, q.titulo.mes, 15);
     q.fechaSalida = toISO(salida > hoy ? salida : new Date(hoy.getFullYear(), hoy.getMonth() + 2, 15));
+    atarTitulo(q);
   }
   return q;
 }
@@ -129,6 +137,7 @@ function desdeIA(det) {
     q.titulo.anio = det.anio;
     const hoy = new Date(); const salida = new Date(det.anio, det.mes, 15);
     q.fechaSalida = toISO(salida > hoy ? salida : new Date(hoy.getFullYear(), hoy.getMonth() + 2, 15));
+    atarTitulo(q);
   }
   if (!det.paquete && det.destino) {
     q.titulo.destino = det.destino;
@@ -148,8 +157,8 @@ function desdeIA(det) {
   return q;
 }
 
-/* v2B · orden fijo de los bloques: lo usan el rail y los atajos Alt+1…Alt+8 */
-const IDS_BLOQUES = ["b-cliente","b-encabezado","b-alojamiento","b-mensaje","b-vuelos","b-servicios","b-notas","b-notascliente"];
+/* orden fijo de los bloques (el que pidió el cliente): lo usan el rail y los atajos Alt+1…Alt+7 */
+const IDS_BLOQUES = ["b-cliente","b-mensaje","b-encabezado","b-servicios","b-vuelos","b-alojamiento","b-notascliente"];
 
 export default function Cotizador() {
   const [pantalla, setPantalla] = useState("inicio");     // inicio | editor | listado
@@ -210,10 +219,10 @@ export default function Cotizador() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaleta((v) => !v); }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && pantallaRef.current === "editor") {
         e.preventDefault(); setCompartir(true); }
-      /* v2B · Alt+1…Alt+8 salta al bloque N (e.code aguanta el Alt raro de macOS) */
+      /* v2B · Alt+1…Alt+7 salta al bloque N (e.code aguanta el Alt raro de macOS) */
       if (e.altKey && !e.metaKey && !e.ctrlKey && pantallaRef.current === "editor") {
-        const n = /^Digit[1-8]$/.test(e.code || "") ? Number(e.code.slice(5))
-          : /^[1-8]$/.test(e.key) ? Number(e.key) : 0;
+        const n = /^Digit[1-7]$/.test(e.code || "") ? Number(e.code.slice(5))
+          : /^[1-7]$/.test(e.key) ? Number(e.key) : 0;
         if (n) { e.preventDefault(); irA(IDS_BLOQUES[n - 1]); }
       }
       /* v2B · "?" abre la hoja de atajos, salvo que estés escribiendo */
@@ -275,15 +284,33 @@ export default function Cotizador() {
   const repropagar = () => { set((d) => { d.destinos.forEach((x) => { x.checkinManual = null; }); });
     toast({ msg:"Fechas actualizadas desde la salida", tone:"ok" }); };
 
+  /* ── los servicios marcados `auto` siguen a lo que se carga arriba.
+        En cuanto el vendedor los edita a mano pierden el flag y quedan quietos. ── */
+  useEffect(() => {
+    const noches = tramos.reduce((a, t) => a + (Number(t.noches) || 0), 0) || 7;
+    const txtNoches = `${String(noches).padStart(2, "0")} noches de alojamiento`;
+    const txtAereo = (q.cabina || q.equipaje)
+      ? "Aéreo ida y vuelta · " + [q.cabina, q.equipaje].filter(Boolean).join(" · ")
+      : "Aéreo ida y vuelta con equipaje de mano";
+    const iN = q.servicios.findIndex((s) => s.auto === "noches");
+    const iA = q.servicios.findIndex((s) => s.auto === "aereo");
+    const cambiaN = iN >= 0 && q.servicios[iN].texto !== txtNoches;
+    const cambiaA = iA >= 0 && q.servicios[iA].texto !== txtAereo;
+    if (!cambiaN && !cambiaA) return;
+    set((d) => {
+      if (cambiaN) d.servicios[iN].texto = txtNoches;
+      if (cambiaA) d.servicios[iA].texto = txtAereo;
+    });
+  }, [tramos, q.servicios, q.cabina, q.equipaje, set]);
+
   /* ── progreso por bloque ───────────────────────────────────────────── */
   const bloques = [
     { id:"b-cliente",    l:"Cliente",     Icon:User,        ok: !!(q.cliente.nombre || q.cliente.email) },
-    { id:"b-encabezado", l:"Encabezado",  Icon:FileText,    ok: !!(q.titulo.destino && q.titulo.mes != null && q.fechaSalida) },
-    { id:"b-alojamiento", l:"Alojamiento", Icon:Building2,  ok: q.destinos.length > 0 && q.opciones.length > 0 },
     { id:"b-mensaje",    l:"Mensaje",     Icon:MessageSquare, ok: !!q.mensaje },
-    { id:"b-vuelos",     l:"Vuelos",      Icon:Plane,       ok: q.vuelos.length > 0 },
+    { id:"b-encabezado", l:"Encabezado",  Icon:FileText,    ok: !!(q.titulo.destino && q.titulo.mes != null && q.fechaSalida) },
     { id:"b-servicios",  l:"Servicios",   Icon:LayoutGrid,  ok: q.servicios.length > 0 },
-    { id:"b-notas",      l:"Notas internas", Icon:Lock,     ok: q.notas.length > 0 || (q.bitacora?.length || 0) > 0 },
+    { id:"b-vuelos",     l:"Vuelos",      Icon:Plane,       ok: q.vuelos.length > 0 },
+    { id:"b-alojamiento", l:"Alojamiento", Icon:Building2,  ok: q.destinos.length > 0 && q.opciones.length > 0 },
     { id:"b-notascliente", l:"Notas pasajero", Icon:StickyNote, ok: q.notasCliente.length > 0 },
   ];
   const listos = bloques.filter((b) => b.ok).length;
@@ -313,7 +340,7 @@ export default function Cotizador() {
     ...bloques.map((b) => ({ label:`Ir a ${b.l}`, grupo:"bloque", Icon:b.Icon, run:() => irA(b.id) })),
     { label:"Nueva opción hotelera", grupo:"acción", Icon:Plus, run:() => { set((d) => { d.opciones.push({ id:uid("op"),
         nombre:`Opción ${d.opciones.length + 1}`, hoteles:d.destinos.map(() => ({ hotelId:null, libre:"" })),
-        habitacion:"Doble estándar", regimen:"Desayuno", neto:0, factor:0.88 }); }); irA("b-alojamiento"); } },
+        regimen:"Desayuno", factor:0.88, habitaciones:[habitacionNueva("Doble")] }); }); irA("b-alojamiento"); } },
     { label:"Compartir cotización", grupo:"acción", Icon:Send, run:() => setCompartir(true) },
     { label: vistaPasajero ? "Volver a la vista del vendedor" : "Ver como pasajero (sin márgenes ni notas)",
       grupo:"acción", Icon: vistaPasajero ? EyeOff : Eye, run:() => setVistaPasajero((v) => !v) },
@@ -330,7 +357,7 @@ export default function Cotizador() {
   const actualEnListado = (q.titulo.destino || q.cliente.nombre || q.opciones.length) ? {
     num:q.numero, cliente:[q.cliente.nombre, q.cliente.apellido].filter(Boolean).join(" ") || "Sin cliente",
     destino:`${q.titulo.destino || "Sin destino"}${q.titulo.mes != null ? `, ${MESES[q.titulo.mes]} ${q.titulo.anio}` : ""}`,
-    vendedor, estado:q.estado, monto: q.opciones.length ? Math.round(venta(q.opciones[0].neto, q.opciones[0].factor)) : 0,
+    vendedor, estado:q.estado, monto: q.opciones.length ? Math.round(precioOpcion(q.opciones[0])) : 0,
     dias:0, aperturas: q.estado === "abierta" ? 1 : 0,
   } : null;
 
@@ -448,7 +475,7 @@ export default function Cotizador() {
           <div style={{ display:"flex", gap:20, maxWidth:1460, margin:"0 auto", padding:"18px 18px 60px", alignItems:"flex-start" }}>
 
             {/* rail */}
-            <aside className="rail-col ed-rail" style={{ width:172, flexShrink:0, position:"sticky", top:74 }}>
+            <aside className="rail-col ed-rail" style={{ width:196, flexShrink:0, position:"sticky", top:74 }}>
               <div className="card" style={{ padding:9 }}>
                 <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 7px 8px" }}>
                   <span className="lbl">Bloques</span>
@@ -474,6 +501,9 @@ export default function Cotizador() {
                   Ver todos los atajos <span className="kbd">?</span>
                 </button>
               </div>
+
+              {/* block de notas internas: fijo acá, nunca en el flujo de la cotización */}
+              <NotasRail q={q} set={set} vistaPasajero={vistaPasajero} toast={toast} />
             </aside>
 
             {/* formulario */}
@@ -494,12 +524,11 @@ export default function Cotizador() {
               )}
 
               <BloqueCliente q={q} set={set} refEl={primerCampo} onUsarBase={usarBase} />
-              <BloqueEncabezado q={q} set={set} tramos={tramos} hayManual={hayManual} onRepropagar={repropagar} />
-              <BloqueAlojamiento q={q} set={set} tramos={tramos} toast={toast} vistaPasajero={vistaPasajero} />
               <BloqueMensaje q={q} set={set} toast={toast} />
-              <BloqueVuelos q={q} set={set} toast={toast} />
+              <BloqueEncabezado q={q} set={set} tramos={tramos} hayManual={hayManual} onRepropagar={repropagar} />
               <BloqueServicios q={q} set={set} toast={toast} />
-              <BloqueNotas q={q} set={set} toast={toast} vistaPasajero={vistaPasajero} vendedor={vendedor} />
+              <BloqueVuelos q={q} set={set} toast={toast} />
+              <BloqueAlojamiento q={q} set={set} tramos={tramos} toast={toast} vistaPasajero={vistaPasajero} />
               <BloqueNotasCliente q={q} set={set} toast={toast} />
 
               <div style={{ display:"flex", gap:9, marginTop:18, flexWrap:"wrap" }}>
@@ -624,6 +653,7 @@ export default function Cotizador() {
 
       {compartir && (
         <ModalCompartir q={q} marca={marca} toast={toast} onClose={() => setCompartir(false)}
+          onPreview={() => { setCompartir(false); setPrev("cel"); }}
           onIr={(id) => { setCompartir(false); irA(id); }}
           onVigencia={(h) => set((d) => { d.vigencia = h; })}
           onEnviada={() => { set((d) => { d.estado = "enviada"; });

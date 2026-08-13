@@ -43,7 +43,18 @@ const HOTELES = [
 ];
 
 const REGIMENES = ["Desayuno","Media pensión","Pensión completa","All inclusive","Solo alojamiento"];
+/* Modelo viejo de habitación: lo siguen usando los PAQUETES del catálogo */
 const HABITACIONES = ["Doble estándar","Doble superior","Doble vista al mar","Triple estándar","Suite junior","Bungalow"];
+
+const CABINAS = ["Cabina Turista","Cabina Premium Economy","Cabina Ejecutiva","Primera Clase"];
+const EQUIPAJES = [
+  "Artículo personal",
+  "Artículo personal + Carry-On",
+  "Artículo personal + Carry-On + Equipaje de bodega",
+];
+/* Hasta 15: el cliente también vende apartamentos */
+const OCUPACIONES = ["Single","Doble", ...Array.from({ length:13 }, (_, i) => `${i + 3} personas`)];
+const TARIFA_TIPOS = ["Por adulto","Por menor","Por familia","Otro"];
 
 /* Servicios habituales precargados por categoría */
 const SUG = {
@@ -254,6 +265,38 @@ function money(n) { const v = Number(n); return "USD " + (Number.isFinite(v) ? M
 /* Modelo de markup del sistema: Precio Venta = Neto ÷ Factor */
 function venta(neto, factor) { const f = Number(factor); if (!f || f <= 0) return 0; return Number(neto) / f; }
 function margenPct(factor) { return Math.round((1 - Number(factor)) * 1000) / 10; }
+
+/* ── Servicios con los que arranca toda cotización nueva ─────────────────
+   Los que llevan `auto` siguen a lo que se carga arriba (noches y cabina/
+   equipaje) hasta que el vendedor los edita a mano. */
+function serviciosDefault(noches = 7) {
+  return [
+    { id:uid("srv"), categoria:"aereo",       texto:"Aéreo ida y vuelta con equipaje de mano", ciudad:null, modalidad:null, auto:"aereo" },
+    { id:uid("srv"), categoria:"traslado",    texto:"Traslados de llegada y salida",           ciudad:null, modalidad:null },
+    { id:uid("srv"), categoria:"alojamiento", texto:`${String(noches).padStart(2, "0")} noches de alojamiento`, ciudad:null, modalidad:null, auto:"noches" },
+    { id:uid("srv"), categoria:"seguro",      texto:"Seguro de Asistencia al Viajero",         ciudad:null, modalidad:null },
+  ];
+}
+
+/* ── Opción hotelera: habitaciones, y dentro de cada una sus tarifas ───── */
+function tarifaNueva(tipo = "Por adulto") {
+  /* venta null → se calcula sola (neto ÷ factor); un número → pisada a mano */
+  return { id:uid("tf"), tipo, tipoLibre:"", neto:0, venta:null };
+}
+function habitacionNueva(ocupacion = "Doble") {
+  return { id:uid("hab"), ocupacion, tipo:"", tarifas:[tarifaNueva()] };
+}
+function ventaTarifa(t, factor) {
+  if (t == null) return 0;
+  if (t.venta !== null && t.venta !== "" && t.venta !== undefined) return Number(t.venta) || 0;
+  return venta(t.neto, factor);
+}
+function etiquetaTarifa(t) { return t.tipo === "Otro" ? (t.tipoLibre?.trim() || "Otro") : t.tipo; }
+/* precio principal de una opción: primera tarifa de la primera habitación */
+function precioOpcion(o) {
+  const t = o?.habitaciones?.[0]?.tarifas?.[0];
+  return t ? ventaTarifa(t, o.factor) : venta(o?.neto, o?.factor);   // fallback al modelo viejo
+}
 
 /* Normaliza cualquier pegado a texto plano — mata el problema de tipografías */
 function limpiarPegado(txt) {
@@ -546,6 +589,8 @@ function estadoEfectivo(r) {
 
 export {
   MESES, MES_AB, ANIO_BASE, PALETAS, fotoBg, HOTELES, REGIMENES, HABITACIONES, SUG, MODALIDADES,
+  CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
+  serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion,
   SUG_ALL, CIUDADES, AEROLINEAS, AEROPUERTOS, PNR_DEMO, PAQUETES, PAQUETES_EXTRA, PLANTILLAS,
   CLIENTES, VENDEDORES, HISTORIAL, semaforo, fmtHace, uid, hotelById, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,

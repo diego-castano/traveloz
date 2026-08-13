@@ -6,12 +6,13 @@ import {
   Link2, Printer, Lock, Info
 } from "lucide-react";
 import { Btn, Label } from "./ui";
+import { precioOpcion } from "./data";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    COMPARTIR
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = false, onVigencia, onIr }) {
+function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = false, onVigencia, onIr, onPreview }) {
   const tel = String(q.cliente.telefono || "").trim();
   const nom = String(q.cliente.nombre || "").trim();
   /* v2C · sin teléfono no hay WhatsApp: se arranca en la vía que sí está disponible */
@@ -33,7 +34,7 @@ function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = fa
     l.push(nom
       ? { k:"nom", t:"ok", txt:`El saludo va a nombre de ${nom}` }
       : { k:"nom", t:"warn", txt:"Sin nombre — el saludo va a salir genérico", ir:"b-cliente" });
-    const sinPrecio = q.opciones.filter((o) => !Number(o.neto)).length;
+    const sinPrecio = q.opciones.filter((o) => !precioOpcion(o)).length;
     if (!q.opciones.length)
       l.push({ k:"op", t:"warn", txt:"Sin opciones de alojamiento — la cotización sale sin precio", ir:"b-alojamiento" });
     else if (sinPrecio)
@@ -137,6 +138,15 @@ function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = fa
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {onPreview && (
+          <div style={{ display:"flex", alignItems:"center", gap:8, margin:"11px 17px 0", flexWrap:"wrap" }}>
+            <Btn size="xs" onClick={onPreview}>
+              <Eye size={12} /> Previsualizar antes de mandar
+            </Btn>
+            <span style={{ fontSize:10.5, color:"var(--n400)" }}>No cuenta como apertura del pasajero.</span>
           </div>
         )}
 

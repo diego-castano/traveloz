@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sparkles, MessageSquare, FileText, Copy, Trash2, Plus, Check, ChevronDown, ChevronRight, Search,
-  Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, LayoutGrid, Loader2, CheckCheck, AlertCircle,
+  Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, Loader2, CheckCheck, AlertCircle,
   RefreshCw, Link2, TrendingUp, Ticket, Files, ListChecks, Sun, Moon
 } from "lucide-react";
 import {
@@ -14,12 +14,45 @@ import { Foto, Btn, Pill, ChipIA, Vacio, Wordmark } from "./ui";
 import { DrawerAnalytics } from "./drawer";
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   HELPERS COMPARTIDOS — usados tanto en el tab Cotizar como en Seguimiento
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* v2F · qué entra en la cola de hoy y por qué — misma regla en todos lados */
+function calcularCola(base, hechos = {}) {
+  return base.map((r) => {
+    if (hechos[r.num]) return null;
+    if (r.estado === "vencida") {
+      const venc = r.hEnvio != null ? r.hEnvio - 48 : null;
+      const motivo = venc == null ? "El link ya no está vigente"
+        : venc < 24 ? "El link venció hoy"
+        : venc < 48 ? "El link venció ayer"
+        : `El link venció hace ${Math.round(venc / 24)} días`;
+      return { r, tipo:"vencida", c:"#F43E55", tone:"coral", motivo };
+    }
+    if (r.estado === "enviada" && r.aperturas === 0 && r.hEnvio != null && r.hEnvio >= 24) {
+      const d = Math.max(1, Math.round(r.hEnvio / 24));
+      return { r, tipo:"recordatorio", c:"#E8A13C", tone:"amber",
+        motivo:`Hace ${d} ${d === 1 ? "día" : "días"} que no la abre` };
+    }
+    if (r.estado === "abierta" && r.aperturas > 0) {
+      return { r, tipo:"seguimiento", c:"#2A9E8E", tone:"teal",
+        motivo:`La abrió ${r.aperturas === 1 ? "una vez" : `${r.aperturas} veces`} — buen momento para llamar` };
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+/* v2F · filtros de la tabla — "r.destino" llega como "Punta Cana, Noviembre 2026" */
+function destinoBase(s) { return String(s || "").split(",")[0].trim(); }
+function mesDeDestino(s) { return String(s || "").split(",")[1]?.trim().split(" ")[0] || ""; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
    v2 · ENTRADA — cómo arranca una cotización
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── A1 · modal "¿Cómo arrancamos?" — cinco caminos, teclas 1 a 5 ────── */
-function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPlantilla, onFila, onIA }) {
-  const [paso, setPaso] = useState("menu");     // menu | paquete | plantilla | reciente
+/* ── A1 · modal "¿Cómo arrancamos?" — tres caminos, teclas 1 a 3 ────── */
+function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onIA }) {
+  const [paso, setPaso] = useState("menu");     // menu | plantilla
   const [busq, setBusq] = useState("");
   const inp = useRef(null);
 
@@ -27,9 +60,7 @@ function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPla
     { k:"ia",        n:1, Icon:MessageSquare, t:"Desde una consulta de WhatsApp",
       d:"Pegá lo que te escribió el pasajero y la IA arma el borrador" },
     { k:"blanco",    n:2, Icon:FileText,   t:"En blanco",             d:"Formulario vacío, listo para escribir" },
-    { k:"paquete",   n:3, Icon:LayoutGrid, t:"Desde un paquete",      d:"Todo precargado: destinos, hoteles y precios" },
-    { k:"plantilla", n:4, Icon:Files,      t:"Desde una plantilla",   d:"Lo repetitivo ya viene cargado" },
-    { k:"reciente",  n:5, Icon:Copy,       t:"Duplicar una reciente", d:"Arrancá desde una cotización ya armada" },
+    { k:"plantilla", n:3, Icon:Files,      t:"Desde un paquete o plantilla", d:"Los paquetes de la web y tus plantillas, en un solo lugar" },
   ];
 
   const elegir = useCallback((k) => {
@@ -44,7 +75,7 @@ function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPla
     const h = (e) => {
       if (e.key === "Escape") { e.preventDefault(); onClose(); return; }
       if (paso === "menu") {
-        const i = ["1","2","3","4","5"].indexOf(e.key);
+        const i = ["1","2","3"].indexOf(e.key);
         if (i >= 0) { e.preventDefault(); elegir(CAMINOS[i].k); }
       } else if (e.key === "ArrowLeft") {
         const el = e.target;
@@ -57,14 +88,11 @@ function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPla
 
   useEffect(() => { if (paso !== "menu") { const t = setTimeout(() => inp.current?.focus(), 80); return () => clearTimeout(t); } }, [paso]);
 
-  /* ── segundo paso: elegir de qué exactamente ── */
+  /* ── segundo paso: paquetes de la web + plantillas propias, una sola lista buscable ── */
   const b = busq.trim().toLowerCase();
   const paquetes  = PAQUETES.filter((p) => !b || `${p.nombre} ${p.resumen} ${p.destinos.map((d) => d.ciudad).join(" ")}`.toLowerCase().includes(b));
   const plantis   = plantillas.filter((t) => !b || `${t.nombre} ${t.destino} ${t.detalle || ""}`.toLowerCase().includes(b));
-  const recis     = recientes.filter((r) => !b || `${r.num} ${r.cliente} ${r.destino}`.toLowerCase().includes(b));
-  const CAB = { paquete:{ t:"Elegí el paquete", ph:`Buscá entre los ${PAQUETES.length} paquetes publicados…` },
-                plantilla:{ t:"Elegí la plantilla", ph:"Buscá entre tus plantillas…" },
-                reciente:{ t:"Elegí cuál duplicar", ph:"Buscá por cliente, destino o número…" } }[paso];
+  const CAB = { plantilla:{ t:"Desde un paquete o plantilla", ph:"Buscá entre paquetes de la web y tus plantillas…" } }[paso];
 
   return (
     <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -100,7 +128,7 @@ function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPla
               </button>
             ); })()}
 
-            {/* los otros cuatro */}
+            {/* los otros dos */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))", gap:10 }}>
               {CAMINOS.slice(1).map((C, i) => (
                 <button key={C.k} className="cam a-rise" onClick={() => elegir(C.k)} style={{ animationDelay:`${(i + 1) * .04}s` }}>
@@ -112,7 +140,7 @@ function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPla
               ))}
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:13, fontSize:11, color:"var(--n400)" }}>
-              <span className="kbd">1</span>…<span className="kbd">5</span> para elegir
+              <span className="kbd">1</span>…<span className="kbd">3</span> para elegir
               <span style={{ opacity:.4 }}>·</span>
               <span className="kbd">esc</span> para cerrar
             </div>
@@ -126,51 +154,44 @@ function ModalNueva({ plantillas, recientes, onClose, onBlanco, onPaquete, onPla
             </div>
 
             <div style={{ maxHeight:330, overflowY:"auto", margin:"0 -4px" }}>
-              {paso === "paquete" && paquetes.map((p) => (
-                <button key={p.id} className="lst-i" onClick={() => onPaquete(p)}>
-                  <Foto seed={p.seed} w={46} h={34} r={9} />
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.nombre}</div>
-                    <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                      {p.destinos.map((d) => `${d.ciudad} · ${d.noches}n`).join("   ·   ")}</div>
-                  </div>
-                  <Pill tone="violet" style={{ flexShrink:0 }}>{MESES[p.mes].slice(0,3)} {p.anio}</Pill>
-                  <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
-                </button>
-              ))}
+              {paquetes.length > 0 && (
+                <>
+                  <div className="lbl" style={{ padding:"6px 8px 4px" }}>Paquetes de la web</div>
+                  {paquetes.map((p) => (
+                    <button key={p.id} className="lst-i" onClick={() => onPaquete(p)}>
+                      <Foto seed={p.seed} w={46} h={34} r={9} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.nombre}</div>
+                        <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                          {p.destinos.map((d) => `${d.ciudad} · ${d.noches}n`).join("   ·   ")}</div>
+                      </div>
+                      <Pill tone="violet" style={{ flexShrink:0 }}>{MESES[p.mes].slice(0,3)} {p.anio}</Pill>
+                      <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
+                    </button>
+                  ))}
+                </>
+              )}
 
-              {paso === "plantilla" && plantis.map((t) => (
-                <button key={t.id} className="lst-i" onClick={() => onPlantilla(t)}>
-                  <div style={{ width:32, height:32, borderRadius:10, flexShrink:0, display:"grid", placeItems:"center",
-                    background:"rgba(120,90,229,.1)", color:"var(--violet)" }}><Files size={14} /></div>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:600 }}>{t.nombre}</div>
-                    <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                      {t.destino} · {t.detalle}</div>
-                  </div>
-                  <Pill tone="teal" style={{ flexShrink:0 }}><Zap size={8} /> {t.usos ?? 0}</Pill>
-                  <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
-                </button>
-              ))}
+              {plantis.length > 0 && (
+                <>
+                  <div className="lbl" style={{ padding:"10px 8px 4px" }}>Tus plantillas</div>
+                  {plantis.map((t) => (
+                    <button key={t.id} className="lst-i" onClick={() => onPlantilla(t)}>
+                      <div style={{ width:32, height:32, borderRadius:10, flexShrink:0, display:"grid", placeItems:"center",
+                        background:"rgba(120,90,229,.1)", color:"var(--violet)" }}><Files size={14} /></div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600 }}>{t.nombre}</div>
+                        <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                          {t.destino} · {t.detalle}</div>
+                      </div>
+                      <Pill tone="teal" style={{ flexShrink:0 }}><Zap size={8} /> {t.usos ?? 0}</Pill>
+                      <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
+                    </button>
+                  ))}
+                </>
+              )}
 
-              {paso === "reciente" && recis.map((r) => {
-                const V = VENDEDORES.find((v) => v.id === r.vendedor);
-                return (
-                  <button key={r.num} className="lst-i" onClick={() => onFila(r)}>
-                    <div style={{ width:32, height:32, borderRadius:10, flexShrink:0, display:"grid", placeItems:"center",
-                      background:"rgba(59,191,173,.12)", color:"var(--teal-3)" }}><Copy size={14} /></div>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.cliente}</div>
-                      <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                        {r.destino}{V ? ` · ${V.nombre.split(" ")[0]}` : ""}</div>
-                    </div>
-                    <span className="mono" style={{ fontSize:10.5, color:"var(--n300)", flexShrink:0 }}>{r.num}</span>
-                    <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
-                  </button>
-                );
-              })}
-
-              {((paso === "paquete" && !paquetes.length) || (paso === "plantilla" && !plantis.length) || (paso === "reciente" && !recis.length)) && (
+              {!paquetes.length && !plantis.length && (
                 <div style={{ padding:"22px 6px" }}>
                   <Vacio icon={Search} titulo={`Nada para “${busq.trim()}”`} accion="Probá con otra palabra, o arrancá en blanco" />
                 </div>
@@ -397,7 +418,6 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
   /* v2 · caminos de entrada */
   const [modalNueva, setModalNueva] = useState(false);
   const [modalIA, setModalIA] = useState(false);
-  const recientes = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL).slice(0, 5), [actual]);
 
   const resultados = useMemo(() => {
     const t = busq.trim().toLowerCase();
@@ -410,10 +430,18 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
   }, [busq]);
   const buscando = busq.trim().length > 0;
 
+  /* v2F · badge del tab Seguimiento: cuántas piden acción hoy — 3 si no hay dato */
+  const badgeSeguimiento = useMemo(() => {
+    const base = (actual ? [actual, ...HISTORIAL] : HISTORIAL)
+      .map((r) => ({ ...r, estado: estadoEfectivo(r) }));
+    return calcularCola(base).length || 3;
+  }, [actual]);
+
   const TABS = [
-    { id:"cotizar",    l:"Cotizar y seguimiento", Icon:Ticket,      badge:148 },
-    { id:"plantillas", l:"Plantillas",            Icon:Files,       badge:plantillas.length },
-    { id:"analytics",  l:"Analytics",             Icon:TrendingUp,  badge:"71%" },
+    { id:"cotizar",     l:"Cotizar",     Icon:Ticket,      badge:148 },
+    { id:"seguimiento", l:"Seguimiento", Icon:ListChecks,  badge:badgeSeguimiento },
+    { id:"plantillas",  l:"Plantillas",  Icon:Files,       badge:plantillas.length },
+    { id:"analytics",   l:"Analytics",   Icon:TrendingUp,  badge:"71%" },
   ];
 
   return (
@@ -499,7 +527,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
               </button>
 
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11 }}>
-                <span className="lbl">{buscando ? `${resultados.length} resultado${resultados.length === 1 ? "" : "s"}` : "Últimos publicados"}</span>
+                <span className="lbl">{buscando ? `${resultados.length} resultado${resultados.length === 1 ? "" : "s"}` : "Plantillas de la web · últimos publicados"}</span>
                 <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
                 <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)", display:"inline-flex", alignItems:"center", gap:5 }}>
                   <Zap size={10} style={{ color:"var(--teal-2)" }} /> precarga todo: destinos, servicios, opciones, fotos</span>
@@ -565,6 +593,9 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
             </div>
           )}
 
+          {/* ══ TAB SEGUIMIENTO — lo que antes vivía arriba, ahora escondido acá ══ */}
+          {tab === "seguimiento" && <TabSeguimiento actual={actual} toast={toast} />}
+
           {/* ══ TAB ANALYTICS ══ */}
           {tab === "analytics" && <TabAnalytics />}
 
@@ -574,6 +605,7 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
               <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:12 }}>
                 <p style={{ fontSize:12.5, color:"var(--n400)", margin:0, flex:1 }}>
                   Lo repetitivo ya viene cargado. También podés guardar cualquier cotización como plantilla desde el editor.
+                  Los paquetes de la web ya aparecen solos como plantillas al crear una cotización.
                 </p>
                 <Btn variant="p" size="sm" onClick={() => setCreando((v) => !v)}>
                   {creando ? <><X size={12} /> Cancelar</> : <><Plus size={12} /> Nueva plantilla</>}
@@ -643,12 +675,11 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
       {/* ── v2 · A1 y A2 · de dónde sale una cotización nueva ── */}
       {modalNueva && (
         <ModalNueva
-          plantillas={plantillas} recientes={recientes}
+          plantillas={plantillas}
           onClose={() => setModalNueva(false)}
           onBlanco={() => { setModalNueva(false); onBlanco(); }}
           onPaquete={(p) => { setModalNueva(false); onPaquete(p); }}
           onPlantilla={(t) => { setModalNueva(false); onPlantilla(t); }}
-          onFila={(r) => { setModalNueva(false); onFila(r); }}
           onIA={() => { setModalNueva(false); setModalIA(true); }} />
       )}
       {modalIA && (
@@ -723,15 +754,133 @@ function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbri
   );
 }
 
+/* ── v2F · tab Seguimiento — lo que antes vivía siempre visible en Cotizar,
+   ahora escondido en su propio tab: la cola del día + reportes por vendedor.
+   Estado propio y aparte del de la tabla (mismo criterio del mockup: es OK
+   duplicar estado acá en vez de complicar el árbol con un hook compartido). ── */
+function TabSeguimiento({ actual, toast }) {
+  const [selNum, setSelNum] = useState(null);
+  const [ov, setOv] = useState({});
+  const [ovEst, setOvEst] = useState({});
+  const [ovReact, setOvReact] = useState({});
+  const [ovHist, setOvHist] = useState({});
+  const [hechos, setHechos] = useState({});
+
+  const base = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL)
+    .map((r) => ov[r.num] ? { ...r, estado:"confirmada", confOpcion:ov[r.num].op, confVia:ov[r.num].via } : r)
+    .map((r) => ovReact[r.num] ? { ...r, ...ovReact[r.num] } : r)
+    .map((r) => ovHist[r.num] ? { ...r, hist:ovHist[r.num] } : r)
+    .map((r) => ({ ...r, estadoManual: ovEst[r.num] || null, estado: estadoEfectivo({ ...r, estadoManual: ovEst[r.num] || null }) })),
+    [actual, ov, ovEst, ovReact, ovHist]);
+  const sel = base.find((r) => r.num === selNum) || null;
+
+  const reactivar = useCallback((r) => {
+    const antes = ovEst[r.num] || null;
+    setOvReact((o) => ({ ...o, [r.num]:{ estado:"enviada", hEnvio:0, aperturas:0, apDet:[], hasta:null, lectura:null, hastaSec:null } }));
+    setOvEst((o) => ({ ...o, [r.num]:null }));
+    toast?.({ msg:"Reactivada con link nuevo por 48 h ✓", tone:"ok",
+      undo:() => { setOvReact((o) => { const c = { ...o }; delete c[r.num]; return c; });
+                   setOvEst((o) => ({ ...o, [r.num]:antes })); } });
+  }, [ovEst, toast]);
+
+  const anotar = useCallback((num, ev) => setOvHist((h) => ({ ...h, [num]:[...(h[num] || []), ev] })), []);
+
+  const extenderVigencia = useCallback((r) => {
+    const antesReact = ovReact[r.num];
+    const antesEst = ovEst[r.num] || null;
+    const ev = { c:"#785AE5", t:"Vigencia extendida 48 h", s:"recién · el link vuelve a estar activo" };
+    setOvReact((o) => ({ ...o, [r.num]:{ ...(o[r.num] || {}), hEnvio:0 } }));
+    if (antesEst === "vencida") setOvEst((o) => ({ ...o, [r.num]:null }));
+    anotar(r.num, ev);
+    toast?.({ msg:"Vigencia extendida — el link vuelve a estar activo 48 h", tone:"ok",
+      undo:() => {
+        setOvReact((o) => { const c = { ...o }; if (antesReact) c[r.num] = antesReact; else delete c[r.num]; return c; });
+        setOvEst((o) => ({ ...o, [r.num]:antesEst }));
+        setOvHist((h) => ({ ...h, [r.num]:(h[r.num] || []).filter((x) => x !== ev) }));
+      } });
+  }, [ovReact, ovEst, anotar, toast]);
+
+  const recordatorioDrawer = useCallback((r) => anotar(r.num, { c:"#785AE5", t:"Recordatorio enviado", s:"recién · WhatsApp" }), [anotar]);
+
+  const marcarHecho = useCallback((r, motivo, msg) => {
+    setHechos((h) => ({ ...h, [r.num]:motivo }));
+    toast?.({ msg, tone:"ok", undo:() => setHechos((h) => { const c = { ...h }; delete c[r.num]; return c; }) });
+  }, [toast]);
+  const recordatorio = useCallback((r) => marcarHecho(r, "recordatorio", "Recordatorio listo en WhatsApp ✓"), [marcarHecho]);
+  const seguimiento  = useCallback((r) => marcarHecho(r, "seguimiento", `Seguimiento anotado — llamá a ${String(r.cliente).split(" ")[0]} hoy ✓`), [marcarHecho]);
+
+  /* ── v2 · A3 · qué entra en la cola de hoy y por qué ── */
+  const cola = useMemo(() => calcularCola(base, hechos), [base, hechos]);
+
+  const porVendedor = useMemo(() => VENDEDORES.map((v) => {
+    const r = base.filter((x) => x.vendedor === v.id);
+    return { ...v, n:r.length, monto:r.reduce((a, x) => a + x.monto, 0),
+      abiertas:r.filter((x) => x.aperturas > 0).length };
+  }).filter((v) => v.n > 0), [base]);
+
+  useEffect(() => {
+    if (!sel) return;
+    const k = (e) => e.key === "Escape" && setSelNum(null);
+    document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k);
+  }, [sel]);
+
+  return (
+    <div className="a-fade">
+
+      {/* v2 · A3 · la cola del día, antes que cualquier número */}
+      <ColaParaHoy items={cola} onReactivar={reactivar} onRecordatorio={recordatorio}
+        onSeguimiento={seguimiento} onAbrir={(r) => setSelNum(r.num)} />
+
+      {/* reportes por vendedor */}
+      <div className="vend-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginBottom:6 }}>
+        {porVendedor.map((v, i) => (
+          <div key={v.id} className="card a-rise" style={{ padding:12, animationDelay:`${i * .04}s` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
+              <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(145deg,#A05ED3,#785AE5)",
+                color:"#fff", display:"grid", placeItems:"center", fontSize:10.5, fontWeight:700 }}>{v.inicial}</div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ fontSize:12.5, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{v.nombre}</div>
+                <div style={{ fontSize:10.5, color:"var(--n400)" }}>{v.n} cotizaciones</div>
+              </div>
+            </div>
+            <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
+              <span className="mono" style={{ fontSize:14.5, fontWeight:600 }}>{money(v.monto)}</span>
+              <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:10.5, color:"var(--teal-3)" }}>
+                <TrendingUp size={10} /> {v.abiertas} abiertas</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* leyenda del semáforo — la misma que usa la cola de arriba */}
+      <div style={{ fontSize:11, color:"var(--n400)", margin:"9px 0 4px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
+        <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}><Eye size={11} /> Clic en una cotización de la cola para ver sus analytics</span>
+        <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
+          <span className="sem-dot" style={{ background:"#2A9E8E", width:8, height:8 }} /> abierta
+          <span className="sem-dot" style={{ background:"#45D4C0", width:8, height:8, marginLeft:7 }} /> en ventana
+          <span className="sem-dot" style={{ background:"#E8A13C", width:8, height:8, marginLeft:7 }} /> +24 h sin abrir
+          <span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> +48 h sin abrir
+        </span>
+      </div>
+
+      {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
+        onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
+        onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
+        onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}
+    </div>
+  );
+}
+
 function ListadoContenido({ actual, toast, onDuplicar }) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todas");
   const [vendedor, setVendedor] = useState("todos");
+  const [destFiltro, setDestFiltro] = useState("todos");  // v2F · filtro por destino
+  const [mesFiltro, setMesFiltro] = useState("todos");    // v2F · filtro por mes de salida
   const [selNum, setSelNum] = useState(null);  // fila abierta en el drawer
   const [ov, setOv] = useState({});            // confirmaciones hechas en esta sesión
   const [ovEst, setOvEst] = useState({});      // estados pisados a mano por el vendedor
   const [ovReact, setOvReact] = useState({});  // v2 · reactivadas: link nuevo por 48 h
-  const [hechos, setHechos] = useState({});    // v2 · lo ya resuelto en la cola de hoy
   const [ovHist, setOvHist] = useState({});    // v2D · lo hecho desde el drawer, anotado en la historia
 
   const base = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL)
@@ -778,58 +927,30 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
     anotar(r.num, { c:"#785AE5", t:"Recordatorio enviado", s:"recién · WhatsApp" });
   }, [anotar]);
 
-  const marcarHecho = useCallback((r, motivo, msg) => {
-    setHechos((h) => ({ ...h, [r.num]:motivo }));
-    toast?.({ msg, tone:"ok",
-      undo:() => setHechos((h) => { const c = { ...h }; delete c[r.num]; return c; }) });
-  }, [toast]);
-
-  const recordatorio = useCallback((r) => marcarHecho(r, "recordatorio", "Recordatorio listo en WhatsApp ✓"), [marcarHecho]);
-  const seguimiento  = useCallback((r) => marcarHecho(r, "seguimiento", `Seguimiento anotado — llamá a ${String(r.cliente).split(" ")[0]} hoy ✓`), [marcarHecho]);
   const copiarLink   = useCallback(() => toast?.({ msg:"Link copiado ✓", tone:"ok" }), [toast]);
   const porWhatsapp  = useCallback((r) => toast?.({ msg:`Mensaje listo en WhatsApp para ${String(r.cliente).split(" ")[0]} ✓`, tone:"ok" }), [toast]);
 
-  /* ── v2 · A3 · qué entra en la cola de hoy y por qué ── */
-  const cola = useMemo(() => base.map((r) => {
-    if (hechos[r.num]) return null;
-    if (r.estado === "vencida") {
-      const venc = r.hEnvio != null ? r.hEnvio - 48 : null;
-      const motivo = venc == null ? "El link ya no está vigente"
-        : venc < 24 ? "El link venció hoy"
-        : venc < 48 ? "El link venció ayer"
-        : `El link venció hace ${Math.round(venc / 24)} días`;
-      return { r, tipo:"vencida", c:"#F43E55", tone:"coral", motivo };
-    }
-    if (r.estado === "enviada" && r.aperturas === 0 && r.hEnvio != null && r.hEnvio >= 24) {
-      const d = Math.max(1, Math.round(r.hEnvio / 24));
-      return { r, tipo:"recordatorio", c:"#E8A13C", tone:"amber",
-        motivo:`Hace ${d} ${d === 1 ? "día" : "días"} que no la abre` };
-    }
-    if (r.estado === "abierta" && r.aperturas > 0) {
-      return { r, tipo:"seguimiento", c:"#2A9E8E", tone:"teal",
-        motivo:`La abrió ${r.aperturas === 1 ? "una vez" : `${r.aperturas} veces`} — buen momento para llamar` };
-    }
-    return null;
-  }).filter(Boolean), [base, hechos]);
+  /* v2F · destinos y meses presentes hoy, para armar los <select> de filtro */
+  const destinosUnicos = useMemo(() => Array.from(new Set(base.map((r) => destinoBase(r.destino)))).filter(Boolean).sort(), [base]);
+  const mesesUnicos = useMemo(() => {
+    const presentes = new Set(base.map((r) => mesDeDestino(r.destino)));
+    return MESES.filter((m) => presentes.has(m));
+  }, [base]);
 
-  /* búsqueda instantánea por CUALQUIER campo */
+  /* búsqueda instantánea por CUALQUIER campo + filtros de destino y mes de salida */
   const filas = useMemo(() => {
     return base.filter((r) => {
       if (filtro !== "todas" && r.estado !== filtro) return false;
       if (vendedor !== "todos" && r.vendedor !== vendedor) return false;
+      if (destFiltro !== "todos" && destinoBase(r.destino) !== destFiltro) return false;
+      if (mesFiltro !== "todos" && mesDeDestino(r.destino) !== mesFiltro) return false;
       if (!q.trim()) return true;
       const V = VENDEDORES.find((v) => v.id === r.vendedor);
       const pajar = [r.num, r.cliente, r.destino, V?.nombre, ESTADOS[r.estado]?.l, String(r.monto), semaforo(r).l]
         .filter(Boolean).join(" ").toLowerCase();
       return q.toLowerCase().split(/\s+/).every((t) => pajar.includes(t));
     });
-  }, [q, filtro, vendedor, base]);
-
-  const porVendedor = useMemo(() => VENDEDORES.map((v) => {
-    const r = base.filter((x) => x.vendedor === v.id);
-    return { ...v, n:r.length, monto:r.reduce((a, x) => a + x.monto, 0),
-      abiertas:r.filter((x) => x.aperturas > 0).length };
-  }).filter((v) => v.n > 0), [base]);
+  }, [q, filtro, vendedor, destFiltro, mesFiltro, base]);
 
   useEffect(() => {
     if (!sel) return;
@@ -840,38 +961,13 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
   return (
     <div className="a-fade">
 
-      {/* v2 · A3 · la cola del día, antes que cualquier número */}
-      <ColaParaHoy items={cola} onReactivar={reactivar} onRecordatorio={recordatorio}
-        onSeguimiento={seguimiento} onAbrir={(r) => setSelNum(r.num)} />
-
-      {/* reportes por vendedor */}
-      <div className="vend-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginBottom:14 }}>
-        {porVendedor.map((v, i) => (
-          <div key={v.id} className="card a-rise" style={{ padding:12, animationDelay:`${i * .04}s` }}>
-            <div style={{ display:"flex", alignItems:"center", gap:9, marginBottom:8 }}>
-              <div style={{ width:28, height:28, borderRadius:"50%", background:"linear-gradient(145deg,#A05ED3,#785AE5)",
-                color:"#fff", display:"grid", placeItems:"center", fontSize:10.5, fontWeight:700 }}>{v.inicial}</div>
-              <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:12.5, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{v.nombre}</div>
-                <div style={{ fontSize:10.5, color:"var(--n400)" }}>{v.n} cotizaciones</div>
-              </div>
-            </div>
-            <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
-              <span className="mono" style={{ fontSize:14.5, fontWeight:600 }}>{money(v.monto)}</span>
-              <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:10.5, color:"var(--teal-3)" }}>
-                <TrendingUp size={10} /> {v.abiertas} abiertas</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
       {/* buscador total + filtros */}
       <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12, alignItems:"center" }}>
         <div style={{ position:"relative", flex:"1 1 240px" }}>
           <Search size={14} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)",
             color: q ? "var(--violet)" : "var(--n300)" }} />
           <input className={`in ${q ? "a-glow" : ""}`} style={{ paddingLeft:32 }} value={q}
-            placeholder="Buscar por cualquier campo: cliente, destino, vendedor, número, estado, monto…"
+            placeholder="Buscar por cliente, destino, vendedor, número, estado o monto…"
             onChange={(e) => setQ(e.target.value)} />
         </div>
         {["todas", ...Object.keys(ESTADOS)].map((k) => (
@@ -879,10 +975,23 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
             {k === "todas" ? "Todas" : ESTADOS[k].l}
           </button>
         ))}
-        <select className="in" style={{ width:160 }} value={vendedor} onChange={(e) => setVendedor(e.target.value)}>
-          <option value="todos">Todos los vendedores</option>
+        <select className="in" style={{ width:150 }} value={destFiltro} onChange={(e) => setDestFiltro(e.target.value)}>
+          <option value="todos">Todos los destinos</option>
+          {destinosUnicos.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <select className="in" style={{ width:150 }} value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)}>
+          <option value="todos">Todos los meses</option>
+          {mesesUnicos.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <span className="lbl" style={{ flexShrink:0, marginLeft:2 }}>Ver como</span>
+        <select className="in" style={{ width:190 }} value={vendedor} onChange={(e) => setVendedor(e.target.value)}>
+          <option value="todos">Máster · todos los vendedores</option>
           {VENDEDORES.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
         </select>
+        <span className="sem" style={{ flexShrink:0, cursor:"help" }}>
+          <Eye size={13} style={{ color:"var(--n300)" }} />
+          <div className="tip">Cada vendedor ve solo sus cotizaciones; el máster las ve todas.</div>
+        </span>
       </div>
 
       {/* tabla — la fila entera abre el drawer */}
@@ -968,14 +1077,8 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
         {!filas.length && <div style={{ padding:30, textAlign:"center", color:"var(--n400)", fontSize:13 }}>
           No hay cotizaciones con esos filtros.</div>}
       </div>
-      <div style={{ fontSize:11, color:"var(--n400)", marginTop:9, display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
-        <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}><Eye size={11} /> Clic en una fila para ver sus analytics</span>
-        <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
-          <span className="sem-dot" style={{ background:"#2A9E8E", width:8, height:8 }} /> abierta
-          <span className="sem-dot" style={{ background:"#45D4C0", width:8, height:8, marginLeft:7 }} /> en ventana
-          <span className="sem-dot" style={{ background:"#E8A13C", width:8, height:8, marginLeft:7 }} /> +24 h sin abrir
-          <span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> +48 h sin abrir
-        </span>
+      <div style={{ fontSize:11, color:"var(--n400)", marginTop:9, display:"flex", alignItems:"center", gap:5 }}>
+        <Eye size={11} /> Clic en una fila para ver sus analytics
       </div>
 
       {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
@@ -1135,5 +1238,5 @@ function TabAnalytics() {
 }
 
 export {
-  ModalNueva, EJEMPLOS_IA, ModalIA, Inicio, ColaParaHoy, ListadoContenido, BarraH, TabAnalytics,
+  ModalNueva, EJEMPLOS_IA, ModalIA, Inicio, ColaParaHoy, TabSeguimiento, ListadoContenido, BarraH, TabAnalytics,
 };

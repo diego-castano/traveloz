@@ -1,17 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import {
   Plane, Building2, Sparkles, MapPin, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, History, Keyboard
+  StickyNote, History, Keyboard, Maximize2, Luggage
 } from "lucide-react";
 import {
-  MESES, ANIO_BASE, REGIMENES, HABITACIONES, SUG, MODALIDADES, SUG_ALL, CIUDADES, AEROLINEAS,
-  PNR_DEMO, CLIENTES, VENDEDORES, uid, hotelById, clamp, toISO, fmtCorto, money, venta, margenPct,
+  MESES, ANIO_BASE, REGIMENES, SUG, MODALIDADES, SUG_ALL, CIUDADES, AEROLINEAS,
+  CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
+  PNR_DEMO, CLIENTES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
   limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, FRECUENTES, hotelesCotizadosEn,
-  snippetMensaje, redactarMensaje
+  snippetMensaje, redactarMensaje, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa,
+  precioOpcion
 } from "./data";
 import {
   Foto, CATS, Btn, Label, Pill, ChipIA, Estrellas, Block, Vacio, Calendario, AutoCiudad,
@@ -221,7 +224,11 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
           <Label hint="se carga una sola vez y baja a todo">Fecha de salida</Label>
           <Calendario grande value={q.fechaSalida} placeholder="Elegir la salida"
             nota="De acá salen los check-in de cada destino y las fechas de todos los servicios."
-            onChange={(v) => set((d) => { d.fechaSalida = v; })} />
+            onChange={(v) => set((d) => {
+              d.fechaSalida = v;
+              const f = parseISO(v);
+              if (f) { d.titulo.mes = f.getMonth(); d.titulo.anio = f.getFullYear(); }
+            })} />
         </div>
         <div style={{ flex:"2 1 240px", paddingBottom:4 }}>
           <div style={{ display:"flex", gap:7, flexWrap:"wrap" }}>
@@ -236,6 +243,11 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
             {!tramos.length && <span style={{ fontSize:11.5, color:"var(--n300)" }}>Agregá destinos abajo y las fechas se calculan solas.</span>}
           </div>
         </div>
+      </div>
+
+      <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
+        <Zap size={11} style={{ color:"var(--teal-2)" }} />
+        El mes y el año se atan a la fecha de salida: si la cambiás, el encabezado se acomoda solo.
       </div>
 
       {hayManual && (
@@ -445,6 +457,15 @@ function BloqueMensaje({ q, set, refEl, toast }) {
         ))}
       </div>
 
+      {/* línea fija: el pasajero siempre lee esto antes del mensaje */}
+      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, padding:"7px 11px",
+        borderRadius:10, background:"var(--wash)", border:"1px solid var(--hair-soft)" }}>
+        <Eye size={12} style={{ color:"var(--n400)", flexShrink:0 }} />
+        <span style={{ fontSize:11.5, color:"var(--n400)", lineHeight:1.45 }}>
+          Sale debajo de: “De acuerdo a lo conversado, te comparto la cotización para tu viaje.”
+        </span>
+      </div>
+
       <div className="wys-bar">
         <B c="bold" title="Negrita"><b>B</b></B>
         <B c="italic" title="Cursiva"><i style={{ fontFamily:"Georgia" }}>I</i></B>
@@ -480,11 +501,16 @@ function BloqueVuelos({ q, set, refEl, toast }) {
   const [foto, setFoto] = useState(null);        // { nombre, url }
   const [choque, setChoque] = useState(null);    // fecha del vuelo ≠ fecha de salida
   const fileRef = useRef(null);
+  /* el encabezado sigue a la fecha de salida, así que se acomoda con ella */
+  const atarTitulo = (d, iso) => {
+    const f = parseISO(iso);
+    if (f) { d.titulo.mes = f.getMonth(); d.titulo.anio = f.getFullYear(); }
+  };
   const aplicarVuelos = (v) => {
     const p = v[0];
     const iso = toISO(new Date(p.mes >= new Date().getMonth() ? ANIO_BASE : ANIO_BASE + 1, p.mes, p.dia));
     if (!q.fechaSalida) {
-      set((d) => { d.vuelos = v; d.fechaSalida = iso; });
+      set((d) => { d.vuelos = v; d.fechaSalida = iso; atarTitulo(d, iso); });
       toast({ msg:`Fecha de salida tomada del primer vuelo: ${fmtCorto(iso)}`, tone:"ok" });
     } else if (q.fechaSalida !== iso) {
       set((d) => { d.vuelos = v; });
@@ -633,6 +659,44 @@ function BloqueVuelos({ q, set, refEl, toast }) {
           ))}
         </div>
       )}
+      {/* cabina y equipaje: un clic apaga, otro enciende */}
+      <div className="hairline" style={{ margin:"14px 0 12px" }} />
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
+        <div style={{ width:22, height:22, borderRadius:7, display:"grid", placeItems:"center",
+          background:"rgba(120,90,229,.11)", color:"var(--violet)" }}><Luggage size={12} /></div>
+        <span style={{ fontSize:12.5, fontWeight:700 }}>Cabina y equipaje</span>
+        <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
+      </div>
+
+      <div style={{ marginBottom:10 }}>
+        <Label>Tipo de cabina</Label>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+          {CABINAS.map((x) => (
+            <button key={x} className={`chip ${q.cabina === x ? "chip-on" : ""}`}
+              onClick={() => set((d) => { d.cabina = d.cabina === x ? null : x; })}>
+              {q.cabina === x ? <Check size={11} /> : <Plane size={11} />}{x}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <Label>Equipaje</Label>
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+          {EQUIPAJES.map((x) => (
+            <button key={x} className={`chip ${q.equipaje === x ? "chip-on" : ""}`}
+              onClick={() => set((d) => { d.equipaje = d.equipaje === x ? null : x; })}>
+              {q.equipaje === x ? <Check size={11} /> : <Luggage size={11} />}{x}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
+        <Zap size={11} style={{ color:"var(--teal-2)" }} />
+        Se replica solo en la línea de Aéreo de los servicios incluidos.
+      </div>
+
       {choque && (
         <div className="a-slide" style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, padding:"10px 12px",
           background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.34)", borderRadius:11 }}>
@@ -640,7 +704,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
           <span style={{ fontSize:12, color:"var(--ink-amber)", flex:1 }}>
             El vuelo sale el <b>{fmtCorto(choque)}</b> pero la fecha de salida cargada es <b>{fmtCorto(q.fechaSalida)}</b>.
           </span>
-          <Btn size="sm" onClick={() => { set((d) => { d.fechaSalida = choque; }); setChoque(null);
+          <Btn size="sm" onClick={() => { set((d) => { d.fechaSalida = choque; atarTitulo(d, choque); }); setChoque(null);
             toast({ msg:"Fecha de salida actualizada desde el vuelo", tone:"ok" }); }}>
             <RefreshCw size={12} /> Usar la del vuelo</Btn>
           <button className="btn btn-g btn-ico" style={{ width:25, height:25 }} onClick={() => setChoque(null)}><X size={12} /></button>
@@ -809,7 +873,8 @@ function BloqueServicios({ q, set, refEl, toast }) {
                     background:"rgba(120,90,229,.10)", color:"var(--violet)" }}><C.Icon size={12} /></div>
                   <input className="in" style={{ flex:"1 1 140px", height:30, border:"1px solid transparent",
                     background:"transparent", paddingLeft:2 }} value={s.texto}
-                    onChange={(e) => set((d) => { d.servicios[i].texto = e.target.value; })} />
+                    onChange={(e) => set((d) => { d.servicios[i].texto = e.target.value;
+                      delete d.servicios[i].auto; })} />
                   {s.categoria === "traslado" && (
                     <>
                       <select className="in" style={{ width:126, height:30, fontSize:12 }} value={s.ciudad || ""}
@@ -848,121 +913,136 @@ function BloqueServicios({ q, set, refEl, toast }) {
   );
 }
 
-/* ── 7 · Notas internas — bitácora del equipo + costos fijos; nunca salen ── */
-function BloqueNotas({ q, set, refEl, toast, vistaPasajero, vendedor }) {
-  const [c, setC] = useState(""); const [n, setN] = useState("");
-  const [txt, setTxt] = useState("");
+/* ── Notas internas — block fijo en la columna izquierda; nunca salen ──── */
+function NotasRail({ q, set, vistaPasajero, toast }) {
+  const [abierto, setAbierto] = useState(false);
+  const [c, setC] = useState("");
+  const [n, setN] = useState("");
   const inp = useRef(null);
-  const bitacora = q.bitacora || [];
-  const cuenta = q.notas.length + bitacora.length;
-  const total = q.notas.reduce((a, x) => a + Number(x.neto || 0), 0);
-  const agregar = () => { if (!c.trim()) return;
+  const notas = q.notas || [];
+  const total = notas.reduce((a, x) => a + Number(x.neto || 0), 0);
+  const agregar = () => {
+    if (!c.trim()) return;
     set((d) => { d.notas.push({ id:uid("nt"), concepto:c.trim(), neto:Number(n) || 0 }); });
-    setC(""); setN(""); requestAnimationFrame(() => inp.current?.focus()); };
-
-  /* v2F · la bitácora anota, no edita: cada entrada queda firmada y fechada */
-  const anotar = () => {
-    const t = txt.trim(); if (!t) return;
-    set((d) => { d.bitacora = d.bitacora || []; d.bitacora.unshift({ id:uid("bt"), autor:vendedor, hace:"recién", texto:t }); });
-    setTxt("");
+    setC(""); setN(""); requestAnimationFrame(() => inp.current?.focus());
   };
-  const autorDe = (id) => VENDEDORES.find((v) => v.id === id) || VENDEDORES[0];
+  const borrar = (x, i) => {
+    const cp = { ...x };
+    set((d) => { d.notas.splice(i, 1); });
+    toast?.({ msg:"Nota eliminada", tone:"warn", undo:() => set((d) => { d.notas.splice(i, 0, cp); }) });
+  };
 
-  /* v2B · en "Ver como pasajero" el bloque queda atenuado y sin nada a la vista */
+  useEffect(() => {
+    if (!abierto) return;
+    const h = (e) => { if (e.key === "Escape") { e.preventDefault(); setAbierto(false); } };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [abierto]);
+
+  /* el mismo textarea en la card y en el overlay — función, no componente,
+     para que React no lo remonte en cada tecla */
+  const area = (filas, foco) => (
+    <textarea className="in" rows={filas} autoFocus={foco} value={q.notasLibres || ""}
+      style={{ width:"100%", resize:"vertical", lineHeight:1.5, paddingTop:8, fontSize:12 }}
+      placeholder="Anotá acá netos, avisos, lo que necesites mientras cotizás…"
+      onChange={(e) => set((d) => { d.notasLibres = e.target.value; })} />
+  );
+
   if (vistaPasajero) {
     return (
-      <Block id="b-notas" forwardRef={refEl} icon={Lock} title="Notas internas" count={cuenta}
-        right={<Pill tone="n"><EyeOff size={9} /> Escondido</Pill>}>
-        <div className="oculto-pas">
-          <EyeOff size={15} style={{ color:"var(--n300)", flexShrink:0 }} />
-          <span>{cuenta
-            ? `${cuenta} ${cuenta === 1 ? "apunte interno guardado" : "apuntes internos guardados"} — el pasajero nunca los ve.`
-            : "Acá van la bitácora del equipo y los costos fijos. El pasajero nunca los ve."}
-          </span>
+      <div className="card" style={{ padding:11, marginTop:11, opacity:.55 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:7 }}>
+          <Lock size={12} style={{ color:"var(--n400)", flexShrink:0 }} />
+          <span className="lbl">Notas internas</span>
         </div>
-      </Block>
+        <div style={{ display:"flex", alignItems:"flex-start", gap:7, fontSize:10.5, color:"var(--n400)", lineHeight:1.5 }}>
+          <EyeOff size={13} style={{ flexShrink:0, marginTop:1 }} />
+          <span>Escondido — el pasajero nunca ve esto.</span>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Block id="b-notas" forwardRef={refEl} icon={Lock} title="Notas internas" count={cuenta}
-      right={<Pill tone="coral"><Lock size={9} /> No se comparte</Pill>}>
-
-      {/* ── v2F · bitácora ── */}
-      <div className="lbl" style={{ marginBottom:7 }}>Bitácora del equipo</div>
-      <div style={{ display:"flex", gap:8, alignItems:"flex-end", marginBottom: bitacora.length ? 10 : 4 }}>
-        <textarea className="in" rows={2} value={txt} style={{ flex:1, resize:"vertical", minHeight:52, paddingTop:8 }}
-          placeholder={"Anotá para el equipo: pedidos especiales, qué quedó hablado, a qué estar atentos…"}
-          onChange={(e) => setTxt(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); anotar(); } }} />
-        <Btn size="sm" onClick={anotar} style={{ height:38, flexShrink:0 }} disabled={!txt.trim()}>
-          <PenLine size={13} /> Anotar</Btn>
-      </div>
-      {bitacora.length === 0 ? (
-        <div style={{ fontSize:11, color:"var(--n400)", marginBottom:12 }}>
-          Todavía no hay anotaciones. Quedan firmadas y fechadas, solo para el equipo. <span className="mono" style={{ fontSize:10 }}>Ctrl+Enter anota</span>
+    <>
+      <div className="card" style={{ padding:11, marginTop:11 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, flexWrap:"wrap" }}>
+          <Lock size={12} style={{ color:"var(--coral)", flexShrink:0 }} />
+          <span className="lbl">Notas internas</span>
+          <Pill tone="coral" style={{ marginLeft:"auto" }}>No se comparte</Pill>
         </div>
-      ) : (
-        <div style={{ display:"flex", flexDirection:"column", gap:7, marginBottom:13 }}>
-          {bitacora.map((b, i) => {
-            const a = autorDe(b.autor);
-            return (
-              <div key={b.id} className="a-pop" style={{ display:"flex", gap:9, padding:"9px 11px", borderRadius:11,
-                background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderLeft:"3px solid var(--violet)" }}>
-                <span style={{ width:22, height:22, borderRadius:99, flexShrink:0, display:"inline-flex", alignItems:"center",
-                  justifyContent:"center", fontSize:9.5, fontWeight:800, color:"#fff",
-                  background:"linear-gradient(135deg,var(--violet),var(--violet-2))" }}>{a.inicial}</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-                    <span style={{ fontSize:11.5, fontWeight:700 }}>{a.nombre}</span>
-                    <span className="mono" style={{ fontSize:10, color:"var(--n400)" }}>{b.hace}</span>
-                  </div>
-                  <div style={{ fontSize:12.5, lineHeight:1.5, whiteSpace:"pre-wrap", overflowWrap:"anywhere" }}>{b.texto}</div>
-                </div>
-                <button className="btn btn-g btn-ico" style={{ width:25, height:25, flexShrink:0 }} title="Borrar anotación"
-                  onClick={() => { const cp = { ...b }; set((d) => { d.bitacora.splice(i, 1); });
-                    toast({ msg:"Anotación borrada", tone:"warn", undo:() => set((d) => { d.bitacora.splice(i, 0, cp); }) }); }}>
-                  <Trash2 size={12} /></button>
+        {area(7, false)}
+        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
+          <button className="btn btn-g btn-xs" onClick={() => setAbierto(true)}>
+            <Maximize2 size={11} /> Expandir
+          </button>
+          {notas.length > 0 && (
+            <span className="mono" style={{ marginLeft:"auto", fontSize:10, color:"var(--n400)" }}>
+              {notas.length} · {money(total)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* el overlay sale por un portal: la columna izquierda es sticky y se lo comería */}
+      {abierto && createPortal(
+        <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && setAbierto(false)}>
+          <div className="a-zoom card" style={{ width:"min(720px,100%)", padding:0, overflow:"hidden" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 17px",
+              borderBottom:"1px solid var(--hair-soft)" }}>
+              <div style={{ width:28, height:28, borderRadius:9, display:"grid", placeItems:"center",
+                background:"rgba(244,62,85,.11)", color:"var(--ink-coral)" }}><Lock size={15} /></div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:14, fontWeight:700, letterSpacing:"-.01em" }}>Notas internas</div>
+                <div style={{ fontSize:11.5, color:"var(--n400)" }}>Solo para el equipo — el pasajero nunca ve esto.</div>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── costos fijos (lo de siempre) ── */}
-      <div className="lbl" style={{ marginBottom:7 }}>Costos fijos</div>
-      {q.notas.length === 0
-        ? <div style={{ fontSize:11, color:"var(--n400)", marginBottom:8 }}>Netos y costos que respaldan el precio — tampoco se comparten.</div>
-        : (
-        <div style={{ border:"1px solid var(--hair-soft)", borderRadius:12, overflow:"hidden", marginBottom:10 }}>
-          {q.notas.map((x, i) => (
-            <div key={x.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px",
-              borderBottom:"1px solid var(--hair-soft)", background:"var(--card-3)" }}>
-              <input className="in" style={{ flex:1, height:29, border:"1px solid transparent", background:"transparent", paddingLeft:2 }}
-                value={x.concepto} onChange={(e) => set((d) => { d.notas[i].concepto = e.target.value; })} />
-              <input className="in mono" style={{ width:104, height:29, textAlign:"right" }} type="number" value={x.neto}
-                onChange={(e) => set((d) => { d.notas[i].neto = e.target.value; })} />
-              <button className="btn btn-g btn-ico" style={{ width:25, height:25 }}
-                onClick={() => { const cp = { ...x }; set((d) => { d.notas.splice(i, 1); });
-                  toast({ msg:"Nota eliminada", tone:"warn", undo:() => set((d) => { d.notas.splice(i, 0, cp); }) }); }}>
-                <Trash2 size={12} /></button>
+              <span className="kbd">esc</span>
+              <button className="btn btn-g btn-ico" onClick={() => setAbierto(false)}><X size={15} /></button>
             </div>
-          ))}
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px",
-            background:"var(--wash)" }}>
-            <span className="lbl">Total de costos fijos</span>
-            <span className="mono" style={{ fontSize:14, fontWeight:600 }}>{money(total)}</span>
+
+            <div style={{ padding:"14px 17px", maxHeight:"72vh", overflowY:"auto" }}>
+              {area(10, true)}
+
+              <div className="lbl" style={{ margin:"16px 0 7px" }}>Costos fijos</div>
+              {notas.length === 0
+                ? <div style={{ fontSize:11.5, color:"var(--n400)", marginBottom:9 }}>
+                    Netos y costos que respaldan el precio — tampoco se comparten.
+                  </div>
+                : (
+                <div style={{ border:"1px solid var(--hair-soft)", borderRadius:12, overflow:"hidden", marginBottom:10 }}>
+                  {notas.map((x, i) => (
+                    <div key={x.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px",
+                      borderBottom:"1px solid var(--hair-soft)", background:"var(--card-3)" }}>
+                      <input className="in" style={{ flex:1, height:29, border:"1px solid transparent",
+                        background:"transparent", paddingLeft:2 }} value={x.concepto}
+                        onChange={(e) => set((d) => { d.notas[i].concepto = e.target.value; })} />
+                      <input className="in mono" style={{ width:104, height:29, textAlign:"right" }} type="number" value={x.neto}
+                        onChange={(e) => set((d) => { d.notas[i].neto = e.target.value; })} />
+                      <button className="btn btn-g btn-ico" style={{ width:25, height:25 }} onClick={() => borrar(x, i)}>
+                        <Trash2 size={12} /></button>
+                    </div>
+                  ))}
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"9px 12px",
+                    background:"var(--wash)" }}>
+                    <span className="lbl">Total de costos fijos</span>
+                    <span className="mono" style={{ fontSize:14, fontWeight:600 }}>{money(total)}</span>
+                  </div>
+                </div>
+              )}
+              <div style={{ display:"flex", gap:8 }}>
+                <input ref={inp} className="in" style={{ flex:1 }} value={c} placeholder="Concepto…"
+                  onChange={(e) => setC(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregar()} />
+                <input className="in mono" style={{ width:110, textAlign:"right" }} type="number" value={n} placeholder="0"
+                  onChange={(e) => setN(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregar()} />
+                <Btn size="sm" onClick={agregar} style={{ height:38 }}><Plus size={13} /></Btn>
+              </div>
+            </div>
           </div>
-        </div>
+        </div>,
+        /* dentro de .ctz para no perder las variables de color ni el modo oscuro */
+        document.querySelector(".ctz") || document.body
       )}
-      <div style={{ display:"flex", gap:8 }}>
-        <input ref={inp} className="in" style={{ flex:1 }} value={c} placeholder="Concepto…"
-          onChange={(e) => setC(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregar()} />
-        <input className="in mono" style={{ width:110, textAlign:"right" }} type="number" value={n} placeholder="0"
-          onChange={(e) => setN(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregar()} />
-        <Btn size="sm" onClick={agregar} style={{ height:38 }}><Plus size={13} /></Btn>
-      </div>
-    </Block>
+    </>
   );
 }
 
@@ -1050,9 +1130,11 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
     const id = uid("op");
     set((d) => { d.opciones.push({ id, nombre:`Opción ${d.opciones.length + 1}`,
       hoteles: d.destinos.map(() => ({ hotelId:null, libre:"" })),
-      habitacion:"Doble estándar", regimen:"Desayuno", neto:0, factor:0.88 }); });
+      regimen:"Desayuno", factor:0.88, habitaciones:[habitacionNueva("Doble")] }); });
     setFoco(id);
   };
+  /* la segunda tarifa suele ser el menor y la tercera la familiar */
+  const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por familia" : "Por adulto");
   const duplicar = (i) => {
     const src = q.opciones[i]; const id = uid("op");
     const copia = JSON.parse(JSON.stringify(src));
@@ -1078,7 +1160,11 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
 
       <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
         {q.opciones.map((o, i) => {
-          const pv = venta(o.neto, o.factor);
+          const habs = o.habitaciones || [];
+          const t0 = habs[0]?.tarifas?.[0] || null;
+          const pv = precioOpcion(o);
+          const etiqueta = t0 ? `${etiquetaTarifa(t0)} · ${habs[0].ocupacion}` : "sin tarifas cargadas";
+          const faltaPrecio = habs.some((h) => (h.tarifas || []).some((t) => !Number(t.neto) && !Number(t.venta)));
           return (
             <React.Fragment key={o.id}>
               {over === i && drag !== null && <div className="drop-line" />}
@@ -1157,13 +1243,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                   })}
 
                   <div style={{ display:"flex", gap:9, flexWrap:"wrap", marginTop:11 }}>
-                    <div style={{ flex:"1 1 150px" }}>
-                      <Label>Habitación</Label>
-                      <select className="in" value={o.habitacion} onChange={(e) => set((d) => { d.opciones[i].habitacion = e.target.value; })}>
-                        {HABITACIONES.map((x) => <option key={x}>{x}</option>)}
-                      </select>
-                    </div>
-                    <div style={{ flex:"1 1 150px" }}>
+                    <div style={{ flex:"1 1 180px" }}>
                       <Label>Régimen</Label>
                       <select className="in" value={o.regimen} onChange={(e) => set((d) => { d.opciones[i].regimen = e.target.value; })}>
                         {REGIMENES.map((x) => <option key={x}>{x}</option>)}
@@ -1171,34 +1251,130 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                     </div>
                   </div>
 
+                  {/* habitaciones: cada una con su ocupación, su tipo y sus tarifas */}
+                  <div style={{ display:"flex", alignItems:"center", gap:8, margin:"14px 0 8px" }}>
+                    <span className="lbl">Habitaciones</span>
+                    {habs.length > 0 && <Pill tone="n">{habs.length}</Pill>}
+                    <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
+                    <Btn size="xs" onClick={() => set((d) => {
+                      d.opciones[i].habitaciones = d.opciones[i].habitaciones || [];
+                      d.opciones[i].habitaciones.push(habitacionNueva("Doble")); })}>
+                      <Plus size={11} /> Agregar habitación</Btn>
+                  </div>
+
+                  {habs.length === 0 && (
+                    <div style={{ fontSize:11.5, color:"var(--n400)", marginBottom:9 }}>
+                      Esta opción todavía no tiene habitaciones. Agregá la primera para cargarle tarifas.
+                    </div>
+                  )}
+
+                  {habs.map((hab, hj) => (
+                    <div key={hab.id} className="a-pop" style={{ border:"1px solid var(--hair-soft)", borderRadius:12,
+                      padding:"10px", marginBottom:8, background:"var(--card-3)" }}>
+                      <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-end" }}>
+                        <div style={{ flex:"1 1 140px" }}>
+                          <Label>Ocupación</Label>
+                          <select className="in" style={{ height:34 }} value={hab.ocupacion}
+                            onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].ocupacion = e.target.value; })}>
+                            {OCUPACIONES.map((x) => <option key={x}>{x}</option>)}
+                          </select>
+                        </div>
+                        <div style={{ flex:"2 1 190px" }}>
+                          <Label hint="opcional">Tipo de habitación</Label>
+                          <input className="in" style={{ height:34 }} value={hab.tipo || ""}
+                            placeholder="Vista al mar, suite junior, apartamento…"
+                            onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tipo = e.target.value; })} />
+                        </div>
+                        <button className="btn btn-g btn-ico" style={{ width:34, height:34 }} title="Quitar habitación"
+                          disabled={habs.length <= 1}
+                          onClick={() => { const cp = JSON.parse(JSON.stringify(hab));
+                            set((d) => { d.opciones[i].habitaciones.splice(hj, 1); });
+                            toast({ msg:"Habitación eliminada", tone:"warn",
+                              undo:() => set((d) => { d.opciones[i].habitaciones.splice(hj, 0, cp); }) }); }}>
+                          <Trash2 size={13} /></button>
+                      </div>
+
+                      <div style={{ marginTop:10 }}>
+                        {(hab.tarifas || []).map((t, tk) => {
+                          /* venta null → automática; con número, el vendedor la pisó */
+                          const manual = t.venta !== null && t.venta !== "" && t.venta !== undefined;
+                          const L = (txt, hint) => (tk === 0 ? <Label hint={hint}>{txt}</Label> : null);
+                          return (
+                            <div key={t.id} style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"flex-end", marginBottom:6 }}>
+                              <div style={{ flex:"1 1 130px" }}>
+                                {L("Tarifa")}
+                                <select className="in" style={{ height:32, fontSize:12 }} value={t.tipo}
+                                  onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].tipo = e.target.value; })}>
+                                  {TARIFA_TIPOS.map((x) => <option key={x}>{x}</option>)}
+                                </select>
+                              </div>
+                              {t.tipo === "Otro" && (
+                                <div style={{ flex:"1 1 130px" }}>
+                                  {L("Nombre")}
+                                  <input className="in" style={{ height:32, fontSize:12 }} value={t.tipoLibre || ""}
+                                    placeholder="Ej.: Por bebé"
+                                    onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].tipoLibre = e.target.value; })} />
+                                </div>
+                              )}
+                              <div style={{ width:100 }}>
+                                {L("Neto")}
+                                <input className="in mono" style={{ height:32, textAlign:"right" }} type="number" value={t.neto}
+                                  onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].neto = e.target.value; })} />
+                              </div>
+                              <div style={{ width:112 }}>
+                                {L("Venta", manual ? null : "automática")}
+                                <input className="in mono" type="number"
+                                  style={{ height:32, textAlign:"right",
+                                    color: manual ? "var(--ink-amber)" : "var(--teal-3)" }}
+                                  value={manual ? t.venta : Math.round(ventaTarifa(t, o.factor))}
+                                  onChange={(e) => set((d) => { const v = e.target.value;
+                                    d.opciones[i].habitaciones[hj].tarifas[tk].venta = v === "" ? null : v; })} />
+                              </div>
+                              {manual && (
+                                <button className="pill" title="Volver a la venta automática (neto ÷ factor)"
+                                  style={{ height:32, background:"rgba(247,178,103,.2)", color:"var(--ink-amber)", cursor:"pointer" }}
+                                  onClick={() => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].venta = null; })}>
+                                  manual <RefreshCw size={9} />
+                                </button>
+                              )}
+                              <button className="btn btn-g btn-ico" style={{ width:32, height:32 }} title="Quitar tarifa"
+                                disabled={(hab.tarifas || []).length <= 1}
+                                onClick={() => set((d) => { d.opciones[i].habitaciones[hj].tarifas.splice(tk, 1); })}>
+                                <Trash2 size={12} /></button>
+                            </div>
+                          );
+                        })}
+                        <Btn size="xs" onClick={() => set((d) => {
+                          const ts = d.opciones[i].habitaciones[hj].tarifas;
+                          ts.push(tarifaNueva(tipoSiguiente(ts.length))); })}>
+                          <Plus size={11} /> Tarifa</Btn>
+                      </div>
+                    </div>
+                  ))}
+
                   {/* markup: factor divisor, venta en vivo */}
                   <div style={{ display:"flex", gap:9, flexWrap:"wrap", marginTop:10, alignItems:"flex-end",
                     padding:"10px", background:"rgba(59,191,173,.045)", border:"1px solid rgba(59,191,173,.16)", borderRadius:11 }}>
-                    <div style={{ flex:"1 1 110px" }}>
-                      <Label>Neto</Label>
-                      <input className="in mono" type="number" value={o.neto}
-                        onChange={(e) => set((d) => { d.opciones[i].neto = e.target.value; })} />
-                    </div>
                     <div style={{ flex:"1 1 110px" }}>
                       <Label hint={vistaPasajero ? null : `${margenPct(o.factor)}%`}>Factor</Label>
                       <input className="in mono" type="number" step="0.01" min="0.5" max="1" value={o.factor}
                         onChange={(e) => set((d) => { d.opciones[i].factor = e.target.value; })} />
                     </div>
-                    <div style={{ flex:"1 1 130px", textAlign:"right" }}>
+                    <div style={{ flex:"2 1 150px", textAlign:"right" }}>
                       <Label>Precio de venta</Label>
                       <div key={pv} className="a-pulse" style={{ fontSize:20, fontWeight:700, letterSpacing:"-.025em",
                         color:"var(--teal-3)", lineHeight:1.25 }}>{money(pv)}</div>
-                      <div style={{ fontSize:10.5, color:"var(--n400)" }}>por adulto en base doble</div>
+                      <div style={{ fontSize:10.5, color:"var(--n400)" }}>{etiqueta}</div>
                     </div>
                   </div>
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6, flexWrap:"wrap" }}>
-                    {!Number(o.neto) && (
+                    {faltaPrecio && (
                       <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"var(--ink-amber)" }}>
-                        <AlertCircle size={11} /> Falta el neto de esta opción
+                        <AlertCircle size={11} /> Hay tarifas sin neto ni venta
                       </span>
                     )}
                     {!vistaPasajero && (
-                      <div style={{ marginLeft:"auto" }}><LineaMargen neto={o.neto} factor={o.factor} /></div>
+                      <div style={{ marginLeft:"auto" }}><LineaMargen neto={t0?.neto ?? 0} factor={o.factor} /></div>
                     )}
                   </div>
                 </div>
@@ -1299,7 +1475,7 @@ const ATAJOS = [
   { titulo:"Mientras armás la cotización", filas:[
     ["Abrir la paleta de comandos",              ["⌘","K"]],
     ["Compartir la cotización",                  ["⌘","↵"]],
-    ["Saltar a un bloque",                       ["Alt","1","…","8"]],
+    ["Saltar a un bloque",                       ["Alt","1","…","7"]],
     ["Pasar al campo siguiente (Cliente y Encabezado)", ["↵"]],
     ["Agregar el servicio y seguir escribiendo", ["↵"]],
     ["Completar la sugerencia de servicio",      ["Tab"]],
@@ -1416,7 +1592,7 @@ function Paleta({ acciones, onClose }) {
 
 export {
   BloqueCliente, BloqueEncabezado, SeccionDestinos, BloqueMensaje, BloqueVuelos, BloqueServicios,
-  BloqueNotas, BloqueNotasCliente, SeccionOpciones, BloqueAlojamiento, BannerIA, Paleta,
+  NotasRail, BloqueNotasCliente, SeccionOpciones, BloqueAlojamiento, BannerIA, Paleta,
   /* v2B */
   LineaMargen, BannerPasajero, HojaAtajos, ATAJOS, enterAvanza,
 };

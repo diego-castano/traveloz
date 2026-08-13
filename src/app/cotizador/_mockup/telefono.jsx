@@ -5,7 +5,8 @@ import {
   Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Wallet, Utensils
 } from "lucide-react";
 import {
-  MESES, MES_AB, AEROPUERTOS, VENDEDORES, hotelById, fmtCorto, fmtLargo, money, venta
+  MESES, MES_AB, AEROPUERTOS, VENDEDORES, hotelById, fmtCorto, fmtLargo, money,
+  precioOpcion, ventaTarifa, etiquetaTarifa
 } from "./data";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
 
@@ -48,7 +49,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
   /* v2C · comparación: la opción 1 es la base, las demás muestran cuánto suben o bajan */
   const varias = q.opciones.length > 1;
-  const base = q.opciones[0] ? Math.round(venta(q.opciones[0].neto, q.opciones[0].factor)) : 0;
+  const base = q.opciones[0] ? Math.round(precioOpcion(q.opciones[0])) : 0;
   const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
   const visibles = !q.opciones.length ? [] : varias ? [elegida] : q.opciones;
 
@@ -191,7 +192,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
             {varias && (
               <div className="opt-seg" data-desk={desk ? "1" : "0"}>
                 {q.opciones.map((o, i) => {
-                  const pv = venta(o.neto, o.factor);
+                  const pv = precioOpcion(o);
                   return (
                     <button key={o.id} data-on={elegida?.id === o.id ? "1" : "0"}
                       onClick={() => { setSel(o.id); setAbierta(o.id); }}>
@@ -208,8 +209,13 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
               {visibles.map((o) => {
                 const oi = q.opciones.indexOf(o);
                 const on = abierta === o.id;
-                const pv = venta(o.neto, o.factor);
+                const pv = precioOpcion(o);
                 const H0 = hotelById(o.hoteles?.[0]?.hotelId);
+                const hab0 = o.habitaciones?.[0];
+                const tarifa0 = hab0?.tarifas?.[0];
+                const caption = tarifa0
+                  ? `${etiquetaTarifa(tarifa0).toLowerCase()}${hab0.ocupacion ? ` · hab. ${String(hab0.ocupacion).toLowerCase()}` : ""}`
+                  : "por adulto · base doble";
                 return (
                   /* con switcher hay una sola card: la clave fija deja que el precio ruede al cambiar */
                   <div key={varias ? "op-visible" : o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
@@ -232,7 +238,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                           background:"rgba(255,255,255,.96)", boxShadow:"0 4px 14px rgba(0,0,0,.2)", textAlign:"right" }}>
                           <span style={{ display:"block", fontSize:fz(15.5, 17), fontWeight:800, color:G.b,
                             letterSpacing:"-.025em", lineHeight:1.1 }}><Odometro valor={pv} /></span>
-                          <span style={{ display:"block", fontSize:fz(8.5, 9), color:"#6B6F99", fontWeight:600 }}>por adulto · base doble</span>
+                          <span style={{ display:"block", fontSize:fz(8.5, 9), color:"#6B6F99", fontWeight:600 }}>{caption}</span>
                         </span>
                       </Foto>
 
@@ -246,7 +252,8 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                           </div>
                           <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:fz(10.5, 11),
                             color:"#8A8DB5", marginTop:2 }}>
-                            <Utensils size={10} /> {o.regimen} · <Bed size={10} /> {o.habitacion}
+                            <Utensils size={10} /> {o.regimen}
+                            {o.habitaciones?.length ? <> · <Bed size={10} /> {o.habitaciones.map((h) => h.ocupacion).join(" + ")}</> : null}
                           </div>
                         </div>
                         <span style={{ display:"inline-flex", alignItems:"center", gap:4, flexShrink:0,
@@ -291,11 +298,42 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                             </div>
                           );
                         })}
-                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                          padding:"12px 14px", borderRadius:13, background:grad, color:"#fff" }}>
-                          <span style={{ fontSize:fz(11.5, 12), fontWeight:600, opacity:.92 }}>Precio final por adulto</span>
-                          <span style={{ fontSize:fz(19, 21), fontWeight:800, letterSpacing:"-.03em" }}><Odometro valor={pv} /></span>
-                        </div>
+                        {o.habitaciones?.length ? (
+                          <div>
+                            <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
+                              color:"#8A8DB5", margin:"2px 0 8px" }}>Tarifas</div>
+                            {o.habitaciones.map((hab, hi) => (
+                              <div key={hab.id ?? hi} style={{ marginBottom: hi < o.habitaciones.length - 1 ? 10 : 0 }}>
+                                <div style={{ fontSize:fz(11.5, 12), fontWeight:700, color:"#3D4066", marginBottom:6 }}>
+                                  Habitación {hab.ocupacion}{hab.tipo ? ` · ${hab.tipo}` : ""}
+                                </div>
+                                {(hab.tarifas || []).map((tar, ti) => {
+                                  const valor = ventaTarifa(tar, o.factor);
+                                  return hi === 0 && ti === 0 ? (
+                                    <div key={tar.id ?? ti} style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                                      padding:"12px 14px", borderRadius:13, background:grad, color:"#fff", marginBottom:8 }}>
+                                      <span style={{ fontSize:fz(11.5, 12), fontWeight:600, opacity:.92 }}>{etiquetaTarifa(tar)}</span>
+                                      <span style={{ fontSize:fz(19, 21), fontWeight:800, letterSpacing:"-.03em" }}><Odometro valor={valor} /></span>
+                                    </div>
+                                  ) : (
+                                    <div key={tar.id ?? ti} style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                                      padding:"9px 12px", borderRadius:11, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.06)",
+                                      marginBottom:6 }}>
+                                      <span style={{ fontSize:fz(11, 11.5), color:"#3D4066", fontWeight:600 }}>{etiquetaTarifa(tar)}</span>
+                                      <span className="mono" style={{ fontSize:fz(12.5, 13), fontWeight:700, color:"#1A1A2E" }}>{money(valor)}</span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                            padding:"12px 14px", borderRadius:13, background:grad, color:"#fff" }}>
+                            <span style={{ fontSize:fz(11.5, 12), fontWeight:600, opacity:.92 }}>Precio final por adulto</span>
+                            <span style={{ fontSize:fz(19, 21), fontWeight:800, letterSpacing:"-.03em" }}><Odometro valor={precioOpcion(o)} /></span>
+                          </div>
+                        )}
                         {confirmada === o.id ? (
                           <div className="a-pop" style={{ marginTop:9, padding:"12px 14px", borderRadius:13,
                             background:"rgba(59,191,173,.1)", border:"1.5px solid rgba(42,158,142,.4)",
@@ -364,7 +402,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Condiciones</div>
           <ul style={{ margin:0, paddingLeft:15, fontSize:fz(10.5, 11), lineHeight:1.65, color:"#6B6F99" }}>
-            <li>Precios por persona en dólares americanos, en base doble.</li>
+            <li>Precios en dólares americanos, según la tarifa y ocupación indicadas.</li>
             <li>Valores sujetos a disponibilidad y confirmación al momento de la reserva.</li>
             <li>Tarifa no incluye gastos personales ni excursiones no detalladas.</li>
             <li>Cotización válida por {q.vigencia ?? 48} horas.</li>
