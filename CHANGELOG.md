@@ -13,7 +13,32 @@ del catálogo, CRM).
 
 ## 13 de agosto de 2026
 
+### Arreglado
+
+**Todos los botones del cotizador salían con fondo blanco.** Un reset de CSS
+(`.ctz button`) tenía más peso que las clases de color de los botones, así que
+el fondo de cada variante — el teal de Compartir, el gradiente de marca de
+Confirmar, los chips activos — quedaba pisado y todo se veía blanco y plano.
+El reset ahora usa `:where()`, que no compite en especificidad, y cada botón
+recuperó su color. Además cada acción tiene su tinte propio: duplicar en
+violeta suave, guardar como plantilla en ámbar, copiar link en teal.
+
 ### Cambiado
+
+**El drawer de una cotización suma "Ver cotización" y "Edición total".** Ver
+cotización abre la vista tal como la ve el pasajero (antes era un ícono de ojo
+fácil de pasar por alto); Edición total abre esa cotización en el formulario
+completo del editor, con su mismo número y estado, para retocarla sin vueltas.
+
+**Las notas internas del rail son un block de verdad.** Crecen solas al pasar
+el mouse o al escribir (112 a 252 píxeles, animado) para leer cómodo, tienen un
+campo de nota rápida que agrega viñetas con Enter, y el botón Expandir tiene su
+microanimación y abre el block grande con los costos fijos.
+
+**Detalles que faltaban de la reunión del 11/08:** agregar un destino arranca
+con 7 noches (antes 3) — el estándar del paquete uruguayo — y el buscador de
+ciudades ignora los tildes: "buzios" encuentra Búzios y "mexico" encontraría
+México.
 
 **El mockup del cotizador incorpora todo lo pedido en la reunión del 11/08 y el
 mail de Gero.** Sigue siendo un mockup sin conexión al sistema, pero ya muestra
