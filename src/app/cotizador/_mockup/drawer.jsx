@@ -2,9 +2,10 @@
 
 import { useState, useMemo } from "react";
 import {
-  Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2, Clock3, TrendingUp
+  Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2, Clock3, TrendingUp,
+  Lock, Trash2, Smartphone, Monitor
 } from "lucide-react";
-import { VENDEDORES, semaforo, fmtHace, money, ESTADOS } from "./data";
+import { VENDEDORES, semaforo, fmtHace, money, ESTADOS, uid } from "./data";
 import { Btn, Pill } from "./ui";
 import { SalidaPasajero } from "./telefono";
 import { ModalCompartir } from "./compartir";
@@ -51,7 +52,7 @@ function insightLectura(num) {
 }
 
 /* ── Drawer de analytics de una cotización ─────────────────────────────── */
-function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, onEditar, toast }) {
+function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, onEditar, onBitacora, toast }) {
   const V = VENDEDORES.find((v) => v.id === r.vendedor) || VENDEDORES[0];
   const S = semaforo(r);
   const E = ESTADOS[r.estado];
@@ -59,7 +60,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
   const [comp, setComp] = useState(false);
   const [confOpen, setConfOpen] = useState(false);
   const [editEst, setEditEst] = useState(false);
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(null);   // null | "cel" | "tab" | "desk"
+  const [txtBit, setTxtBit] = useState("");
   /* cotización de muestra para la vista previa del drawer */
   const qPrev = useMemo(() => {
     const dest = r.destino.split(",")[0];
@@ -244,6 +246,54 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             ))}
           </div>
 
+
+          {/* ── bitácora interna: se maneja acá mismo, sin abrir la cotización ── */}
+          <div style={{ display:"flex", alignItems:"center", gap:7, margin:"16px 0 8px" }}>
+            <span className="lbl">Notas internas</span>
+            <Pill tone="coral"><Lock size={9} /> No se comparte</Pill>
+          </div>
+          <textarea className="in" rows={2} value={txtBit}
+            style={{ width:"100%", resize:"none", lineHeight:1.5, paddingTop:8, fontSize:12 }}
+            placeholder="Anotá y Enter… (Shift+Enter, salto)"
+            onChange={(e) => setTxtBit(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                const t = txtBit.trim(); if (!t) return;
+                onBitacora?.(r.num, [{ id:uid("bt"), autor:r.vendedor, hace:"recién", texto:t }, ...(r.bitacora || [])]);
+                setTxtBit("");
+              }
+            }} />
+          {(r.bitacora || []).length > 0 && (
+            <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:8 }}>
+              {(r.bitacora || []).map((b, i) => {
+                const a = VENDEDORES.find((v) => v.id === b.autor) || VENDEDORES[0];
+                return (
+                  <div key={b.id} className="a-pop" style={{ display:"flex", gap:8, padding:"8px 10px", borderRadius:10,
+                    background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderLeft:"3px solid var(--violet)" }}>
+                    <span style={{ width:20, height:20, borderRadius:99, flexShrink:0, display:"inline-flex",
+                      alignItems:"center", justifyContent:"center", fontSize:8.5, fontWeight:800, color:"#fff",
+                      background:"linear-gradient(135deg,var(--violet),var(--violet-2))" }}>{a.inicial}</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                        <span style={{ fontSize:11, fontWeight:700 }}>{a.nombre.split(" ")[0]}</span>
+                        <span className="mono" style={{ fontSize:9.5, color:"var(--n400)" }}>{b.hace}</span>
+                      </div>
+                      <div style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-wrap", overflowWrap:"anywhere" }}>{b.texto}</div>
+                    </div>
+                    <button className="btn btn-g btn-ico" style={{ width:23, height:23, flexShrink:0 }} title="Borrar anotación"
+                      onClick={() => {
+                        const resto = (r.bitacora || []).filter((x) => x.id !== b.id);
+                        onBitacora?.(r.num, resto);
+                        toast?.({ msg:"Anotación borrada", tone:"warn",
+                          undo:() => onBitacora?.(r.num, [...resto.slice(0, i), b, ...resto.slice(i)]) });
+                      }}><Trash2 size={11} /></button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {r.estado === "confirmada" && (
             <div className="a-pop" style={{ marginTop:14, padding:"11px 13px", borderRadius:12,
               background:"rgba(120,90,229,.07)", border:"1px solid rgba(120,90,229,.22)" }}>
@@ -274,7 +324,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           flexDirection:"column", gap:8 }}>
           <div className="drawer-acc" style={{ display:"flex", gap:8 }}>
             <Btn variant="tv" style={{ flex:1, height:38 }} title="Ver la cotización como la ve el pasajero"
-              onClick={() => setPreview(true)}>
+              onClick={() => setPreview("cel")}>
               <Eye size={14} /> Ver cotización
             </Btn>
             <Btn variant="v" style={{ flex:1, height:38 }} title="Abrirla en el formulario de creación para editarla entera"
@@ -332,21 +382,69 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
       </div>
       {comp && <ModalCompartir q={qLite} marca="traveloz" recordatorio toast={toast}
         onClose={() => setComp(false)} onEnviada={() => onRecordatorio?.(r)} />}
-      {preview && (
-        <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && setPreview(false)}>
-          <div className="a-zoom" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:12 }}>
-            <div className="phone">
-              <div className="phone-scr">
-                <div className="notch" />
-                <SalidaPasajero q={qPrev} marca="traveloz" vendedor={r.vendedor} tramos={[
-                  { id:"t1", ciudad:qPrev.titulo.destino, noches:7, checkin:"2026-10-15", checkout:"2026-10-22", manual:false },
-                ]} />
-              </div>
+      {preview && (() => {
+        const tramosPrev = [{ id:"t1", ciudad:qPrev.titulo.destino, noches:7, checkin:"2026-10-15", checkout:"2026-10-22", manual:false }];
+        return (
+        <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && setPreview(null)}>
+          <div className="a-zoom" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14, maxWidth:"96vw" }}>
+
+            {/* mismo selector de formato que la vista previa del editor */}
+            <div style={{ display:"flex", gap:4, padding:4, borderRadius:13,
+              background:"rgba(255,255,255,.12)", backdropFilter:"blur(8px)" }}>
+              {[["cel","Celular",Smartphone],["tab","Tablet",null],["desk","Escritorio",Monitor]].map(([k, l, I]) => (
+                <button key={k} onClick={() => setPreview(k)}
+                  style={{ display:"inline-flex", alignItems:"center", gap:7, padding:"8px 16px", borderRadius:10,
+                    fontSize:13, fontWeight:700, transition:"all .18s",
+                    background: preview === k ? "#fff" : "transparent",
+                    color: preview === k ? "#1A1A2E" : "rgba(255,255,255,.75)",
+                    boxShadow: preview === k ? "0 4px 14px rgba(0,0,0,.25)" : "none" }}>
+                  {I ? <I size={13} /> : <Smartphone size={15} style={{ transform:"rotate(90deg)" }} />}
+                  {l}
+                </button>
+              ))}
             </div>
-            <Btn onClick={() => setPreview(false)}><X size={14} /> Cerrar vista previa</Btn>
+
+            {preview === "cel" && (
+              <div className="phone a-zoom" key="cel">
+                <div className="phone-scr">
+                  <div className="notch" />
+                  <SalidaPasajero q={qPrev} marca="traveloz" vendedor={r.vendedor} tramos={tramosPrev} />
+                </div>
+              </div>
+            )}
+
+            {preview === "tab" && (
+              <div className="a-zoom" key="tab" style={{ width:"min(700px,94vw)", borderRadius:30, padding:12,
+                background:"linear-gradient(160deg,#2A2A45,#14142A)",
+                boxShadow:"0 34px 80px -24px rgba(17,17,36,.55), 0 0 0 1px rgba(255,255,255,.06) inset" }}>
+                <div style={{ borderRadius:20, overflow:"hidden", background:"#fff", height:"min(540px,66vh)", overflowY:"auto" }}>
+                  <SalidaPasajero q={qPrev} marca="traveloz" vendedor={r.vendedor} tramos={tramosPrev} modo="desk" />
+                </div>
+              </div>
+            )}
+
+            {preview === "desk" && (
+              <div className="browser a-zoom" key="desk" style={{ width:"min(940px,96vw)" }}>
+                <div className="browser-bar">
+                  <span className="browser-dot" style={{ background:"#F25C54" }} />
+                  <span className="browser-dot" style={{ background:"#F7B267" }} />
+                  <span className="browser-dot" style={{ background:"#45D4C0" }} />
+                  <div className="browser-url">
+                    <Lock size={10} style={{ color:"var(--teal-2)" }} />
+                    traveloz.com.uy/c/{r.num.toLowerCase()}
+                  </div>
+                </div>
+                <div style={{ height:"min(560px,66vh)", overflowY:"auto" }}>
+                  <SalidaPasajero q={qPrev} marca="traveloz" vendedor={r.vendedor} tramos={tramosPrev} modo="desk" />
+                </div>
+              </div>
+            )}
+
+            <Btn onClick={() => setPreview(null)}><X size={14} /> Cerrar vista previa</Btn>
           </div>
         </div>
-      )}
+        );
+      })()}
     </>
   );
 }

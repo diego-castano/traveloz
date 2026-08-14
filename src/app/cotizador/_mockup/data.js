@@ -202,6 +202,10 @@ const VENDEDORES = [
 const HISTORIAL = [
   { num:"COT-2026-0147", cliente:"Familia Rodríguez", destino:"Punta Cana, Noviembre 2026", vendedor:"v3", estado:"abierta",
     monto:1955, dias:1, hEnvio:26, aperturas:3, hasta:"4 h 10 m", lectura:"2 m 40 s", hastaSec:"Formas de pago",
+    bitacora:[
+      { id:"bt147a", autor:"v3", hace:"hace 3 h",  texto:"Piden habitación cerca de la piscina — avisar al hotel al confirmar." },
+      { id:"bt147b", autor:"v1", hace:"hace 22 h", texto:"Neto Bahia Principe negociado a 1720, vence el lunes." },
+    ],
     apDet:[{ hace:"hace 22 h", disp:"iPhone · WhatsApp", lugar:"Montevideo, UY" },
            { hace:"hace 20 h", disp:"iPhone · Safari",   lugar:"Montevideo, UY" },
            { hace:"hace 3 h",  disp:"Android · WhatsApp", lugar:"Canelones, UY" }] },
@@ -222,6 +226,9 @@ const HISTORIAL = [
   /* v2D: la abrió pero la dejó por la mitad — es el caso que muestra el funnel de lectura incompleto */
   { num:"COT-2026-0141", cliente:"Ramiro Pintos", destino:"Cancún, Diciembre 2026", vendedor:"v2", estado:"abierta",
     monto:1850, dias:8, hEnvio:40, aperturas:2, hasta:"6 h 20 m", lectura:"48 s", hastaSec:"Hoteles",
+    bitacora:[
+      { id:"bt141a", autor:"v2", hace:"hace 5 h", texto:"Viaja con un bebé de 8 meses — cotizar cuna y asiento de avión." },
+    ],
     apDet:[{ hace:"hace 34 h", disp:"Android · WhatsApp", lugar:"Montevideo, UY" },
            { hace:"hace 5 h",  disp:"Android · Chrome",   lugar:"Montevideo, UY" }] },
 ];

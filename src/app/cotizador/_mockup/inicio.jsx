@@ -760,6 +760,7 @@ function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbri
    duplicar estado acá en vez de complicar el árbol con un hook compartido). ── */
 function TabSeguimiento({ actual, toast, onEditar }) {
   const [selNum, setSelNum] = useState(null);
+  const [ovBit, setOvBit] = useState({});      // bitácora editada desde el drawer, por número
   const [ov, setOv] = useState({});
   const [ovEst, setOvEst] = useState({});
   const [ovReact, setOvReact] = useState({});
@@ -770,8 +771,9 @@ function TabSeguimiento({ actual, toast, onEditar }) {
     .map((r) => ov[r.num] ? { ...r, estado:"confirmada", confOpcion:ov[r.num].op, confVia:ov[r.num].via } : r)
     .map((r) => ovReact[r.num] ? { ...r, ...ovReact[r.num] } : r)
     .map((r) => ovHist[r.num] ? { ...r, hist:ovHist[r.num] } : r)
+    .map((r) => ovBit[r.num] ? { ...r, bitacora:ovBit[r.num] } : r)
     .map((r) => ({ ...r, estadoManual: ovEst[r.num] || null, estado: estadoEfectivo({ ...r, estadoManual: ovEst[r.num] || null }) })),
-    [actual, ov, ovEst, ovReact, ovHist]);
+    [actual, ov, ovEst, ovReact, ovHist, ovBit]);
   const sel = base.find((r) => r.num === selNum) || null;
 
   const reactivar = useCallback((r) => {
@@ -865,6 +867,7 @@ function TabSeguimiento({ actual, toast, onEditar }) {
 
       {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
         onEditar={onEditar ? (r) => { setSelNum(null); onEditar(r); } : undefined}
+        onBitacora={(num, lista) => setOvBit((o) => ({ ...o, [num]:lista }))}
         onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
         onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
         onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}
@@ -879,6 +882,7 @@ function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
   const [destFiltro, setDestFiltro] = useState("todos");  // v2F · filtro por destino
   const [mesFiltro, setMesFiltro] = useState("todos");    // v2F · filtro por mes de salida
   const [selNum, setSelNum] = useState(null);  // fila abierta en el drawer
+  const [ovBit, setOvBit] = useState({});      // bitácora editada desde el drawer, por número
   const [ov, setOv] = useState({});            // confirmaciones hechas en esta sesión
   const [ovEst, setOvEst] = useState({});      // estados pisados a mano por el vendedor
   const [ovReact, setOvReact] = useState({});  // v2 · reactivadas: link nuevo por 48 h
@@ -888,8 +892,9 @@ function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
     .map((r) => ov[r.num] ? { ...r, estado:"confirmada", confOpcion:ov[r.num].op, confVia:ov[r.num].via } : r)
     .map((r) => ovReact[r.num] ? { ...r, ...ovReact[r.num] } : r)
     .map((r) => ovHist[r.num] ? { ...r, hist:ovHist[r.num] } : r)
+    .map((r) => ovBit[r.num] ? { ...r, bitacora:ovBit[r.num] } : r)
     .map((r) => ({ ...r, estadoManual: ovEst[r.num] || null, estado: estadoEfectivo({ ...r, estadoManual: ovEst[r.num] || null }) })),
-    [actual, ov, ovEst, ovReact, ovHist]);
+    [actual, ov, ovEst, ovReact, ovHist, ovBit]);
   const sel = base.find((r) => r.num === selNum) || null;
 
   /* ── v2 · A5 · reactivar: link nuevo por 48 h, semáforo de vuelta en verde ── */
@@ -1084,6 +1089,7 @@ function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
 
       {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
         onEditar={onEditar ? (r) => { setSelNum(null); onEditar(r); } : undefined}
+        onBitacora={(num, lista) => setOvBit((o) => ({ ...o, [num]:lista }))}
         onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
         onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
         onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}

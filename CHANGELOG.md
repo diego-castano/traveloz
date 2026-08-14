@@ -27,8 +27,12 @@ violeta suave, guardar como plantilla en ámbar, copiar link en teal.
 
 **El drawer de una cotización suma "Ver cotización" y "Edición total".** Ver
 cotización abre la vista tal como la ve el pasajero (antes era un ícono de ojo
-fácil de pasar por alto); Edición total abre esa cotización en el formulario
-completo del editor, con su mismo número y estado, para retocarla sin vueltas.
+fácil de pasar por alto), con selector de celular, tablet y escritorio para
+leerla cómodo; Edición total abre esa cotización en el formulario completo del
+editor, con su mismo número y estado, para retocarla sin vueltas. El drawer
+también muestra y maneja la bitácora interna de esa cotización: se anota con
+Enter, cada entrada queda firmada con vendedor y hora, y se borra con deshacer
+— sin tener que abrir la cotización.
 
 **Las notas internas son una bitácora.** Un solo cuadro de escritura: Enter
 anota y la entrada sube a la lista que vive encima, firmada por el vendedor y

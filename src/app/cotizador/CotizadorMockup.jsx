@@ -371,6 +371,7 @@ export default function Cotizador() {
     destino:`${q.titulo.destino || "Sin destino"}${q.titulo.mes != null ? `, ${MESES[q.titulo.mes]} ${q.titulo.anio}` : ""}`,
     vendedor, estado:q.estado, monto: q.opciones.length ? Math.round(precioOpcion(q.opciones[0])) : 0,
     dias:0, aperturas: q.estado === "abierta" ? 1 : 0,
+    bitacora: q.bitacora || [],   /* la bitácora de la cotización en curso también se ve desde su drawer */
   } : null;
 
   const G = ["#F43E55","#785AE5"];
