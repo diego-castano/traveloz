@@ -34,16 +34,21 @@ function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = fa
     l.push(nom
       ? { k:"nom", t:"ok", txt:`El saludo va a nombre de ${nom}` }
       : { k:"nom", t:"warn", txt:"Sin nombre — el saludo va a salir genérico", ir:"b-cliente" });
-    const sinPrecio = q.opciones.filter((o) => !precioOpcion(o)).length;
-    if (!q.opciones.length)
-      l.push({ k:"op", t:"warn", txt:"Sin opciones de alojamiento — la cotización sale sin precio", ir:"b-alojamiento" });
-    else if (sinPrecio)
-      l.push({ k:"op", t:"warn", ir:"b-alojamiento",
-        txt: sinPrecio === 1 ? "Hay una opción sin precio cargado" : `Hay ${sinPrecio} opciones sin precio cargado` });
+    if (q.soloVuelos) {
+      if (!Number(q.precioVuelo?.adulto))
+        l.push({ k:"op", t:"warn", txt:"Falta el precio del vuelo", ir:"b-vuelos" });
+    } else {
+      const sinPrecio = q.opciones.filter((o) => !precioOpcion(o)).length;
+      if (!q.opciones.length)
+        l.push({ k:"op", t:"warn", txt:"Sin opciones de alojamiento — la cotización sale sin precio", ir:"b-alojamiento" });
+      else if (sinPrecio)
+        l.push({ k:"op", t:"warn", ir:"b-alojamiento",
+          txt: sinPrecio === 1 ? "Hay una opción sin precio cargado" : `Hay ${sinPrecio} opciones sin precio cargado` });
+    }
     if (!q.vuelos.length)
       l.push({ k:"vue", t:"info", txt:"Sin vuelos cargados — la cotización sale sin ese bloque" });
     return l;
-  }, [q.opciones, q.vuelos.length, tel, nom]);
+  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom]);
   const todoListo = checks.every((c) => c.t === "ok");
 
   /* link corto ficticio del envío — siempre el mismo para la misma cotización */

@@ -4,13 +4,13 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sparkles, MessageSquare, FileText, Copy, Trash2, Plus, Check, ChevronDown, ChevronRight, Search,
   Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, Loader2, CheckCheck, AlertCircle,
-  RefreshCw, Link2, TrendingUp, Ticket, Files, ListChecks, Sun, Moon
+  RefreshCw, Link2, TrendingUp, Ticket, Files, ListChecks, Sun, Moon, Plane, Settings
 } from "lucide-react";
 import {
   MESES, PAQUETES, VENDEDORES, HISTORIAL, semaforo, money, venta, limpiarPegado, detectarConsulta,
   ESTADOS, estadoEfectivo
 } from "./data";
-import { Foto, Btn, Pill, ChipIA, Vacio, Wordmark } from "./ui";
+import { Foto, Btn, Pill, ChipIA, Vacio, Wordmark, Label } from "./ui";
 import { DrawerAnalytics } from "./drawer";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -50,8 +50,8 @@ function mesDeDestino(s) { return String(s || "").split(",")[1]?.trim().split(" 
    v2 · ENTRADA — cómo arranca una cotización
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── A1 · modal "¿Cómo arrancamos?" — tres caminos, teclas 1 a 3 ────── */
-function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onIA }) {
+/* ── A1 · modal "¿Cómo arrancamos?" — cuatro caminos, teclas 1 a 4 ────── */
+function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onIA, onVuelos }) {
   const [paso, setPaso] = useState("menu");     // menu | plantilla
   const [busq, setBusq] = useState("");
   const inp = useRef(null);
@@ -61,13 +61,15 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
       d:"Pegá lo que te escribió el pasajero y la IA arma el borrador" },
     { k:"blanco",    n:2, Icon:FileText,   t:"En blanco",             d:"Formulario vacío, listo para escribir" },
     { k:"plantilla", n:3, Icon:Files,      t:"Desde un paquete o plantilla", d:"Los paquetes de la web y tus plantillas, en un solo lugar" },
+    { k:"vuelos",    n:4, Icon:Plane,      t:"Solo vuelos",           d:"Itinerario, equipaje y precio — sin hoteles ni servicios" },
   ];
 
   const elegir = useCallback((k) => {
     if (k === "ia") onIA();
     else if (k === "blanco") onBlanco();
+    else if (k === "vuelos") onVuelos();
     else { setPaso(k); setBusq(""); }
-  }, [onIA, onBlanco]);
+  }, [onIA, onBlanco, onVuelos]);
 
   const volver = useCallback(() => { setPaso("menu"); setBusq(""); }, []);
 
@@ -75,7 +77,7 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
     const h = (e) => {
       if (e.key === "Escape") { e.preventDefault(); onClose(); return; }
       if (paso === "menu") {
-        const i = ["1","2","3"].indexOf(e.key);
+        const i = ["1","2","3","4"].indexOf(e.key);
         if (i >= 0) { e.preventDefault(); elegir(CAMINOS[i].k); }
       } else if (e.key === "ArrowLeft") {
         const el = e.target;
@@ -140,7 +142,7 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
               ))}
             </div>
             <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:13, fontSize:11, color:"var(--n400)" }}>
-              <span className="kbd">1</span>…<span className="kbd">3</span> para elegir
+              <span className="kbd">1</span>…<span className="kbd">4</span> para elegir
               <span style={{ opacity:.4 }}>·</span>
               <span className="kbd">esc</span> para cerrar
             </div>
@@ -412,11 +414,65 @@ function ModalIA({ onClose, onArmar }) {
   );
 }
 
+/* ── A6 · modal "Ajustes del cotizador" — solo lo ve el usuario máster ── */
+function AjustesCotizador({ plantillaMsg, onPlantillaMsg, onClose }) {
+  useEffect(() => {
+    const h = (e) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
+  }, [onClose]);
+
+  return (
+    <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="a-zoom card" style={{ width:"min(640px,100%)", padding:0, overflow:"hidden" }}>
+
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"15px 17px", borderBottom:"1px solid var(--hair-soft)" }}>
+          <div style={{ width:32, height:32, borderRadius:10, flexShrink:0, display:"grid", placeItems:"center",
+            background:"rgba(120,90,229,.1)", color:"var(--violet)" }}><Settings size={15} /></div>
+          <div className="disp" style={{ fontSize:17, fontWeight:600, letterSpacing:"-.02em", flex:1 }}>
+            Ajustes del cotizador
+          </div>
+          <Pill tone="violet">Usuario máster</Pill>
+          <button className="btn btn-g btn-ico" onClick={onClose}><X size={15} /></button>
+        </div>
+
+        <div style={{ padding:"16px 17px 18px" }}>
+          <Label>Mensaje automático por defecto</Label>
+          <textarea className="in" rows={8} value={plantillaMsg} onChange={(e) => onPlantillaMsg(e.target.value)} />
+          <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, lineHeight:1.5 }}>
+            <span className="mono">{"{nombre}"}</span> se reemplaza por el nombre del cliente y{" "}
+            <span className="mono">{"{link}"}</span> por el link de datos de pasajeros del vendedor.
+            Cada cotización arranca con este texto y el vendedor lo puede editar.
+          </div>
+
+          <div style={{ marginTop:18 }}>
+            <Label>Link de datos de pasajeros por vendedor</Label>
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {VENDEDORES.map((v) => (
+                <div key={v.id} style={{ display:"flex", alignItems:"center", gap:9 }}>
+                  <div style={{ width:28, height:28, borderRadius:"50%", flexShrink:0, background:"linear-gradient(145deg,#A05ED3,#785AE5)",
+                    color:"#fff", display:"grid", placeItems:"center", fontSize:10.5, fontWeight:700 }}>{v.inicial}</div>
+                  <span style={{ fontSize:12.5, fontWeight:600, width:130, flexShrink:0, whiteSpace:"nowrap",
+                    overflow:"hidden", textOverflow:"ellipsis" }}>{v.nombre}</span>
+                  <input className="in mono" style={{ flex:1 }} defaultValue={v.linkDatos || ""} />
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize:11, color:"var(--n400)", marginTop:9, lineHeight:1.5 }}>
+              En el sistema real esto se carga en el módulo de usuarios, junto con la firma
+              (nombre, cargo, teléfono, email y foto).
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    PANTALLA DE INICIO
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual, oscuro, onTema }) {
+function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual, oscuro, onTema, onSoloVuelos, plantillaMsg, onPlantillaMsg }) {
   const G = ["#F43E55","#785AE5"];
   const [busq, setBusq] = useState("");
   const [creando, setCreando] = useState(false);
@@ -425,6 +481,8 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
   /* v2 · caminos de entrada */
   const [modalNueva, setModalNueva] = useState(false);
   const [modalIA, setModalIA] = useState(false);
+  /* ajustes del cotizador — solo lo abre el usuario máster */
+  const [ajustes, setAjustes] = useState(false);
 
   const resultados = useMemo(() => {
     const t = busq.trim().toLowerCase();
@@ -467,6 +525,12 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
           </div>
           <div style={{ fontSize:12, color:"var(--n400)" }}>Módulo del backend · mismo login, mismo sistema</div>
         </div>
+        {/* ajustes del cotizador — usuario máster */}
+        <button className="btn btn-s btn-ico" style={{ width:40, height:40, borderRadius:12 }}
+          onClick={() => setAjustes(true)} title="Ajustes del cotizador (usuario máster)"
+          aria-label="Ajustes del cotizador (usuario máster)">
+          <Settings size={16} />
+        </button>
         {/* v2D · D5 · claro / oscuro — el mismo estado en el inicio y en el editor */}
         <button className="btn btn-s btn-ico" style={{ width:40, height:40, borderRadius:12 }}
           onClick={onTema} title={oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro"}
@@ -687,11 +751,16 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
           onBlanco={() => { setModalNueva(false); onBlanco(); }}
           onPaquete={(p) => { setModalNueva(false); onPaquete(p); }}
           onPlantilla={(t) => { setModalNueva(false); onPlantilla(t); }}
-          onIA={() => { setModalNueva(false); setModalIA(true); }} />
+          onIA={() => { setModalNueva(false); setModalIA(true); }}
+          onVuelos={() => { setModalNueva(false); onSoloVuelos(); }} />
       )}
       {modalIA && (
         <ModalIA onClose={() => setModalIA(false)}
           onArmar={(det) => { setModalIA(false); onIA(det); }} />
+      )}
+      {ajustes && (
+        <AjustesCotizador plantillaMsg={plantillaMsg} onPlantillaMsg={onPlantillaMsg}
+          onClose={() => setAjustes(false)} />
       )}
     </div>
   );

@@ -3,16 +3,16 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
-  Plane, Building2, Sparkles, MapPin, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
-  Plus, Check, ChevronDown, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
+  Plane, Building2, Sparkles, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
+  Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, History, Keyboard, Maximize2, Luggage
+  StickyNote, History, Keyboard, Maximize2, Luggage, Image as ImageIcon
 } from "lucide-react";
 import {
   MESES, ANIO_BASE, REGIMENES, SUG, MODALIDADES, SUG_ALL, CIUDADES, AEROLINEAS,
   CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
-  PNR_DEMO, CLIENTES, VENDEDORES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
-  limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, FRECUENTES, hotelesCotizadosEn,
+  PNR_DEMO, CLIENTES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
+  limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, hotelesCotizadosEn,
   snippetMensaje, redactarMensaje, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa,
   precioOpcion
 } from "./data";
@@ -266,82 +266,77 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
 
 /* ── 3 · Destinos y noches ───────────────────────────────────────────── */
 function SeccionDestinos({ q, set, tramos, toast }) {
-  const [nuevo, setNuevo] = useState("");
-  const inp = useRef(null);
-  const agregar = (ciudad) => {
-    const c = (ciudad || nuevo).trim(); if (!c) return;
-    /* 7 noches por defecto: es el paquete estándar del 70-80% de las ventas */
-    set((d) => { d.destinos.push({ id:uid("dst"), ciudad:c, noches:7, checkinManual:null }); });
-    setNuevo(""); requestAnimationFrame(() => inp.current?.focus());
-  };
-  const sigueAlAnterior = (i) => i > 0 && !q.destinos[i].checkinManual;
+  /* 7 noches por defecto: es el paquete estándar del 70-80% de las ventas */
+  const filaNueva = () => ({ id:uid("dst"), ciudad:"", noches:7, regimen:"", checkinManual:null });
+  const agregar = () => set((d) => { d.destinos.push(filaNueva()); });
   return (
     <div>
-      {q.destinos.length === 0
-        ? <Vacio icon={MapPin} titulo="Todavía no hay destinos" accion="Escribí una ciudad y apretá Enter" />
-        : (
+      {q.destinos.length === 0 ? (
+        <div style={{ marginBottom:9 }}>
+          <Btn size="sm" onClick={agregar}><Plus size={13} /> Agregar destino</Btn>
+        </div>
+      ) : (
         <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:11 }}>
           {q.destinos.map((dd, i) => {
             const t = tramos[i];
             return (
-              <div key={dd.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:9, padding:"8px 10px",
-                background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11 }}>
-                <div className="mono" style={{ width:20, height:20, borderRadius:6, display:"grid", placeItems:"center",
-                  background:"rgba(120,90,229,.11)", color:"var(--violet)", fontSize:10, fontWeight:600 }}>{i + 1}</div>
-                <input className="in" style={{ flex:"1 1 130px", height:32 }} value={dd.ciudad}
-                  onChange={(e) => set((d) => { d.destinos[i].ciudad = e.target.value; })} />
-                <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-                  <button className="btn btn-s btn-ico" style={{ width:27, height:27 }}
-                    onClick={() => set((d) => { d.destinos[i].noches = Math.max(1, d.destinos[i].noches - 1); })}>−</button>
-                  <div className="mono" style={{ width:52, textAlign:"center", fontSize:12, fontWeight:600 }}>{dd.noches} n</div>
-                  <button className="btn btn-s btn-ico" style={{ width:27, height:27 }}
-                    onClick={() => set((d) => { d.destinos[i].noches += 1; })}>+</button>
+              <div key={dd.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
+                background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11, flexWrap:"wrap" }}>
+                <div className="mono" style={{ width:20, height:20, borderRadius:6, flexShrink:0, display:"grid",
+                  placeItems:"center", background:"rgba(120,90,229,.11)", color:"var(--violet)", fontSize:10, fontWeight:600 }}>{i + 1}</div>
+
+                <div style={{ flex:"1 1 120px", minWidth:0 }}>
+                  <AutoCiudad value={dd.ciudad} placeholder="Ciudad…"
+                    excluir={q.destinos.filter((_, j) => j !== i).map((x) => x.ciudad)}
+                    onChange={(v) => set((d) => { d.destinos[i].ciudad = v; })}
+                    onPick={(v) => set((d) => { d.destinos[i].ciudad = v; })} />
                 </div>
-                <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                  <div style={{ width:168 }}>
-                    <Calendario value={t?.checkin || ""} placeholder="Check-in"
-                      onChange={(v) => set((d) => { d.destinos[i].checkinManual = v || null; })} />
+
+                {/* noches: los dos botoncitos van apilados para no comerse el ancho */}
+                <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
+                  <div className="mono" style={{ minWidth:32, textAlign:"right", fontSize:12, fontWeight:600 }}>{dd.noches} n</div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                    <button className="btn btn-s btn-ico" style={{ width:22, height:16, borderRadius:6, padding:0 }}
+                      title="Una noche más"
+                      onClick={() => set((d) => { d.destinos[i].noches += 1; })}><ChevronUp size={11} /></button>
+                    <button className="btn btn-s btn-ico" style={{ width:22, height:16, borderRadius:6, padding:0 }}
+                      title="Una noche menos"
+                      onClick={() => set((d) => { d.destinos[i].noches = Math.max(1, d.destinos[i].noches - 1); })}>
+                      <ChevronDown size={11} /></button>
                   </div>
-                  <span className="mono" style={{ fontSize:10.5, color:"var(--n400)", width:56, whiteSpace:"nowrap" }}>
-                    → {t ? fmtCorto(t.checkout) : "—"}
-                  </span>
-                  {t?.manual ? (
-                    <button className="pill" title="Volver a la fecha automática"
-                      style={{ background:"rgba(247,178,103,.2)", color:"var(--ink-amber)", cursor:"pointer" }}
-                      onClick={() => set((d) => { d.destinos[i].checkinManual = null; })}>
-                      manual <RefreshCw size={9} />
-                    </button>
-                  ) : (
-                    <span className="pill" style={{ background:"rgba(59,191,173,.12)", color:"var(--teal-3)" }}
-                      title={i === 0 ? "Sigue a la fecha de salida" : "Sigue al check-out del destino anterior"}>
-                      <Zap size={9} /> {i === 0 ? "= salida" : "sigue al anterior"}
-                    </span>
-                  )}
                 </div>
-                <button className="btn btn-g btn-ico" title="Quitar destino"
-                  onClick={() => { const cp = { ...dd }; set((d) => { d.destinos.splice(i, 1); });
-                    toast({ msg:`Se quitó ${cp.ciudad}`, tone:"warn", undo:() => set((d) => { d.destinos.splice(i, 0, cp); }) }); }}>
-                  <Trash2 size={13} />
-                </button>
+
+                <select className="in" style={{ flex:"0 1 150px", height:34, fontSize:12 }} value={dd.regimen || ""}
+                  title="Régimen de este destino"
+                  onChange={(e) => set((d) => { d.destinos[i].regimen = e.target.value; })}>
+                  <option value="">Régimen…</option>
+                  {REGIMENES.map((x) => <option key={x}>{x}</option>)}
+                </select>
+
+                {/* las fechas ya no se tocan acá: bajan solas de la fecha de salida */}
+                <span className="mono" style={{ fontSize:10.5, color:"var(--n400)", whiteSpace:"nowrap", flexShrink:0 }}>
+                  {t?.checkin ? <>{fmtCorto(t.checkin)} → {fmtCorto(t.checkout)}</> : "sin fecha de salida"}
+                </span>
+
+                <div style={{ display:"flex", gap:3, marginLeft:"auto", flexShrink:0 }}>
+                  <button className="btn btn-g btn-ico" title="Quitar destino"
+                    onClick={() => { const cp = { ...dd }; set((d) => { d.destinos.splice(i, 1); });
+                      toast({ msg:`Se quitó ${cp.ciudad || "el destino"}`, tone:"warn",
+                        undo:() => set((d) => { d.destinos.splice(i, 0, cp); }) }); }}>
+                    <Trash2 size={13} />
+                  </button>
+                  <button className="btn btn-s btn-ico" title="Agregar destino" onClick={agregar}>
+                    <Plus size={13} />
+                  </button>
+                </div>
               </div>
             );
           })}
         </div>
       )}
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"center" }}>
-        <div style={{ flex:"1 1 230px" }}>
-          <AutoCiudad inputRef={inp} value={nuevo} placeholder="Agregar ciudad… (autocompleta)"
-            excluir={q.destinos.map((d) => d.ciudad)}
-            onChange={setNuevo} onPick={(c) => agregar(c)} />
-        </div>
-        <span className="kbd">↵</span>
-        {CIUDADES.filter((c) => !q.destinos.some((d) => d.ciudad === c)).slice(0, 3).map((c) => (
-          <button key={c} className="chip" onClick={() => agregar(c)}><Plus size={11} />{c}</button>
-        ))}
-      </div>
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
         <Zap size={11} style={{ color:"var(--teal-2)" }} />
-        Elegís el check-in del primero y los siguientes se encadenan solos: cada destino arranca cuando termina el anterior.
+        Las fechas se calculan solas desde la fecha de salida. El régimen de cada destino baja a los servicios y a las opciones hoteleras.
       </div>
     </div>
   );
@@ -416,6 +411,23 @@ function BloqueMensaje({ q, set, refEl, toast }) {
     <Block id="b-mensaje" forwardRef={refEl} icon={MessageSquare} title="Mensaje al pasajero"
       right={<Pill tone="n">Opcional · con formato</Pill>}>
 
+      {/* v3 · el arranque que lee el pasajero, editable acá */}
+      <div style={{ marginBottom:10 }}>
+        <Label hint="se completa solo con el nombre y el link del vendedor">Mensaje automático</Label>
+        <textarea className="in" rows={6} value={q.mensajeAuto || ""}
+          style={{ lineHeight:1.6, fontSize:12.5, resize:"vertical" }}
+          placeholder="Hola {nombre}, de acuerdo a lo conversado te comparto la cotización…"
+          onChange={(e) => set((d) => { d.mensajeAuto = e.target.value; })} />
+        <div style={{ fontSize:11, color:"var(--n400)", marginTop:6, lineHeight:1.5 }}>
+          <span className="mono">{"{nombre}"}</span> toma el nombre del cliente y <span className="mono">{"{link}"}</span> el
+          link de datos de pasajeros del vendedor. El máster define el texto por defecto en Ajustes.
+        </div>
+      </div>
+
+      <div className="hairline" style={{ margin:"13px 0 11px" }} />
+
+      <Label hint="lo escribís vos, arriba del detalle">Mensaje adicional (opcional)</Label>
+
       {/* v2B · escribir por mí + tono */}
       <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:9 }}>
         <button className="btn btn-s btn-sm btn-ia" onClick={pedir} disabled={escribiendo}>
@@ -456,15 +468,6 @@ function BloqueMensaje({ q, set, refEl, toast }) {
           <button key={k} className="chip" style={{ height:27, fontSize:11.5 }} disabled={escribiendo}
             onClick={() => anexar(snippetMensaje(k, q))}>{l}</button>
         ))}
-      </div>
-
-      {/* línea fija: el pasajero siempre lee esto antes del mensaje */}
-      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:7, padding:"7px 11px",
-        borderRadius:10, background:"var(--wash)", border:"1px solid var(--hair-soft)" }}>
-        <Eye size={12} style={{ color:"var(--n400)", flexShrink:0 }} />
-        <span style={{ fontSize:11.5, color:"var(--n400)", lineHeight:1.45 }}>
-          Sale debajo de: “De acuerdo a lo conversado, te comparto la cotización para tu viaje.”
-        </span>
       </div>
 
       <div className="wys-bar">
@@ -544,22 +547,49 @@ function BloqueVuelos({ q, set, refEl, toast }) {
       toast({ msg:`${v.length} tramos convertidos al formato de la marca`, tone:"ok" });
     }, 620);
   };
+  /* la cabina y el equipaje escriben el ítem de aéreo de los servicios incluidos,
+     aunque el vendedor lo haya editado a mano: le reponemos el flag y lo vuelve a seguir */
+  const escribirAereo = (d) => {
+    const iA = d.servicios.findIndex((s) => s.categoria === "aereo");
+    if (iA < 0) return;
+    const extra = [d.cabina, d.equipaje].filter(Boolean).join(" · ");
+    d.servicios[iA].texto = extra
+      ? "Aéreo ida y vuelta · " + extra
+      : "Aéreo ida y vuelta con artículo personal y equipaje de mano";
+    d.servicios[iA].auto = "aereo";
+  };
+  /* Ctrl+V con una captura en el portapapeles: la IA la lee igual que el texto */
+  const pegarImagen = (e) => {
+    const f = e.clipboardData?.files?.[0];
+    if (!f || !String(f.type).startsWith("image/")) return false;
+    e.preventDefault();
+    e.stopPropagation();   /* si vino del textarea, que el contenedor no la lea de nuevo */
+    setModo("foto");
+    toast({ msg:"Imagen pegada — leyendo el itinerario…", tone:"ok" });
+    leerFoto(f);
+    return true;
+  };
   return (
     <Block id="b-vuelos" forwardRef={refEl} icon={Plane} title="Itinerario de vuelos" count={q.vuelos.length || null}
       right={
-        <div className="seg">
-          <button data-on={modo === "texto" ? "1" : "0"} onClick={() => setModo("texto")}>
-            <FileText size={12} /> Pegar texto</button>
-          <button data-on={modo === "foto" ? "1" : "0"} onClick={() => setModo("foto")}>
-            <Eye size={12} /> Subir foto</button>
-        </div>
+        <>
+          {q.soloVuelos && <Pill tone="violet">Solo vuelos</Pill>}
+          <div className="seg">
+            <button data-on={modo === "texto" ? "1" : "0"} onClick={() => setModo("texto")}>
+              <FileText size={12} /> Pegar texto</button>
+            <button data-on={modo === "foto" ? "1" : "0"} onClick={() => setModo("foto")}>
+              <Eye size={12} /> Subir foto</button>
+          </div>
+        </>
       }>
+      <div onPaste={pegarImagen}>
       {modo === "texto" ? (
         <textarea className="in mono" rows={q.pnrRaw ? 5 : 3} value={q.pnrRaw}
           style={{ fontSize:11.5, lineHeight:1.55, background: estado === "error" ? "rgba(244,62,85,.07)" : "var(--field)" }}
           placeholder="Pegá acá el PNR tal como sale del GDS… (igual que en el sistema actual)"
           onChange={(e) => { set((d) => { d.pnrRaw = e.target.value; }); setEstado("idle"); }}
-          onPaste={(e) => { e.preventDefault(); const t = e.clipboardData.getData("text/plain");
+          onPaste={(e) => { if (pegarImagen(e)) return;
+            e.preventDefault(); const t = e.clipboardData.getData("text/plain");
             set((d) => { d.pnrRaw = t; }); setEstado("idle"); }} />
       ) : (
         <>
@@ -577,6 +607,8 @@ function BloqueVuelos({ q, set, refEl, toast }) {
                 background:"rgba(120,90,229,.12)", color:"var(--violet)" }}><Plane size={17} /></div>
               <div style={{ fontSize:13, fontWeight:700, color:"var(--n600)" }}>Arrastrá o tocá para subir la foto de la reserva</div>
               <div style={{ fontSize:11.5, color:"var(--n400)", marginTop:3 }}>Captura de Amadeus, foto del papel, lo que tengas — lo leemos igual</div>
+              <div style={{ fontSize:11, color:"var(--n400)", marginTop:4 }}>
+                También podés pegar una captura con <span className="kbd">Ctrl</span>+<span className="kbd">V</span> — la IA la lee igual que el texto.</div>
               <div style={{ marginTop:10 }}>
                 <span className="chip" style={{ height:27, fontSize:11.5 }}
                   onClick={(e) => { e.stopPropagation(); leerFoto(null); }}>
@@ -593,6 +625,13 @@ function BloqueVuelos({ q, set, refEl, toast }) {
             </div>
           )}
         </>
+      )}
+
+      {modo === "texto" && (
+        <div style={{ fontSize:11, color:"var(--n400)", marginTop:6, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+          <ImageIcon size={11} style={{ color:"var(--violet)", flexShrink:0 }} />
+          <span>También podés pegar una captura con <span className="kbd">Ctrl</span>+<span className="kbd">V</span> — la IA la lee igual que el texto.</span>
+        </div>
       )}
 
       <div style={{ display:"flex", alignItems:"center", gap:9, marginTop:9, flexWrap:"wrap" }}>
@@ -674,7 +713,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
         <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
           {CABINAS.map((x) => (
             <button key={x} className={`chip ${q.cabina === x ? "chip-on" : ""}`}
-              onClick={() => set((d) => { d.cabina = d.cabina === x ? null : x; })}>
+              onClick={() => set((d) => { d.cabina = d.cabina === x ? null : x; escribirAereo(d); })}>
               {q.cabina === x ? <Check size={11} /> : <Plane size={11} />}{x}
             </button>
           ))}
@@ -686,7 +725,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
         <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
           {EQUIPAJES.map((x) => (
             <button key={x} className={`chip ${q.equipaje === x ? "chip-on" : ""}`}
-              onClick={() => set((d) => { d.equipaje = d.equipaje === x ? null : x; })}>
+              onClick={() => set((d) => { d.equipaje = d.equipaje === x ? null : x; escribirAereo(d); })}>
               {q.equipaje === x ? <Check size={11} /> : <Luggage size={11} />}{x}
             </button>
           ))}
@@ -695,8 +734,40 @@ function BloqueVuelos({ q, set, refEl, toast }) {
 
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
         <Zap size={11} style={{ color:"var(--teal-2)" }} />
-        Se replica solo en la línea de Aéreo de los servicios incluidos.
+        Lo que elijas reescribe la línea de Aéreo de los servicios incluidos, aunque la hayas tocado a mano.
       </div>
+
+      {/* solo vuelos: la cotización se cierra acá, sin hoteles ni servicios */}
+      {q.soloVuelos && (
+        <>
+          <div className="hairline" style={{ margin:"14px 0 12px" }} />
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
+            <div style={{ width:22, height:22, borderRadius:7, display:"grid", placeItems:"center",
+              background:"rgba(120,90,229,.11)", color:"var(--violet)" }}><Plane size={12} /></div>
+            <span style={{ fontSize:12.5, fontWeight:700 }}>Precio del vuelo</span>
+            <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
+          </div>
+          <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+            <div style={{ width:110 }}>
+              <Label>Por adulto</Label>
+              <input className="in mono" type="number" style={{ height:34, textAlign:"right" }}
+                value={q.precioVuelo?.adulto ?? ""}
+                onChange={(e) => set((d) => { d.precioVuelo = d.precioVuelo || { adulto:"", menor:"" };
+                  d.precioVuelo.adulto = e.target.value; })} />
+            </div>
+            <div style={{ width:110 }}>
+              <Label>Por menor</Label>
+              <input className="in mono" type="number" style={{ height:34, textAlign:"right" }}
+                value={q.precioVuelo?.menor ?? ""}
+                onChange={(e) => set((d) => { d.precioVuelo = d.precioVuelo || { adulto:"", menor:"" };
+                  d.precioVuelo.menor = e.target.value; })} />
+            </div>
+            <div style={{ fontSize:11, color:"var(--n400)", flex:"1 1 180px", paddingBottom:9 }}>
+              Va directo en la cotización — sin hoteles ni servicios.
+            </div>
+          </div>
+        </>
+      )}
 
       {choque && (
         <div className="a-slide" style={{ display:"flex", alignItems:"center", gap:10, marginTop:10, padding:"10px 12px",
@@ -717,6 +788,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
           Con los vuelos cargados, las fechas de traslado no se piden en ningún otro lado.
         </div>
       )}
+      </div>
     </Block>
   );
 }
@@ -751,7 +823,6 @@ function BloqueServicios({ q, set, refEl, toast }) {
     set((d) => { const [it] = d.servicios.splice(from, 1); d.servicios.splice(from < to ? to - 1 : to, 0, it); });
   };
 
-  const sugerencias = SUG[cat].filter((s) => !q.servicios.some((x) => x.texto === s));
   /* busqueda GLOBAL: en todas las categorias, no solo la activa */
   const acRes = useMemo(() => {
     const t = txt.trim().toLowerCase();
@@ -775,23 +846,6 @@ function BloqueServicios({ q, set, refEl, toast }) {
               onClick={() => { setCat(c.id); requestAnimationFrame(() => inp.current?.focus()); }}>
               <c.Icon size={12} />{c.label}
               {n > 0 && <span key={n} className="mono a-pulse" style={{ fontSize:10, opacity:.7 }}>{n}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* v2B · los cinco que entran en casi todas las cotizaciones */}
-      <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:11 }}>
-        <span className="lbl" style={{ marginRight:2 }}>Más usados</span>
-        {FRECUENTES.map((f) => {
-          const puesto = q.servicios.some((s) => s.texto === f.texto);
-          const C = CATS.find((c) => c.id === f.cat) || CATS[0];
-          return (
-            <button key={f.texto} className={`chip chip-frec ${puesto ? "chip-off" : ""}`} disabled={puesto}
-              title={puesto ? "Ya está en la lista" : `Se agrega en ${C.label}`}
-              onClick={() => agregar(f.texto, f.cat)}>
-              {puesto ? <Check size={11} style={{ color:"var(--teal-2)" }} /> : <Plus size={11} />}
-              {f.texto.length > 34 ? f.texto.slice(0, 34) + "…" : f.texto}
             </button>
           );
         })}
@@ -841,16 +895,6 @@ function BloqueServicios({ q, set, refEl, toast }) {
         </div>
         <span className="kbd" style={{ minWidth:44, gap:4 }}><CornerDownLeft size={10} /> Enter</span>
       </div>
-
-      {sugerencias.length > 0 && (
-        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:13 }}>
-          {sugerencias.slice(0, 6).map((s) => (
-            <button key={s} className="chip" style={{ height:27, fontSize:11.5, color:"var(--n500)" }} onClick={() => agregar(s)}>
-              <Plus size={10} />{s.length > 42 ? s.slice(0, 42) + "…" : s}
-            </button>
-          ))}
-        </div>
-      )}
 
       {q.servicios.length === 0
         ? <Vacio icon={LayoutGrid} titulo="Todavía no hay servicios" accion="Elegí una categoría y escribí, o tocá una sugerencia" />
@@ -915,36 +959,14 @@ function BloqueServicios({ q, set, refEl, toast }) {
 }
 
 /* ── Notas internas — block fijo en la columna izquierda; nunca salen ──── */
-function NotasRail({ q, set, vistaPasajero, toast, vendedor }) {
+function NotasRail({ q, set, vistaPasajero, toast }) {
   const [abierto, setAbierto] = useState(false);
   const [c, setC] = useState("");
   const [n, setN] = useState("");
-  const [txt, setTxt] = useState("");
-  const [eco, setEco] = useState(false);         /* pulso al anotar con Enter */
   const inp = useRef(null);
-  const ecoTimer = useRef(null);
-  const bitacora = q.bitacora || [];
   const notas = q.notas || [];
   const total = notas.reduce((a, x) => a + Number(x.neto || 0), 0);
-  const autorDe = (id) => VENDEDORES.find((v) => v.id === id) || VENDEDORES[0];
 
-  /* Enter anota: la entrada sube a la bitácora, arriba del cuadro de escritura */
-  const anotar = () => {
-    const t = txt.trim(); if (!t) return;
-    set((d) => { d.bitacora = d.bitacora || [];
-      d.bitacora.unshift({ id:uid("bt"), autor:vendedor, hace:"recién", texto:t }); });
-    setTxt("");
-    setEco(true);
-    clearTimeout(ecoTimer.current);
-    ecoTimer.current = setTimeout(() => setEco(false), 900);
-  };
-  useEffect(() => () => clearTimeout(ecoTimer.current), []);
-
-  const borrarNota = (b, i) => {
-    const cp = { ...b };
-    set((d) => { d.bitacora.splice(i, 1); });
-    toast?.({ msg:"Anotación borrada", tone:"warn", undo:() => set((d) => { d.bitacora.splice(i, 0, cp); }) });
-  };
   const agregarCosto = () => {
     if (!c.trim()) return;
     set((d) => { d.notas.push({ id:uid("nt"), concepto:c.trim(), neto:Number(n) || 0 }); });
@@ -963,13 +985,14 @@ function NotasRail({ q, set, vistaPasajero, toast, vendedor }) {
     return () => document.removeEventListener("keydown", h);
   }, [abierto]);
 
-  /* un solo cuadro de escritura: Enter anota, Shift+Enter hace salto de línea */
-  const cuadro = (foco) => (
-    <textarea className={`in ${eco ? "nota-echo" : ""}`} rows={2} autoFocus={foco} value={txt}
-      style={{ width:"100%", resize:"none", lineHeight:1.5, paddingTop:8, fontSize:12 }}
-      placeholder="Anotá y Enter… (Shift+Enter, salto)"
-      onChange={(e) => setTxt(e.target.value)}
-      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); anotar(); } }} />
+  /* un bloc y nada más: Enter es salto de línea, como en cualquier cuaderno */
+  const bloc = (grande) => (
+    <textarea className="in notas-ta" autoFocus={grande} value={q.notasLibres || ""}
+      rows={grande ? undefined : 7}
+      style={{ width:"100%", resize:"none", lineHeight:1.55, fontSize:12,
+        ...(grande ? { flex:1, height:"100%" } : {}) }}
+      placeholder="Escribí libre: aéreo 700, hotel 1 400…"
+      onChange={(e) => set((d) => { d.notasLibres = e.target.value; })} />
   );
 
   if (vistaPasajero) {
@@ -996,38 +1019,16 @@ function NotasRail({ q, set, vistaPasajero, toast, vendedor }) {
           <Pill tone="coral" style={{ marginLeft:"auto" }}>No se comparte</Pill>
         </div>
 
-        {/* la bitácora vive ENCIMA del cuadro: lo último anotado, primero */}
-        {bitacora.length > 0 ? (
-          <div className="notas-lista">
-            {bitacora.map((b, i) => (
-              <div key={b.id} className="nota-i a-pop">
-                {b.texto}
-                <button className="nota-x btn btn-g btn-ico" style={{ width:18, height:18 }}
-                  title="Borrar anotación" onClick={() => borrarNota(b, i)}><X size={10} /></button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ fontSize:10.5, color:"var(--n300)", lineHeight:1.5, marginBottom:7 }}>
-            Bitácora vacía. Lo que anotes queda acá arriba, firmado y solo para el equipo.
-          </div>
-        )}
-
-        {cuadro(false)}
+        {bloc(false)}
 
         <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
           <button className="btn btn-g btn-xs notas-exp" onClick={() => setAbierto(true)}
-            title="Abrir la bitácora completa, con los costos fijos">
+            title="Abrir el bloc a pantalla, con los costos fijos">
             <Maximize2 size={11} /> Expandir
           </button>
-          {bitacora.length > 0 && (
-            <span className="mono" style={{ marginLeft:"auto", fontSize:10, color:"var(--n400)" }}>
-              {bitacora.length} {bitacora.length === 1 ? "nota" : "notas"}
-            </span>
-          )}
         </div>
         <div style={{ fontSize:10, color:"var(--n300)", marginTop:6, lineHeight:1.45 }}>
-          Pasá el mouse y la bitácora crece sola para leer mejor.
+          Escribí como quieras: esto no sale en ningún lado.
         </div>
       </div>
 
@@ -1041,48 +1042,19 @@ function NotasRail({ q, set, vistaPasajero, toast, vendedor }) {
               <div style={{ width:28, height:28, borderRadius:9, display:"grid", placeItems:"center",
                 background:"rgba(244,62,85,.11)", color:"var(--ink-coral)" }}><Lock size={15} /></div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:700, letterSpacing:"-.01em" }}>Bitácora interna</div>
+                <div style={{ fontSize:14, fontWeight:700, letterSpacing:"-.01em" }}>Notas internas</div>
                 <div style={{ fontSize:11.5, color:"var(--n400)" }}>Solo para el equipo — el pasajero nunca ve esto.</div>
               </div>
               <span className="kbd">esc</span>
               <button className="btn btn-g btn-ico" onClick={() => setAbierto(false)}><X size={15} /></button>
             </div>
 
-            <div style={{ flex:1, overflowY:"auto", padding:"14px 17px 20px" }}>
-              {cuadro(true)}
-              <div style={{ fontSize:10.5, color:"var(--n400)", margin:"6px 0 14px" }}>
-                <span className="kbd">↵</span> anota · <span className="kbd">Shift</span>+<span className="kbd">↵</span> salto de línea
+            <div style={{ flex:1, overflowY:"auto", padding:"14px 17px 20px", display:"flex", flexDirection:"column" }}>
+              <div style={{ flex:"1 1 auto", minHeight:260, display:"flex" }}>
+                {bloc(true)}
               </div>
 
-              {bitacora.length === 0
-                ? <Vacio icon={Lock} titulo="Bitácora vacía" accion="Anotá arriba: pedidos especiales, netos, qué quedó hablado…" />
-                : bitacora.map((b, i) => {
-                  const a = autorDe(b.autor);
-                  return (
-                    <div key={b.id} className="a-pop" style={{ display:"flex", gap:9, padding:"9px 11px", borderRadius:11,
-                      marginBottom:7, background:"var(--card-3)", border:"1px solid var(--hair-soft)",
-                      borderLeft:"3px solid var(--violet)" }}>
-                      <span style={{ width:22, height:22, borderRadius:99, flexShrink:0, display:"inline-flex",
-                        alignItems:"center", justifyContent:"center", fontSize:9.5, fontWeight:800, color:"#fff",
-                        background:"linear-gradient(135deg,var(--violet),var(--violet-2))" }}>{a.inicial}</span>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-                          <span style={{ fontSize:11.5, fontWeight:700 }}>{a.nombre}</span>
-                          <span className="mono" style={{ fontSize:10, color:"var(--n400)" }}>{b.hace}</span>
-                        </div>
-                        {/* editable acá mismo: la bitácora se maneja desde el drawer */}
-                        <textarea className="in" rows={Math.max(1, String(b.texto).split("\n").length)} value={b.texto}
-                          style={{ width:"100%", border:"1px solid transparent", background:"transparent", resize:"none",
-                            padding:"1px 2px", fontSize:12.5, lineHeight:1.5, minHeight:0 }}
-                          onChange={(e) => set((d) => { d.bitacora[i].texto = e.target.value; })} />
-                      </div>
-                      <button className="btn btn-g btn-ico" style={{ width:25, height:25, flexShrink:0 }} title="Borrar anotación"
-                        onClick={() => borrarNota(b, i)}><Trash2 size={12} /></button>
-                    </div>
-                  );
-                })}
-
-              <div className="lbl" style={{ margin:"16px 0 7px" }}>Costos fijos</div>
+              <div className="lbl" style={{ margin:"16px 0 7px", flexShrink:0 }}>Costos fijos</div>
               {notas.length === 0
                 ? <div style={{ fontSize:11.5, color:"var(--n400)", marginBottom:9 }}>
                     Netos y costos que respaldan el precio — tampoco se comparten.
@@ -1125,45 +1097,50 @@ function NotasRail({ q, set, vistaPasajero, toast, vendedor }) {
   );
 }
 
-/* ── 7b · Notas para el pasajero — SÍ salen en la cotización ─────────── */
+/* ── 7b · Notas — campo libre que SÍ sale en la cotización ───────────── */
 function BloqueNotasCliente({ q, set, refEl, toast }) {
-  const [t, setT] = useState("");
-  const inp = useRef(null);
-  const agregar = () => { if (!t.trim()) return;
-    set((d) => { d.notasCliente.push({ id:uid("nc"), texto:t.trim() }); });
-    setT(""); requestAnimationFrame(() => inp.current?.focus()); };
+  const ed = useRef(null);
+  const html = typeof q.notasCliente === "string" ? q.notasCliente : "";
+
+  /* el editor sigue al estado, pero nunca mientras el vendedor está escribiendo adentro */
+  useEffect(() => {
+    const el = ed.current; if (!el) return;
+    if (document.activeElement === el) return;
+    if (el.innerHTML !== html) el.innerHTML = html;
+  }, [html]);
+
+  const sync = () => set((d) => { d.notasCliente = ed.current.innerHTML; });
+
+  const pegar = (e) => {
+    const f = e.clipboardData?.files?.[0];
+    if (f && String(f.type).startsWith("image/")) {
+      e.preventDefault();
+      const fr = new FileReader();
+      fr.onload = () => {
+        ed.current?.focus();
+        document.execCommand("insertHTML", false,
+          `<img src="${fr.result}" style="max-width:100%;border-radius:12px;margin:6px 0">`);
+        sync();
+        toast({ msg:"Imagen pegada en las notas", tone:"ok" });
+      };
+      fr.readAsDataURL(f);
+      return;
+    }
+    e.preventDefault();
+    document.execCommand("insertText", false, limpiarPegado(e.clipboardData.getData("text/plain")));
+    sync();
+  };
+
   return (
-    <Block id="b-notascliente" forwardRef={refEl} icon={StickyNote} title="Notas para el pasajero"
-      count={q.notasCliente.length}
+    <Block id="b-notascliente" forwardRef={refEl} icon={StickyNote} title="Notas"
       right={<Pill tone="teal"><Eye size={9} /> Sale en la cotización</Pill>}>
-      {q.notasCliente.length === 0
-        ? <Vacio icon={StickyNote} titulo="Sin notas para el pasajero"
-            accion="Aclaraciones que sí se comparten: documentación, vacunas, horarios de check-in…" />
-        : (
-        <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
-          {q.notasCliente.map((x, i) => (
-            <div key={x.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px",
-              background:"rgba(59,191,173,.05)", border:"1px solid rgba(59,191,173,.16)", borderRadius:11 }}>
-              <StickyNote size={12} style={{ color:"var(--teal-2)", flexShrink:0 }} />
-              <input className="in" style={{ flex:1, height:29, border:"1px solid transparent", background:"transparent", paddingLeft:2 }}
-                value={x.texto} onChange={(e) => set((d) => { d.notasCliente[i].texto = e.target.value; })} />
-              <button className="btn btn-g btn-ico" style={{ width:25, height:25 }}
-                onClick={() => { const cp = { ...x }; set((d) => { d.notasCliente.splice(i, 1); });
-                  toast({ msg:"Nota eliminada", tone:"warn", undo:() => set((d) => { d.notasCliente.splice(i, 0, cp); }) }); }}>
-                <Trash2 size={12} /></button>
-            </div>
-          ))}
-        </div>
-      )}
-      <div style={{ display:"flex", gap:8 }}>
-        <input ref={inp} className="in" style={{ flex:1 }} value={t}
-          placeholder="Ej.: Pasaporte con 6 meses de vigencia · Enter para agregar"
-          onChange={(e) => setT(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregar()} />
-        <Btn size="sm" onClick={agregar} style={{ height:38 }}><Plus size={13} /></Btn>
-      </div>
+      <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
+        style={{ minHeight:140 }}
+        data-ph="Escribí libre o pegá contenido: itinerarios, detalle de un circuito, condiciones… También imágenes."
+        onInput={sync} onPaste={pegar} />
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
-        <Eye size={11} style={{ color:"var(--teal-2)" }} />
-        A diferencia de las notas internas, estas aparecen en la cotización bajo "A tener en cuenta".
+        <ImageIcon size={11} style={{ color:"var(--teal-2)", flexShrink:0 }} />
+        Sale tal cual en la cotización, con el diseño de la agencia. Las imágenes viajan adentro.
       </div>
     </Block>
   );
@@ -1205,12 +1182,30 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
 
   useEffect(() => { if (foco && nombreRefs.current[foco]) { nombreRefs.current[foco].focus(); nombreRefs.current[foco].select(); setFoco(null); } }, [foco, q.opciones.length]);
 
+  /* la opción nueva sale clonada de la anterior: se cambia el hotel y el precio, nada más */
   const nueva = () => {
     const id = uid("op");
-    set((d) => { d.opciones.push({ id, nombre:`Opción ${d.opciones.length + 1}`,
-      hoteles: d.destinos.map(() => ({ hotelId:null, libre:"" })),
-      regimen:"Desayuno", factor:0.88, habitaciones:[habitacionNueva("Doble")] }); });
+    const clona = q.opciones.length > 0;
+    set((d) => {
+      const n = d.opciones.length + 1;
+      if (d.opciones.length > 0) {
+        const copia = JSON.parse(JSON.stringify(d.opciones[d.opciones.length - 1]));
+        copia.id = id;
+        copia.nombre = `Opción ${n}`;
+        (copia.habitaciones || []).forEach((h) => {
+          h.id = uid("hab");
+          (h.tarifas || []).forEach((t) => { t.id = uid("tf"); });
+        });
+        d.opciones.push(copia);
+      } else {
+        d.opciones.push({ id, nombre:`Opción ${n}`,
+          hoteles: d.destinos.map(() => ({ hotelId:null, libre:"" })),
+          regimen: d.destinos.find((x) => x.regimen)?.regimen || "Desayuno incluido",
+          factor:0.88, habitaciones:[habitacionNueva("Doble")] });
+      }
+    });
     setFoco(id);
+    if (clona) toast({ msg:"Opción clonada — cambiá el hotel y el precio", tone:"ok" });
   };
   /* la segunda tarifa suele ser el menor, después el infante y la familiar */
   const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por infante" : n === 3 ? "Por familia" : "Por adulto");
@@ -1233,6 +1228,11 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
         <span style={{ fontSize:12.5, fontWeight:700 }}>Opciones hoteleras</span>
         {q.opciones.length > 0 && <Pill tone="n">{q.opciones.length}</Pill>}
         <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
+        <button className={`chip ${q.fotosHotel ? "chip-on" : ""}`}
+          title="Mostrar u ocultar las fotos de hotel en lo que ve el pasajero"
+          onClick={() => set((d) => { d.fotosHotel = !d.fotosHotel; })}>
+          <ImageIcon size={12} /> Fotos de hotel
+        </button>
         <Btn variant="p" size="sm" onClick={nueva}><Plus size={13} /> Nueva opción</Btn>
       </div>
       {q.opciones.length === 0 && <Vacio icon={Building2} titulo="Todavía no hay opciones" accion="Agregá la primera y elegí un hotel por destino — hereda los destinos y fechas de arriba" />}
@@ -1349,7 +1349,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
 
                   {habs.map((hab, hj) => (
                     <div key={hab.id} className="a-pop" style={{ border:"1px solid var(--hair-soft)", borderRadius:12,
-                      padding:"10px", marginBottom:8, background:"var(--card-3)" }}>
+                      padding:"12px", marginBottom:12, background:"var(--card-3)" }}>
                       <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-end" }}>
                         <div style={{ flex:"1 1 140px" }}>
                           <Label>Ocupación</Label>
@@ -1380,7 +1380,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                           const L = (txt, hint) => (tk === 0 ? <Label hint={hint}>{txt}</Label> : null);
                           return (
                             <div key={t.id} style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"flex-end", marginBottom:6 }}>
-                              <div style={{ flex:"1 1 130px" }}>
+                              <div style={{ flex:"0 1 132px" }}>
                                 {L("Tarifa")}
                                 <select className="in" style={{ height:32, fontSize:12 }} value={t.tipo}
                                   onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].tipo = e.target.value; })}>
@@ -1423,16 +1423,22 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             </div>
                           );
                         })}
-                        <Btn size="xs" onClick={() => set((d) => {
-                          const ts = d.opciones[i].habitaciones[hj].tarifas;
-                          ts.push(tarifaNueva(tipoSiguiente(ts.length))); })}>
-                          <Plus size={11} /> Tarifa</Btn>
+                        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                          <Btn size="xs" onClick={() => set((d) => {
+                            const ts = d.opciones[i].habitaciones[hj].tarifas;
+                            ts.push(tarifaNueva(tipoSiguiente(ts.length))); })}>
+                            <Plus size={11} /> Tarifa</Btn>
+                          <Btn size="xs" style={{ marginLeft:"auto" }} onClick={() => set((d) => {
+                            d.opciones[i].habitaciones = d.opciones[i].habitaciones || [];
+                            d.opciones[i].habitaciones.push(habitacionNueva("Doble")); })}>
+                            <Plus size={11} /> Habitación</Btn>
+                        </div>
                       </div>
                     </div>
                   ))}
 
                   {/* markup: factor divisor, venta en vivo */}
-                  <div style={{ display:"flex", gap:9, flexWrap:"wrap", marginTop:10, alignItems:"flex-end",
+                  <div style={{ display:"flex", gap:9, flexWrap:"wrap", marginTop:12, alignItems:"flex-end",
                     padding:"10px", background:"rgba(59,191,173,.045)", border:"1px solid rgba(59,191,173,.16)", borderRadius:11 }}>
                     <div style={{ flex:"1 1 110px" }}>
                       <Label hint={vistaPasajero ? null : `${margenPct(o.factor)}%`}>Factor</Label>

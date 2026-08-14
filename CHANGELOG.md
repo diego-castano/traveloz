@@ -11,6 +11,60 @@ del catálogo, CRM).
 
 ---
 
+## 14 de agosto de 2026
+
+### Cambiado
+
+**El cotizador incorpora todo lo pedido en la reunión de chequeo del 14/08.**
+Sigue en mockup, pero el flujo quedó como lo validaron Gero y Santi:
+
+- **Mensaje automático con plantilla.** Toda cotización arranca con el texto
+  que definió el cliente ("Hola {nombre}… te envío la cotización solicitada…
+  completen en el siguiente link la información de cada pasajero…"), con el
+  nombre del cliente y el link de datos de pasajeros del vendedor completados
+  solos. El vendedor lo edita por cotización, y el máster define el texto por
+  defecto en el nuevo panel de Ajustes, donde también se ven los links por
+  vendedor.
+- **Notas internas: bloc libre.** Vuelven a ser un bloc de notas común — se
+  escribe y se edita en el mismo cuadrado, sin cápsulas — con el drawer
+  izquierdo como pantalla grande. En el drawer de cada cotización de la tabla
+  también es un bloc libre.
+- **Destinos en una sola línea.** Ciudad más angosta, noches con flechitas
+  apiladas, régimen al lado (Solo alojamiento sin comidas · Desayuno incluido ·
+  Media pensión sin bebidas · Pensión completa sin bebidas · All Inclusive),
+  fechas calculadas solas desde la salida (sin calendario por destino) y un
+  "+" en la línea para agregar el siguiente — desapareció la fila de "agregar
+  ciudad". El régimen del destino baja a la línea de noches del precio incluye
+  y al régimen de las opciones hoteleras.
+- **Servicios más limpios.** El aéreo por defecto dice "con artículo personal
+  y equipaje de mano", se fue la fila de "más usados" y las sugerencias
+  sueltas. Los chips de cabina y equipaje escriben directo la línea de aéreo,
+  aunque se haya editado a mano.
+- **Opciones que se clonan.** "Nueva opción" duplica la anterior entera —
+  habitaciones, tarifas, régimen — para cambiar solo hotel y precio. Se puede
+  agregar habitación desde adentro del contenedor, los campos de tarifa son
+  más chicos y hay más aire. Las fotos de hotel ahora se prenden y apagan
+  (Gero las prefiere apagadas, y así arrancan).
+- **La salida del pasajero se rehízo donde hacía falta.** Los vuelos salen
+  como tarjetas de Ida y Vuelta con ciudades, horarios y escalas calculadas —
+  sin scroll lateral, como el ejemplo que mandó Santi. Las tarifas van todas
+  iguales, separadas por una rayita corta y sin total ("a veces asusta").
+  "A tener en cuenta" pasó a llamarse "Notas": campo libre donde se escribe
+  largo y se pegan imágenes, que salen con el diseño de la agencia. Formas de
+  pago en dos grupos (tarjetas: Visa, Mastercard, OCA, Amex · transferencia:
+  BROU, Itaú, Santander, BBVA), sin Scotiabank y sin la línea de 12 cuotas.
+  La firma suma el email del vendedor y el teléfono abre WhatsApp.
+- **Cotización de solo vuelos.** Cuarto camino al crear: itinerario, cabina,
+  equipaje y precio por adulto y por menor — sin hoteles ni servicios. La
+  cotización sale igual de prolija, solo con lo que corresponde.
+- **Vuelos desde una captura.** Además del código, se puede pegar una imagen
+  con Ctrl+V y la IA la lee y la formatea igual (simulado en el mockup; en
+  producción reemplaza a la API de PNR converter).
+- **Tab recorre solo los campos.** Tabulador salta de campo en campo sin
+  pasar por los botones, como pidió Santi.
+
+---
+
 ## 13 de agosto de 2026
 
 ### Arreglado

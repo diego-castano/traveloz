@@ -3,9 +3,9 @@
 import { useState, useMemo } from "react";
 import {
   Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2, Clock3, TrendingUp,
-  Lock, Trash2, Smartphone, Monitor
+  Lock, Smartphone, Monitor
 } from "lucide-react";
-import { VENDEDORES, semaforo, fmtHace, money, ESTADOS, uid } from "./data";
+import { VENDEDORES, semaforo, fmtHace, money, ESTADOS } from "./data";
 import { Btn, Pill } from "./ui";
 import { SalidaPasajero } from "./telefono";
 import { ModalCompartir } from "./compartir";
@@ -61,7 +61,6 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
   const [confOpen, setConfOpen] = useState(false);
   const [editEst, setEditEst] = useState(false);
   const [preview, setPreview] = useState(null);   // null | "cel" | "tab" | "desk"
-  const [txtBit, setTxtBit] = useState("");
   /* cotización de muestra para la vista previa del drawer */
   const qPrev = useMemo(() => {
     const dest = r.destino.split(",")[0];
@@ -74,10 +73,11 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
         { id:"s2", categoria:"traslado", texto:"Traslado llegada y salida", ciudad:dest, modalidad:"Regular" },
         { id:"s3", categoria:"alojamiento", texto:"Alojamiento en base doble", ciudad:null, modalidad:null },
       ],
-      notas:[], notasCliente:[], vigencia:48,
+      notas:[], notasCliente:"", vigencia:48,
+      mensajeAuto:"", soloVuelos:false, precioVuelo:{ adulto:"", menor:"" }, fotosHotel:false,
       /* mismo modelo que el editor: habitaciones con sus tarifas */
       opciones:[{ id:"o1", nombre:"Opción 1", hoteles:[{ hotelId:"h8", libre:"" }],
-        regimen:"All inclusive", factor:0.88,
+        regimen:"All Inclusive", factor:0.88,
         habitaciones:[{ id:"hb1", ocupacion:"Doble", tipo:"",
           tarifas:[{ id:"tf1", tipo:"Por adulto", tipoLibre:"", neto:Math.round((r.monto || 1500) * 0.88), venta:null }] }] }],
     };
@@ -93,7 +93,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
     cliente:{ nombre:r.cliente.split(" ")[0], apellido:"", email:"pasajero@mail.com", telefono:"" },
     titulo:{ destino:r.destino.split(",")[0], mes:null, anio:"" },
     fechaSalida:"", mensaje:"", mensajeHtml:"", pnrRaw:"", vuelos:[], destinos:[],
-    servicios:[], notas:[], notasCliente:[], opciones:[],
+    servicios:[], notas:[], notasCliente:"", opciones:[],
+    mensajeAuto:"", soloVuelos:false, precioVuelo:{ adulto:"", menor:"" }, fotosHotel:false,
   };
 
   const eventos = [
@@ -252,47 +253,10 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             <span className="lbl">Notas internas</span>
             <Pill tone="coral"><Lock size={9} /> No se comparte</Pill>
           </div>
-          <textarea className="in" rows={2} value={txtBit}
+          <textarea className="in" rows={5} value={r.bitacora || ""}
             style={{ width:"100%", resize:"none", lineHeight:1.5, paddingTop:8, fontSize:12 }}
-            placeholder="Anotá y Enter… (Shift+Enter, salto)"
-            onChange={(e) => setTxtBit(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                const t = txtBit.trim(); if (!t) return;
-                onBitacora?.(r.num, [{ id:uid("bt"), autor:r.vendedor, hace:"recién", texto:t }, ...(r.bitacora || [])]);
-                setTxtBit("");
-              }
-            }} />
-          {(r.bitacora || []).length > 0 && (
-            <div style={{ display:"flex", flexDirection:"column", gap:6, marginTop:8 }}>
-              {(r.bitacora || []).map((b, i) => {
-                const a = VENDEDORES.find((v) => v.id === b.autor) || VENDEDORES[0];
-                return (
-                  <div key={b.id} className="a-pop" style={{ display:"flex", gap:8, padding:"8px 10px", borderRadius:10,
-                    background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderLeft:"3px solid var(--violet)" }}>
-                    <span style={{ width:20, height:20, borderRadius:99, flexShrink:0, display:"inline-flex",
-                      alignItems:"center", justifyContent:"center", fontSize:8.5, fontWeight:800, color:"#fff",
-                      background:"linear-gradient(135deg,var(--violet),var(--violet-2))" }}>{a.inicial}</span>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
-                        <span style={{ fontSize:11, fontWeight:700 }}>{a.nombre.split(" ")[0]}</span>
-                        <span className="mono" style={{ fontSize:9.5, color:"var(--n400)" }}>{b.hace}</span>
-                      </div>
-                      <div style={{ fontSize:12, lineHeight:1.5, whiteSpace:"pre-wrap", overflowWrap:"anywhere" }}>{b.texto}</div>
-                    </div>
-                    <button className="btn btn-g btn-ico" style={{ width:23, height:23, flexShrink:0 }} title="Borrar anotación"
-                      onClick={() => {
-                        const resto = (r.bitacora || []).filter((x) => x.id !== b.id);
-                        onBitacora?.(r.num, resto);
-                        toast?.({ msg:"Anotación borrada", tone:"warn",
-                          undo:() => onBitacora?.(r.num, [...resto.slice(0, i), b, ...resto.slice(i)]) });
-                      }}><Trash2 size={11} /></button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+            placeholder="Escribí libre: netos, avisos, pedidos especiales…"
+            onChange={(e) => onBitacora?.(r.num, e.target.value)} />
 
           {r.estado === "confirmada" && (
             <div className="a-pop" style={{ marginTop:14, padding:"11px 13px", borderRadius:12,

@@ -42,7 +42,8 @@ const HOTELES = [
   { id:"h16", nombre:"Meliá Buenos Aires",        ciudad:"Buenos Aires",   cat:5, seed:16 },
 ];
 
-const REGIMENES = ["Desayuno","Media pensión","Pensión completa","All inclusive","Solo alojamiento"];
+/* Orden y redacción exactos que pidió el cliente en la reunión */
+const REGIMENES = ["Solo alojamiento (sin comidas incluidas)","Desayuno incluido","Media pensión (sin bebidas)","Pensión completa (sin bebidas)","All Inclusive"];
 /* Modelo viejo de habitación: lo siguen usando los PAQUETES del catálogo */
 const HABITACIONES = ["Doble estándar","Doble superior","Doble vista al mar","Triple estándar","Suite junior","Bungalow"];
 
@@ -96,9 +97,9 @@ const PAQUETES = [
       {cat:"opcionales",  texto:"Excursión Cristo Redentor y Pan de Azúcar"},
     ],
     opciones:[
-      { nombre:"Opción 1 · Turista",  hoteles:["h1","h5"], regimen:"Desayuno",     habitacion:"Doble estándar",     neto:1120, factor:0.88 },
-      { nombre:"Opción 2 · Superior", hoteles:["h3","h6"], regimen:"Desayuno",     habitacion:"Doble superior",     neto:1465, factor:0.86 },
-      { nombre:"Opción 3 · Premium",  hoteles:["h4","h7"], regimen:"Media pensión",habitacion:"Doble vista al mar", neto:2050, factor:0.84 },
+      { nombre:"Opción 1 · Turista",  hoteles:["h1","h5"], regimen:"Desayuno incluido",         habitacion:"Doble estándar",     neto:1120, factor:0.88 },
+      { nombre:"Opción 2 · Superior", hoteles:["h3","h6"], regimen:"Desayuno incluido",         habitacion:"Doble superior",     neto:1465, factor:0.86 },
+      { nombre:"Opción 3 · Premium",  hoteles:["h4","h7"], regimen:"Media pensión (sin bebidas)",habitacion:"Doble vista al mar", neto:2050, factor:0.84 },
     ],
   },
   {
@@ -112,9 +113,9 @@ const PAQUETES = [
       {cat:"seguro",      texto:"Asistencia al viajero cobertura premium"},
     ],
     opciones:[
-      { nombre:"Opción 1 · Occidental", hoteles:["h10"], regimen:"All inclusive", habitacion:"Doble estándar", neto:1390, factor:0.88 },
-      { nombre:"Opción 2 · Bahia Principe", hoteles:["h8"], regimen:"All inclusive", habitacion:"Doble superior", neto:1720, factor:0.86 },
-      { nombre:"Opción 3 · Riu Palace", hoteles:["h9"], regimen:"All inclusive", habitacion:"Doble vista al mar", neto:2180, factor:0.84 },
+      { nombre:"Opción 1 · Occidental", hoteles:["h10"], regimen:"All Inclusive", habitacion:"Doble estándar", neto:1390, factor:0.88 },
+      { nombre:"Opción 2 · Bahia Principe", hoteles:["h8"], regimen:"All Inclusive", habitacion:"Doble superior", neto:1720, factor:0.86 },
+      { nombre:"Opción 3 · Riu Palace", hoteles:["h9"], regimen:"All Inclusive", habitacion:"Doble vista al mar", neto:2180, factor:0.84 },
     ],
   },
   {
@@ -130,7 +131,7 @@ const PAQUETES = [
       {cat:"seguro",      texto:"Asistencia al viajero cobertura premium"},
     ],
     opciones:[
-      { nombre:"Opción 1 · Céntrica", hoteles:["h13","h14","h15"], regimen:"Desayuno", habitacion:"Doble estándar", neto:2340, factor:0.86 },
+      { nombre:"Opción 1 · Céntrica", hoteles:["h13","h14","h15"], regimen:"Desayuno incluido", habitacion:"Doble estándar", neto:2340, factor:0.86 },
     ],
   },
   {
@@ -144,8 +145,8 @@ const PAQUETES = [
       {cat:"seguro",      texto:"Asistencia al viajero cobertura básica"},
     ],
     opciones:[
-      { nombre:"Opción 1 · Praia Centro", hoteles:["h11"], regimen:"Desayuno",      habitacion:"Doble estándar", neto:780,  factor:0.88 },
-      { nombre:"Opción 2 · Costão",       hoteles:["h12"], regimen:"Media pensión", habitacion:"Doble superior", neto:1180, factor:0.85 },
+      { nombre:"Opción 1 · Praia Centro", hoteles:["h11"], regimen:"Desayuno incluido",           habitacion:"Doble estándar", neto:780,  factor:0.88 },
+      { nombre:"Opción 2 · Costão",       hoteles:["h12"], regimen:"Media pensión (sin bebidas)", habitacion:"Doble superior", neto:1180, factor:0.85 },
     ],
   },
 ];
@@ -154,27 +155,27 @@ const PAQUETES_EXTRA = [
   { id:"pq5", nombre:"Cancún y Riviera Maya", mes:11, anio:2026, seed:7, resumen:"7 noches · all inclusive · salidas de diciembre",
     destinos:[{ciudad:"Cancún", noches:7}],
     servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado llegada y salida",ciudad:"Cancún",modalidad:"Regular"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Asistencia al viajero cobertura premium"}],
-    opciones:[{ nombre:"Opción 1 · Riviera", hoteles:["h8"], regimen:"All inclusive", habitacion:"Doble estándar", neto:1610, factor:0.87 }] },
+    opciones:[{ nombre:"Opción 1 · Riviera", hoteles:["h8"], regimen:"All Inclusive", habitacion:"Doble estándar", neto:1610, factor:0.87 }] },
   { id:"pq6", nombre:"Buenos Aires escapada", mes:8, anio:2026, seed:2, resumen:"3 noches · city break · salidas de septiembre",
     destinos:[{ciudad:"Buenos Aires", noches:3}],
     servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con equipaje de mano"},{cat:"alojamiento",texto:"Alojamiento en base doble"}],
-    opciones:[{ nombre:"Opción 1 · Recoleta", hoteles:["h16"], regimen:"Desayuno", habitacion:"Doble superior", neto:420, factor:0.88 }] },
+    opciones:[{ nombre:"Opción 1 · Recoleta", hoteles:["h16"], regimen:"Desayuno incluido", habitacion:"Doble superior", neto:420, factor:0.88 }] },
   { id:"pq7", nombre:"París y Roma", mes:3, anio:2027, seed:4, resumen:"9 noches · 2 capitales · salidas de abril",
     destinos:[{ciudad:"París", noches:5},{ciudad:"Roma", noches:4}],
     servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado de llegada",ciudad:"París",modalidad:"Privado"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Asistencia al viajero cobertura premium"}],
-    opciones:[{ nombre:"Opción 1 · Céntrica", hoteles:["h13","h14"], regimen:"Desayuno", habitacion:"Doble estándar", neto:2680, factor:0.85 }] },
+    opciones:[{ nombre:"Opción 1 · Céntrica", hoteles:["h13","h14"], regimen:"Desayuno incluido", habitacion:"Doble estándar", neto:2680, factor:0.85 }] },
   { id:"pq8", nombre:"Miami y Orlando", mes:6, anio:2027, seed:9, resumen:"8 noches · parques + playa · salidas de julio",
     destinos:[{ciudad:"Miami", noches:3},{ciudad:"Orlando", noches:5}],
     servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"vehiculo",texto:"Alquiler de auto categoría SUV"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"opcionales",texto:"Entradas a parques temáticos"}],
-    opciones:[{ nombre:"Opción 1 · Familiar", hoteles:["h10","h9"], regimen:"Desayuno", habitacion:"Triple estándar", neto:2140, factor:0.86 }] },
+    opciones:[{ nombre:"Opción 1 · Familiar", hoteles:["h10","h9"], regimen:"Desayuno incluido", habitacion:"Triple estándar", neto:2140, factor:0.86 }] },
   { id:"pq9", nombre:"Bariloche invierno", mes:6, anio:2026, seed:10, resumen:"5 noches · nieve · salidas de julio",
     destinos:[{ciudad:"Bariloche", noches:5}],
     servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado llegada y salida",ciudad:"Bariloche",modalidad:"Regular"},{cat:"alojamiento",texto:"Alojamiento en base doble"}],
-    opciones:[{ nombre:"Opción 1 · Centro", hoteles:["h11"], regimen:"Media pensión", habitacion:"Doble estándar", neto:940, factor:0.88 }] },
+    opciones:[{ nombre:"Opción 1 · Centro", hoteles:["h11"], regimen:"Media pensión (sin bebidas)", habitacion:"Doble estándar", neto:940, factor:0.88 }] },
   { id:"pq10", nombre:"Cartagena caribe colombiano", mes:9, anio:2026, seed:11, resumen:"6 noches · ciudad amurallada · salidas de octubre",
     destinos:[{ciudad:"Cartagena", noches:6}],
     servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado llegada y salida",ciudad:"Cartagena",modalidad:"Regular"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Asistencia al viajero cobertura básica"}],
-    opciones:[{ nombre:"Opción 1 · Ciudad vieja", hoteles:["h15"], regimen:"Desayuno", habitacion:"Doble superior", neto:1120, factor:0.87 }] },
+    opciones:[{ nombre:"Opción 1 · Ciudad vieja", hoteles:["h15"], regimen:"Desayuno incluido", habitacion:"Doble superior", neto:1120, factor:0.87 }] },
 ];
 PAQUETES.push(...PAQUETES_EXTRA);
 
@@ -193,20 +194,22 @@ const CLIENTES = [
   { nombre:"Sofía", apellido:"Methol", email:"sofimethol@gmail.com", telefono:"+598 92 303 404", ultima:"COT-2026-0144" },
 ];
 
+/* `linkDatos`: el formulario de datos de pasajeros propio de cada vendedor */
 const VENDEDORES = [
-  { id:"v1", nombre:"Agustina Vera",   inicial:"AV", cargo:"Ejecutiva de ventas", tel:"+598 99 412 330" },
-  { id:"v2", nombre:"Gerónimo Silva",  inicial:"GS", cargo:"Líder técnico",       tel:"+598 99 118 204" },
-  { id:"v3", nombre:"Amparo Núñez",    inicial:"AN", cargo:"Ejecutiva de ventas", tel:"+598 99 663 871" },
-  { id:"v4", nombre:"Federico Vila",   inicial:"FV", cargo:"Ejecutivo de ventas", tel:"+598 99 205 449" },
+  { id:"v1", nombre:"Agustina Vera",   inicial:"AV", cargo:"Ejecutiva de ventas", tel:"+598 99 412 330",
+    email:"agustina.vera@traveloz.com.uy",  linkDatos:"traveloz.com.uy/datos-pasajeros/agustina-vera" },
+  { id:"v2", nombre:"Gerónimo Silva",  inicial:"GS", cargo:"Líder técnico",       tel:"+598 99 118 204",
+    email:"geronimo.silva@traveloz.com.uy", linkDatos:"traveloz.com.uy/datos-pasajeros/geronimo-silva" },
+  { id:"v3", nombre:"Amparo Núñez",    inicial:"AN", cargo:"Ejecutiva de ventas", tel:"+598 99 663 871",
+    email:"amparo.nunez@traveloz.com.uy",   linkDatos:"traveloz.com.uy/datos-pasajeros/amparo-nunez" },
+  { id:"v4", nombre:"Federico Vila",   inicial:"FV", cargo:"Ejecutivo de ventas", tel:"+598 99 205 449",
+    email:"federico.vila@traveloz.com.uy",  linkDatos:"traveloz.com.uy/datos-pasajeros/federico-vila" },
 ];
 
 const HISTORIAL = [
   { num:"COT-2026-0147", cliente:"Familia Rodríguez", destino:"Punta Cana, Noviembre 2026", vendedor:"v3", estado:"abierta",
     monto:1955, dias:1, hEnvio:26, aperturas:3, hasta:"4 h 10 m", lectura:"2 m 40 s", hastaSec:"Formas de pago",
-    bitacora:[
-      { id:"bt147a", autor:"v3", hace:"hace 3 h",  texto:"Piden habitación cerca de la piscina — avisar al hotel al confirmar." },
-      { id:"bt147b", autor:"v1", hace:"hace 22 h", texto:"Neto Bahia Principe negociado a 1720, vence el lunes." },
-    ],
+    bitacora: "Piden habitación cerca de la piscina — avisar al hotel al confirmar.\nNeto Bahia Principe negociado a 1720, vence el lunes.",
     apDet:[{ hace:"hace 22 h", disp:"iPhone · WhatsApp", lugar:"Montevideo, UY" },
            { hace:"hace 20 h", disp:"iPhone · Safari",   lugar:"Montevideo, UY" },
            { hace:"hace 3 h",  disp:"Android · WhatsApp", lugar:"Canelones, UY" }] },
@@ -227,9 +230,7 @@ const HISTORIAL = [
   /* v2D: la abrió pero la dejó por la mitad — es el caso que muestra el funnel de lectura incompleto */
   { num:"COT-2026-0141", cliente:"Ramiro Pintos", destino:"Cancún, Diciembre 2026", vendedor:"v2", estado:"abierta",
     monto:1850, dias:8, hEnvio:40, aperturas:2, hasta:"6 h 20 m", lectura:"48 s", hastaSec:"Hoteles",
-    bitacora:[
-      { id:"bt141a", autor:"v2", hace:"hace 5 h", texto:"Viaja con un bebé de 8 meses — cotizar cuna y asiento de avión." },
-    ],
+    bitacora: "Viaja con un bebé de 8 meses — cotizar cuna y asiento de avión.",
     apDet:[{ hace:"hace 34 h", disp:"Android · WhatsApp", lugar:"Montevideo, UY" },
            { hace:"hace 5 h",  disp:"Android · Chrome",   lugar:"Montevideo, UY" }] },
 ];
@@ -279,7 +280,7 @@ function margenPct(factor) { return Math.round((1 - Number(factor)) * 1000) / 10
    equipaje) hasta que el vendedor los edita a mano. */
 function serviciosDefault(noches = 7) {
   return [
-    { id:uid("srv"), categoria:"aereo",       texto:"Aéreo ida y vuelta con equipaje de mano", ciudad:null, modalidad:null, auto:"aereo" },
+    { id:uid("srv"), categoria:"aereo",       texto:"Aéreo ida y vuelta con artículo personal y equipaje de mano", ciudad:null, modalidad:null, auto:"aereo" },
     { id:uid("srv"), categoria:"traslado",    texto:"Traslados de llegada y salida",           ciudad:null, modalidad:null },
     { id:uid("srv"), categoria:"alojamiento", texto:`${String(noches).padStart(2, "0")} noches de alojamiento`, ciudad:null, modalidad:null, auto:"noches" },
     { id:uid("srv"), categoria:"seguro",      texto:"Seguro de Asistencia al Viajero",         ciudad:null, modalidad:null },
@@ -534,6 +535,22 @@ function hotelesCotizadosEn(ciudad, max = 3) {
   return ids.map(hotelById).filter((h) => h && norm(h.ciudad) === c).slice(0, max);
 }
 
+/* ── Mensaje automático: la plantilla que se manda con toda cotización ──── */
+const PLANTILLA_MENSAJE = `Hola {nombre}, ¿cómo estás?
+
+Según lo conversado, te envío la cotización solicitada.
+
+En caso de que les interese la propuesta, solicitamos nos completen en el siguiente link la información de cada pasajero tal cual figura en el documento de viaje, y así comenzar el proceso de reserva:
+{link}`;
+
+/* {nombre} y {link} se completan al mostrar; si no hay nombre, "Hola ," queda "Hola," */
+function renderPlantilla(tpl, nombre, link) {
+  return String(tpl || "")
+    .replace(/\{nombre\}/g, String(nombre || "").trim())
+    .replace(/\{link\}/g, String(link || ""))
+    .replace(/Hola\s+,/, "Hola,");
+}
+
 /* Textos listos para pegar al final del mensaje */
 function snippetMensaje(tipo, q) {
   const nom = (q?.cliente?.nombre || "").trim();
@@ -607,4 +624,6 @@ export {
   /* v2B */
   telDigitos, pareceTel, matchTel, filaPorNum, ultimaDe, FRECUENTES, hotelesCotizadosEn,
   snippetMensaje, encabezadoTono, redactarMensaje,
+  /* v4 · mensaje automático editable por cotización */
+  PLANTILLA_MENSAJE, renderPlantilla,
 };

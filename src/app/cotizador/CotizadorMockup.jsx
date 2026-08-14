@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import {
-  MESES, ANIO_BASE, PLANTILLAS, VENDEDORES, uid, toISO, addDays, parseISO, norm, ESTADOS,
+  MESES, ANIO_BASE, PLANTILLAS, PLANTILLA_MENSAJE, VENDEDORES, uid, toISO, addDays, parseISO, norm, ESTADOS,
   CLIENTES, matchTel, serviciosDefault, habitacionNueva, precioOpcion
 } from "./_mockup/data";
 import { Btn, Pill, Toasts } from "./_mockup/ui";
@@ -40,7 +40,9 @@ import { ModalCompartir } from "./_mockup/compartir";
    ═══════════════════════════════════════════════════════════════════════════ */
 
 let CORRELATIVO = 148;
-function cotizacionVacia() {
+/* la plantilla del mensaje automático entra por argumento: el máster la edita
+   en el inicio y toda cotización nueva arranca con esa versión */
+function cotizacionVacia(plantilla = PLANTILLA_MENSAJE) {
   return {
     numero: `COT-2026-${String(CORRELATIVO++).padStart(4, "0")}`,
     estado: "borrador",
@@ -51,6 +53,10 @@ function cotizacionVacia() {
     fechaSalida: "",
     mensaje: "",
     mensajeHtml: "",
+    mensajeAuto: plantilla,   /* v4 · texto fijo con {nombre} y {link}, editable por cotización */
+    soloVuelos: false,        /* v4 · cotización de solo vuelos: sin servicios ni alojamiento */
+    precioVuelo: { adulto:"", menor:"" },
+    fotosHotel: false,        /* v4 · Gero las prefiere apagadas */
     pnrRaw: "",
     vuelos: [],
     cabina: null,             /* v3 · se replica en la línea de Aéreo de los servicios */
@@ -58,8 +64,8 @@ function cotizacionVacia() {
     destinos: [],
     servicios: serviciosDefault(7),
     notas: [],
-    bitacora: [],             /* v3 · bitácora interna de la columna izquierda: entradas con autor y hora */
-    notasCliente: [],
+    notasLibres: "",          /* v4 · bloc de notas interno, sin cápsulas ni autores */
+    notasCliente: "",         /* v4 · campo libre HTML del pasajero, admite imágenes */
     vigencia: 48,
     opciones: [],
   };
@@ -71,14 +77,17 @@ function atarTitulo(q) {
   if (f) { q.titulo.mes = f.getMonth(); q.titulo.anio = f.getFullYear(); }
 }
 
-function desdePaquete(p) {
-  const q = cotizacionVacia();
+function desdePaquete(p, plantilla) {
+  const q = cotizacionVacia(plantilla);
   q.origen = p.nombre;
   q.titulo = { destino:p.destinos[0].ciudad, mes:p.mes, anio:p.anio };
   const hoy = new Date(); const salida = new Date(p.anio, p.mes, 15);
   q.fechaSalida = toISO(salida > hoy ? salida : new Date(hoy.getFullYear(), hoy.getMonth() + 2, 15));
   atarTitulo(q);
-  q.destinos = p.destinos.map((d) => ({ id:uid("dst"), ciudad:d.ciudad, noches:d.noches, checkinManual:null }));
+  /* el régimen del paquete lo fija su primera opción y baja a todos los destinos */
+  const regPq = p.opciones[0]?.regimen || "";
+  q.destinos = p.destinos.map((d) => ({ id:uid("dst"), ciudad:d.ciudad, noches:d.noches,
+    checkinManual:null, regimen:regPq }));
   /* los servicios del paquete vienen de la web: se respetan tal cual, sin flags auto */
   q.servicios = p.servicios.map((s) => ({ id:uid("srv"), categoria:s.cat, texto:s.texto,
     ciudad:s.ciudad ?? null, modalidad:s.modalidad ?? null }));
@@ -93,25 +102,23 @@ function desdePaquete(p) {
     { id:uid("nt"), concepto:"Traslados", neto:64 },
     { id:uid("nt"), concepto:"Asistencia al viajero", neto:38 },
   ];
-  q.notasCliente = [
-    { id:uid("nc"), texto:"Pasaporte con vigencia mínima de 6 meses al momento del viaje." },
-  ];
+  q.notasCliente = "<div>Pasaporte con vigencia mínima de 6 meses al momento del viaje.</div>";
   return q;
 }
 function o0(p) { return p.opciones[0]?.neto || 900; }
 
-function desdePlantilla(t) {
-  const q = cotizacionVacia();
+function desdePlantilla(t, plantilla) {
+  const q = cotizacionVacia(plantilla);
   q.origen = `Plantilla · ${t.nombre}`;
   q.titulo = { destino:t.destino, mes:null, anio:ANIO_BASE };
-  q.destinos = [{ id:uid("dst"), ciudad:t.destino, noches:7, checkinManual:null }];
+  q.destinos = [{ id:uid("dst"), ciudad:t.destino, noches:7, checkinManual:null, regimen:"" }];
   q.servicios = serviciosDefault(7);
   return q;
 }
 
 /* ── v2 · duplicar una fila del seguimiento (cliente y destino precargados) ── */
-function desdeFila(r) {
-  const q = cotizacionVacia();
+function desdeFila(r, plantilla) {
+  const q = cotizacionVacia(plantilla);
   q.origen = `Duplicada de ${r.num}`;
   const [dest = "", resto = ""] = String(r.destino || "").split(",").map((x) => x.trim());
   const mes = MESES.findIndex((m) => norm(resto).startsWith(norm(m)));
@@ -120,7 +127,7 @@ function desdeFila(r) {
   const cli = String(r.cliente || "").trim();
   if (/^(familia|flia)\b/i.test(cli)) q.cliente.nombre = cli;
   else { const p = cli.split(/\s+/); q.cliente.nombre = p[0] || ""; q.cliente.apellido = p.slice(1).join(" "); }
-  if (dest) q.destinos = [{ id:uid("dst"), ciudad:dest, noches:7, checkinManual:null }];
+  if (dest) q.destinos = [{ id:uid("dst"), ciudad:dest, noches:7, checkinManual:null, regimen:"" }];
   if (q.titulo.mes != null) {
     const hoy = new Date(); const salida = new Date(q.titulo.anio, q.titulo.mes, 15);
     q.fechaSalida = toISO(salida > hoy ? salida : new Date(hoy.getFullYear(), hoy.getMonth() + 2, 15));
@@ -130,8 +137,8 @@ function desdeFila(r) {
 }
 
 /* ── v2 · borrador armado a partir de una consulta de WhatsApp ─────────── */
-function desdeIA(det) {
-  const q = det.paquete ? desdePaquete(det.paquete) : cotizacionVacia();
+function desdeIA(det, plantilla) {
+  const q = det.paquete ? desdePaquete(det.paquete, plantilla) : cotizacionVacia(plantilla);
   if (det.mes != null) {
     q.titulo.mes = det.mes;
     q.titulo.anio = det.anio;
@@ -141,7 +148,7 @@ function desdeIA(det) {
   }
   if (!det.paquete && det.destino) {
     q.titulo.destino = det.destino;
-    q.destinos = [{ id:uid("dst"), ciudad:det.destino, noches: det.noches || 7, checkinManual:null }];
+    q.destinos = [{ id:uid("dst"), ciudad:det.destino, noches: det.noches || 7, checkinManual:null, regimen:"" }];
   }
   if (det.cliente) q.cliente.nombre = det.cliente;
   /* v2E · un teléfono en la consulta identifica al pasajero; si ya es cliente
@@ -152,13 +159,10 @@ function desdeIA(det) {
     if (cli) q.cliente = { nombre: det.cliente || cli.nombre, apellido: cli.apellido, email: cli.email, telefono: cli.telefono };
   }
   /* v2E · los pax leídos quedan escritos en la cotización, no solo en el banner */
-  if (det.paxTxt) q.notasCliente.push({ id: uid("nc"), texto: `Cotización pensada para ${det.paxTxt}.` });
+  if (det.paxTxt) q.notasCliente += `<div>Cotización pensada para ${det.paxTxt}.</div>`;
   q.ia = { consulta:det.texto, chips:det.chips, paquete: det.paquete ? det.paquete.nombre : null };
   return q;
 }
-
-/* orden fijo de los bloques (el que pidió el cliente): lo usan el rail y los atajos Alt+1…Alt+7 */
-const IDS_BLOQUES = ["b-cliente","b-mensaje","b-encabezado","b-servicios","b-vuelos","b-alojamiento","b-notascliente"];
 
 export default function Cotizador() {
   const [pantalla, setPantalla] = useState("inicio");     // inicio | editor | listado
@@ -173,6 +177,8 @@ export default function Cotizador() {
   const [compartir, setCompartir] = useState(false);
   const [prev, setPrev] = useState(null);                  // overlay de vista previa: null | "cel" | "tab" | "desk" 
   const [plantillas, setPlantillas] = useState(PLANTILLAS);
+  /* v4 · el texto del mensaje automático se edita una vez en los ajustes del máster */
+  const [plantillaMsg, setPlantillaMsg] = useState(PLANTILLA_MENSAJE);
   const [homeTab, setHomeTab] = useState("cotizar");
   /* v2D · D5 · tema de la herramienta. Arranca claro y vive solo en memoria.
      La vista del pasajero (teléfono y vista previa) NO se oscurece nunca. */
@@ -184,6 +190,15 @@ export default function Cotizador() {
   const scroller = useRef(null);
   const timerRef = useRef(null);
   const phoneScroll = useRef(null);
+
+  /* orden fijo de los bloques (el que pidió el cliente): lo usan el rail y los
+     atajos Alt+N. En solo vuelos no hay servicios ni alojamiento. */
+  const IDS_BLOQUES = q.soloVuelos
+    ? ["b-cliente","b-mensaje","b-encabezado","b-vuelos","b-notascliente"]
+    : ["b-cliente","b-mensaje","b-encabezado","b-servicios","b-vuelos","b-alojamiento","b-notascliente"];
+  /* el listener de teclado se registra una sola vez: lee el orden vigente por ref */
+  const idsRef = useRef(IDS_BLOQUES);
+  idsRef.current = IDS_BLOQUES;
 
   /* mutación inmutable simple */
   const set = useCallback((fn) => {
@@ -219,11 +234,13 @@ export default function Cotizador() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaleta((v) => !v); }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && pantallaRef.current === "editor") {
         e.preventDefault(); setCompartir(true); }
-      /* v2B · Alt+1…Alt+7 salta al bloque N (e.code aguanta el Alt raro de macOS) */
+      /* v2B · Alt+1…Alt+N salta al bloque N (e.code aguanta el Alt raro de macOS) */
       if (e.altKey && !e.metaKey && !e.ctrlKey && pantallaRef.current === "editor") {
-        const n = /^Digit[1-7]$/.test(e.code || "") ? Number(e.code.slice(5))
-          : /^[1-7]$/.test(e.key) ? Number(e.key) : 0;
-        if (n) { e.preventDefault(); irA(IDS_BLOQUES[n - 1]); }
+        const ids = idsRef.current;
+        const tope = Math.min(ids.length, 9);
+        const n = new RegExp(`^Digit[1-${tope}]$`).test(e.code || "") ? Number(e.code.slice(5))
+          : new RegExp(`^[1-${tope}]$`).test(e.key) ? Number(e.key) : 0;
+        if (n) { e.preventDefault(); irA(ids[n - 1]); }
       }
       /* v2B · "?" abre la hoja de atajos, salvo que estés escribiendo */
       if (e.key === "?" && !enCampo()) { e.preventDefault(); setAtajos((v) => !v); }
@@ -250,7 +267,7 @@ export default function Cotizador() {
 
   /* ── v2B · arrancar desde la última cotización del cliente ─────────── */
   const usarBase = useCallback((r) => {
-    const base = desdeFila(r);
+    const base = desdeFila(r, plantillaMsg);
     CORRELATIVO -= 1;                               // seguimos con el número actual: no gastamos uno nuevo
     base.origen = `Base de ${r.num}`;
     setQ((prev) => {
@@ -265,7 +282,7 @@ export default function Cotizador() {
     requestAnimationFrame(() => document.getElementById("b-encabezado")
       ?.scrollIntoView({ behavior:"smooth", block:"start" }));
     toast({ msg:`Base cargada desde ${r.num} — ajustá lo que cambie`, tone:"ok" });
-  }, [toast]);
+  }, [toast, plantillaMsg]);
 
   /* ── propagación de fechas ─────────────────────────────────────────── */
   const tramos = useMemo(() => {
@@ -288,10 +305,14 @@ export default function Cotizador() {
         En cuanto el vendedor los edita a mano pierden el flag y quedan quietos. ── */
   useEffect(() => {
     const noches = tramos.reduce((a, t) => a + (Number(t.noches) || 0), 0) || 7;
-    const txtNoches = `${String(noches).padStart(2, "0")} noches de alojamiento`;
+    /* el régimen entra en la línea de noches: uno solo se nombra, dos o más se resumen */
+    const regs = [...new Set(q.destinos.map((d) => (d.regimen || "").trim()).filter(Boolean))];
+    const sufijo = regs.length === 1 ? ` · ${regs[0]}`
+      : regs.length > 1 ? " · régimen según destino" : "";
+    const txtNoches = `${String(noches).padStart(2, "0")} noches de alojamiento${sufijo}`;
     const txtAereo = (q.cabina || q.equipaje)
       ? "Aéreo ida y vuelta · " + [q.cabina, q.equipaje].filter(Boolean).join(" · ")
-      : "Aéreo ida y vuelta con equipaje de mano";
+      : "Aéreo ida y vuelta con artículo personal y equipaje de mano";
     const iN = q.servicios.findIndex((s) => s.auto === "noches");
     const iA = q.servicios.findIndex((s) => s.auto === "aereo");
     const cambiaN = iN >= 0 && q.servicios[iN].texto !== txtNoches;
@@ -301,7 +322,7 @@ export default function Cotizador() {
       if (cambiaN) d.servicios[iN].texto = txtNoches;
       if (cambiaA) d.servicios[iA].texto = txtAereo;
     });
-  }, [tramos, q.servicios, q.cabina, q.equipaje, set]);
+  }, [tramos, q.destinos, q.servicios, q.cabina, q.equipaje, set]);
 
   /* ── progreso por bloque ───────────────────────────────────────────── */
   const bloques = [
@@ -309,10 +330,12 @@ export default function Cotizador() {
     { id:"b-mensaje",    l:"Mensaje",     Icon:MessageSquare, ok: !!q.mensaje },
     { id:"b-encabezado", l:"Encabezado",  Icon:FileText,    ok: !!(q.titulo.destino && q.titulo.mes != null && q.fechaSalida) },
     { id:"b-servicios",  l:"Servicios",   Icon:LayoutGrid,  ok: q.servicios.length > 0 },
-    { id:"b-vuelos",     l:"Vuelos",      Icon:Plane,       ok: q.vuelos.length > 0 },
+    { id:"b-vuelos",     l:"Vuelos",      Icon:Plane,
+      ok: q.soloVuelos ? (q.vuelos.length > 0 && !!Number(q.precioVuelo?.adulto)) : q.vuelos.length > 0 },
     { id:"b-alojamiento", l:"Alojamiento", Icon:Building2,  ok: q.destinos.length > 0 && q.opciones.length > 0 },
-    { id:"b-notascliente", l:"Notas pasajero", Icon:StickyNote, ok: q.notasCliente.length > 0 },
-  ];
+    { id:"b-notascliente", l:"Notas pasajero", Icon:StickyNote,
+      ok: !!(q.notasCliente || "").replace(/<[^>]*>/g, "").trim() },
+  ].filter((b) => IDS_BLOQUES.includes(b.id));
   const listos = bloques.filter((b) => b.ok).length;
 
   const irA = (id) => {
@@ -329,7 +352,20 @@ export default function Cotizador() {
     }, { rootMargin:"-70px 0px -55% 0px", threshold:0 });
     bloques.forEach((b) => { const el = document.getElementById(b.id); if (el) obs.observe(el); });
     return () => obs.disconnect();
-  }, [pantalla, q.destinos.length]);
+  }, [pantalla, q.destinos.length, q.soloVuelos]);
+
+  /* ── Tab recorre solo los campos: los botones del formulario salen del orden ──
+     (pedido explícito del cliente; el MutationObserver cubre lo que se re-renderiza) */
+  useEffect(() => {
+    if (pantalla !== "editor") return;
+    const zona = document.querySelector(".ed-main");
+    if (!zona) return;
+    const marcar = () => zona.querySelectorAll("button").forEach((b) => { b.tabIndex = -1; });
+    marcar();
+    const obs = new MutationObserver(marcar);
+    obs.observe(zona, { childList: true, subtree: true });
+    return () => obs.disconnect();
+  }, [pantalla]);
 
   const abrir = (nueva) => {
     setQ(nueva); setCrono(0); setPantalla("editor"); setActivo("b-cliente");
@@ -339,7 +375,7 @@ export default function Cotizador() {
   /* "Edición total" del drawer: la fila se abre en el formulario completo,
      con su mismo número y estado — es la misma cotización, no una copia */
   const editarFila = (r) => {
-    const base = desdeFila(r);
+    const base = desdeFila(r, plantillaMsg);
     CORRELATIVO -= 1;                     // no gastamos un número nuevo
     base.numero = r.num;
     base.estado = r.estado;
@@ -350,9 +386,23 @@ export default function Cotizador() {
 
   const acciones = [
     ...bloques.map((b) => ({ label:`Ir a ${b.l}`, grupo:"bloque", Icon:b.Icon, run:() => irA(b.id) })),
-    { label:"Nueva opción hotelera", grupo:"acción", Icon:Plus, run:() => { set((d) => { d.opciones.push({ id:uid("op"),
-        nombre:`Opción ${d.opciones.length + 1}`, hoteles:d.destinos.map(() => ({ hotelId:null, libre:"" })),
-        regimen:"Desayuno", factor:0.88, habitaciones:[habitacionNueva("Doble")] }); }); irA("b-alojamiento"); } },
+    /* clona la última opción: casi siempre la nueva es una variante de la anterior */
+    { label:"Nueva opción hotelera", grupo:"acción", Icon:Plus, run:() => { set((d) => {
+        const ult = d.opciones[d.opciones.length - 1];
+        if (ult) {
+          const c = JSON.parse(JSON.stringify(ult));
+          c.id = uid("op");
+          c.nombre = `Opción ${d.opciones.length + 1}`;
+          (c.habitaciones || []).forEach((h) => { h.id = uid("hab");
+            (h.tarifas || []).forEach((t) => { t.id = uid("tf"); }); });
+          d.opciones.push(c);
+        } else {
+          d.opciones.push({ id:uid("op"), nombre:`Opción ${d.opciones.length + 1}`,
+            hoteles:d.destinos.map(() => ({ hotelId:null, libre:"" })),
+            regimen: d.destinos[0]?.regimen || "Desayuno incluido", factor:0.88,
+            habitaciones:[habitacionNueva("Doble")] });
+        }
+      }); irA("b-alojamiento"); } },
     { label:"Compartir cotización", grupo:"acción", Icon:Send, run:() => setCompartir(true) },
     { label: vistaPasajero ? "Volver a la vista del vendedor" : "Ver como pasajero (sin márgenes ni notas)",
       grupo:"acción", Icon: vistaPasajero ? EyeOff : Eye, run:() => setVistaPasajero((v) => !v) },
@@ -371,7 +421,7 @@ export default function Cotizador() {
     destino:`${q.titulo.destino || "Sin destino"}${q.titulo.mes != null ? `, ${MESES[q.titulo.mes]} ${q.titulo.anio}` : ""}`,
     vendedor, estado:q.estado, monto: q.opciones.length ? Math.round(precioOpcion(q.opciones[0])) : 0,
     dias:0, aperturas: q.estado === "abierta" ? 1 : 0,
-    bitacora: q.bitacora || [],   /* la bitácora de la cotización en curso también se ve desde su drawer */
+    bitacora: q.notasLibres || "",   /* el bloc de notas de la cotización en curso también se ve desde su drawer */
   } : null;
 
   const G = ["#F43E55","#785AE5"];
@@ -386,17 +436,25 @@ export default function Cotizador() {
       {pantalla === "inicio" && (
         <Inicio
           oscuro={oscuro} onTema={() => setOscuro((v) => !v)}
-          onPaquete={(p) => abrir(desdePaquete(p))}
-          onBlanco={() => abrir(cotizacionVacia())}
-          onPlantilla={(t) => abrir(desdePlantilla(t))}
+          plantillaMsg={plantillaMsg} onPlantillaMsg={setPlantillaMsg}
+          onPaquete={(p) => abrir(desdePaquete(p, plantillaMsg))}
+          onBlanco={() => abrir(cotizacionVacia(plantillaMsg))}
+          onSoloVuelos={() => {
+            const q2 = cotizacionVacia(plantillaMsg);
+            q2.soloVuelos = true;
+            q2.servicios = [];
+            abrir(q2);
+            toast({ msg:"Cotización de solo vuelos — itinerario, equipaje y precio", tone:"ok" });
+          }}
+          onPlantilla={(t) => abrir(desdePlantilla(t, plantillaMsg))}
           onIA={(det) => {
-            abrir(desdeIA(det));
+            abrir(desdeIA(det, plantillaMsg));
             toast({ msg: det.paquete
               ? `Borrador armado desde “${det.paquete.nombre}” — revisalo y ajustá`
               : "No encontré un paquete que coincida — la armé en blanco con lo que entendí", tone: det.paquete ? "ok" : "warn" });
           }}
           onFila={(r) => {
-            abrir(desdeFila(r));
+            abrir(desdeFila(r, plantillaMsg));
             toast({ msg:`Duplicada desde ${r.num} — cambiá las fechas y listo`, tone:"ok" });
           }}
           onEditarFila={editarFila}
@@ -540,9 +598,11 @@ export default function Cotizador() {
               <BloqueCliente q={q} set={set} refEl={primerCampo} onUsarBase={usarBase} />
               <BloqueMensaje q={q} set={set} toast={toast} />
               <BloqueEncabezado q={q} set={set} tramos={tramos} hayManual={hayManual} onRepropagar={repropagar} />
-              <BloqueServicios q={q} set={set} toast={toast} />
+              {!q.soloVuelos && <BloqueServicios q={q} set={set} toast={toast} />}
               <BloqueVuelos q={q} set={set} toast={toast} />
-              <BloqueAlojamiento q={q} set={set} tramos={tramos} toast={toast} vistaPasajero={vistaPasajero} />
+              {!q.soloVuelos && (
+                <BloqueAlojamiento q={q} set={set} tramos={tramos} toast={toast} vistaPasajero={vistaPasajero} />
+              )}
               <BloqueNotasCliente q={q} set={set} toast={toast} />
 
               <div style={{ display:"flex", gap:9, marginTop:18, flexWrap:"wrap" }}>
