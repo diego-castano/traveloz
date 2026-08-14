@@ -270,7 +270,8 @@ function SeccionDestinos({ q, set, tramos, toast }) {
   const inp = useRef(null);
   const agregar = (ciudad) => {
     const c = (ciudad || nuevo).trim(); if (!c) return;
-    set((d) => { d.destinos.push({ id:uid("dst"), ciudad:c, noches:3, checkinManual:null }); });
+    /* 7 noches por defecto: es el paquete estándar del 70-80% de las ventas */
+    set((d) => { d.destinos.push({ id:uid("dst"), ciudad:c, noches:7, checkinManual:null }); });
     setNuevo(""); requestAnimationFrame(() => inp.current?.focus());
   };
   const sigueAlAnterior = (i) => i > 0 && !q.destinos[i].checkinManual;
@@ -918,7 +919,10 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
   const [abierto, setAbierto] = useState(false);
   const [c, setC] = useState("");
   const [n, setN] = useState("");
+  const [rapida, setRapida] = useState("");
+  const [eco, setEco] = useState(false);         /* pulso al agregar con Enter */
   const inp = useRef(null);
+  const ecoTimer = useRef(null);
   const notas = q.notas || [];
   const total = notas.reduce((a, x) => a + Number(x.neto || 0), 0);
   const agregar = () => {
@@ -932,6 +936,18 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
     toast?.({ msg:"Nota eliminada", tone:"warn", undo:() => set((d) => { d.notas.splice(i, 0, cp); }) });
   };
 
+  /* Enter agrega una viñeta al final del block, sin tocar lo ya escrito */
+  const anotarRapida = () => {
+    const t = rapida.trim(); if (!t) return;
+    set((d) => { const hay = (d.notasLibres || "").trimEnd();
+      d.notasLibres = (hay ? hay + "\n" : "") + `• ${t}`; });
+    setRapida("");
+    setEco(true);
+    clearTimeout(ecoTimer.current);
+    ecoTimer.current = setTimeout(() => setEco(false), 900);
+  };
+  useEffect(() => () => clearTimeout(ecoTimer.current), []);
+
   useEffect(() => {
     if (!abierto) return;
     const h = (e) => { if (e.key === "Escape") { e.preventDefault(); setAbierto(false); } };
@@ -940,12 +956,24 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
   }, [abierto]);
 
   /* el mismo textarea en la card y en el overlay — función, no componente,
-     para que React no lo remonte en cada tecla */
-  const area = (filas, foco) => (
-    <textarea className="in" rows={filas} autoFocus={foco} value={q.notasLibres || ""}
-      style={{ width:"100%", resize:"vertical", lineHeight:1.5, paddingTop:8, fontSize:12 }}
+     para que React no lo remonte en cada tecla. En la card la altura la maneja
+     el CSS (.notas-ta): crece al pasar el mouse o al escribir. */
+  const area = (filas, foco, enCard = false) => (
+    <textarea className={`in ${enCard ? "notas-ta" : ""} ${eco ? "nota-echo" : ""}`}
+      rows={enCard ? undefined : filas} autoFocus={foco} value={q.notasLibres || ""}
+      style={{ width:"100%", resize: enCard ? "none" : "vertical", lineHeight:1.55, paddingTop:8, fontSize:12 }}
       placeholder="Anotá acá netos, avisos, lo que necesites mientras cotizás…"
       onChange={(e) => set((d) => { d.notasLibres = e.target.value; })} />
+  );
+  const inputRapida = (
+    <div style={{ position:"relative", marginTop:7 }}>
+      <Zap size={11} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", color:"var(--teal-2)" }} />
+      <input className="in" style={{ height:30, fontSize:11.5, paddingLeft:26, paddingRight:30 }}
+        value={rapida} placeholder="Nota rápida · Enter agrega"
+        onChange={(e) => setRapida(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); anotarRapida(); } }} />
+      <span className="kbd" style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)" }}>↵</span>
+    </div>
   );
 
   if (vistaPasajero) {
@@ -965,15 +993,17 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
 
   return (
     <>
-      <div className="card" style={{ padding:11, marginTop:11 }}>
+      <div className="card notas-card" style={{ padding:11, marginTop:11 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, flexWrap:"wrap" }}>
           <Lock size={12} style={{ color:"var(--coral)", flexShrink:0 }} />
           <span className="lbl">Notas internas</span>
           <Pill tone="coral" style={{ marginLeft:"auto" }}>No se comparte</Pill>
         </div>
-        {area(7, false)}
+        {area(7, false, true)}
+        {inputRapida}
         <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
-          <button className="btn btn-g btn-xs" onClick={() => setAbierto(true)}>
+          <button className="btn btn-g btn-xs notas-exp" onClick={() => setAbierto(true)}
+            title="Abrir el block grande, con los costos fijos">
             <Maximize2 size={11} /> Expandir
           </button>
           {notas.length > 0 && (
@@ -981,6 +1011,9 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
               {notas.length} · {money(total)}
             </span>
           )}
+        </div>
+        <div style={{ fontSize:10, color:"var(--n300)", marginTop:6, lineHeight:1.45 }}>
+          Pasá el mouse por el block y crece solo para leer mejor.
         </div>
       </div>
 
@@ -1002,6 +1035,7 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
 
             <div style={{ padding:"14px 17px", maxHeight:"72vh", overflowY:"auto" }}>
               {area(10, true)}
+              {inputRapida}
 
               <div className="lbl" style={{ margin:"16px 0 7px" }}>Costos fijos</div>
               {notas.length === 0

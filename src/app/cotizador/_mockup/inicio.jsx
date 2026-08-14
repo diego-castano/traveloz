@@ -409,7 +409,7 @@ function ModalIA({ onClose, onArmar }) {
    PANTALLA DE INICIO
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual, oscuro, onTema }) {
+function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual, oscuro, onTema }) {
   const G = ["#F43E55","#785AE5"];
   const [busq, setBusq] = useState("");
   const [creando, setCreando] = useState(false);
@@ -589,12 +589,12 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, toast, tab, se
                 <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
                 <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)" }}>búsqueda instantánea por cualquier campo</span>
               </div>
-              <ListadoContenido actual={actual} toast={toast} onDuplicar={onFila} />
+              <ListadoContenido actual={actual} toast={toast} onDuplicar={onFila} onEditar={onEditarFila} />
             </div>
           )}
 
           {/* ══ TAB SEGUIMIENTO — lo que antes vivía arriba, ahora escondido acá ══ */}
-          {tab === "seguimiento" && <TabSeguimiento actual={actual} toast={toast} />}
+          {tab === "seguimiento" && <TabSeguimiento actual={actual} toast={toast} onEditar={onEditarFila} />}
 
           {/* ══ TAB ANALYTICS ══ */}
           {tab === "analytics" && <TabAnalytics />}
@@ -758,7 +758,7 @@ function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbri
    ahora escondido en su propio tab: la cola del día + reportes por vendedor.
    Estado propio y aparte del de la tabla (mismo criterio del mockup: es OK
    duplicar estado acá en vez de complicar el árbol con un hook compartido). ── */
-function TabSeguimiento({ actual, toast }) {
+function TabSeguimiento({ actual, toast, onEditar }) {
   const [selNum, setSelNum] = useState(null);
   const [ov, setOv] = useState({});
   const [ovEst, setOvEst] = useState({});
@@ -864,6 +864,7 @@ function TabSeguimiento({ actual, toast }) {
       </div>
 
       {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
+        onEditar={onEditar ? (r) => { setSelNum(null); onEditar(r); } : undefined}
         onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
         onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
         onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}
@@ -871,7 +872,7 @@ function TabSeguimiento({ actual, toast }) {
   );
 }
 
-function ListadoContenido({ actual, toast, onDuplicar }) {
+function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todas");
   const [vendedor, setVendedor] = useState("todos");
@@ -1082,6 +1083,7 @@ function ListadoContenido({ actual, toast, onDuplicar }) {
       </div>
 
       {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
+        onEditar={onEditar ? (r) => { setSelNum(null); onEditar(r); } : undefined}
         onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
         onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
         onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}

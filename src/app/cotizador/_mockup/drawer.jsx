@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  Sparkles, Copy, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2, Clock3, TrendingUp
+  Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2, Clock3, TrendingUp
 } from "lucide-react";
 import { VENDEDORES, semaforo, fmtHace, money, ESTADOS } from "./data";
 import { Btn, Pill } from "./ui";
@@ -51,7 +51,7 @@ function insightLectura(num) {
 }
 
 /* ── Drawer de analytics de una cotización ─────────────────────────────── */
-function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, toast }) {
+function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, onEditar, toast }) {
   const V = VENDEDORES.find((v) => v.id === r.vendedor) || VENDEDORES[0];
   const S = semaforo(r);
   const E = ESTADOS[r.estado];
@@ -73,8 +73,11 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
         { id:"s3", categoria:"alojamiento", texto:"Alojamiento en base doble", ciudad:null, modalidad:null },
       ],
       notas:[], notasCliente:[], vigencia:48,
+      /* mismo modelo que el editor: habitaciones con sus tarifas */
       opciones:[{ id:"o1", nombre:"Opción 1", hoteles:[{ hotelId:"h8", libre:"" }],
-        habitacion:"Doble estándar", regimen:"All inclusive", neto:Math.round((r.monto || 1500) * 0.88), factor:0.88 }],
+        regimen:"All inclusive", factor:0.88,
+        habitaciones:[{ id:"hb1", ocupacion:"Doble", tipo:"",
+          tarifas:[{ id:"tf1", tipo:"Por adulto", tipoLibre:"", neto:Math.round((r.monto || 1500) * 0.88), venta:null }] }] }],
     };
   }, [r]);
   const [op, setOp] = useState("Opción 1");
@@ -266,25 +269,34 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           </div>
         </div>
 
-        {/* acciones */}
-        <div className="drawer-acc" style={{ display:"flex", gap:8, padding:"13px 17px", borderTop:"1px solid var(--hair-soft)" }}>
-          <button className="btn btn-s btn-ico" style={{ width:38, height:38 }} title="Vista previa de la cotización"
-            onClick={() => setPreview(true)}><Eye size={15} /></button>
-          <button className="btn btn-s btn-ico" style={{ width:38, height:38 }} title="Duplicar cotización — abre una copia lista para cambiar fechas"
-            onClick={() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}>
-            <Copy size={14} /></button>
-          <Btn style={{ flex:1 }} onClick={() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}>
-            {copiado ? <><Check size={13} /> Copiado</> : <><Link2 size={13} /> Copiar link</>}
-          </Btn>
-          <Btn variant="p" style={{ flex:1 }} onClick={() => setComp(true)}>
-            <Send size={13} /> Recordatorio
-          </Btn>
-          {puedeConfirmar && (
-            <button className="btn btn-hero" style={{ flex:1.1, height:38, borderRadius:11, fontSize:13 }}
-              onClick={() => setConfOpen(true)}>
-              <CheckCheck size={14} /> Confirmar
-            </button>
-          )}
+        {/* acciones — dos filas, cada botón con su color */}
+        <div style={{ padding:"12px 17px 13px", borderTop:"1px solid var(--hair-soft)", display:"flex",
+          flexDirection:"column", gap:8 }}>
+          <div className="drawer-acc" style={{ display:"flex", gap:8 }}>
+            <Btn variant="tv" style={{ flex:1, height:38 }} title="Ver la cotización como la ve el pasajero"
+              onClick={() => setPreview(true)}>
+              <Eye size={14} /> Ver cotización
+            </Btn>
+            <Btn variant="v" style={{ flex:1, height:38 }} title="Abrirla en el formulario de creación para editarla entera"
+              onClick={() => onEditar?.(r)}>
+              <PenLine size={13} /> Edición total
+            </Btn>
+          </div>
+          <div className="drawer-acc" style={{ display:"flex", gap:8 }}>
+            <Btn variant="tt" style={{ flex:1, height:38 }}
+              onClick={() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}>
+              {copiado ? <><Check size={13} /> Copiado</> : <><Link2 size={13} /> Copiar link</>}
+            </Btn>
+            <Btn variant="p" style={{ flex:1, height:38 }} onClick={() => setComp(true)}>
+              <Send size={13} /> Recordatorio
+            </Btn>
+            {puedeConfirmar && (
+              <button className="btn btn-hero" style={{ flex:1.1, height:38, borderRadius:11, fontSize:13 }}
+                onClick={() => setConfOpen(true)}>
+                <CheckCheck size={14} /> Confirmar
+              </button>
+            )}
+          </div>
         </div>
 
         {/* panel de confirmación */}

@@ -5,7 +5,7 @@ import {
   Sparkles, MapPin, Calendar, ChevronDown, ChevronRight, Search, Star, Undo2, X, CheckCheck,
   AlertCircle, PenLine
 } from "lucide-react";
-import { MESES, MES_AB, fotoBg, HOTELES, CIUDADES, clamp, parseISO, toISO, addDays } from "./data";
+import { MESES, MES_AB, fotoBg, HOTELES, CIUDADES, clamp, parseISO, toISO, addDays, norm } from "./data";
 
 function Foto({ seed = 0, w = 56, h = 42, r = 10, children, style }) {
   return (
@@ -41,7 +41,8 @@ const CATS = [
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function Btn({ variant = "s", size, className = "", children, ...p }) {
-  const v = { p:"btn-p", v:"btn-v", s:"btn-s", g:"btn-g" }[variant] || "btn-s";
+  /* tv/tt/ta: tintados suaves (violeta, teal, ámbar) para que cada acción tenga su color */
+  const v = { p:"btn-p", v:"btn-v", s:"btn-s", g:"btn-g", tv:"btn-tv", tt:"btn-tt", ta:"btn-ta" }[variant] || "btn-s";
   const s = size === "sm" ? "btn-sm" : size === "xs" ? "btn-xs" : "";
   return <button className={`btn ${v} ${s} ${className}`} {...p}>{children}</button>;
 }
@@ -297,8 +298,9 @@ function AutoCiudad({ value, onChange, onPick, placeholder, excluir = [], grande
   const box = useRef(null);
   const res = useMemo(() => {
     const pool = CIUDADES.filter((c) => !excluir.includes(c));
-    const q = (value || "").trim().toLowerCase();
-    const hit = q ? pool.filter((c) => c.toLowerCase().includes(q)) : pool;
+    /* sin tildes: "mexico" encuentra "México" y "buzios" encuentra "Búzios" */
+    const q = norm((value || "").trim());
+    const hit = q ? pool.filter((c) => norm(c).includes(q)) : pool;
     return hit.slice(0, 6);
   }, [value, excluir]);
   useEffect(() => {
@@ -308,7 +310,8 @@ function AutoCiudad({ value, onChange, onPick, placeholder, excluir = [], grande
   const marcar = (c) => {
     const q = (value || "").trim();
     if (!q) return c;
-    const i = c.toLowerCase().indexOf(q.toLowerCase());
+    /* norm conserva el largo carácter a carácter, así que el índice sirve para recortar el original */
+    const i = norm(c).indexOf(norm(q));
     if (i < 0) return c;
     return <>{c.slice(0, i)}<b>{c.slice(i, i + q.length)}</b>{c.slice(i + q.length)}</>;
   };

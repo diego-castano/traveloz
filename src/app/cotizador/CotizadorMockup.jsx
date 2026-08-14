@@ -336,6 +336,18 @@ export default function Cotizador() {
     requestAnimationFrame(() => window.scrollTo({ top:0, behavior:"instant" }));
   };
 
+  /* "Edición total" del drawer: la fila se abre en el formulario completo,
+     con su mismo número y estado — es la misma cotización, no una copia */
+  const editarFila = (r) => {
+    const base = desdeFila(r);
+    CORRELATIVO -= 1;                     // no gastamos un número nuevo
+    base.numero = r.num;
+    base.estado = r.estado;
+    base.origen = `Edición de ${r.num}`;
+    abrir(base);
+    toast({ msg:`${r.num} abierta en edición total`, tone:"ok" });
+  };
+
   const acciones = [
     ...bloques.map((b) => ({ label:`Ir a ${b.l}`, grupo:"bloque", Icon:b.Icon, run:() => irA(b.id) })),
     { label:"Nueva opción hotelera", grupo:"acción", Icon:Plus, run:() => { set((d) => { d.opciones.push({ id:uid("op"),
@@ -386,6 +398,7 @@ export default function Cotizador() {
             abrir(desdeFila(r));
             toast({ msg:`Duplicada desde ${r.num} — cambiá las fechas y listo`, tone:"ok" });
           }}
+          onEditarFila={editarFila}
           toast={toast}
           tab={homeTab} setTab={setHomeTab}
           actual={actualEnListado}
@@ -535,12 +548,12 @@ export default function Cotizador() {
                 <Btn variant="p" style={{ height:44, paddingInline:22 }} onClick={() => setCompartir(true)}>
                   <Send size={15} /> Compartir cotización
                 </Btn>
-                <Btn style={{ height:44 }} onClick={() => { const c = JSON.parse(JSON.stringify(q));
+                <Btn variant="tv" style={{ height:44 }} onClick={() => { const c = JSON.parse(JSON.stringify(q));
                   c.numero = `COT-2026-${String(CORRELATIVO++).padStart(4,"0")}`; c.estado = "borrador"; abrir(c);
                   toast({ msg:"Cotización duplicada — cambiá las fechas y listo", tone:"ok" }); }}>
                   <Copy size={15} /> Duplicar cotización
                 </Btn>
-                <Btn style={{ height:44 }} onClick={() => {
+                <Btn variant="ta" style={{ height:44 }} onClick={() => {
                   const nombre = q.titulo.destino ? `${q.titulo.destino} · plantilla` : "Plantilla sin nombre";
                   setPlantillas((l) => [...l, { id:uid("pl"), nombre, destino:q.titulo.destino || "General",
                     detalle:`${q.servicios.length} servicios · ${q.opciones.length} opciones` }]);

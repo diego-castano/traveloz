@@ -23,7 +23,10 @@ const CSS = `
   font-size:14px; line-height:1.5; -webkit-font-smoothing:antialiased;
 }
 
-.ctz button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+/* :where() deja el reset con especificidad (0,1,0): cualquier clase de botón
+   definida más abajo (.btn-p, .btn-hero, .chip-on…) le gana por orden. Con
+   ".ctz button" a secas, el reset pisaba el fondo de TODOS los botones. */
+.ctz :where(button) { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
 .ctz input,.ctz textarea,.ctz select { font-family:inherit; font-size:inherit; color:inherit; }
 .ctz input:focus,.ctz textarea:focus,.ctz button:focus-visible,.ctz select:focus { outline:none; }
 .ctz :focus-visible { box-shadow:0 0 0 2px #fff, 0 0 0 4px rgba(59,191,173,.45) !important; border-radius:8px; }
@@ -74,6 +77,13 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .btn-s:hover { border-color:rgba(17,17,36,.2); background:#FCFCFE; }
 .btn-g { color:var(--n500); }
 .btn-g:hover { background:rgba(17,17,36,.045); color:var(--ink); }
+/* tintados suaves: cada acción con su color, nada de fila de botones todos blancos */
+.btn-tv { background:rgba(120,90,229,.09); border:1px solid rgba(120,90,229,.3); color:var(--violet-ink); }
+.btn-tv:hover { background:rgba(120,90,229,.16); border-color:rgba(120,90,229,.5); }
+.btn-tt { background:rgba(59,191,173,.10); border:1px solid rgba(59,191,173,.34); color:var(--teal-3); }
+.btn-tt:hover { background:rgba(59,191,173,.17); border-color:rgba(59,191,173,.55); }
+.btn-ta { background:rgba(247,178,103,.14); border:1px solid rgba(247,178,103,.42); color:var(--ink-amber); }
+.btn-ta:hover { background:rgba(247,178,103,.23); border-color:rgba(247,178,103,.62); }
 .btn-sm { height:31px; padding:0 11px; font-size:12px; border-radius:9px; }
 .btn-xs { height:26px; padding:0 9px; font-size:11px; border-radius:8px; gap:5px; }
 .btn-ico { width:31px; height:31px; padding:0; border-radius:9px; }
@@ -353,6 +363,15 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .chip-mini { height:25px; padding:0 9px; font-size:11px; gap:5px; border-radius:8px; }
 
 /* ── botón "Escribir por mí" (identidad IA) ──────────────────────────── */
+/* ── block de notas del rail: crece con el mouse, agrega con Enter ────── */
+.notas-card { transition:box-shadow .3s cubic-bezier(.2,.8,.2,1), transform .3s cubic-bezier(.2,.8,.2,1); }
+.notas-card:hover { box-shadow:0 14px 34px -16px rgba(26,26,46,.22); transform:translateY(-1px); }
+.notas-card .notas-ta { height:112px; transition:height .38s cubic-bezier(.2,.8,.2,1); }
+.notas-card:hover .notas-ta, .notas-card:focus-within .notas-ta { height:252px; }
+.notas-exp svg { transition:transform .26s cubic-bezier(.34,1.56,.64,1); }
+.notas-exp:hover svg { transform:scale(1.25) rotate(8deg); }
+.nota-echo { animation:notaEcho .85s ease; }
+@keyframes notaEcho { 0% { box-shadow:0 0 0 0 rgba(69,212,192,.55); } 100% { box-shadow:0 0 0 10px rgba(69,212,192,0); } }
 .btn-ia { gap:8px; padding-left:8px; border-color:rgba(120,90,229,.3); }
 .btn-ia:hover:not(:disabled) { border-color:rgba(120,90,229,.55); background:rgba(120,90,229,.05); }
 .btn-ia:disabled { opacity:.7; cursor:default; transform:none; }
@@ -538,6 +557,13 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   box-shadow:0 1px 2px rgba(0,0,0,.3); }
 .ctz.dark .btn-s:hover { background:var(--pop); border-color:rgba(255,255,255,.24); }
 .ctz.dark .btn-g:hover { background:rgba(255,255,255,.07); color:var(--ink); }
+.ctz.dark .btn-tv { background:rgba(160,94,211,.16); border-color:rgba(160,94,211,.42); }
+.ctz.dark .btn-tv:hover { background:rgba(160,94,211,.24); border-color:rgba(160,94,211,.6); }
+.ctz.dark .btn-tt { background:rgba(69,212,192,.12); border-color:rgba(69,212,192,.36); }
+.ctz.dark .btn-tt:hover { background:rgba(69,212,192,.19); border-color:rgba(69,212,192,.55); }
+.ctz.dark .btn-ta { background:rgba(247,178,103,.13); border-color:rgba(247,178,103,.4); }
+.ctz.dark .btn-ta:hover { background:rgba(247,178,103,.2); border-color:rgba(247,178,103,.58); }
+.ctz.dark .notas-card:hover { box-shadow:0 14px 34px -16px rgba(0,0,0,.5); }
 .ctz.dark .kbd { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); color:var(--n500); }
 .ctz.dark :focus-visible { box-shadow:0 0 0 2px var(--page), 0 0 0 4px rgba(69,212,192,.55) !important; }
 .ctz.dark ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.16); background-clip:content-box; }
