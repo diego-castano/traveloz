@@ -46,6 +46,13 @@ con 7 noches (antes 3) — el estándar del paquete uruguayo — y el buscador d
 ciudades ignora los tildes: "buzios" encuentra Búzios y "mexico" encontraría
 México.
 
+**La IA siempre ofrece las dos cosas.** Aunque encuentre un paquete que calza
+justo, ya no arma el borrador solo: muestra el paquete como "mejor
+coincidencia" y al lado, bien visible, el botón de armarla en blanco con lo
+que entendió — Gero había marcado que ese botón "se veía muy chiquito". Y las
+tarifas suman el casillero "Por infante": adulto, menor e infante, los tres
+casilleros que pidió Santi, más la familiar.
+
 **El mockup del cotizador incorpora todo lo pedido en la reunión del 11/08 y el
 mail de Gero.** Sigue siendo un mockup sin conexión al sistema, pero ya muestra
 el flujo completo que se acordó con el cliente:

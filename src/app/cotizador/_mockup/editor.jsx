@@ -1212,8 +1212,8 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
       regimen:"Desayuno", factor:0.88, habitaciones:[habitacionNueva("Doble")] }); });
     setFoco(id);
   };
-  /* la segunda tarifa suele ser el menor y la tercera la familiar */
-  const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por familia" : "Por adulto");
+  /* la segunda tarifa suele ser el menor, después el infante y la familiar */
+  const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por infante" : n === 3 ? "Por familia" : "Por adulto");
   const duplicar = (i) => {
     const src = q.opciones[i]; const id = uid("op");
     const copia = JSON.parse(JSON.stringify(src));

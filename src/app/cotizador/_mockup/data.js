@@ -54,7 +54,8 @@ const EQUIPAJES = [
 ];
 /* Hasta 15: el cliente también vende apartamentos */
 const OCUPACIONES = ["Single","Doble", ...Array.from({ length:13 }, (_, i) => `${i + 3} personas`)];
-const TARIFA_TIPOS = ["Por adulto","Por menor","Por familia","Otro"];
+/* "los tres casilleros sí o sí": adulto, menor e infante — más la familiar */
+const TARIFA_TIPOS = ["Por adulto","Por menor","Por infante","Por familia","Otro"];
 
 /* Servicios habituales precargados por categoría */
 const SUG = {

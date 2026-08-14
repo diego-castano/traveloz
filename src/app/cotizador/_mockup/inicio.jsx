@@ -245,13 +245,13 @@ function ModalIA({ onClose, onArmar }) {
       : varios
       ? { l:`Encontré ${det.candidatos.length} paquetes que encajan — elegís vos` }
       : { l:"No encontré un paquete que coincida" },
-    { l: det.paquete ? "Armando el borrador…" : "Preparando lo que entendí…" },
+    { l: det.paquete ? "Preparando las dos opciones: paquete o en blanco…" : "Preparando lo que entendí…" },
   ] : [];
 
   /* v2E · lo que se ofrece en el paso de elección: los candidatos que empataron,
      o —si no encajó ninguno— los primeros paquetes publicados como sugerencia */
-  const lista = useMemo(() => (!det ? [] : varios ? det.candidatos.slice(0, 4) : PAQUETES.slice(0, 3)),
-    [det, varios]);
+  const lista = useMemo(() => (!det ? [] : det.candidatos?.length ? det.candidatos.slice(0, 4) : PAQUETES.slice(0, 3)),
+    [det]);
 
   const armar = () => { if (!texto.trim()) return; setDet(detectarConsulta(texto)); setPaso(0); setFase("corriendo"); };
 
@@ -260,8 +260,9 @@ function ModalIA({ onClose, onArmar }) {
     const durs = [600, 800, 620, 640];
     const ts = []; let acum = 0;
     for (let i = 1; i <= durs.length; i++) { acum += durs[i - 1]; ts.push(setTimeout(() => setPaso(i), acum)); }
-    /* con un ganador claro arma directo; si no, el vendedor elige el paquete */
-    ts.push(setTimeout(() => (det.paquete ? armarRef.current(det) : setFase("elegir")), acum + 220));
+    /* paso previo SIEMPRE: aunque haya un ganador claro, el vendedor elige
+       entre el paquete y armarla en blanco — pedido explícito de la llamada */
+    ts.push(setTimeout(() => setFase("elegir"), acum + 220));
     return () => ts.forEach(clearTimeout);
   }, [fase, det]);
 
@@ -323,10 +324,13 @@ function ModalIA({ onClose, onArmar }) {
         ) : fase === "elegir" ? (
           <div style={{ padding:"16px 17px 18px" }}>
             <div className="disp" style={{ fontSize:15.5, fontWeight:600, letterSpacing:"-.015em", marginBottom:3 }}>
-              {varios ? "¿Desde cuál paquete lo armamos?" : "No encontré un paquete que coincida"}
+              {det?.paquete ? "¿La armamos desde este paquete?"
+                : varios ? "¿Desde cuál paquete lo armamos?" : "No encontré un paquete que coincida"}
             </div>
             <div style={{ fontSize:11.5, color:"var(--n400)", marginBottom:12, lineHeight:1.5 }}>
-              {varios
+              {det?.paquete
+                ? "Encontré uno que aplica: hoteles y servicios ya cargados, solo ajustás. O armala en blanco con lo que entendí."
+                : varios
                 ? "La consulta encaja con más de uno. Elegí y todo lo demás queda precargado."
                 : "¿Era alguno de estos? También podés seguir en blanco con lo que entendí."}
             </div>
@@ -336,7 +340,9 @@ function ModalIA({ onClose, onArmar }) {
                 onClick={() => armarRef.current({ ...det, paquete:p })}>
                 <Foto seed={p.seed} w={54} h={40} r={9} />
                 <div style={{ flex:1, minWidth:0, textAlign:"left" }}>
-                  <div style={{ fontSize:13, fontWeight:700 }}>{p.nombre}</div>
+                  <div style={{ fontSize:13, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>{p.nombre}
+                    {det?.paquete && i === 0 && <Pill tone="teal" style={{ flexShrink:0 }}><Zap size={8} /> mejor coincidencia</Pill>}
+                  </div>
                   <div style={{ fontSize:11, color:"var(--n400)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.resumen}</div>
                 </div>
                 <span className="mono" style={{ fontSize:11.5, color:"var(--teal-3)", flexShrink:0 }}>
@@ -346,9 +352,10 @@ function ModalIA({ onClose, onArmar }) {
               </button>
             ))}
 
-            <button className="btn btn-g" style={{ width:"100%", height:40, borderRadius:11, marginTop:3 }}
-              onClick={() => armarRef.current(det)}>
-              <FileText size={13} /> Armar en blanco con lo que entendí
+            <button className="btn btn-tv" style={{ width:"100%", height:44, borderRadius:12, marginTop:5,
+              fontSize:13.5, fontWeight:700 }}
+              onClick={() => armarRef.current({ ...det, paquete:null })}>
+              <FileText size={15} /> Armar en blanco con lo que entendí
             </button>
 
             {det?.chips?.length > 0 && (
