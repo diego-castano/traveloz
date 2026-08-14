@@ -30,10 +30,12 @@ cotización abre la vista tal como la ve el pasajero (antes era un ícono de ojo
 fácil de pasar por alto); Edición total abre esa cotización en el formulario
 completo del editor, con su mismo número y estado, para retocarla sin vueltas.
 
-**Las notas internas del rail son un block de verdad.** Crecen solas al pasar
-el mouse o al escribir (112 a 252 píxeles, animado) para leer cómodo, tienen un
-campo de nota rápida que agrega viñetas con Enter, y el botón Expandir tiene su
-microanimación y abre el block grande con los costos fijos.
+**Las notas internas son una bitácora.** Un solo cuadro de escritura: Enter
+anota y la entrada sube a la lista que vive encima, firmada por el vendedor y
+con su hora (Shift+Enter hace salto de línea). La lista crece sola al pasar el
+mouse para leer cómodo, y Expandir abre un drawer que entra desde la izquierda
+con la bitácora completa — editable y borrable entrada por entrada, con
+deshacer — más los costos fijos. Nada de esto llega nunca al pasajero.
 
 **Detalles que faltaban de la reunión del 11/08:** agregar un destino arranca
 con 7 noches (antes 3) — el estándar del paquete uruguayo — y el buscador de

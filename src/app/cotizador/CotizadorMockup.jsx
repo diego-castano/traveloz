@@ -58,7 +58,7 @@ function cotizacionVacia() {
     destinos: [],
     servicios: serviciosDefault(7),
     notas: [],
-    notasLibres: "",          /* v3 · block de notas internas de la columna izquierda */
+    bitacora: [],             /* v3 · bitácora interna de la columna izquierda: entradas con autor y hora */
     notasCliente: [],
     vigencia: 48,
     opciones: [],
@@ -515,8 +515,8 @@ export default function Cotizador() {
                 </button>
               </div>
 
-              {/* block de notas internas: fijo acá, nunca en el flujo de la cotización */}
-              <NotasRail q={q} set={set} vistaPasajero={vistaPasajero} toast={toast} />
+              {/* bitácora interna: fija acá, nunca en el flujo de la cotización */}
+              <NotasRail q={q} set={set} vistaPasajero={vistaPasajero} toast={toast} vendedor={vendedor} />
             </aside>
 
             {/* formulario */}

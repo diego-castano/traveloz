@@ -363,15 +363,26 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .chip-mini { height:25px; padding:0 9px; font-size:11px; gap:5px; border-radius:8px; }
 
 /* ── botón "Escribir por mí" (identidad IA) ──────────────────────────── */
-/* ── block de notas del rail: crece con el mouse, agrega con Enter ────── */
+/* ── bitácora del rail: la lista crece con el mouse, Enter anota ──────── */
 .notas-card { transition:box-shadow .3s cubic-bezier(.2,.8,.2,1), transform .3s cubic-bezier(.2,.8,.2,1); }
 .notas-card:hover { box-shadow:0 14px 34px -16px rgba(26,26,46,.22); transform:translateY(-1px); }
-.notas-card .notas-ta { height:112px; transition:height .38s cubic-bezier(.2,.8,.2,1); }
-.notas-card:hover .notas-ta, .notas-card:focus-within .notas-ta { height:252px; }
+.notas-lista { display:flex; flex-direction:column; gap:5px; margin-bottom:7px; overflow-y:auto;
+  max-height:132px; transition:max-height .38s cubic-bezier(.2,.8,.2,1); }
+.notas-card:hover .notas-lista, .notas-card:focus-within .notas-lista { max-height:330px; }
+.nota-i { position:relative; padding:6px 20px 6px 9px; border-radius:9px; background:var(--card-3);
+  border:1px solid var(--hair-soft); border-left:2.5px solid var(--violet);
+  font-size:11px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+.nota-x { position:absolute; right:2px; top:2px; opacity:0; transition:opacity .16s; }
+.nota-i:hover .nota-x { opacity:1; }
 .notas-exp svg { transition:transform .26s cubic-bezier(.34,1.56,.64,1); }
 .notas-exp:hover svg { transform:scale(1.25) rotate(8deg); }
 .nota-echo { animation:notaEcho .85s ease; }
 @keyframes notaEcho { 0% { box-shadow:0 0 0 0 rgba(69,212,192,.55); } 100% { box-shadow:0 0 0 10px rgba(69,212,192,0); } }
+/* la bitácora expandida entra como drawer desde la izquierda */
+.drawer-izq { position:fixed; top:0; left:0; bottom:0; width:min(430px,94vw); background:var(--card); z-index:96;
+  box-shadow:24px 0 70px -20px rgba(17,17,36,.35); display:flex; flex-direction:column;
+  animation:slideIzq .32s cubic-bezier(.16,1,.3,1); }
+@keyframes slideIzq { from { transform:translateX(-100%); opacity:.4; } to { transform:none; opacity:1; } }
 .btn-ia { gap:8px; padding-left:8px; border-color:rgba(120,90,229,.3); }
 .btn-ia:hover:not(:disabled) { border-color:rgba(120,90,229,.55); background:rgba(120,90,229,.05); }
 .btn-ia:disabled { opacity:.7; cursor:default; transform:none; }
@@ -564,6 +575,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .ctz.dark .btn-ta { background:rgba(247,178,103,.13); border-color:rgba(247,178,103,.4); }
 .ctz.dark .btn-ta:hover { background:rgba(247,178,103,.2); border-color:rgba(247,178,103,.58); }
 .ctz.dark .notas-card:hover { box-shadow:0 14px 34px -16px rgba(0,0,0,.5); }
+.ctz.dark .drawer-izq { box-shadow:24px 0 70px -20px rgba(0,0,0,.8); }
 .ctz.dark .kbd { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); color:var(--n500); }
 .ctz.dark :focus-visible { box-shadow:0 0 0 2px var(--page), 0 0 0 4px rgba(69,212,192,.55) !important; }
 .ctz.dark ::-webkit-scrollbar-thumb { background:rgba(255,255,255,.16); background-clip:content-box; }
@@ -691,7 +703,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz .fila-acc > .btn { flex:1 1 0; width:auto !important; height:36px !important; }
 
   /* el drawer ocupa la pantalla entera */
-  .ctz .drawer { width:100% !important; border-radius:0; animation:riseUp .26s cubic-bezier(.16,1,.3,1); }
+  .ctz .drawer, .ctz .drawer-izq { width:100% !important; border-radius:0; animation:riseUp .26s cubic-bezier(.16,1,.3,1); }
   .ctz .drawer-x { width:40px !important; height:40px !important; }
   .ctz .drawer-acc { flex-wrap:wrap; }
   .ctz .drawer-acc > .btn { min-height:42px; }

@@ -11,7 +11,7 @@ import {
 import {
   MESES, ANIO_BASE, REGIMENES, SUG, MODALIDADES, SUG_ALL, CIUDADES, AEROLINEAS,
   CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
-  PNR_DEMO, CLIENTES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
+  PNR_DEMO, CLIENTES, VENDEDORES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
   limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, FRECUENTES, hotelesCotizadosEn,
   snippetMensaje, redactarMensaje, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa,
   precioOpcion
@@ -915,38 +915,46 @@ function BloqueServicios({ q, set, refEl, toast }) {
 }
 
 /* ── Notas internas — block fijo en la columna izquierda; nunca salen ──── */
-function NotasRail({ q, set, vistaPasajero, toast }) {
+function NotasRail({ q, set, vistaPasajero, toast, vendedor }) {
   const [abierto, setAbierto] = useState(false);
   const [c, setC] = useState("");
   const [n, setN] = useState("");
-  const [rapida, setRapida] = useState("");
-  const [eco, setEco] = useState(false);         /* pulso al agregar con Enter */
+  const [txt, setTxt] = useState("");
+  const [eco, setEco] = useState(false);         /* pulso al anotar con Enter */
   const inp = useRef(null);
   const ecoTimer = useRef(null);
+  const bitacora = q.bitacora || [];
   const notas = q.notas || [];
   const total = notas.reduce((a, x) => a + Number(x.neto || 0), 0);
-  const agregar = () => {
-    if (!c.trim()) return;
-    set((d) => { d.notas.push({ id:uid("nt"), concepto:c.trim(), neto:Number(n) || 0 }); });
-    setC(""); setN(""); requestAnimationFrame(() => inp.current?.focus());
-  };
-  const borrar = (x, i) => {
-    const cp = { ...x };
-    set((d) => { d.notas.splice(i, 1); });
-    toast?.({ msg:"Nota eliminada", tone:"warn", undo:() => set((d) => { d.notas.splice(i, 0, cp); }) });
-  };
+  const autorDe = (id) => VENDEDORES.find((v) => v.id === id) || VENDEDORES[0];
 
-  /* Enter agrega una viñeta al final del block, sin tocar lo ya escrito */
-  const anotarRapida = () => {
-    const t = rapida.trim(); if (!t) return;
-    set((d) => { const hay = (d.notasLibres || "").trimEnd();
-      d.notasLibres = (hay ? hay + "\n" : "") + `• ${t}`; });
-    setRapida("");
+  /* Enter anota: la entrada sube a la bitácora, arriba del cuadro de escritura */
+  const anotar = () => {
+    const t = txt.trim(); if (!t) return;
+    set((d) => { d.bitacora = d.bitacora || [];
+      d.bitacora.unshift({ id:uid("bt"), autor:vendedor, hace:"recién", texto:t }); });
+    setTxt("");
     setEco(true);
     clearTimeout(ecoTimer.current);
     ecoTimer.current = setTimeout(() => setEco(false), 900);
   };
   useEffect(() => () => clearTimeout(ecoTimer.current), []);
+
+  const borrarNota = (b, i) => {
+    const cp = { ...b };
+    set((d) => { d.bitacora.splice(i, 1); });
+    toast?.({ msg:"Anotación borrada", tone:"warn", undo:() => set((d) => { d.bitacora.splice(i, 0, cp); }) });
+  };
+  const agregarCosto = () => {
+    if (!c.trim()) return;
+    set((d) => { d.notas.push({ id:uid("nt"), concepto:c.trim(), neto:Number(n) || 0 }); });
+    setC(""); setN(""); requestAnimationFrame(() => inp.current?.focus());
+  };
+  const borrarCosto = (x, i) => {
+    const cp = { ...x };
+    set((d) => { d.notas.splice(i, 1); });
+    toast?.({ msg:"Nota eliminada", tone:"warn", undo:() => set((d) => { d.notas.splice(i, 0, cp); }) });
+  };
 
   useEffect(() => {
     if (!abierto) return;
@@ -955,25 +963,13 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
     return () => document.removeEventListener("keydown", h);
   }, [abierto]);
 
-  /* el mismo textarea en la card y en el overlay — función, no componente,
-     para que React no lo remonte en cada tecla. En la card la altura la maneja
-     el CSS (.notas-ta): crece al pasar el mouse o al escribir. */
-  const area = (filas, foco, enCard = false) => (
-    <textarea className={`in ${enCard ? "notas-ta" : ""} ${eco ? "nota-echo" : ""}`}
-      rows={enCard ? undefined : filas} autoFocus={foco} value={q.notasLibres || ""}
-      style={{ width:"100%", resize: enCard ? "none" : "vertical", lineHeight:1.55, paddingTop:8, fontSize:12 }}
-      placeholder="Anotá acá netos, avisos, lo que necesites mientras cotizás…"
-      onChange={(e) => set((d) => { d.notasLibres = e.target.value; })} />
-  );
-  const inputRapida = (
-    <div style={{ position:"relative", marginTop:7 }}>
-      <Zap size={11} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", color:"var(--teal-2)" }} />
-      <input className="in" style={{ height:30, fontSize:11.5, paddingLeft:26, paddingRight:30 }}
-        value={rapida} placeholder="Nota rápida · Enter agrega"
-        onChange={(e) => setRapida(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); anotarRapida(); } }} />
-      <span className="kbd" style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)" }}>↵</span>
-    </div>
+  /* un solo cuadro de escritura: Enter anota, Shift+Enter hace salto de línea */
+  const cuadro = (foco) => (
+    <textarea className={`in ${eco ? "nota-echo" : ""}`} rows={2} autoFocus={foco} value={txt}
+      style={{ width:"100%", resize:"none", lineHeight:1.5, paddingTop:8, fontSize:12 }}
+      placeholder="Anotá y Enter… (Shift+Enter, salto)"
+      onChange={(e) => setTxt(e.target.value)}
+      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); anotar(); } }} />
   );
 
   if (vistaPasajero) {
@@ -999,43 +995,92 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
           <span className="lbl">Notas internas</span>
           <Pill tone="coral" style={{ marginLeft:"auto" }}>No se comparte</Pill>
         </div>
-        {area(7, false, true)}
-        {inputRapida}
+
+        {/* la bitácora vive ENCIMA del cuadro: lo último anotado, primero */}
+        {bitacora.length > 0 ? (
+          <div className="notas-lista">
+            {bitacora.map((b, i) => (
+              <div key={b.id} className="nota-i a-pop">
+                {b.texto}
+                <button className="nota-x btn btn-g btn-ico" style={{ width:18, height:18 }}
+                  title="Borrar anotación" onClick={() => borrarNota(b, i)}><X size={10} /></button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize:10.5, color:"var(--n300)", lineHeight:1.5, marginBottom:7 }}>
+            Bitácora vacía. Lo que anotes queda acá arriba, firmado y solo para el equipo.
+          </div>
+        )}
+
+        {cuadro(false)}
+
         <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
           <button className="btn btn-g btn-xs notas-exp" onClick={() => setAbierto(true)}
-            title="Abrir el block grande, con los costos fijos">
+            title="Abrir la bitácora completa, con los costos fijos">
             <Maximize2 size={11} /> Expandir
           </button>
-          {notas.length > 0 && (
+          {bitacora.length > 0 && (
             <span className="mono" style={{ marginLeft:"auto", fontSize:10, color:"var(--n400)" }}>
-              {notas.length} · {money(total)}
+              {bitacora.length} {bitacora.length === 1 ? "nota" : "notas"}
             </span>
           )}
         </div>
         <div style={{ fontSize:10, color:"var(--n300)", marginTop:6, lineHeight:1.45 }}>
-          Pasá el mouse por el block y crece solo para leer mejor.
+          Pasá el mouse y la bitácora crece sola para leer mejor.
         </div>
       </div>
 
-      {/* el overlay sale por un portal: la columna izquierda es sticky y se lo comería */}
+      {/* el drawer entra desde la izquierda, pegado al rail donde vive el block */}
       {abierto && createPortal(
-        <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && setAbierto(false)}>
-          <div className="a-zoom card" style={{ width:"min(720px,100%)", padding:0, overflow:"hidden" }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 17px",
+        <>
+          <div className="drawer-bg" onClick={() => setAbierto(false)} />
+          <div className="drawer-izq">
+            <div style={{ display:"flex", alignItems:"center", gap:10, padding:"15px 17px",
               borderBottom:"1px solid var(--hair-soft)" }}>
               <div style={{ width:28, height:28, borderRadius:9, display:"grid", placeItems:"center",
                 background:"rgba(244,62,85,.11)", color:"var(--ink-coral)" }}><Lock size={15} /></div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:700, letterSpacing:"-.01em" }}>Notas internas</div>
+                <div style={{ fontSize:14, fontWeight:700, letterSpacing:"-.01em" }}>Bitácora interna</div>
                 <div style={{ fontSize:11.5, color:"var(--n400)" }}>Solo para el equipo — el pasajero nunca ve esto.</div>
               </div>
               <span className="kbd">esc</span>
               <button className="btn btn-g btn-ico" onClick={() => setAbierto(false)}><X size={15} /></button>
             </div>
 
-            <div style={{ padding:"14px 17px", maxHeight:"72vh", overflowY:"auto" }}>
-              {area(10, true)}
-              {inputRapida}
+            <div style={{ flex:1, overflowY:"auto", padding:"14px 17px 20px" }}>
+              {cuadro(true)}
+              <div style={{ fontSize:10.5, color:"var(--n400)", margin:"6px 0 14px" }}>
+                <span className="kbd">↵</span> anota · <span className="kbd">Shift</span>+<span className="kbd">↵</span> salto de línea
+              </div>
+
+              {bitacora.length === 0
+                ? <Vacio icon={Lock} titulo="Bitácora vacía" accion="Anotá arriba: pedidos especiales, netos, qué quedó hablado…" />
+                : bitacora.map((b, i) => {
+                  const a = autorDe(b.autor);
+                  return (
+                    <div key={b.id} className="a-pop" style={{ display:"flex", gap:9, padding:"9px 11px", borderRadius:11,
+                      marginBottom:7, background:"var(--card-3)", border:"1px solid var(--hair-soft)",
+                      borderLeft:"3px solid var(--violet)" }}>
+                      <span style={{ width:22, height:22, borderRadius:99, flexShrink:0, display:"inline-flex",
+                        alignItems:"center", justifyContent:"center", fontSize:9.5, fontWeight:800, color:"#fff",
+                        background:"linear-gradient(135deg,var(--violet),var(--violet-2))" }}>{a.inicial}</span>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+                          <span style={{ fontSize:11.5, fontWeight:700 }}>{a.nombre}</span>
+                          <span className="mono" style={{ fontSize:10, color:"var(--n400)" }}>{b.hace}</span>
+                        </div>
+                        {/* editable acá mismo: la bitácora se maneja desde el drawer */}
+                        <textarea className="in" rows={Math.max(1, String(b.texto).split("\n").length)} value={b.texto}
+                          style={{ width:"100%", border:"1px solid transparent", background:"transparent", resize:"none",
+                            padding:"1px 2px", fontSize:12.5, lineHeight:1.5, minHeight:0 }}
+                          onChange={(e) => set((d) => { d.bitacora[i].texto = e.target.value; })} />
+                      </div>
+                      <button className="btn btn-g btn-ico" style={{ width:25, height:25, flexShrink:0 }} title="Borrar anotación"
+                        onClick={() => borrarNota(b, i)}><Trash2 size={12} /></button>
+                    </div>
+                  );
+                })}
 
               <div className="lbl" style={{ margin:"16px 0 7px" }}>Costos fijos</div>
               {notas.length === 0
@@ -1052,7 +1097,7 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
                         onChange={(e) => set((d) => { d.notas[i].concepto = e.target.value; })} />
                       <input className="in mono" style={{ width:104, height:29, textAlign:"right" }} type="number" value={x.neto}
                         onChange={(e) => set((d) => { d.notas[i].neto = e.target.value; })} />
-                      <button className="btn btn-g btn-ico" style={{ width:25, height:25 }} onClick={() => borrar(x, i)}>
+                      <button className="btn btn-g btn-ico" style={{ width:25, height:25 }} onClick={() => borrarCosto(x, i)}>
                         <Trash2 size={12} /></button>
                     </div>
                   ))}
@@ -1065,14 +1110,14 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
               )}
               <div style={{ display:"flex", gap:8 }}>
                 <input ref={inp} className="in" style={{ flex:1 }} value={c} placeholder="Concepto…"
-                  onChange={(e) => setC(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregar()} />
+                  onChange={(e) => setC(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregarCosto()} />
                 <input className="in mono" style={{ width:110, textAlign:"right" }} type="number" value={n} placeholder="0"
-                  onChange={(e) => setN(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregar()} />
-                <Btn size="sm" onClick={agregar} style={{ height:38 }}><Plus size={13} /></Btn>
+                  onChange={(e) => setN(e.target.value)} onKeyDown={(e) => e.key === "Enter" && agregarCosto()} />
+                <Btn size="sm" onClick={agregarCosto} style={{ height:38 }}><Plus size={13} /></Btn>
               </div>
             </div>
           </div>
-        </div>,
+        </>,
         /* dentro de .ctz para no perder las variables de color ni el modo oscuro */
         document.querySelector(".ctz") || document.body
       )}
