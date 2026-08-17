@@ -547,8 +547,21 @@ function DetailPanel({
                 >
                   {nombreComercialOpcion(od, idx)}
                 </span>
+                {/* Precio de VENTA por persona: es el criterio con el que el
+                    vendedor elige la opción y el que ordena esta lista. Antes
+                    el único número acá era el neto de alojamiento, que no es
+                    lo que se cotiza: cada opción tiene su propio factor de
+                    markup, así que la más barata en neto no siempre es la más
+                    barata para el pasajero. El neto queda debajo, etiquetado,
+                    porque es el mismo "Subtotal hotel" del panel de la derecha. */}
                 <span className={`font-mono text-[11px] tabular-nums ${idx === safeIdx ? "font-bold text-[#8B5CF6]" : "text-neutral-500"}`}>
-                  USD {fmt(od.netoAloj)}
+                  USD {fmt(od.ventaPorAdulto)}
+                  <span className="ml-1 font-sans text-[9px] font-normal text-neutral-400">
+                    p/p
+                  </span>
+                </span>
+                <span className="font-mono text-[9.5px] tabular-nums text-neutral-400">
+                  hotel {fmt(od.netoAloj)}
                 </span>
               </button>
             ))}
@@ -1323,6 +1336,18 @@ export default function VendedorDashboard() {
         const ventaPorAdulto = calcularVentaOpcion(netoFijos, netoAloj, opcion.factor);
         return { opcion, hoteles, netoAloj, ventaPorAdulto };
       });
+
+      // De más barata a más cara. El número que ve el vendedor ("OPCIÓN 1",
+      // "OPCIÓN 2"…) es posicional, así que sin este orden la Opción 3 podía
+      // ser la más económica y eso confunde en la venta. Ordenamos por la
+      // VENTA por adulto, que es el precio que se le pasa al pasajero, y no
+      // por el neto: cada opción tiene su propio factor de markup, así que los
+      // dos órdenes no coinciden. Las opciones sin precio (a consultar) van al
+      // final, mismo criterio que la ficha pública (PackageDetailView).
+      opcionesDetail.sort(
+        (a, b) =>
+          (a.ventaPorAdulto || Infinity) - (b.ventaPorAdulto || Infinity),
+      );
 
       const breakdown: PaqueteBreakdown = {
         aereos: aereoLines,
