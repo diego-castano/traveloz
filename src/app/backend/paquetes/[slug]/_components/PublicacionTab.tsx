@@ -64,7 +64,7 @@ import { useEtiquetas } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { parseStoredDate } from "@/lib/date";
 import { slugify } from "@/lib/utils";
-import { buildCardBullets } from "@/lib/format-paquete";
+import { buildCardBullets, resolveNochesTotales } from "@/lib/format-paquete";
 import {
   usePackageDispatch,
   usePaqueteById,
@@ -667,21 +667,48 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
   // usa el sitio público, alimentado con el Incluye editable de este tab y las
   // noches del paquete. Los "personalizados" son los slots no vacíos.
   // ---------------------------------------------------------------------------
+  // Noches reales del paquete: los CIRCUITO tienen `noches` = 0 y las suyas
+  // viven en el circuito asignado. Sin esto la vista previa del admin mostraba
+  // renglones sin noches para paquetes que en el sitio sí las muestran.
+  const nochesTotales = useMemo(
+    () =>
+      data
+        ? resolveNochesTotales({
+            noches: data.noches,
+            destinos: data.destinos,
+            circuitoNoches: data.circuitos[0]?.circuito?.noches ?? null,
+          })
+        : 0,
+    [data],
+  );
   const autoBullets = useMemo(
     () =>
       buildCardBullets({
         textoIncluye: serializeIncluyeItems(incluyeItems),
-        nochesTotales: data?.noches ?? 0,
+        nochesTotales,
         // Sin custom: forzamos el cálculo automático para la vista previa.
         cardBullets: undefined,
       }),
-    [incluyeItems, data?.noches],
+    [incluyeItems, nochesTotales],
   );
   const customBullets = useMemo(
     () => cardBulletsSlots.map((b) => b.trim()).filter((b) => b.length > 0),
     [cardBulletsSlots],
   );
   const hasCustomBullets = customBullets.length > 0;
+  // Vista previa fiel: la pasamos por el MISMO buildCardBullets del sitio, así
+  // el operador ve el renglón de noches que se repone cuando su lista no lo
+  // nombra (ver garantizarNoches en format-paquete.ts). Sin esto la vista
+  // previa mostraba los 4 slots crudos y el sitio otra cosa.
+  const previewBullets = useMemo(
+    () =>
+      buildCardBullets({
+        textoIncluye: serializeIncluyeItems(incluyeItems),
+        nochesTotales,
+        cardBullets: hasCustomBullets ? customBullets : undefined,
+      }),
+    [incluyeItems, nochesTotales, hasCustomBullets, customBullets],
+  );
 
   const handleCardBulletChange = useCallback(
     (index: number, value: string) => {
@@ -1046,12 +1073,12 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
               : "Automáticos (lo que se muestra hoy)"}
           </p>
           <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
-            {(hasCustomBullets ? customBullets : autoBullets).length === 0 ? (
+            {previewBullets.length === 0 ? (
               <li className="text-[13px] text-neutral-400 italic">
                 Sin renglones
               </li>
             ) : (
-              (hasCustomBullets ? customBullets : autoBullets).map((b, i) => (
+              previewBullets.map((b, i) => (
                 <li
                   key={`${b}-${i}`}
                   className="flex items-center gap-1.5 text-[13px] text-neutral-600"

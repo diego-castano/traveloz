@@ -233,6 +233,16 @@ export default async function PackageDetailPage({
   // cruda es lo que hacía que la ficha y el panel dijeran números distintos.
   const precioDesdeReal = precioDesdeDePaquete(paquete);
 
+  // Noches del encabezado: mismo criterio que el SEO y las tarjetas. El campo
+  // crudo `paquete.noches` vale 0 en modalidad CIRCUITO (las noches viven en el
+  // circuito), y antes la ficha las leía parseando el sufijo del título, así
+  // que los paquetes sin ese sufijo no mostraban la duración en ningún lado.
+  const nochesTotalesPaquete = resolveNochesTotales({
+    noches: paquete.noches,
+    destinos: paquete.destinos,
+    circuitoNoches: paquete.circuitos[0]?.circuito?.noches ?? null,
+  });
+
   // Itinerario estructurado día a día: solo aplica a modalidad CIRCUITO, y
   // toma el primer circuito asignado al paquete (el motor de precios ya
   // asume un único circuito por paquete en esta modalidad).
@@ -270,7 +280,7 @@ export default async function PackageDetailPage({
           titulo: paquete.titulo,
           modalidad: paquete.modalidad,
           salidas: paquete.salidas,
-          noches: paquete.noches,
+          noches: nochesTotalesPaquete,
           precioDesde: precioDesdeReal,
           precioDesdeMoneda: paquete.precioDesdeMoneda,
           heroImage: paquete.heroImage,

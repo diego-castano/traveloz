@@ -57,8 +57,9 @@ export function resolveNochesTotales(p: {
 // --- Concepto de noches para la tarjeta. El cliente pidió el formato
 // "07 Noches" (N mayúscula, cero a la izquierda si es un solo dígito), no
 // "7 noches". Se usa tanto en el resumen de la lista curada como en los
-// renglones derivados y el fallback legacy.
-function textoNoches(nochesTotales: number): string {
+// renglones derivados y el fallback legacy. Se exporta porque el encabezado
+// de la ficha de detalle escribe las noches con el mismo formato.
+export function textoNoches(nochesTotales: number): string {
   const nn = nochesTotales < 10 ? `0${nochesTotales}` : `${nochesTotales}`;
   return `${nn} ${nochesTotales === 1 ? "Noche" : "Noches"}`;
 }
@@ -153,14 +154,61 @@ function resumirConcepto(texto: string, nochesTotales: number): string | null {
   return resumenGenerico(t);
 }
 
+// --- ¿Este renglón ya le dice al viajero cuántas noches dura el paquete?
+// Alcanza con que nombre la palabra: "07 Noches", "7 noches con desayuno".
+const MENCIONA_NOCHES_RE = /noches?/i;
+
+// --- Transporte principal del paquete. Marca el lugar donde entra el renglón
+// de noches cuando hay que reponerlo (ver garantizarNoches).
+const TRANSPORTE_RE = /vuelo|\bbus\b|[oó]mnibus/i;
+
+/**
+ * Garantiza el renglón de noches en la tarjeta.
+ *
+ * El sitio público borra el sufijo "- 07 Noches" del título (stripNochesSuffix),
+ * así que el bullet es el ÚNICO lugar de la tarjeta donde el viajero ve la
+ * duración. Antes ese bullet competía por los 4 slots y perdía en dos casos
+ * reales del catálogo:
+ *
+ *   1. Automático: un ítem como "7 noches de alojamiento con all inclusive"
+ *      se resume como "All inclusive" (el régimen matchea antes que la noche),
+ *      y con Vuelos + Traslados + All inclusive + Seguros los 4 slots ya están
+ *      ocupados, así que el derivado de noches nunca entraba.
+ *   2. Manual: el operador curó 4 renglones sin nombrar las noches (los Club
+ *      Med son todos así).
+ *
+ * Ahora las noches entran sí o sí: se insertan después del renglón de
+ * transporte (Vuelos/Bus), que es el orden que ya usa el operador en los
+ * bullets manuales ("Vuelos · 07 Noches · Traslados · Seguros"). Si con eso
+ * pasamos de 4, cae el renglón de menor valor: primero el equipaje, y si no
+ * hay, el último.
+ */
+function garantizarNoches(bullets: string[], nochesTotales: number): string[] {
+  if (nochesTotales <= 0) return bullets;
+  if (bullets.some((b) => MENCIONA_NOCHES_RE.test(b))) return bullets;
+
+  const out = [...bullets];
+  const idxTransporte = out.findIndex((b) => TRANSPORTE_RE.test(b));
+  const pos = idxTransporte >= 0 ? idxTransporte + 1 : 0;
+  out.splice(pos, 0, textoNoches(nochesTotales));
+  if (out.length <= 4) return out;
+
+  // Sacamos el equipaje si está (es el renglón que menos diferencia un
+  // paquete de otro); si no, el último. Nunca el que acabamos de insertar.
+  const idxEquipaje = out.findIndex((b, i) => i !== pos && EQUIPAJE_RE.test(b));
+  out.splice(idxEquipaje >= 0 ? idxEquipaje : out.length - 1, 1);
+  return out;
+}
+
 /**
  * Arma los (hasta 4) renglones de la tarjeta pública de un paquete.
  *
  * Override manual: si el operador cargó renglones custom (`cardBullets`, JSON
  * editable desde la pestaña Publicación), se muestran esos tal cual (trim, cap
- * 60 chars c/u, máx 4) y no se deriva nada. Campo vacío/null → se cae a la
- * lógica automática de siempre (abajo). La validación es defensiva porque el
- * valor viene de un Json de DB (podría no ser un array de strings).
+ * 60 chars c/u, máx 4) y no se deriva nada, salvo el renglón de noches, que se
+ * repone si la lista no lo trae (ver garantizarNoches). Campo vacío/null → se
+ * cae a la lógica automática de siempre (abajo). La validación es defensiva
+ * porque el valor viene de un Json de DB (podría no ser un array de strings).
  *
  * Regla de negocio (modo automático): si el operador curó una lista "Incluye"
  * (JSON en `textoIncluye`), cada ítem se resume a un concepto corto de una o
@@ -196,7 +244,7 @@ export function buildCardBullets(input: {
       .map((b) => b.trim().slice(0, 60))
       .filter((b) => b.length > 0)
       .slice(0, 4);
-    if (custom.length > 0) return custom;
+    if (custom.length > 0) return garantizarNoches(custom, nochesTotales);
   }
 
   const items = parseIncluyeItems(textoIncluye);
@@ -230,7 +278,7 @@ export function buildCardBullets(input: {
   // Banda alta completa primero (orden del operador), banda baja solo si
   // sobran slots.
   const bullets: string[] = [...altos, ...bajos].slice(0, 4);
-  if (bullets.length >= 4) return bullets;
+  if (bullets.length >= 4) return garantizarNoches(bullets, nochesTotales);
 
   // Completar hasta 4 con derivados clásicos que la lista curada no cubrió.
   const derivados: string[] = [];

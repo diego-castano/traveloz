@@ -93,9 +93,14 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       titulo: true,
       slug: true,
       publicado: true,
-      // Noches: alimenta la vista previa de los renglones automáticos de la
-      // tarjeta en la pestaña Publicación (buildCardBullets client-side).
+      // Noches: alimentan la vista previa de los renglones de la tarjeta en la
+      // pestaña Publicación (buildCardBullets client-side). `noches` vale 0 en
+      // modalidad CIRCUITO, así que van también las de los destinos y las del
+      // circuito asignado: la vista previa las resuelve con
+      // resolveNochesTotales, igual que el sitio público.
       noches: true,
+      destinos: { select: { noches: true } },
+      circuitos: { select: { circuito: { select: { noches: true } } } },
       // Lifecycle fields — merged from former PublicacionTab so this is the
       // single source of truth for everything the operator manages from the
       // "Publicación" tab.

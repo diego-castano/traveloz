@@ -6,6 +6,7 @@ import { FramedImage } from "@/components/media/FramedImage";
 import { Skeleton } from "@/components/public/SkeletonClient";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import { parseIncluyeItems, iconForTrasladoTexto } from "@/lib/incluye";
+import { stripNochesSuffix, textoNoches } from "@/lib/format-paquete";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { QuoteSidebar } from "./QuoteSidebar";
 import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
@@ -73,6 +74,12 @@ type Props = {
      *  estructurado propio del circuito asignado). */
     modalidad: "CLASICO" | "CIRCUITO";
     salidas: string | null;
+    /**
+     * Noches TOTALES ya resueltas (resolveNochesTotales): el campo crudo vale
+     * 0 en los paquetes CIRCUITO, que las tienen en el circuito asignado. El
+     * encabezado las escribe debajo del título, así que no puede depender de
+     * que el operador haya dejado el sufijo "- 07 Noches" en el título.
+     */
     noches: number;
     precioDesde: number | null;
     precioDesdeMoneda: string | null;
@@ -189,16 +196,6 @@ function formatPeriodo(desde: string, hasta: string): string {
   } catch {
     return `${desde} a ${hasta}`;
   }
-}
-
-// Split a package title like "Rio de Janeiro - 07 Noches" into the destination
-// ("Rio de Janeiro") and the nights tail ("07 Noches"), so the detail header
-// can render the nights on a second line. Falls back to the whole title when
-// there's no "- NN Noche(s)" tail.
-function splitTitulo(titulo: string): { main: string; nights: string | null } {
-  const m = titulo.match(/^(.*\S)\s*[-–—]\s*(\d+\s*noches?)\s*$/i);
-  if (m) return { main: m[1].trim(), nights: m[2].trim() };
-  return { main: titulo, nights: null };
 }
 
 // Scoped style overrides — tighten font sizes that site.css inherited from
@@ -699,10 +696,12 @@ export function PackageDetailView({ paquete, formasDePago, related }: Props) {
                   <div className="col-7">
                     <div>
                       <h2 className="title pkg-title">
-                        <strong>{splitTitulo(paquete.titulo).main}</strong>
-                        {splitTitulo(paquete.titulo).nights && (
+                        <strong>
+                          {stripNochesSuffix(paquete.titulo) || paquete.titulo}
+                        </strong>
+                        {paquete.noches > 0 && (
                           <span className="pkg-title-nights">
-                            {splitTitulo(paquete.titulo).nights}
+                            {textoNoches(paquete.noches)}
                           </span>
                         )}
                       </h2>
