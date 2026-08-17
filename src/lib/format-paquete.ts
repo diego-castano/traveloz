@@ -76,11 +76,16 @@ function nochesConcepto(texto: string, nochesTotales: number): string {
 
 // --- Régimen resumido a etiqueta corta. Se chequean media/completa antes que
 // "desayuno" para que "media pensión con desayuno" caiga en "Media pensión".
-function regimenCorto(texto: string): string {
+//
+// Si el texto habla de régimen pero no dice CUÁL, devolvemos null en vez del
+// viejo "Régimen incluido": el cliente pidió suprimir ese renglón porque no
+// dice nada (todos los paquetes incluyen algún régimen) y le comía un slot a
+// un concepto que sí diferencia.
+function regimenCorto(texto: string): string | null {
   if (/media\s*pensi[oó]n/i.test(texto)) return "Media pensión";
   if (/pensi[oó]n\s*completa/i.test(texto)) return "Pensión completa";
   if (/desayuno/i.test(texto)) return "Con desayuno";
-  return "Régimen incluido";
+  return null;
 }
 
 // --- Conectores que no aportan al concepto corto; se descartan al derivar un
@@ -154,9 +159,27 @@ function resumirConcepto(texto: string, nochesTotales: number): string | null {
   return resumenGenerico(t);
 }
 
+/**
+ * Servicios REALES cargados en el paquete (contadores de las relaciones
+ * aereos/traslados/seguros). Sirven para no prometer nunca lo que el paquete
+ * no tiene: el fallback viejo escribía "Pasaje · Traslados · Régimen incluido"
+ * fijo, y así aparecían traslados en paquetes que sólo tienen tours.
+ *
+ * Opcional: si no se pasa, no se deriva ningún servicio (mejor una tarjeta con
+ * menos renglones que una que miente).
+ */
+export type ServiciosPaquete = {
+  vuelos?: boolean;
+  traslados?: boolean;
+  seguros?: boolean;
+};
+
 // --- ¿Este renglón ya le dice al viajero cuántas noches dura el paquete?
 // Alcanza con que nombre la palabra: "07 Noches", "7 noches con desayuno".
 const MENCIONA_NOCHES_RE = /noches?/i;
+
+// --- Idem para el seguro/asistencia al viajero.
+const MENCIONA_SEGURO_RE = /seguros?|asistencia/i;
 
 // --- Transporte principal del paquete. Marca el lugar donde entra el renglón
 // de noches cuando hay que reponerlo (ver garantizarNoches).
@@ -187,78 +210,119 @@ function garantizarNoches(bullets: string[], nochesTotales: number): string[] {
   if (nochesTotales <= 0) return bullets;
   if (bullets.some((b) => MENCIONA_NOCHES_RE.test(b))) return bullets;
 
+  const idxTransporte = bullets.findIndex((b) => TRANSPORTE_RE.test(b));
+  return insertarPrioritario(
+    bullets,
+    textoNoches(nochesTotales),
+    idxTransporte >= 0 ? idxTransporte + 1 : 0,
+  );
+}
+
+/**
+ * Garantiza el renglón de seguro, a pedido del cliente ("priorizar seguro").
+ *
+ * El seguro es el ítem que el operador carga último en el "Incluye", así que
+ * era el primero en caerse cuando la lista traía más de 4 conceptos. Entra al
+ * final, que es donde el operador ya lo pone en sus renglones manuales.
+ *
+ * Sólo se repone si el paquete REALMENTE tiene seguro: o lo nombró la lista
+ * curada (de ahí sale el concepto "Seguros"), o la relación `seguros` del
+ * paquete trae algo.
+ */
+function garantizarSeguro(bullets: string[], tieneSeguro: boolean): string[] {
+  if (!tieneSeguro) return bullets;
+  if (bullets.some((b) => MENCIONA_SEGURO_RE.test(b))) return bullets;
+  return insertarPrioritario(bullets, "Seguro", bullets.length);
+}
+
+// --- Orden de descarte cuando hay que hacerle lugar a un renglón garantizado.
+// Se saca el renglón que MENOS diferencia un paquete de otro: el equipaje
+// primero, después los traslados (casi todos los paquetes los incluyen). Si no
+// hay ninguno de esos, cae el último. Así un Club Med conserva su "All
+// inclusive", que es lo que lo distingue, en vez de perderlo contra un
+// "Traslados" que dice lo mismo que el resto del catálogo.
+const DESCARTABLES: RegExp[] = [EQUIPAJE_RE, /traslados?|transfer/i];
+
+/**
+ * Mete un renglón en `pos` respetando el tope de 4 renglones. Si con el nuevo
+ * se pasa, cae el de menor valor según DESCARTABLES. Nunca el recién
+ * insertado.
+ */
+function insertarPrioritario(
+  bullets: string[],
+  renglon: string,
+  pos: number,
+): string[] {
   const out = [...bullets];
-  const idxTransporte = out.findIndex((b) => TRANSPORTE_RE.test(b));
-  const pos = idxTransporte >= 0 ? idxTransporte + 1 : 0;
-  out.splice(pos, 0, textoNoches(nochesTotales));
+  out.splice(pos, 0, renglon);
   if (out.length <= 4) return out;
 
-  // Sacamos el equipaje si está (es el renglón que menos diferencia un
-  // paquete de otro); si no, el último. Nunca el que acabamos de insertar.
-  const idxEquipaje = out.findIndex((b, i) => i !== pos && EQUIPAJE_RE.test(b));
-  out.splice(idxEquipaje >= 0 ? idxEquipaje : out.length - 1, 1);
+  let idxACaer = -1;
+  for (const re of DESCARTABLES) {
+    idxACaer = out.findIndex((b, i) => i !== pos && re.test(b));
+    if (idxACaer >= 0) break;
+  }
+  // Sin candidato: el último que no sea el que acabamos de insertar.
+  if (idxACaer < 0) idxACaer = pos === out.length - 1 ? out.length - 2 : out.length - 1;
+  out.splice(idxACaer, 1);
   return out;
 }
 
 /**
- * Arma los (hasta 4) renglones de la tarjeta pública de un paquete.
+ * Renglones derivados de los servicios REALES del paquete, en el orden en que
+ * el operador los escribe a mano ("Vuelos · 07 Noches · Traslados · Seguro").
+ * Se usan cuando no hay lista "Incluye" curada, y para completar los slots que
+ * a esa lista le sobran. Nunca inventan: un servicio sin cargar no aparece.
+ */
+function renglonesDeServicios(
+  servicios: ServiciosPaquete | undefined,
+  nochesTotales: number,
+): string[] {
+  const out: string[] = [];
+  if (servicios?.vuelos) out.push("Vuelos");
+  if (nochesTotales > 0) out.push(textoNoches(nochesTotales));
+  if (servicios?.traslados) out.push("Traslados");
+  if (servicios?.seguros) out.push("Seguro");
+  return out;
+}
+
+/**
+ * Renglones automáticos: lo que la tarjeta muestra cuando el operador no
+ * escribió nada en ese slot.
  *
- * Override manual: si el operador cargó renglones custom (`cardBullets`, JSON
- * editable desde la pestaña Publicación), se muestran esos tal cual (trim, cap
- * 60 chars c/u, máx 4) y no se deriva nada, salvo el renglón de noches, que se
- * repone si la lista no lo trae (ver garantizarNoches). Campo vacío/null → se
- * cae a la lógica automática de siempre (abajo). La validación es defensiva
- * porque el valor viene de un Json de DB (podría no ser un array de strings).
- *
- * Regla de negocio (modo automático): si el operador curó una lista "Incluye"
- * (JSON en `textoIncluye`), cada ítem se resume a un concepto corto de una o
- * dos palabras (Vuelos / Bus / 07 Noches / Traslados / Seguros / All inclusive…)
- * en vez de volcar el texto completo (que la tarjeta truncaba con "…"). Se
- * descartan los conceptos que no aportan (cupos/tasas) y se deduplica.
+ * Con lista "Incluye" curada (JSON en `textoIncluye`), cada ítem se resume a
+ * un concepto corto de una o dos palabras (Vuelos / Bus / 07 Noches /
+ * Traslados / Seguro / All inclusive…) en vez de volcar el texto completo (que
+ * la tarjeta truncaba con "…"). Se descartan los conceptos que no aportan
+ * (cupos, tasas, "régimen incluido" a secas) y se deduplica.
  *
  * Priorización por especificidad: el equipaje de mano (Artículo personal /
  * Equipaje) es el ítem que el operador casi siempre carga primero pero el que
- * menos diferencia un paquete, así que se clasifica en banda baja y compite
- * por los slots sobrantes recién después de TODOS los conceptos de banda alta
- * (Vuelos, Bus, Traslados, noches, Seguros, All inclusive, régimen,
- * Excursiones, genéricos). Dentro de cada banda se conserva el orden del
- * operador. Si aun así quedan menos de 4, se completa con derivados clásicos
- * (noches / Vuelos / Traslados) sin duplicar.
+ * menos diferencia un paquete, así que va en banda baja y compite por los
+ * slots sobrantes recién después de los conceptos de banda alta. Dentro de
+ * cada banda se conserva el orden del operador. Es lo que hace que un paquete
+ * de 3 servicios (vuelo + traslado + hotel) sume el equipaje, como pidió el
+ * cliente. Si aun así sobran slots, se completan con los servicios REALES del
+ * paquete que la lista no cubrió.
  *
- * Sin lista curada, fallback legacy con los renglones fijos, omitiendo el de
- * noches cuando `nochesTotales === 0` (para no mostrar nunca "0 noches").
+ * Sin lista curada, los renglones salen enteros de esos servicios reales. El
+ * fallback viejo era fijo ("Pasaje · Traslados · Régimen incluido") y por eso
+ * aparecían traslados en paquetes que sólo tienen tours.
  */
-export function buildCardBullets(input: {
-  textoIncluye: string | null;
-  nochesTotales: number;
-  cardBullets?: unknown;
-}): string[] {
-  const { textoIncluye, nochesTotales, cardBullets } = input;
-
-  // Override manual: renglones custom del operador. Validación defensiva —
-  // es un Json de DB, así que sólo confiamos si es un array con al menos un
-  // string no vacío. Recortamos cada uno a 60 chars y tomamos máx 4.
-  if (Array.isArray(cardBullets)) {
-    const custom = cardBullets
-      .filter((b): b is string => typeof b === "string")
-      .map((b) => b.trim().slice(0, 60))
-      .filter((b) => b.length > 0)
-      .slice(0, 4);
-    if (custom.length > 0) return garantizarNoches(custom, nochesTotales);
-  }
-
+function bulletsAutomaticos(
+  textoIncluye: string | null,
+  nochesTotales: number,
+  servicios: ServiciosPaquete | undefined,
+): string[] {
   const items = parseIncluyeItems(textoIncluye);
   const curados = (items ?? [])
     .map((it) => it.texto?.trim() ?? "")
     .filter((t) => t.length > 0);
 
-  // Sin lista curada → fallback legacy (omite noches si son 0).
-  if (curados.length === 0) {
-    const legacy: string[] = ["Pasaje"];
-    if (nochesTotales > 0) legacy.push(textoNoches(nochesTotales));
-    legacy.push("Traslados", "Régimen incluido");
-    return legacy;
-  }
+  const derivados = renglonesDeServicios(servicios, nochesTotales);
+
+  // Sin lista curada → sólo servicios reales.
+  if (curados.length === 0) return derivados.slice(0, 4);
 
   // Resolvemos y deduplicamos TODOS los ítems curados primero (no solo los
   // primeros 4) para poder clasificarlos en banda alta/baja antes de elegir
@@ -275,21 +339,63 @@ export function buildCardBullets(input: {
     (BANDA_BAJA.has(clave) ? bajos : altos).push(concepto);
   }
 
-  // Banda alta completa primero (orden del operador), banda baja solo si
-  // sobran slots.
   const bullets: string[] = [...altos, ...bajos].slice(0, 4);
-  if (bullets.length >= 4) return garantizarNoches(bullets, nochesTotales);
 
-  // Completar hasta 4 con derivados clásicos que la lista curada no cubrió.
-  const derivados: string[] = [];
-  if (nochesTotales > 0) derivados.push(textoNoches(nochesTotales));
-  derivados.push("Vuelos", "Traslados");
+  // Completar hasta 4 con servicios reales que la lista curada no cubrió.
   for (const d of derivados) {
+    if (bullets.length >= 4) break;
     const clave = d.toLowerCase();
     if (vistos.has(clave)) continue;
     vistos.add(clave);
     bullets.push(d);
-    if (bullets.length >= 4) break;
   }
   return bullets;
+}
+
+/**
+ * Arma los (hasta 4) renglones de la tarjeta pública de un paquete.
+ *
+ * Los 4 slots son INDEPENDIENTES: cada uno es el renglón que escribió el
+ * operador en la pestaña Publicación, o el automático de esa posición si lo
+ * dejó vacío. El cliente pidió justamente esto — "que se complete de forma
+ * automática pero sea editable para casos puntuales" —, porque antes tocar un
+ * slot obligaba a reescribir los cuatro: la tarjeta mostraba sólo los que
+ * tuvieran texto.
+ *
+ * Sobre el resultado se garantizan los dos renglones que el cliente considera
+ * innegociables y que la competencia por slots se comía: las noches (el título
+ * público ya no las trae, ver stripNochesSuffix) y el seguro.
+ *
+ * La validación de `cardBullets` es defensiva porque el valor viene de un Json
+ * de DB (podría no ser un array de strings).
+ */
+export function buildCardBullets(input: {
+  textoIncluye: string | null;
+  nochesTotales: number;
+  cardBullets?: unknown;
+  servicios?: ServiciosPaquete;
+}): string[] {
+  const { textoIncluye, nochesTotales, cardBullets, servicios } = input;
+
+  const auto = bulletsAutomaticos(textoIncluye, nochesTotales, servicios);
+
+  // Merge slot a slot: el texto del operador manda; el vacío cae al automático
+  // de ESA posición. Los arrays viejos venían compactados (sólo los no vacíos),
+  // y con este merge siguen dando el mismo resultado.
+  const custom = Array.isArray(cardBullets)
+    ? cardBullets.map((b) => (typeof b === "string" ? b.trim().slice(0, 60) : ""))
+    : [];
+  const slots = Math.max(auto.length, custom.length, 0);
+  const bullets: string[] = [];
+  for (let i = 0; i < slots && bullets.length < 4; i++) {
+    const renglon = custom[i] || auto[i];
+    if (renglon) bullets.push(renglon);
+  }
+
+  const tieneSeguro =
+    servicios?.seguros === true || auto.some((b) => MENCIONA_SEGURO_RE.test(b));
+  return garantizarSeguro(
+    garantizarNoches(bullets, nochesTotales),
+    tieneSeguro,
+  );
 }

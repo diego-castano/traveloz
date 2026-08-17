@@ -16,6 +16,7 @@ import { RelatedPackages } from "./_components/RelatedPackages";
 import { buildSeoMetadata } from "@/lib/seo";
 import { precioDesdeDePaquete } from "@/lib/precio-desde";
 import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import { serviciosDelConteo } from "@/lib/paquete-listing";
 import { iconForTrasladoTexto } from "@/lib/incluye";
 
 export async function generateMetadata({
@@ -143,6 +144,7 @@ export default async function PackageDetailPage({
         textoIncluye: p.textoIncluye,
         nochesTotales,
         cardBullets: p.cardBullets,
+        servicios: serviciosDelConteo(p._count),
       }),
       destinos: p.destinos.map((d) => ({
         ciudad: { nombre: d.ciudad?.nombre ?? "" },

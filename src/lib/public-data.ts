@@ -121,6 +121,11 @@ export const getPaquetesByTipo = unstable_cache(
         // Opciones hoteleras: fuente REAL del precio "desde" de la card
         // (ver conPrecioDesdeReal). Solo el precio, no infla el payload.
         opcionesHoteleras: { select: { precioVenta: true } },
+        // Servicios REALES del paquete: los renglones automáticos de la card
+        // salen de acá cuando no hay lista "Incluye" curada, así la tarjeta
+        // nunca promete un traslado que el paquete no tiene (ver
+        // buildCardBullets). Contadores, no filas: no infla el payload.
+        _count: { select: { aereos: true, traslados: true, seguros: true } },
       },
     }),
     ),
@@ -181,6 +186,11 @@ export const getPaquetesByEtiqueta = unstable_cache(
         // Opciones hoteleras: fuente REAL del precio "desde" de la card
         // (ver conPrecioDesdeReal). Solo el precio, no infla el payload.
         opcionesHoteleras: { select: { precioVenta: true } },
+        // Servicios REALES del paquete: los renglones automáticos de la card
+        // salen de acá cuando no hay lista "Incluye" curada, así la tarjeta
+        // nunca promete un traslado que el paquete no tiene (ver
+        // buildCardBullets). Contadores, no filas: no infla el payload.
+        _count: { select: { aereos: true, traslados: true, seguros: true } },
       },
     }),
     ),
@@ -393,6 +403,11 @@ export const getPaquetesByRegion = unstable_cache(
       // Opciones hoteleras: fuente REAL del precio "desde" (ver
       // conPrecioDesdeReal). Solo el precio, no infla el payload.
       opcionesHoteleras: { select: { precioVenta: true as const } },
+      // Servicios REALES: alimentan los renglones automáticos de la card sin
+      // inventar nada (ver buildCardBullets).
+      _count: {
+        select: { aereos: true as const, traslados: true as const, seguros: true as const },
+      },
     };
     const base = {
       publicado: true,
@@ -496,6 +511,11 @@ export const getPaquetesPublicos = unstable_cache(
         // Opciones hoteleras: fuente REAL del precio "desde" de la card
         // (ver conPrecioDesdeReal). Solo el precio, no infla el payload.
         opcionesHoteleras: { select: { precioVenta: true } },
+        // Servicios REALES del paquete: los renglones automáticos de la card
+        // salen de acá cuando no hay lista "Incluye" curada, así la tarjeta
+        // nunca promete un traslado que el paquete no tiene (ver
+        // buildCardBullets). Contadores, no filas: no infla el payload.
+        _count: { select: { aereos: true, traslados: true, seguros: true } },
       },
     }),
     ),
@@ -612,6 +632,11 @@ export const getPaquetesRelacionados = unstable_cache(
       // Opciones hoteleras: fuente REAL del precio "desde" (ver
       // conPrecioDesdeReal). Solo el precio, no infla el payload.
       opcionesHoteleras: { select: { precioVenta: true as const } },
+      // Servicios REALES: alimentan los renglones automáticos de la card sin
+      // inventar nada (ver buildCardBullets).
+      _count: {
+        select: { aereos: true as const, traslados: true as const, seguros: true as const },
+      },
     };
     // El `take` corre en Postgres sobre `ORDER BY precioDesde`, o sea sobre la
     // copia denormalizada: con take 6 la copia vieja no decidía sólo el orden,

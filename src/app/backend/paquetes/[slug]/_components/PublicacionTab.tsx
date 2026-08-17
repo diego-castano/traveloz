@@ -65,6 +65,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { parseStoredDate } from "@/lib/date";
 import { slugify } from "@/lib/utils";
 import { buildCardBullets, resolveNochesTotales } from "@/lib/format-paquete";
+import { serviciosDelConteo } from "@/lib/paquete-listing";
 import {
   usePackageDispatch,
   usePaqueteById,
@@ -681,6 +682,13 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         : 0,
     [data],
   );
+  // Servicios reales del paquete: los renglones automáticos salen de acá
+  // cuando no hay lista "Incluye" curada, así el admin previsualiza lo mismo
+  // que publica el sitio.
+  const serviciosPaquete = useMemo(
+    () => serviciosDelConteo(data?._count),
+    [data?._count],
+  );
   const autoBullets = useMemo(
     () =>
       buildCardBullets({
@@ -688,26 +696,34 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
         nochesTotales,
         // Sin custom: forzamos el cálculo automático para la vista previa.
         cardBullets: undefined,
+        servicios: serviciosPaquete,
       }),
-    [incluyeItems, nochesTotales],
+    [incluyeItems, nochesTotales, serviciosPaquete],
   );
   const customBullets = useMemo(
     () => cardBulletsSlots.map((b) => b.trim()).filter((b) => b.length > 0),
     [cardBulletsSlots],
   );
   const hasCustomBullets = customBullets.length > 0;
-  // Vista previa fiel: la pasamos por el MISMO buildCardBullets del sitio, así
-  // el operador ve el renglón de noches que se repone cuando su lista no lo
-  // nombra (ver garantizarNoches en format-paquete.ts). Sin esto la vista
-  // previa mostraba los 4 slots crudos y el sitio otra cosa.
+  // Vista previa fiel: la pasamos por el MISMO buildCardBullets del sitio, con
+  // los slots TAL CUAL (incluidos los vacíos), así el operador ve el merge real
+  // — su texto donde escribió, el automático donde dejó vacío — más los
+  // renglones garantizados de noches y seguro.
   const previewBullets = useMemo(
     () =>
       buildCardBullets({
         textoIncluye: serializeIncluyeItems(incluyeItems),
         nochesTotales,
-        cardBullets: hasCustomBullets ? customBullets : undefined,
+        cardBullets: hasCustomBullets ? cardBulletsSlots : undefined,
+        servicios: serviciosPaquete,
       }),
-    [incluyeItems, nochesTotales, hasCustomBullets, customBullets],
+    [
+      incluyeItems,
+      nochesTotales,
+      hasCustomBullets,
+      cardBulletsSlots,
+      serviciosPaquete,
+    ],
   );
 
   const handleCardBulletChange = useCallback(

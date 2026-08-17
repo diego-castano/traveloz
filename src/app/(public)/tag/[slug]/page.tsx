@@ -8,6 +8,7 @@ import {
 import { PackageCard } from "@/components/public/PackageCard";
 import { buildSeoMetadata } from "@/lib/seo";
 import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import { serviciosDelConteo } from "@/lib/paquete-listing";
 import { resolveRegionSlugParaListado } from "@/lib/region-paquete";
 
 // ---------------------------------------------------------------------------
@@ -95,6 +96,7 @@ export default async function TagPage({
                   textoIncluye: p.textoIncluye,
                   nochesTotales,
                   cardBullets: p.cardBullets,
+                  servicios: serviciosDelConteo(p._count),
                 }),
               };
               return (

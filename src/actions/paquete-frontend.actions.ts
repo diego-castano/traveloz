@@ -101,6 +101,10 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       noches: true,
       destinos: { select: { noches: true } },
       circuitos: { select: { circuito: { select: { noches: true } } } },
+      // Servicios reales del paquete: la vista previa de los renglones usa los
+      // mismos que el sitio (ver buildCardBullets), así el admin no muestra un
+      // traslado que el paquete no tiene.
+      _count: { select: { aereos: true, traslados: true, seguros: true } },
       // Lifecycle fields — merged from former PublicacionTab so this is the
       // single source of truth for everything the operator manages from the
       // "Publicación" tab.
@@ -172,16 +176,21 @@ export async function updatePaqueteFrontend(
   const { cardBullets: cardBulletsInput, slug: slugInput, ...frontendData } = data;
   let cardBulletsToWrite: Prisma.PaqueteUpdateInput["cardBullets"];
   if (cardBulletsInput !== undefined) {
-    // Sanitizado: array → sólo strings → trim → cap 60 chars → filtrar vacíos
-    // → máx 4. Si no queda ninguno, null (la tarjeta arma los automáticos).
-    const limpios = Array.isArray(cardBulletsInput)
+    // Sanitizado: array → sólo strings → trim → cap 60 chars → máx 4.
+    //
+    // Los vacíos se CONSERVAN como "" en su posición: cada slot es
+    // independiente y un slot vacío significa "usá el automático de este
+    // lugar" (ver buildCardBullets). Antes se filtraban, y por eso tocar un
+    // renglón obligaba al operador a reescribir los cuatro. Si no quedó
+    // ninguno con texto, null: la tarjeta vuelve entera a automáticos.
+    const slots = Array.isArray(cardBulletsInput)
       ? cardBulletsInput
-          .filter((b): b is string => typeof b === "string")
-          .map((b) => b.trim().slice(0, 60))
-          .filter((b) => b.length > 0)
+          .map((b) => (typeof b === "string" ? b.trim().slice(0, 60) : ""))
           .slice(0, 4)
       : [];
-    cardBulletsToWrite = limpios.length > 0 ? limpios : Prisma.DbNull;
+    cardBulletsToWrite = slots.some((b) => b.length > 0)
+      ? slots
+      : Prisma.DbNull;
   }
 
   // ---------------------------------------------------------------------------

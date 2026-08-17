@@ -5,7 +5,30 @@
 // solo reusa sus helpers puros (resolveNochesTotales, buildCardBullets).
 // ---------------------------------------------------------------------------
 
-import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import {
+  resolveNochesTotales,
+  buildCardBullets,
+  type ServiciosPaquete,
+} from "@/lib/format-paquete";
+
+/**
+ * Contadores Prisma (`_count`) → banderas de servicio para buildCardBullets.
+ * Se exporta porque las páginas que arman tarjetas sin pasar por
+ * `projectPaqueteParaListado` (/destinos?tipo=, /tag/[slug], el slider de
+ * relacionados) necesitan la misma traducción.
+ */
+export function serviciosDelConteo(conteo?: {
+  aereos: number;
+  traslados: number;
+  seguros: number;
+}): ServiciosPaquete | undefined {
+  if (!conteo) return undefined;
+  return {
+    vuelos: conteo.aereos > 0,
+    traslados: conteo.traslados > 0,
+    seguros: conteo.seguros > 0,
+  };
+}
 
 // Shape crudo esperado: el mismo `include` que devuelven getPaquetesByRegion
 // y getPaquetesPublicos (fotos take 1, destinos con ciudad+pais, circuitos
@@ -33,6 +56,9 @@ export type PaqueteRawParaListado = {
     } | null;
   }[];
   circuitos: { circuito: { noches: number | null } | null }[];
+  // Contadores de servicios reales: alimentan los renglones automáticos de la
+  // tarjeta sin inventar nada (ver buildCardBullets).
+  _count?: { aereos: number; traslados: number; seguros: number };
 };
 
 export type CiudadListado = { id: string; nombre: string; paisNombre: string };
@@ -87,6 +113,7 @@ export function projectPaqueteParaListado(
       textoIncluye: p.textoIncluye,
       nochesTotales,
       cardBullets: p.cardBullets,
+      servicios: serviciosDelConteo(p._count),
     }),
     ciudades: destinosFuente
       .filter((d) => d.ciudad?.id)
