@@ -12,10 +12,13 @@
 
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { AlertTriangle, Check, Clock, RotateCw, Send } from "lucide-react";
 import type { CrmEstado } from "@prisma/client";
-import { reintentarCrmCotizacion } from "@/actions/leads.actions";
+import {
+  listCrmPendientes,
+  reintentarCrmCotizacion,
+} from "@/actions/leads.actions";
 import { useToast } from "@/components/ui/Toast";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { cn } from "@/components/lib/cn";
@@ -282,6 +285,28 @@ export function ResumenCrm({
   const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(
     null,
   );
+  // IDs de TODOS los pendientes del CRM, no solo los de esta pestaña: Leads
+  // (consultas de paquete) y Cotizaciones (cotizador general) comparten tabla,
+  // así que el botón reenvía todo junto sin importar dónde esté parado el
+  // operador. `null` mientras carga la primera vez.
+  const [pendientes, setPendientes] = useState<string[] | null>(null);
+
+  // Recarga la lista global al montar y cada vez que la tabla se refresca (el
+  // array `filas` cambia de referencia), para que el número del botón siga al
+  // estado real después de reenviar o de que entre un lead nuevo.
+  useEffect(() => {
+    let vivo = true;
+    listCrmPendientes()
+      .then((ids) => {
+        if (vivo) setPendientes(ids);
+      })
+      .catch(() => {
+        if (vivo) setPendientes([]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [filas]);
 
   const r = useMemo(() => resumir(filas), [filas]);
   if (r.conEstado === 0) return null;
@@ -290,29 +315,32 @@ export function ResumenCrm({
   const alternar = (f: Exclude<FiltroCrm, null>) =>
     onFiltro(filtro === f ? null : f);
 
-  // Reenvía, uno por uno, todos los que fallaron o quedaron colgados. Secuencial
-  // a propósito: cada lead dispara varias llamadas a Bitrix y el portal limita
-  // el ritmo, así que no conviene mandarlas todas juntas. Los que ya están en el
-  // CRM se saltean solos dentro de la action (no duplica negocios).
+  // Reenvía, uno por uno, TODOS los pendientes del CRM (de las dos pestañas).
+  // Secuencial a propósito: cada lead dispara varias llamadas a Bitrix y el
+  // portal limita el ritmo, así que no conviene mandarlas todas juntas. Los que
+  // ya están en el CRM se saltean solos dentro de la action (no duplica).
   const reenviarTodos = async () => {
-    const pendientes = filas.filter(sePuedeReintentar);
-    if (pendientes.length === 0 || progreso) return;
+    const ids = pendientes ?? [];
+    if (ids.length === 0 || progreso) return;
 
     let ok = 0;
     let fallaron = 0;
-    setProgreso({ hechos: 0, total: pendientes.length });
-    for (let i = 0; i < pendientes.length; i++) {
+    setProgreso({ hechos: 0, total: ids.length });
+    for (let i = 0; i < ids.length; i++) {
       try {
-        const res = await reintentarCrmCotizacion(pendientes[i].id);
+        const res = await reintentarCrmCotizacion(ids[i]);
         if (res.ok) ok++;
         else fallaron++;
       } catch {
         fallaron++;
       }
-      setProgreso({ hechos: i + 1, total: pendientes.length });
+      setProgreso({ hechos: i + 1, total: ids.length });
     }
     setProgreso(null);
+    // Refresca la tabla y la lista global (onReintento dispara un refresh de
+    // `filas`, que a su vez re-corre el efecto de arriba).
     onReintento?.();
+    setPendientes(await listCrmPendientes().catch(() => []));
     toast(
       fallaron === 0 ? "success" : "error",
       fallaron === 0 ? "Reenvío completo" : "Reenvío con errores",
@@ -322,7 +350,7 @@ export function ResumenCrm({
     );
   };
 
-  const puedeReenviar = r.error + r.colgado;
+  const puedeReenviar = pendientes?.length ?? 0;
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
@@ -349,7 +377,7 @@ export function ResumenCrm({
           type="button"
           onClick={reenviarTodos}
           disabled={progreso !== null}
-          title="Reenviar a Bitrix, uno por uno, todos los que no llegaron"
+          title="Reenvía a Bitrix, uno por uno, TODOS los que no llegaron — tanto los de Leads (consultas de paquete) como los de Cotizaciones (cotizador general)."
           className="inline-flex items-center gap-1.5 rounded-md bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:bg-violet-300 disabled:cursor-not-allowed transition-colors"
         >
           <Send className={cn("w-3 h-3", progreso !== null && "animate-pulse")} />

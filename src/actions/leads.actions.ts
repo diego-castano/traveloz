@@ -471,6 +471,36 @@ export async function reintentarCrmCotizacion(
   }
 }
 
+// Un PENDIENTE recién creado es normal (la fila se guarda antes de empujar a
+// Bitrix). Pasados estos minutos ya no es demora: el envío nunca confirmó y hay
+// que reintentarlo. Mismo umbral que usa la celda del panel (CeldaCrm.tsx).
+const MINUTOS_PENDIENTE_NORMAL = 10;
+
+/**
+ * IDs de TODAS las cotizaciones que no llegaron al CRM, sin importar la pestaña:
+ * las que están en ERROR y las que quedaron colgadas en PENDIENTE. Es la lista
+ * que reenvía el botón "Reenviar todos" del panel, para que abarque tanto las
+ * consultas de paquete (Leads) como las del cotizador general (Cotizaciones),
+ * que viven en la misma tabla.
+ *
+ * En orden de creación (más viejas primero), como se reenvían.
+ */
+export async function listCrmPendientes(): Promise<string[]> {
+  await requireAuth();
+  const desde = new Date(Date.now() - MINUTOS_PENDIENTE_NORMAL * 60_000);
+  const filas = await prisma.cotizacion.findMany({
+    where: {
+      OR: [
+        { crmEstado: "ERROR" },
+        { crmEstado: "PENDIENTE", createdAt: { lt: desde } },
+      ],
+    },
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return filas.map((f) => f.id);
+}
+
 // ---------------------------------------------------------------------------
 // Atribución de pauta — recorrido de navegación de un visitante anónimo
 // (histórico de PaginaVista antes de convertir), para mostrar en el drawer
