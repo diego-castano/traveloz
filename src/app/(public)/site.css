@@ -6167,6 +6167,15 @@ button.picker-done:focus-visible {
   justify-content: flex-end;
 }
 
-.box-card .title {
+/* Reserva dos renglones para el TITULO del paquete, así las tarjetas del grid
+   alinean bullets y precio aunque un título entre en una sola línea.
+
+   Va sobre h3.title y NO sobre .title a secas: el bloque de precio usa la
+   misma clase para su etiqueta ("DESDE"), y ahí el min-height le daba una caja
+   de 24px contra 11px de línea (21,6 contra 9 en mobile). Esos ~13px muertos
+   despegaban el "DESDE" del "USD" de abajo y descolgaban el grupo respecto del
+   número. El único .box-card del sitio es PackageCard, y su título siempre es
+   un h3. */
+.box-card h3.title {
   min-height: 2.4em;
 }
