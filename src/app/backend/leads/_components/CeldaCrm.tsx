@@ -12,8 +12,8 @@
 
 "use client";
 
-import { useMemo, useTransition } from "react";
-import { AlertTriangle, Check, Clock, RotateCw } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { AlertTriangle, Check, Clock, RotateCw, Send } from "lucide-react";
 import type { CrmEstado } from "@prisma/client";
 import { reintentarCrmCotizacion } from "@/actions/leads.actions";
 import { useToast } from "@/components/ui/Toast";
@@ -92,9 +92,9 @@ export function CeldaCrm({
       onClick={reintentar}
       disabled={enviando}
       title="Volver a enviar este lead a Bitrix"
-      className="inline-flex items-center gap-1 text-[10px] font-medium text-violet-700 hover:text-violet-900 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors"
+      className="inline-flex items-center gap-1 -mx-1 mt-0.5 rounded px-1.5 py-1 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200 hover:bg-violet-50 hover:text-violet-900 disabled:text-neutral-400 disabled:ring-neutral-200 disabled:cursor-not-allowed transition-colors"
     >
-      <RotateCw className={cn("w-2.5 h-2.5", enviando && "animate-spin")} />
+      <RotateCw className={cn("w-3 h-3", enviando && "animate-spin")} />
       {enviando ? "Enviando…" : "Reintentar"}
     </button>
   );
@@ -268,17 +268,61 @@ export function ResumenCrm({
   filas,
   filtro,
   onFiltro,
+  onReintento,
 }: {
   filas: FilaCrm[];
   filtro: FiltroCrm;
   onFiltro: (f: FiltroCrm) => void;
+  /** Se llama al terminar el reenvío masivo, para refrescar la tabla. */
+  onReintento?: () => void;
 }) {
+  const { canEdit } = useAuth();
+  const { toast } = useToast();
+  // `null` = sin envío en curso. Con envío: cuántos van sobre el total.
+  const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(
+    null,
+  );
+
   const r = useMemo(() => resumir(filas), [filas]);
   if (r.conEstado === 0) return null;
 
   const todoBien = r.error === 0 && r.colgado === 0;
   const alternar = (f: Exclude<FiltroCrm, null>) =>
     onFiltro(filtro === f ? null : f);
+
+  // Reenvía, uno por uno, todos los que fallaron o quedaron colgados. Secuencial
+  // a propósito: cada lead dispara varias llamadas a Bitrix y el portal limita
+  // el ritmo, así que no conviene mandarlas todas juntas. Los que ya están en el
+  // CRM se saltean solos dentro de la action (no duplica negocios).
+  const reenviarTodos = async () => {
+    const pendientes = filas.filter(sePuedeReintentar);
+    if (pendientes.length === 0 || progreso) return;
+
+    let ok = 0;
+    let fallaron = 0;
+    setProgreso({ hechos: 0, total: pendientes.length });
+    for (let i = 0; i < pendientes.length; i++) {
+      try {
+        const res = await reintentarCrmCotizacion(pendientes[i].id);
+        if (res.ok) ok++;
+        else fallaron++;
+      } catch {
+        fallaron++;
+      }
+      setProgreso({ hechos: i + 1, total: pendientes.length });
+    }
+    setProgreso(null);
+    onReintento?.();
+    toast(
+      fallaron === 0 ? "success" : "error",
+      fallaron === 0 ? "Reenvío completo" : "Reenvío con errores",
+      fallaron === 0
+        ? `${ok} ${ok === 1 ? "lead entró" : "leads entraron"} al CRM.`
+        : `${ok} entraron, ${fallaron} siguen sin entrar. Revisá el error de cada uno en la columna CRM.`,
+    );
+  };
+
+  const puedeReenviar = r.error + r.colgado;
 
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
@@ -298,6 +342,21 @@ export function ResumenCrm({
         >
           {r.error} sin enviar
         </Chip>
+      )}
+
+      {canEdit && puedeReenviar > 0 && (
+        <button
+          type="button"
+          onClick={reenviarTodos}
+          disabled={progreso !== null}
+          title="Reenviar a Bitrix, uno por uno, todos los que no llegaron"
+          className="inline-flex items-center gap-1.5 rounded-md bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-violet-700 disabled:bg-violet-300 disabled:cursor-not-allowed transition-colors"
+        >
+          <Send className={cn("w-3 h-3", progreso !== null && "animate-pulse")} />
+          {progreso !== null
+            ? `Enviando ${progreso.hechos} de ${progreso.total}…`
+            : `Reenviar ${puedeReenviar} al CRM`}
+        </button>
       )}
 
       {r.colgado > 0 && (

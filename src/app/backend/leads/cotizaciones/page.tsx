@@ -129,6 +129,7 @@ export default function CotizacionesPage() {
               filas={rows}
               filtro={filtroCrm}
               onFiltro={setFiltroCrm}
+              onReintento={refresh}
             />
           }
           columns={[
