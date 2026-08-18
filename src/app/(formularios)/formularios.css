@@ -1,0 +1,60 @@
+/* Tipografía de los formularios de datos — misma familia que el resto del
+   sitio público y que los landings de cotizador: body en Clarika Geometric,
+   títulos en Rufina. Las fonts viven en /public/site/fonts. */
+
+@font-face {
+  font-family: "Clarika Geometric";
+  src: url("/site/fonts/ClarikaGeometric-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarika Geometric";
+  src: url("/site/fonts/ClarikaGeometric-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Clarika Geometric";
+  src: url("/site/fonts/ClarikaGeometric-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Rufina";
+  src: url("/site/fonts/Rufina-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Los form controls no heredan font-family: van explícitos. */
+.formularios-root,
+.formularios-root input,
+.formularios-root textarea,
+.formularios-root select,
+.formularios-root button {
+  font-family: "Clarika Geometric", system-ui, -apple-system, sans-serif;
+}
+
+.formularios-title {
+  font-family: "Rufina", Georgia, serif;
+  font-weight: 700;
+}
+
+/* Los inputs de fecha en iOS quedan verticalmente descentrados y con el texto
+   gris del placeholder aunque haya valor; esto los alinea con el resto. */
+.formularios-root input[type="date"] {
+  min-height: 3.25rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* El anillo de foco del navegador sobre un bloque plegado (height:0) dibuja
+   una línea suelta; lo desactivamos solo para el contenedor animado. */
+.formularios-root [data-plegable] {
+  overflow: hidden;
+}

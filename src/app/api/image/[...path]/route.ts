@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 import { auth } from "@/lib/auth.config";
+import { prisma } from "@/lib/db";
 import { getStorageBucket, getStorageClient } from "@/lib/storage";
 
 // sharp es un módulo nativo: SOLO corre en runtime nodejs (no edge). No cambiar.
@@ -11,6 +12,12 @@ export const runtime = "nodejs";
 // del admin (CVs de postulantes, adjuntos de leads). El resto del bucket son
 // assets públicos del sitio (fotos de paquetes, imágenes del CMS).
 const PROTECTED_PREFIXES = ["leads/"];
+
+// Documentos y pasaportes que cargan los pasajeros desde el link público de un
+// vendedor. Sesión sola NO alcanza: son documentos de identidad de terceros y
+// cualquier vendedor logueado podría leer los de otro. Acá exigimos además
+// pertenencia — ADMIN, o el vendedor dueño del envío.
+const DATOS_PASAJEROS_PREFIX = "leads/datos-pasajeros/";
 
 // Anchos permitidos para el thumbnail on-the-fly (?w=). Whitelist fija: cualquier
 // otro valor cae al passthrough sin transformar. Evita que un atacante genere
@@ -40,6 +47,26 @@ export async function GET(
     const session = await auth();
     if (!session?.user) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
+    if (normalized.startsWith(DATOS_PASAJEROS_PREFIX)) {
+      const user = session.user as { id?: string; role?: string };
+      if (user.role !== "ADMIN") {
+        // El archivo se localiza por la URL guardada en el pasajero (misma
+        // forma con la que se persistió: /api/image/<key>). Un archivo que se
+        // subió pero cuyo envío nunca se completó no tiene fila: no lo abre
+        // nadie salvo un admin, y el GC de huérfanos lo termina barriendo.
+        const url = `/api/image/${normalized}`;
+        const fila = await prisma.pasajeroDato.findFirst({
+          where: {
+            OR: [{ documentoArchivoUrl: url }, { pasaporteArchivoUrl: url }],
+          },
+          select: { envio: { select: { vendedorId: true } } },
+        });
+        if (!fila || fila.envio.vendedorId !== user.id) {
+          return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+        }
+      }
     }
   }
 

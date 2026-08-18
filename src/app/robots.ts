@@ -85,6 +85,10 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           // Mockup del cotizador para validar con el cliente. Ruta no listada
           // (no esta en menus ni sitemap); se saca de aca cuando se borre.
           "/cotizador",
+          // Links personales de datos de pasajeros / pago. Llevan datos de
+          // terceros: nunca en un indice, aunque las paginas ya salgan noindex.
+          "/datos-de-pasajeros",
+          "/datos-de-pago",
           ...extra,
         ],
       },

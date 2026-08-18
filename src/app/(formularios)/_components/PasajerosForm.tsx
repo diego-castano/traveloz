@@ -1,0 +1,513 @@
+"use client";
+
+// ---------------------------------------------------------------------------
+// Formulario público de datos de pasajeros.
+//
+// Bloques repetibles: "Pasajero 1", "Pasajero 2", … Un bloque SOLO se puede
+// plegar cuando está completo (usamos el checkValidity() nativo de cada input
+// más el adjunto obligatorio). Esa regla no es cosmética: si dejáramos plegar
+// un bloque incompleto, el navegador intentaría enfocar un campo requerido que
+// está a altura cero y la validación nativa se rompe con
+// "invalid form control is not focusable".
+//
+// Los campos van con el índice adelante (p0__nombres, p1__nombres, …) y el
+// índice sale de la POSICIÓN en el array. Los bloques están keyeados por un id
+// estable, así que al borrar uno del medio React mueve los nodos del DOM (con
+// sus valores) y solo reescribe el atributo name.
+// ---------------------------------------------------------------------------
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFormState } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
+import { ChevronDown, Plus, Trash2, UserRound } from "lucide-react";
+import { submitEnvioPasajeros, type FormResult } from "@/actions/datos-publico.actions";
+import type { FormField } from "@/lib/cotizador-form";
+import { AdjuntoField, type Adjunto } from "./AdjuntoField";
+import { CamposExtra } from "./CamposExtra";
+import { ACENTO, Campo, ErrorMsg, Exito, Honeypot, Label, SubmitButton, inputClass } from "./ui";
+
+interface Slot {
+  id: string;
+}
+
+type Adjuntos = { documento: Adjunto | null; pasaporte: Adjunto | null };
+
+/** id local para keyear los bloques. No viaja al server. */
+function nuevoId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+/** UUID del lote de adjuntos. randomUUID solo existe en contexto seguro. */
+function nuevoLote(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  // Fallback manual con el formato exacto que valida el route handler.
+  const hex = (n: number) =>
+    Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+  return `${hex(8)}-${hex(4)}-${hex(4)}-${hex(4)}-${hex(12)}`;
+}
+
+export function PasajerosForm({
+  slug,
+  token,
+  campos,
+  maxPasajeros,
+  avisoDesde,
+  accept,
+  maxAdjuntoBytes,
+  destinoInicial,
+  referenciaInicial,
+  emailInicial,
+}: {
+  slug: string;
+  token: string | null;
+  campos: FormField[];
+  maxPasajeros: number;
+  avisoDesde: number;
+  accept: string;
+  maxAdjuntoBytes: number;
+  destinoInicial: string | null;
+  referenciaInicial: string | null;
+  emailInicial: string | null;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [slots, setSlots] = useState<Slot[]>(() => [{ id: "p1" }]);
+  const [abiertos, setAbiertos] = useState<Record<string, boolean>>({ p1: true });
+  const [adjuntos, setAdjuntos] = useState<Record<string, Adjuntos>>({});
+  const [resumen, setResumen] = useState<Record<string, string>>({});
+  const [avisoPliegue, setAvisoPliegue] = useState<string | null>(null);
+  const [quiereFactura, setQuiereFactura] = useState(false);
+  // El lote agrupa los adjuntos de este envío dentro del bucket. Se genera
+  // después del montaje para no romper la hidratación con un valor distinto
+  // en server y cliente.
+  const [lote, setLote] = useState("");
+  useEffect(() => setLote(nuevoLote()), []);
+
+  const action = useMemo(
+    () => submitEnvioPasajeros.bind(null, slug, token),
+    [slug, token],
+  );
+  const [state, formAction] = useFormState<FormResult | null, FormData>(action, null);
+
+  // Si el server rechazó el envío, abrimos todo: el campo problemático puede
+  // estar en un bloque plegado y el mensaje ya dice de qué pasajero se trata.
+  useEffect(() => {
+    if (state && !state.ok) {
+      setAbiertos(Object.fromEntries(slots.map((s) => [s.id, true])));
+    }
+    // slots a propósito fuera de las deps: solo reaccionamos al cambio de state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  const adj = (id: string): Adjuntos => adjuntos[id] ?? { documento: null, pasaporte: null };
+
+  function setAdjunto(id: string, campo: keyof Adjuntos, valor: Adjunto | null) {
+    setAdjuntos((prev) => ({ ...prev, [id]: { ...adj(id), [campo]: valor } }));
+  }
+
+  /** ¿Todos los controles del bloque pasan la validación nativa + el adjunto? */
+  function bloqueCompleto(id: string): boolean {
+    if (!adj(id).documento) return false;
+    const el = formRef.current?.querySelector<HTMLElement>(`[data-bloque="${id}"]`);
+    if (!el) return false;
+    const controles = Array.from(
+      el.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        "input, select, textarea",
+      ),
+    );
+    return controles.every((c) => c.checkValidity());
+  }
+
+  function plegar(id: string) {
+    if (!bloqueCompleto(id)) {
+      setAvisoPliegue(id);
+      return;
+    }
+    setAvisoPliegue(null);
+    setAbiertos((a) => ({ ...a, [id]: false }));
+  }
+
+  function alternar(id: string) {
+    if (abiertos[id]) plegar(id);
+    else setAbiertos((a) => ({ ...a, [id]: true }));
+  }
+
+  function agregar() {
+    if (slots.length >= maxPasajeros) return;
+    const id = nuevoId();
+    // Plegamos los que ya estén completos; los incompletos quedan a la vista.
+    const cerrados: Record<string, boolean> = { ...abiertos };
+    for (const s of slots) if (bloqueCompleto(s.id)) cerrados[s.id] = false;
+    setAbiertos({ ...cerrados, [id]: true });
+    setSlots((s) => [...s, { id }]);
+  }
+
+  function quitar(id: string) {
+    setSlots((s) => s.filter((x) => x.id !== id));
+    setAdjuntos(({ [id]: _borrado, ...resto }) => resto);
+    setResumen(({ [id]: _r, ...resto }) => resto);
+  }
+
+  // Gate del botón: sin documento adjunto no hay envío posible (el input
+  // hidden con la key no puede llevar `required` sin romper el foco nativo).
+  const sinDocumento = slots.findIndex((s) => !adj(s.id).documento);
+  const faltaDocumento = sinDocumento !== -1;
+
+  if (state?.ok) {
+    return (
+      <Exito
+        titulo={state.message}
+        detalle="Te va a llegar la confirmación por WhatsApp o email. Si necesitás corregir algo, escribile a tu asesor."
+      />
+    );
+  }
+
+  return (
+    <form ref={formRef} action={formAction} className="space-y-6">
+      <Honeypot />
+      <input type="hidden" name="cantidadPasajeros" value={slots.length} />
+
+      {/* ── Datos del viaje ─────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+          El viaje
+        </h2>
+        <Campo
+          name="destino"
+          label="Destino"
+          requerido
+          required
+          maxLength={160}
+          defaultValue={destinoInicial ?? ""}
+          placeholder="¿A dónde viajan?"
+        />
+        <Campo
+          name="referencia"
+          label="Referencia de la reserva"
+          ayuda="Si tu asesor te pasó un número o nombre de expediente, ponelo acá."
+          maxLength={160}
+          defaultValue={referenciaInicial ?? ""}
+          placeholder="Opcional"
+        />
+      </section>
+
+      <div className="h-px bg-neutral-100" />
+
+      {/* ── Pasajeros ───────────────────────────────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+          Pasajeros
+        </h2>
+
+        <AnimatePresence initial={false}>
+          {slots.map((slot, idx) => {
+            const p = `p${idx}__`;
+            const abierto = abiertos[slot.id] ?? true;
+            const nombre = resumen[slot.id]?.trim();
+            return (
+              <motion.div
+                key={slot.id}
+                layout
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                data-bloque={slot.id}
+                className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+              >
+                {/* Cabecera plegable */}
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  <div
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-white"
+                    style={{ background: ACENTO }}
+                  >
+                    {idx + 1}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alternar(slot.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    aria-expanded={abierto}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-semibold leading-tight text-neutral-900">
+                        Pasajero {idx + 1}
+                      </span>
+                      {nombre && !abierto && (
+                        <span className="mt-0.5 block truncate text-[13px] text-neutral-500">
+                          {nombre}
+                        </span>
+                      )}
+                    </span>
+                    <motion.span animate={{ rotate: abierto ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                      <ChevronDown className="h-5 w-5 text-neutral-400" />
+                    </motion.span>
+                  </button>
+                  {slots.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => quitar(slot.id)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+                      aria-label={`Quitar pasajero ${idx + 1}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {avisoPliegue === slot.id && abierto && (
+                  <p className="px-4 pb-2 text-xs font-medium text-amber-600">
+                    Completá los datos y el documento antes de plegar este pasajero.
+                  </p>
+                )}
+
+                {/* Cuerpo — se mantiene montado al plegar para no perder valores. */}
+                <motion.div
+                  data-plegable
+                  initial={false}
+                  animate={{ height: abierto ? "auto" : 0, opacity: abierto ? 1 : 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                >
+                  <div className="space-y-4 border-t border-neutral-100 px-4 py-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Campo
+                        name={`${p}nombres`}
+                        label="Nombres"
+                        requerido
+                        required
+                        maxLength={100}
+                        autoComplete="given-name"
+                        ayuda="Tal cual figura en el documento."
+                        onChange={(e) =>
+                          setResumen((r) => ({ ...r, [slot.id]: e.currentTarget.value }))
+                        }
+                      />
+                      <Campo
+                        name={`${p}apellidos`}
+                        label="Apellidos"
+                        requerido
+                        required
+                        maxLength={100}
+                        autoComplete="family-name"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Campo
+                        name={`${p}documento`}
+                        label="Documento"
+                        requerido
+                        required
+                        maxLength={40}
+                        inputMode="numeric"
+                        placeholder="Cédula o DNI"
+                      />
+                      <div>
+                        <Label htmlFor={`${p}fechaNacimiento`}>Fecha de nacimiento</Label>
+                        <input
+                          id={`${p}fechaNacimiento`}
+                          name={`${p}fechaNacimiento`}
+                          type="date"
+                          max={new Date().toISOString().slice(0, 10)}
+                          min="1900-01-01"
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Campo
+                        name={`${p}email`}
+                        label="Email"
+                        type="email"
+                        requerido
+                        required
+                        maxLength={254}
+                        autoComplete="email"
+                        defaultValue={idx === 0 ? (emailInicial ?? "") : ""}
+                      />
+                      <Campo
+                        name={`${p}telefono`}
+                        label="Teléfono"
+                        type="tel"
+                        requerido
+                        required
+                        maxLength={40}
+                        inputMode="tel"
+                        autoComplete="tel"
+                        placeholder="+598 99 123 456"
+                      />
+                    </div>
+
+                    <Campo
+                      name={`${p}pasaporte`}
+                      label="Pasaporte"
+                      maxLength={40}
+                      placeholder="Opcional"
+                      ayuda="Si el viaje lo requiere, cargalo junto con el número."
+                    />
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <Campo
+                        name={`${p}ciudad`}
+                        label="Ciudad"
+                        maxLength={120}
+                        placeholder="Opcional"
+                        autoComplete="address-level2"
+                      />
+                      <Campo
+                        name={`${p}pais`}
+                        label="País"
+                        maxLength={60}
+                        defaultValue="UY"
+                        autoComplete="country"
+                      />
+                    </div>
+
+                    <Campo
+                      name={`${p}direccion`}
+                      label="Dirección"
+                      maxLength={200}
+                      placeholder="Opcional"
+                      autoComplete="street-address"
+                    />
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <AdjuntoField
+                        name={`${p}documentoKey`}
+                        label="Foto del documento"
+                        requerido
+                        ayuda="JPG, PNG o PDF."
+                        slug={slug}
+                        lote={lote}
+                        accept={accept}
+                        maxBytes={maxAdjuntoBytes}
+                        value={adj(slot.id).documento}
+                        onChange={(a) => setAdjunto(slot.id, "documento", a)}
+                      />
+                      <AdjuntoField
+                        name={`${p}pasaporteKey`}
+                        label="Foto del pasaporte"
+                        ayuda="Solo si el viaje lo requiere."
+                        slug={slug}
+                        lote={lote}
+                        accept={accept}
+                        maxBytes={maxAdjuntoBytes}
+                        value={adj(slot.id).pasaporte}
+                        onChange={(a) => setAdjunto(slot.id, "pasaporte", a)}
+                      />
+                    </div>
+
+                    <CamposExtra campos={campos} prefijo={p} />
+                  </div>
+                </motion.div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+
+        {slots.length >= avisoDesde && slots.length < maxPasajeros && (
+          <p className="text-xs leading-relaxed text-neutral-500">
+            Son muchos pasajeros para un solo envío. Si el grupo es más grande que{" "}
+            {maxPasajeros}, mandá los datos en varias tandas o coordinalo con tu asesor.
+          </p>
+        )}
+
+        {slots.length < maxPasajeros ? (
+          <button
+            type="button"
+            onClick={agregar}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-white px-4 py-4 text-[15px] font-semibold text-neutral-700 transition active:scale-[0.99] hover:border-neutral-500"
+          >
+            <Plus className="h-4 w-4" />
+            Agregar pasajero
+          </button>
+        ) : (
+          <p className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500">
+            Llegaste al máximo de {maxPasajeros} pasajeros por envío. Mandá estos y cargá el resto
+            en un envío nuevo.
+          </p>
+        )}
+      </section>
+
+      <div className="h-px bg-neutral-100" />
+
+      {/* ── Facturación ─────────────────────────────────────────────────── */}
+      <section className="space-y-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            name="quiereFactura"
+            value="si"
+            checked={quiereFactura}
+            onChange={(e) => setQuiereFactura(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0"
+            style={{ accentColor: ACENTO }}
+          />
+          <span className="text-[15px] leading-snug text-neutral-700">
+            Deseo factura con RUT
+          </span>
+        </label>
+
+        <AnimatePresence initial={false}>
+          {quiereFactura && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Campo
+                    name="facturaRut"
+                    label="RUT"
+                    requerido
+                    required
+                    maxLength={20}
+                    inputMode="numeric"
+                  />
+                  <Campo
+                    name="facturaRazonSocial"
+                    label="Razón social"
+                    requerido
+                    required
+                    maxLength={200}
+                  />
+                </div>
+                <Campo
+                  name="facturaEmail"
+                  label="Email de facturación"
+                  type="email"
+                  requerido
+                  required
+                  maxLength={254}
+                />
+                <Campo
+                  name="facturaDireccion"
+                  label="Dirección fiscal"
+                  maxLength={200}
+                  placeholder="Opcional"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+
+      {state && !state.ok && <ErrorMsg>{state.message}</ErrorMsg>}
+      {faltaDocumento && (
+        <p className="text-sm font-medium text-amber-600">
+          Falta adjuntar la foto del documento del pasajero {sinDocumento + 1}.
+        </p>
+      )}
+
+      <SubmitButton disabled={faltaDocumento || !lote}>Enviar los datos</SubmitButton>
+
+      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-neutral-400">
+        <UserRound className="h-3.5 w-3.5" />
+        Tus datos van directo a tu asesor y se usan solo para emitir los servicios.
+      </p>
+    </form>
+  );
+}

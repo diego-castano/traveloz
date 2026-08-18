@@ -27,6 +27,9 @@ export const RESERVED_SLUGS = new Set([
   "presentacion_traveloz",
   "header-logo.webp",
   "_next",
+  // Links personales de cada vendedor (route group (formularios)).
+  "datos-de-pasajeros",
+  "datos-de-pago",
 ]);
 
 export function normalizeSlug(input: string): string {
