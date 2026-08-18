@@ -10,14 +10,17 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Check,
+  ChevronDown,
   Copy,
   CreditCard,
   ExternalLink,
+  Eye,
   Mail,
   QrCode,
+  RefreshCw,
   Send,
   Users,
 } from "lucide-react";
@@ -31,7 +34,9 @@ import {
   crearSolicitud,
   getMiLink,
   getMisSolicitudes,
+  previewSolicitudEmail,
   type MiLink,
+  type PreviewSolicitud,
   type SolicitudResumen,
 } from "@/actions/datos-vendedor.actions";
 
@@ -82,11 +87,43 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
   const [enviando, setEnviando] = useState(false);
   const [form, setForm] = useState({ email: "", nombre: "", destino: "", referencia: "" });
 
+  // Vista previa del email ("Ver cómo le llega"): plegada por defecto, se
+  // pide recién al expandir por primera vez.
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [preview, setPreview] = useState<PreviewSolicitud | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
   const cargarSolicitudes = useCallback(() => {
     getMisSolicitudes(tipo)
       .then(setSolicitudes)
       .catch(() => setSolicitudes([]));
   }, [tipo]);
+
+  const cargarPreview = useCallback(() => {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    previewSolicitudEmail(tipo, {
+      destinatarioNombre: form.nombre,
+      destino: form.destino,
+      referencia: form.referencia,
+    })
+      .then((p) => setPreview(p))
+      .catch((err: unknown) => {
+        setPreviewError(
+          err instanceof Error ? err.message : "No pudimos armar la vista previa.",
+        );
+      })
+      .finally(() => setPreviewLoading(false));
+  }, [tipo, form.nombre, form.destino, form.referencia]);
+
+  function togglePreview() {
+    setPreviewOpen((abierto) => {
+      const next = !abierto;
+      if (next && !preview && !previewLoading) cargarPreview();
+      return next;
+    });
+  }
 
   // Carga perezosa: nada de esto se pide hasta que el vendedor abre el modal.
   useEffect(() => {
@@ -95,6 +132,9 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
     setLink(null);
     setLinkError(null);
     setSolicitudes(null);
+    setPreviewOpen(false);
+    setPreview(null);
+    setPreviewError(null);
     getMiLink(tipo)
       .then((l) => {
         if (vivo) setLink(l);
@@ -279,6 +319,76 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
                   Enviar el formulario
                 </Button>
               </form>
+
+              <div className="mt-4 border-t border-neutral-100 pt-4">
+                <button
+                  type="button"
+                  onClick={togglePreview}
+                  className="flex w-full items-center justify-between text-left text-[12.5px] font-semibold text-neutral-700"
+                  aria-expanded={previewOpen}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Eye size={13} /> Ver cómo le llega
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`text-neutral-400 transition-transform ${previewOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {previewOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                      style={{ overflow: "hidden" }}
+                    >
+                      <div className="pt-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="text-[11.5px] text-neutral-400">
+                            Así lo ve el pasajero en su casilla.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            loading={previewLoading}
+                            leftIcon={<RefreshCw size={12} />}
+                            onClick={() => cargarPreview()}
+                          >
+                            Actualizar vista previa
+                          </Button>
+                        </div>
+
+                        {previewError ? (
+                          <p className="rounded-[10px] bg-amber-50 px-3 py-2 text-[12.5px] text-amber-800">
+                            {previewError}
+                          </p>
+                        ) : !preview || previewLoading ? (
+                          <Skeleton height={420} rounded="lg" />
+                        ) : (
+                          <div className="overflow-hidden rounded-[12px] border border-neutral-200">
+                            <div className="border-b border-neutral-200 bg-neutral-50 px-3 py-2">
+                              <p className="truncate text-[12px] text-neutral-500">
+                                <span className="font-semibold text-neutral-700">Asunto: </span>
+                                {preview.subject}
+                              </p>
+                            </div>
+                            <iframe
+                              srcDoc={preview.html}
+                              sandbox=""
+                              title="Vista previa del email"
+                              className="h-[420px] w-full bg-white"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
               <div className="mt-5">
                 <p className="mb-2 text-[10.5px] font-bold uppercase tracking-wider text-neutral-400">

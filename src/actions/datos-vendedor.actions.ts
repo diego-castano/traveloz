@@ -548,3 +548,53 @@ export async function getMisSolicitudes(
         : "vigente",
   }));
 }
+
+// ---------------------------------------------------------------------------
+// Vista previa del email de solicitud
+// ---------------------------------------------------------------------------
+
+export interface PreviewSolicitud {
+  subject: string;
+  html: string;
+  /** El link de ejemplo no sirve: el token real se genera recién al enviar. */
+  nota: string;
+}
+
+/**
+ * Arma el email de solicitud con la MISMA plantilla que `crearSolicitud`,
+ * pero sin tocar la DB ni mandar nada: solo para que el vendedor vea antes
+ * de enviar cómo le va a llegar al pasajero. El link usa un token de
+ * ejemplo ("?s=ejemplo") porque el real recién se genera al enviar.
+ */
+export async function previewSolicitudEmail(
+  tipo: TipoFormularioDato,
+  input?: { destinatarioNombre?: string; destino?: string; referencia?: string },
+): Promise<PreviewSolicitud> {
+  const { sessionUserId } = await scopeVendedor();
+
+  const vendedor = await prisma.user.findUnique({
+    where: { id: sessionUserId },
+    select: { name: true, slug: true, fotoUrl: true, whatsapp: true },
+  });
+  if (!vendedor?.slug) {
+    throw new Error(
+      "Todavía no tenés un link personal. Pedile a un administrador que te genere el link.",
+    );
+  }
+
+  const link = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${vendedor.slug}?s=ejemplo`;
+  const tmpl = solicitudDatosEmail({
+    tipo,
+    vendedor: { nombre: vendedor.name, fotoUrl: vendedor.fotoUrl, whatsapp: vendedor.whatsapp },
+    link,
+    destinatarioNombre: limpio(input?.destinatarioNombre),
+    destino: limpio(input?.destino),
+    referencia: limpio(input?.referencia),
+  });
+
+  return {
+    subject: tmpl.subject,
+    html: tmpl.html,
+    nota: "El link de este preview es de ejemplo: el token real se genera recién al enviar.",
+  };
+}
