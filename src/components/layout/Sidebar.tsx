@@ -88,6 +88,12 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 // Navigation data structure
 // Source: design.json components.sidebar.navItems
 // ---------------------------------------------------------------------------
+interface NavSubItem {
+  id: string;
+  label: string;
+  href: string;
+}
+
 interface NavItem {
   id: string;
   label: string;
@@ -95,6 +101,12 @@ interface NavItem {
   sublabel?: string;
   icon: LucideIcon;
   href: string;
+  /**
+   * Accesos rápidos que aparecen al pasar el mouse (o al tabular) sobre el
+   * ítem. Solo se dibujan con el sidebar expandido: colapsado, la columna de
+   * 68px ya usa tooltips y un flyout ahí taparía los íconos vecinos.
+   */
+  subItems?: NavSubItem[];
 }
 
 interface NavGroup {
@@ -145,7 +157,19 @@ const navGroups: NavGroup[] = [
     label: "Sistema",
     items: [
       { id: "proveedores", label: "Proveedores", icon: Truck, href: "/backend/proveedores" },
-      { id: "perfiles", label: "Perfiles y Roles", icon: Users, href: "/backend/perfiles" },
+      {
+        id: "perfiles",
+        label: "Perfiles y Roles",
+        icon: Users,
+        href: "/backend/perfiles",
+        subItems: [
+          {
+            id: "perfiles-vendedores",
+            label: "Vendedores",
+            href: "/backend/perfiles?vista=vendedores",
+          },
+        ],
+      },
       { id: "auditoria", label: "Auditoría", icon: ScrollText, href: "/backend/perfiles/auditoria" },
       { id: "catalogos", label: "Catálogos", icon: Settings, href: "/backend/catalogos" },
       { id: "notificaciones", label: "Notificaciones", icon: Bell, href: "/backend/notificaciones" },
@@ -469,6 +493,36 @@ export function Sidebar() {
                           </Tooltip.Content>
                         </Tooltip.Portal>
                       </Tooltip.Root>
+                    );
+                  }
+
+                  // Expandido con accesos rápidos: sub-ítem indentado que se
+                  // despliega en hover del grupo y también con foco de teclado
+                  // (group-focus-within cubre el propio ítem y sus hijos).
+                  if (item.subItems && item.subItems.length > 0) {
+                    return (
+                      <div key={item.id} className="group/quick relative">
+                        {linkContent}
+                        <div className="grid grid-rows-[0fr] opacity-0 transition-all duration-150 group-hover/quick:grid-rows-[1fr] group-hover/quick:opacity-100 group-focus-within/quick:grid-rows-[1fr] group-focus-within/quick:opacity-100">
+                          <div className="overflow-hidden">
+                            <div className="space-y-0.5 pt-0.5">
+                              {item.subItems.map((sub) => (
+                                <Link
+                                  key={sub.id}
+                                  href={sub.href}
+                                  prefetch={false}
+                                  className="flex items-center gap-2 rounded-lg py-1.5 pl-[38px] pr-3 text-[12.5px] font-medium text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/25"
+                                  onMouseEnter={() => prefetchRoute(sub.href)}
+                                  onFocus={() => prefetchRoute(sub.href)}
+                                >
+                                  <span className="h-1 w-1 flex-shrink-0 rounded-full bg-white/40" />
+                                  <span className="truncate">{sub.label}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     );
                   }
 

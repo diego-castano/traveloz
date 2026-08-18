@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Pencil, Trash2, ShieldCheck, Users, Key, Hash, Unlock, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
@@ -123,9 +124,35 @@ export default function PerfilesPage() {
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
-  // Vista activa: la tabla de usuarios/roles de siempre, o la nueva vista
-  // comercial de vendedores (Fase 3 — vendedores fusionados en Perfiles).
-  const [view, setView] = useState<"usuarios" | "vendedores">("usuarios");
+  // Vista activa: la tabla de usuarios/roles de siempre, o la vista comercial
+  // de vendedores (Fase 3: vendedores fusionados en Perfiles). El searchParam
+  // `vista` la abre directo, para que el acceso rápido del sidebar
+  // (/backend/perfiles?vista=vendedores) caiga en Vendedores sin un click extra.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const vistaParam = searchParams.get("vista");
+  const [view, setView] = useState<"usuarios" | "vendedores">(
+    vistaParam === "vendedores" ? "vendedores" : "usuarios",
+  );
+
+  // Navegación posterior al mismo deep-link (el sidebar ya está montado).
+  useEffect(() => {
+    if (vistaParam === "vendedores") setView("vendedores");
+    else if (vistaParam === "usuarios") setView("usuarios");
+  }, [vistaParam]);
+
+  // El conmutador refleja la vista en la URL: recargar o compartir el link
+  // vuelve al mismo lugar.
+  const handleViewChange = useCallback(
+    (next: "usuarios" | "vendedores") => {
+      setView(next);
+      router.replace(
+        next === "vendedores" ? "/backend/perfiles?vista=vendedores" : "/backend/perfiles",
+        { scroll: false },
+      );
+    },
+    [router],
+  );
 
   // ---------------------------------------------------------------------------
   // Email validation
@@ -422,7 +449,7 @@ export default function PerfilesPage() {
           { value: "vendedores", label: "Vendedores" },
         ]}
         value={view}
-        onChange={setView}
+        onChange={handleViewChange}
         size="md"
         className="mb-4"
         aria-label="Vista de perfiles"
@@ -432,7 +459,8 @@ export default function PerfilesPage() {
         <VendedoresView
           users={vendedoresUsers}
           canEdit={canEdit}
-          onEditUsuario={handleOpenEdit}
+          onCambiarPassword={handleOpenPasswordChange}
+          onGestionarPin={handleOpenPinChange}
         />
       ) : (
         <>
