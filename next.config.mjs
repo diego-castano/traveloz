@@ -70,6 +70,21 @@ const nextConfig = {
     // limpien los hallazgos de `npm run lint`.
     ignoreDuringBuilds: true,
   },
+  async redirects() {
+    return [
+      {
+        // app.traveloz.com.uy fue el dominio de desarrollo y sigue colgado del
+        // servicio en Railway (ademas es el dominio de envio de Resend, que
+        // vive en DNS y no se ve afectado por esto). Cualquier visita web ahi
+        // rebota al dominio real conservando la ruta, asi los bookmarks, el
+        // historial y los links de emails viejos dejan de dispersar sesiones.
+        source: "/:path*",
+        has: [{ type: "host", value: "app.traveloz.com.uy" }],
+        destination: "https://traveloz.com.uy/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
