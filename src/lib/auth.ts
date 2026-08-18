@@ -18,6 +18,12 @@ export interface AuthUser {
   hasPin?: boolean;
   lastLoginAt?: Date | string | null;
   lockedUntil?: Date | string | null;
+  // ── Identidad pública del vendedor (Fase 3 — vista comercial en Perfiles) ──
+  slug?: string | null;
+  fotoUrl?: string | null;
+  telefono?: string | null;
+  whatsapp?: string | null;
+  linkActivo?: boolean;
 }
 
 export interface RoleConfig {

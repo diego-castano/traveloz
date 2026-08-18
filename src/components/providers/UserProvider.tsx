@@ -187,6 +187,33 @@ export function useUserActions() {
       checkEmailAvailable: async (email: string) => {
         return userActions.checkEmailAvailable(email);
       },
+      // ── Fase 3: vista Vendedores ──
+      updateVendedorPerfil: async (
+        id: string,
+        data: { fotoUrl?: string | null; telefono?: string | null; whatsapp?: string | null },
+      ) => {
+        const result = await userActions.updateVendedorPerfil(id, data);
+        if (!result.ok) throw new Error(result.error);
+        dispatch({ type: "UPDATE_USER", payload: { ...result.user, id } as AuthUser });
+        return result.user;
+      },
+      getEnviosCountPorVendedor: async () => {
+        return userActions.getEnviosCountPorVendedor();
+      },
+      getLinksVendedor: async (id: string) => {
+        return userActions.getLinksVendedor(id);
+      },
+      setLinkActivo: async (id: string, activo: boolean) => {
+        const result = await userActions.setLinkActivo(id, activo);
+        if (!result.ok) throw new Error(result.error);
+        dispatch({ type: "UPDATE_USER", payload: { id, linkActivo: activo } as AuthUser });
+      },
+      regenerarSlug: async (id: string) => {
+        const result = await userActions.regenerarSlug(id);
+        if (!result.ok) throw new Error(result.error);
+        dispatch({ type: "UPDATE_USER", payload: { id, slug: result.slug } as AuthUser });
+        return result.slug;
+      },
     }),
     [dispatch],
   );

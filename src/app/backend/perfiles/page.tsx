@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/form/Field";
 import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
+import { SegmentedControl } from "@/components/ui/data/SegmentedControl";
 import { useUsers, useUserActions } from "@/components/providers/UserProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -38,6 +39,7 @@ import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useUserLoading } from "@/components/providers/UserProvider";
 import { BRAND_ID } from "@/lib/brand";
 import type { AuthUser, Role } from "@/lib/auth";
+import { VendedoresView } from "./_components/VendedoresView";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -121,6 +123,10 @@ export default function PerfilesPage() {
   const [roleFilter, setRoleFilter] = useState<string | null>(null);
   const [page, setPage] = useState(1);
 
+  // Vista activa: la tabla de usuarios/roles de siempre, o la nueva vista
+  // comercial de vendedores (Fase 3 — vendedores fusionados en Perfiles).
+  const [view, setView] = useState<"usuarios" | "vendedores">("usuarios");
+
   // ---------------------------------------------------------------------------
   // Email validation
   // ---------------------------------------------------------------------------
@@ -169,6 +175,13 @@ export default function PerfilesPage() {
     }
     return result;
   }, [users, search, roleFilter]);
+
+  // Vendedores + Admin son los únicos roles con link personal — Marketing
+  // queda fuera de la vista comercial.
+  const vendedoresUsers = useMemo(
+    () => users.filter((u) => u.role === "VENDEDOR" || u.role === "ADMIN"),
+    [users],
+  );
 
   // Reset page when filters change
   useEffect(() => {
@@ -390,7 +403,7 @@ export default function PerfilesPage() {
     <>
       <DataTablePageHeader
         title="Perfiles y Roles"
-        subtitle="Gestion de usuarios y permisos"
+        subtitle="Gestion de usuarios, permisos y vendedores"
         action={
           canEdit ? (
             <Button
@@ -403,156 +416,178 @@ export default function PerfilesPage() {
         }
       />
 
-      <DataTableToolbar
-        search={{
-          value: search,
-          onChange: setSearch,
-          placeholder: "Buscar por nombre o email...",
-        }}
-        filters={ROLE_FILTERS}
-        activeFilter={roleFilter}
-        onFilterChange={setRoleFilter}
+      <SegmentedControl
+        options={[
+          { value: "usuarios", label: "Usuarios y roles" },
+          { value: "vendedores", label: "Vendedores" },
+        ]}
+        value={view}
+        onChange={setView}
+        size="md"
         className="mb-4"
+        aria-label="Vista de perfiles"
       />
 
-      {filteredUsers.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="No hay usuarios registrados"
-          description="Crea un nuevo usuario para gestionar los accesos al sistema."
-          action={
-            canEdit ? (
-              <Button
-                leftIcon={<Plus className="h-4 w-4" />}
-                onClick={handleOpenCreate}
-              >
-                Nuevo Usuario
-              </Button>
-            ) : undefined
-          }
+      {view === "vendedores" ? (
+        <VendedoresView
+          users={vendedoresUsers}
+          canEdit={canEdit}
+          onEditUsuario={handleOpenEdit}
         />
       ) : (
         <>
-          <DataTable>
-            <DataTableHeader>
-              <DataTableRow header>
-                <DataTableHead>Nombre</DataTableHead>
-                <DataTableHead>Email</DataTableHead>
-                <DataTableHead>Rol</DataTableHead>
-                <DataTableHead>Estado</DataTableHead>
-                <DataTableHead align="right">Acciones</DataTableHead>
-              </DataTableRow>
-            </DataTableHeader>
-            <DataTableBody>
-              {paginatedUsers.map((u) => {
-                const isActive = u.isActive !== false;
-                const locked = u.lockedUntil
-                  ? new Date(u.lockedUntil as any).getTime() > Date.now()
-                  : false;
-                return (
-                  <DataTableRow
-                    key={u.id}
-                    onClick={() => handleOpenEdit(u)}
-                    interactive
-                  >
-                    <DataTableCell variant="primary">
-                      <span className="flex items-center gap-2">
-                        {u.name}
-                        {u.isProtected && (
-                          <ShieldCheck
-                            className="h-3.5 w-3.5 text-brand-violet-600"
-                            aria-label="Administrador protegido"
-                          />
-                        )}
-                        {u.hasPin && (
-                          <Hash
-                            className="h-3.5 w-3.5 text-neutral-400"
-                            aria-label="Tiene PIN configurado"
-                          />
-                        )}
-                      </span>
-                    </DataTableCell>
-                    <DataTableCell variant="muted">{u.email}</DataTableCell>
-                    <DataTableCell>
-                      <StatusDot variant={roleDotVariant[u.role]}>
-                        {roleLabel[u.role]}
-                      </StatusDot>
-                    </DataTableCell>
-                    <DataTableCell>
-                      {locked ? (
-                        <StatusDot variant="inactive">Bloqueado</StatusDot>
-                      ) : (
-                        <StatusDot variant={isActive ? "active" : "inactive"}>
-                          {isActive ? "Activo" : "Inactivo"}
-                        </StatusDot>
-                      )}
-                    </DataTableCell>
-                    <DataTableCell align="right">
-                      <RowActions
-                        primary={{
-                          icon: Pencil,
-                          label: "Editar",
-                          onClick: () => handleOpenEdit(u),
-                        }}
-                        items={
-                          canEdit
-                            ? [
-                                {
-                                  icon: Key,
-                                  label: "Cambiar password",
-                                  onClick: () => handleOpenPasswordChange(u),
-                                },
-                                {
-                                  icon: Hash,
-                                  label: u.hasPin ? "Cambiar PIN" : "Asignar PIN",
-                                  onClick: () => handleOpenPinChange(u),
-                                },
-                                ...(u.hasPin
-                                  ? [
-                                      {
-                                        icon: Lock,
-                                        label: "Quitar PIN",
-                                        onClick: () => handleClearPin(u),
-                                      },
-                                    ]
-                                  : []),
-                                ...(locked
-                                  ? [
-                                      {
-                                        icon: Unlock,
-                                        label: "Desbloquear",
-                                        onClick: () => handleUnlock(u),
-                                      },
-                                    ]
-                                  : []),
-                                ...(u.isProtected
-                                  ? []
-                                  : [
-                                      {
-                                        icon: Trash2,
-                                        label: "Eliminar",
-                                        onClick: () => handleOpenDelete(u),
-                                        destructive: true,
-                                      },
-                                    ]),
-                              ]
-                            : []
-                        }
-                      />
-                    </DataTableCell>
-                  </DataTableRow>
-                );
-              })}
-            </DataTableBody>
-          </DataTable>
+        <DataTableToolbar
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: "Buscar por nombre o email...",
+          }}
+          filters={ROLE_FILTERS}
+          activeFilter={roleFilter}
+          onFilterChange={setRoleFilter}
+          className="mb-4"
+        />
 
-          <div className="mt-5 flex justify-center">
-            <Pagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
-          </div>
+        {filteredUsers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No hay usuarios registrados"
+            description="Crea un nuevo usuario para gestionar los accesos al sistema."
+            action={
+              canEdit ? (
+                <Button
+                  leftIcon={<Plus className="h-4 w-4" />}
+                  onClick={handleOpenCreate}
+                >
+                  Nuevo Usuario
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <>
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow header>
+                  <DataTableHead>Nombre</DataTableHead>
+                  <DataTableHead>Email</DataTableHead>
+                  <DataTableHead>Rol</DataTableHead>
+                  <DataTableHead>Estado</DataTableHead>
+                  <DataTableHead align="right">Acciones</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
+                {paginatedUsers.map((u) => {
+                  const isActive = u.isActive !== false;
+                  const locked = u.lockedUntil
+                    ? new Date(u.lockedUntil as any).getTime() > Date.now()
+                    : false;
+                  return (
+                    <DataTableRow
+                      key={u.id}
+                      onClick={() => handleOpenEdit(u)}
+                      interactive
+                    >
+                      <DataTableCell variant="primary">
+                        <span className="flex items-center gap-2">
+                          {u.name}
+                          {u.isProtected && (
+                            <ShieldCheck
+                              className="h-3.5 w-3.5 text-brand-violet-600"
+                              aria-label="Administrador protegido"
+                            />
+                          )}
+                          {u.hasPin && (
+                            <Hash
+                              className="h-3.5 w-3.5 text-neutral-400"
+                              aria-label="Tiene PIN configurado"
+                            />
+                          )}
+                        </span>
+                      </DataTableCell>
+                      <DataTableCell variant="muted">{u.email}</DataTableCell>
+                      <DataTableCell>
+                        <StatusDot variant={roleDotVariant[u.role]}>
+                          {roleLabel[u.role]}
+                        </StatusDot>
+                      </DataTableCell>
+                      <DataTableCell>
+                        {locked ? (
+                          <StatusDot variant="inactive">Bloqueado</StatusDot>
+                        ) : (
+                          <StatusDot variant={isActive ? "active" : "inactive"}>
+                            {isActive ? "Activo" : "Inactivo"}
+                          </StatusDot>
+                        )}
+                      </DataTableCell>
+                      <DataTableCell align="right">
+                        <RowActions
+                          primary={{
+                            icon: Pencil,
+                            label: "Editar",
+                            onClick: () => handleOpenEdit(u),
+                          }}
+                          items={
+                            canEdit
+                              ? [
+                                  {
+                                    icon: Key,
+                                    label: "Cambiar password",
+                                    onClick: () => handleOpenPasswordChange(u),
+                                  },
+                                  {
+                                    icon: Hash,
+                                    label: u.hasPin ? "Cambiar PIN" : "Asignar PIN",
+                                    onClick: () => handleOpenPinChange(u),
+                                  },
+                                  ...(u.hasPin
+                                    ? [
+                                        {
+                                          icon: Lock,
+                                          label: "Quitar PIN",
+                                          onClick: () => handleClearPin(u),
+                                        },
+                                      ]
+                                    : []),
+                                  ...(locked
+                                    ? [
+                                        {
+                                          icon: Unlock,
+                                          label: "Desbloquear",
+                                          onClick: () => handleUnlock(u),
+                                        },
+                                      ]
+                                    : []),
+                                  ...(u.isProtected
+                                    ? []
+                                    : [
+                                        {
+                                          icon: Trash2,
+                                          label: "Eliminar",
+                                          onClick: () => handleOpenDelete(u),
+                                          destructive: true,
+                                        },
+                                      ]),
+                                ]
+                              : []
+                          }
+                        />
+                      </DataTableCell>
+                    </DataTableRow>
+                  );
+                })}
+              </DataTableBody>
+            </DataTable>
+
+            <div className="mt-5 flex justify-center">
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            </div>
+          </>
+        )}
         </>
       )}
 

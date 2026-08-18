@@ -15,6 +15,9 @@ import {
   pinChangedEmail,
 } from "@/lib/email";
 import { isPinInUse } from "./auth.actions";
+import QRCode from "qrcode";
+import { normalizeSlug } from "@/lib/cotizador";
+import { SITE_BASE_URL } from "@/lib/datos-email";
 
 const log = logger.child({ module: "user.actions" });
 
@@ -54,6 +57,12 @@ export async function getUsers() {
         updatedAt: true,
         lockedUntil: true,
         pinHash: true, // exposed as boolean below
+        // Identidad pública del vendedor (Fase 3 — vista Vendedores).
+        slug: true,
+        fotoUrl: true,
+        telefono: true,
+        whatsapp: true,
+        linkActivo: true,
       },
     });
     return users.map((u) => ({
@@ -591,4 +600,198 @@ export async function setMyPin(input: { pin: string | null; currentPin?: string;
     log.error("pin.change.self email failed", err),
   );
   return { ok: true };
+}
+
+// ──────────────────────────────────────────────
+// Fase 3 — Perfiles gana la vista comercial de vendedores
+//
+// Los links públicos son /datos-de-pasajeros/<slug> y /datos-de-pago/<slug>
+// (route group (formularios), fuera de /backend). Estas actions son ADMIN-only
+// y viven separadas de datos-publico.actions.ts (que es la lectura SIN sesión
+// que usa el propio formulario) para no tocar ese archivo.
+// ──────────────────────────────────────────────
+
+/**
+ * Admin: actualiza el perfil comercial de un vendedor (foto, teléfono,
+ * whatsapp). Nombre/email/rol siguen editándose por updateUser — este action
+ * es deliberadamente angosto para no duplicar esas reglas (protegidos, último
+ * admin, etc).
+ */
+export async function updateVendedorPerfil(
+  id: string,
+  data: { fotoUrl?: string | null; telefono?: string | null; whatsapp?: string | null },
+) {
+  const actor = await requireAdmin();
+  const { ip, userAgent } = await getRequestMeta();
+
+  const schema = z.object({
+    fotoUrl: z.string().max(500).nullable().optional(),
+    telefono: z.string().max(40).nullable().optional(),
+    whatsapp: z.string().max(40).nullable().optional(),
+  });
+  const parsed = schema.safeParse(data);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  }
+
+  // Un campo vacío significa "borrar el dato", no un string vacío en la DB.
+  const norm = (v?: string | null) => (v && v.trim() ? v.trim() : null);
+
+  try {
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.fotoUrl !== undefined ? { fotoUrl: norm(data.fotoUrl) } : {}),
+        ...(data.telefono !== undefined ? { telefono: norm(data.telefono) } : {}),
+        ...(data.whatsapp !== undefined ? { whatsapp: norm(data.whatsapp) } : {}),
+      },
+      select: { id: true, fotoUrl: true, telefono: true, whatsapp: true },
+    });
+
+    const changed = Object.keys(data).filter((k) => (data as any)[k] !== undefined);
+    await logAudit({
+      action: "user.update",
+      userId: actor.userId,
+      targetType: "user",
+      targetId: id,
+      ipAddress: ip,
+      userAgent,
+      metadata: { changed },
+    });
+
+    return { ok: true as const, user: updated };
+  } catch (error) {
+    log.error("updating vendedor perfil", error);
+    return { ok: false as const, error: "No se pudo actualizar el perfil." };
+  }
+}
+
+/**
+ * Admin: cuenta de EnvioPasajeros recibidos por vendedor, para el contador de
+ * la tarjeta. Un solo groupBy en vez de N queries (una por fila de la lista).
+ */
+export async function getEnviosCountPorVendedor(): Promise<Record<string, number>> {
+  await requireAdmin();
+  const rows = await prisma.envioPasajeros.groupBy({
+    by: ["vendedorId"],
+    _count: { _all: true },
+  });
+  return Object.fromEntries(rows.map((r) => [r.vendedorId, r._count._all]));
+}
+
+/**
+ * Admin: URLs públicas + QR (data URL, generado en el server) de los dos
+ * links personales del vendedor. Si todavía no tiene slug devuelve todo en
+ * null — la UI ofrece "Generar link" en ese caso.
+ */
+export async function getLinksVendedor(id: string) {
+  await requireAdmin();
+  const user = await prisma.user.findUnique({
+    where: { id },
+    select: { slug: true, linkActivo: true },
+  });
+  if (!user) throw new Error("Usuario no encontrado.");
+
+  if (!user.slug) {
+    return {
+      ok: true as const,
+      slug: null,
+      linkActivo: user.linkActivo,
+      pasajerosUrl: null,
+      pagoUrl: null,
+      pasajerosQr: null,
+      pagoQr: null,
+    };
+  }
+
+  const pasajerosUrl = `${SITE_BASE_URL}/datos-de-pasajeros/${user.slug}`;
+  const pagoUrl = `${SITE_BASE_URL}/datos-de-pago/${user.slug}`;
+  const [pasajerosQr, pagoQr] = await Promise.all([
+    QRCode.toDataURL(pasajerosUrl, { margin: 1, width: 220 }),
+    QRCode.toDataURL(pagoUrl, { margin: 1, width: 220 }),
+  ]);
+
+  return {
+    ok: true as const,
+    slug: user.slug,
+    linkActivo: user.linkActivo,
+    pasajerosUrl,
+    pagoUrl,
+    pasajerosQr,
+    pagoQr,
+  };
+}
+
+/**
+ * Admin: prende/apaga el link público del vendedor. Apagado → los formularios
+ * muestran la página de cortesía (no 404); no borra nada de lo ya recibido.
+ */
+export async function setLinkActivo(id: string, activo: boolean) {
+  const actor = await requireAdmin();
+  const { ip, userAgent } = await getRequestMeta();
+
+  try {
+    await prisma.user.update({ where: { id }, data: { linkActivo: activo } });
+    await logAudit({
+      action: "user.link.toggle",
+      userId: actor.userId,
+      targetType: "user",
+      targetId: id,
+      ipAddress: ip,
+      userAgent,
+      metadata: { linkActivo: activo },
+    });
+    return { ok: true as const };
+  } catch (error) {
+    log.error("toggling linkActivo", error);
+    return { ok: false as const, error: "No se pudo actualizar el estado del link." };
+  }
+}
+
+/**
+ * Admin: (re)genera el slug del vendedor a partir de su nombre actual. Sirve
+ * tanto para el primer link ("Generar link") como para regenerarlo — en
+ * ambos casos el slug viejo (si había) deja de resolver: nunca se recicla,
+ * así que la UI debe confirmar antes de llamar esto.
+ *
+ * Usa normalizeSlug de cotizador.ts (mismo criterio de limpieza de texto) pero
+ * NO valida contra RESERVED_SLUGS: esas reservas son de los landings de
+ * cotizador en la raíz del sitio, un namespace distinto al de
+ * /datos-de-pasajeros/<slug> y /datos-de-pago/<slug>.
+ */
+export async function regenerarSlug(id: string) {
+  const actor = await requireAdmin();
+  const { ip, userAgent } = await getRequestMeta();
+
+  const existing = await prisma.user.findUnique({
+    where: { id },
+    select: { name: true, slug: true },
+  });
+  if (!existing) throw new Error("Usuario no encontrado.");
+
+  const base = normalizeSlug(existing.name) || "vendedor";
+  let candidate = base;
+  let suffix = 2;
+  // eslint-disable-next-line no-await-in-loop -- colisiones son raras, el loop corta apenas encuentra un slug libre
+  while (await prisma.user.findFirst({ where: { slug: candidate, id: { not: id } } })) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+
+  try {
+    await prisma.user.update({ where: { id }, data: { slug: candidate } });
+    await logAudit({
+      action: "user.slug.regenerate",
+      userId: actor.userId,
+      targetType: "user",
+      targetId: id,
+      ipAddress: ip,
+      userAgent,
+      metadata: { from: existing.slug, to: candidate },
+    });
+    return { ok: true as const, slug: candidate };
+  } catch (error) {
+    log.error("regenerating slug", error);
+    return { ok: false as const, error: "No se pudo regenerar el link." };
+  }
 }
