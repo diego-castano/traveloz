@@ -32,7 +32,6 @@ import { hashSync } from "bcryptjs";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { assertSeedAllowed } from "../prisma/seed-guard";
-import { logAudit } from "../src/lib/audit";
 
 assertSeedAllowed("seed-usuarios-traveloz");
 
@@ -163,13 +162,18 @@ async function main() {
         // Mismo funnel de auditoría que usa el resto del sistema (ver
         // src/actions/user.actions.ts) — deja rastro de que este alta vino
         // del seed puntual del equipo, no de la UI.
-        await logAudit({
-          action: "user.create",
-          userId: null,
-          targetType: "user",
-          targetId: nuevo.id,
-          metadata: { email, role: persona.role, source: "seed-usuarios-traveloz" },
-        });
+        // Insert directo con el prisma del script: importar src/lib/audit
+        // arrastra el logger de la app y cuelga bajo tsx. Best-effort.
+        await prisma.auditLog
+          .create({
+            data: {
+              action: "user.create",
+              targetType: "user",
+              targetId: nuevo.id,
+              metadata: { email, role: persona.role, source: "seed-usuarios-traveloz" },
+            },
+          })
+          .catch(() => {});
       }
       resumen.push({
         nombre: persona.nombre,
@@ -193,13 +197,16 @@ async function main() {
     const huboCambios = Object.keys(data).length > 0;
     if (huboCambios && !DRY_RUN) {
       await prisma.user.update({ where: { id: existente.id }, data });
-      await logAudit({
-        action: "user.update",
-        userId: null,
-        targetType: "user",
-        targetId: existente.id,
-        metadata: { email, changed: Object.keys(data), source: "seed-usuarios-traveloz" },
-      });
+      await prisma.auditLog
+        .create({
+          data: {
+            action: "user.update",
+            targetType: "user",
+            targetId: existente.id,
+            metadata: { email, changed: Object.keys(data), source: "seed-usuarios-traveloz" },
+          },
+        })
+        .catch(() => {});
     }
 
     resumen.push({
