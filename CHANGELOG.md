@@ -11,6 +11,42 @@ del catálogo, CRM).
 
 ---
 
+## 18 de agosto de 2026
+
+### Nuevo
+
+**El lector de itinerarios con IA quedó probado con los ejemplos reales del
+cliente.** Gero mandó el mismo vuelo de Copa (Montevideo–Punta Cana vía Panamá)
+en sus dos formatos — el código crudo de Amadeus y la captura de la herramienta
+NDC — y Gemini los leyó a los dos sin un solo error, segmento por segmento:
+vuelos, horarios, la llegada al día siguiente y el agrupado en Ida y Vuelta.
+Cada lectura tarda 2-3 segundos y cuesta una décima de centavo de dólar: las
+4.000 cotizaciones mensuales de las dos agencias salen menos de 5 dólares por
+mes, contra la suscripción de PNR Converter que hoy pagan y que además no lee
+imágenes. El prompt, el esquema de salida y el set de pruebas quedaron en
+`scripts/poc-lector-itinerarios.mjs` con los ejemplos en `docs/pnr-ejemplos/`,
+listos para el endpoint real. La clave de Gemini ya está cargada en Railway.
+
+### Cambiado
+
+**El itinerario de la cotización se ve como lo diseñó Gero.** Adoptamos su
+referencia: tarjetas de Ida y Vuelta con la fecha en criollo ("Jueves 01 Oct"),
+cada vuelo con su aerolínea y número, la ruta vertical con puntos de color de
+la marca, la ciudad en grande con su hora, el aeropuerto con nombre propio
+("Aeropuerto de Carrasco (MVD)"), la espera entre vuelos en un cartelito ámbar
+("Espera de 56 min") y el aviso de "+1 día" cuando se aterriza al día
+siguiente.
+
+### Arreglado
+
+**El conversor del mockup no leía el código real de Amadeus.** El formato que
+usa el cliente trae un asterisco (`4*MVDPTY`) que el lector no toleraba y el
+estado DK además de HK. Ahora el botón "Pegar ejemplo" usa el código real de
+Copa que mandó Gero — con sus líneas de ruido incluidas, que se saltean solas —
+y el formato viejo de LATAM sigue funcionando.
+
+---
+
 ## 14 de agosto de 2026
 
 ### Cambiado

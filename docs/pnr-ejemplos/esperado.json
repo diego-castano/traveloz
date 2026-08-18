@@ -1,0 +1,12 @@
+{
+  "trayectos": [
+    { "etiqueta": "Ida", "fecha": "2026-10-01", "segmentos": [
+      { "aerolinea": "CM", "vuelo": "284", "origen": "MVD", "destino": "PTY", "fecha": "2026-10-01", "salida": "00:43", "llegada": "06:08", "llegaDiaSiguiente": false },
+      { "aerolinea": "CM", "vuelo": "177", "origen": "PTY", "destino": "PUJ", "fecha": "2026-10-01", "salida": "07:04", "llegada": "10:48", "llegaDiaSiguiente": false }
+    ]},
+    { "etiqueta": "Vuelta", "fecha": "2026-10-08", "segmentos": [
+      { "aerolinea": "CM", "vuelo": "426", "origen": "PUJ", "destino": "PTY", "fecha": "2026-10-08", "salida": "12:55", "llegada": "14:34", "llegaDiaSiguiente": false },
+      { "aerolinea": "CM", "vuelo": "283", "origen": "PTY", "destino": "MVD", "fecha": "2026-10-08", "salida": "15:51", "llegada": "01:07", "llegaDiaSiguiente": true }
+    ]}
+  ]
+}

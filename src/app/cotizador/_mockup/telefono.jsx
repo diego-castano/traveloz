@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2
+  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2, Clock
 } from "lucide-react";
 import {
-  MESES, MES_AB, AEROPUERTOS, VENDEDORES, hotelById, fmtCorto, fmtLargo, money,
-  precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg
+  MESES, MES_AB, ANIO_BASE, AEROPUERTOS, AEROPUERTOS_NOMBRE, VENDEDORES, hotelById,
+  fmtCorto, fmtLargo, money, precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg
 } from "./data";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
 
@@ -64,6 +64,11 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
   /* itinerario agrupado en trayectos (Ida / Vuelta / Tramo N) */
   const trayectos = useMemo(() => agruparTrayectos(q.vuelos), [q.vuelos]);
+  /* el PNR trae día y mes pero no el año: lo saca de la fecha de salida cargada */
+  const anioItinerario = useMemo(() => {
+    const m = String(q.fechaSalida || "").match(/^(\d{4})/);
+    return m ? Number(m[1]) : ANIO_BASE;
+  }, [q.fechaSalida]);
 
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", color:"#1A1A2E", background:"#fff", minHeight:"100%" }}>
@@ -190,39 +195,81 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         {q.vuelos.length > 0 && (
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }}>
             <SecTitulo texto="Itinerario de vuelos" color={G.b} />
-            <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom: q.soloVuelos ? 14 : 24 }}>
+            <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom: q.soloVuelos ? 14 : 24 }}>
               {trayectos.map((seg, ti) => {
                 const primero = seg[0];
                 const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
-                const ruta = [primero.origen, ...seg.map((s) => s.destino)].map(nombreCorto).join(" → ");
                 return (
-                  <div key={ti} style={{ borderRadius:15, background:"#FAFBFE",
-                    border:"1px solid rgba(17,17,36,.08)", padding:"13px 14px" }}>
-                    <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:fz(11, 11.5),
-                      fontWeight:700, color:G.b, textTransform:"uppercase", letterSpacing:".04em", marginBottom:7 }}>
-                      <Plane size={11} /> {etiqueta} — {primero.dia} {MES_AB[primero.mes]?.toUpperCase()}
+                  <div key={ti} style={{ borderRadius:18, background:"#fff", overflow:"hidden",
+                    border:"1px solid rgba(17,17,36,.08)",
+                    boxShadow:"0 1px 3px rgba(17,17,36,.06), 0 10px 26px -14px rgba(17,17,36,.22)" }}>
+
+                    {/* cabecera del trayecto: pill de marca + fecha */}
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                      gap:10, flexWrap:"wrap", padding:"14px 16px 0" }}>
+                      <span style={{ background:grad, color:"#fff", padding:"5px 11px", borderRadius:999,
+                        fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".12em", textTransform:"uppercase" }}>
+                        {etiqueta}
+                      </span>
+                      <span style={{ fontSize:fz(12.5, 13), fontWeight:600, color:"#6B6F99" }}>
+                        {fechaTrayecto(primero, anioItinerario)}
+                      </span>
                     </div>
-                    <div style={{ fontSize:fz(13, 13.5), fontWeight:700, marginBottom:9, overflowWrap:"anywhere" }}>
-                      {ruta}
-                    </div>
-                    <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
-                      {seg.map((s, si) => {
-                        const escala = si < seg.length - 1 ? escalaTexto(s.llegada, seg[si + 1].salida) : null;
-                        return (
-                          <div key={s.id}>
-                            <div className="mono" style={{ fontSize:fz(10.5, 11), color:"#3D4066", fontWeight:600,
-                              overflowWrap:"anywhere" }}>
-                              {s.cia} {s.nro} — {s.origen} {s.salida} → {s.destino} {s.llegada}
+
+                    {seg.map((s, si) => {
+                      const escala = si < seg.length - 1 ? escalaTexto(s.llegada, seg[si + 1].salida) : null;
+                      const cruzaMedianoche = String(s.llegada) < String(s.salida);
+                      return (
+                        <div key={s.id}>
+                          <div style={{ padding:"14px 16px 16px",
+                            borderTop: si > 0 ? "1px solid rgba(17,17,36,.07)" : "none" }}>
+
+                            {/* aerolínea y número de vuelo */}
+                            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:13 }}>
+                              <span style={{ width:26, height:26, borderRadius:8, background:grad,
+                                display:"grid", placeItems:"center", flexShrink:0 }}>
+                                <Plane size={13} color="#fff" />
+                              </span>
+                              <span style={{ fontSize:fz(13.5, 14.5), fontWeight:700 }}>{s.aerolinea}</span>
+                              <span style={{ fontSize:fz(13.5, 14.5), fontWeight:500, color:"#6B6F99" }}>
+                                · {s.cia} {s.nro}
+                              </span>
                             </div>
-                            {escala && (
-                              <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5", marginTop:3, marginBottom:1 }}>
-                                Escala en {nombreCorto(s.destino)}: {escala}
+
+                            {/* ruta vertical: sale arriba, llega abajo */}
+                            <div style={{ display:"flex", gap:11 }}>
+                              <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
+                                width:11, flexShrink:0, paddingTop:5 }}>
+                                <span style={{ width:9, height:9, borderRadius:"50%", background:G.b, flexShrink:0 }} />
+                                <span style={{ width:2, flex:1, minHeight:34, margin:"4px 0", borderRadius:2,
+                                  background:`linear-gradient(180deg, ${G.b} 0%, ${G.a} 100%)` }} />
+                                <span style={{ width:9, height:9, borderRadius:"50%", background:G.a, flexShrink:0 }} />
                               </div>
-                            )}
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <PuntoRuta cod={s.origen} hora={s.salida} fz={fz} />
+                                <div style={{ marginTop:26 }}>
+                                  <PuntoRuta cod={s.destino} hora={s.llegada} fz={fz}
+                                    plus={cruzaMedianoche} coral={G.a} />
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
+
+                          {/* espera entre tramos */}
+                          {escala && (
+                            <div style={{ display:"flex", alignItems:"center", gap:9, margin:"0 16px 15px",
+                              padding:"9px 13px", background:"#FBF3E6", border:"1px dashed #E3C892",
+                              borderRadius:12 }}>
+                              <Clock size={15} style={{ color:"#B8863A", flexShrink:0 }} />
+                              <span style={{ fontSize:fz(12, 12.5), color:"#8A6423", fontWeight:600,
+                                lineHeight:1.35, overflowWrap:"anywhere" }}>
+                                Espera de <b style={{ fontWeight:800, color:"#B8863A" }}>{escala}</b>
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -574,6 +621,41 @@ function nombreCorto(cod) {
   return full.split("·")[0].trim();
 }
 
+/* "Jueves 01 Oct" — el PNR no trae el año, se lo pasa quien renderiza */
+const DIAS_SEMANA = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+function fechaTrayecto(v, anio) {
+  if (!v) return "";
+  const ab = MES_AB[v.mes] || "";
+  const mes3 = ab ? ab[0].toUpperCase() + ab.slice(1) : "";
+  const dia = DIAS_SEMANA[new Date(anio, v.mes, v.dia).getDay()];
+  return `${dia} ${String(v.dia).padStart(2, "0")} ${mes3}`.trim();
+}
+
+/* un punto de la ruta vertical: ciudad + hora arriba, terminal abajo */
+function PuntoRuta({ cod, hora, plus, coral, fz }) {
+  const ciudad = nombreCorto(cod);
+  const terminal = AEROPUERTOS_NOMBRE[cod]
+    ? `${AEROPUERTOS_NOMBRE[cod]} (${cod})`
+    : `Aeropuerto ${ciudad} (${cod})`;
+  return (
+    <div>
+      <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap" }}>
+        <span style={{ fontSize:fz(15, 16), fontWeight:700, lineHeight:1.25, overflowWrap:"anywhere" }}>{ciudad}</span>
+        <span style={{ fontSize:fz(12.5, 13), fontWeight:600, color:"#6B6F99", whiteSpace:"nowrap" }}>
+          — {hora}
+          {plus && (
+            <span style={{ fontSize:fz(10, 10.5), fontWeight:700, color:coral, marginLeft:3 }}>+1 día</span>
+          )}
+        </span>
+      </div>
+      <div style={{ fontSize:fz(12.5, 13), color:"#8A8DB5", fontWeight:500, marginTop:1,
+        lineHeight:1.35, overflowWrap:"anywhere" }}>
+        {terminal}
+      </div>
+    </div>
+  );
+}
+
 function minutosDesde(hhmm) {
   const [h, m] = String(hhmm || "").split(":").map(Number);
   return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
@@ -585,7 +667,7 @@ function escalaTexto(llegada, salida) {
   const d = minutosDesde(salida) - minutosDesde(llegada);
   if (d <= 0 || d > 20 * 60) return null;
   const h = Math.floor(d / 60), m = d % 60;
-  return h > 0 ? `${h}h ${m > 0 ? `${m}min` : ""}`.trim() : `${m}min`;
+  return h > 0 ? `${h} h${m > 0 ? ` ${m} min` : ""}` : `${m} min`;
 }
 
 /* agrupa los tramos del PNR en trayectos: un tramo abre uno nuevo si es el

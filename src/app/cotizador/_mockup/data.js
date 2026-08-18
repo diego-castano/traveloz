@@ -74,13 +74,26 @@ const CIUDADES = ["Río de Janeiro","Búzios","Punta Cana","Florianópolis","Mad
 
 const AEROLINEAS = { LA:"LATAM", AR:"Aerolíneas Argentinas", G3:"GOL", AD:"Azul", CM:"Copa Airlines", AV:"Avianca", IB:"Iberia", AF:"Air France", UX:"Air Europa", TP:"TAP Air Portugal", H2:"Sky Airline", JJ:"LATAM Brasil" };
 const AEROPUERTOS = { MVD:"Montevideo", GRU:"São Paulo · Guarulhos", GIG:"Río de Janeiro", CGH:"São Paulo · Congonhas", EZE:"Buenos Aires · Ezeiza", AEP:"Buenos Aires · Aeroparque", PUJ:"Punta Cana", MAD:"Madrid", BCN:"Barcelona", LIS:"Lisboa", CDG:"París · CDG", FCO:"Roma · Fiumicino", CUN:"Cancún", SCL:"Santiago de Chile", FLN:"Florianópolis", PTY:"Panamá", MIA:"Miami", BPS:"Porto Seguro" };
+/* Nombre propio de cada terminal: la ficha del pasajero muestra
+   "Aeropuerto de Carrasco (MVD)" debajo de la ciudad */
+const AEROPUERTOS_NOMBRE = { MVD:"Aeropuerto de Carrasco", PTY:"Aeropuerto de Tocumen", PUJ:"Aeropuerto Internacional de Punta Cana", GRU:"Aeropuerto de Guarulhos", GIG:"Aeropuerto de Galeão", CGH:"Aeropuerto de Congonhas", EZE:"Aeropuerto de Ezeiza", AEP:"Aeroparque Jorge Newbery", MAD:"Aeropuerto de Barajas", BCN:"Aeropuerto de El Prat", LIS:"Aeropuerto Humberto Delgado", CDG:"Aeropuerto Charles de Gaulle", FCO:"Aeropuerto de Fiumicino", CUN:"Aeropuerto Internacional de Cancún", SCL:"Aeropuerto de Pudahuel", FLN:"Aeropuerto Hercílio Luz", MIA:"Aeropuerto Internacional de Miami", BPS:"Aeropuerto de Porto Seguro" };
 
-const PNR_DEMO = `RP/MVDUY2100/MVDUY2100  AA/GS  28JUL26/1432Z
-  1.PEREZ/MARIA MRS  2.PEREZ/JUAN MR
-  3  LA1339 K 15OCT 4 MVDGRU HK2  0755 0940
-  4  LA3226 K 15OCT 4 GRUGIG HK2  1215 1330
-  5  LA3247 K 22OCT 4 GIGGRU HK2  1425 1545
-  6  LA1338 K 22OCT 4 GRUMVD HK2  1830 2015`;
+/* Código Amadeus real que mandó Gero (Copa, MVD–PUJ vía Panamá).
+   Las líneas de ruido —DUPLICATE, ETKT, SEE RTSVC— van tal cual: el parser las saltea. */
+const PNR_DEMO = `RP/MVDUY2182/
+  1  CM 284 Y 01OCT 4*MVDPTY DK1  0043 0608  01OCT  E  0 7M9 M
+     DUPLICATE LEG-UA7120
+     ETKT ELIGIBLE
+     SEE RTSVC
+  2  CM 177 Y 01OCT 4*PTYPUJ DK1  0704 1048  01OCT  E  0 7M8 M
+     /PASSENGER CHECK IN /CM TERMINAL 2
+     ETKT ELIGIBLE
+     SEE RTSVC
+  3  CM 426 Y 08OCT 4*PUJPTY DK1  1255 1434  08OCT  E  0 7M8 M
+     ETKT ELIGIBLE
+     SEE RTSVC
+  4  CM 283 Y 08OCT 4*PTYMVD DK1  1551 0107  09OCT  E  0 7M9 M
+     DUPLICATE`;
 
 /* Paquetes ya cargados en el backend — origen de la precarga */
 const PAQUETES = [
@@ -318,11 +331,14 @@ function limpiarPegado(txt) {
     .trim();
 }
 
-/* Parser de PNR. Si no reconoce nada devuelve [] y la UI conserva lo pegado. */
+/* Parser de PNR. Si no reconoce nada devuelve [] y la UI conserva lo pegado.
+   Tolera las dos formas que llegan del GDS:
+     LA1339 K 15OCT 4 MVDGRU HK2  0755 0940   (día de semana suelto)
+     CM 284 Y 01OCT 4*MVDPTY DK1  0043 0608   (asterisco pegado al día, estado DK) */
 function parsePNR(raw) {
   const out = [];
   const lineas = String(raw).split("\n");
-  const re = /([A-Z0-9]{2})\s*(\d{2,4})\s+([A-Z])?\s*(\d{2})([A-Z]{3})\s+\d?\s*([A-Z]{3})([A-Z]{3})\s+[A-Z]{2}(\d+)?\s+(\d{4})\s+(\d{4})/;
+  const re = /([A-Z0-9]{2})\s*(\d{2,4})\s+([A-Z])?\s*(\d{2})([A-Z]{3})\s+\d?\*?\s*([A-Z]{3})([A-Z]{3})\s+[A-Z]{2}(\d+)?\s+(\d{4})\s+(\d{4})/;
   const MES3 = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11,
                  ENE:0, ABR:3, AGO:7, DIC:11 };
   for (const l of lineas) {
@@ -616,7 +632,7 @@ export {
   MESES, MES_AB, ANIO_BASE, PALETAS, fotoBg, HOTELES, REGIMENES, HABITACIONES, SUG, MODALIDADES,
   CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
   serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion,
-  SUG_ALL, CIUDADES, AEROLINEAS, AEROPUERTOS, PNR_DEMO, PAQUETES, PAQUETES_EXTRA, PLANTILLAS,
+  SUG_ALL, CIUDADES, AEROLINEAS, AEROPUERTOS, AEROPUERTOS_NOMBRE, PNR_DEMO, PAQUETES, PAQUETES_EXTRA, PLANTILLAS,
   CLIENTES, VENDEDORES, HISTORIAL, semaforo, fmtHace, uid, hotelById, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
