@@ -108,6 +108,11 @@ export async function authenticateUserByPassword(email: string, password: string
       role: user.role,
       brandId: user.brandId,
       isActive: user.isActive,
+      // Viaja hasta el JWT para que el panel pueda frenar al usuario en la
+      // pantalla de primer ingreso (ver PrimerLoginGate). El callback session
+      // corre en edge y no puede consultar la DB, así que este dato tiene que
+      // salir de acá.
+      mustChangePassword: user.mustChangePassword,
     };
   } catch (error) {
     log.error("authenticating user (password)", error);
@@ -144,6 +149,7 @@ export async function authenticateUserByPin(pin: string) {
       select: {
         id: true, email: true, name: true, role: true, brandId: true,
         isActive: true, lockedUntil: true, pinHash: true,
+        mustChangePassword: true,
       },
     });
 
@@ -208,6 +214,9 @@ export async function authenticateUserByPin(pin: string) {
       role: user.role,
       brandId: user.brandId,
       isActive: user.isActive,
+      // El PIN también es puerta de entrada: si el usuario todavía arrastra la
+      // contraseña temporal, entrar por PIN tiene que frenarlo igual.
+      mustChangePassword: user.mustChangePassword,
     };
   } catch (error) {
     log.error("authenticating user (pin)", error);
@@ -403,6 +412,11 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
       passwordResetExpires: null,
       failedLoginAttempts: 0,
       lockedUntil: null,
+      // Resetear por "olvidé mi contraseña" ES elegir una contraseña nueva:
+      // si arrastraba la temporal del alta, la pantalla de primer ingreso ya
+      // no tiene nada que pedirle.
+      mustChangePassword: false,
+      passwordChangedAt: new Date(),
     },
   });
 

@@ -18,9 +18,10 @@ import { PageTransitionWrapper } from "@/components/layout/PageTransitionWrapper
 import { DensityProvider } from "@/components/ui/data/Density";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { VendedorShell } from "./VendedorShell";
+import { PrimerLoginGate } from "./PrimerLoginGate";
 
 export function AdminShell({ children }: { children: ReactNode }) {
-  const { status } = useSession();
+  const { status, data: session } = useSession();
   const { isVendedor } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -82,6 +83,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
   // Hold render until NextAuth has resolved the session one way or another
   if (status !== "authenticated") {
     return null;
+  }
+
+  // Primer ingreso: entró con la contraseña temporal que le pasó un admin y
+  // todavía no eligió qué hacer. Hasta que resuelva no ve nada del panel —
+  // ni el shell de admin ni el de vendedor. El propio gate apaga el flag (en
+  // la DB y en el JWT vía update()), y en cuanto el token vuelve con
+  // mustChangePassword=false esta condición deja de cumplirse y el panel
+  // aparece sin recargar. Las rutas públicas del backend (login /
+  // forgot-password / reset-password) ya retornaron más arriba.
+  if (session?.user?.mustChangePassword === true) {
+    return <PrimerLoginGate />;
   }
 
   // VENDEDOR role bypasses the admin chrome (sidebar + breadcrumb + command

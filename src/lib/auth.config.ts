@@ -61,17 +61,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/backend/login",
   },
   callbacks: {
-    jwt({ token, user, trigger }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = (user as any).id;
         token.role = (user as any).role;
         token.brandId = (user as any).brandId;
+        token.mustChangePassword = (user as any).mustChangePassword === true;
       }
-      // When the client calls `update()` after a profile edit we just keep
-      // whatever was injected. The `session` callback below is the place that
-      // re-checks isActive against the DB on every read.
-      if (trigger === "update") {
-        // no-op — kept for future per-field session refresh
+      // `update()` desde el cliente. Único campo que aceptamos refrescar:
+      // mustChangePassword → false, después de que el usuario resolvió la
+      // pantalla de primer ingreso (PrimerLoginGate). Sin esto el flag viejo
+      // sigue en el JWT y el usuario queda preso de esa pantalla hasta que el
+      // token expire (30 días). Solo aceptamos el apagado: nadie puede
+      // encenderlo desde el cliente, y de todos modos el server action ya
+      // escribió mustChangePassword=false en la DB antes de llamar update().
+      if (trigger === "update" && (session as any)?.mustChangePassword === false) {
+        token.mustChangePassword = false;
       }
       return token;
     },
@@ -93,6 +98,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;
         (session.user as any).brandId = token.brandId;
+        (session.user as any).mustChangePassword =
+          token.mustChangePassword === true;
       }
       return session;
     },
@@ -107,6 +114,7 @@ function toSessionUser(user: {
   role: string;
   brandId: string;
   isActive: boolean;
+  mustChangePassword: boolean;
 }) {
   return {
     id: user.id,
@@ -115,5 +123,6 @@ function toSessionUser(user: {
     role: user.role,
     brandId: user.brandId,
     isActive: user.isActive,
+    mustChangePassword: user.mustChangePassword,
   };
 }
