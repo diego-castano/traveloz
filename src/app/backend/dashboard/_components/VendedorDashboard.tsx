@@ -22,6 +22,7 @@ import {
   Building2,
   Car,
   Calculator,
+  CreditCard,
   ExternalLink,
   Image as ImageIcon,
   Users,
@@ -77,6 +78,12 @@ import {
 import { matchesSearch } from "@/lib/search";
 import { sanitizeRichHtml } from "@/lib/sanitize-html";
 import { TarifaFallbackChip } from "@/components/ui/TarifaFallbackChip";
+import { PasajerosTab } from "./datos/PasajerosTab";
+import { PagosTab } from "./datos/PagosTab";
+import {
+  getMisDatosCounts,
+  type DatosCounts,
+} from "@/actions/datos-vendedor.actions";
 import type {
   Paquete,
   PaqueteFoto,
@@ -99,6 +106,9 @@ import type {
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 50;
+
+/** Solapas del portal del vendedor. "paquetes" es la vista de siempre. */
+type TabDatos = "paquetes" | "pasajeros" | "pagos";
 
 // ---------------------------------------------------------------------------
 // Pricing breakdown — exposes per-service netos that the high-level
@@ -1053,6 +1063,32 @@ export default function VendedorDashboard() {
   const [filterTemporada, setFilterTemporada] = useState<string>("");
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // ── Solapas de datos (gap I1) ──────────────────────────────────────────
+  // MARKETING renderiza este mismo componente dentro del AdminShell. Las
+  // solapas de Pasajeros/Datos de pago tocan datos personales del pasajero,
+  // así que para MARKETING la barra directamente no se monta y la vista queda
+  // exactamente como estaba.
+  const puedeDatos = user?.role === "VENDEDOR" || user?.role === "ADMIN";
+  const [tab, setTab] = useState<TabDatos>("paquetes");
+  const [datosCounts, setDatosCounts] = useState<DatosCounts | null>(null);
+
+  // Los badges se refrescan al cambiar de solapa: leer un envío le baja el
+  // "sin ver", y volver a Paquetes tiene que mostrar el número nuevo.
+  useEffect(() => {
+    if (!puedeDatos) return;
+    let vivo = true;
+    getMisDatosCounts()
+      .then((c) => {
+        if (vivo) setDatosCounts(c);
+      })
+      .catch(() => {
+        if (vivo) setDatosCounts(null);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [puedeDatos, tab]);
+
   // Vendors see every package in their brand so they can answer any lead —
   // including drafts and packages under review. Archived rows are still
   // surfaced so they can quote historical promos when asked. The row badge
@@ -1468,6 +1504,16 @@ export default function VendedorDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, indexedRows]);
 
+  // Deep link `?tab=pasajeros|pagos`. Solo se aplica una vez: después manda
+  // el click del usuario, no la URL (que no reescribimos).
+  const tabDeepLinkRef = useRef(false);
+  useEffect(() => {
+    if (tabDeepLinkRef.current || !puedeDatos) return;
+    tabDeepLinkRef.current = true;
+    const target = searchParams.get("tab");
+    if (target === "pasajeros" || target === "pagos") setTab(target);
+  }, [searchParams, puedeDatos]);
+
   const filteredRows = useMemo(() => {
     const term = deferredSearch.trim();
     let rows = indexedRows;
@@ -1612,6 +1658,37 @@ export default function VendedorDashboard() {
         />
       </div>
 
+      {/* Solapas — solo VENDEDOR/ADMIN. Sin ellas la vista queda como antes. */}
+      {puedeDatos && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-[14px] border border-hairline bg-white p-1.5 shadow-[0_1px_2px_rgba(26,26,46,0.04)]">
+          <TabButton
+            active={tab === "paquetes"}
+            onClick={() => setTab("paquetes")}
+            icon={Package}
+            label="Paquetes"
+          />
+          <TabButton
+            active={tab === "pasajeros"}
+            onClick={() => setTab("pasajeros")}
+            icon={Users}
+            label="Pasajeros"
+            badge={datosCounts?.enviosSinVer ?? 0}
+          />
+          <TabButton
+            active={tab === "pagos"}
+            onClick={() => setTab("pagos")}
+            icon={CreditCard}
+            label="Datos de pago"
+            badge={datosCounts?.pagosVivos ?? 0}
+          />
+        </div>
+      )}
+
+      {tab === "pasajeros" && <PasajerosTab />}
+      {tab === "pagos" && <PagosTab />}
+
+      {tab === "paquetes" && (
+        <>
       {/* Search + filters */}
       <div className="space-y-2">
         <div className="flex flex-wrap items-stretch gap-2 overflow-hidden rounded-[14px] border border-hairline bg-white shadow-[0_1px_2px_rgba(26,26,46,0.04),_0_8px_24px_rgba(139,92,246,0.05)] focus-within:border-[#8B5CF6]/60 focus-within:shadow-[0_0_0_4px_rgba(139,92,246,0.1)]">
@@ -1804,7 +1881,49 @@ export default function VendedorDashboard() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Botón de solapa. Usa el chrome propio del archivo (pill violeta, radios de
+// 10-14px) en vez del Tabs del design system: acá adentro todo está armado a
+// mano y un componente con su propia línea inferior desentonaba.
+// ---------------------------------------------------------------------------
+function TabButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+  badge = 0,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: typeof Package;
+  label: string;
+  badge?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={`relative flex items-center gap-2 rounded-[10px] px-3.5 py-2 text-[13px] font-semibold transition ${
+        active
+          ? "bg-[#F1EEFF] text-[#8B5CF6]"
+          : "text-neutral-500 hover:bg-neutral-100/70 hover:text-neutral-800"
+      }`}
+    >
+      <Icon size={14} strokeWidth={2.2} />
+      {label}
+      {badge > 0 && (
+        <span className="rounded-full bg-[#8B5CF6] px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-white">
+          {badge}
+        </span>
+      )}
+    </button>
   );
 }
 

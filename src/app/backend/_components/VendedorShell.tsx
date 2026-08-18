@@ -4,10 +4,14 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, LogOut, User, UserCog } from "lucide-react";
+import { ChevronDown, CreditCard, LogOut, User, UserCog, Users } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { Avatar } from "@/components/ui/Avatar";
 import { interactions } from "@/components/lib/animations";
+import {
+  LinkModal,
+  type TipoDato,
+} from "@/app/backend/dashboard/_components/datos/LinkModal";
 
 /**
  * Vendor-only shell — no sidebar, no breadcrumb, no command palette.
@@ -24,6 +28,8 @@ export function VendedorShell({ children }: { children: ReactNode }) {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  // Modal de links de datos. `null` = cerrado; el tipo decide qué link muestra.
+  const [linkModal, setLinkModal] = useState<TipoDato | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +41,11 @@ export function VendedorShell({ children }: { children: ReactNode }) {
       .slice(0, 2)
       .join("")
       .toUpperCase() || "V";
+
+  // Los links de datos pertenecen al dueño del slug. MARKETING hoy no monta
+  // este shell, pero el gate va igual: del otro lado hay datos personales de
+  // pasajeros y tarjetas.
+  const puedeDatos = user?.role === "VENDEDOR" || user?.role === "ADMIN";
 
   function updateMenuPos() {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -88,32 +99,63 @@ export function VendedorShell({ children }: { children: ReactNode }) {
             VENDEDORES
           </p>
 
-          <button
-            ref={triggerRef}
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => {
-              if (menuOpen) {
-                setMenuOpen(false);
-                return;
-              }
-              updateMenuPos();
-              setMenuOpen(true);
-            }}
-            className="ml-auto flex items-center gap-2 rounded-full bg-[#F5F3FF] px-3 py-1.5 text-[12px] font-semibold text-[#8B5CF6] transition hover:bg-[#EDE9FE]"
-          >
-            <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#8B5CF6] text-[10px] font-bold text-white">
-              {initials}
-            </span>
-            <span className="hidden sm:inline">{user?.name ?? "Vendedor"}</span>
-            <ChevronDown
-              size={12}
-              className={`text-[#8B5CF6]/70 transition-transform ${menuOpen ? "rotate-180" : ""}`}
-            />
-          </button>
+          {/* Accesos a los links de datos + pill de usuario. Van juntos en un
+              contenedor con ml-auto para que el pill no dependa del suyo (los
+              botones pueden no montarse según el rol). */}
+          <div className="ml-auto flex items-center gap-2">
+            {puedeDatos && (
+              <>
+                <TopbarLinkButton
+                  label="Datos de pasajeros"
+                  onClick={() => setLinkModal("PASAJEROS")}
+                  icon={<Users size={14} strokeWidth={2.2} />}
+                />
+                <TopbarLinkButton
+                  label="Datos de tarjeta"
+                  onClick={() => setLinkModal("PAGO")}
+                  icon={<CreditCard size={14} strokeWidth={2.2} />}
+                />
+              </>
+            )}
+
+            <button
+              ref={triggerRef}
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => {
+                if (menuOpen) {
+                  setMenuOpen(false);
+                  return;
+                }
+                updateMenuPos();
+                setMenuOpen(true);
+              }}
+              className="flex items-center gap-2 rounded-full bg-[#F5F3FF] px-3 py-1.5 text-[12px] font-semibold text-[#8B5CF6] transition hover:bg-[#EDE9FE]"
+            >
+              <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[#8B5CF6] text-[10px] font-bold text-white">
+                {initials}
+              </span>
+              <span className="hidden sm:inline">{user?.name ?? "Vendedor"}</span>
+              <ChevronDown
+                size={12}
+                className={`text-[#8B5CF6]/70 transition-transform ${menuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+          </div>
         </div>
       </header>
+
+      {/* Un solo modal para los dos botones: el tipo lo decide el estado. */}
+      {puedeDatos && (
+        <LinkModal
+          tipo={linkModal ?? "PASAJEROS"}
+          open={linkModal !== null}
+          onOpenChange={(o) => {
+            if (!o) setLinkModal(null);
+          }}
+        />
+      )}
 
       {/* ─── Main container ─────────────────────────────────── */}
       <main className="flex-1">
@@ -174,5 +216,33 @@ export function VendedorShell({ children }: { children: ReactNode }) {
           document.body,
         )}
     </div>
+  );
+}
+
+/**
+ * Botón violeta del topbar. En desktop muestra el texto; abajo de `sm` se
+ * queda solo con el ícono (el topbar del celu no da para dos etiquetas) y el
+ * nombre viaja en el aria-label.
+ */
+function TopbarLinkButton({
+  label,
+  icon,
+  onClick,
+}: {
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      whileTap={{ scale: 0.97 }}
+      className="flex items-center gap-1.5 rounded-full border border-[#8B5CF6]/15 bg-[#F5F3FF]/70 px-2.5 py-1.5 text-[12px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6]/35 hover:bg-[#EDE9FE] sm:px-3"
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </motion.button>
   );
 }
