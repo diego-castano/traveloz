@@ -21,6 +21,8 @@ import { logger } from "@/lib/logger";
 const log = logger.child({ module: "email" });
 
 const RESEND_API_URL = "https://api.resend.com/emails";
+/** Cancelación de un envío agendado: POST /emails/{id}/cancel. */
+const cancelUrl = (id: string) => `${RESEND_API_URL}/${encodeURIComponent(id)}/cancel`;
 // Remitente por defecto. Usa el subdominio verificado en Resend
 // (app.traveloz.com.uy); el apex traveloz.com.uy NO está verificado, así que
 // mandar desde ahí hace que Resend rechace el envío. Se puede pisar con
@@ -54,12 +56,32 @@ export interface SendEmailInput {
    * agregan headers (los emails transaccionales al admin no califican).
    */
   unsubscribeUrl?: string;
+  /**
+   * Envío programado. Resend acepta ISO 8601 en `scheduled_at` y guarda el
+   * email hasta esa fecha; devuelve el id de siempre, que sirve para
+   * cancelarlo con `cancelScheduledEmail` mientras no haya salido.
+   *
+   * Se usa en el recordatorio de la bóveda de pagos (24 h antes de la purga):
+   * si el vendedor abre la bóveda antes, cancelamos el envío y nunca sale.
+   * Una fecha en el pasado la rechaza Resend — el caller valida que sea futura.
+   */
+  scheduledAt?: string | Date;
 }
 
 export interface SendEmailResult {
   delivered: boolean;
   provider: "resend" | "console";
+  /**
+   * Id del mensaje en Resend. En modo console no existe: todo call site que
+   * lo persista tiene que tolerar `undefined`.
+   */
   id?: string;
+  error?: string;
+}
+
+export interface CancelEmailResult {
+  canceled: boolean;
+  provider: "resend" | "console";
   error?: string;
 }
 
@@ -78,6 +100,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       to: input.to,
       subject: input.subject,
       from,
+      scheduledAt: input.scheduledAt ? isoOrUndefined(input.scheduledAt) : undefined,
       previewText: input.text ?? stripHtml(input.html).slice(0, 500),
     });
     return { delivered: false, provider: "console" };
@@ -107,6 +130,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
         html: input.html,
         text: input.text,
         reply_to: input.replyTo,
+        scheduled_at: input.scheduledAt ? isoOrUndefined(input.scheduledAt) : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
         attachments: input.attachments?.length
           ? input.attachments.map((a) => ({
@@ -135,6 +159,64 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       error: err instanceof Error ? err.message : String(err),
     };
   }
+}
+
+/**
+ * Cancela un email agendado en Resend. Best-effort por naturaleza: si el
+ * mensaje ya salió, o el id no existe, Resend responde 4xx y devolvemos
+ * `canceled: false` sin tirar. Ningún call site debe romperse por esto — el
+ * peor caso es que al vendedor le llegue un recordatorio de más.
+ *
+ * Sin RESEND_API_KEY no hay nada que cancelar (el "envío" fue un log), así
+ * que es un no-op con rastro en el log.
+ */
+export async function cancelScheduledEmail(id: string): Promise<CancelEmailResult> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!id) return { canceled: false, provider: "console", error: "id vacío" };
+
+  if (!apiKey) {
+    log.warn("email.cancel.stub", {
+      reason: "RESEND_API_KEY not set — nada que cancelar",
+      id,
+    });
+    return { canceled: false, provider: "console" };
+  }
+
+  try {
+    const res = await fetch(cancelUrl(id), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      log.warn("email.cancel.fail", { status: res.status, body, id });
+      return { canceled: false, provider: "resend", error: body };
+    }
+
+    log.info("email.cancel.ok", { id });
+    return { canceled: true, provider: "resend" };
+  } catch (err) {
+    log.error("email.cancel.exception", err);
+    return {
+      canceled: false,
+      provider: "resend",
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
+ * Normaliza la fecha de agenda a ISO 8601 (lo que espera `scheduled_at`).
+ * Una fecha inválida se descarta en vez de mandar "Invalid Date" a la API:
+ * mejor un envío inmediato que un 422 que se coma el recordatorio.
+ */
+function isoOrUndefined(value: string | Date): string | undefined {
+  if (typeof value === "string") return value.trim() || undefined;
+  return Number.isNaN(value.getTime()) ? undefined : value.toISOString();
 }
 
 function stripHtml(html: string): string {

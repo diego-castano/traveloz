@@ -48,6 +48,7 @@ import {
   avisoPagoEmail,
   envioPasajerosEmail,
   fechaLarga,
+  recordatorioPagoEmail,
   type PasajeroEmail,
 } from "@/lib/datos-email";
 import type { TipoFormularioDato } from "@prisma/client";
@@ -492,17 +493,19 @@ export async function submitDatosPago(
 
     // Aviso inmediato. El email NO lleva número ni CVV: solo titular, emisor,
     // últimos 4 y el link al panel.
+    const avisoOpts = {
+      vendedorNombre: vendedor.name,
+      titular: datos.titular,
+      emisor,
+      ultimos4: cola,
+      expiraAt,
+      linkAdmin: `${SITE_BASE_URL}${ADMIN_PAGOS_PATH}/${registro.id}`,
+      destino: solicitud?.destino ?? null,
+      referencia: solicitud?.referencia ?? null,
+    };
+
     try {
-      const tmpl = avisoPagoEmail({
-        vendedorNombre: vendedor.name,
-        titular: datos.titular,
-        emisor,
-        ultimos4: cola,
-        expiraAt,
-        linkAdmin: `${SITE_BASE_URL}${ADMIN_PAGOS_PATH}/${registro.id}`,
-        destino: solicitud?.destino ?? null,
-        referencia: solicitud?.referencia ?? null,
-      });
+      const tmpl = avisoPagoEmail(avisoOpts);
       await sendEmail({
         to: vendedor.email,
         from: DATOS_FROM,
@@ -512,6 +515,40 @@ export async function submitDatosPago(
       });
     } catch (err) {
       log.error(`datos.pago.email failed (pago ${registro.id})`, err);
+    }
+
+    // Recordatorio agendado en Resend para 24 h antes de la purga. Guardamos
+    // el id devuelto para poder cancelarlo cuando el vendedor abra la bóveda
+    // (ver revelarPago en datos-boveda.actions.ts).
+    //
+    // El `if` de fecha futura es redundante con HORAS_BOVEDA = 72, pero queda
+    // por si esa constante baja de 24: agendar en el pasado lo rechaza Resend
+    // con un 422 y perderíamos el recordatorio sin enterarnos.
+    //
+    // Best-effort de punta a punta: sin RESEND_API_KEY no hay id (modo
+    // console) y el campo queda en null, que es exactamente lo que espera la
+    // cancelación. Nada de esto puede hacer fallar el envío del pasajero.
+    try {
+      const recordarAt = new Date(expiraAt.getTime() - 24 * 60 * 60 * 1000);
+      if (recordarAt.getTime() > Date.now()) {
+        const tmpl = recordatorioPagoEmail(avisoOpts);
+        const res = await sendEmail({
+          to: vendedor.email,
+          from: DATOS_FROM,
+          subject: tmpl.subject,
+          html: tmpl.html,
+          text: tmpl.text,
+          scheduledAt: recordarAt,
+        });
+        if (res.id) {
+          await prisma.datosPagoCifrado.update({
+            where: { id: registro.id },
+            data: { recordatorioResendId: res.id },
+          });
+        }
+      }
+    } catch (err) {
+      log.error(`datos.pago.recordatorio failed (pago ${registro.id})`, err);
     }
 
     return { ok: true, message: EXITO_PAGO };
