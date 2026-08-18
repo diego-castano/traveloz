@@ -1,7 +1,7 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// RevelarModal — abrir la bóveda de un registro de pago, en tres pasos:
+// RevelarModal - abrir la bóveda de un registro de pago, en tres pasos:
 //
 //   1. confirmar   → qué tarjeta es, cuánto le queda, y que la apertura queda
 //                    en la auditoría. Nada sensible todavía.

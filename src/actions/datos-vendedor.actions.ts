@@ -9,7 +9,7 @@
 // Reglas que no se negocian:
 //   • Scope duro por vendedor. Un VENDEDOR solo ve lo suyo (where vendedorId
 //     = su id). Un ADMIN puede pasar un vendedorId explícito, pero el default
-//     es LO SUYO — el preview ?vista=vendedor no espía la bandeja de otro.
+//     es LO SUYO - el preview ?vista=vendedor no espía la bandeja de otro.
 //   • MARKETING no entra a ninguna de estas actions: ve paquetes, no datos
 //     personales de pasajeros ni tarjetas.
 //   • payload / iv / tag de DatosPagoCifrado NUNCA salen de este módulo. Los
@@ -84,7 +84,7 @@ async function scopeVendedor(vendedorId?: string): Promise<{
 export interface DatosCounts {
   /** Envíos de pasajeros recibidos (histórico completo). */
   envios: number;
-  /** Envíos todavía sin abrir — el badge violeta de la solapa. */
+  /** Envíos todavía sin abrir · el badge violeta de la solapa. */
   enviosSinVer: number;
   /** Tarjetas todavía legibles: sin purgar y sin vencer. */
   pagosVivos: number;
@@ -170,7 +170,7 @@ export async function getMisEnvios(opts?: {
         referencia: e.referencia,
         vistoAt: e.vistoAt,
         cantidad: e._count.pasajeros,
-        contacto: primero ? `${primero.nombres} ${primero.apellidos}`.trim() : "—",
+        contacto: primero ? `${primero.nombres} ${primero.apellidos}`.trim() : "·",
         contactoEmail: primero?.email ?? "",
       };
     }),

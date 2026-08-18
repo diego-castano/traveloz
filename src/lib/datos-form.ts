@@ -90,7 +90,7 @@ const texto = (max: number) => z.string().trim().max(max);
 const textoReq = (max: number, msg: string) => z.string().trim().min(1, msg).max(max);
 
 // Cumpleaños plausible: nadie nacido antes de 1900 ni en el futuro. No pedimos
-// mayoría de edad — los menores viajan y también cargan sus datos.
+// mayoría de edad - los menores viajan y también cargan sus datos.
 const MIN_NACIMIENTO = Date.UTC(1900, 0, 1);
 
 const fechaNacimientoSchema = z
@@ -181,7 +181,7 @@ export function primerError(err: z.ZodError): string {
 }
 
 // ---------------------------------------------------------------------------
-// FormularioDato — definición editable de cada pantalla.
+// FormularioDato - definición editable de cada pantalla.
 //
 // Self-healing como el manifiesto de SiteSettings (site-settings-bootstrap.ts):
 // si la fila no existe todavía, la creamos con los defaults en la primera

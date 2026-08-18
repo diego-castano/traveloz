@@ -260,7 +260,7 @@ export function PasajerosForm({
                   </p>
                 )}
 
-                {/* Cuerpo — se mantiene montado al plegar para no perder valores. */}
+                {/* Cuerpo · se mantiene montado al plegar para no perder valores. */}
                 <motion.div
                   data-plegable
                   initial={false}

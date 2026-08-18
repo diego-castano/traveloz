@@ -150,14 +150,14 @@ export function CamposExtra({
                     type="date"
                     required={c.requerido}
                     className={inputClass}
-                    aria-label={`${c.etiqueta} — desde`}
+                    aria-label={`${c.etiqueta} · desde`}
                   />
                   <input
                     name={`${name}__hasta`}
                     type="date"
                     required={c.requerido}
                     className={inputClass}
-                    aria-label={`${c.etiqueta} — hasta`}
+                    aria-label={`${c.etiqueta} · hasta`}
                   />
                 </div>
                 <Ayuda>{c.ayuda}</Ayuda>

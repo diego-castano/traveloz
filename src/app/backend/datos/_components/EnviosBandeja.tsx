@@ -265,7 +265,7 @@ export function EnviosBandeja() {
                     {r.vendedorNombre}
                   </td>
                   <td className="px-4 py-3 text-[12.5px] text-neutral-600">
-                    {r.destino || "—"}
+                    {r.destino || "·"}
                     {r.referencia && (
                       <span className="block text-[11px] text-neutral-400">
                         {r.referencia}

@@ -1,7 +1,7 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// VendedoresView — vista comercial de vendedores dentro de /backend/perfiles
+// VendedoresView - vista comercial de vendedores dentro de /backend/perfiles
 // (Fase 3: vendedores FUSIONADOS en Perfiles, no un módulo aparte).
 //
 // Muestra los usuarios con rol VENDEDOR o ADMIN como tarjetas (avatar,
@@ -11,7 +11,7 @@
 // ver QR, prender/apagar, y regenerar el slug con confirmación inline (el
 // link viejo deja de resolver de inmediato).
 //
-// Nombre/email/rol NO se editan acá — "Editar nombre, email y rol" delega en
+// Nombre/email/rol NO se editan acá - "Editar nombre, email y rol" delega en
 // el modal que ya existe en la vista "Usuarios y roles" (page.tsx).
 // ---------------------------------------------------------------------------
 
@@ -201,7 +201,7 @@ function VendedorCard({
 }
 
 // ---------------------------------------------------------------------------
-// FichaVendedor — contenido del modal (foto/contacto + links personales)
+// FichaVendedor - contenido del modal (foto/contacto + links personales)
 // ---------------------------------------------------------------------------
 
 interface LinksVendedor {
@@ -466,7 +466,7 @@ function FichaVendedor({
                   </Button>
                 )}
 
-                {/* Confirmación inline — evitamos un segundo Modal anidado */}
+                {/* Confirmación inline · evitamos un segundo Modal anidado */}
                 {confirmingRegenerar && (
                   <div className="flex flex-col gap-2.5 rounded-[10px] border border-amber-200 bg-amber-50 p-3.5">
                     <div className="flex items-start gap-2">
@@ -510,7 +510,7 @@ function FichaVendedor({
 }
 
 // ---------------------------------------------------------------------------
-// LinkRow — url + QR + copiar
+// LinkRow - url + QR + copiar
 // ---------------------------------------------------------------------------
 
 function LinkRow({
@@ -531,7 +531,7 @@ function LinkRow({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={qr}
-        alt={`Código QR — ${label}`}
+        alt={`Código QR · ${label}`}
         className="h-16 w-16 shrink-0 rounded-md border border-hairline bg-white"
       />
       <div className="min-w-0 flex-1">

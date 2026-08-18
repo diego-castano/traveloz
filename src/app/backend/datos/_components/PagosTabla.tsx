@@ -6,7 +6,7 @@
 // La tabla NUNCA trae datos de tarjeta: titular, emisor, últimos 4 y fechas es
 // todo lo que sale del server (getPagosAdmin selecciona campo por campo). Ver
 // el número exige el segundo factor del RevelarModal, y esa apertura queda
-// auditada — la UI lo dice antes de que el operador haga clic.
+// auditada - la UI lo dice antes de que el operador haga clic.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Layout del route group (formularios) — las dos pantallas públicas por
+// Layout del route group (formularios) - las dos pantallas públicas por
 // vendedor: /datos-de-pasajeros/<slug> y /datos-de-pago/<slug>.
 //
 // Identidad propia y sobria: app-bar con el logo de TravelOz y NADA de

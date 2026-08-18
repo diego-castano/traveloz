@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// /backend/datos — cabecera + solapas del módulo de Pasajeros y Pagos.
+// /backend/datos - cabecera + solapas del módulo de Pasajeros y Pagos.
 //
 // El layout es un server component por una razón concreta: las páginas
 // /pasajeros/[id] y /pagos/[id] son los deep-links que salen en los emails al
@@ -14,7 +14,7 @@ import { DatosTabs } from "./_components/DatosTabs";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = { title: "Pasajeros y pagos — TravelOz" };
+export const metadata = { title: "Pasajeros y pagos · TravelOz" };
 
 export default async function DatosLayout({ children }: { children: ReactNode }) {
   const session = await auth();

@@ -1,7 +1,7 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// PasajerosTab — la bandeja de envíos del vendedor dentro del dashboard.
+// PasajerosTab - la bandeja de envíos del vendedor dentro del dashboard.
 //
 // La tabla trae el resumen (contacto = primer pasajero del grupo) y el detalle
 // se pide recién al expandir la fila: un envío puede tener hasta 12 pasajeros
@@ -46,7 +46,7 @@ const soloFecha = (d: Date | null) =>
         year: "numeric",
         timeZone: "UTC",
       }).format(new Date(d))
-    : "—";
+    : "·";
 
 export function PasajerosTab() {
   const [page, setPage] = useState(1);
@@ -248,8 +248,8 @@ function EnvioRow({
             {row.cantidad}
           </span>
         </td>
-        <td className="px-4 py-3 text-[12.5px] text-neutral-600">{row.destino || "—"}</td>
-        <td className="px-4 py-3 text-[12.5px] text-neutral-500">{row.referencia || "—"}</td>
+        <td className="px-4 py-3 text-[12.5px] text-neutral-600">{row.destino || "·"}</td>
+        <td className="px-4 py-3 text-[12.5px] text-neutral-500">{row.referencia || "·"}</td>
         <td className="px-2 py-3 text-center">
           <ChevronRight
             size={16}

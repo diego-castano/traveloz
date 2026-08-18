@@ -3,7 +3,7 @@
 /**
  * Pantalla de primer ingreso.
  *
- * La monta AdminShell — en lugar del panel — cuando la sesión trae
+ * La monta AdminShell - en lugar del panel - cuando la sesión trae
  * `mustChangePassword: true`, o sea cuando el usuario entró con la contraseña
  * temporal que le mandó un administrador. Dos salidas, las dos apagan el flag:
  *

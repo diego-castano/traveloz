@@ -51,7 +51,7 @@ const EXPORT_MAX_ENVIOS = 2000;
 //
 // El vendedorId es un String suelto. Traemos los User del lote en una sola
 // query y caemos al vendedorEmail guardado en la fila si el usuario ya no
-// existe — un envío viejo se sigue leyendo aunque el vendedor se haya ido.
+// existe - un envío viejo se sigue leyendo aunque el vendedor se haya ido.
 // ---------------------------------------------------------------------------
 
 async function nombresDeVendedores(ids: string[]): Promise<Map<string, string>> {
@@ -72,7 +72,7 @@ async function nombresDeVendedores(ids: string[]): Promise<Map<string, string>> 
 export interface DatosAdminCounts {
   /** Envíos de pasajeros recibidos por todo el equipo. */
   envios: number;
-  /** Envíos que nadie abrió todavía — el badge violeta de la solapa. */
+  /** Envíos que nadie abrió todavía · el badge violeta de la solapa. */
   enviosSinVer: number;
   /** Tarjetas todavía legibles: sin purgar y sin vencer. */
   pagosVivos: number;
@@ -163,7 +163,7 @@ const filtroSchema = z.object({
  * Traduce los filtros de la toolbar a un `where` de Prisma.
  *
  * La búsqueda es el pedido explícito del cliente: "quiero encontrar al
- * pasajero, no al envío". Por eso va con `pasajeros.some` — alcanza con que UN
+ * pasajero, no al envío". Por eso va con `pasajeros.some` - alcanza con que UN
  * pasajero del grupo matchee para que el envío entero aparezca en la tabla.
  */
 function whereEnvios(f: z.infer<typeof filtroSchema>): Prisma.EnvioPasajerosWhereInput {
@@ -260,7 +260,7 @@ export async function getEnviosAdmin(
         referencia: e.referencia,
         vistoAt: e.vistoAt,
         cantidad: e._count.pasajeros,
-        contacto: primero ? `${primero.nombres} ${primero.apellidos}`.trim() : "—",
+        contacto: primero ? `${primero.nombres} ${primero.apellidos}`.trim() : "·",
         contactoEmail: primero?.email ?? "",
         vendedorId: e.vendedorId,
         vendedorNombre: nombres.get(e.vendedorId) ?? e.vendedorEmail,
@@ -308,7 +308,7 @@ export interface EnvioAdminDetalle {
 
 /**
  * Detalle completo de un envío, sin filtro de vendedor: es la bandeja global.
- * NO sella `vistoAt` — eso lo pide la UI aparte con `marcarVistoAdmin`, para
+ * NO sella `vistoAt` - eso lo pide la UI aparte con `marcarVistoAdmin`, para
  * que un deep-link abierto por error no marque como leído lo que el vendedor
  * todavía no vio.
  */

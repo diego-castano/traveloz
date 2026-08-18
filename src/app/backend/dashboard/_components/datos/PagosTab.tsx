@@ -1,11 +1,11 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// PagosTab — la bóveda del vendedor.
+// PagosTab - la bóveda del vendedor.
 //
 // Acá NUNCA hay número de tarjeta ni CVV: `getMisPagos` solo devuelve titular,
-// emisor, últimos 4 y las fechas. Lo sensible sale por otra puerta —
-// `revelarPago`, con segundo factor — y vive solo dentro del RevelarModal, que
+// emisor, últimos 4 y las fechas. Lo sensible sale por otra puerta -
+// `revelarPago`, con segundo factor - y vive solo dentro del RevelarModal, que
 // se lleva los datos consigo cuando se desmonta.
 //
 // El reloj de vencimiento se calcula en el cliente contra `expiraAt` y se
@@ -161,7 +161,7 @@ export function PagosTab() {
 
       {/* Un solo modal para toda la grilla: el id decide qué registro abre. Al
           cerrar, el modal resetea su estado y los datos en claro se van con
-          él — a esta grilla nunca llegan. */}
+          él · a esta grilla nunca llegan. */}
       <RevelarModal
         pagoId={revelarId}
         open={revelarId !== null}

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// /backend/datos/pasajeros/[id] — un envío en su propia página.
+// /backend/datos/pasajeros/[id] - un envío en su propia página.
 //
 // Es el deep-link que sale en el email de aviso al vendedor
 // (datos-publico.actions.ts arma la URL con esta ruta), así que tiene que
@@ -21,7 +21,7 @@ import { getMiEnvioDetalle } from "@/actions/datos-vendedor.actions";
 import { EnvioDetalleView, type EnvioVista } from "../../_components/EnvioDetalleView";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Envío de pasajeros — TravelOz" };
+export const metadata = { title: "Envío de pasajeros · TravelOz" };
 
 export default async function EnvioPage({ params }: { params: { id: string } }) {
   const session = await auth();

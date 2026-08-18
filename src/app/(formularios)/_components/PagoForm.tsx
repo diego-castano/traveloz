@@ -9,7 +9,7 @@
 //
 // Nada de lo que se escribe acá se guarda en claro: la server action cifra el
 // cuerpo con AES-256-GCM y solo persiste titular, emisor y últimos 4. El
-// microcopy de las 72 horas está a la vista a propósito — es la promesa que
+// microcopy de las 72 horas está a la vista a propósito - es la promesa que
 // hace que alguien se anime a cargar su tarjeta en un formulario web.
 // ---------------------------------------------------------------------------
 

@@ -9,7 +9,7 @@
 //
 // REGLA DURA de las plantillas de pago: el número de tarjeta, el CVV y el
 // documento del titular NUNCA salen por email. Solo viajan titular, emisor y
-// los últimos 4 — lo mismo que queda en claro en la DB. Para ver el resto hay
+// los últimos 4 - lo mismo que queda en claro en la DB. Para ver el resto hay
 // que entrar al panel con sesión.
 //
 // El marco visual replica el `brandedLayout` de email.ts (que no está
@@ -147,7 +147,7 @@ export function fechaLarga(d: Date): string {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Solicitud al pasajero — "completá tus datos"
+// 1. Solicitud al pasajero - "completá tus datos"
 // ---------------------------------------------------------------------------
 
 export interface VendedorPublico {
@@ -221,13 +221,13 @@ export function solicitudDatosEmail(opts: {
     ${PMUTED("Si no esperabas este email, ignoralo.")}`;
 
   return {
-    subject: esPago ? "Completá tus datos de pago — TravelOz" : "Completá los datos de los pasajeros — TravelOz",
+    subject: esPago ? "Completá tus datos de pago · TravelOz" : "Completá los datos de los pasajeros · TravelOz",
     html: layout({ heading, kicker: "TravelOz", bodyHtml: body, preheader: `${opts.vendedor.nombre} te pide ${que}` }),
     text: [
       `${opts.destinatarioNombre?.trim() ? `Hola ${opts.destinatarioNombre.trim()},` : "Hola,"}`,
       "",
       `Necesitamos ${que} para avanzar con tu reserva.`,
-      `Tu asesor: ${opts.vendedor.nombre}${wa ? ` — WhatsApp: https://wa.me/${wa}` : ""}`,
+      `Tu asesor: ${opts.vendedor.nombre}${wa ? ` · WhatsApp: https://wa.me/${wa}` : ""}`,
       opts.destino ? `Destino: ${opts.destino}` : "",
       opts.referencia ? `Referencia: ${opts.referencia}` : "",
       "",
@@ -340,12 +340,12 @@ export function envioPasajerosEmail(opts: {
     <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Ver el envío en el panel", INK)}</p>`;
 
   const text = [
-    `Datos de ${plural} — ${opts.destino}`,
+    `Datos de ${plural} · ${opts.destino}`,
     opts.referencia ? `Referencia: ${opts.referencia}` : "",
     opts.fecha ? `Recibido: ${opts.fecha}` : "",
     "",
     ...opts.pasajeros.flatMap((p, i) => [
-      `— Pasajero ${i + 1}: ${p.nombres} ${p.apellidos}`,
+      `· Pasajero ${i + 1}: ${p.nombres} ${p.apellidos}`,
       `  Documento: ${p.documento}`,
       p.pasaporte ? `  Pasaporte: ${p.pasaporte}` : "",
       p.fechaNacimiento ? `  Nacimiento: ${p.fechaNacimiento}` : "",
@@ -355,7 +355,7 @@ export function envioPasajerosEmail(opts: {
       "",
     ]),
     opts.factura
-      ? `Facturación con RUT: ${opts.factura.rut} — ${opts.factura.razonSocial} (${opts.factura.email})`
+      ? `Facturación con RUT: ${opts.factura.rut} · ${opts.factura.razonSocial} (${opts.factura.email})`
       : "",
     "",
     `Ver el envío en el panel: ${opts.linkAdmin}`,
@@ -364,9 +364,9 @@ export function envioPasajerosEmail(opts: {
     .join("\n");
 
   return {
-    subject: `Datos de pasajeros — ${opts.destino} · ${plural}`,
+    subject: `Datos de pasajeros · ${opts.destino} · ${plural}`,
     html: layout({
-      heading: `Datos de pasajeros — ${opts.destino}`,
+      heading: `Datos de pasajeros · ${opts.destino}`,
       kicker: "Nuevo envío",
       bodyHtml: body,
       preheader: `${plural} para ${opts.destino}`,
@@ -377,7 +377,7 @@ export function envioPasajerosEmail(opts: {
 
 // ---------------------------------------------------------------------------
 // 3 y 4. Pago: aviso inmediato y recordatorio.
-// NUNCA llevan número ni CVV — solo titular, emisor y últimos 4.
+// NUNCA llevan número ni CVV - solo titular, emisor y últimos 4.
 // ---------------------------------------------------------------------------
 
 export interface AvisoPagoOpts {
@@ -414,13 +414,13 @@ export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
     ${P(
       `Los datos quedan disponibles hasta el <strong>${escapeHtml(
         fechaLarga(opts.expiraAt),
-      )}</strong> — 72 horas. Después se borran solos y no hay forma de recuperarlos.`,
+      )}</strong> · 72 horas. Después se borran solos y no hay forma de recuperarlos.`,
     )}
     <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Abrir la bóveda")}</p>
     ${PMUTED(SIN_DATOS_SENSIBLES)}`;
 
   return {
-    subject: `Datos de pago cargados — ${opts.titular} · •••• ${opts.ultimos4}`,
+    subject: `Datos de pago cargados · ${opts.titular} · •••• ${opts.ultimos4}`,
     html: layout({
       heading: "Tenés datos de pago para gestionar",
       kicker: "Bóveda de pagos",
@@ -466,7 +466,7 @@ export function recordatorioPagoEmail(opts: AvisoPagoOpts): Plantilla {
     ${PMUTED(SIN_DATOS_SENSIBLES)}`;
 
   return {
-    subject: `Te queda 1 día — datos de pago de ${opts.titular} (•••• ${opts.ultimos4})`,
+    subject: `Te queda 1 día · datos de pago de ${opts.titular} (•••• ${opts.ultimos4})`,
     html: layout({
       heading: "Estos datos de pago vencen mañana",
       kicker: "Bóveda de pagos",

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// /datos-de-pasajeros/<User.slug> — link público permanente de cada vendedor.
+// /datos-de-pasajeros/<User.slug> - link público permanente de cada vendedor.
 //
 // El pasajero no tiene cuenta ni la necesita. Ve el hero, la tarjeta de su
 // asesor y el formulario. Con ?s=<token> el link vino por email y precargamos
@@ -28,7 +28,7 @@ import { VendedorCard } from "../../_components/VendedorCard";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Datos de pasajeros — TravelOz",
+  title: "Datos de pasajeros · TravelOz",
   robots: { index: false, follow: false },
 };
 

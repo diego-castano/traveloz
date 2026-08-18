@@ -1,7 +1,7 @@
 "use server";
 
 // ---------------------------------------------------------------------------
-// Bóveda de datos de pago — lectura con segundo factor.
+// Bóveda de datos de pago - lectura con segundo factor.
 //
 //   getPagoMeta(id)              → cabecera del registro (sin nada sensible).
 //   revelarPago({id, credencial}) → descifra UNA vez, contra PIN o contraseña.
@@ -13,7 +13,7 @@
 //   • La credencial que tipea el vendedor tampoco se loguea. Ni en el fallo,
 //     ni truncada, ni hasheada: no entra al logger bajo ninguna forma.
 //   • Alcance: el vendedor dueño del registro o un ADMIN. Decisión cerrada con
-//     el cliente — el superadmin también abre la bóveda.
+//     el cliente - el superadmin también abre la bóveda.
 // ---------------------------------------------------------------------------
 
 import { compareSync } from "bcryptjs";
@@ -279,7 +279,7 @@ export async function revelarPago(input: {
 
     // Si el usuario tiene PIN y lo que tipeó tiene forma de PIN, comparamos
     // contra el pinHash; en cualquier otro caso, contra la contraseña. Un PIN
-    // mal tipeado cae en la rama de contraseña y falla igual — el mensaje es
+    // mal tipeado cae en la rama de contraseña y falla igual - el mensaje es
     // el mismo, así que no revela cuál de los dos factores esperábamos.
     const usaPin = !!user.pinHash && PIN_REGEX.test(credencial);
     const credencialOk = usaPin

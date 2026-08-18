@@ -4,13 +4,13 @@
 // La promesa que le hacemos al pasajero (y que dice el email de solicitud) es
 // que la tarjeta se borra sola a las 72 horas. Este módulo es quien cumple esa
 // promesa: pone en null los tres campos cifrados (payload / iv / tag) y sella
-// `purgadoAt`. La fila NO se borra — queda el rastro auditable (titular,
+// `purgadoAt`. La fila NO se borra - queda el rastro auditable (titular,
 // emisor, últimos 4, fechas) sin nada descifrable adentro.
 //
 // Se dispara por dos vías, y ninguna necesita cron externo obligatorio:
-//   1. POST /api/datos/purgar — sesión ADMIN o header x-purga-secret. Es la
+//   1. POST /api/datos/purgar - sesión ADMIN o header x-purga-secret. Es la
 //      que engancha el scheduled job de Railway.
-//   2. barridoOportunista() — ~5% de las revelaciones de bóveda, mismo patrón
+//   2. barridoOportunista() - ~5% de las revelaciones de bóveda, mismo patrón
 //      probabilístico que el prune de PaginaVista en /api/visita.
 // ---------------------------------------------------------------------------
 
@@ -32,7 +32,7 @@ const PROBABILIDAD_BARRIDO = 0.05;
 // #   Las dos condiciones son obligatorias y ninguna es decorativa:         #
 // #                                                                         #
 // #     • `expiraAt < ahora` es lo que separa un dato vivo de uno vencido.   #
-// #       Sin esa cláusula, un updateMany borra la bóveda ENTERA —          #
+// #       Sin esa cláusula, un updateMany borra la bóveda ENTERA -          #
 // #       incluidas las tarjetas que un vendedor está por cobrar. No hay    #
 // #       backup posible: el payload cifrado es la única copia y una vez    #
 // #       en null no se recupera ni con la clave.                           #
@@ -45,7 +45,7 @@ const PROBABILIDAD_BARRIDO = 0.05;
 // #                                                                         #
 // #   La DB de este proyecto ES producción. Si alguna vez hace falta otra   #
 // #   escritura masiva sobre esta tabla, escribila como una función nueva   #
-// #   con su propio where explícito y su propio comentario — NO relajes     #
+// #   con su propio where explícito y su propio comentario - NO relajes     #
 // #   este where ni le agregues parámetros para "reusarlo".                 #
 // #                                                                         #
 // ###########################################################################

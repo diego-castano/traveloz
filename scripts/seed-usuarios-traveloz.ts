@@ -1,8 +1,8 @@
 /**
- * seed-usuarios-traveloz.ts — Alta idempotente del equipo TravelOz.
+ * seed-usuarios-traveloz.ts - Alta idempotente del equipo TravelOz.
  *
- * Fuente: Excel "TravelOZ - Administrador — Lista de usuarios" (14-ago-2026).
- * Lista completa de 26 personas (22 VENDEDOR + 4 ADMIN) hardcodeada abajo —
+ * Fuente: Excel "TravelOZ - Administrador - Lista de usuarios" (14-ago-2026).
+ * Lista completa de 26 personas (22 VENDEDOR + 4 ADMIN) hardcodeada abajo -
  * es un alta puntual de equipo, no un catálogo que vaya a crecer por script.
  *
  * Reglas (ver encargo):
@@ -62,7 +62,7 @@ interface PersonaSeed {
 }
 
 // Lista EXACTA del Excel. Nombres van SIN el prefijo "Lic." que aparecía en
-// dos filas (Anaclara Arrieta, Matias Sosa) — el prefijo es un tratamiento,
+// dos filas (Anaclara Arrieta, Matias Sosa) - el prefijo es un tratamiento,
 // no parte del nombre que queremos guardar en `User.name`.
 const PERSONAS: PersonaSeed[] = [
   // ── VENDEDOR ──
@@ -122,13 +122,13 @@ async function resolverSlugSinChoque(
     return { slug: slugDeseado, huboChoque: false };
   }
   // Choque real con otra persona: sufijo -2. No contemplamos -3+ porque la
-  // lista es fija y conocida — si hiciera falta, se ve en el warning.
+  // lista es fija y conocida - si hiciera falta, se ve en el warning.
   return { slug: `${slugDeseado}-2`, huboChoque: true };
 }
 
 async function main() {
   console.log(
-    `[seed-usuarios-traveloz] ${DRY_RUN ? "DRY RUN — no se escribe nada" : "APLICANDO cambios"} — ${PERSONAS.length} personas.\n`,
+    `[seed-usuarios-traveloz] ${DRY_RUN ? "DRY RUN · no se escribe nada" : "APLICANDO cambios"} · ${PERSONAS.length} personas.\n`,
   );
 
   const resumen: FilaResumen[] = [];
@@ -140,7 +140,7 @@ async function main() {
     const { slug: slugFinal, huboChoque } = await resolverSlugSinChoque(persona.slug, email);
     if (huboChoque) {
       console.warn(
-        `  ⚠ Slug "${persona.slug}" ya está en uso por otro usuario — se usa "${slugFinal}" para ${persona.nombre}.`,
+        `  ⚠ Slug "${persona.slug}" ya está en uso por otro usuario · se usa "${slugFinal}" para ${persona.nombre}.`,
       );
     }
 
@@ -160,7 +160,7 @@ async function main() {
           },
         });
         // Mismo funnel de auditoría que usa el resto del sistema (ver
-        // src/actions/user.actions.ts) — deja rastro de que este alta vino
+        // src/actions/user.actions.ts) - deja rastro de que este alta vino
         // del seed puntual del equipo, no de la UI.
         // Insert directo con el prisma del script: importar src/lib/audit
         // arrastra el logger de la app y cuelga bajo tsx. Best-effort.
@@ -188,7 +188,7 @@ async function main() {
     }
 
     // Ya existe: SOLO tocamos role y slug (slug solo si hoy es null). Nunca
-    // pisamos passwordHash / mustChangePassword / isActive — la persona ya
+    // pisamos passwordHash / mustChangePassword / isActive - la persona ya
     // tiene su contraseña real y la está usando (caso Gerónimo).
     const data: { role?: Role; slug?: string } = {};
     if (existente.role !== persona.role) data.role = persona.role;
@@ -216,8 +216,8 @@ async function main() {
       slug: existente.slug ?? slugFinal,
       resultado: huboCambios ? "actualizado" : "salteado",
       detalle: huboCambios
-        ? `ya existía — se actualizó: ${Object.keys(data).join(", ")}`
-        : "ya existía — sin cambios (role y slug ya estaban correctos)",
+        ? `ya existía · se actualizó: ${Object.keys(data).join(", ")}`
+        : "ya existía · sin cambios (role y slug ya estaban correctos)",
       passwordParaCsv: "(la que ya tenía)",
     });
   }
@@ -265,7 +265,7 @@ async function main() {
 
   console.log(
     "\n" +
-      "⚠️⚠️⚠️  ATENCIÓN — ese CSV tiene contraseñas en texto plano.  ⚠️⚠️⚠️\n" +
+      "⚠️⚠️⚠️  ATENCIÓN · ese CSV tiene contraseñas en texto plano.  ⚠️⚠️⚠️\n" +
       "NO SE COMMITEA. Está cubierto por .gitignore (credenciales-*.csv).\n" +
       "Compartilo por un canal seguro y borralo del repo local cuando termines.\n",
   );

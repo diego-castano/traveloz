@@ -13,7 +13,7 @@
 //     /api/datos/upload y acá solo llegan las keys del bucket como strings.
 //   • Nada de la tarjeta se loguea ni se devuelve al cliente. El logger solo
 //     ve ids. Si no hay DATOS_PAGO_KEY, el formulario responde "no disponible"
-//     — jamás se guarda en claro.
+//     - jamás se guarda en claro.
 //   • Persistencia con UN create anidado, sin $transaction interactiva: la
 //     DATABASE_URL de producción pasa por pgbouncer en transaction mode con
 //     connection_limit=1 y una transacción larga congela toda la app.

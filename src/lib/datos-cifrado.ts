@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Bóveda de datos de pago — cifrado AES-256-GCM.
+// Bóveda de datos de pago - cifrado AES-256-GCM.
 //
 // El número de tarjeta, el vencimiento, el CVV y el documento del titular
 // NUNCA se persisten en claro ni se loguean. Entran acá como objeto, salen

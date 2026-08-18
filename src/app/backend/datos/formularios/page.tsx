@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// /backend/datos/formularios — edición de las dos páginas públicas de datos.
+// /backend/datos/formularios - edición de las dos páginas públicas de datos.
 //
 // La lectura va en el server (getFormulariosAdmin es self-healing: crea la
 // fila apagada si todavía no existe) y el editor es cliente porque el
@@ -10,7 +10,7 @@ import { getFormulariosAdmin } from "@/actions/datos-admin.actions";
 import { FormulariosEditor } from "../_components/FormulariosEditor";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Formularios de datos — TravelOz" };
+export const metadata = { title: "Formularios de datos · TravelOz" };
 
 export default async function FormulariosPage() {
   let inicial;

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// /backend/datos/pagos/[id] — un registro de la bóveda en su propia página.
+// /backend/datos/pagos/[id] - un registro de la bóveda en su propia página.
 //
 // Es el deep-link del email de aviso al vendedor, igual que en pasajeros. Acá
 // no hace falta bifurcar por rol: getPagoMeta ya resuelve el alcance
@@ -18,7 +18,7 @@ import { getPagoMeta } from "@/actions/datos-boveda.actions";
 import { PagoAbrirButton } from "../../_components/PagoAbrirButton";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Datos de pago — TravelOz" };
+export const metadata = { title: "Datos de pago · TravelOz" };
 
 const fechaHora = new Intl.DateTimeFormat("es-UY", {
   dateStyle: "medium",
@@ -26,7 +26,7 @@ const fechaHora = new Intl.DateTimeFormat("es-UY", {
 });
 
 const ESTADO_TEXTO: Record<string, string> = {
-  DISPONIBLE: "Sin abrir — los datos siguen en la bóveda.",
+  DISPONIBLE: "Sin abrir · los datos siguen en la bóveda.",
   VISTO: "Ya se abrió al menos una vez. Sigue disponible hasta que venza.",
   VENCIDO: "Pasaron las 72 horas: los datos ya no se pueden abrir.",
   PURGADO: "Los datos se borraron. Queda el registro, no la tarjeta.",

@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// /datos-de-pago/<User.slug> — link público permanente de cada vendedor.
+// /datos-de-pago/<User.slug> - link público permanente de cada vendedor.
 //
 // Misma anatomía que la pantalla de pasajeros (hero + tarjeta del asesor +
 // tarjeta blanca con el formulario), con un estado no feliz extra: si falta la
 // env DATOS_PAGO_KEY, la bóveda no puede cifrar y la página responde "no
-// disponible". PROHIBIDO ofrecer el formulario sin cifrado — antes ninguno.
+// disponible". PROHIBIDO ofrecer el formulario sin cifrado - antes ninguno.
 // ---------------------------------------------------------------------------
 
 import { notFound } from "next/navigation";
@@ -19,7 +19,7 @@ import { VendedorCard } from "../../_components/VendedorCard";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Datos de pago — TravelOz",
+  title: "Datos de pago · TravelOz",
   robots: { index: false, follow: false },
 };
 

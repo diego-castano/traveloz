@@ -1,7 +1,7 @@
 "use client";
 
 // ---------------------------------------------------------------------------
-// LinkModal — el link personal del vendedor, en tres formas de compartirlo:
+// LinkModal - el link personal del vendedor, en tres formas de compartirlo:
 // mostrarlo (QR), mandarlo por email, o abrir el formulario para ver qué le
 // llega al pasajero.
 //
