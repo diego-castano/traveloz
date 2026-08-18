@@ -101,6 +101,19 @@ model User {
   passwordResetExpires DateTime?
   // Permanent global admin — cannot be demoted, deactivated, or deleted via UI.
   isProtected          Boolean   @default(false)
+  // ── Identidad pública del vendedor (links de datos de pasajeros/pago) ──
+  // Slug del link personal: traveloz.com.uy/datos-de-pasajeros/<slug>.
+  // Nunca se recicla entre personas: si alguien se va, su slug queda muerto.
+  slug                 String?   @unique
+  fotoUrl              String?
+  telefono             String?
+  whatsapp             String?
+  // Interruptor del link público. Apagado → página de cortesía, no 404.
+  linkActivo           Boolean   @default(true)
+  // Primer ingreso con contraseña temporal (seed del equipo). El usuario
+  // elige entre cambiarla o seguir con la temporal; ambas limpian el flag.
+  mustChangePassword   Boolean   @default(false)
+  passwordChangedAt    DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
@@ -1108,4 +1121,135 @@ model IdCounter {
   entity    String   @id
   lastValue Int      @default(0)
   updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────────
+// Datos de pasajeros y datos de pago — links personales por vendedor.
+// Cada vendedor tiene dos URLs públicas permanentes (por User.slug):
+//   /datos-de-pasajeros/<slug>  → EnvioPasajeros + PasajeroDato
+//   /datos-de-pago/<slug>       → DatosPagoCifrado (bóveda 72 h)
+// ──────────────────────────────────────────────
+
+enum TipoFormularioDato {
+  PASAJEROS
+  PAGO
+}
+
+// Definición editable de cada formulario (dos filas, una por tipo). `campos`
+// usa el mismo contrato FormField del cotizador (src/lib/cotizador-form.ts)
+// para los campos EXTRA que el admin agregue; los campos duros del pasajero
+// van tipados en PasajeroDato. `publicado: false` → la página pública responde
+// "no disponible" (así se deploya sin que nadie lo vea).
+model FormularioDato {
+  id        String             @id @default(cuid())
+  tipo      TipoFormularioDato @unique
+  titulo    String
+  texto     String?            @db.Text
+  campos    Json               @default("[]")
+  publicado Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+}
+
+// Un envío dirigido a un pasajero concreto (botón "Enviar por email" del
+// vendedor). El link permanente NO pasa por acá. Token de un solo uso en la
+// URL (?s=<token>): precarga destinatario y sella completadoAt al enviar.
+// Referencias a User como String suelto, misma convención que asignadoAUserId.
+model SolicitudDato {
+  id                 String             @id @default(cuid())
+  tipo               TipoFormularioDato
+  vendedorId         String
+  vendedorEmail      String
+  vendedorNombre     String
+  destinatarioEmail  String
+  destinatarioNombre String?
+  destino            String?
+  referencia         String?
+  token              String             @unique
+  enviadoAt          DateTime           @default(now())
+  expiraAt           DateTime
+  completadoAt       DateTime?
+
+  @@index([vendedorId, enviadoAt(sort: Desc)])
+}
+
+// El grupo que llegó de una sola pasada por el formulario de pasajeros.
+// Facturación con RUT solo si marcaron la casilla. vistoAt se sella al abrir
+// el detalle (marca automática, no manual como en Leads).
+model EnvioPasajeros {
+  id                 String    @id @default(cuid())
+  vendedorId         String
+  vendedorEmail      String
+  solicitudId        String?
+  destino            String?
+  referencia         String?
+  facturaRut         String?
+  facturaRazonSocial String?
+  facturaEmail       String?
+  facturaDireccion   String?
+  vistoAt            DateTime?
+  createdAt          DateTime  @default(now())
+  ip                 String?
+  userAgent          String?
+
+  pasajeros PasajeroDato[]
+
+  @@index([vendedorId, createdAt(sort: Desc)])
+  @@index([destino])
+  @@index([createdAt(sort: Desc)])
+}
+
+// Un pasajero dentro de un envío. Campos duros tipados (se buscan y exportan);
+// `respuestas` guarda solo los campos extra definidos en FormularioDato.
+// Los archivos van a S3 bajo un prefijo que exige sesión para descargar.
+model PasajeroDato {
+  id                  String    @id @default(cuid())
+  envioId             String
+  orden               Int       @default(0)
+  nombres             String
+  apellidos           String
+  fechaNacimiento     DateTime?
+  documento           String
+  pasaporte           String?
+  email               String
+  telefono            String
+  direccion           String?
+  pais                String?
+  ciudad              String?
+  documentoArchivoUrl String?
+  pasaporteArchivoUrl String?
+  respuestas          Json      @default("[]")
+
+  envio EnvioPasajeros @relation(fields: [envioId], references: [id], onDelete: Cascade)
+
+  @@index([envioId])
+  @@index([email])
+}
+
+// Bóveda de datos de tarjeta. El payload (PAN, vencimiento, CVV, documento)
+// viaja cifrado AES-256-GCM con DATOS_PAGO_KEY; iv y tag por registro. A las
+// 72 h el barrido pone payload/iv/tag en null y sella purgadoAt — la fila
+// sobrevive como registro (titular, emisor, ultimos4, fechas). NUNCA se
+// loguea el cuerpo del request ni se persiste el número en claro.
+model DatosPagoCifrado {
+  id                   String    @id @default(cuid())
+  vendedorId           String
+  vendedorEmail        String
+  solicitudId          String?
+  titular              String
+  emisor               String?
+  ultimos4             String
+  payload              Bytes?
+  iv                   Bytes?
+  tag                  Bytes?
+  // ID del email recordatorio agendado en Resend (24 h antes de expirar);
+  // se cancela contra la API si el vendedor abre la bóveda antes.
+  recordatorioResendId String?
+  createdAt            DateTime  @default(now())
+  expiraAt             DateTime
+  vistoAt              DateTime?
+  purgadoAt            DateTime?
+
+  @@index([vendedorId, createdAt(sort: Desc)])
+  @@index([expiraAt])
 }

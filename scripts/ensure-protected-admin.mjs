@@ -4,7 +4,8 @@
  * Runs on every Railway boot (chained after `prisma migrate deploy` in
  * scripts/railway-start.sh) so prod always has a known break-glass admin
  * even if no one ran `db:seed`. Safe to re-run: uses upsert with re-asserted
- * fields (role / isProtected / isActive / passwordHash).
+ * fields (role / isProtected / isActive). The password is only written on
+ * create so UI password changes survive deploys.
  *
  * Written as plain ESM JS (no tsx) so it works in production where
  * devDependencies may not be installed. Both `@prisma/client` and
@@ -51,11 +52,14 @@ async function main() {
         // Re-assert the load-bearing fields on every boot so a manual UI
         // toggle can't strand the break-glass account. We don't touch `name`
         // here so the user can edit it from "Mi perfil" without it being
-        // overwritten on the next deploy.
+        // overwritten on the next deploy — and we don't touch `passwordHash`
+        // either: re-asserting it silently reverted any password the owner
+        // set from the UI back to PROTECTED_ADMIN_PASSWORD on every deploy.
+        // The password is only written on create (first bootstrap); recovery
+        // from a lost password is the normal reset-password flow.
         role: "ADMIN",
         isProtected: true,
         isActive: true,
-        passwordHash,
       },
     });
     console.log(`[ensure-protected-admin] OK — ${email} is ADMIN + isProtected.`);
