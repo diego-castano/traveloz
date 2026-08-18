@@ -32,6 +32,10 @@ const segmentLabels: Record<string, string> = {
   perfiles: "Perfiles",
   notificaciones: "Notificaciones",
   reportes: "Reportes",
+  datos: "Pasajeros y pagos",
+  pasajeros: "Pasajeros",
+  pagos: "Datos de pago",
+  formularios: "Formularios",
 };
 
 function generateBreadcrumbs(pathname: string) {
