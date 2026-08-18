@@ -16,7 +16,7 @@
 
 import { useState } from "react";
 import { esVisible, type FormField } from "@/lib/cotizador-form";
-import { ACENTO, Ayuda, Label, inputClass } from "./ui";
+import { Ayuda, Label, inputClass } from "./ui";
 
 function OpcionCard({
   type,
@@ -39,7 +39,7 @@ function OpcionCard({
     <label
       // has-[:checked] evita duplicar en estado React el "seleccionado" de cada
       // opción: el borde y el fondo salen del propio input marcado.
-      className="flex cursor-pointer items-start gap-3 rounded-xl border border-neutral-300 bg-white p-3.5 transition has-[:checked]:border-[#F43E55] has-[:checked]:bg-[#F43E55]/5"
+      className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-neutral-900/[0.14] bg-white px-3 py-2.5 transition-colors hover:border-neutral-900/25 has-[:checked]:border-[#F43E55]/70 has-[:checked]:bg-[#F43E55]/[0.04]"
     >
       <input
         type={type}
@@ -47,12 +47,13 @@ function OpcionCard({
         value={value}
         defaultChecked={defaultChecked}
         onChange={(e) => onChange?.(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0"
-        style={{ accentColor: ACENTO }}
+        className="fx-check"
       />
       <span className="leading-snug">
-        <span className="block text-[15px] text-neutral-800">{label}</span>
-        {descripcion && <span className="mt-0.5 block text-xs text-neutral-500">{descripcion}</span>}
+        <span className="block text-[14px] text-neutral-800">{label}</span>
+        {descripcion && (
+          <span className="mt-0.5 block text-[11.5px] text-neutral-500">{descripcion}</span>
+        )}
       </span>
     </label>
   );
@@ -82,9 +83,11 @@ export function CamposExtra({
             return (
               <div
                 key={c.id}
-                className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-sm leading-relaxed text-neutral-600"
+                className="rounded-[10px] border border-neutral-900/[0.08] bg-neutral-50/70 px-3.5 py-3 text-[13px] leading-relaxed text-neutral-600"
               >
-                {c.etiqueta && <div className="mb-1 font-medium text-neutral-800">{c.etiqueta}</div>}
+                {c.etiqueta && (
+                  <div className="mb-0.5 font-semibold text-neutral-800">{c.etiqueta}</div>
+                )}
                 <div className="whitespace-pre-line">{c.contenido}</div>
               </div>
             );
@@ -144,7 +147,7 @@ export function CamposExtra({
             return (
               <div key={c.id}>
                 <Label requerido={c.requerido}>{c.etiqueta}</Label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                   <input
                     name={`${name}__desde`}
                     type="date"
@@ -210,7 +213,8 @@ export function CamposExtra({
           case "casilla":
             return (
               <div key={c.id}>
-                <label className="flex cursor-pointer items-start gap-3">
+                {/* El -my-1/py-1 agranda el área de toque sin agrandar el bloque. */}
+                <label className="-my-1 flex cursor-pointer items-start gap-2.5 py-1">
                   <input
                     type="checkbox"
                     name={name}
@@ -219,10 +223,9 @@ export function CamposExtra({
                     onChange={(e) =>
                       setControl((v) => ({ ...v, [c.id]: e.target.checked ? "si" : "" }))
                     }
-                    className="mt-0.5 h-4 w-4 shrink-0"
-                    style={{ accentColor: ACENTO }}
+                    className="fx-check"
                   />
-                  <span className="text-[15px] leading-snug text-neutral-700">{c.etiqueta}</span>
+                  <span className="text-[13.5px] leading-snug text-neutral-700">{c.etiqueta}</span>
                 </label>
                 <Ayuda>{c.ayuda}</Ayuda>
               </div>

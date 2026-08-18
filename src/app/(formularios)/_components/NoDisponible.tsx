@@ -33,8 +33,8 @@ export async function NoDisponible({
         </p>
       </div>
 
-      <div className="mx-auto mt-7 max-w-xl rounded-3xl border border-neutral-200/80 bg-white p-6 shadow-[0_8px_40px_rgba(15,23,42,0.06)] sm:p-8">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+      <div className="mx-auto mt-7 max-w-xl rounded-[20px] border border-neutral-900/[0.07] bg-white p-6 shadow-[0_12px_40px_-14px_rgba(15,23,42,0.18)] sm:p-8">
+        <p className="text-[11.5px] font-bold uppercase tracking-[0.11em] text-neutral-500">
           Contacto TravelOz
         </p>
         <div className="mt-4 space-y-3 text-[15px] text-neutral-700">

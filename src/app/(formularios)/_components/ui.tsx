@@ -3,9 +3,11 @@
 // ---------------------------------------------------------------------------
 // Primitivas compartidas por los dos formularios de datos.
 //
-// Mismo sistema visual que el DynamicForm de los landings: tarjeta blanca,
-// inputs redondeados de 16px (por debajo de eso iOS hace auto-zoom al enfocar)
-// y el rojo de marca como único acento.
+// El sistema visual arranca del DynamicForm de los landings (tarjeta blanca,
+// rojo de marca como único acento) y lo afina: el campo mide 46px en mobile y
+// 42px con puntero fino, el radio es 10px en todos los controles y el foco va
+// en violeta para no confundirse con un error. Toda la chapa del campo vive en
+// formularios.css bajo .fx-input; acá solo se compone.
 // ---------------------------------------------------------------------------
 
 import { useFormStatus } from "react-dom";
@@ -15,8 +17,8 @@ import { motion } from "motion/react";
 /** Acento de marca. Fijo, igual que en los landings de cotizador. */
 export const ACENTO = "#F43E55";
 
-export const inputClass =
-  "w-full rounded-xl border border-neutral-300 bg-white px-4 py-3.5 text-base text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10";
+/** Clase única de todos los controles. Ver formularios.css. */
+export const inputClass = "fx-input";
 
 export function Label({
   children,
@@ -28,16 +30,40 @@ export function Label({
   htmlFor?: string;
 }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1.5 block text-[13px] font-medium text-neutral-600">
+    <label
+      htmlFor={htmlFor}
+      className="mb-[5px] block text-[12.5px] font-medium leading-tight text-neutral-600"
+    >
       {children}
-      {requerido && <span className="text-red-500"> *</span>}
+      {/* El asterisco marca, no grita: rojo de marca al 55%. */}
+      {requerido && <span className="ml-0.5 text-[#F43E55]/[0.55]">*</span>}
     </label>
   );
 }
 
 export function Ayuda({ children }: { children?: string }) {
   if (!children) return null;
-  return <p className="mt-1 text-xs text-neutral-400">{children}</p>;
+  return <p className="mt-1 text-[11.5px] leading-snug text-neutral-400">{children}</p>;
+}
+
+/**
+ * Título de sección. La barrita de color le da jerarquía sin subir el tamaño:
+ * el protagonista de la pantalla son los campos, no los rótulos.
+ */
+export function Seccion({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span aria-hidden className="h-3 w-[3px] rounded-full" style={{ background: ACENTO }} />
+      <h2 className="text-[11.5px] font-bold uppercase tracking-[0.11em] text-neutral-500">
+        {children}
+      </h2>
+    </div>
+  );
+}
+
+/** Separador entre secciones. Hairline, no una línea gris marcada. */
+export function Separador() {
+  return <div aria-hidden className="h-px bg-neutral-900/[0.07]" />;
 }
 
 /** Campo de texto simple. Uncontrolado: el FormData lo lee del DOM. */
@@ -47,6 +73,7 @@ export function Campo({
   requerido,
   type = "text",
   ayuda,
+  className,
   ...rest
 }: {
   name: string;
@@ -60,7 +87,14 @@ export function Campo({
       <Label requerido={requerido} htmlFor={name}>
         {label}
       </Label>
-      <input id={name} name={name} type={type} className={inputClass} {...rest} />
+      {/* className suma modificadores (fx-num, …), nunca reemplaza la base. */}
+      <input
+        id={name}
+        name={name}
+        type={type}
+        {...rest}
+        className={className ? `${inputClass} ${className}` : inputClass}
+      />
       <Ayuda>{ayuda}</Ayuda>
     </div>
   );
@@ -88,12 +122,18 @@ export function SubmitButton({
   disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
+  const bloqueado = pending || disabled;
   return (
     <button
       type="submit"
-      disabled={pending || disabled}
-      style={{ background: ACENTO }}
-      className="mt-1 w-full rounded-full px-6 py-4 text-base font-semibold text-white shadow-sm transition active:scale-[0.99] hover:brightness-110 disabled:opacity-60"
+      disabled={bloqueado}
+      style={{
+        background: ACENTO,
+        // Sombra teñida del propio botón: lo despega de la tarjeta sin el gris
+        // sucio de una sombra neutra. Se apaga cuando está bloqueado.
+        boxShadow: bloqueado ? "none" : "0 8px 20px -10px rgba(244,62,85,0.85)",
+      }}
+      className="flex h-[50px] w-full items-center justify-center rounded-[12px] px-6 text-[15.5px] font-semibold tracking-[0.01em] text-white transition-all duration-150 hover:brightness-[1.06] active:translate-y-px active:brightness-95 disabled:cursor-not-allowed disabled:opacity-[0.55] sm:h-[46px] sm:text-[15px]"
     >
       {pending ? "Enviando…" : children}
     </button>
@@ -103,24 +143,24 @@ export function SubmitButton({
 /** Pantalla de éxito inline: el formulario se reemplaza por el check. */
 export function Exito({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
-    <div className="flex flex-col items-center rounded-2xl border border-emerald-200 bg-emerald-50 px-6 py-12 text-center">
+    <div className="flex flex-col items-center rounded-[14px] border border-emerald-200/70 bg-emerald-50/60 px-6 py-12 text-center">
       <motion.div
         initial={{ scale: 0.6, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 320, damping: 18 }}
-        className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
-        style={{ background: ACENTO }}
+        className="mb-4 flex h-14 w-14 items-center justify-center rounded-full"
+        style={{ background: ACENTO, boxShadow: "0 10px 24px -12px rgba(244,62,85,0.9)" }}
       >
         <motion.span
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.14, type: "spring", stiffness: 360, damping: 16 }}
         >
-          <Check className="h-8 w-8 text-white" strokeWidth={3} />
+          <Check className="h-7 w-7 text-white" strokeWidth={2.6} />
         </motion.span>
       </motion.div>
-      <p className="text-lg font-semibold text-neutral-900">{titulo}</p>
-      <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-neutral-500">{detalle}</p>
+      <p className="text-[17px] font-semibold text-neutral-900">{titulo}</p>
+      <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-neutral-500">{detalle}</p>
     </div>
   );
 }
@@ -128,7 +168,7 @@ export function Exito({ titulo, detalle }: { titulo: string; detalle: string }) 
 export function ErrorMsg({ children }: { children?: string }) {
   if (!children) return null;
   return (
-    <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+    <p className="rounded-[10px] border border-red-200/80 bg-red-50/70 px-3.5 py-3 text-[13px] font-medium leading-snug text-red-700">
       {children}
     </p>
   );

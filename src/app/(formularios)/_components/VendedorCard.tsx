@@ -25,25 +25,25 @@ export function VendedorCard({ vendedor }: { vendedor: VendedorPublicoView }) {
   const telefono = (vendedor.telefono ?? "").replace(/[^\d+]/g, "");
 
   return (
-    <div className="mx-auto flex max-w-xl flex-wrap items-center gap-4 rounded-2xl border border-white/70 bg-white/95 p-4 shadow-[0_8px_30px_rgba(15,23,42,0.10)] backdrop-blur sm:p-5">
+    <div className="mx-auto flex max-w-xl flex-wrap items-center gap-3.5 rounded-[16px] border border-white/70 bg-white/95 p-3.5 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.35)] backdrop-blur sm:gap-4 sm:p-4">
       {vendedor.fotoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={vendedor.fotoUrl}
           alt=""
-          className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-white"
+          className="h-12 w-12 shrink-0 rounded-full object-cover ring-2 ring-white sm:h-[52px] sm:w-[52px]"
         />
       ) : (
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-lg font-semibold text-neutral-500">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[15px] font-semibold text-neutral-500 sm:h-[52px] sm:w-[52px]">
           {iniciales(vendedor.nombre)}
         </div>
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-neutral-400">
           Tu asesor
         </p>
-        <p className="truncate text-[17px] font-semibold leading-tight text-neutral-900">
+        <p className="mt-0.5 truncate text-[16px] font-semibold leading-tight text-neutral-900">
           {vendedor.nombre}
         </p>
       </div>
@@ -55,18 +55,18 @@ export function VendedorCard({ vendedor }: { vendedor: VendedorPublicoView }) {
               href={`https://wa.me/${whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white transition active:scale-[0.98] hover:brightness-105 sm:flex-none"
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-[13.5px] font-semibold text-white transition-all active:translate-y-px hover:brightness-105 sm:h-9 sm:flex-none sm:text-[13px]"
             >
-              <MessageCircle className="h-4 w-4" />
+              <MessageCircle className="h-3.5 w-3.5" strokeWidth={2} />
               WhatsApp
             </a>
           )}
           {telefono && (
             <a
               href={`tel:${telefono}`}
-              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-700 transition active:scale-[0.98] hover:border-neutral-500 sm:flex-none"
+              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-full border border-neutral-900/15 px-4 text-[13.5px] font-semibold text-neutral-700 transition-all active:translate-y-px hover:border-neutral-900/35 sm:h-9 sm:flex-none sm:text-[13px]"
             >
-              <Phone className="h-4 w-4" />
+              <Phone className="h-3.5 w-3.5" strokeWidth={2} />
               Llamar
             </a>
           )}

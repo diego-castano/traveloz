@@ -81,7 +81,7 @@ export default async function DatosDePasajerosPage({
         <VendedorCard vendedor={vendedor} />
       </div>
 
-      <section className="mx-auto mt-4 max-w-xl rounded-3xl border border-neutral-200/80 bg-white p-4 shadow-[0_8px_40px_rgba(15,23,42,0.06)] sm:p-7">
+      <section className="mx-auto mt-5 max-w-xl rounded-[20px] border border-neutral-900/[0.07] bg-white p-4 shadow-[0_12px_40px_-14px_rgba(15,23,42,0.18)] sm:p-8">
         <PasajerosForm
           slug={slug}
           token={precarga ? token : null}

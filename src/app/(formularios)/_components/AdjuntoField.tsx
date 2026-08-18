@@ -15,7 +15,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { FileText, Loader2, Paperclip, X } from "lucide-react";
+import { Check, FileText, Loader2, Paperclip, X } from "lucide-react";
 import { ACENTO, Label } from "./ui";
 
 export interface Adjunto {
@@ -161,28 +161,33 @@ export function AdjuntoField({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5"
+            className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-emerald-300/70 bg-emerald-50/50 p-1.5 pr-1 sm:min-h-[42px]"
           >
             {value.previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={value.previewUrl}
                 alt=""
-                className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                className="h-9 w-9 shrink-0 rounded-md object-cover ring-1 ring-black/5"
               />
             ) : (
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white text-neutral-400">
-                <FileText className="h-5 w-5" />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-neutral-400 ring-1 ring-black/5">
+                <FileText className="h-4 w-4" strokeWidth={1.7} />
               </div>
             )}
-            <span className="min-w-0 flex-1 truncate text-sm text-neutral-700">{value.nombre}</span>
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <Check className="h-3 w-3" strokeWidth={3} />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[12.5px] text-neutral-700">
+              {value.nombre}
+            </span>
             <button
               type="button"
               onClick={quitar}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-700"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-white hover:text-neutral-700"
               aria-label={`Quitar ${label}`}
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </motion.div>
         ) : estado.fase === "subiendo" ? (
@@ -191,13 +196,14 @@ export function AdjuntoField({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="rounded-xl border border-neutral-300 bg-white p-3.5"
+            className="flex min-h-[46px] flex-col justify-center gap-2 rounded-[10px] border border-neutral-900/[0.14] bg-white px-3 py-2.5 sm:min-h-[42px]"
           >
-            <div className="flex items-center gap-2 text-sm text-neutral-600">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Subiendo… {estado.progreso}%
+            <div className="flex items-center gap-2 text-[12.5px] font-medium text-neutral-600">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span className="flex-1">Subiendo…</span>
+              <span className="tabular-nums text-neutral-400">{estado.progreso}%</span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+            <div className="h-[3px] overflow-hidden rounded-full bg-neutral-100">
               <motion.div
                 className="h-full rounded-full"
                 style={{ background: ACENTO }}
@@ -214,19 +220,19 @@ export function AdjuntoField({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => inputRef.current?.click()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 bg-white px-4 py-4 text-sm font-medium text-neutral-600 transition active:scale-[0.99] hover:border-neutral-500 hover:text-neutral-900"
+            className="flex h-[46px] w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-neutral-900/20 bg-neutral-50/50 px-3 text-[13px] font-medium text-neutral-600 transition-colors hover:border-neutral-900/40 hover:bg-neutral-50 hover:text-neutral-900 sm:h-[42px] sm:text-[12.5px]"
           >
-            <Paperclip className="h-4 w-4" />
+            <Paperclip className="h-3.5 w-3.5 text-neutral-400" strokeWidth={1.8} />
             Adjuntar archivo
           </motion.button>
         )}
       </AnimatePresence>
 
       {estado.fase === "error" && (
-        <p className="mt-1.5 text-xs font-medium text-red-600">{estado.message}</p>
+        <p className="mt-1 text-[11.5px] font-medium leading-snug text-red-600">{estado.message}</p>
       )}
       {ayuda && estado.fase !== "error" && (
-        <p className="mt-1.5 text-xs text-neutral-400">{ayuda}</p>
+        <p className="mt-1 text-[11.5px] leading-snug text-neutral-400">{ayuda}</p>
       )}
     </div>
   );

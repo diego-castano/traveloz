@@ -24,7 +24,18 @@ import { submitEnvioPasajeros, type FormResult } from "@/actions/datos-publico.a
 import type { FormField } from "@/lib/cotizador-form";
 import { AdjuntoField, type Adjunto } from "./AdjuntoField";
 import { CamposExtra } from "./CamposExtra";
-import { ACENTO, Campo, ErrorMsg, Exito, Honeypot, Label, SubmitButton, inputClass } from "./ui";
+import {
+  ACENTO,
+  Campo,
+  ErrorMsg,
+  Exito,
+  Honeypot,
+  Label,
+  Seccion,
+  Separador,
+  SubmitButton,
+  inputClass,
+} from "./ui";
 
 interface Slot {
   id: string;
@@ -162,15 +173,13 @@ export function PasajerosForm({
   }
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-6">
+    <form ref={formRef} action={formAction} className="space-y-6 sm:space-y-7">
       <Honeypot />
       <input type="hidden" name="cantidadPasajeros" value={slots.length} />
 
       {/* ── Datos del viaje ─────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
-          El viaje
-        </h2>
+      <section className="space-y-3.5">
+        <Seccion>El viaje</Seccion>
         <Campo
           name="destino"
           label="Destino"
@@ -190,13 +199,11 @@ export function PasajerosForm({
         />
       </section>
 
-      <div className="h-px bg-neutral-100" />
+      <Separador />
 
       {/* ── Pasajeros ───────────────────────────────────────────────────── */}
-      <section className="space-y-3">
-        <h2 className="text-[13px] font-semibold uppercase tracking-[0.08em] text-neutral-400">
-          Pasajeros
-        </h2>
+      <section className="space-y-2.5">
+        <Seccion>Pasajeros</Seccion>
 
         <AnimatePresence initial={false}>
           {slots.map((slot, idx) => {
@@ -212,51 +219,62 @@ export function PasajerosForm({
                 exit={{ opacity: 0, height: 0, marginTop: 0 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
                 data-bloque={slot.id}
-                className="overflow-hidden rounded-2xl border border-neutral-200 bg-white"
+                className="overflow-hidden rounded-[14px] border border-neutral-900/[0.1] bg-white shadow-[0_1px_2px_rgba(17,17,36,0.04)]"
               >
                 {/* Cabecera plegable */}
-                <div className="flex items-center gap-3 px-4 py-3.5">
-                  <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-white"
-                    style={{ background: ACENTO }}
+                <div className="flex items-center gap-2.5 pl-3 pr-2">
+                  {/* Chip fino en vez de círculo macizo: numera sin gritar. */}
+                  <span
+                    className="flex h-6 min-w-[24px] shrink-0 items-center justify-center rounded-full border px-1.5 text-[11.5px] font-bold"
+                    style={{
+                      borderColor: "rgba(244,62,85,0.28)",
+                      background: "rgba(244,62,85,0.07)",
+                      color: ACENTO,
+                    }}
                   >
                     {idx + 1}
-                  </div>
+                  </span>
                   <button
                     type="button"
                     onClick={() => alternar(slot.id)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-3 text-left transition-colors hover:bg-neutral-900/[0.02]"
                     aria-expanded={abierto}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold leading-tight text-neutral-900">
+                      <span className="block text-[14px] font-semibold leading-tight text-neutral-900">
                         Pasajero {idx + 1}
                       </span>
                       {nombre && !abierto && (
-                        <span className="mt-0.5 block truncate text-[13px] text-neutral-500">
+                        <span className="mt-0.5 block truncate text-[12.5px] leading-tight text-neutral-500">
                           {nombre}
                         </span>
                       )}
                     </span>
-                    <motion.span animate={{ rotate: abierto ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                      <ChevronDown className="h-5 w-5 text-neutral-400" />
+                    {/* La flecha va en su propio botón redondo: deja claro que
+                        la fila entera pliega, no solo el texto. */}
+                    <motion.span
+                      animate={{ rotate: abierto ? 180 : 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-neutral-100/80 text-neutral-500"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.2} />
                     </motion.span>
                   </button>
                   {slots.length > 1 && (
                     <button
                       type="button"
                       onClick={() => quitar(slot.id)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-400 transition hover:bg-red-50 hover:text-red-600"
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-neutral-300 transition-colors hover:bg-red-50 hover:text-red-600"
                       aria-label={`Quitar pasajero ${idx + 1}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
                     </button>
                   )}
                 </div>
 
                 {avisoPliegue === slot.id && abierto && (
-                  <p className="px-4 pb-2 text-xs font-medium text-amber-600">
-                    Completá los datos y el documento antes de plegar este pasajero.
+                  <p className="px-3 pb-2.5 text-[11.5px] leading-snug text-neutral-500">
+                    Completá los datos y el documento para poder plegar este pasajero.
                   </p>
                 )}
 
@@ -267,8 +285,8 @@ export function PasajerosForm({
                   animate={{ height: abierto ? "auto" : 0, opacity: abierto ? 1 : 0 }}
                   transition={{ duration: 0.25, ease: "easeOut" }}
                 >
-                  <div className="space-y-4 border-t border-neutral-100 px-4 py-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-3.5 border-t border-neutral-900/[0.06] px-3 py-3.5 sm:px-4 sm:py-4">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <Campo
                         name={`${p}nombres`}
                         label="Nombres"
@@ -295,7 +313,7 @@ export function PasajerosForm({
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <Campo
                         name={`${p}documento`}
                         label="Documento"
@@ -318,7 +336,7 @@ export function PasajerosForm({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <Campo
                         name={`${p}email`}
                         label="Email"
@@ -350,7 +368,7 @@ export function PasajerosForm({
                       ayuda="Si el viaje lo requiere, cargalo junto con el número."
                     />
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <Campo
                         name={`${p}ciudad`}
                         label="Ciudad"
@@ -375,7 +393,7 @@ export function PasajerosForm({
                       autoComplete="street-address"
                     />
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <AdjuntoField
                         name={`${p}documentoKey`}
                         label="Foto del documento"
@@ -410,7 +428,7 @@ export function PasajerosForm({
         </AnimatePresence>
 
         {slots.length >= avisoDesde && slots.length < maxPasajeros && (
-          <p className="text-xs leading-relaxed text-neutral-500">
+          <p className="px-0.5 text-[11.5px] leading-relaxed text-neutral-500">
             Son muchos pasajeros para un solo envío. Si el grupo es más grande que{" "}
             {maxPasajeros}, mandá los datos en varias tandas o coordinalo con tu asesor.
           </p>
@@ -420,36 +438,34 @@ export function PasajerosForm({
           <button
             type="button"
             onClick={agregar}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-white px-4 py-4 text-[15px] font-semibold text-neutral-700 transition active:scale-[0.99] hover:border-neutral-500"
+            className="flex h-[46px] w-full items-center justify-center gap-2 rounded-[12px] border border-dashed border-neutral-900/20 bg-white text-[13.5px] font-semibold text-neutral-700 transition-colors hover:border-neutral-900/40 hover:bg-neutral-50/70 sm:h-[44px]"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5 text-neutral-400" strokeWidth={2.2} />
             Agregar pasajero
           </button>
         ) : (
-          <p className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-500">
+          <p className="rounded-[12px] border border-neutral-900/[0.08] bg-neutral-50/70 px-3.5 py-3 text-[11.5px] leading-relaxed text-neutral-500">
             Llegaste al máximo de {maxPasajeros} pasajeros por envío. Mandá estos y cargá el resto
             en un envío nuevo.
           </p>
         )}
       </section>
 
-      <div className="h-px bg-neutral-100" />
+      <Separador />
 
       {/* ── Facturación ─────────────────────────────────────────────────── */}
-      <section className="space-y-4">
-        <label className="flex cursor-pointer items-start gap-3">
+      <section className="space-y-3.5">
+        {/* Fila entera clickeable: la casilla suelta era un target de 16px. */}
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-[10px] border border-neutral-900/[0.14] bg-white px-3 py-3 transition-colors hover:border-neutral-900/25 has-[:checked]:border-[#F43E55]/70 has-[:checked]:bg-[#F43E55]/[0.04]">
           <input
             type="checkbox"
             name="quiereFactura"
             value="si"
             checked={quiereFactura}
             onChange={(e) => setQuiereFactura(e.target.checked)}
-            className="mt-0.5 h-4 w-4 shrink-0"
-            style={{ accentColor: ACENTO }}
+            className="fx-check !mt-0"
           />
-          <span className="text-[15px] leading-snug text-neutral-700">
-            Deseo factura con RUT
-          </span>
+          <span className="text-[13.5px] leading-snug text-neutral-700">Deseo factura con RUT</span>
         </label>
 
         <AnimatePresence initial={false}>
@@ -461,8 +477,8 @@ export function PasajerosForm({
               transition={{ duration: 0.25, ease: "easeOut" }}
               className="overflow-hidden"
             >
-              <div className="space-y-4 rounded-2xl border border-neutral-200 bg-white p-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-3.5 rounded-[14px] border border-neutral-900/[0.1] bg-white p-3.5 shadow-[0_1px_2px_rgba(17,17,36,0.04)] sm:p-4">
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                   <Campo
                     name="facturaRut"
                     label="RUT"
@@ -499,19 +515,22 @@ export function PasajerosForm({
         </AnimatePresence>
       </section>
 
-      {state && !state.ok && <ErrorMsg>{state.message}</ErrorMsg>}
-      {faltaDocumento && (
-        <p className="text-sm font-medium text-amber-600">
-          Falta adjuntar la foto del documento del pasajero {sinDocumento + 1}.
+      <div className="space-y-2.5">
+        {state && !state.ok && <ErrorMsg>{state.message}</ErrorMsg>}
+        {faltaDocumento && (
+          // Ayuda, no alarma: dice qué falta para habilitar el botón y se va.
+          <p className="text-center text-[12px] leading-snug text-neutral-500">
+            Falta adjuntar la foto del documento del pasajero {sinDocumento + 1}.
+          </p>
+        )}
+
+        <SubmitButton disabled={faltaDocumento || !lote}>Enviar los datos</SubmitButton>
+
+        <p className="flex items-center justify-center gap-1.5 text-center text-[11.5px] leading-snug text-neutral-400">
+          <UserRound className="h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />
+          Tus datos van directo a tu asesor y se usan solo para emitir los servicios.
         </p>
-      )}
-
-      <SubmitButton disabled={faltaDocumento || !lote}>Enviar los datos</SubmitButton>
-
-      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-neutral-400">
-        <UserRound className="h-3.5 w-3.5" />
-        Tus datos van directo a tu asesor y se usan solo para emitir los servicios.
-      </p>
+      </div>
     </form>
   );
 }
