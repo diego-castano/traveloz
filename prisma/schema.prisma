@@ -1242,6 +1242,10 @@ model DatosPagoCifrado {
   payload              Bytes?
   iv                   Bytes?
   tag                  Bytes?
+  // Versión de DATOS_PAGO_KEY con la que se cifró este registro. Permite
+  // rotar la clave sin perder los registros vivos: la nueva escribe v2 y la
+  // lectura elige la clave según esta columna.
+  keyVersion           Int       @default(1)
   // ID del email recordatorio agendado en Resend (24 h antes de expirar);
   // se cancela contra la API si el vendedor abre la bóveda antes.
   recordatorioResendId String?
