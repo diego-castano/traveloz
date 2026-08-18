@@ -277,9 +277,13 @@ export function PasajerosForm({
                         maxLength={100}
                         autoComplete="given-name"
                         ayuda="Tal cual figura en el documento."
-                        onChange={(e) =>
-                          setResumen((r) => ({ ...r, [slot.id]: e.currentTarget.value }))
-                        }
+                        onChange={(e) => {
+                          // El value se captura ANTES del updater: React puede
+                          // ejecutarlo despues de que el evento terminó y ahí
+                          // currentTarget ya es null (crash con autofill).
+                          const v = e.currentTarget.value;
+                          setResumen((r) => ({ ...r, [slot.id]: v }));
+                        }}
                       />
                       <Campo
                         name={`${p}apellidos`}
