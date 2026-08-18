@@ -54,6 +54,10 @@ export const roleConfig: Record<Role, RoleConfig> = {
       "web",
       "leads",
       "cotizadores",
+      // Bandeja global de pasajeros + bóveda de pagos + editor de los dos
+      // formularios públicos. Solo ADMIN: el vendedor tiene su propia vista
+      // en el dashboard, acotada a lo suyo.
+      "datos",
     ],
   },
   VENDEDOR: {

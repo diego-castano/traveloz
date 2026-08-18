@@ -27,6 +27,7 @@ import {
   ChevronsLeft,
   X,
   Globe,
+  IdCard,
   ListChecks,
   Inbox,
   ScrollText,
@@ -129,6 +130,13 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "web", label: "Frontend", icon: Globe, href: "/backend/web" },
       { id: "leads", label: "Contactos", icon: Inbox, href: "/backend/leads" },
+      {
+        id: "datos",
+        label: "Pasajeros y pagos",
+        sublabel: "datos de viaje",
+        icon: IdCard,
+        href: "/backend/datos",
+      },
       { id: "cotizadores", label: "Cotizadores", sublabel: "por marca", icon: Calculator, href: "/backend/cotizadores" },
     ],
   },
