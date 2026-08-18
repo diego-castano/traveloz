@@ -53,7 +53,9 @@ Sigue en mockup, pero el flujo quedó como lo validaron Gero y Santi:
   largo y se pegan imágenes, que salen con el diseño de la agencia. Formas de
   pago en dos grupos (tarjetas: Visa, Mastercard, OCA, Amex · transferencia:
   BROU, Itaú, Santander, BBVA), sin Scotiabank y sin la línea de 12 cuotas.
-  La firma suma el email del vendedor y el teléfono abre WhatsApp.
+  La firma suma el email del vendedor, el teléfono abre WhatsApp y las
+  iniciales dieron paso a la foto del vendedor (placeholder en el mockup;
+  la real se carga en su perfil de usuario).
 - **Cotización de solo vuelos.** Cuarto camino al crear: itinerario, cabina,
   equipaje y precio por adulto y por menor — sin hoteles ni servicios. La
   cotización sale igual de prolija, solo con lo que corresponde.

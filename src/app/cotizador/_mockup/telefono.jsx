@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import {
   MESES, MES_AB, AEROPUERTOS, VENDEDORES, hotelById, fmtCorto, fmtLargo, money,
-  precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla
+  precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg
 } from "./data";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
 
@@ -525,8 +525,15 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         {/* firma */}
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px", borderRadius:15,
           border:"1px solid rgba(17,17,36,.09)", background:"linear-gradient(180deg,#fff,#FAFBFE)" }}>
-          <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, background:grad, color:"#fff",
-            display:"grid", placeItems:"center", fontWeight:700, fontSize:15 }}>{V.inicial}</div>
+          {/* acá va la FOTO del vendedor, cargada desde su perfil de usuario —
+              en el mockup la simula el degradado con la inicial encima */}
+          <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, overflow:"hidden",
+            position:"relative", background:fotoBg(Number(String(V.id).replace(/\D/g, "")) + 20),
+            boxShadow:"inset 0 0 0 2px rgba(255,255,255,.65)" }}
+            title={`Foto de ${V.nombre} — se carga en su perfil de usuario`}>
+            <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", color:"#fff",
+              fontWeight:700, fontSize:15, textShadow:"0 1px 6px rgba(0,0,0,.35)" }}>{V.inicial}</div>
+          </div>
           <div style={{ minWidth:0, flex:1 }}>
             <div style={{ fontSize:fz(13, 14), fontWeight:700 }}>{V.nombre}</div>
             <div style={{ fontSize:fz(11, 11.5), color:"#8A8DB5" }}>{V.cargo} · TravelOz</div>
