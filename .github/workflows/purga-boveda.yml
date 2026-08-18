@@ -1,0 +1,33 @@
+# Purga diaria de la bóveda de datos de pago.
+#
+# La app ya purga sola de forma oportunista en cada lectura; este cron es la
+# red para el caso "nadie abrió el panel en todo el fin de semana". Corre una
+# vez por día y tarda segundos: en minutos de Actions es efectivamente gratis,
+# que fue el criterio elegido frente a un servicio cron pago en Railway.
+#
+# El secret PURGA_SECRET tiene que coincidir con la env homónima del servicio
+# en Railway (la ruta responde 503 si falta de un lado).
+name: purga-boveda
+
+on:
+  schedule:
+    # 06:00 UTC = 03:00 en Montevideo. Un solo disparo diario alcanza: el
+    # contrato de la bóveda es "72 horas", no "72 horas en punto".
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  purgar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Disparar la purga
+        run: |
+          code=$(curl -s -o /tmp/resp.json -w "%{http_code}" -m 60 \
+            -X POST "https://traveloz.com.uy/api/datos/purgar" \
+            -H "x-purga-secret: ${{ secrets.PURGA_SECRET }}")
+          cat /tmp/resp.json
+          if [ "$code" != "200" ]; then
+            echo "::error::La purga respondió HTTP $code"
+            exit 1
+          fi
