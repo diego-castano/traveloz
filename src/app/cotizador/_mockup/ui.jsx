@@ -154,13 +154,20 @@ function diffDias(iso) {
   return Math.round((d - hoy) / 86400000);
 }
 
-function Calendario({ value, onChange, placeholder = "Elegir fecha", grande = false, nota }) {
+function Calendario({ value, onChange, placeholder = "Elegir fecha", grande = false, nota, mesPreferido = null, anioPreferido = null }) {
   const [open, setOpen] = useState(false);
   const [vista, setVista] = useState("dias");            // dias | meses
   const sel = value ? parseISO(value) : null;
-  const [vm, setVm] = useState(() => sel || new Date());
+  /* sin fecha elegida, el calendario abre en el mes del encabezado (si hay) */
+  const preferida = mesPreferido != null
+    ? new Date(anioPreferido || new Date().getFullYear(), mesPreferido, 1) : null;
+  const [vm, setVm] = useState(() => sel || preferida || new Date());
   const box = useRef(null);
   useEffect(() => { if (sel) setVm(new Date(sel.getFullYear(), sel.getMonth(), 1)); }, [value]);
+  useEffect(() => {
+    if (!sel && mesPreferido != null)
+      setVm(new Date(anioPreferido || new Date().getFullYear(), mesPreferido, 1));
+  }, [mesPreferido, anioPreferido]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const h = (e) => { if (box.current && !box.current.contains(e.target)) { setOpen(false); setVista("dias"); } };
     const k = (e) => { if (e.key === "Escape") { setOpen(false); setVista("dias"); } };

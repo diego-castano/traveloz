@@ -39,7 +39,8 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
     if (!q.opciones.some((o) => o.id === sel)) setSel(q.opciones[0].id);
   }, [q.opciones, sel]);
 
-  const desk = modo === "desk";
+  const impresion = modo === "print";   /* PDF: todas las opciones abiertas, sin botones */
+  const desk = modo === "desk" || impresion;
   const G = { a:"#F43E55", b:"#785AE5", web:"traveloz.com.uy" };
   const grad = `linear-gradient(87deg, ${G.a} 0%, ${G.b} 100%)`;
   const titulo = [q.titulo.destino || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : null, q.titulo.anio]
@@ -51,7 +52,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
   const varias = q.opciones.length > 1;
   const base = q.opciones[0] ? Math.round(precioOpcion(q.opciones[0])) : 0;
   const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
-  const visibles = !q.opciones.length ? [] : varias ? [elegida] : q.opciones;
+  const visibles = !q.opciones.length ? [] : impresion ? q.opciones : varias ? [elegida] : q.opciones;
 
   /* escala: en escritorio todo un punto más grande */
   const fz = (cel, d) => desk ? d : cel;
@@ -201,7 +202,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                 const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
                 return (
                   <div key={ti} style={{ borderRadius:18, background:"#fff", overflow:"hidden",
-                    border:"1px solid rgba(17,17,36,.08)",
+                    border:"1px solid rgba(17,17,36,.08)", breakInside:"avoid",
                     boxShadow:"0 1px 3px rgba(17,17,36,.06), 0 10px 26px -14px rgba(17,17,36,.22)" }}>
 
                     {/* cabecera del trayecto: pill de marca + fecha */}
@@ -309,13 +310,15 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
           <div ref={(el) => { anclas.current["b-alojamiento"] = el; }}>
             <SecTitulo texto="Opciones de alojamiento" color={G.b} />
             <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", margin:"-4px 0 12px" }}>
-              {varias
+              {impresion
+                ? (varias ? "Las opciones cotizadas, una debajo de la otra." : "El detalle de hoteles y fechas.")
+                : varias
                 ? "Cambiá de opción para comparar precios, hoteles y régimen."
                 : "Tocá la opción para ver el detalle de hoteles y fechas."}
             </div>
 
             {/* v2C · switcher del pasajero: precio de cada opción y diferencia contra la 1 */}
-            {varias && (
+            {varias && !impresion && (
               <div className="opt-seg" data-desk={desk ? "1" : "0"}>
                 {q.opciones.map((o, i) => {
                   const pv = precioOpcion(o);
@@ -334,7 +337,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
             <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:24 }}>
               {visibles.map((o) => {
                 const oi = q.opciones.indexOf(o);
-                const on = abierta === o.id;
+                const on = impresion ? true : abierta === o.id;
                 const pv = precioOpcion(o);
                 const H0 = hotelById(o.hoteles?.[0]?.hotelId);
                 const hab0 = o.habitaciones?.[0];
@@ -344,13 +347,14 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                   : "por adulto · base doble";
                 return (
                   /* con switcher hay una sola card: la clave fija deja que el precio ruede al cambiar */
-                  <div key={varias ? "op-visible" : o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
+                  <div key={varias && !impresion ? "op-visible" : o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
                     border: on ? `1.5px solid ${G.b}55` : "1px solid rgba(17,17,36,.09)",
                     boxShadow: on ? `0 14px 34px -14px ${G.b}45` : "0 2px 6px rgba(17,17,36,.06)",
                     transition:"box-shadow .28s, border-color .28s, transform .28s" }}>
 
                     {/* foto full-width con overlay — o, si están apagadas, header compacto */}
-                    <button onClick={() => setAbierta(on ? null : o.id)} style={{ width:"100%", textAlign:"left", display:"block" }}>
+                    <button onClick={() => !impresion && setAbierta(on ? null : o.id)}
+                      style={{ width:"100%", textAlign:"left", display:"block", cursor: impresion ? "default" : "pointer" }}>
                       {q.fotosHotel ? (
                         <Foto seed={H0?.seed ?? oi} w="100%" h={fz(112, 150)} r={0}>
                           <span style={{ position:"absolute", top:10, left:10, display:"inline-flex", alignItems:"center",
@@ -399,12 +403,14 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                             {o.habitaciones?.length ? <> · <Bed size={10} /> {o.habitaciones.map((h) => h.ocupacion).join(" + ")}</> : null}
                           </div>
                         </div>
+                        {!impresion && (
                         <span style={{ display:"inline-flex", alignItems:"center", gap:4, flexShrink:0,
                           fontSize:fz(10.5, 11), fontWeight:700, color:G.b }}>
                           {on ? "Cerrar" : "Ver detalle"}
                           <ChevronDown size={13} style={{ transform: on ? "rotate(180deg)" : "none",
                             transition:"transform .26s cubic-bezier(.2,.8,.2,1)" }} />
                         </span>
+                        )}
                       </div>
                     </button>
 
@@ -416,12 +422,14 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                           const H = hotelById(h.hotelId);
                           return (
                             <div key={i} style={{ display:"flex", gap:12, padding:"12px", marginBottom:8,
-                              borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.06)" }}>
+                              borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.06)",
+                              breakInside:"avoid" }}>
                               {q.fotosHotel && <Foto seed={H?.seed ?? 99} w={fz(58, 76)} h={fz(58, 62)} r={11} />}
                               <div style={{ minWidth:0, flex:1 }}>
                                 <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
                                   <span style={{ fontSize:fz(13, 13.5), fontWeight:700 }}>{h.libre || H?.nombre || "A definir"}</span>
                                   {H && <Estrellas n={H.cat} size={10} />}
+                                  {!H && h.libre && (h.cat || 0) > 0 && <Estrellas n={h.cat} size={10} />}
                                 </div>
                                 {t && (
                                   <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4,
@@ -477,7 +485,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                             <span style={{ fontSize:fz(19, 21), fontWeight:800, letterSpacing:"-.03em" }}><Odometro valor={precioOpcion(o)} /></span>
                           </div>
                         )}
-                        {confirmada === o.id ? (
+                        {impresion ? null : confirmada === o.id ? (
                           <div className="a-pop" style={{ marginTop:9, padding:"12px 14px", borderRadius:13,
                             background:"rgba(59,191,173,.1)", border:"1.5px solid rgba(42,158,142,.4)",
                             display:"flex", gap:10, alignItems:"flex-start" }}>
@@ -535,7 +543,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         )}
 
         {/* condiciones */}
-        <div style={{ background:"#F5F6FA", borderRadius:13, padding:"13px 15px", marginBottom:18 }}>
+        <div style={{ background:"#F5F6FA", borderRadius:13, padding:"13px 15px", marginBottom:18, breakInside:"avoid" }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Condiciones</div>
           <ul style={{ margin:0, paddingLeft:15, fontSize:fz(10.5, 11), lineHeight:1.65, color:"#6B6F99" }}>
@@ -570,7 +578,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         </div>
 
         {/* firma */}
-        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px", borderRadius:15,
+        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px", borderRadius:15, breakInside:"avoid",
           border:"1px solid rgba(17,17,36,.09)", background:"linear-gradient(180deg,#fff,#FAFBFE)" }}>
           {/* acá va la FOTO del vendedor, cargada desde su perfil de usuario —
               en el mockup la simula el degradado con la inicial encima */}

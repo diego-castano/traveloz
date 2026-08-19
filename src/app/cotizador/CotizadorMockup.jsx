@@ -175,6 +175,7 @@ export default function Cotizador() {
   const [atajos, setAtajos] = useState(false);             // v2B · hoja de atajos (tecla ?)
   const [vistaPasajero, setVistaPasajero] = useState(false); // v2B · "Ver como pasajero"
   const [compartir, setCompartir] = useState(false);
+  const [imprimir, setImprimir] = useState(false);      /* v4 · vista de impresión / PDF */
   const [prev, setPrev] = useState(null);                  // overlay de vista previa: null | "cel" | "tab" | "desk" 
   const [plantillas, setPlantillas] = useState(PLANTILLAS);
   /* v4 · el texto del mensaje automático se edita una vez en los ajustes del máster */
@@ -327,7 +328,7 @@ export default function Cotizador() {
   /* ── progreso por bloque ───────────────────────────────────────────── */
   const bloques = [
     { id:"b-cliente",    l:"Cliente",     Icon:User,        ok: !!(q.cliente.nombre || q.cliente.email) },
-    { id:"b-mensaje",    l:"Mensaje",     Icon:MessageSquare, ok: !!q.mensaje },
+    { id:"b-mensaje",    l:"Mensaje",     Icon:MessageSquare, ok: !!(q.mensajeAuto || "").trim() },
     { id:"b-encabezado", l:"Encabezado",  Icon:FileText,    ok: !!(q.titulo.destino && q.titulo.mes != null && q.fechaSalida) },
     { id:"b-servicios",  l:"Servicios",   Icon:LayoutGrid,  ok: q.servicios.length > 0 },
     { id:"b-vuelos",     l:"Vuelos",      Icon:Plane,
@@ -430,7 +431,7 @@ export default function Cotizador() {
 
   /* ── render ────────────────────────────────────────────────────────── */
   return (
-    <div className={`ctz${oscuro ? " dark" : ""}`} data-brand={marca} style={{ minHeight:"100vh" }}>
+    <div className={`ctz${oscuro ? " dark" : ""}${imprimir ? " imprimiendo" : ""}`} data-brand={marca} style={{ minHeight:"100vh" }}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {pantalla === "inicio" && (
@@ -728,10 +729,26 @@ export default function Cotizador() {
       {compartir && (
         <ModalCompartir q={q} marca={marca} toast={toast} onClose={() => setCompartir(false)}
           onPreview={() => { setCompartir(false); setPrev("cel"); }}
+          onImprimir={() => { setCompartir(false); setImprimir(true); }}
           onIr={(id) => { setCompartir(false); irA(id); }}
           onVigencia={(h) => set((d) => { d.vigencia = h; })}
           onEnviada={() => { set((d) => { d.estado = "enviada"; });
             avisarApertura(q.cliente.nombre.trim()); }} />
+      )}
+      {imprimir && (
+        <div className="print-root">
+          <div className="print-tools">
+            <FileText size={15} style={{ color:"var(--coral)", flexShrink:0 }} />
+            <span style={{ fontSize:12.5, color:"var(--n600)", flex:1 }}>
+              Así sale impresa: las opciones van una debajo de la otra, sin cortes en el medio.
+            </span>
+            <Btn variant="p" size="sm" onClick={() => window.print()}>Imprimir o guardar PDF</Btn>
+            <Btn size="sm" onClick={() => setImprimir(false)}>Cerrar</Btn>
+          </div>
+          <div className="print-hoja">
+            <SalidaPasajero q={q} marca={marca} vendedor={vendedor} tramos={tramos} modo="print" />
+          </div>
+        </div>
       )}
       {paleta && <Paleta acciones={acciones} onClose={() => setPaleta(false)} />}
       {atajos && <HojaAtajos onClose={() => setAtajos(false)} />}

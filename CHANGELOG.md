@@ -11,6 +11,37 @@ del catálogo, CRM).
 
 ---
 
+## 19 de agosto de 2026
+
+### Nuevo
+
+**La cotización ahora se imprime de verdad.** Gero preguntó cómo se ve al
+imprimir y la respuesta era "mal": el botón de PDF no hacía nada. Ahora
+Compartir → PDF abre la vista de impresión con el branding completo: las
+opciones salen una debajo de la otra, todas abiertas, sin el selector ni los
+botones de confirmar, y con los saltos de página cuidados para que ni las
+tarjetas de vuelos, ni las tarifas, ni la firma se corten al medio. Desde ahí
+se guarda el PDF o se manda a la impresora.
+
+**Estrellas para el hotel libre.** Cuando el hotel se escribe a mano (no está
+en el catálogo) ahora aparecen cinco estrellas al lado: un clic marca la
+categoría, el mismo clic la saca, y salen en lo que ve el pasajero.
+
+### Cambiado
+
+**El mensaje al pasajero es uno solo.** Se eliminó el editor de "mensaje
+adicional" con formato: si hay que decir algo más, se escribe en el mismo
+mensaje automático y listo, como pidió el cliente.
+
+**El calendario arranca en el mes elegido.** Si el encabezado dice Diciembre,
+la fecha de salida abre el calendario en diciembre, no en el mes actual.
+
+**El botón de duplicar opción ahora es un "+".** Agrega una opción en las
+mismas condiciones que la que estás mirando — mismas habitaciones, tarifas y
+régimen — para cambiar solo hotel y precio.
+
+---
+
 ## 18 de agosto de 2026
 
 ### Nuevo

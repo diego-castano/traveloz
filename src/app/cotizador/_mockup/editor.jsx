@@ -6,14 +6,14 @@ import {
   Plane, Building2, Sparkles, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, History, Keyboard, Maximize2, Luggage, Image as ImageIcon
+  StickyNote, History, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon
 } from "lucide-react";
 import {
   MESES, ANIO_BASE, REGIMENES, SUG, MODALIDADES, SUG_ALL, CIUDADES, AEROLINEAS,
   CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
   PNR_DEMO, CLIENTES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
   limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, hotelesCotizadosEn,
-  snippetMensaje, redactarMensaje, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa,
+  habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa,
   precioOpcion
 } from "./data";
 import {
@@ -223,6 +223,7 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
         <div ref={fechaRef} style={{ flex:"1 1 230px" }}>
           <Label hint="se carga una sola vez y baja a todo">Fecha de salida</Label>
           <Calendario grande value={q.fechaSalida} placeholder="Elegir la salida"
+            mesPreferido={q.titulo.mes} anioPreferido={q.titulo.anio}
             nota="De acá salen los check-in de cada destino y las fechas de todos los servicios."
             onChange={(v) => set((d) => {
               d.fechaSalida = v;
@@ -343,156 +344,23 @@ function SeccionDestinos({ q, set, tramos, toast }) {
 }
 
 /* ── 4 · Mensaje al pasajero — WYSIWYG con formato ───────────────────── */
-const escHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const aHtml = (t) => String(t).split("\n").map((l) => (l ? `<div>${escHtml(l)}</div>` : "<div><br></div>")).join("");
 
-function BloqueMensaje({ q, set, refEl, toast }) {
-  const ed = useRef(null);
-  const [tono, setTono] = useState("cercano");      // cercano | formal
-  const [escribiendo, setEscribiendo] = useState(false);
-  const [confirmar, setConfirmar] = useState(false);
-  const [generado, setGenerado] = useState(false);
-  const tipeo = useRef(null);
-  const tipeando = useRef(false);
-
-  /* el editor sigue al estado salvo mientras se tipea o mientras el vendedor escribe */
-  useEffect(() => {
-    const el = ed.current; if (!el || tipeando.current) return;
-    if (document.activeElement === el) return;
-    const html = q.mensajeHtml || "";
-    if (el.innerHTML !== html) el.innerHTML = html;
-  }, [q.mensajeHtml]);
-  useEffect(() => () => clearInterval(tipeo.current), []);
-
-  const sync = () => set((d) => { d.mensajeHtml = ed.current.innerHTML;
-    d.mensaje = ed.current.innerText.trim(); });
-  const cmd = (c, v) => { ed.current?.focus(); document.execCommand(c, false, v || null); sync(); };
-  const alFinal = () => {
-    const el = ed.current, sel = window.getSelection?.(); if (!el || !sel) return;
-    const r = document.createRange(); r.selectNodeContents(el); r.collapse(false);
-    sel.removeAllRanges(); sel.addRange(r); el.scrollTop = el.scrollHeight;
-  };
-  /* v2B · pega un parrafito al final respetando lo que ya está escrito */
-  const anexar = (txt) => {
-    const el = ed.current; if (!el) return;
-    const hay = el.innerText.trim().length > 0;
-    el.innerHTML = (hay ? el.innerHTML + "<div><br></div>" : "") + aHtml(txt);
-    sync(); el.focus(); alFinal();
-  };
-  /* v2B · "Escribir por mí": arma el texto desde lo cargado y lo tipea a la vista */
-  const escribir = () => {
-    const txt = redactarMensaje(q, tono);
-    const el = ed.current; if (!el) return;
-    setConfirmar(false); setEscribiendo(true); tipeando.current = true;
-    el.innerHTML = "";
-    const cortes = 26, paso = Math.max(1, Math.ceil(txt.length / cortes));
-    let i = 0;
-    clearInterval(tipeo.current);
-    tipeo.current = setInterval(() => {
-      i = Math.min(txt.length, i + paso);
-      el.innerHTML = aHtml(txt.slice(0, i));
-      el.scrollTop = el.scrollHeight;
-      sync();
-      if (i >= txt.length) {
-        clearInterval(tipeo.current); tipeando.current = false;
-        setEscribiendo(false); setGenerado(true);
-        toast({ msg:"Mensaje escrito — leelo y cambiá lo que quieras", tone:"ok" });
-      }
-    }, 58);
-  };
-  const pedir = () => { if ((q.mensaje || "").trim()) setConfirmar(true); else escribir(); };
-
-  const B = ({ c, v, title, children }) => (
-    <button className="wys-b" title={title} onMouseDown={(e) => { e.preventDefault(); cmd(c, v); }}>{children}</button>
-  );
-  const SNIPS = [["saludo","+ Saludo"], ["urgencia","+ Cierre con urgencia"], ["sena","+ Info de seña"]];
-
+function BloqueMensaje({ q, set, refEl }) {
+  /* v4 · un solo texto: el mensaje automático. Si el vendedor quiere decir algo
+     más, lo escribe acá mismo — el cliente pidió eliminar el editor aparte. */
   return (
     <Block id="b-mensaje" forwardRef={refEl} icon={MessageSquare} title="Mensaje al pasajero"
-      right={<Pill tone="n">Opcional · con formato</Pill>}>
-
-      {/* v3 · el arranque que lee el pasajero, editable acá */}
-      <div style={{ marginBottom:10 }}>
-        <Label hint="se completa solo con el nombre y el link del vendedor">Mensaje automático</Label>
-        <textarea className="in" rows={6} value={q.mensajeAuto || ""}
-          style={{ lineHeight:1.6, fontSize:12.5, resize:"vertical" }}
-          placeholder="Hola {nombre}, de acuerdo a lo conversado te comparto la cotización…"
-          onChange={(e) => set((d) => { d.mensajeAuto = e.target.value; })} />
-        <div style={{ fontSize:11, color:"var(--n400)", marginTop:6, lineHeight:1.5 }}>
-          <span className="mono">{"{nombre}"}</span> toma el nombre del cliente y <span className="mono">{"{link}"}</span> el
-          link de datos de pasajeros del vendedor. El máster define el texto por defecto en Ajustes.
-        </div>
-      </div>
-
-      <div className="hairline" style={{ margin:"13px 0 11px" }} />
-
-      <Label hint="lo escribís vos, arriba del detalle">Mensaje adicional (opcional)</Label>
-
-      {/* v2B · escribir por mí + tono */}
-      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:9 }}>
-        <button className="btn btn-s btn-sm btn-ia" onClick={pedir} disabled={escribiendo}>
-          {escribiendo
-            ? <Loader2 size={13} className="spin" style={{ color:"var(--violet)" }} />
-            : <ChipIA />}
-          {escribiendo ? "Escribiendo…" : "Escribir por mí"}
-        </button>
-        <div className="seg seg-xs">
-          {[["cercano","Cercano"], ["formal","Formal"]].map(([k, l]) => (
-            <button key={k} data-on={tono === k ? "1" : "0"} onClick={() => setTono(k)}>{l}</button>
-          ))}
-        </div>
-        {generado && !escribiendo && (
-          <Btn size="xs" onClick={escribir}><RefreshCw size={11} /> Volver a escribir</Btn>
-        )}
-        <span style={{ fontSize:10.5, color:"var(--n400)", marginLeft:"auto", textAlign:"right" }}>
-          Usa el destino, el mes y las noches que ya cargaste.
-        </span>
-      </div>
-
-      {confirmar && (
-        <div className="a-slide" style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap", marginBottom:9,
-          padding:"9px 12px", background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.34)", borderRadius:11 }}>
-          <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
-          <span style={{ fontSize:12, color:"var(--ink-amber)", flex:"1 1 200px" }}>
-            Ya hay un mensaje escrito. ¿Lo reemplazo?
-          </span>
-          <Btn size="sm" variant="p" onClick={escribir}>Sí, reemplazalo</Btn>
-          <Btn size="sm" onClick={() => setConfirmar(false)}>Dejarlo como está</Btn>
-        </div>
-      )}
-
-      {/* v2B · parrafitos listos */}
-      <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginBottom:9 }}>
-        <span className="lbl" style={{ marginRight:2 }}>Agregar al final</span>
-        {SNIPS.map(([k, l]) => (
-          <button key={k} className="chip" style={{ height:27, fontSize:11.5 }} disabled={escribiendo}
-            onClick={() => anexar(snippetMensaje(k, q))}>{l}</button>
-        ))}
-      </div>
-
-      <div className="wys-bar">
-        <B c="bold" title="Negrita"><b>B</b></B>
-        <B c="italic" title="Cursiva"><i style={{ fontFamily:"Georgia" }}>I</i></B>
-        <B c="underline" title="Subrayado"><u>U</u></B>
-        <span style={{ width:1, background:"var(--hair)", margin:"3px 4px" }} />
-        <B c="insertUnorderedList" title="Lista"><LayoutGrid size={13} /></B>
-        <B c="removeFormat" title="Quitar formato"><X size={13} /></B>
-        <span style={{ marginLeft:"auto", fontSize:10.5, color:"var(--n300)", alignSelf:"center", paddingRight:4 }}>
-          lo pegado entra sin formato ajeno</span>
-      </div>
-      <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
-        data-ph="Escribí o pegá acá. Negrita, cursiva y listas — siempre con la tipografía de la marca."
-        onInput={sync}
-        onPaste={(e) => {
-          e.preventDefault();
-          const t = limpiarPegado(e.clipboardData.getData("text/plain"));
-          document.execCommand("insertText", false, t);
-          sync();
-          toast({ msg:"Texto pegado y normalizado a la tipografía de la marca", tone:"ok" });
-        }} />
-      <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
-        <Check size={11} style={{ color:"var(--teal-2)" }} />
-        El formato que apliques acá sale igual en la cotización. Lo que pegues de Word o WhatsApp pierde su fuente y toma la de la marca.
+      right={<Pill tone="violet">Editable</Pill>}>
+      <Label hint="se completa solo con el nombre y el link del vendedor">Mensaje automático</Label>
+      <textarea className="in" rows={7} value={q.mensajeAuto || ""}
+        style={{ lineHeight:1.6, fontSize:12.5, resize:"vertical" }}
+        placeholder="Hola {nombre}, de acuerdo a lo conversado te comparto la cotización…"
+        onChange={(e) => set((d) => { d.mensajeAuto = e.target.value; })} />
+      <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, lineHeight:1.55 }}>
+        <span className="mono">{"{nombre}"}</span> toma el nombre del cliente y{" "}
+        <span className="mono">{"{link}"}</span> el link de datos de pasajeros del vendedor.
+        Si necesitás agregar algo, escribilo acá mismo: este texto sale arriba del detalle.
+        El máster define el texto por defecto en Ajustes.
       </div>
     </Block>
   );
@@ -1209,13 +1077,16 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
   };
   /* la segunda tarifa suele ser el menor, después el infante y la familiar */
   const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por infante" : n === 3 ? "Por familia" : "Por adulto");
+  /* el "+" de la cabecera: agrega una opción en las mismas condiciones que esta */
   const duplicar = (i) => {
     const src = q.opciones[i]; const id = uid("op");
     const copia = JSON.parse(JSON.stringify(src));
-    copia.id = id; copia.nombre = src.nombre + " (copia)";
-    set((d) => { d.opciones.splice(i + 1, 0, copia); });
+    copia.id = id;
+    (copia.habitaciones || []).forEach((hb) => { hb.id = uid("hab");
+      (hb.tarifas || []).forEach((tf) => { tf.id = uid("tf"); }); });
+    set((d) => { copia.nombre = `Opción ${d.opciones.length + 1}`; d.opciones.splice(i + 1, 0, copia); });
     setFoco(id);
-    toast({ msg:"Opción duplicada — el orden quedó intacto", tone:"ok" });
+    toast({ msg:"Opción agregada en las mismas condiciones — cambiá el hotel y el precio", tone:"ok" });
   };
   const mover = (from, to) => { if (from === to || to == null) return;
     set((d) => { const [it] = d.opciones.splice(from, 1); d.opciones.splice(from < to ? to - 1 : to, 0, it); }); };
@@ -1265,8 +1136,9 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                       border:"1px solid transparent", background:"transparent", paddingLeft:2 }}
                     value={o.nombre} onChange={(e) => set((d) => { d.opciones[i].nombre = e.target.value; })} />
                   <div style={{ display:"flex", gap:3 }}>
-                    <button className="btn btn-s btn-ico" title="Duplicar esta opción" onClick={() => duplicar(i)}>
-                      <Copy size={13} /></button>
+                    <button className="btn btn-tt btn-ico" title="Agregar una opción igual a esta — solo cambiás hotel y precio"
+                      onClick={() => duplicar(i)}>
+                      <Plus size={14} /></button>
                     <button className="btn btn-g btn-ico" disabled={i === 0} onClick={() => mover(i, i - 1)}><ArrowUp size={13} /></button>
                     <button className="btn btn-g btn-ico" disabled={i === q.opciones.length - 1} onClick={() => mover(i, i + 2)}><ArrowDown size={13} /></button>
                     <button className="btn btn-g btn-ico" onClick={() => { const cp = JSON.parse(JSON.stringify(o));
@@ -1297,10 +1169,23 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""}
                               onPick={(hh) => set((d) => { if (!d.opciones[i].hoteles[hi]) d.opciones[i].hoteles[hi] = {};
                                 d.opciones[i].hoteles[hi] = { hotelId:hh.id, libre:"" }; })}
-                              onLibre={(txt) => set((d) => { if (!d.opciones[i].hoteles[hi]) d.opciones[i].hoteles[hi] = {};
-                                d.opciones[i].hoteles[hi] = { hotelId:null, libre:txt }; })} />
+                              onLibre={(txt) => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
+                                d.opciones[i].hoteles[hi] = { hotelId:null, libre:txt, cat:prev.cat || 0 }; })} />
                           </div>
                           {H && <div style={{ flexShrink:0 }}><Estrellas n={H.cat} /></div>}
+                          {h.libre && (
+                            <div style={{ display:"flex", alignItems:"center", gap:1, flexShrink:0 }}
+                              title="Categoría del hotel — un clic en la estrella; el mismo clic la saca">
+                              {[1, 2, 3, 4, 5].map((n) => (
+                                <button key={n} style={{ padding:2, lineHeight:0 }}
+                                  onClick={() => set((d) => { const hh = d.opciones[i].hoteles[hi];
+                                    hh.cat = hh.cat === n ? 0 : n; })}>
+                                  <Star size={14} fill={(h.cat || 0) >= n ? "#F7B267" : "none"}
+                                    style={{ color:(h.cat || 0) >= n ? "#E8A13C" : "var(--n300)" }} />
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           {h.libre && <Pill tone="amber" style={{ flexShrink:0 }}><PenLine size={9} /> libre</Pill>}
                         </div>
                         {antes.length > 0 && (

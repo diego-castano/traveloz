@@ -12,7 +12,7 @@ import { precioOpcion } from "./data";
    COMPARTIR
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = false, onVigencia, onIr, onPreview }) {
+function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = false, onVigencia, onIr, onPreview, onImprimir }) {
   const tel = String(q.cliente.telefono || "").trim();
   const nom = String(q.cliente.nombre || "").trim();
   /* v2C · sin teléfono no hay WhatsApp: se arranca en la vía que sí está disponible */
@@ -249,16 +249,14 @@ function ModalCompartir({ q, marca, onClose, onEnviada, toast, recordatorio = fa
                 </div>
               </div>
               <div style={{ fontSize:11.5, color:"var(--n400)", lineHeight:1.6, marginBottom:14 }}>
-                Sale bien de una: sin Ctrl+P, sin ajustar márgenes, sin tablas cortadas al medio
-                y sin la firma huérfana en la última hoja.
+                Las opciones salen una debajo de la otra, con los saltos de página cuidados:
+                nada se corta al medio y la firma no queda huérfana en la última hoja.
               </div>
-              <div style={{ display:"flex", gap:8 }}>
-                <Btn variant="p" style={{ flex:1, height:42 }} onClick={() => toast?.({ msg:"PDF generado", tone:"ok" })}>
-                  <Download size={15} /> Descargar
-                </Btn>
-                <Btn style={{ flex:1, height:42 }} onClick={() => toast?.({ msg:"Enviado a la impresora", tone:"ok" })}>
-                  <Printer size={15} /> Imprimir
-                </Btn>
+              <Btn variant="p" style={{ width:"100%", height:42 }} onClick={() => onImprimir?.()}>
+                <Printer size={15} /> Abrir la vista de impresión
+              </Btn>
+              <div style={{ fontSize:10.5, color:"var(--n400)", textAlign:"center", marginTop:8 }}>
+                Desde ahí guardás el PDF o mandás a la impresora.
               </div>
             </>
           )}

@@ -164,6 +164,20 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .acc-row { border-bottom:1px solid rgba(17,17,36,.07); }
 .acc-row:last-child { border-bottom:none; }
 .shim { background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent); background-size:200% 100%; animation:shimmer 1.8s ease-in-out infinite; }
+/* ── vista de impresión: la cotización entera, lista para papel o PDF ── */
+.print-root { position:fixed; inset:0; z-index:120; background:var(--page); overflow-y:auto; }
+.print-tools { position:sticky; top:0; z-index:2; display:flex; gap:9px; align-items:center; flex-wrap:wrap;
+  padding:11px 16px; background:var(--glass); backdrop-filter:blur(10px); border-bottom:1px solid var(--hair); }
+.print-hoja { max-width:800px; margin:20px auto 48px; background:#fff; border-radius:18px; overflow:hidden;
+  box-shadow:0 30px 70px -30px rgba(17,17,36,.4); }
+@media print {
+  .ctz.imprimiendo > :not(.print-root) { display:none !important; }
+  .ctz .print-tools { display:none !important; }
+  .ctz .print-root { position:static !important; overflow:visible !important; background:#fff !important; }
+  .ctz .print-hoja { max-width:none; margin:0; border-radius:0; box-shadow:none; }
+}
+@page { margin:10mm; }
+
 /* ── botón héroe (gradiente de marca + brillo) ───────────────────────── */
 .btn-hero { position:relative; overflow:hidden; color:#fff; font-weight:700;
   background:linear-gradient(87deg,#F43E55 0%,#785AE5 100%);
