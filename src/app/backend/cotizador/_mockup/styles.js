@@ -165,12 +165,18 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .acc-row:last-child { border-bottom:none; }
 .shim { background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent); background-size:200% 100%; animation:shimmer 1.8s ease-in-out infinite; }
 /* ── vista de impresión: la cotización entera, lista para papel o PDF ── */
-.print-root { position:fixed; inset:0; z-index:120; background:var(--page); overflow-y:auto; }
+.print-root { position:fixed; inset:0; z-index:210; background:var(--page); overflow-y:auto; }
 .print-tools { position:sticky; top:0; z-index:2; display:flex; gap:9px; align-items:center; flex-wrap:wrap;
   padding:11px 16px; background:var(--glass); backdrop-filter:blur(10px); border-bottom:1px solid var(--hair); }
 .print-hoja { max-width:800px; margin:20px auto 48px; background:#fff; border-radius:18px; overflow:hidden;
   box-shadow:0 30px 70px -30px rgba(17,17,36,.4); }
 @media print {
+  /* El sidebar y la topbar del panel quedan afuera del .ctz. Los sacamos del
+     flujo con .print-hidden (Tailwind print:hidden en AdminShell/VendedorShell)
+     y, por las dudas, apagamos todo lo demás por visibilidad: solo la hoja
+     queda a la vista. */
+  body.ctz-imprimiendo * { visibility:hidden !important; }
+  body.ctz-imprimiendo .print-root, body.ctz-imprimiendo .print-root * { visibility:visible !important; }
   .ctz.imprimiendo > :not(.print-root) { display:none !important; }
   .ctz .print-tools { display:none !important; }
   .ctz .print-root { position:static !important; overflow:visible !important; background:#fff !important; }
@@ -182,6 +188,11 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz .print-hoja .sec-t { break-after:avoid; page-break-after:avoid; }
 }
 @page { margin:10mm; }
+
+/* ── volver al panel: link discreto arriba del título del inicio ─────── */
+.ctz-volver { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600;
+  color:var(--n400); text-decoration:none; transition:color .16s; }
+.ctz-volver:hover { color:var(--violet); }
 
 /* ── botón héroe (gradiente de marca + brillo) ───────────────────────── */
 .btn-hero { position:relative; overflow:hidden; color:#fff; font-weight:700;
@@ -207,10 +218,10 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .sem:hover .tip { display:block; animation:fadeIn .15s; }
 
 /* ── drawer de analytics ─────────────────────────────────────────────── */
-.drawer { position:fixed; top:0; right:0; bottom:0; width:min(400px,94vw); background:#fff; z-index:96;
+.drawer { position:fixed; top:0; right:0; bottom:0; width:min(400px,94vw); background:#fff; z-index:191;
   box-shadow:-24px 0 60px -20px rgba(17,17,36,.35); animation:slideInR .28s cubic-bezier(.16,1,.3,1);
   display:flex; flex-direction:column; }
-.drawer-bg { position:fixed; inset:0; background:rgba(17,17,36,.35); backdrop-filter:blur(3px); z-index:95; animation:fadeIn .2s; }
+.drawer-bg { position:fixed; inset:0; background:rgba(17,17,36,.35); backdrop-filter:blur(3px); z-index:190; animation:fadeIn .2s; }
 .tl-row { display:flex; gap:11px; }
 .tl-rail { display:flex; flex-direction:column; align-items:center; width:14px; flex-shrink:0; }
 .tl-dot { width:9px; height:9px; border-radius:99px; flex-shrink:0; margin-top:4px; }
@@ -292,7 +303,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .browser-url { flex:1; height:26px; border-radius:8px; background:#fff; display:flex; align-items:center;
   gap:7px; padding:0 11px; font-size:11px; color:var(--n500); border:1px solid rgba(17,17,36,.07); }
 
-.ov { position:fixed; inset:0; background:rgba(17,17,36,.42); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:120; display:grid; place-items:center; padding:20px; }
+.ov { position:fixed; inset:0; background:rgba(17,17,36,.42); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); z-index:200; display:grid; place-items:center; padding:20px; }
 .hairline { height:1px; background:var(--hair-soft); }
 
 /* ── v2: chip de IA (identificador compartido) ───────────────────────── */
@@ -390,7 +401,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .notas-exp svg { transition:transform .26s cubic-bezier(.34,1.56,.64,1); }
 .notas-exp:hover svg { transform:scale(1.25) rotate(8deg); }
 /* la bitácora expandida entra como drawer desde la izquierda */
-.drawer-izq { position:fixed; top:0; left:0; bottom:0; width:min(430px,94vw); background:var(--card); z-index:96;
+.drawer-izq { position:fixed; top:0; left:0; bottom:0; width:min(430px,94vw); background:var(--card); z-index:191;
   box-shadow:24px 0 70px -20px rgba(17,17,36,.35); display:flex; flex-direction:column;
   animation:slideIzq .32s cubic-bezier(.16,1,.3,1); }
 @keyframes slideIzq { from { transform:translateX(-100%); opacity:.4; } to { transform:none; opacity:1; } }

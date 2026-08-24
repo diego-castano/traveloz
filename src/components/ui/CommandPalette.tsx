@@ -35,6 +35,7 @@ import {
   Plus,
   ArrowRight,
   Clock,
+  Receipt,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { glassMaterials } from "@/components/lib/glass";
@@ -89,6 +90,7 @@ const navEntries: Array<{
 }> = [
   { id: "dashboard", label: "Dashboard", href: "/backend/dashboard", icon: LayoutDashboard, hint: "g d" },
   { id: "paquetes", label: "Paquetes", href: "/backend/paquetes", icon: Package, hint: "g p" },
+  { id: "cotizador", label: "Cotizador", href: "/backend/cotizador", icon: Receipt },
   { id: "aereos", label: "Aereos", href: "/backend/aereos", icon: Plane },
   { id: "alojamientos", label: "Alojamientos", href: "/backend/alojamientos", icon: Hotel },
   { id: "traslados", label: "Traslados y paseos", href: "/backend/traslados", icon: Bus },

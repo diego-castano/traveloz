@@ -5,9 +5,10 @@ import {
   Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2, Clock
 } from "lucide-react";
 import {
-  MESES, MES_AB, ANIO_BASE, AEROPUERTOS, AEROPUERTOS_NOMBRE, VENDEDORES, hotelById,
+  MESES, MES_AB, ANIO_ACTUAL,
   fmtCorto, fmtLargo, money, precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg
 } from "./data";
+import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
 
 /* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
@@ -30,6 +31,7 @@ const PAGO_BANCOS = [
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "cel" }) {
+  const { hotelById } = useCatalogo();
   const anclas = useRef({});
   useEffect(() => {
     const cont = scrollRef?.current; if (!cont || !foco) return;
@@ -59,7 +61,10 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
   const grad = `linear-gradient(87deg, ${G.a} 0%, ${G.b} 100%)`;
   const titulo = [q.titulo.destino || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : null, q.titulo.anio]
     .filter(Boolean).join(", ").replace(/, (\w+), (\d{4})$/, ", $1 $2");
-  const V = VENDEDORES.find((v) => v.id === vendedor) || VENDEDORES[0];
+  const { vendedores } = useCtz();
+  const ajustes = useAjustes();
+  const V = buscarVendedor(vendedores, vendedor);
+  const telWa = String(V.tel || "").replace(/\D/g, "");
   const totalNoches = tramos.reduce((a, t) => a + t.noches, 0);
 
   /* v2C · comparación: la opción 1 es la base, las demás muestran cuánto suben o bajan */
@@ -77,12 +82,18 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
     [q.mensajeAuto, q.cliente.nombre, V.linkDatos]
   );
 
+  /* condiciones del pie: las edita el máster; {vigencia} sale de la cotización */
+  const condiciones = useMemo(() => {
+    const horas = String(q.vigencia ?? ajustes.vigenciaDefault ?? 48);
+    return (ajustes.condiciones || []).map((l) => String(l).replace(/\{vigencia\}/g, horas));
+  }, [ajustes.condiciones, ajustes.vigenciaDefault, q.vigencia]);
+
   /* itinerario agrupado en trayectos (Ida / Vuelta / Tramo N) */
   const trayectos = useMemo(() => agruparTrayectos(q.vuelos), [q.vuelos]);
   /* el PNR trae día y mes pero no el año: lo saca de la fecha de salida cargada */
   const anioItinerario = useMemo(() => {
     const m = String(q.fechaSalida || "").match(/^(\d{4})/);
-    return m ? Number(m[1]) : ANIO_BASE;
+    return m ? Number(m[1]) : ANIO_ACTUAL;
   }, [q.fechaSalida]);
 
   return (
@@ -136,7 +147,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
               <div key={pi} style={{ margin: pi === 0 ? "0 0 6px" : "0 0 8px" }}>
                 {parrafo.split("\n").map((linea, li) => {
                   const t = linea.trim();
-                  const esLink = !!t && (t.includes("datos-pasajeros")
+                  const esLink = !!t && (t.includes("datos-de-pasajeros")
                     || /^https?:\/\//i.test(t)
                     || (V.linkDatos && t.includes(V.linkDatos)));
                   if (esLink) {
@@ -383,7 +394,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                     <button onClick={() => !impresion && setAbierta(on ? null : o.id)}
                       style={{ width:"100%", textAlign:"left", display:"block", cursor: impresion ? "default" : "pointer" }}>
                       {q.fotosHotel ? (
-                        <Foto seed={H0?.seed ?? oi} w="100%" h={fz(112, 150)} r={0}>
+                        <Foto seed={H0?.seed ?? oi} url={H0?.foto} alt={H0?.nombre || ""} w="100%" h={fz(112, 150)} r={0}>
                           <span style={{ position:"absolute", top:10, left:10, display:"inline-flex", alignItems:"center",
                             gap:5, padding:"4px 11px", borderRadius:999, background:"rgba(255,255,255,.94)",
                             fontSize:fz(10.5, 11), fontWeight:800, color:"#1A1A2E",
@@ -455,7 +466,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                             <div key={i} style={{ display:"flex", gap:12, padding:"12px", marginBottom:8,
                               borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.06)",
                               breakInside:"avoid" }}>
-                              {q.fotosHotel && <Foto seed={H?.seed ?? 99} w={fz(58, 76)} h={fz(58, 62)} r={11} />}
+                              {q.fotosHotel && <Foto seed={H?.seed ?? 99} url={H?.foto} alt={H?.nombre || ""} w={fz(58, 76)} h={fz(58, 62)} r={11} />}
                               <div style={{ minWidth:0, flex:1 }}>
                                 <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
                                   <span style={{ fontSize:fz(13, 13.5), fontWeight:700 }}>{h.libre || H?.nombre || "A definir"}</span>
@@ -534,7 +545,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                               </div>
                               {V.linkDatos && (
                                 <>
-                                  <a href={`https://${V.linkDatos}`} target="_blank" rel="noreferrer"
+                                  <a href={V.linkDatos} target="_blank" rel="noreferrer"
                                     style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8,
                                       marginTop:10, padding:"11px 14px", borderRadius:12, color:"#fff",
                                       fontSize:fz(12.5, 13), fontWeight:800, background:grad, textDecoration:"none" }}>
@@ -592,17 +603,17 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
           </div>
         )}
 
-        {/* condiciones */}
+        {/* condiciones — si el máster las borró todas, el bloque no se dibuja */}
+        {condiciones.length > 0 && (
         <div style={{ background:"#F5F6FA", borderRadius:13, padding:"13px 15px", marginBottom:18, breakInside:"avoid" }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Condiciones</div>
+          {/* las escribe el máster en /backend/cotizador/ajustes, una por línea */}
           <ul style={{ margin:0, paddingLeft:15, fontSize:fz(10.5, 11), lineHeight:1.65, color:"#6B6F99" }}>
-            <li>Precios en dólares americanos, según la tarifa y ocupación indicadas.</li>
-            <li>Valores sujetos a disponibilidad y confirmación al momento de la reserva.</li>
-            <li>Tarifa no incluye gastos personales ni excursiones no detalladas.</li>
-            <li>Cotización válida por {q.vigencia ?? 48} horas.</li>
+            {condiciones.map((linea, i) => <li key={i}>{linea}</li>)}
           </ul>
         </div>
+        )}
 
         {/* pago — logos reales del sitio público, en cajas uniformes */}
         <SecTitulo texto="Formas de pago" color={G.b} />
@@ -637,32 +648,43 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         <div style={{ breakInside:"avoid" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px", borderRadius:15, breakInside:"avoid",
           border:"1px solid rgba(17,17,36,.09)", background:"linear-gradient(180deg,#fff,#FAFBFE)" }}>
-          {/* acá va la FOTO del vendedor, cargada desde su perfil de usuario —
-              en el mockup la simula el degradado con la inicial encima */}
-          <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, overflow:"hidden",
-            position:"relative", background:fotoBg(Number(String(V.id).replace(/\D/g, "")) + 20),
-            boxShadow:"inset 0 0 0 2px rgba(255,255,255,.65)" }}
-            title={`Foto de ${V.nombre} — se carga en su perfil de usuario`}>
-            <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", color:"#fff",
-              fontWeight:700, fontSize:15, textShadow:"0 1px 6px rgba(0,0,0,.35)" }}>{V.inicial}</div>
-          </div>
+          {/* foto del vendedor, la que cargó en Perfiles. Sin foto, el degradado
+              con las iniciales encima. */}
+          {V.foto ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={V.foto} alt="" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0,
+              objectFit:"cover", boxShadow:"inset 0 0 0 2px rgba(255,255,255,.65)" }} />
+          ) : (
+            <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, overflow:"hidden",
+              position:"relative", background:fotoBg(String(V.id || "").length + 20),
+              boxShadow:"inset 0 0 0 2px rgba(255,255,255,.65)" }}>
+              <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", color:"#fff",
+                fontWeight:700, fontSize:15, textShadow:"0 1px 6px rgba(0,0,0,.35)" }}>{V.inicial}</div>
+            </div>
+          )}
           <div style={{ minWidth:0, flex:1 }}>
             <div style={{ fontSize:fz(13, 14), fontWeight:700 }}>{V.nombre}</div>
             <div style={{ fontSize:fz(11, 11.5), color:"#8A8DB5" }}>{V.cargo} · TravelOz</div>
-            <a href={`https://wa.me/${V.tel.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
-              title="Escribirle por WhatsApp" className="mono"
-              style={{ fontSize:fz(10.5, 11), color:"#6B6F99", marginTop:2, display:"block", textDecoration:"none" }}>
-              {V.tel}
-            </a>
-            <a href={`mailto:${V.email}`} className="mono"
-              style={{ fontSize:fz(9.5, 10), color:"#6B6F99", marginTop:2, display:"block",
-                textDecoration:"underline", textDecorationColor:"rgba(107,111,153,.4)", textUnderlineOffset:2 }}>
-              {V.email}
-            </a>
+            {telWa && (
+              <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
+                title="Escribirle por WhatsApp" className="mono"
+                style={{ fontSize:fz(10.5, 11), color:"#6B6F99", marginTop:2, display:"block", textDecoration:"none" }}>
+                {V.tel}
+              </a>
+            )}
+            {V.email && (
+              <a href={`mailto:${V.email}`} className="mono"
+                style={{ fontSize:fz(9.5, 10), color:"#6B6F99", marginTop:2, display:"block",
+                  textDecoration:"underline", textDecorationColor:"rgba(107,111,153,.4)", textUnderlineOffset:2 }}>
+                {V.email}
+              </a>
+            )}
           </div>
-          <a href={`https://wa.me/${V.tel.replace(/\D/g, "")}`} target="_blank" rel="noreferrer"
-            title="Escribirle por WhatsApp" style={{ width:34, height:34, borderRadius:11, background:"#25D36615",
-            color:"#128C7E", display:"grid", placeItems:"center", flexShrink:0 }}><Smartphone size={16} /></a>
+          {telWa && (
+            <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
+              title="Escribirle por WhatsApp" style={{ width:34, height:34, borderRadius:11, background:"#25D36615",
+              color:"#128C7E", display:"grid", placeItems:"center", flexShrink:0 }}><Smartphone size={16} /></a>
+          )}
         </div>
         <div style={{ textAlign:"center", marginTop:16 }}><Wordmark size={13} /></div>
         <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color:"#B0B4CD", marginTop:4 }}>{G.web}</div>
@@ -680,13 +702,6 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
    ITINERARIO POR TRAYECTOS
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* nombre corto de ciudad para la ruta: "São Paulo · Guarulhos" → "São Paulo" */
-function nombreCorto(cod) {
-  const full = AEROPUERTOS[cod];
-  if (!full) return cod;
-  return full.split("·")[0].trim();
-}
-
 /* "Jueves 01 Oct" — el PNR no trae el año, se lo pasa quien renderiza */
 const DIAS_SEMANA = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 function fechaTrayecto(v, anio) {
@@ -697,12 +712,14 @@ function fechaTrayecto(v, anio) {
   return `${dia} ${String(v.dia).padStart(2, "0")} ${mes3}`.trim();
 }
 
-/* un punto de la ruta vertical: ciudad + hora arriba, terminal abajo */
+/* un punto de la ruta vertical: ciudad + hora arriba, terminal abajo.
+   La ciudad y el nombre de la terminal salen de la tabla Aeropuerto; un código
+   que no esté cargado se muestra tal cual, sin romper la ficha. */
 function PuntoRuta({ cod, hora, plus, coral, fz }) {
-  const ciudad = nombreCorto(cod);
-  const terminal = AEROPUERTOS_NOMBRE[cod]
-    ? `${AEROPUERTOS_NOMBRE[cod]} (${cod})`
-    : `Aeropuerto ${ciudad} (${cod})`;
+  const aeropuertos = useAeropuertos();
+  const a = aeropuertos[cod];
+  const ciudad = a?.ciudad || cod;
+  const terminal = a?.nombre ? `${a.nombre} (${cod})` : `Aeropuerto ${ciudad} (${cod})`;
   return (
     <div>
       <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap" }}>

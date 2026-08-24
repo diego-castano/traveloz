@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 const segmentLabels: Record<string, string> = {
   dashboard: "Dashboard",
   paquetes: "Paquetes",
+  cotizador: "Cotizador",
   aereos: "Aéreos",
   alojamientos: "Alojamientos",
   traslados: "Traslados y paseos",
@@ -135,7 +136,7 @@ export function Topbar() {
 
   return (
     <header
-      className="sticky top-0 z-[20] flex h-[54px] items-center justify-between px-4 md:px-6"
+      className="sticky top-0 z-[20] flex h-[54px] items-center justify-between px-4 md:px-6 print:hidden"
       style={{
         ...glassMaterials.frosted,
         backdropFilter: "blur(24px) saturate(180%)",

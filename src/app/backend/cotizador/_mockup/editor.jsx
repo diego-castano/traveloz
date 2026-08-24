@@ -6,16 +6,19 @@ import {
   Plane, Building2, Sparkles, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, History, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon
+  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon
 } from "lucide-react";
 import {
-  MESES, ANIO_BASE, REGIMENES, SUG, MODALIDADES, SUG_ALL, CIUDADES, AEROLINEAS,
+  MESES, ANIO_ACTUAL, REGIMENES, SUG, MODALIDADES, SUG_ALL,
   CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
-  PNR_DEMO, CLIENTES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
-  limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, hotelesCotizadosEn,
+  PNR_DEMO, uid, clamp, toISO, parseISO, fmtCorto, money, venta,
+  limpiarPegado, parsePNR,
   habitacionNueva, tarifaNueva, ventaTarifa,
-  precioOpcion, registrarHotelLibre
+  precioOpcion
 } from "./data";
+import { useCatalogo, useAjustes, useAerolineas } from "./contexto";
+import { uploadFile } from "@/components/lib/upload";
+import { buscarEnHistorial } from "@/actions/presupuesto.actions";
 import {
   Foto, CATS, Btn, Label, Pill, ChipIA, Estrellas, Block, Vacio, Calendario, AutoCiudad,
   BuscadorHotel
@@ -43,21 +46,32 @@ function BloqueCliente({ q, set, refEl, onUsarBase }) {
   const primero = useRef(null);
   const [bq, setBq] = useState("");
   const [bOpen, setBOpen] = useState(false);
-  const [ultima, setUltima] = useState(null);   /* v2B · última cotización del cliente elegido */
+  const [res, setRes] = useState([]);          /* cotizaciones anteriores que matchean */
+  const [buscando, setBuscando] = useState(false);
   const bBox = useRef(null);
-  /* v2B · si lo pegado parece teléfono, matcheamos por dígitos: con o sin +598, con o sin espacios */
-  const res = useMemo(() => {
-    const crudo = bq.trim(); if (!crudo) return [];
-    const t = crudo.toLowerCase();
-    const tel = pareceTel(crudo);
-    return CLIENTES.filter((c) =>
-      (tel && matchTel(c.telefono, crudo)) ||
-      `${c.nombre} ${c.apellido} ${c.email} ${c.telefono}`.toLowerCase().includes(t)
-    ).slice(0, 4);
+  /* La memoria del vendedor es el historial de cotizaciones: el server busca por
+     nombre, apellido, mail y teléfono (este último por dígitos, así que da igual
+     si va con +598, con espacios o pelado). Debounce de 300 ms para no disparar
+     una consulta por tecla. */
+  useEffect(() => {
+    const t = bq.trim();
+    if (t.length < 3) { setRes([]); setBuscando(false); return; }
+    setBuscando(true);
+    let vivo = true;
+    const id = setTimeout(async () => {
+      const r = await buscarEnHistorial(t);
+      if (!vivo) return;
+      setBuscando(false);
+      setRes(r.ok ? r.data.slice(0, 4) : []);
+    }, 300);
+    return () => { vivo = false; clearTimeout(id); };
   }, [bq]);
-  const elegir = (c) => {
-    set((d) => { d.cliente = { nombre:c.nombre, apellido:c.apellido, email:c.email, telefono:c.telefono }; });
-    setBq(""); setBOpen(false); setUltima(ultimaDe(c));
+  /* "Usar datos": copia la ficha del cliente y deja la cotización como está. */
+  const usarDatos = (c) => {
+    set((d) => { d.cliente = {
+      nombre: c.clienteNombre || "", apellido: c.clienteApellido || "",
+      email: c.clienteEmail || "", telefono: c.clienteTelefono || "" }; });
+    setBq(""); setBOpen(false); setRes([]);
   };
   useEffect(() => {
     const h = (e) => { if (bBox.current && !bBox.current.contains(e.target)) setBOpen(false); };
@@ -78,52 +92,57 @@ function BloqueCliente({ q, set, refEl, onUsarBase }) {
       <div ref={bBox} style={{ position:"relative", marginBottom:11 }}>
         <Search size={14} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color:"var(--n300)" }} />
         <input className="in" style={{ paddingLeft:34 }} value={bq}
-          placeholder="Buscar cliente existente por nombre, email o teléfono… o cargalo abajo"
+          placeholder="Buscar en cotizaciones anteriores por nombre, email o teléfono… o cargá el cliente abajo"
           onFocus={() => setBOpen(true)}
-          onKeyDown={(e) => { if (e.key === "Enter" && res[0]) { e.preventDefault(); elegir(res[0]); }
+          onKeyDown={(e) => { if (e.key === "Enter" && res[0]) { e.preventDefault(); usarDatos(res[0]); }
             else if (e.key === "Escape") setBOpen(false); }}
           onChange={(e) => { setBq(e.target.value); setBOpen(true); }} />
-        {bOpen && res.length > 0 && (
+        {bOpen && (res.length > 0 || buscando) && (
           <div className="ac-pop a-slide">
-            {res.map((c) => (
-              <button key={c.email} className="ac-i" onClick={() => elegir(c)}>
-                <span style={{ width:24, height:24, borderRadius:99, flexShrink:0, display:"grid", placeItems:"center",
-                  background:"rgba(120,90,229,.12)", color:"var(--violet)", fontSize:9.5, fontWeight:800 }}>
-                  {c.nombre[0]}{c.apellido[0]}</span>
-                <span style={{ flex:1 }}><b style={{ color:"var(--ink)" }}>{c.nombre} {c.apellido}</b>
-                  <span style={{ color:"var(--n400)", fontSize:11.5 }}> · {c.email}</span></span>
-                <span className="mono" style={{ fontSize:10.5, color:"var(--n400)", flexShrink:0 }}>{c.telefono}</span>
-              </button>
-            ))}
-            {pareceTel(bq) && (
-              <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 11px", fontSize:10.5,
-                color:"var(--n400)", borderTop:"1px solid var(--hair-soft)" }}>
-                <Zap size={10} style={{ color:"var(--teal-2)", flexShrink:0 }} />
-                Encontrado por teléfono — da igual si va con +598, con espacios o pelado.
+            {buscando && res.length === 0 && (
+              <div style={{ display:"flex", alignItems:"center", gap:7, padding:"9px 11px",
+                fontSize:12, color:"var(--n400)" }}>
+                <Loader2 size={12} className="spin" /> Buscando en el historial…
               </div>
             )}
+            {res.map((c) => {
+              const nom = [c.clienteNombre, c.clienteApellido].filter(Boolean).join(" ") || "Sin nombre";
+              const ini = (c.clienteNombre?.[0] || "") + (c.clienteApellido?.[0] || "");
+              return (
+                <div key={c.id} className="ac-i" style={{ cursor:"default", alignItems:"center" }}>
+                  <span style={{ width:24, height:24, borderRadius:99, flexShrink:0, display:"grid", placeItems:"center",
+                    background:"rgba(120,90,229,.12)", color:"var(--violet)", fontSize:9.5, fontWeight:800 }}>
+                    {ini || "?"}</span>
+                  <span style={{ flex:1, minWidth:0 }}>
+                    <b style={{ color:"var(--ink)" }}>{nom}</b>
+                    <span style={{ color:"var(--n400)", fontSize:11.5 }}> · {c.clienteEmail || c.clienteTelefono || "sin contacto"}</span>
+                    <span style={{ display:"block", fontSize:11, color:"var(--n400)" }}>
+                      <span className="mono">{c.numero}</span>
+                      {c.destino ? ` · ${c.destino}` : ""}
+                      {c.montoPrincipal ? ` · ${money(c.montoPrincipal)}` : ""}
+                    </span>
+                  </span>
+                  <Btn size="xs" style={{ flexShrink:0 }} onClick={() => usarDatos(c)}>
+                    <User size={11} /> Usar datos
+                  </Btn>
+                  {onUsarBase && (
+                    <Btn size="xs" variant="v" style={{ flexShrink:0 }}
+                      title="Arrancar esta cotización con el contenido de esa"
+                      onClick={() => { onUsarBase(c); setBq(""); setBOpen(false); setRes([]); }}>
+                      <Copy size={11} /> Usar como base
+                    </Btn>
+                  )}
+                </div>
+              );
+            })}
+            <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 11px", fontSize:10.5,
+              color:"var(--n400)", borderTop:"1px solid var(--hair-soft)" }}>
+              <Zap size={10} style={{ color:"var(--teal-2)", flexShrink:0 }} />
+              El teléfono matchea por dígitos: da igual si va con +598, con espacios o pelado.
+            </div>
           </div>
         )}
       </div>
-
-      {/* v2B · su última cotización, lista para reusar */}
-      {ultima && (
-        <div className="a-slide sug-base">
-          <span className="sug-ico"><History size={14} /></span>
-          <div style={{ flex:"1 1 220px", minWidth:0, fontSize:12.5, lineHeight:1.5 }}>
-            <span style={{ color:"var(--n500)" }}>Su última cotización: </span>
-            <span className="mono" style={{ fontWeight:500 }}>{ultima.num}</span>
-            <span style={{ color:"var(--n400)" }}> · </span>{ultima.destino}
-            {ultima.monto > 0 && <><span style={{ color:"var(--n400)" }}> · </span>
-              <span className="mono" style={{ fontWeight:500 }}>{money(ultima.monto)}</span></>}
-          </div>
-          <Btn size="sm" variant="v" onClick={() => { onUsarBase?.(ultima); setUltima(null); }}>
-            <Copy size={12} /> Usar como base
-          </Btn>
-          <button className="btn btn-g btn-ico" style={{ width:25, height:25 }} title="No, gracias"
-            onClick={() => setUltima(null)}><X size={12} /></button>
-        </div>
-      )}
 
       <div data-campos style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
         {F("nombre","Nombre","text",primero)}{F("apellido","Apellido")}{F("email","Email","email")}{F("telefono","Teléfono","tel")}
@@ -141,7 +160,7 @@ function BloqueCliente({ q, set, refEl, onUsarBase }) {
 /* ── 2 · Encabezado: título por clic + fecha disparadora ─────────────── */
 function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
   const [openMes, setOpenMes] = useState(false);
-  const anios = [ANIO_BASE, ANIO_BASE + 1];
+  const anios = [ANIO_ACTUAL, ANIO_ACTUAL + 1];
   /* v2B · la cadena del teclado: destino → mes → año → fecha de salida */
   const mesRef = useRef(null);
   const anioRef = useRef(null);
@@ -376,6 +395,8 @@ function BloqueMensaje({ q, set, refEl }) {
 
 /* ── 5 · Itinerario de vuelos (PNR) ──────────────────────────────────── */
 function BloqueVuelos({ q, set, refEl, toast }) {
+  /* el parser traduce el código IATA de dos letras con la tabla Aerolinea */
+  const aerolineas = useAerolineas();
   const [estado, setEstado] = useState("idle");  // idle | cargando | error
   const [modo, setModo] = useState("texto");     // texto | foto
   const [foto, setFoto] = useState(null);        // { nombre, url }
@@ -388,7 +409,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
   };
   const aplicarVuelos = (v) => {
     const p = v[0];
-    const iso = toISO(new Date(p.mes >= new Date().getMonth() ? ANIO_BASE : ANIO_BASE + 1, p.mes, p.dia));
+    const iso = toISO(new Date(p.mes >= new Date().getMonth() ? ANIO_ACTUAL : ANIO_ACTUAL + 1, p.mes, p.dia));
     if (!q.fechaSalida) {
       set((d) => { d.vuelos = v; d.fechaSalida = iso; atarTitulo(d, iso); });
       toast({ msg:`Fecha de salida tomada del primer vuelo: ${fmtCorto(iso)}`, tone:"ok" });
@@ -405,7 +426,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
     setFoto({ nombre, url });
     setEstado("cargando");
     setTimeout(() => {
-      const v = parsePNR(PNR_DEMO);
+      const v = parsePNR(PNR_DEMO, aerolineas);
       set((d) => { d.pnrRaw = PNR_DEMO; });
       aplicarVuelos(v);
       setEstado("idle");
@@ -416,7 +437,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
     if (!q.pnrRaw.trim()) return;
     setEstado("cargando");
     setTimeout(() => {
-      const v = parsePNR(q.pnrRaw);
+      const v = parsePNR(q.pnrRaw, aerolineas);
       if (!v.length) { setEstado("error"); return; }           // el pegado NO se pierde
       aplicarVuelos(v);
       setEstado("idle");
@@ -568,7 +589,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
                 display:"grid", placeItems:"center", flexShrink:0 }}><Plane size={12} /></div>
               <input className="in mono" style={{ width:80, height:30, textAlign:"center", fontSize:11.5 }} value={v.cia + v.nro}
                 onChange={(e) => { const t = e.target.value.toUpperCase(); const c = t.slice(0,2), n = t.slice(2);
-                  set((d) => { d.vuelos[i].cia = c; d.vuelos[i].nro = n; d.vuelos[i].aerolinea = AEROLINEAS[c] || c; }); }} />
+                  set((d) => { d.vuelos[i].cia = c; d.vuelos[i].nro = n; d.vuelos[i].aerolinea = aerolineas[c] || c; }); }} />
               <div style={{ flex:"1 1 96px", fontSize:12, fontWeight:600, minWidth:0, whiteSpace:"nowrap",
                 overflow:"hidden", textOverflow:"ellipsis" }}>{v.aerolinea}</div>
               <input className="in mono" style={{ width:58, height:30, textAlign:"center" }} value={v.origen}
@@ -692,6 +713,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
 
 /* ── 6 · Servicios en cápsulas, reordenables ─────────────────────────── */
 function BloqueServicios({ q, set, refEl, toast }) {
+  const { ciudades: CIUDADES } = useCatalogo();
   const [cat, setCat] = useState("aereo");
   const [txt, setTxt] = useState("");
   const [acOpen, setAcOpen] = useState(false);
@@ -1006,26 +1028,59 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
     if (el.innerHTML !== html) el.innerHTML = html;
   }, [html]);
 
-  const sync = () => set((d) => { d.notasCliente = ed.current.innerHTML; });
+  const sync = () => { const el = ed.current; if (el) set((d) => { d.notasCliente = el.innerHTML; }); };
+
+  /* ── Imágenes: al bucket, nunca adentro del HTML ──────────────────────
+     Pegar una captura la inlineaba en base64 y una sola foto de celular
+     sumaba dos o tres megas al JSON de la cotización: el autosave rebotaba
+     contra el límite del body de las server actions y el vendedor perdía
+     todo lo que venía escribiendo. Ahora sube a /api/upload y en la nota
+     queda la URL. Mientras viaja se ve un cartelito con el nombre del
+     archivo; si falla, no se inserta nada. */
+  const subirImagen = async (file) => {
+    const marca = uid("img");
+    const el = ed.current;
+    if (!el) return;
+    el.focus();
+    document.execCommand("insertHTML", false,
+      `<span data-subiendo="${marca}" style="display:inline-block;padding:5px 10px;margin:4px 0;` +
+      `border-radius:9px;background:rgba(69,212,192,.14);font-size:12px;opacity:.65">Subiendo imagen…</span>`);
+    sync();
+
+    try {
+      const subida = await uploadFile(file, { folder:"cotizador/notas", convertToWebp:true });
+      const ph = ed.current?.querySelector(`[data-subiendo="${marca}"]`);
+      /* el vendedor puede haber borrado el placeholder mientras subía */
+      if (!ph) return;
+      const img = document.createElement("img");
+      img.src = subida.url;
+      img.setAttribute("style", "max-width:100%;border-radius:12px;margin:6px 0");
+      ph.replaceWith(img);
+      sync();
+      toast({ msg:"Imagen subida a las notas", tone:"ok" });
+    } catch (err) {
+      ed.current?.querySelector(`[data-subiendo="${marca}"]`)?.remove();
+      sync();
+      toast({ msg: err?.message || "No pudimos subir la imagen. Probá de nuevo.", tone:"warn", ms:5000 });
+    }
+  };
+
+  const primeraImagen = (lista) =>
+    Array.from(lista || []).find((f) => String(f?.type).startsWith("image/")) || null;
 
   const pegar = (e) => {
-    const f = e.clipboardData?.files?.[0];
-    if (f && String(f.type).startsWith("image/")) {
-      e.preventDefault();
-      const fr = new FileReader();
-      fr.onload = () => {
-        ed.current?.focus();
-        document.execCommand("insertHTML", false,
-          `<img src="${fr.result}" style="max-width:100%;border-radius:12px;margin:6px 0">`);
-        sync();
-        toast({ msg:"Imagen pegada en las notas", tone:"ok" });
-      };
-      fr.readAsDataURL(f);
-      return;
-    }
+    const f = primeraImagen(e.clipboardData?.files);
+    if (f) { e.preventDefault(); void subirImagen(f); return; }
     e.preventDefault();
     document.execCommand("insertText", false, limpiarPegado(e.clipboardData.getData("text/plain")));
     sync();
+  };
+
+  const soltar = (e) => {
+    const f = primeraImagen(e.dataTransfer?.files);
+    if (!f) return;
+    e.preventDefault();
+    void subirImagen(f);
   };
 
   return (
@@ -1034,43 +1089,21 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
       <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
         style={{ minHeight:140 }}
         data-ph="Escribí libre o pegá contenido: itinerarios, detalle de un circuito, condiciones… También imágenes."
-        onInput={sync} onPaste={pegar} />
+        onInput={sync} onPaste={pegar} onDrop={soltar}
+        onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); }} />
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
         <ImageIcon size={11} style={{ color:"var(--teal-2)", flexShrink:0 }} />
-        Sale tal cual en la cotización, con el diseño de la agencia. Las imágenes viajan adentro.
+        Sale tal cual en la cotización, con el diseño de la agencia. Pegá o soltá una imagen y se sube sola.
       </div>
     </Block>
   );
 }
 
-/* ── v2B · lectura del margen en criollo, solo para el vendedor ───────── */
-function LineaMargen({ neto, factor }) {
-  const f = Number(factor);
-  if (!Number.isFinite(f) || f <= 0) return (
-    <span className="mono" style={{ fontSize:10.5, color:"var(--ink-amber)" }}>Falta el factor para calcular el margen</span>
-  );
-  const pv = venta(neto, factor);
-  const m = margenPct(factor);
-  const col = m >= 12 ? "var(--teal-3)" : m >= 8 ? "var(--ink-amber)" : "var(--coral)";
-  const fTxt = f.toFixed(2).replace(".", ",");
-  const mTxt = String(m).replace(".", ",");
-  return (
-    <div className="mrg mono" tabIndex={0}>
-      <span style={{ color:"var(--n400)" }}>Neto {money(neto)} ÷ {fTxt} → Venta {money(pv)} · </span>
-      <span style={{ color:col, fontWeight:500 }}>Margen {mTxt}%</span>
-      <span className="tip">
-        <b>Margen de la agencia</b>
-        Lo que queda para la agencia antes de costos fijos: {money(pv)} de venta − {money(neto)} de neto = {money(pv - neto)}.
-        <span style={{ display:"block", marginTop:6, opacity:.8 }}>
-          Verde de 12% para arriba · ámbar por debajo de 12% · rojo por debajo de 8%.
-        </span>
-      </span>
-    </div>
-  );
-}
-
 /* ── 8 · Opciones hoteleras ──────────────────────────────────────────── */
 function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
+  const { hotelById, hotelesCotizadosEn, registrarHotelLibre } = useCatalogo();
+  /* toda tarifa nueva arranca con el factor que fijó el máster en Ajustes */
+  const { factorDefault } = useAjustes();
   const [foco, setFoco] = useState(null);
   const [drag, setDrag] = useState(null);
   const [over, setOver] = useState(null);
@@ -1101,7 +1134,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
         d.opciones.push({ id, nombre:`Opción ${n}`,
           hoteles: d.destinos.map((x) => ({ hotelId:null, libre:"", cat:0,
             regimen: x.regimen || "Desayuno incluido" })),
-          factor:0.88, habitaciones:[habitacionNueva("Doble")] });
+          factor:factorDefault, habitaciones:[habitacionNueva("Doble", factorDefault)] });
       }
     });
     setFoco(id);
@@ -1115,7 +1148,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
     set((d) => {
       const hs = d.opciones[i].habitaciones || (d.opciones[i].habitaciones = []);
       const ult = hs[hs.length - 1];
-      if (!ult) { hs.push(habitacionNueva("Doble")); return; }
+      if (!ult) { hs.push(habitacionNueva("Doble", factorDefault)); return; }
       const cp = JSON.parse(JSON.stringify(ult));
       cp.id = uid("hab");
       (cp.tarifas || []).forEach((tf) => { tf.id = uid("tf"); });
@@ -1205,7 +1238,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                     return (
                       <div key={t.id} style={{ marginBottom:10 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-                          <Foto seed={H?.seed ?? (hi + 40)} w={48} h={36} r={9} />
+                          <Foto seed={H?.seed ?? (hi + 40)} url={H?.foto} alt={H?.nombre || ""} w={48} h={36} r={9} />
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
                               <span className="lbl" style={{ color:"var(--violet)" }}>{t.ciudad}</span>
@@ -1339,12 +1372,13 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                               )}
                               <div style={{ width:100 }}>
                                 {L("Neto")}
-                                <input className="in mono" style={{ height:32, textAlign:"right" }} type="number" value={t.neto}
+                                <input className="in mono" style={{ height:32, textAlign:"right" }} type="number"
+                                  min="0" max="99999999" value={t.neto}
                                   onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].neto = e.target.value; })} />
                               </div>
                               <div style={{ width:112 }}>
                                 {L("Venta")}
-                                <input className="in mono" type="number"
+                                <input className="in mono" type="number" min="0" max="99999999"
                                   style={{ height:32, textAlign:"right",
                                     color: manual ? "var(--ink-amber)" : "var(--teal-3)" }}
                                   value={manual ? t.venta : Math.round(ventaTarifa(t, o.factor))}
@@ -1375,7 +1409,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                           <Btn size="xs" onClick={() => set((d) => {
                             const ts = d.opciones[i].habitaciones[hj].tarifas;
-                            ts.push(tarifaNueva(tipoSiguiente(ts.length))); })}>
+                            ts.push(tarifaNueva(tipoSiguiente(ts.length), factorDefault)); })}>
                             <Plus size={11} /> Tarifa</Btn>
                           <Btn size="xs" style={{ marginLeft:"auto" }}
                             title="Agrega una habitación igual a esta — cambiá lo que difiera"
@@ -1603,5 +1637,5 @@ export {
   BloqueCliente, BloqueEncabezado, SeccionDestinos, BloqueMensaje, BloqueVuelos, BloqueServicios,
   NotasRail, BloqueNotasCliente, SeccionOpciones, BloqueAlojamiento, BannerIA, Paleta,
   /* v2B */
-  LineaMargen, BannerPasajero, HojaAtajos, ATAJOS, enterAvanza,
+  BannerPasajero, HojaAtajos, ATAJOS, enterAvanza,
 };

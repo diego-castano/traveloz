@@ -6,13 +6,19 @@ import {
   AlertCircle, PenLine
 } from "lucide-react";
 import {
-  MESES, MES_AB, fotoBg, HOTELES, HOTELES_CUSTOM, CIUDADES, clamp, parseISO, toISO, addDays, norm,
-  esFavorito, toggleFavorito,
+  MESES, MES_AB, fotoBg, clamp, parseISO, toISO, addDays, norm,
 } from "./data";
+import { useCatalogo } from "./contexto";
 
-function Foto({ seed = 0, w = 56, h = 42, r = 10, children, style }) {
+/* El recuadro de foto: si el paquete o el hotel tiene imagen cargada va la
+   imagen recortada al mismo marco; si no, el gradiente por semilla de siempre. */
+function Foto({ seed = 0, url = null, alt = "", w = 56, h = 42, r = 10, children, style }) {
   return (
     <div className="foto" style={{ width: w, height: h, borderRadius: r, background: fotoBg(seed), ...style }}>
+      {url && (
+        <img src={url} alt={alt} loading="lazy" decoding="async"
+          style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+      )}
       <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 45%,rgba(0,0,0,.28))" }} />
       {children}
     </div>
@@ -306,13 +312,14 @@ function AutoCiudad({ value, onChange, onPick, placeholder, excluir = [], grande
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
   const box = useRef(null);
+  const { ciudades: CIUDADES } = useCatalogo();
   const res = useMemo(() => {
     const pool = CIUDADES.filter((c) => !excluir.includes(c));
     /* sin tildes: "mexico" encuentra "México" y "buzios" encuentra "Búzios" */
     const q = norm((value || "").trim());
     const hit = q ? pool.filter((c) => norm(c).includes(q)) : pool;
     return hit.slice(0, 6);
-  }, [value, excluir]);
+  }, [value, excluir, CIUDADES]);
   useEffect(() => {
     const h = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
@@ -372,8 +379,9 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
   const [idx, setIdx] = useState(0);
   const [tick, setTick] = useState(0);   // fuerza reordenar cuando se togglea un favorito
   const box = useRef(null);
+  const { hoteles, esFavorito, toggleFavorito, cargando, progreso } = useCatalogo();
   const res = useMemo(() => {
-    const todos = [...HOTELES, ...HOTELES_CUSTOM];
+    const todos = hoteles;
     const base = todos.filter((h) => !ciudad || h.ciudad === ciudad);
     const pool = base.length ? base : todos;
     const filtrados = !q.trim() ? pool
@@ -387,7 +395,9 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
       .sort((a, b) => (b.fav - a.fav) || (a.i - b.i))
       .map((x) => x.h);
     return ordenados.slice(0, 6);
-  }, [q, ciudad, tick]);
+    /* `tick` y `esFavorito` cambian juntos al marcar un favorito */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, ciudad, tick, hoteles, esFavorito]);
 
   useEffect(() => {
     const h = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
@@ -418,6 +428,14 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
         <div className="a-slide" style={{ position:"absolute", top:"calc(100% + 5px)", left:0, right:0, zIndex:40,
           background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:13, overflow:"hidden",
           boxShadow:"0 22px 50px -14px rgba(17,17,36,.28)" }}>
+          {cargando && (
+            <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 11px",
+              fontSize:11.5, color:"var(--n400)", borderBottom:"1px solid var(--hair-soft)" }}>
+              <span className="spin" style={{ width:11, height:11, borderRadius:99, border:"2px solid var(--n300)",
+                borderTopColor:"transparent", display:"inline-block" }} />
+              Cargando catálogo…{progreso ? ` ${progreso}` : ""}
+            </div>
+          )}
           {res.map((h, i) => {
             const fav = esFavorito(h.id);
             return (
@@ -426,7 +444,7 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(h); setOpen(false); setQ(""); } }}
               style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"8px 10px", textAlign:"left", cursor:"pointer",
                 background: i === idx ? "rgba(120,90,229,.07)" : "transparent" }}>
-              <Foto seed={h.seed} w={40} h={30} r={7} />
+              <Foto seed={h.seed} url={h.foto} alt={h.nombre} w={40} h={30} r={7} />
               <div style={{ minWidth:0, flex:1 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <span style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nombre}</span>

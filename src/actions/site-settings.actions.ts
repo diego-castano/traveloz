@@ -30,7 +30,13 @@ async function ensureBootstrapped(group: string): Promise<void> {
           .upsert({
             where: { key: m.key },
             update: {},
-            create: { key: m.key, value: m.value, group: m.group, label: m.label },
+            create: {
+              key: m.key,
+              value: m.value,
+              group: m.group,
+              label: m.label,
+              ...(m.type ? { type: m.type } : {}),
+            },
           })
           .catch(() => null),
       ),

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { ChevronDown, CreditCard, LogOut, User, UserCog, Users } from "lucide-react";
+import { ChevronDown, CreditCard, LogOut, Receipt, User, UserCog, Users } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { esRutaCotizador } from "../cotizador/tipos";
 import { Avatar } from "@/components/ui/Avatar";
 import { interactions } from "@/components/lib/animations";
 import {
@@ -24,7 +26,12 @@ import {
  */
 export function VendedorShell({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuth();
+
+  // El cotizador se dibuja a pantalla completa: sin el contenedor de 1200px ni
+  // el padding que usa la tabla de paquetes.
+  const esCotizador = esRutaCotizador(pathname);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
@@ -85,7 +92,7 @@ export function VendedorShell({ children }: { children: ReactNode }) {
     <div className="font-body flex min-h-screen flex-col bg-[#F7F8FA]">
       {/* ─── Topbar ─────────────────────────────────────────── */}
       <header
-        className="sticky top-0 z-30 border-b border-[#E8EAEE]"
+        className="sticky top-0 z-30 border-b border-[#E8EAEE] print:hidden"
         style={{
           background: "rgba(255,255,255,0.85)",
           backdropFilter: "blur(12px) saturate(140%)",
@@ -105,6 +112,12 @@ export function VendedorShell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-2">
             {puedeDatos && (
               <>
+                <TopbarLinkAnchor
+                  label="Cotizador"
+                  href="/backend/cotizador"
+                  activo={esCotizador}
+                  icon={<Receipt size={14} strokeWidth={2.2} />}
+                />
                 <TopbarLinkButton
                   label="Datos de pasajeros"
                   onClick={() => setLinkModal("PASAJEROS")}
@@ -158,10 +171,12 @@ export function VendedorShell({ children }: { children: ReactNode }) {
       )}
 
       {/* ─── Main container ─────────────────────────────────── */}
-      <main className="flex-1">
-        <div className="mx-auto w-full max-w-[1200px] px-6 py-8 pb-32">
-          {children}
-        </div>
+      <main className="flex-1 print:static">
+        {esCotizador ? (
+          children
+        ) : (
+          <div className="mx-auto w-full max-w-[1200px] px-6 py-8 pb-32">{children}</div>
+        )}
       </main>
 
       {/* ─── User menu portal ───────────────────────────────── */}
@@ -224,6 +239,38 @@ export function VendedorShell({ children }: { children: ReactNode }) {
  * queda solo con el ícono (el topbar del celu no da para dos etiquetas) y el
  * nombre viaja en el aria-label.
  */
+/**
+ * La misma píldora, pero como link de navegación. Activa (fondo lleno) cuando
+ * ya estás en esa ruta.
+ */
+function TopbarLinkAnchor({
+  label,
+  icon,
+  href,
+  activo,
+}: {
+  label: string;
+  icon: ReactNode;
+  href: string;
+  activo: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-label={label}
+      aria-current={activo ? "page" : undefined}
+      className={
+        activo
+          ? "flex items-center gap-1.5 rounded-full border border-[#8B5CF6]/40 bg-[#EDE9FE] px-2.5 py-1.5 text-[12px] font-semibold text-[#6C2BD9] transition sm:px-3"
+          : "flex items-center gap-1.5 rounded-full border border-[#8B5CF6]/15 bg-[#F5F3FF]/70 px-2.5 py-1.5 text-[12px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6]/35 hover:bg-[#EDE9FE] sm:px-3"
+      }
+    >
+      {icon}
+      <span className="hidden sm:inline">{label}</span>
+    </Link>
+  );
+}
+
 function TopbarLinkButton({
   label,
   icon,

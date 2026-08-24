@@ -1,110 +1,99 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Link2, Clock3, TrendingUp,
-  Lock, Smartphone, Monitor
+  Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Trash2, Clock3, Copy,
+  Lock, Smartphone, Monitor, Loader2
 } from "lucide-react";
-import { VENDEDORES, semaforo, fmtHace, money, ESTADOS } from "./data";
+import { semaforo, fmtHace, money, addDays, ESTADOS } from "./data";
+import { useCtz, buscarVendedor } from "./contexto";
+import { obtenerPresupuesto } from "@/actions/presupuesto.actions";
 import { Btn, Pill } from "./ui";
 import { SalidaPasajero } from "./telefono";
 import { ModalCompartir } from "./compartir";
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   v2D · D1 · FUNNEL DE LECTURA
-   Las secciones tal como las ve el pasajero, en el mismo orden que la salida.
-   ═══════════════════════════════════════════════════════════════════════════ */
-const SECCIONES = ["Encabezado", "Hoteles", "Vuelos", "Servicios", "Formas de pago"];
-
-/* la sección alcanzada manda: lo de antes lo leyó, lo de después no lo vio */
-function indiceSeccion(hastaSec) {
-  if (!hastaSec) return -1;
-  const i = SECCIONES.findIndex((s) => s.toLowerCase() === String(hastaSec).toLowerCase());
-  return i >= 0 ? i : SECCIONES.length - 1;      /* "Confirmó desde el link" = la leyó entera */
-}
-
-function FunnelLectura({ hastaSec }) {
-  const idx = indiceSeccion(hastaSec);
-  return (
-    <div style={{ marginTop:11 }}>
-      {SECCIONES.map((s, i) => {
-        const visto = i <= idx;
-        return (
-          <div key={s} className="fun-row" data-on={visto ? "1" : "0"} data-fin={i === idx ? "1" : "0"}>
-            <span className="fun-l">{s}</span>
-            <span className="fun-t">
-              <span className="fun-b" style={{ width: visto ? `${100 - i * 13}%` : "14%" }} />
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* Insight de lectura: sale del número de cotización, así que es siempre el
-   mismo para la misma fila (nada de random que cambie al reabrir el drawer). */
-function insightLectura(num) {
-  const n = Number(String(num).replace(/\D/g, "").slice(-2)) || 0;
-  const op = 2 + (n % 2);
-  const cuanto = ["el doble de tiempo", "un 70% más de tiempo", "casi el triple de tiempo"][n % 3];
-  return `Miró la Opción ${op} ${cuanto} — mencionala en el seguimiento.`;
+/* El detalle de lectura del pasajero —cuántas veces la abrió, cuánto tardó en
+   abrirla, hasta qué sección llegó y desde qué dispositivo— sale del link
+   público, que llega en la próxima ola. Hasta entonces el drawer dice "Sin
+   datos todavía" en vez de dibujar un embudo inventado. */
+function SinDatos() {
+  return <span style={{ color:"var(--n300)", fontWeight:500, fontSize:12 }}>Sin datos todavía</span>;
 }
 
 /* ── Drawer de analytics de una cotización ─────────────────────────────── */
-function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, onEditar, onBitacora, toast }) {
-  const V = VENDEDORES.find((v) => v.id === r.vendedor) || VENDEDORES[0];
+function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, onEditar, onDuplicar, onBitacora, onEliminar, toast }) {
+  const { vendedores } = useCtz();
+  const V = buscarVendedor(vendedores, r.vendedor);
   const S = semaforo(r);
   const E = ESTADOS[r.estado];
-  const [copiado, setCopiado] = useState(false);
   const [comp, setComp] = useState(false);
   const [confOpen, setConfOpen] = useState(false);
   const [editEst, setEditEst] = useState(false);
   const [preview, setPreview] = useState(null);   // null | "cel" | "tab" | "desk"
-  /* cotización de muestra para la vista previa del drawer */
-  const qPrev = useMemo(() => {
-    const dest = r.destino.split(",")[0];
-    return { numero:r.num, estado:r.estado,
-      cliente:{ nombre:r.cliente.split(" ")[0], apellido:"", email:"", telefono:"" },
-      titulo:{ destino:dest, mes:9, anio:2026 }, fechaSalida:"2026-10-15",
-      mensaje:"", mensajeHtml:"", pnrRaw:"", vuelos:[], destinos:[],
-      servicios:[
-        { id:"s1", categoria:"aereo", texto:"Aéreo ida y vuelta con valija en bodega 23kg", ciudad:null, modalidad:null },
-        { id:"s2", categoria:"traslado", texto:"Traslado llegada y salida", ciudad:dest, modalidad:"Regular" },
-        { id:"s3", categoria:"alojamiento", texto:"Alojamiento en base doble", ciudad:null, modalidad:null },
-      ],
-      notas:[], notasCliente:"", vigencia:48,
-      mensajeAuto:"", soloVuelos:false, precioVuelo:{ adulto:"", menor:"" }, fotosHotel:false,
-      /* mismo modelo que el editor: habitaciones con sus tarifas */
-      opciones:[{ id:"o1", nombre:"Opción 1", hoteles:[{ hotelId:"h8", libre:"" }],
-        regimen:"All Inclusive", factor:0.88,
-        habitaciones:[{ id:"hb1", ocupacion:"Doble", tipo:"",
-          tarifas:[{ id:"tf1", tipo:"Por adulto", tipoLibre:"", neto:Math.round((r.monto || 1500) * 0.88), venta:null }] }] }],
-    };
-  }, [r]);
+  /* el contenido real de la cotización: se trae recién cuando hace falta
+     (vista previa o recordatorio), no en cada apertura del drawer */
+  const [contenido, setContenido] = useState(null);
+  const [cargandoQ, setCargandoQ] = useState(false);
+  const cargarContenido = async () => {
+    if (contenido) return contenido;
+    setCargandoQ(true);
+    const res = await obtenerPresupuesto(r.id);
+    setCargandoQ(false);
+    if (!res.ok) { toast?.({ msg:res.error, tone:"warn" }); return null; }
+    setContenido(res.data.contenido);
+    return res.data.contenido;
+  };
+  /* los tramos del itinerario los deriva la ficha del pasajero a partir de la
+     fecha de salida, igual que en el editor */
+  const tramosPrev = useMemo(() => {
+    if (!contenido) return [];
+    let acum = 0;
+    return (contenido.destinos || []).map((d) => {
+      const checkin = d.checkinManual || (contenido.fechaSalida ? addDays(contenido.fechaSalida, acum) : "");
+      const fila = { id:d.id, ciudad:d.ciudad, noches:d.noches, checkin,
+        checkout: checkin ? addDays(checkin, d.noches) : "", manual:false };
+      acum += Number(d.noches) || 0;
+      return fila;
+    });
+  }, [contenido]);
   const [op, setOp] = useState("Opción 1");
   const [via, setVia] = useState("WhatsApp");
+  const [borrando, setBorrando] = useState(false);
+  const [notas, setNotas] = useState(r.bitacora || "");
   const puedeConfirmar = r.estado === "enviada" || r.estado === "abierta";
   const apDet = r.apDet || [];
-  const vigTotal = 48;
-  const vigResta = r.hEnvio == null ? null : Math.max(0, vigTotal - r.hEnvio);
-  const qLite = {
-    numero:r.num, estado:r.estado,
-    cliente:{ nombre:r.cliente.split(" ")[0], apellido:"", email:"pasajero@mail.com", telefono:"" },
-    titulo:{ destino:r.destino.split(",")[0], mes:null, anio:"" },
-    fechaSalida:"", mensaje:"", mensajeHtml:"", pnrRaw:"", vuelos:[], destinos:[],
-    servicios:[], notas:[], notasCliente:"", opciones:[],
-    mensajeAuto:"", soloVuelos:false, precioVuelo:{ adulto:"", menor:"" }, fotosHotel:false,
-  };
+  /* la vigencia y el vencimiento son los que guardó el server al marcarla enviada */
+  const vigTotal = r.vigencia || 48;
+  const vigResta = useMemo(() => {
+    if (!r.expiraAt) return null;
+    const t = new Date(r.expiraAt).getTime();
+    if (!Number.isFinite(t)) return null;
+    return Math.max(0, Math.round((t - Date.now()) / 3600000));
+  }, [r.expiraAt]);
 
+  /* Notas internas: se escriben acá y viajan al server 800 ms después de la
+     última tecla. El texto local manda mientras se escribe, así el cursor no
+     salta cuando vuelve la fila refrescada. */
+  const notasRef = useRef(notas);
+  notasRef.current = notas;
+  const idNotas = useRef(r.id);
+  useEffect(() => {
+    if (idNotas.current !== r.id) { idNotas.current = r.id; setNotas(r.bitacora || ""); }
+  }, [r.id, r.bitacora]);
+  useEffect(() => {
+    if ((r.bitacora || "") === notas) return;
+    const t = setTimeout(() => onBitacora?.(r, notasRef.current), 800);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notas]);
   const eventos = [
     { c:"#B0B4CD", t:`Creada por ${V.nombre.split(" ")[0]}`, s:r.dias === 0 ? "hoy" : `hace ${r.dias} d` },
-    ...(r.hEnvio != null ? [{ c:"#785AE5", t:"Enviada al pasajero", s:fmtHace(r.hEnvio) + " · WhatsApp" }] : []),
-    ...apDet.map((a, i) => ({ c:"#2A9E8E", t: i === 0 ? "Primera apertura" : `Reabierta`, s:`${a.hace} · ${a.disp} · ${a.lugar}` })),
+    ...(r.hEnvio != null ? [{ c:"#785AE5", t:"Enviada al pasajero", s:fmtHace(r.hEnvio) }] : []),
+    ...apDet.map((a, i) => ({ c:"#2A9E8E", t: i === 0 ? "Primera apertura" : "Reabierta", s:`${a.hace} · ${a.disp} · ${a.lugar}` })),
     ...(r.estado === "confirmada" ? [{ c:"#2A9E8E",
-      t: r.confOpcion ? `Confirmada · ${r.confOpcion}` : "Confirmada desde el link",
-      s: r.confVia ? `recién · vía ${r.confVia} · por ${V.nombre.split(" ")[0]}` : "hace 2 d" }] : []),
-    /* v2D · D3 · lo que se hizo desde este drawer queda escrito en la historia */
+      t: r.confOpcion ? `Confirmada · ${r.confOpcion}` : "Confirmada",
+      s: r.confVia ? `vía ${r.confVia}` : "—" }] : []),
+    /* lo que se hace desde este drawer queda escrito hasta el próximo refresco */
     ...(r.hist || []),
   ];
 
@@ -134,13 +123,20 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:12, padding:6, width:190,
               boxShadow:"0 18px 44px -14px rgba(17,17,36,.3)" }}>
               {Object.entries(ESTADOS).map(([k, e]) => (
-                <button key={k} onClick={() => { onEstado?.(r.num, k); setEditEst(false); }}
+                <button key={k} onClick={() => { onEstado?.(r, k); setEditEst(false); }}
                   style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"7px 9px", borderRadius:8,
                     fontSize:12.5, fontWeight:600, background: r.estado === k ? "rgba(120,90,229,.08)" : "transparent" }}>
                   <e.Icon size={12} style={{ color:"var(--n400)" }} /> {e.l}
                   {r.estado === k && <Check size={12} style={{ marginLeft:"auto", color:"var(--teal-2)" }} />}
                 </button>
               ))}
+              {r.estadoManual && (
+                <button onClick={() => { onEstado?.(r, null); setEditEst(false); }}
+                  style={{ display:"flex", alignItems:"center", gap:8, width:"100%", padding:"7px 9px",
+                    borderRadius:8, fontSize:12, fontWeight:600, color:"var(--n500)" }}>
+                  <PenLine size={12} style={{ opacity:.6 }} /> Volver al automático
+                </button>
+              )}
               <div style={{ fontSize:10, color:"var(--n400)", padding:"6px 9px 3px", lineHeight:1.45,
                 borderTop:"1px solid var(--hair-soft)", marginTop:4 }}>
                 El estado se calcula solo (la vigencia lo pasa a Vencida), pero acá lo pisás a mano para el seguimiento.
@@ -182,8 +178,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               </div>
             </div>
             <div style={{ padding:"9px 11px", borderRadius:11, background:"var(--tile)" }}>
-              <div className="lbl" style={{ marginBottom:3 }}>Canal de envío</div>
-              <div style={{ fontSize:12.5, fontWeight:700 }}>{r.hEnvio != null ? "WhatsApp" : "—"}</div>
+              <div className="lbl" style={{ marginBottom:3 }}>Enviada</div>
+              <div style={{ fontSize:12.5, fontWeight:700 }}>{fmtHace(r.hEnvio)}</div>
             </div>
           </div>
           {vigResta != null && (
@@ -195,7 +191,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
                   {vigResta === 0 ? "vencido" : `quedan ${vigResta} h de ${vigTotal}`}</span>
                 {/* v2D · D3 · la vigencia se arregla acá mismo, sin volver a compartir */}
                 <button className="btn btn-g btn-xs" style={{ marginRight:-4 }}
-                  title="Dejar el link activo 48 h más desde ahora"
+                  title="Correr el vencimiento 48 h hacia adelante"
                   onClick={() => onExtender?.(r)}><Clock3 size={11} /> +48 h</button>
               </div>
               <div style={{ height:5, borderRadius:99, background:"var(--sunk-2)", overflow:"hidden" }}>
@@ -211,24 +207,14 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           {/* stats de lectura */}
           <div className="lbl" style={{ margin:"16px 0 8px" }}>Lectura del pasajero</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
-            {stat("Aperturas", r.aperturas > 0 ? `${r.aperturas}` : null)}
-            {stat("Hasta la 1ª apertura", r.hasta)}
-            {stat("Tiempo de lectura", r.lectura)}
-            {stat("Llegó hasta", r.hastaSec)}
+            {stat("Aperturas", r.aperturas > 0 ? `${r.aperturas}` : <SinDatos />)}
+            {stat("Hasta la 1ª apertura", r.hasta ?? <SinDatos />)}
+            {stat("Tiempo de lectura", r.lectura ?? <SinDatos />)}
+            {stat("Llegó hasta", r.hastaSec ?? <SinDatos />)}
           </div>
-
-          {/* v2D · D1 · hasta dónde llegó, sección por sección */}
-          {r.aperturas > 0 && (
-            <>
-              <FunnelLectura hastaSec={r.hastaSec} />
-              {r.aperturas > 1 && (
-                <div className="ins ins-lee a-rise">
-                  <Sparkles size={13} style={{ color:"var(--violet-ink)" }} />
-                  <span>{insightLectura(r.num)}</span>
-                </div>
-              )}
-            </>
-          )}
+          <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:7, lineHeight:1.5 }}>
+            El detalle de lectura llega con los links públicos, en la próxima entrega.
+          </div>
 
           {/* timeline */}
           <div className="lbl" style={{ margin:"16px 0 8px" }}>Historia</div>
@@ -253,10 +239,10 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             <span className="lbl">Notas internas</span>
             <Pill tone="coral"><Lock size={9} /> No se comparte</Pill>
           </div>
-          <textarea className="in" rows={5} value={r.bitacora || ""}
+          <textarea className="in" rows={5} value={notas}
             style={{ width:"100%", resize:"none", lineHeight:1.5, paddingTop:8, fontSize:12 }}
             placeholder="Escribí libre: netos, avisos, pedidos especiales…"
-            onChange={(e) => onBitacora?.(r.num, e.target.value)} />
+            onChange={(e) => setNotas(e.target.value)} />
 
           {r.estado === "confirmada" && (
             <div className="a-pop" style={{ marginTop:14, padding:"11px 13px", borderRadius:12,
@@ -272,14 +258,17 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             </div>
           )}
 
-          {/* v2D · D2 · el dato del negocio, una sola línea y sin vender nada */}
-          <div className="ins ins-neg">
-            <TrendingUp size={13} style={{ color:"var(--teal-2)" }} />
-            <span>
-              {r.aperturas > 0
-                ? <>Las cotizaciones abiertas 3+ veces confirman <b>2,4× más</b> — esta va {r.aperturas}.</>
-                : <>Las que se mandan antes de las 48 h se abren el doble — <b>esta todavía está a tiempo</b>.</>}
-            </span>
+          {/* baja lógica: la fila queda en el histórico y en la auditoría */}
+          <div style={{ display:"flex", justifyContent:"flex-end", marginTop:18 }}>
+            <button
+              style={{ display:"inline-flex", alignItems:"center", gap:6, fontSize:11.5, fontWeight:600,
+                color: borrando ? "var(--coral)" : "var(--n400)" }}
+              onClick={() => {
+                if (!borrando) { setBorrando(true); setTimeout(() => setBorrando(false), 4000); return; }
+                onEliminar?.(r);
+              }}>
+              <Trash2 size={12} /> {borrando ? "Confirmá: eliminar esta cotización" : "Eliminar cotización"}
+            </button>
           </div>
         </div>
 
@@ -288,8 +277,9 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           flexDirection:"column", gap:8 }}>
           <div className="drawer-acc" style={{ display:"flex", gap:8 }}>
             <Btn variant="tv" style={{ flex:1, height:38 }} title="Ver la cotización como la ve el pasajero"
-              onClick={() => setPreview("cel")}>
-              <Eye size={14} /> Ver cotización
+              disabled={cargandoQ}
+              onClick={async () => { if (await cargarContenido()) setPreview("cel"); }}>
+              {cargandoQ ? <Loader2 size={14} className="spin" /> : <Eye size={14} />} Ver cotización
             </Btn>
             <Btn variant="v" style={{ flex:1, height:38 }} title="Abrirla en el formulario de creación para editarla entera"
               onClick={() => onEditar?.(r)}>
@@ -297,11 +287,12 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             </Btn>
           </div>
           <div className="drawer-acc" style={{ display:"flex", gap:8 }}>
-            <Btn variant="tt" style={{ flex:1, height:38 }}
-              onClick={() => { setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}>
-              {copiado ? <><Check size={13} /> Copiado</> : <><Link2 size={13} /> Copiar link</>}
+            <Btn variant="tt" style={{ flex:1, height:38 }} title="Copiar esta cotización en una nueva"
+              onClick={() => onDuplicar?.(r)}>
+              <Copy size={13} /> Duplicar
             </Btn>
-            <Btn variant="p" style={{ flex:1, height:38 }} onClick={() => setComp(true)}>
+            <Btn variant="p" style={{ flex:1, height:38 }} disabled={cargandoQ}
+              onClick={async () => { if (await cargarContenido()) setComp(true); }}>
               <Send size={13} /> Recordatorio
             </Btn>
             {puedeConfirmar && (
@@ -324,7 +315,9 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             </div>
             <div className="lbl" style={{ marginBottom:7 }}>¿Qué opción eligió el pasajero?</div>
             <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
-              {["Opción 1","Opción 2","Opción 3"].map((o) => (
+              {(contenido?.opciones?.length
+                ? contenido.opciones.map((o, i) => o.nombre || `Opción ${i + 1}`)
+                : ["Opción 1","Opción 2","Opción 3"]).map((o) => (
                 <button key={o} className={`chip ${op === o ? "chip-on" : ""}`} onClick={() => setOp(o)}>{o}</button>
               ))}
             </div>
@@ -335,7 +328,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               ))}
             </div>
             <button className="btn btn-hero" style={{ width:"100%", height:44, borderRadius:12, fontSize:14 }}
-              onClick={() => { onConfirmar?.(r.num, op, via); setConfOpen(false); }}>
+              onClick={() => { onConfirmar?.(r, op, via); setConfOpen(false); }}>
               <CheckCheck size={16} /> Confirmar {op}
             </button>
             <div style={{ fontSize:10.5, color:"var(--n400)", textAlign:"center", marginTop:8, lineHeight:1.5 }}>
@@ -344,10 +337,10 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           </div>
         )}
       </div>
-      {comp && <ModalCompartir q={qLite} marca="traveloz" recordatorio toast={toast}
-        onClose={() => setComp(false)} onEnviada={() => onRecordatorio?.(r)} />}
-      {preview && (() => {
-        const tramosPrev = [{ id:"t1", ciudad:qPrev.titulo.destino, noches:7, checkin:"2026-10-15", checkout:"2026-10-22", manual:false }];
+      {comp && contenido && <ModalCompartir q={contenido} presupuestoId={r.id} recordatorio toast={toast}
+        onClose={() => setComp(false)} onEnviada={(d) => onRecordatorio?.(r, d)} />}
+      {preview && contenido && (() => {
+        const qPrev = contenido;
         return (
         <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && setPreview(null)}>
           <div className="a-zoom" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:14, maxWidth:"96vw" }}>

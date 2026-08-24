@@ -1,12 +1,8 @@
-import type { Metadata } from "next";
-import CotizadorMockup from "./CotizadorMockup";
+import { permanentRedirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Cotizador · Mockup de validación | TravelOz",
-  description: "Prototipo interno del módulo cotizador. Sin datos reales.",
-  robots: { index: false, follow: false, nocache: true },
-};
-
-export default function CotizadorMockupPage() {
-  return <CotizadorMockup />;
+// El cotizador vivía acá cuando era un mockup público, sin login. Ahora es un
+// módulo del panel. Dejamos el 301 porque el link ya circuló por WhatsApp y por
+// mail durante la validación con el cliente.
+export default function CotizadorLegacyPage() {
+  permanentRedirect("/backend/cotizador");
 }

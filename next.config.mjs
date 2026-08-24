@@ -62,6 +62,13 @@ const nextConfig = {
     // Enable the /instrumentation.ts hook so we can warm the Prisma connection
     // pool on server boot and avoid a slow first-query penalty.
     instrumentationHook: true,
+    serverActions: {
+      // El autosave del cotizador manda la cotización entera en cada guardado:
+      // notas del pasajero con formato, itinerario y opciones. Con el default
+      // de 1 MB una cotización larga rebotaba y el editor quedaba sin guardar.
+      // Las imágenes ya no viajan adentro (van a /api/upload y queda la URL).
+      bodySizeLimit: "2mb",
+    },
   },
   eslint: {
     // Ahora existe `.eslintrc.json`, así que `npm run lint` corre. Pero el
@@ -92,15 +99,13 @@ const nextConfig = {
         headers: securityHeaders,
       },
       {
-        // TEMPORAL — mockup del cotizador (/cotizador). El mockup trae su CSS
-        // embebido con un @import a Google Fonts (DM Sans, Playfair Display,
-        // JetBrains Mono); la CSP del sitio no permite esos origenes y la
-        // tipografia se caia a las fuentes del sistema. Va DESPUES de la
-        // catch-all a proposito: ante la misma clave gana la ultima entrada que
-        // matchea, asi que solo /cotizador recibe la CSP ampliada y el resto del
-        // sitio queda intacto. Borrar junto con la ruta cuando termine la
-        // validacion con el cliente.
-        source: "/cotizador",
+        // Cotizador (/backend/cotizador). Trae su CSS embebido con un @import a
+        // Google Fonts (DM Sans, Playfair Display, JetBrains Mono); la CSP del
+        // sitio no permite esos origenes y la tipografia se caia a las fuentes
+        // del sistema. Va DESPUES de la catch-all a proposito: ante la misma
+        // clave gana la ultima entrada que matchea, asi que solo el cotizador
+        // recibe la CSP ampliada y el resto del panel queda intacto.
+        source: "/backend/cotizador",
         headers: [
           { key: "Content-Security-Policy", value: cspCotizador },
         ],

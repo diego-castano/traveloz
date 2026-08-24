@@ -13,6 +13,64 @@ del catálogo, CRM).
 
 ## 24 de agosto de 2026
 
+### Nuevo
+
+**El cotizador dejó de ser un mockup: vive adentro del panel y guarda en la
+base.** Hasta hoy vivía en una URL suelta, sin login, y todo lo que se armaba
+se perdía al cerrar la pestaña.
+
+- **Entrada desde el panel.** Aparece como "Cotizador" en el menú del
+  administrador y como botón arriba en la vista de vendedor, al lado de
+  "Datos de pasajeros". La URL vieja `/cotizador` redirige a la nueva
+  `/backend/cotizador`, que pide login como el resto del panel. "← Panel"
+  vuelve al inicio de cada uno: el administrador a su tablero, el vendedor a
+  su vista. El módulo viejo "Cotizadores" del menú pasó a llamarse "Landings
+  por marca" para que no se confundan.
+- **Cada vendedor ve sus cotizaciones, el administrador todas.** El filtro
+  "Ver como" quedó solo para administradores y filtra por vendedor real. El
+  servidor aplica el mismo corte en cada acción: un vendedor no puede abrir,
+  editar ni borrar una cotización ajena aunque conozca el número.
+- **Se guarda solo.** Cada cambio se graba a los 1,5 segundos; el indicador
+  de la esquina dice si está guardando, guardado o si falló (y reintenta). El
+  número COT-2026-NNNN se asigna en el primer guardado: abrir y cerrar sin
+  tocar nada no gasta número. Volver, duplicar o cerrar la pestaña fuerza el
+  guardado.
+- **Paquetes, hoteles y ciudades reales.** "Desde un paquete" lista los
+  paquetes activos del panel con su foto, y precarga destinos, noches,
+  servicios, régimen por hotel y una tarifa por adulto en base doble cuyo
+  precio se calcula con la misma fórmula que usa el panel de paquetes
+  (neto de aéreo, traslados, seguros y circuito + noches de hotel al precio
+  del período, dividido por el factor de la opción). El buscador de hoteles
+  usa el catálogo de alojamientos con sus fotos; los hoteles escritos a mano
+  siguen funcionando. Los favoritos (estrella) quedan guardados por vendedor.
+- **Firma del vendedor real.** Foto, nombre, cargo, teléfono, WhatsApp, email
+  y el link personal de datos de pasajeros salen del perfil del usuario. El
+  cargo es un campo nuevo del perfil.
+- **Seguimiento con datos reales.** La grilla, "Para hoy", el semáforo, las
+  plantillas y Analytics salen de la base. La vigencia del link (24/48/72 h)
+  se respeta al calcular "vencida". Las métricas de lectura del pasajero
+  (aperturas, tiempo, hasta dónde llegó) muestran "Sin datos todavía" hasta
+  la próxima entrega.
+- **Ajustes.** Los administradores editan en `/backend/cotizador/ajustes` el
+  mensaje que acompaña cada cotización, las condiciones, la vigencia por
+  defecto, la casilla de copia y el factor inicial.
+- **Buscador de clientes.** Escribir un nombre o teléfono en el bloque
+  Cliente busca en las cotizaciones anteriores del vendedor y ofrece "Usar
+  datos" o "Usar como base".
+- **Lo que todavía no está:** el envío real por WhatsApp y email, el link
+  público del pasajero y el PDF adjunto llegan en la próxima entrega. Las
+  pestañas quedan visibles pero apagadas; mientras tanto se manda el PDF
+  desde la vista de impresión y se usa "Marcar como enviada" para que el
+  seguimiento cuente la vigencia.
+
+### Operación
+
+- Migración `20260824120000_presupuestos`: tablas Presupuesto,
+  PresupuestoEvento, PresupuestoLink, PresupuestoApertura,
+  PlantillaPresupuesto, HotelFavorito, Aeropuerto y Aerolinea; columna
+  `cargo` en User; 18 aeropuertos, 12 aerolíneas y 5 ajustes del grupo
+  "cotizador" cargados. Nada se borra ni se modifica de lo existente.
+
 ### Cambiado
 
 **El cotizador incorpora la ronda de chequeo del 19/08 con Gero y Santi.**

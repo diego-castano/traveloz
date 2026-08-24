@@ -17,6 +17,7 @@ import { AdminBackground } from "@/components/layout/AdminBackground";
 import { PageTransitionWrapper } from "@/components/layout/PageTransitionWrapper";
 import { DensityProvider } from "@/components/ui/data/Density";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { esRutaCotizador } from "../cotizador/tipos";
 import { VendedorShell } from "./VendedorShell";
 import { PrimerLoginGate } from "./PrimerLoginGate";
 
@@ -33,6 +34,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
     pathname === "/backend/login" ||
     pathname === "/backend/forgot-password" ||
     pathname === "/backend/reset-password";
+
+  // El cotizador es una herramienta a pantalla completa: trae su propio fondo,
+  // su propia barra y overlays `position:fixed` (drawers, modales, la hoja de
+  // impresión). Va sin el padding del shell, sin el AdminBackground y —clave—
+  // sin PageTransitionWrapper: ese motion.div deja `filter:blur(0px)` puesto,
+  // y un filtro en un ancestro convierte a los `fixed` en absolutos.
+  const esCotizador = esRutaCotizador(pathname);
 
   // Only redirect once the session is definitively unauthenticated.
   // During "loading" we must stay put, otherwise a hard reload races with
@@ -111,19 +119,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <DensityProvider>
-        <div className="font-body flex h-screen overflow-hidden">
+        <div className="font-body flex h-screen overflow-hidden print:block print:h-auto print:overflow-visible">
           <Sidebar />
-          <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex flex-1 flex-col overflow-hidden print:block print:overflow-visible">
             <Topbar />
             <main
               ref={mainRef}
-              className="relative flex-1 overflow-y-auto"
+              className="relative flex-1 overflow-y-auto print:static print:overflow-visible"
               style={{ overflowAnchor: "none" }}
             >
-              <AdminBackground />
-              <div className="relative z-[1] p-4 md:p-7">
-                <PageTransitionWrapper>{children}</PageTransitionWrapper>
-              </div>
+              {esCotizador ? (
+                children
+              ) : (
+                <>
+                  <AdminBackground />
+                  <div className="relative z-[1] p-4 md:p-7">
+                    <PageTransitionWrapper>{children}</PageTransitionWrapper>
+                  </div>
+                </>
+              )}
             </main>
           </div>
         </div>

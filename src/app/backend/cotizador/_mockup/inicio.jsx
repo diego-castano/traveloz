@@ -4,25 +4,34 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sparkles, MessageSquare, FileText, Copy, Trash2, Plus, Check, ChevronDown, ChevronRight, Search,
   Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, Loader2, CheckCheck,
-  RefreshCw, Link2, TrendingUp, Ticket, Files, ListChecks, Sun, Moon, Plane, Settings
+  RefreshCw, PenLine, TrendingUp, Ticket, Files, ListChecks, Plane, Settings
 } from "lucide-react";
+import Link from "next/link";
 import {
-  MESES, PAQUETES, VENDEDORES, HISTORIAL, semaforo, money, venta, limpiarPegado, detectarConsulta,
+  MESES, semaforo, horasDeVigencia, money, venta, limpiarPegado, detectarConsulta,
   ESTADOS, estadoEfectivo
 } from "./data";
-import { Foto, Btn, Pill, ChipIA, Vacio, Wordmark, Label } from "./ui";
+import { useCtz, useCatalogo, buscarVendedor } from "./contexto";
+import { Foto, Btn, Pill, ChipIA, Vacio } from "./ui";
 import { DrawerAnalytics } from "./drawer";
+import {
+  setEstadoManual, setNotasInternas, registrarConfirmacion, reactivarPresupuesto,
+  extenderVigencia as extenderVigenciaAction, eliminarPresupuesto,
+} from "@/actions/presupuesto.actions";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HELPERS COMPARTIDOS — usados tanto en el tab Cotizar como en Seguimiento
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* v2F · qué entra en la cola de hoy y por qué — misma regla en todos lados */
+/* v2F · qué entra en la cola de hoy y por qué — misma regla en todos lados.
+   El vencimiento sale de `expiraAt`, que es lo que guardó el server al marcar
+   la cotización como enviada. */
 function calcularCola(base, hechos = {}) {
   return base.map((r) => {
-    if (hechos[r.num]) return null;
+    if (hechos[r.id]) return null;
     if (r.estado === "vencida") {
-      const venc = r.hEnvio != null ? r.hEnvio - 48 : null;
+      const restan = horasDeVigencia(r);
+      const venc = restan == null ? null : -restan;
       const motivo = venc == null ? "El link ya no está vigente"
         : venc < 24 ? "El link venció hoy"
         : venc < 48 ? "El link venció ayer"
@@ -42,6 +51,23 @@ function calcularCola(base, hechos = {}) {
   }).filter(Boolean);
 }
 
+/* "hace 2 d" para las fechas que vuelven del server (último uso de una plantilla). */
+function fechaCorta(fecha) {
+  if (!fecha) return "";
+  const t = new Date(fecha).getTime();
+  if (!Number.isFinite(t)) return "";
+  const h = Math.floor((Date.now() - t) / 3600000);
+  if (h < 1) return "recién";
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} ${d === 1 ? "día" : "días"}`;
+}
+
+/* Un paquete sin período de viaje ni validez no tiene mes: se muestra el año solo. */
+function etiquetaMes(p) {
+  return p.mes != null ? `${MESES[p.mes].slice(0, 3)} ${p.anio}` : String(p.anio || "");
+}
+
 /* v2F · filtros de la tabla — "r.destino" llega como "Punta Cana, Noviembre 2026" */
 function destinoBase(s) { return String(s || "").split(",")[0].trim(); }
 function mesDeDestino(s) { return String(s || "").split(",")[1]?.trim().split(" ")[0] || ""; }
@@ -52,6 +78,7 @@ function mesDeDestino(s) { return String(s || "").split(",")[1]?.trim().split(" 
 
 /* ── A1 · modal "¿Cómo arrancamos?" — cuatro caminos, teclas 1 a 4 ────── */
 function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onIA, onVuelos }) {
+  const catalogo = useCatalogo();
   const [paso, setPaso] = useState("menu");     // menu | plantilla
   const [busq, setBusq] = useState("");
   const inp = useRef(null);
@@ -92,8 +119,8 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
 
   /* ── segundo paso: paquetes de la web + plantillas propias, una sola lista buscable ── */
   const b = busq.trim().toLowerCase();
-  const paquetes  = PAQUETES.filter((p) => !b || `${p.nombre} ${p.resumen} ${p.destinos.map((d) => d.ciudad).join(" ")}`.toLowerCase().includes(b));
-  const plantis   = plantillas.filter((t) => !b || `${t.nombre} ${t.destino} ${t.detalle || ""}`.toLowerCase().includes(b));
+  const paquetes  = catalogo.paquetes.filter((p) => !b || `${p.nombre} ${p.resumen} ${p.destinos.map((d) => d.ciudad).join(" ")}`.toLowerCase().includes(b));
+  const plantis   = plantillas.filter((t) => !b || `${t.nombre} ${t.destino || ""} ${t.detalle || ""}`.toLowerCase().includes(b));
   const CAB = { plantilla:{ t:"Desde un paquete o plantilla", ph:"Buscá entre paquetes de la web y tus plantillas…" } }[paso];
 
   return (
@@ -156,18 +183,25 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
             </div>
 
             <div style={{ maxHeight:330, overflowY:"auto", margin:"0 -4px" }}>
+              {catalogo.cargando && paquetes.length === 0 && (
+                <div style={{ display:"flex", alignItems:"center", gap:8, padding:"18px 8px",
+                  fontSize:12.5, color:"var(--n400)" }}>
+                  <Loader2 size={14} className="spin" /> Cargando catálogo…
+                  {catalogo.progreso ? ` ${catalogo.progreso}` : ""}
+                </div>
+              )}
               {paquetes.length > 0 && (
                 <>
                   <div className="lbl" style={{ padding:"6px 8px 4px" }}>Paquetes de la web</div>
                   {paquetes.map((p) => (
                     <button key={p.id} className="lst-i" onClick={() => onPaquete(p)}>
-                      <Foto seed={p.seed} w={46} h={34} r={9} />
+                      <Foto seed={p.seed} url={p.foto} alt={p.nombre} w={46} h={34} r={9} />
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.nombre}</div>
                         <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                           {p.destinos.map((d) => `${d.ciudad} · ${d.noches}n`).join("   ·   ")}</div>
                       </div>
-                      <Pill tone="violet" style={{ flexShrink:0 }}>{MESES[p.mes].slice(0,3)} {p.anio}</Pill>
+                      <Pill tone="violet" style={{ flexShrink:0 }}>{etiquetaMes(p)}</Pill>
                       <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
                     </button>
                   ))}
@@ -184,7 +218,7 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:13, fontWeight:600 }}>{t.nombre}</div>
                         <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                          {t.destino} · {t.detalle}</div>
+                          {[t.destino, t.detalle].filter(Boolean).join(" · ") || "Sin detalle"}</div>
                       </div>
                       <Pill tone="teal" style={{ flexShrink:0 }}><Zap size={8} /> {t.usos ?? 0}</Pill>
                       <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
@@ -193,7 +227,7 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
                 </>
               )}
 
-              {!paquetes.length && !plantis.length && (
+              {!catalogo.cargando && !paquetes.length && !plantis.length && (
                 <div style={{ padding:"22px 6px" }}>
                   <Vacio icon={Search} titulo={`Nada para “${busq.trim()}”`} accion="Probá con otra palabra, o arrancá en blanco" />
                 </div>
@@ -221,6 +255,7 @@ const EJEMPLOS_IA = [
 ];
 
 function ModalIA({ onClose, onArmar }) {
+  const catalogo = useCatalogo();
   const [texto, setTexto] = useState("");
   const [fase, setFase] = useState("edit");     // edit | corriendo
   const [paso, setPaso] = useState(0);
@@ -243,7 +278,7 @@ function ModalIA({ onClose, onArmar }) {
     { l:"Armando el borrador en blanco con lo que entendí…" },
   ];
 
-  const armar = () => { if (!texto.trim()) return; setDet(detectarConsulta(texto)); setPaso(0); setFase("corriendo"); };
+  const armar = () => { if (!texto.trim()) return; setDet(detectarConsulta(texto, catalogo)); setPaso(0); setFase("corriendo"); };
 
   useEffect(() => {
     if (fase !== "corriendo" || !det) return;
@@ -324,65 +359,17 @@ function ModalIA({ onClose, onArmar }) {
   );
 }
 
-/* ── A6 · modal "Ajustes del cotizador" — solo lo ve el usuario máster ── */
-function AjustesCotizador({ plantillaMsg, onPlantillaMsg, onClose }) {
-  useEffect(() => {
-    const h = (e) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  return (
-    <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="a-zoom card" style={{ width:"min(640px,100%)", padding:0, overflow:"hidden" }}>
-
-        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"15px 17px", borderBottom:"1px solid var(--hair-soft)" }}>
-          <div style={{ width:32, height:32, borderRadius:10, flexShrink:0, display:"grid", placeItems:"center",
-            background:"rgba(120,90,229,.1)", color:"var(--violet)" }}><Settings size={15} /></div>
-          <div className="disp" style={{ fontSize:17, fontWeight:600, letterSpacing:"-.02em", flex:1 }}>
-            Ajustes del cotizador
-          </div>
-          <Pill tone="violet">Usuario máster</Pill>
-          <button className="btn btn-g btn-ico" onClick={onClose}><X size={15} /></button>
-        </div>
-
-        <div style={{ padding:"16px 17px 18px" }}>
-          <Label>Mensaje automático por defecto</Label>
-          <textarea className="in" rows={8} value={plantillaMsg} onChange={(e) => onPlantillaMsg(e.target.value)} />
-          <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, lineHeight:1.5 }}>
-            <span className="mono">{"{nombre}"}</span> se reemplaza por el nombre del cliente y{" "}
-            <span className="mono">{"{link}"}</span> por el link de datos de pasajeros del vendedor.
-            Cada cotización arranca con este texto y el vendedor lo puede editar.
-          </div>
-
-          <div style={{ marginTop:18 }}>
-            <Label>Link de datos de pasajeros por vendedor</Label>
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {VENDEDORES.map((v) => (
-                <div key={v.id} style={{ display:"flex", alignItems:"center", gap:9 }}>
-                  <div style={{ width:28, height:28, borderRadius:"50%", flexShrink:0, background:"linear-gradient(145deg,#A05ED3,#785AE5)",
-                    color:"#fff", display:"grid", placeItems:"center", fontSize:10.5, fontWeight:700 }}>{v.inicial}</div>
-                  <span style={{ fontSize:12.5, fontWeight:600, width:130, flexShrink:0, whiteSpace:"nowrap",
-                    overflow:"hidden", textOverflow:"ellipsis" }}>{v.nombre}</span>
-                  <input className="in mono" style={{ flex:1 }} defaultValue={v.linkDatos || ""} />
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize:11, color:"var(--n400)", marginTop:9, lineHeight:1.5 }}>
-              En el sistema real esto se carga en el módulo de usuarios, junto con la firma
-              (nombre, cargo, teléfono, email y foto).
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    PANTALLA DE INICIO
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, toast, tab, setTab, plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, actual, oscuro, onTema, onSoloVuelos, plantillaMsg, onPlantillaMsg }) {
+function Inicio({
+  onPaquete, onBlanco, onPlantilla, onIA, onDuplicarFila, onEditarFila, toast, tab, setTab,
+  plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, onSoloVuelos,
+  filas, cargandoFilas, recargar, verComo, setVerComo,
+}) {
+  const { esAdmin } = useCtz();
+  const catalogo = useCatalogo();
   const G = ["#F43E55","#785AE5"];
   const [busq, setBusq] = useState("");
   const [creando, setCreando] = useState(false);
@@ -391,62 +378,61 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
   /* v2 · caminos de entrada */
   const [modalNueva, setModalNueva] = useState(false);
   const [modalIA, setModalIA] = useState(false);
-  /* ajustes del cotizador — solo lo abre el usuario máster */
-  const [ajustes, setAjustes] = useState(false);
 
   const resultados = useMemo(() => {
     const t = busq.trim().toLowerCase();
-    if (!t) return PAQUETES.slice(0, 4);
-    return PAQUETES.filter((p) =>
+    if (!t) return catalogo.paquetes.slice(0, 4);
+    return catalogo.paquetes.filter((p) =>
       p.nombre.toLowerCase().includes(t) ||
       p.destinos.some((d) => d.ciudad.toLowerCase().includes(t)) ||
       p.resumen.toLowerCase().includes(t)
     ).slice(0, 8);
-  }, [busq]);
+  }, [busq, catalogo.paquetes]);
   const buscando = busq.trim().length > 0;
 
-  /* v2F · badge del tab Seguimiento: cuántas piden acción hoy — 3 si no hay dato */
-  const badgeSeguimiento = useMemo(() => {
-    const base = (actual ? [actual, ...HISTORIAL] : HISTORIAL)
-      .map((r) => ({ ...r, estado: estadoEfectivo(r) }));
-    return calcularCola(base).length || 3;
-  }, [actual]);
+  /* las filas con el estado ya resuelto: lo comparten los cuatro tabs */
+  const base = useMemo(
+    () => filas.map((r) => ({ ...r, estado: estadoEfectivo(r) })),
+    [filas],
+  );
+
+  /* badges: todo sale de las filas reales, nada de números fijos */
+  const badgeSeguimiento = useMemo(() => calcularCola(base).length, [base]);
+  const tasaConfirmacion = useMemo(() => {
+    const enviadas = base.filter((r) => r.hEnvio != null).length;
+    if (!enviadas) return "—";
+    const conf = base.filter((r) => r.estado === "confirmada").length;
+    return `${Math.round((conf / enviadas) * 100)}%`;
+  }, [base]);
 
   const TABS = [
-    { id:"cotizar",     l:"Cotizar",     Icon:Ticket,      badge:148 },
+    { id:"cotizar",     l:"Cotizar",     Icon:Ticket,      badge:base.length },
     { id:"seguimiento", l:"Seguimiento", Icon:ListChecks,  badge:badgeSeguimiento },
     { id:"plantillas",  l:"Plantillas",  Icon:Files,       badge:plantillas.length },
-    { id:"analytics",   l:"Analytics",   Icon:TrendingUp,  badge:"71%" },
+    { id:"analytics",   l:"Analytics",   Icon:TrendingUp,  badge:tasaConfirmacion },
   ];
 
   return (
     <div className="home-wrap" style={{ maxWidth:1080, margin:"0 auto", padding:"28px 22px 60px" }}>
 
-      {/* ── barra superior: identidad + acción primaria ── */}
+      {/* ── barra superior: vuelta al panel + acción primaria. La marca y el
+             tema los pone el shell del backend, acá no se repiten. ── */}
       <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:13, marginBottom:20, flexWrap:"wrap" }}>
-        <div style={{ width:40, height:40, borderRadius:13, background:`linear-gradient(87deg,${G[0]},${G[1]})`,
-          display:"grid", placeItems:"center", color:"#fff", boxShadow:`0 10px 26px -8px ${G[1]}77` }}>
-          <Ticket size={20} />
-        </div>
         <div style={{ flex:1, minWidth:180 }}>
-          <div style={{ display:"flex", alignItems:"baseline", gap:9 }}>
-            <div className="disp" style={{ fontSize:24, fontWeight:600, letterSpacing:"-.025em", lineHeight:1.1 }}>Cotizador</div>
-            <Wordmark size={15} />
-          </div>
-          <div style={{ fontSize:12, color:"var(--n400)" }}>Módulo del backend · mismo login, mismo sistema</div>
+          <Link href="/backend/dashboard" className="ctz-volver">
+            <ArrowLeft size={13} /> Panel
+          </Link>
+          <div className="disp" style={{ fontSize:24, fontWeight:600, letterSpacing:"-.025em", lineHeight:1.1, marginTop:4 }}>Cotizador</div>
+          <div style={{ fontSize:12, color:"var(--n400)" }}>Cotizaciones a medida para mandar por WhatsApp</div>
         </div>
-        {/* ajustes del cotizador — usuario máster */}
-        <button className="btn btn-s btn-ico" style={{ width:40, height:40, borderRadius:12 }}
-          onClick={() => setAjustes(true)} title="Ajustes del cotizador (usuario máster)"
-          aria-label="Ajustes del cotizador (usuario máster)">
-          <Settings size={16} />
-        </button>
-        {/* v2D · D5 · claro / oscuro — el mismo estado en el inicio y en el editor */}
-        <button className="btn btn-s btn-ico" style={{ width:40, height:40, borderRadius:12 }}
-          onClick={onTema} title={oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro"}
-          aria-label={oscuro ? "Pasar a modo claro" : "Pasar a modo oscuro"}>
-          {oscuro ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
+        {/* ajustes del cotizador — solo el admin, en su propia página */}
+        {esAdmin && (
+          <Link href="/backend/cotizador/ajustes" className="btn btn-s btn-ico"
+            style={{ width:40, height:40, borderRadius:12 }}
+            title="Ajustes del cotizador" aria-label="Ajustes del cotizador">
+            <Settings size={16} />
+          </Link>
+        )}
         <button className="btn btn-hero home-cta" onClick={() => setModalNueva(true)}
           style={{ height:46, paddingInline:22, fontSize:14, borderRadius:13 }}>
           <Plus size={17} /> Nueva cotización
@@ -485,7 +471,9 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
                   color: buscando ? "var(--violet)" : "var(--n300)", transition:"color .2s" }} />
                 <input className={`in ${buscando ? "a-glow" : ""}`} value={busq}
                   style={{ height:50, paddingLeft:44, paddingRight:110, fontSize:15, borderRadius:14, fontWeight:500 }}
-                  placeholder={`Buscá entre los ${PAQUETES.length} paquetes publicados… Río, Cancún, Madrid`}
+                  placeholder={catalogo.cargando && !catalogo.paquetes.length
+                    ? "Cargando catálogo…"
+                    : `Buscá entre los ${catalogo.paquetes.length} paquetes publicados… Río, Cancún, Madrid`}
                   onChange={(e) => setBusq(e.target.value)} />
                 {buscando ? (
                   <button onClick={() => setBusq("")} style={{ position:"absolute", right:12, top:"50%",
@@ -526,19 +514,19 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
                     onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px) scale(1.008)";
                       e.currentTarget.style.boxShadow = "0 20px 44px -18px rgba(26,26,46,.3)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 1px 2px rgba(26,26,46,.04)"; }}>
-                    <Foto seed={p.seed} w="100%" h={96} r={0}>
+                    <Foto seed={p.seed} url={p.foto} alt={p.nombre} w="100%" h={96} r={0}>
                       <div style={{ position:"absolute", left:12, bottom:9, right:12, color:"#fff" }}>
                         <div style={{ fontSize:13.5, fontWeight:700, letterSpacing:"-.015em", textShadow:"0 1px 8px rgba(0,0,0,.45)" }}>{p.nombre}</div>
                       </div>
                       <div style={{ position:"absolute", right:9, top:9 }}>
                         {/* va sobre la foto: queda claro siempre, en los dos temas */}
-                        <Pill style={{ background:"rgba(255,255,255,.93)", color:"#1A1A2E" }}>{MESES[p.mes].slice(0,3)} {p.anio}</Pill>
+                        <Pill style={{ background:"rgba(255,255,255,.93)", color:"#1A1A2E" }}>{etiquetaMes(p)}</Pill>
                       </div>
                     </Foto>
                     <div style={{ padding:"10px 12px 12px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:5, flexWrap:"wrap", marginBottom:9 }}>
-                        {p.destinos.map((d) => (
-                          <span key={d.ciudad} className="pill" data-tone="violet">
+                        {p.destinos.map((d, di) => (
+                          <span key={`${d.ciudad}-${di}`} className="pill" data-tone="violet">
                             {d.ciudad} · {d.noches}n</span>
                         ))}
                       </div>
@@ -552,7 +540,14 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
                   </button>
                   );
                 })}
-                {buscando && resultados.length === 0 && (
+                {catalogo.cargando && resultados.length === 0 && (
+                  <div className="a-fade" style={{ gridColumn:"1/-1", display:"flex", alignItems:"center",
+                    justifyContent:"center", gap:9, padding:"30px 0", fontSize:13, color:"var(--n400)" }}>
+                    <Loader2 size={15} className="spin" /> Cargando catálogo…
+                    {catalogo.progreso ? <span className="mono" style={{ fontSize:11 }}>{catalogo.progreso}</span> : null}
+                  </div>
+                )}
+                {!catalogo.cargando && buscando && resultados.length === 0 && (
                   <div className="a-fade pq-vacio" style={{ gridColumn:"1/-1", textAlign:"center", padding:"26px 0" }}>
                     <Search size={20} style={{ color:"var(--n300)", marginBottom:8 }} />
                     <div style={{ fontSize:13.5, fontWeight:600, color:"var(--n600)" }}>No hay paquetes para “{busq.trim()}”</div>
@@ -570,15 +565,20 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
                 <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
                 <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)" }}>búsqueda instantánea por cualquier campo</span>
               </div>
-              <ListadoContenido actual={actual} toast={toast} onDuplicar={onFila} onEditar={onEditarFila} />
+              <ListadoContenido base={base} cargando={cargandoFilas} recargar={recargar}
+                verComo={verComo} setVerComo={setVerComo} toast={toast}
+                onDuplicar={onDuplicarFila} onEditar={onEditarFila} />
             </div>
           )}
 
           {/* ══ TAB SEGUIMIENTO — lo que antes vivía arriba, ahora escondido acá ══ */}
-          {tab === "seguimiento" && <TabSeguimiento actual={actual} toast={toast} onEditar={onEditarFila} />}
+          {tab === "seguimiento" && (
+            <TabSeguimiento base={base} recargar={recargar} toast={toast}
+              onEditar={onEditarFila} onDuplicar={onDuplicarFila} />
+          )}
 
           {/* ══ TAB ANALYTICS ══ */}
-          {tab === "analytics" && <TabAnalytics />}
+          {tab === "analytics" && <TabAnalytics base={base} />}
 
           {/* ══ TAB PLANTILLAS ══ */}
           {tab === "plantillas" && (
@@ -621,10 +621,10 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
                     <button onClick={() => onPlantilla(t)} style={{ flex:1, minWidth:0, textAlign:"left" }}>
                       <div style={{ fontSize:13, fontWeight:700 }}>{t.nombre}</div>
                       <div style={{ fontSize:11, color:"var(--n400)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                        {t.destino} · {t.detalle}</div>
+                        {[t.destino, t.detalle].filter(Boolean).join(" · ") || "Sin detalle"}</div>
                       <div style={{ display:"flex", gap:6, marginTop:5 }}>
                         <span className="pill" data-tone="teal"><Zap size={8} /> usada {t.usos ?? 0} veces</span>
-                        <span className="pill" data-tone="n">{t.ultimo || "sin usar"}</span>
+                        <span className="pill" data-tone="n">{fechaCorta(t.ultimoUsoAt) || "sin usar"}</span>
                       </div>
                     </button>
                     <Btn variant="p" size="xs" onClick={() => onPlantilla(t)}>Usar</Btn>
@@ -668,12 +668,90 @@ function Inicio({ onPaquete, onBlanco, onPlantilla, onIA, onFila, onEditarFila, 
         <ModalIA onClose={() => setModalIA(false)}
           onArmar={(det) => { setModalIA(false); onIA(det); }} />
       )}
-      {ajustes && (
-        <AjustesCotizador plantillaMsg={plantillaMsg} onPlantillaMsg={onPlantillaMsg}
-          onClose={() => setAjustes(false)} />
-      )}
     </div>
   );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCIONES SOBRE UNA FILA
+
+   Las comparten el listado del tab Cotizar y el tab Seguimiento: los dos
+   muestran el mismo drawer y los mismos botones. Cada una llama al server y
+   después refresca la grilla — el estado optimista se queda solo con lo que se
+   ve mientras vuelve la respuesta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function useAccionesFila({ recargar, toast, cerrarDrawer }) {
+  /* pisadas locales por id: lo que ya cambió en pantalla y todavía no volvió
+     del server. Se limpian solas en el próximo refresco. */
+  const [ov, setOv] = useState({});
+  const pisar = useCallback((id, cambio) => setOv((o) => ({ ...o, [id]: { ...(o[id] || {}), ...cambio } })), []);
+  const despisar = useCallback((id) => setOv((o) => { const c = { ...o }; delete c[id]; return c; }), []);
+
+  const refrescar = useCallback(async () => { await recargar?.(); setOv({}); }, [recargar]);
+
+  const fallo = useCallback((id, msg) => { despisar(id); toast?.({ msg, tone:"warn" }); }, [despisar, toast]);
+
+  const reactivar = useCallback(async (r) => {
+    pisar(r.id, { estado:"enviada", estadoManual:null, aperturas:0 });
+    const res = await reactivarPresupuesto(r.id);
+    if (!res.ok) return fallo(r.id, res.error);
+    toast?.({ msg:`Reactivada por ${r.vigencia || 48} h ✓`, tone:"ok" });
+    await refrescar();
+  }, [pisar, fallo, toast, refrescar]);
+
+  const extender = useCallback(async (r) => {
+    const res = await extenderVigenciaAction(r.id, 48);
+    if (!res.ok) return fallo(r.id, res.error);
+    pisar(r.id, { expiraAt: res.data.expiraAt, estadoManual: null });
+    toast?.({ msg:"Vigencia extendida — el link vuelve a estar activo 48 h", tone:"ok" });
+    await refrescar();
+  }, [pisar, fallo, toast, refrescar]);
+
+  const cambiarEstado = useCallback(async (r, estadoUi) => {
+    pisar(r.id, { estadoManual: estadoUi });
+    const res = await setEstadoManual(r.id, estadoUi);
+    if (!res.ok) return fallo(r.id, res.error);
+    await refrescar();
+  }, [pisar, fallo, refrescar]);
+
+  const guardarNotas = useCallback(async (r, texto) => {
+    pisar(r.id, { bitacora: texto });
+    const res = await setNotasInternas(r.id, texto);
+    if (!res.ok) return fallo(r.id, res.error);
+  }, [pisar, fallo]);
+
+  const confirmar = useCallback(async (r, opcion, via) => {
+    pisar(r.id, { estado:"confirmada", estadoManual:null, confOpcion:opcion, confVia:via });
+    const res = await registrarConfirmacion(r.id, { opcion, via });
+    if (!res.ok) return fallo(r.id, res.error);
+    toast?.({ msg:`${r.num} confirmada · ${opcion}`, tone:"ok" });
+    await refrescar();
+  }, [pisar, fallo, toast, refrescar]);
+
+  const eliminar = useCallback(async (r) => {
+    const res = await eliminarPresupuesto(r.id);
+    if (!res.ok) return fallo(r.id, res.error);
+    cerrarDrawer?.();
+    toast?.({ msg:`${r.num} eliminada`, tone:"warn" });
+    await refrescar();
+  }, [fallo, toast, refrescar, cerrarDrawer]);
+
+  /* el envío marcado desde el modal ya escribió en la base: solo refrescamos */
+  const marcada = useCallback(async () => { await refrescar(); }, [refrescar]);
+
+  return { ov, reactivar, extender, cambiarEstado, guardarNotas, confirmar, eliminar, marcada, refrescar };
+}
+
+/** Aplica las pisadas locales y recalcula el estado efectivo de cada fila. */
+function conPisadas(base, ov) {
+  if (!Object.keys(ov).length) return base;
+  return base.map((r) => {
+    const p = ov[r.id];
+    if (!p) return r;
+    const mezcla = { ...r, ...p };
+    return { ...mezcla, estado: estadoEfectivo(mezcla) };
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -740,75 +818,40 @@ function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbri
   );
 }
 
-/* ── v2F · tab Seguimiento — lo que antes vivía siempre visible en Cotizar,
-   ahora escondido en su propio tab: la cola del día + reportes por vendedor.
-   Estado propio y aparte del de la tabla (mismo criterio del mockup: es OK
-   duplicar estado acá en vez de complicar el árbol con un hook compartido). ── */
-function TabSeguimiento({ actual, toast, onEditar }) {
-  const [selNum, setSelNum] = useState(null);
-  const [ovBit, setOvBit] = useState({});      // bitácora editada desde el drawer, por número
-  const [ov, setOv] = useState({});
-  const [ovEst, setOvEst] = useState({});
-  const [ovReact, setOvReact] = useState({});
-  const [ovHist, setOvHist] = useState({});
+/* ── v2F · tab Seguimiento — la cola del día y los reportes por vendedor.
+   Estado propio y aparte del de la tabla: son dos pantallas distintas y no
+   vale la pena atarlas con un hook compartido. ── */
+function TabSeguimiento({ base, recargar, toast, onEditar, onDuplicar }) {
+  const { vendedores } = useCtz();
+  const [selId, setSelId] = useState(null);
   const [hechos, setHechos] = useState({});
+  const acc = useAccionesFila({ recargar, toast, cerrarDrawer: () => setSelId(null) });
 
-  const base = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL)
-    .map((r) => ov[r.num] ? { ...r, estado:"confirmada", confOpcion:ov[r.num].op, confVia:ov[r.num].via } : r)
-    .map((r) => ovReact[r.num] ? { ...r, ...ovReact[r.num] } : r)
-    .map((r) => ovHist[r.num] ? { ...r, hist:ovHist[r.num] } : r)
-    .map((r) => ovBit[r.num] ? { ...r, bitacora:ovBit[r.num] } : r)
-    .map((r) => ({ ...r, estadoManual: ovEst[r.num] || null, estado: estadoEfectivo({ ...r, estadoManual: ovEst[r.num] || null }) })),
-    [actual, ov, ovEst, ovReact, ovHist, ovBit]);
-  const sel = base.find((r) => r.num === selNum) || null;
-
-  const reactivar = useCallback((r) => {
-    const antes = ovEst[r.num] || null;
-    setOvReact((o) => ({ ...o, [r.num]:{ estado:"enviada", hEnvio:0, aperturas:0, apDet:[], hasta:null, lectura:null, hastaSec:null } }));
-    setOvEst((o) => ({ ...o, [r.num]:null }));
-    toast?.({ msg:"Reactivada con link nuevo por 48 h ✓", tone:"ok",
-      undo:() => { setOvReact((o) => { const c = { ...o }; delete c[r.num]; return c; });
-                   setOvEst((o) => ({ ...o, [r.num]:antes })); } });
-  }, [ovEst, toast]);
-
-  const anotar = useCallback((num, ev) => setOvHist((h) => ({ ...h, [num]:[...(h[num] || []), ev] })), []);
-
-  const extenderVigencia = useCallback((r) => {
-    const antesReact = ovReact[r.num];
-    const antesEst = ovEst[r.num] || null;
-    const ev = { c:"#785AE5", t:"Vigencia extendida 48 h", s:"recién · el link vuelve a estar activo" };
-    setOvReact((o) => ({ ...o, [r.num]:{ ...(o[r.num] || {}), hEnvio:0 } }));
-    if (antesEst === "vencida") setOvEst((o) => ({ ...o, [r.num]:null }));
-    anotar(r.num, ev);
-    toast?.({ msg:"Vigencia extendida — el link vuelve a estar activo 48 h", tone:"ok",
-      undo:() => {
-        setOvReact((o) => { const c = { ...o }; if (antesReact) c[r.num] = antesReact; else delete c[r.num]; return c; });
-        setOvEst((o) => ({ ...o, [r.num]:antesEst }));
-        setOvHist((h) => ({ ...h, [r.num]:(h[r.num] || []).filter((x) => x !== ev) }));
-      } });
-  }, [ovReact, ovEst, anotar, toast]);
-
-  const recordatorioDrawer = useCallback((r) => anotar(r.num, { c:"#785AE5", t:"Recordatorio enviado", s:"recién · WhatsApp" }), [anotar]);
+  const filas = useMemo(() => conPisadas(base, acc.ov), [base, acc.ov]);
+  const sel = filas.find((r) => r.id === selId) || null;
 
   const marcarHecho = useCallback((r, motivo, msg) => {
-    setHechos((h) => ({ ...h, [r.num]:motivo }));
-    toast?.({ msg, tone:"ok", undo:() => setHechos((h) => { const c = { ...h }; delete c[r.num]; return c; }) });
+    setHechos((h) => ({ ...h, [r.id]: motivo }));
+    toast?.({ msg, tone:"ok", undo:() => setHechos((h) => { const c = { ...h }; delete c[r.id]; return c; }) });
   }, [toast]);
-  const recordatorio = useCallback((r) => marcarHecho(r, "recordatorio", "Recordatorio listo en WhatsApp ✓"), [marcarHecho]);
+  const recordatorio = useCallback((r) => marcarHecho(r, "recordatorio", `Anotado — mandale el recordatorio a ${String(r.cliente).split(" ")[0]}`), [marcarHecho]);
   const seguimiento  = useCallback((r) => marcarHecho(r, "seguimiento", `Seguimiento anotado — llamá a ${String(r.cliente).split(" ")[0]} hoy ✓`), [marcarHecho]);
 
   /* ── v2 · A3 · qué entra en la cola de hoy y por qué ── */
-  const cola = useMemo(() => calcularCola(base, hechos), [base, hechos]);
+  const cola = useMemo(() => calcularCola(filas, hechos), [filas, hechos]);
 
-  const porVendedor = useMemo(() => VENDEDORES.map((v) => {
-    const r = base.filter((x) => x.vendedor === v.id);
-    return { ...v, n:r.length, monto:r.reduce((a, x) => a + x.monto, 0),
-      abiertas:r.filter((x) => x.aperturas > 0).length };
-  }).filter((v) => v.n > 0), [base]);
+  /* Reporte por vendedor: todo sale de las filas que están en pantalla. */
+  const porVendedor = useMemo(() => vendedores.map((v) => {
+    const suyas = filas.filter((x) => x.vendedor === v.id);
+    return { ...v, n:suyas.length,
+      monto: suyas.filter((x) => x.estado === "confirmada").reduce((a, x) => a + (x.monto || 0), 0),
+      abiertas: suyas.filter((x) => x.aperturas > 0).length,
+      confirmadas: suyas.filter((x) => x.estado === "confirmada").length };
+  }).filter((v) => v.n > 0), [filas, vendedores]);
 
   useEffect(() => {
     if (!sel) return;
-    const k = (e) => e.key === "Escape" && setSelNum(null);
+    const k = (e) => e.key === "Escape" && setSelId(null);
     document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k);
   }, [sel]);
 
@@ -816,8 +859,8 @@ function TabSeguimiento({ actual, toast, onEditar }) {
     <div className="a-fade">
 
       {/* v2 · A3 · la cola del día, antes que cualquier número */}
-      <ColaParaHoy items={cola} onReactivar={reactivar} onRecordatorio={recordatorio}
-        onSeguimiento={seguimiento} onAbrir={(r) => setSelNum(r.num)} />
+      <ColaParaHoy items={cola} onReactivar={acc.reactivar} onRecordatorio={recordatorio}
+        onSeguimiento={seguimiento} onAbrir={(r) => setSelId(r.id)} />
 
       {/* reportes por vendedor */}
       <div className="vend-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10, marginBottom:6 }}>
@@ -831,122 +874,80 @@ function TabSeguimiento({ actual, toast, onEditar }) {
                 <div style={{ fontSize:10.5, color:"var(--n400)" }}>{v.n} cotizaciones</div>
               </div>
             </div>
-            <div style={{ display:"flex", alignItems:"baseline", gap:7 }}>
+            <div style={{ display:"flex", alignItems:"baseline", gap:7, flexWrap:"wrap" }}>
               <span className="mono" style={{ fontSize:14.5, fontWeight:600 }}>{money(v.monto)}</span>
+              <span style={{ fontSize:10.5, color:"var(--n400)" }}>confirmado</span>
               <span style={{ display:"inline-flex", alignItems:"center", gap:3, fontSize:10.5, color:"var(--teal-3)" }}>
-                <TrendingUp size={10} /> {v.abiertas} abiertas</span>
+                <TrendingUp size={10} /> {v.confirmadas} cerradas</span>
             </div>
           </div>
         ))}
+        {!porVendedor.length && (
+          <div style={{ gridColumn:"1/-1" }}>
+            <Vacio icon={ListChecks} titulo="Todavía no hay cotizaciones" accion="Armá la primera desde el tab Cotizar" />
+          </div>
+        )}
       </div>
 
       {/* leyenda del semáforo — la misma que usa la cola de arriba */}
       <div style={{ fontSize:11, color:"var(--n400)", margin:"9px 0 4px", display:"flex", alignItems:"center", gap:14, flexWrap:"wrap" }}>
-        <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}><Eye size={11} /> Clic en una cotización de la cola para ver sus analytics</span>
+        <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}><Eye size={11} /> Clic en una cotización de la cola para ver su detalle</span>
         <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
           <span className="sem-dot" style={{ background:"#2A9E8E", width:8, height:8 }} /> abierta
           <span className="sem-dot" style={{ background:"#45D4C0", width:8, height:8, marginLeft:7 }} /> en ventana
           <span className="sem-dot" style={{ background:"#E8A13C", width:8, height:8, marginLeft:7 }} /> +24 h sin abrir
-          <span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> +48 h sin abrir
+          <span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> link vencido
         </span>
       </div>
 
-      {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
-        onEditar={onEditar ? (r) => { setSelNum(null); onEditar(r); } : undefined}
-        onBitacora={(num, lista) => setOvBit((o) => ({ ...o, [num]:lista }))}
-        onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
-        onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
-        onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}
+      {sel && <DrawerAnalytics r={sel} onClose={() => setSelId(null)} toast={toast}
+        onEditar={onEditar ? (r) => { setSelId(null); onEditar(r); } : undefined}
+        onDuplicar={onDuplicar ? (r) => { setSelId(null); onDuplicar(r); } : undefined}
+        onBitacora={acc.guardarNotas}
+        onConfirmar={acc.confirmar}
+        onEstado={acc.cambiarEstado}
+        onEliminar={acc.eliminar}
+        onExtender={acc.extender} onRecordatorio={acc.marcada} />}
     </div>
   );
 }
 
-function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
+function ListadoContenido({ base, cargando, recargar, verComo, setVerComo, toast, onDuplicar, onEditar }) {
+  const { vendedores, esAdmin } = useCtz();
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todas");
-  const [vendedor, setVendedor] = useState("todos");
   const [destFiltro, setDestFiltro] = useState("todos");  // v2F · filtro por destino
   const [mesFiltro, setMesFiltro] = useState("todos");    // v2F · filtro por mes de salida
-  const [selNum, setSelNum] = useState(null);  // fila abierta en el drawer
-  const [ovBit, setOvBit] = useState({});      // bitácora editada desde el drawer, por número
-  const [ov, setOv] = useState({});            // confirmaciones hechas en esta sesión
-  const [ovEst, setOvEst] = useState({});      // estados pisados a mano por el vendedor
-  const [ovReact, setOvReact] = useState({});  // v2 · reactivadas: link nuevo por 48 h
-  const [ovHist, setOvHist] = useState({});    // v2D · lo hecho desde el drawer, anotado en la historia
+  const [selId, setSelId] = useState(null);               // fila abierta en el drawer
+  const acc = useAccionesFila({ recargar, toast, cerrarDrawer: () => setSelId(null) });
 
-  const base = useMemo(() => (actual ? [actual, ...HISTORIAL] : HISTORIAL)
-    .map((r) => ov[r.num] ? { ...r, estado:"confirmada", confOpcion:ov[r.num].op, confVia:ov[r.num].via } : r)
-    .map((r) => ovReact[r.num] ? { ...r, ...ovReact[r.num] } : r)
-    .map((r) => ovHist[r.num] ? { ...r, hist:ovHist[r.num] } : r)
-    .map((r) => ovBit[r.num] ? { ...r, bitacora:ovBit[r.num] } : r)
-    .map((r) => ({ ...r, estadoManual: ovEst[r.num] || null, estado: estadoEfectivo({ ...r, estadoManual: ovEst[r.num] || null }) })),
-    [actual, ov, ovEst, ovReact, ovHist, ovBit]);
-  const sel = base.find((r) => r.num === selNum) || null;
-
-  /* ── v2 · A5 · reactivar: link nuevo por 48 h, semáforo de vuelta en verde ── */
-  const reactivar = useCallback((r) => {
-    const antes = ovEst[r.num] || null;
-    setOvReact((o) => ({ ...o, [r.num]:{ estado:"enviada", hEnvio:0, aperturas:0, apDet:[], hasta:null, lectura:null, hastaSec:null } }));
-    setOvEst((o) => ({ ...o, [r.num]:null }));
-    toast?.({ msg:"Reactivada con link nuevo por 48 h ✓", tone:"ok",
-      undo:() => { setOvReact((o) => { const c = { ...o }; delete c[r.num]; return c; });
-                   setOvEst((o) => ({ ...o, [r.num]:antes })); } });
-  }, [ovEst, toast]);
-
-  /* ── v2D · D3 · anotar en la historia de la fila lo que se hace desde el drawer ── */
-  const anotar = useCallback((num, ev) => {
-    setOvHist((h) => ({ ...h, [num]:[...(h[num] || []), ev] }));
-  }, []);
-
-  /* +48 h: el link vuelve a arrancar (hEnvio a 0) y deja de estar vencido */
-  const extenderVigencia = useCallback((r) => {
-    const antesReact = ovReact[r.num];
-    const antesEst = ovEst[r.num] || null;
-    const ev = { c:"#785AE5", t:"Vigencia extendida 48 h", s:"recién · el link vuelve a estar activo" };
-    setOvReact((o) => ({ ...o, [r.num]:{ ...(o[r.num] || {}), hEnvio:0 } }));
-    if (antesEst === "vencida") setOvEst((o) => ({ ...o, [r.num]:null }));
-    anotar(r.num, ev);
-    toast?.({ msg:"Vigencia extendida — el link vuelve a estar activo 48 h", tone:"ok",
-      undo:() => {
-        setOvReact((o) => { const c = { ...o }; if (antesReact) c[r.num] = antesReact; else delete c[r.num]; return c; });
-        setOvEst((o) => ({ ...o, [r.num]:antesEst }));
-        setOvHist((h) => ({ ...h, [r.num]:(h[r.num] || []).filter((x) => x !== ev) }));
-      } });
-  }, [ovReact, ovEst, anotar, toast]);
-
-  /* el recordatorio sale por el mismo modal de Compartir: acá solo queda el rastro */
-  const recordatorioDrawer = useCallback((r) => {
-    anotar(r.num, { c:"#785AE5", t:"Recordatorio enviado", s:"recién · WhatsApp" });
-  }, [anotar]);
-
-  const copiarLink   = useCallback(() => toast?.({ msg:"Link copiado ✓", tone:"ok" }), [toast]);
-  const porWhatsapp  = useCallback((r) => toast?.({ msg:`Mensaje listo en WhatsApp para ${String(r.cliente).split(" ")[0]} ✓`, tone:"ok" }), [toast]);
+  const conOv = useMemo(() => conPisadas(base, acc.ov), [base, acc.ov]);
+  const sel = conOv.find((r) => r.id === selId) || null;
 
   /* v2F · destinos y meses presentes hoy, para armar los <select> de filtro */
-  const destinosUnicos = useMemo(() => Array.from(new Set(base.map((r) => destinoBase(r.destino)))).filter(Boolean).sort(), [base]);
+  const destinosUnicos = useMemo(() => Array.from(new Set(conOv.map((r) => destinoBase(r.destino)))).filter(Boolean).sort(), [conOv]);
   const mesesUnicos = useMemo(() => {
-    const presentes = new Set(base.map((r) => mesDeDestino(r.destino)));
+    const presentes = new Set(conOv.map((r) => mesDeDestino(r.destino)));
     return MESES.filter((m) => presentes.has(m));
-  }, [base]);
+  }, [conOv]);
 
   /* búsqueda instantánea por CUALQUIER campo + filtros de destino y mes de salida */
   const filas = useMemo(() => {
-    return base.filter((r) => {
+    return conOv.filter((r) => {
       if (filtro !== "todas" && r.estado !== filtro) return false;
-      if (vendedor !== "todos" && r.vendedor !== vendedor) return false;
       if (destFiltro !== "todos" && destinoBase(r.destino) !== destFiltro) return false;
       if (mesFiltro !== "todos" && mesDeDestino(r.destino) !== mesFiltro) return false;
       if (!q.trim()) return true;
-      const V = VENDEDORES.find((v) => v.id === r.vendedor);
-      const pajar = [r.num, r.cliente, r.destino, V?.nombre, ESTADOS[r.estado]?.l, String(r.monto), semaforo(r).l]
+      const V = buscarVendedor(vendedores, r.vendedor);
+      const pajar = [r.num, r.cliente, r.destino, V.nombre, ESTADOS[r.estado]?.l, String(r.monto), semaforo(r).l]
         .filter(Boolean).join(" ").toLowerCase();
       return q.toLowerCase().split(/\s+/).every((t) => pajar.includes(t));
     });
-  }, [q, filtro, vendedor, destFiltro, mesFiltro, base]);
+  }, [q, filtro, destFiltro, mesFiltro, conOv, vendedores]);
 
   useEffect(() => {
     if (!sel) return;
-    const k = (e) => e.key === "Escape" && setSelNum(null);
+    const k = (e) => e.key === "Escape" && setSelId(null);
     document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k);
   }, [sel]);
 
@@ -975,15 +976,21 @@ function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
           <option value="todos">Todos los meses</option>
           {mesesUnicos.map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
-        <span className="lbl" style={{ flexShrink:0, marginLeft:2 }}>Ver como</span>
-        <select className="in" style={{ width:190 }} value={vendedor} onChange={(e) => setVendedor(e.target.value)}>
-          <option value="todos">Máster · todos los vendedores</option>
-          {VENDEDORES.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-        </select>
-        <span className="sem" style={{ flexShrink:0, cursor:"help" }}>
-          <Eye size={13} style={{ color:"var(--n300)" }} />
-          <div className="tip">Cada vendedor ve solo sus cotizaciones; el máster las ve todas.</div>
-        </span>
+        {esAdmin && (
+          <>
+            {/* el filtro por vendedor lo aplica el server: vuelve a pedir la lista */}
+            <span className="lbl" style={{ flexShrink:0, marginLeft:2 }}>Ver como</span>
+            <select className="in" style={{ width:190 }} value={verComo}
+              onChange={(e) => { setVerComo(e.target.value); }}>
+              <option value="todos">Todos los vendedores</option>
+              {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+            </select>
+            <span className="sem" style={{ flexShrink:0, cursor:"help" }}>
+              <Eye size={13} style={{ color:"var(--n300)" }} />
+              <div className="tip">Cada vendedor ve solo sus cotizaciones; el admin las ve todas.</div>
+            </span>
+          </>
+        )}
       </div>
 
       {/* tabla — la fila entera abre el drawer */}
@@ -998,17 +1005,17 @@ function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
           <span className="sem lbl" style={{ width:26, flexShrink:0, justifyContent:"center", cursor:"help" }}>
             Seg.
             <div className="tip"><b>Semáforo de seguimiento</b>
-              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h. Ámbar: +24 h sin abrir. Rojo: +48 h sin abrir — el link venció.</div>
+              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h. Ámbar: +24 h sin abrir. Rojo: la vigencia se cumplió sin apertura.</div>
           </span>
           <span className="lbl" style={{ width:52, flexShrink:0, textAlign:"right" }}>Creada</span>
           <span style={{ width:13, flexShrink:0 }} />
         </div>
         {filas.map((r, i) => {
-          const E = ESTADOS[r.estado]; const V = VENDEDORES.find((v) => v.id === r.vendedor);
+          const E = ESTADOS[r.estado]; const V = buscarVendedor(vendedores, r.vendedor);
           const S = semaforo(r);
           return (
-            <div key={r.num + q} role="button" tabIndex={0} onClick={() => setSelNum(r.num)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelNum(r.num); } }}
+            <div key={r.id} role="button" tabIndex={0} onClick={() => setSelId(r.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelId(r.id); } }}
               className="a-rise fila-seg"
               style={{ display:"flex", alignItems:"center", gap:11, padding:"11px 14px", width:"100%", textAlign:"left",
                 borderBottom: i < filas.length - 1 ? "1px solid var(--hair-soft)" : "none",
@@ -1022,9 +1029,9 @@ function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
               </div>
               <div className="fs-vend" style={{ display:"flex", alignItems:"center", gap:6, width:110, flexShrink:0 }}>
                 <div style={{ width:22, height:22, borderRadius:"50%", background:"rgba(120,90,229,.16)", color:"var(--violet-ink)",
-                  display:"grid", placeItems:"center", fontSize:9.5, fontWeight:700, flexShrink:0 }}>{V?.inicial}</div>
+                  display:"grid", placeItems:"center", fontSize:9.5, fontWeight:700, flexShrink:0 }}>{V.inicial}</div>
                 <span style={{ fontSize:11.5, color:"var(--n500)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                  {V?.nombre.split(" ")[0]}</span>
+                  {V.nombre.split(" ")[0]}</span>
               </div>
               <div style={{ width:92, flexShrink:0, textAlign:"right" }} className="mono fs-monto">
                 {r.monto ? money(r.monto) : <span style={{ color:"var(--n300)" }}>—</span>}
@@ -1052,33 +1059,39 @@ function ListadoContenido({ actual, toast, onDuplicar, onEditar }) {
                   <Btn size="xs" title="Generar un link nuevo y volver a dejarla vigente 48 h"
                     style={{ color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
                       borderColor:"rgba(59,191,173,.4)", fontWeight:700 }}
-                    onClick={(e) => { e.stopPropagation(); reactivar(r); }}>
+                    onClick={(e) => { e.stopPropagation(); acc.reactivar(r); }}>
                     <RefreshCw size={11} /> Reactivar
                   </Btn>
                 )}
-                <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Copiar link"
-                  onClick={(e) => { e.stopPropagation(); copiarLink(r); }}><Link2 size={12} /></button>
-                <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Mandar por WhatsApp"
-                  onClick={(e) => { e.stopPropagation(); porWhatsapp(r); }}><Send size={12} /></button>
+                <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Abrir en el editor"
+                  onClick={(e) => { e.stopPropagation(); onEditar?.(r); }}><PenLine size={12} /></button>
                 <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Duplicar"
                   onClick={(e) => { e.stopPropagation(); onDuplicar?.(r); }}><Files size={12} /></button>
               </div>
             </div>
           );
         })}
-        {!filas.length && <div style={{ padding:30, textAlign:"center", color:"var(--n400)", fontSize:13 }}>
-          No hay cotizaciones con esos filtros.</div>}
+        {!filas.length && (
+          <div style={{ padding:30, textAlign:"center", color:"var(--n400)", fontSize:13,
+            display:"flex", alignItems:"center", justifyContent:"center", gap:8 }}>
+            {cargando
+              ? <><Loader2 size={14} className="spin" /> Cargando cotizaciones…</>
+              : "No hay cotizaciones con esos filtros."}
+          </div>
+        )}
       </div>
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:9, display:"flex", alignItems:"center", gap:5 }}>
-        <Eye size={11} /> Clic en una fila para ver sus analytics
+        <Eye size={11} /> Clic en una fila para ver su detalle
       </div>
 
-      {sel && <DrawerAnalytics r={sel} onClose={() => setSelNum(null)} toast={toast}
-        onEditar={onEditar ? (r) => { setSelNum(null); onEditar(r); } : undefined}
-        onBitacora={(num, lista) => setOvBit((o) => ({ ...o, [num]:lista }))}
-        onConfirmar={(num, op, via) => setOv((o) => ({ ...o, [num]:{ op, via } }))}
-        onEstado={(num, est) => setOvEst((o) => ({ ...o, [num]: est }))}
-        onExtender={extenderVigencia} onRecordatorio={recordatorioDrawer} />}
+      {sel && <DrawerAnalytics r={sel} onClose={() => setSelId(null)} toast={toast}
+        onEditar={onEditar ? (r) => { setSelId(null); onEditar(r); } : undefined}
+        onDuplicar={onDuplicar ? (r) => { setSelId(null); onDuplicar(r); } : undefined}
+        onBitacora={acc.guardarNotas}
+        onConfirmar={acc.confirmar}
+        onEstado={acc.cambiarEstado}
+        onEliminar={acc.eliminar}
+        onExtender={acc.extender} onRecordatorio={acc.marcada} />}
     </div>
   );
 }
@@ -1098,30 +1111,87 @@ function BarraH({ label, pct, right, color = "linear-gradient(90deg,#45D4C0,#2A9
   );
 }
 
-function TabAnalytics() {
+/* Analytics del flujo comercial. Todo se calcula en el cliente con las filas
+   que ya están en pantalla: mismo universo que el listado, así los números
+   coinciden con lo que el vendedor ve arriba. Las métricas de lectura —tiempo
+   hasta la primera apertura, cuánto la leyó— dependen del link público y hoy
+   van en "—". */
+function TabAnalytics({ base = [] }) {
+  const { vendedores } = useCtz();
+
+  const m = useMemo(() => {
+    const creadas = base.length;
+    const enviadas = base.filter((r) => r.hEnvio != null).length;
+    const abiertas = base.filter((r) => r.aperturas > 0).length;
+    const confirmadas = base.filter((r) => r.estado === "confirmada");
+    const montoConfirmado = confirmadas.reduce((a, r) => a + (r.monto || 0), 0);
+    const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
+
+    const porVendedor = vendedores.map((v) => {
+      const suyas = base.filter((r) => r.vendedor === v.id);
+      const env = suyas.filter((r) => r.hEnvio != null).length;
+      const conf = suyas.filter((r) => r.estado === "confirmada");
+      return { id:v.id, n:v.nombre, total:suyas.length, env,
+        conf: conf.length, tasa: pct(conf.length, env),
+        monto: conf.reduce((a, r) => a + (r.monto || 0), 0) };
+    }).filter((v) => v.total > 0).sort((a, b) => b.monto - a.monto);
+
+    /* por mes de creación, los últimos seis con actividad */
+    const meses = new Map();
+    for (const r of base) {
+      if (!r.createdAt) continue;
+      const d = new Date(r.createdAt);
+      if (Number.isNaN(d.getTime())) continue;
+      const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
+      const fila = meses.get(k) || { k, l:`${MESES[d.getMonth()].slice(0, 3)} ${d.getFullYear()}`, n:0, conf:0 };
+      fila.n += 1;
+      if (r.estado === "confirmada") fila.conf += 1;
+      meses.set(k, fila);
+    }
+    const porMes = [...meses.values()].sort((a, b) => a.k.localeCompare(b.k)).slice(-6);
+
+    /* destinos con más cotizaciones */
+    const dests = new Map();
+    for (const r of base) {
+      const l = destinoBase(r.destino);
+      if (!l || l === "Sin destino") continue;
+      const fila = dests.get(l) || { l, env:0, conf:0 };
+      fila.env += 1;
+      if (r.estado === "confirmada") fila.conf += 1;
+      dests.set(l, fila);
+    }
+    const porDestino = [...dests.values()].sort((a, b) => b.env - a.env).slice(0, 6);
+
+    return { creadas, enviadas, abiertas, confirmadas: confirmadas.length, montoConfirmado,
+      tasaApertura: pct(abiertas, enviadas), tasaConfirmacion: pct(confirmadas.length, enviadas),
+      porVendedor, porMes, porDestino, pct };
+  }, [base, vendedores]);
+
+  if (!base.length) {
+    return (
+      <div className="a-fade" style={{ padding:"20px 0" }}>
+        <Vacio icon={TrendingUp} titulo="Todavía no hay datos"
+          accion="Los números aparecen solos a medida que armás y mandás cotizaciones" />
+      </div>
+    );
+  }
+
   const KPIS = [
-    { l:"Enviadas este mes", v:"126", d:"+18% vs julio", up:true },
-    { l:"Tasa de apertura", v:"71%", d:"89 de 126 abiertas", up:true },
-    { l:"Tasa de confirmación", v:"24%", d:"30 confirmadas", up:true },
-    { l:"1ª apertura (mediana)", v:"3 h 40 m", d:"desde el envío", up:null },
-    { l:"Armado promedio", v:"3 m 05 s", d:"por cotización", up:null },
+    { l:"Cotizaciones", v:String(m.creadas), d:`${m.enviadas} enviadas` },
+    { l:"Tasa de apertura", v: m.enviadas ? `${m.tasaApertura}%` : "—", d:`${m.abiertas} de ${m.enviadas} abiertas` },
+    { l:"Tasa de confirmación", v: m.enviadas ? `${m.tasaConfirmacion}%` : "—", d:`${m.confirmadas} confirmadas` },
+    { l:"Monto confirmado", v: money(m.montoConfirmado), d:"opción principal de cada una" },
+    { l:"1ª apertura (mediana)", v:"—", d:"llega con los links públicos" },
   ];
   const FUNNEL = [
-    { l:"Creadas", n:148, c:"#B0B4CD" }, { l:"Enviadas", n:126, c:"#785AE5" },
-    { l:"Abiertas", n:89, c:"#45D4C0" }, { l:"Confirmadas", n:30, c:"#2A9E8E" },
+    { l:"Creadas", n:m.creadas, c:"#B0B4CD" },
+    { l:"Enviadas", n:m.enviadas, c:"#785AE5" },
+    { l:"Abiertas", n:m.abiertas, c:"#45D4C0" },
+    { l:"Confirmadas", n:m.confirmadas, c:"#2A9E8E" },
   ];
-  const VEND = [
-    { n:"Agustina Vera", env:41, ap:78, conf:29, monto:71200 },
-    { n:"Amparo Núñez", env:35, ap:74, conf:26, monto:58900 },
-    { n:"Federico Vila", env:31, ap:68, conf:22, monto:49800 },
-    { n:"Gerónimo Silva", env:19, ap:58, conf:16, monto:34400 },
-  ];
-  const HORAS = [2,3,4,6,9,11,10,8,7,9,12,16,22,26,31,24,14,6];  // 8..23 hs aprox
-  const maxH = Math.max(...HORAS);
-  const DEST = [
-    { l:"Punta Cana", env:31, conf:9 }, { l:"Río de Janeiro", env:27, conf:8 },
-    { l:"Madrid", env:19, conf:4 }, { l:"Florianópolis", env:16, conf:5 }, { l:"Cancún", env:12, conf:2 },
-  ];
+  const topMes = Math.max(1, ...m.porMes.map((x) => x.n));
+  const topDest = Math.max(1, ...m.porDestino.map((x) => x.env));
+
   return (
     <div className="a-fade">
       {/* KPIs */}
@@ -1130,9 +1200,7 @@ function TabAnalytics() {
           <div key={k.l} className="card a-rise" style={{ padding:"12px 13px", animationDelay:`${i * .04}s` }}>
             <div className="lbl" style={{ marginBottom:5 }}>{k.l}</div>
             <div style={{ fontSize:19, fontWeight:800, letterSpacing:"-.025em", lineHeight:1.1 }}>{k.v}</div>
-            <div style={{ fontSize:10.5, marginTop:3, color: k.up ? "var(--teal-3)" : "var(--n400)",
-              display:"flex", alignItems:"center", gap:4 }}>
-              {k.up && <TrendingUp size={10} />}{k.d}</div>
+            <div style={{ fontSize:10.5, marginTop:3, color:"var(--n400)" }}>{k.d}</div>
           </div>
         ))}
       </div>
@@ -1140,91 +1208,69 @@ function TabAnalytics() {
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))", gap:12 }}>
         {/* embudo */}
         <div className="card" style={{ padding:16 }}>
-          <div className="lbl" style={{ marginBottom:10 }}>Embudo del mes</div>
+          <div className="lbl" style={{ marginBottom:10 }}>Embudo</div>
           {FUNNEL.map((f) => (
-            <BarraH key={f.l} label={f.l} right={`${f.n} · ${Math.round((f.n / FUNNEL[0].n) * 100)}%`}
-              pct={(f.n / FUNNEL[0].n) * 100} color={f.c} />
+            <BarraH key={f.l} label={f.l} right={`${f.n} · ${m.pct(f.n, m.creadas)}%`}
+              pct={m.pct(f.n, m.creadas)} color={f.c} />
           ))}
           <div style={{ fontSize:11, color:"var(--n400)", marginTop:4, lineHeight:1.5 }}>
-            De cada 5 cotizaciones enviadas, 3,5 se abren y 1,2 se confirma.
+            Abiertas se cuenta con las aperturas del pasajero, que empiezan a registrarse cuando salgan los links públicos.
           </div>
         </div>
 
         {/* por vendedor */}
         <div className="card" style={{ padding:16 }}>
-          <div className="lbl" style={{ marginBottom:10 }}>Apertura por vendedor</div>
-          {VEND.map((v) => (
-            <BarraH key={v.n} label={v.n} right={`${v.ap}% · ${v.env} env · ${money(v.monto)}`}
-              pct={v.ap} color={v.ap >= 70 ? "linear-gradient(90deg,#45D4C0,#2A9E8E)" : v.ap >= 60 ? "#E8A13C" : "#F43E55"} />
+          <div className="lbl" style={{ marginBottom:10 }}>Confirmación por vendedor</div>
+          {m.porVendedor.map((v) => (
+            <BarraH key={v.id} label={v.n}
+              right={`${v.env ? `${v.tasa}%` : "—"} · ${v.total} cot · ${money(v.monto)}`}
+              pct={v.tasa}
+              color={v.tasa >= 25 ? "linear-gradient(90deg,#45D4C0,#2A9E8E)" : v.tasa >= 12 ? "#E8A13C" : "#F43E55"} />
           ))}
-          <div style={{ fontSize:11, color:"var(--n400)", marginTop:4 }}>
-            Ámbar por debajo de 70%: revisar el mensaje de envío con ese vendedor.
-          </div>
+          {!m.porVendedor.length && <div style={{ fontSize:12, color:"var(--n400)" }}>Sin datos todavía.</div>}
         </div>
 
-        {/* mejor hora */}
+        {/* por mes */}
         <div className="card" style={{ padding:16 }}>
-          <div className="lbl" style={{ marginBottom:10 }}>Aperturas por hora de envío</div>
-          <div style={{ display:"flex", alignItems:"flex-end", gap:3, height:74 }}>
-            {HORAS.map((h, i) => {
-              const pico = h >= 22;
-              return (
-                <div key={i} className="sem" style={{ flex:1, height:"100%", alignItems:"flex-end" }}>
-                  <div style={{ width:"100%", height:`${(h / maxH) * 100}%`, borderRadius:"4px 4px 0 0",
-                    background: pico ? "linear-gradient(180deg,#A05ED3,#785AE5)" : "var(--sunk-2)",
-                    transition:"height .5s" }} />
-                  <div className="tip"><b>{6 + i}:00 h</b>{h} aperturas atribuidas a envíos de esta hora.</div>
-                </div>
-              );
-            })}
+          <div className="lbl" style={{ marginBottom:10 }}>Cotizaciones por mes</div>
+          <div style={{ display:"flex", alignItems:"flex-end", gap:8, height:84 }}>
+            {m.porMes.map((x) => (
+              <div key={x.k} className="sem" style={{ flex:1, height:"100%", alignItems:"flex-end" }}>
+                <div style={{ width:"100%", height:`${(x.n / topMes) * 100}%`, minHeight:3, borderRadius:"5px 5px 0 0",
+                  background:"linear-gradient(180deg,#A05ED3,#785AE5)", transition:"height .5s" }} />
+                <div className="tip"><b>{x.l}</b>{x.n} cotizaciones · {x.conf} confirmadas</div>
+              </div>
+            ))}
           </div>
-          <div style={{ display:"flex", justifyContent:"space-between", fontSize:9.5, color:"var(--n300)", marginTop:4 }}>
-            <span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span>
-          </div>
-          <div style={{ fontSize:11, color:"var(--violet)", marginTop:8, fontWeight:600, display:"flex", gap:5, alignItems:"center" }}>
-            <Sparkles size={11} /> Los envíos de 19 a 21 h se abren el doble: agendar los pendientes para esa franja.
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:9.5, color:"var(--n300)", marginTop:6 }}>
+            {m.porMes.map((x) => <span key={x.k}>{x.l}</span>)}
           </div>
         </div>
 
         {/* destinos */}
         <div className="card" style={{ padding:16 }}>
           <div className="lbl" style={{ marginBottom:10 }}>Destinos: cotizado vs confirmado</div>
-          {DEST.map((d) => (
-            <BarraH key={d.l} label={d.l} right={`${d.env} cot · ${d.conf} conf (${Math.round((d.conf / d.env) * 100)}%)`}
-              pct={(d.env / DEST[0].env) * 100}
-              color={d.conf / d.env >= 0.28 ? "linear-gradient(90deg,#45D4C0,#2A9E8E)" : "linear-gradient(90deg,#A05ED3,#785AE5)"} />
+          {m.porDestino.map((d) => (
+            <BarraH key={d.l} label={d.l}
+              right={`${d.env} cot · ${d.conf} conf (${m.pct(d.conf, d.env)}%)`}
+              pct={(d.env / topDest) * 100}
+              color={m.pct(d.conf, d.env) >= 28 ? "linear-gradient(90deg,#45D4C0,#2A9E8E)" : "linear-gradient(90deg,#A05ED3,#785AE5)"} />
           ))}
-          <div style={{ fontSize:11, color:"var(--n400)", marginTop:4, lineHeight:1.5 }}>
-            Madrid y Cancún cierran por debajo del promedio: revisar precios de las opciones o la vigencia del link.
-          </div>
+          {!m.porDestino.length && <div style={{ fontSize:12, color:"var(--n400)" }}>Sin destinos cargados todavía.</div>}
         </div>
 
-        {/* canal y dispositivo */}
-        <div className="card" style={{ padding:16 }}>
-          <div className="lbl" style={{ marginBottom:10 }}>Cómo la reciben y la leen</div>
-          <BarraH label="WhatsApp" right="82%" pct={82} color="linear-gradient(90deg,#45D4C0,#2A9E8E)" />
-          <BarraH label="Email" right="18%" pct={18} color="var(--sunk-2)" />
-          <div className="hairline" style={{ margin:"10px 0" }} />
-          <BarraH label="iPhone" right="54%" pct={54} color="linear-gradient(90deg,#A05ED3,#785AE5)" />
-          <BarraH label="Android" right="31%" pct={31} color="linear-gradient(90deg,#A05ED3,#785AE5)" />
-          <BarraH label="Computadora" right="15%" pct={15} color="var(--sunk-2)" />
-          <div style={{ fontSize:11, color:"var(--n400)", marginTop:4 }}>
-            85% se lee en celular: la salida mobile-first no es opcional.
-          </div>
-        </div>
-
-        {/* insights accionables */}
+        {/* lo que falta */}
         <div className="card" style={{ padding:16, background:"linear-gradient(160deg,var(--card),var(--card-2))" }}>
-          <div className="lbl" style={{ marginBottom:10 }}>Para accionar esta semana</div>
-          {["7 cotizaciones en rojo (+48 h sin abrir): mandar recordatorio hoy — el drawer lo hace en dos clics.",
-            "Gerónimo tiene 58% de apertura vs 74% del equipo: comparar el texto del mensaje de WhatsApp.",
-            "Las que incluyen fotos de hotel se abren 1,4× más que las de texto libre: priorizar hoteles del catálogo."].map((t, i) => (
-            <div key={i} style={{ display:"flex", gap:9, marginBottom:9, alignItems:"flex-start" }}>
-              <span style={{ width:18, height:18, borderRadius:6, flexShrink:0, display:"grid", placeItems:"center",
-                background:"rgba(120,90,229,.12)", color:"var(--violet)", fontSize:10, fontWeight:800 }}>{i + 1}</span>
-              <span style={{ fontSize:12, lineHeight:1.55, color:"var(--n600)" }}>{t}</span>
+          <div className="lbl" style={{ marginBottom:10 }}>Métricas de lectura</div>
+          {["Tiempo hasta la primera apertura", "Cuánto tiempo la leyó", "Hasta qué sección llegó", "Dispositivo y canal"].map((t) => (
+            <div key={t} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:9 }}>
+              <span style={{ fontSize:12, color:"var(--n600)", flex:1 }}>{t}</span>
+              <span className="mono" style={{ fontSize:12, color:"var(--n300)" }}>—</span>
             </div>
           ))}
+          <div style={{ fontSize:11, color:"var(--n400)", marginTop:4, lineHeight:1.5 }}>
+            Se registran cuando el pasajero abra la cotización desde su link, en la próxima entrega.
+          </div>
         </div>
       </div>
     </div>

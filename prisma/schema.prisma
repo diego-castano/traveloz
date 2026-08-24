@@ -108,6 +108,8 @@ model User {
   fotoUrl              String?
   telefono             String?
   whatsapp             String?
+  // Texto de la firma en la cotización ("Ejecutiva de ventas", "Líder técnico").
+  cargo                String?
   // Interruptor del link público. Apagado → página de cortesía, no 404.
   linkActivo           Boolean   @default(true)
   // Primer ingreso con contraseña temporal (seed del equipo). El usuario
@@ -116,6 +118,9 @@ model User {
   passwordChangedAt    DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  presupuestos     Presupuesto[]
+  hotelesFavoritos HotelFavorito[]
 
   @@index([brandId])
 }
@@ -145,14 +150,14 @@ model AuditLog {
 }
 
 model Paquete {
-  id                String        @id
+  id                String           @id
   brandId           String
   titulo            String
   destino           String
-  descripcion       String?       @db.Text
-  textoVisual       String?       @db.Text
+  descripcion       String?          @db.Text
+  textoVisual       String?          @db.Text
   salidas           String?
-  noches            Int           @default(0)
+  noches            Int              @default(0)
   temporadaId       String?
   tipoPaqueteId     String?
   validezDesde      String?
@@ -162,18 +167,18 @@ model Paquete {
   //    matchean contra este rango.
   viajeDesde        String?
   viajeHasta        String?
-  estado            EstadoPaquete @default(BORRADOR)
+  estado            EstadoPaquete    @default(BORRADOR)
   // Modalidad de armado: CLASICO (opciones hoteleras) o CIRCUITO (todo incluido,
   // precio por persona cargado en el circuito, sin exigir opciones).
   modalidad         ModalidadPaquete @default(CLASICO)
-  destacado         Boolean       @default(false)
-  netoCalculado     Float         @default(0)
-  markup            Float         @default(0)
-  precioVenta       Float         @default(0)
-  moneda            String        @default("USD")
+  destacado         Boolean          @default(false)
+  netoCalculado     Float            @default(0)
+  markup            Float            @default(0)
+  precioVenta       Float            @default(0)
+  moneda            String           @default("USD")
   ordenServicios    String[]
   webId             String?
-  itinerarioAmadeus String?       @db.Text
+  itinerarioAmadeus String?          @db.Text
   campana           String?
 
   // ── Public-site copy (Fase 5C/8: edited from /backend/paquetes/[slug]?tab=frontend) ──
@@ -293,6 +298,7 @@ model Alojamiento {
   pais          Pais?                @relation(fields: [paisId], references: [id])
   paquetes      PaqueteAlojamiento[]
   opcionHoteles OpcionHotel[]
+  favoritos     HotelFavorito[]
 
   @@index([brandId])
   @@index([brandId, deletedAt])
@@ -842,7 +848,7 @@ model Cotizacion {
   // webhook (ver mensajeErrorCrm en src/lib/bitrix.ts).
   crmError     String?
   crmEnviadoEn DateTime?
-  crmIntentos  Int       @default(0)
+  crmIntentos  Int        @default(0)
 
   paquete Paquete? @relation(fields: [paqueteId], references: [id])
 
@@ -924,29 +930,29 @@ model Postulacion {
 }
 
 model SuscripcionNewsletter {
-  id             String    @id @default(cuid())
-  email          String    @unique
-  source         String?
+  id               String    @id @default(cuid())
+  email            String    @unique
+  source           String?
   // Double opt-in (F4): los altas nuevas nacen con active=false + un token de
   // confirmación. Recién quedan active=true (y confirmedAt seteado) cuando el
   // suscriptor abre el link "confirmá tu suscripción". Evita que alguien
   // suscriba un email ajeno y nos genere spam complaints al enchufar campañas.
-  active         Boolean   @default(false)
-  confirmToken   String?   @unique
-  confirmedAt    DateTime?
-  createdAt      DateTime  @default(now())
-  unsubscribedAt DateTime?
+  active           Boolean   @default(false)
+  confirmToken     String?   @unique
+  confirmedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  unsubscribedAt   DateTime?
   // LGPD / GDPR / Ley 18.331 (UY) — prueba de consentimiento al opt-in.
   // IP y user-agent del request que disparó el submit, más la URL completa
   // con UTM params. Útil para responder un pedido de la autoridad
   // regulatoria mostrando que el consentimiento fue explícito.
-  consentIp          String?
-  consentUserAgent   String?
-  utmSource          String?
-  utmMedium          String?
-  utmCampaign        String?
-  utmContent         String?
-  utmTerm            String?
+  consentIp        String?
+  consentUserAgent String?
+  utmSource        String?
+  utmMedium        String?
+  utmCampaign      String?
+  utmContent       String?
+  utmTerm          String?
 
   // Atribución de pauta (cookie tvz_attr): snapshot first/last touch al convertir.
   // Convive con las columnas utm* de arriba, que son otra cosa: el snapshot legal
@@ -1256,4 +1262,207 @@ model DatosPagoCifrado {
 
   @@index([vendedorId, createdAt(sort: Desc)])
   @@index([expiraAt])
+}
+
+// ──────────────────────────────────────────────
+// Cotizador del vendedor — persistencia híbrida.
+//
+// La cotización entera (destinos, opciones, habitaciones, tarifas, vuelos,
+// servicios, mensaje) vive en `contenido Json`, validado con Zod en
+// src/lib/presupuesto/schema.ts. Las columnas de acá son un espejo derivado
+// de ese JSON: existen SOLO para listar, filtrar y ordenar sin abrir el blob.
+// Nada de normalizar opciones ni tarifas en tablas: cambian todo el tiempo y
+// el vendedor las arma libres.
+//
+// El modelo se llama Presupuesto porque `Cotizacion` ya es el lead del sitio
+// público. En la UI se sigue diciendo "cotización".
+// ──────────────────────────────────────────────
+
+enum EstadoPresupuesto {
+  BORRADOR
+  ENVIADA
+  ABIERTA
+  VENCIDA
+  CONFIRMADA
+}
+
+model Presupuesto {
+  id         String @id @default(cuid())
+  // Correlativo visible: COT-2026-0148. Lo genera IdCounter por año.
+  numero     String @unique
+  brandId    String
+  vendedorId String
+
+  // Idempotencia del alta. El editor genera un UUID por cotización nueva y lo
+  // manda en cada intento de creación: si la respuesta se perdió en el camino
+  // y el cliente reintenta, el unique hace que la segunda llamada devuelva la
+  // fila que ya existe en vez de duplicarla y quemar otro número.
+  claveEdicion String? @unique
+
+  // Estado real. `estadoManual` lo pisa cuando el vendedor lo fija a mano;
+  // la "vencida automática" (enviada, sin abrir, pasada la vigencia) NO se
+  // persiste: se calcula en el cliente contra expiraAt.
+  estado       EstadoPresupuesto  @default(BORRADOR)
+  estadoManual EstadoPresupuesto?
+
+  // Espejo del cliente. `clienteTelefonoDigitos` guarda solo los dígitos para
+  // que "+598 99 123 456", "099123456" y "99123456" matcheen igual.
+  clienteNombre          String?
+  clienteApellido        String?
+  clienteEmail           String?
+  clienteTelefono        String?
+  clienteTelefonoDigitos String?
+
+  // Espejo del encabezado del viaje.
+  destino     String?
+  mes         Int?
+  anio        Int?
+  fechaSalida DateTime? @db.Date
+  soloVuelos  Boolean   @default(false)
+
+  // Precio que se muestra en la lista: primera tarifa de la primera
+  // habitación de la primera opción (venta ?? round(neto / factor)).
+  montoPrincipal Int?
+  moneda         String @default("USD")
+
+  // De dónde salió: paquete del catálogo, plantilla, duplicada, consulta IA.
+  origenTipo String?
+  origenRef  String?
+
+  contenido     Json
+  notasInternas String? @db.Text
+
+  vigenciaHoras     Int       @default(48)
+  enviadaAt         DateTime?
+  expiraAt          DateTime?
+  confirmadaAt      DateTime?
+  confirmadaOpcion  String?
+  confirmadaVia     String?
+  aperturas         Int       @default(0)
+  primeraAperturaAt DateTime?
+  ultimaAperturaAt  DateTime?
+  // Cuánto tardó el vendedor en armarla (métrica del panel).
+  tiempoArmadoSeg   Int?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  vendedor User                @relation(fields: [vendedorId], references: [id], onDelete: Restrict)
+  eventos  PresupuestoEvento[]
+  links    PresupuestoLink[]
+
+  @@index([brandId, vendedorId, deletedAt])
+  @@index([brandId, estado])
+  @@index([numero])
+  @@index([clienteTelefonoDigitos])
+}
+
+// Bitácora append-only de la cotización: es lo que se dibuja en la línea de
+// tiempo del drawer. `tipo` es un string libre por convención:
+//   creada | guardada | enviada | abierta | recordatorio | vigencia_extendida
+//   reactivada | estado_manual | confirmada | revision_solicitada | duplicada
+//   eliminada
+model PresupuestoEvento {
+  id            String   @id @default(cuid())
+  presupuestoId String
+  tipo          String
+  titulo        String
+  detalle       String?
+  // vendedor | pasajero | sistema
+  actorTipo     String
+  actorId       String?
+  ocurridoAt    DateTime @default(now())
+
+  presupuesto Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+
+  @@index([presupuestoId, ocurridoAt])
+}
+
+// Link público que se le manda al pasajero. Uno por envío: reenviar emite
+// otro y el anterior se revoca, así el seguimiento no mezcla aperturas.
+model PresupuestoLink {
+  id            String    @id @default(cuid())
+  presupuestoId String
+  token         String    @unique
+  // whatsapp | email | manual
+  canal         String
+  vigenciaHoras Int
+  emitidoAt     DateTime  @default(now())
+  expiraAt      DateTime
+  revocadoAt    DateTime?
+
+  presupuesto Presupuesto           @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  aperturas   PresupuestoApertura[]
+
+  @@index([presupuestoId])
+}
+
+// Cada vez que alguien abre el link. `seccionMax` y `segundos` alimentan el
+// funnel de lectura ("llegó hasta Formas de pago, 2 m 40 s").
+model PresupuestoApertura {
+  id          String   @id @default(cuid())
+  linkId      String
+  abiertaAt   DateTime @default(now())
+  userAgent   String?
+  dispositivo String?
+  ip          String?
+  seccionMax  String?
+  segundos    Int?
+
+  link PresupuestoLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@index([linkId, abiertaAt])
+}
+
+// Cotización guardada como punto de partida. `vendedorId` null = plantilla
+// global del equipo; con id, privada de quien la creó.
+model PlantillaPresupuesto {
+  id         String  @id @default(cuid())
+  brandId    String
+  nombre     String
+  destino    String?
+  detalle    String?
+  vendedorId String?
+
+  contenido   Json
+  usos        Int       @default(0)
+  ultimoUsoAt DateTime?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([brandId, deletedAt])
+  @@index([vendedorId])
+}
+
+// Hoteles que el vendedor marcó con la estrella: suben primero en el buscador.
+model HotelFavorito {
+  vendedorId    String
+  alojamientoId String
+  createdAt     DateTime @default(now())
+
+  vendedor    User        @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+  alojamiento Alojamiento @relation(fields: [alojamientoId], references: [id], onDelete: Cascade)
+
+  @@id([vendedorId, alojamientoId])
+  @@index([alojamientoId])
+}
+
+// Catálogo IATA mínimo para el bloque de vuelos: el parser de PNR devuelve
+// códigos y acá se traducen a ciudad, terminal y aerolínea.
+model Aeropuerto {
+  // IATA de 3 letras (MVD, GRU, PUJ…).
+  codigo   String  @id
+  ciudad   String
+  nombre   String
+  // Nombre de la terminal cuando la ciudad tiene más de una (Guarulhos).
+  terminal String?
+}
+
+model Aerolinea {
+  // IATA de 2 caracteres (LA, CM, G3…).
+  codigo String @id
+  nombre String
 }

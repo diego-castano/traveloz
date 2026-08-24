@@ -10,9 +10,9 @@
 // against an already-deployed database.
 //
 // Keep this manifest limited to keys that need that self-healing behavior
-// (currently: notificaciones_email_*). Content-heavy groups (home, nosotros,
-// etc.) don't need it — they're fully seeded up front and rarely gain new
-// keys post-deploy.
+// (currently: notificaciones_email_* y cotizador_*). Content-heavy groups
+// (home, nosotros, etc.) don't need it — they're fully seeded up front and
+// rarely gain new keys post-deploy.
 // ---------------------------------------------------------------------------
 
 export interface SiteSettingBootstrapEntry {
@@ -20,6 +20,8 @@ export interface SiteSettingBootstrapEntry {
   value: string;
   group: string;
   label: string;
+  /** Rendering hint for SettingsForm ("textarea", "url", …). Defaults to text. */
+  type?: string;
 }
 
 export const NOTIFICACIONES_EMAIL_SETTINGS: SiteSettingBootstrapEntry[] = [
@@ -61,7 +63,61 @@ export const NOTIFICACIONES_EMAIL_SETTINGS: SiteSettingBootstrapEntry[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Cotizador — los cinco textos del máster que edita /backend/cotizador/ajustes.
+// Espejo exacto de lo que sembró la migración 20260824120000_presupuestos y de
+// AJUSTES_DEFAULT en presupuesto.actions.ts: si las tres versiones se separan,
+// el vendedor ve un texto en la pantalla y otro en la cotización.
+// ---------------------------------------------------------------------------
+
+export const COTIZADOR_SETTINGS: SiteSettingBootstrapEntry[] = [
+  {
+    key: "cotizador_plantilla_mensaje",
+    value: `Hola {nombre}, ¿cómo estás?
+
+Según lo conversado, te envío la cotización solicitada.
+
+En caso de que les interese la propuesta, solicitamos nos completen en el siguiente link la información de cada pasajero tal cual figura en el documento de viaje, y así comenzar el proceso de reserva:
+{link}`,
+    type: "textarea",
+    group: "cotizador",
+    label: "Mensaje que acompaña toda cotización (usá {nombre} y {link})",
+  },
+  {
+    key: "cotizador_condiciones",
+    value: `Precios en dólares americanos, según la tarifa y ocupación indicadas.
+Valores sujetos a disponibilidad y confirmación al momento de la reserva.
+Tarifa no incluye gastos personales ni excursiones no detalladas.
+Cotización válida por {vigencia} horas.`,
+    type: "textarea",
+    group: "cotizador",
+    label: "Condiciones al pie de la cotización (una por línea; {vigencia} = horas)",
+  },
+  {
+    key: "cotizador_vigencia_default",
+    value: "48",
+    type: "text",
+    group: "cotizador",
+    label: "Vigencia por defecto del link, en horas",
+  },
+  {
+    key: "cotizador_email_copia",
+    value: "cotizaciones@traveloz.com.uy",
+    type: "text",
+    group: "cotizador",
+    label: "Casilla que recibe copia de cada cotización enviada",
+  },
+  {
+    key: "cotizador_factor_default",
+    value: "0.88",
+    type: "text",
+    group: "cotizador",
+    label: "Factor por defecto para el precio de venta (venta = neto ÷ factor)",
+  },
+];
+
 /** Manifest lookup by group, used by getSettingsByGroup to self-heal missing keys. */
 export const SITE_SETTINGS_BOOTSTRAP: Record<string, SiteSettingBootstrapEntry[]> = {
   notificaciones: NOTIFICACIONES_EMAIL_SETTINGS,
+  cotizador: COTIZADOR_SETTINGS,
 };

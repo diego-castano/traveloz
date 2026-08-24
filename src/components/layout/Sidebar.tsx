@@ -32,6 +32,7 @@ import {
   Inbox,
   ScrollText,
   Calculator,
+  Receipt,
   Store,
 } from "lucide-react";
 import { Tooltip } from "radix-ui";
@@ -122,6 +123,13 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/backend/dashboard" },
       { id: "paquetes", label: "Paquetes", icon: Package, href: "/backend/paquetes" },
+      {
+        id: "cotizador",
+        label: "Cotizador",
+        sublabel: "cotizaciones a medida",
+        icon: Receipt,
+        href: "/backend/cotizador",
+      },
     ],
   },
   {
@@ -149,7 +157,13 @@ const navGroups: NavGroup[] = [
         icon: IdCard,
         href: "/backend/datos",
       },
-      { id: "cotizadores", label: "Cotizadores", sublabel: "por marca", icon: Calculator, href: "/backend/cotizadores" },
+      {
+        id: "cotizadores",
+        label: "Landings por marca",
+        sublabel: "formularios de captación",
+        icon: Calculator,
+        href: "/backend/cotizadores",
+      },
     ],
   },
   {
@@ -298,7 +312,9 @@ export function Sidebar() {
         }}
         transition={reduceMotion ? { duration: 0 } : springs.gentle}
         className={cn(
-          "h-dvh flex-shrink-0 overflow-hidden flex flex-col",
+          // print:hidden — al imprimir (la hoja del cotizador, por ejemplo) el
+          // chrome del panel sale del flujo y la hoja arranca arriba a la izquierda.
+          "h-dvh flex-shrink-0 overflow-hidden flex flex-col print:hidden",
           isMobile ? "fixed left-0 top-0 z-[100]" : "relative z-[100]",
         )}
         style={{

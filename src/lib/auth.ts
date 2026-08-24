@@ -39,6 +39,7 @@ export const roleConfig: Record<Role, RoleConfig> = {
     visibleModules: [
       "dashboard",
       "paquetes",
+      "cotizador",
       "aereos",
       "alojamientos",
       "traslados",
@@ -63,7 +64,7 @@ export const roleConfig: Record<Role, RoleConfig> = {
   VENDEDOR: {
     canEdit: false,
     canSeePricing: { neto: false, markup: false, venta: true },
-    visibleModules: ["paquetes"],
+    visibleModules: ["paquetes", "cotizador"],
   },
   MARKETING: {
     canEdit: false,
