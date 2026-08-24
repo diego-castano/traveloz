@@ -63,6 +63,27 @@ se perdía al cerrar la pestaña.
   desde la vista de impresión y se usa "Marcar como enviada" para que el
   seguimiento cuente la vigencia.
 
+### Arreglado
+
+**Ajustes que salieron de probar el cotizador en producción con un admin y un
+vendedor de prueba.**
+
+- **Las tipografías de marca se perdían al entrar al cotizador desde el
+  menú.** La política de seguridad del navegador se fija con la primera
+  página que carga; si entrabas por el dashboard y después ibas al
+  cotizador, las fuentes de Google quedaban bloqueadas y todo salía en la
+  tipografía del sistema (también en el PDF). Ahora todo el panel las
+  permite.
+- **"Travel" salía gris en el encabezado de la cotización** sobre el
+  degradado coral. Dentro de la píldora blanca el wordmark usa la tinta
+  oscura.
+- **El navegador preguntaba "¿Salir del sitio?" al cambiar de sección**
+  aunque no hubiera ninguna cotización abierta. Ahora solo pregunta si el
+  editor está abierto con cambios sin guardar.
+- **Eliminar un usuario con cotizaciones daba "Error" a secas.** Ahora
+  explica que ese usuario tiene cotizaciones y que hay que desactivarlo (las
+  cotizaciones no se borran en cascada, a propósito).
+
 ### Operación
 
 - Migración `20260824120000_presupuestos`: tablas Presupuesto,

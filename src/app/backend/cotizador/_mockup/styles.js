@@ -186,8 +186,8 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz .print-hoja img { max-width:100% !important; }
   .ctz .print-hoja [style*="break-inside"] { page-break-inside:avoid; }
   .ctz .print-hoja .sec-t { break-after:avoid; page-break-after:avoid; }
+  @page { margin:10mm; }
 }
-@page { margin:10mm; }
 
 /* ── volver al panel: link discreto arriba del título del inicio ─────── */
 .ctz-volver { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:600;
@@ -268,6 +268,9 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   -webkit-background-clip:text; background-clip:text; color:transparent; }
 .wordmark.on-dark .oz { background:linear-gradient(87deg,#FFD0D6 0%,#E4DAFF 100%);
   -webkit-background-clip:text; background-clip:text; color:transparent; }
+/* pildora blanca sobre el degradado del encabezado del pasajero: el gris #9A9A9A
+   del logo original pierde contraste ahi, asi que "Travel" va en tinta. */
+.wm-pildora .wordmark .t { color:var(--ink,#1A1A2E); }
 
 /* ── calendario ──────────────────────────────────────────────────────── */
 .cal-btn { display:flex; align-items:center; gap:9px; width:100%; text-align:left; cursor:pointer; }

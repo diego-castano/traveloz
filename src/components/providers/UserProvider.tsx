@@ -181,7 +181,11 @@ export function useUserActions() {
         });
       },
       deleteUser: async (id: string) => {
-        await userActions.deleteUser(id);
+        // El borrado puede venir frenado (cotizaciones del vendedor con FK
+        // Restrict). En ese caso la action devuelve el motivo en vez de tirar:
+        // lo convertimos en Error para que el modal de Perfiles lo muestre.
+        const result = await userActions.deleteUser(id);
+        if (!result.ok) throw new Error(result.message);
         dispatch({ type: "DELETE_USER", payload: id });
       },
       checkEmailAvailable: async (email: string) => {

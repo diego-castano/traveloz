@@ -106,7 +106,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         <div style={{ position:"absolute", right:30, bottom:-56, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,.07)" }} />
         <div style={{ maxWidth: desk ? 660 : "none", margin:"0 auto", position:"relative" }}>
           <div style={{ display:"flex", alignItems:"center", marginBottom:desk ? 20 : 16 }}>
-            <div style={{ background:"rgba(255,255,255,.94)", borderRadius:10, padding:"6px 12px",
+            <div className="wm-pildora" style={{ background:"rgba(255,255,255,.94)", borderRadius:10, padding:"6px 12px",
               boxShadow:"0 4px 14px rgba(0,0,0,.14)" }}>
               <Wordmark size={fz(17, 20)} />
             </div>

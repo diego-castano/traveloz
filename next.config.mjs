@@ -28,9 +28,9 @@ const csp = [
   "object-src 'none'",
 ].join("; ");
 
-// Variante de la CSP solo para /cotizador (mockup de validacion): suma los dos
-// origenes de Google Fonts. Todo lo demas queda igual que la CSP del sitio.
-const cspCotizador = csp
+// Variante de la CSP para todo el panel (/backend/*): suma los dos origenes de
+// Google Fonts. Todo lo demas queda igual que la CSP del sitio publico.
+const cspBackend = csp
   .replace(
     "style-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -99,15 +99,22 @@ const nextConfig = {
         headers: securityHeaders,
       },
       {
-        // Cotizador (/backend/cotizador). Trae su CSS embebido con un @import a
-        // Google Fonts (DM Sans, Playfair Display, JetBrains Mono); la CSP del
-        // sitio no permite esos origenes y la tipografia se caia a las fuentes
-        // del sistema. Va DESPUES de la catch-all a proposito: ante la misma
-        // clave gana la ultima entrada que matchea, asi que solo el cotizador
-        // recibe la CSP ampliada y el resto del panel queda intacto.
-        source: "/backend/cotizador",
+        // Panel entero (/backend/*). El cotizador trae su CSS embebido con un
+        // @import a Google Fonts (DM Sans, Playfair Display, JetBrains Mono) y
+        // la CSP del sitio no permite esos origenes. La CSP la fija el
+        // documento, no la ruta que se pinta: si el usuario entra por
+        // /backend/dashboard y navega client-side al cotizador, sigue rigiendo
+        // la CSP del documento inicial. Por eso la ampliacion cubre todo el
+        // panel y no solo /backend/cotizador.
+        // Va DESPUES de la catch-all a proposito: ante la misma clave gana la
+        // ultima entrada que matchea, asi que /backend/* recibe esta CSP y el
+        // sitio publico queda con la del sitio. El resto de los headers de
+        // seguridad (nosniff, X-Frame-Options, Referrer-Policy,
+        // Permissions-Policy, HSTS) los sigue aportando la catch-all: el merge
+        // es por clave, no reemplaza el bloque entero.
+        source: "/backend/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: cspCotizador },
+          { key: "Content-Security-Policy", value: cspBackend },
         ],
       },
       {

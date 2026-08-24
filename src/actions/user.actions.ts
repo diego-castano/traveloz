@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireAuth } from "@/lib/require-auth";
 import { hashSync, compareSync } from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import type { Role } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { logAudit } from "@/lib/audit";
@@ -390,7 +391,18 @@ export async function checkEmailAvailable(email: string): Promise<boolean> {
 // Admin: delete user (hard delete)
 // ──────────────────────────────────────────────
 
-export async function deleteUser(id: string) {
+/** Mensaje del borrado frenado por filas que dependen del usuario. */
+function mensajeRestrict(cotizaciones: number) {
+  if (cotizaciones <= 0) {
+    return "Este usuario tiene registros asociados que impiden eliminarlo. Desactivalo en lugar de eliminarlo.";
+  }
+  const cuantas = cotizaciones === 1 ? "1 cotización" : `${cotizaciones} cotizaciones`;
+  return `Este usuario tiene ${cuantas} en el cotizador. Desactivalo en lugar de eliminarlo, o reasigná sus cotizaciones antes.`;
+}
+
+export async function deleteUser(
+  id: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
   const actor = await requireAdmin();
   const { ip, userAgent } = await getRequestMeta();
 
@@ -406,6 +418,16 @@ export async function deleteUser(id: string) {
     throw new Error("No se puede eliminar al último administrador.");
   }
 
+  // Presupuesto.vendedorId apunta acá con onDelete: Restrict a propósito: las
+  // cotizaciones son historial comercial y no se van en cascada con el vendedor.
+  // Sin este chequeo el delete reventaba con P2003 y el panel mostraba un toast
+  // "Error" pelado. Contamos también las borradas lógicamente (deletedAt): la fila
+  // sigue en la tabla y la FK igual frena el borrado.
+  const cotizaciones = await prisma.presupuesto.count({ where: { vendedorId: id } });
+  if (cotizaciones > 0) {
+    return { ok: false, message: mensajeRestrict(cotizaciones) };
+  }
+
   try {
     await prisma.user.delete({ where: { id } });
     await logAudit({
@@ -419,6 +441,12 @@ export async function deleteUser(id: string) {
     });
     return { ok: true };
   } catch (error) {
+    // Red de seguridad por si aparece otra tabla con Restrict apuntando al
+    // usuario: P2003 es la violación de foreign key.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      log.warn("deleting user blocked by FK", { id, code: error.code });
+      return { ok: false, message: mensajeRestrict(cotizaciones) };
+    }
     log.error("deleting user", error);
     throw new Error("No se pudo eliminar el usuario.");
   }

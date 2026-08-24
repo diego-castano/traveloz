@@ -534,6 +534,11 @@ export default function Cotizador({
      exactamente lo que dejaba filas huérfanas con número quemado. */
   useEffect(() => {
     const h = (e) => {
+      /* Solo con el editor abierto. En el listado `q` es la cotización vacía
+         con la que arranca el componente y `ultimoGuardadoRef` está en "":
+         nunca coinciden, así que el aviso saltaba al ir a cualquier otra
+         sección del panel sin tener nada a medio escribir. */
+      if (pantallaRef.current !== "editor") return;
       if (JSON.stringify(qRef.current) === ultimoGuardadoRef.current) return;
       if (presupuestoIdRef.current) void guardarAhora();
       e.preventDefault();
@@ -722,6 +727,11 @@ export default function Cotizador({
     /* primero el guardado, después la grilla: al revés la lista se arma con la
        versión anterior de la fila que se acaba de tocar */
     await flush();
+    /* refs alineadas al salir: fuera del editor nadie más compara contra
+       `ultimoGuardadoRef`, y dejarlas desfasadas es lo que hacía que cualquier
+       navegación posterior pareciera tener cambios sin guardar. Si el último
+       guardado falló NO se tocan: ahí sí quedó contenido sin persistir. */
+    if (fallosRef.current === 0) ultimoGuardadoRef.current = JSON.stringify(qRef.current);
     await recargar();
   }, [flush, recargar]);
 

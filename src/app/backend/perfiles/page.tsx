@@ -361,7 +361,9 @@ export default function PerfilesPage() {
         await deleteUser(deleteTarget.id);
         toast("success", "Usuario eliminado", `"${deleteTarget.name}" fue eliminado correctamente`);
       } catch (err: any) {
-        toast("error", "Error", err?.message ?? "No se pudo eliminar el usuario");
+        // El motivo viene de la action (por ejemplo: tiene cotizaciones y la FK
+        // frena el borrado). Mostrarlo tal cual: el "Error" pelado no decía nada.
+        toast("error", "No se pudo eliminar", err?.message ?? "No se pudo eliminar el usuario");
       }
       setDeleteTarget(null);
       setIsShaking(false);
