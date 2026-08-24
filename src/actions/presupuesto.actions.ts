@@ -62,6 +62,9 @@ import {
   renderizarPdfDeCotizacion,
 } from "@/lib/pdf";
 import { cotizacionEmail } from "@/lib/presupuesto-email";
+// El pedido de datos desde el cotizador no reimplementa nada: llama a la MISMA
+// action que el modal del vendedor, con el destino y el número precargados.
+import { crearSolicitud } from "@/actions/datos-vendedor.actions";
 
 const log = logger.child({ module: "presupuesto.actions" });
 
@@ -1849,6 +1852,349 @@ export async function buscarEnHistorial(
       },
       orderBy: { updatedAt: "desc" },
       take: HISTORIAL_MAX,
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Pasajeros y Pagos, atados a la cotización
+//
+// El puente entre los dos módulos es el `numero` de la cotización (COT-2026-…):
+// va como `referencia` en la solicitud que se crea desde el cotizador y vuelve
+// pegado al envío del pasajero. Es texto libre en la DB, así que el vínculo se
+// arma acá con una comparación exacta contra el número, siempre dentro del
+// vendedor dueño de la cotización.
+//
+// `DatosPagoCifrado` NO tiene columna `referencia`: el único hilo que lo ata a
+// una cotización es su `solicitudId`. Por eso una tarjeta aparece en este
+// bloque solo si el pasajero la cargó desde el link de una solicitud creada
+// desde el cotizador. Si algún día se quiere lo mismo para la carga por link
+// permanente, hace falta agregarle `referencia String?` al modelo.
+// ---------------------------------------------------------------------------
+
+const DATOS_TIPOS = ["PASAJEROS", "PAGO"] as const;
+type TipoDato = (typeof DATOS_TIPOS)[number];
+
+/** Tope de filas por bloque: una cotización no junta cien envíos. */
+const DATOS_MAX = 20;
+
+const SOLO_EL_FIRMANTE =
+  "La solicitud sale a nombre de quien la manda. Esta cotización la firma otro vendedor: pedísela desde su usuario o pasale el link a mano.";
+
+export type EstadoSolicitudDato = "completada" | "vigente" | "vencida";
+
+export interface SolicitudDeCotizacion {
+  id: string;
+  tipo: TipoDato;
+  destinatarioEmail: string;
+  enviadoAt: Date;
+  expiraAt: Date;
+  completadoAt: Date | null;
+  estado: EstadoSolicitudDato;
+}
+
+export interface EnvioDeCotizacion {
+  id: string;
+  createdAt: Date;
+  cantidad: number;
+  contacto: string;
+  destino: string | null;
+  vistoAt: Date | null;
+  /** Ruta del panel: abre para el dueño y para el admin, cada uno por su lado. */
+  href: string;
+}
+
+export interface PagoDeCotizacion {
+  id: string;
+  titular: string;
+  emisor: string | null;
+  ultimos4: string;
+  createdAt: Date;
+  expiraAt: Date;
+  vistoAt: Date | null;
+  purgadoAt: Date | null;
+  estado: "vivo" | "visto" | "purgado";
+  href: string;
+}
+
+export interface DatosDelPasajero {
+  /** El número de la cotización: es la referencia con la que se ata todo. */
+  referencia: string;
+  /** `false` cuando quien mira no es el vendedor que firma. */
+  puedePedir: boolean;
+  /** Por qué no puede pedir, listo para mostrar. */
+  motivo: string | null;
+  solicitudes: SolicitudDeCotizacion[];
+  envios: EnvioDeCotizacion[];
+  pagos: PagoDeCotizacion[];
+}
+
+function estadoDeSolicitud(f: {
+  completadoAt: Date | null;
+  expiraAt: Date;
+}): EstadoSolicitudDato {
+  if (f.completadoAt) return "completada";
+  return f.expiraAt.getTime() <= Date.now() ? "vencida" : "vigente";
+}
+
+/**
+ * Lo que llegó (o está por llegar) del pasajero para ESTA cotización.
+ *
+ * Se lee siempre contra el vendedor dueño de la cotización, no contra el de la
+ * sesión: un admin que abre el drawer de una cotización ajena tiene que ver los
+ * envíos de ese vendedor, no los suyos.
+ */
+export async function datosDelPasajero(
+  presupuestoId: string,
+): Promise<Resultado<DatosDelPasajero>> {
+  return ejecutar("datosDelPasajero", async () => {
+    const s = await scopeVendedor();
+    const p = await cargarPropia(String(presupuestoId ?? ""), s);
+
+    const referencia = p.numero;
+    const puedePedir = p.vendedorId === s.userId;
+
+    const solicitudes = await prisma.solicitudDato.findMany({
+      where: { vendedorId: p.vendedorId, referencia },
+      orderBy: { enviadoAt: "desc" },
+      take: DATOS_MAX,
+      select: {
+        id: true,
+        tipo: true,
+        destinatarioEmail: true,
+        enviadoAt: true,
+        expiraAt: true,
+        completadoAt: true,
+      },
+    });
+    const idsSolicitud = solicitudes.map((x) => x.id);
+
+    const [envios, pagos] = await Promise.all([
+      prisma.envioPasajeros.findMany({
+        where: {
+          vendedorId: p.vendedorId,
+          OR: [
+            { referencia },
+            ...(idsSolicitud.length ? [{ solicitudId: { in: idsSolicitud } }] : []),
+          ],
+        },
+        orderBy: { createdAt: "desc" },
+        take: DATOS_MAX,
+        select: {
+          id: true,
+          createdAt: true,
+          destino: true,
+          vistoAt: true,
+          _count: { select: { pasajeros: true } },
+          pasajeros: {
+            orderBy: { orden: "asc" },
+            take: 1,
+            select: { nombres: true, apellidos: true },
+          },
+        },
+      }),
+      // Sin `referencia` en el modelo, la solicitud es el único hilo.
+      idsSolicitud.length
+        ? prisma.datosPagoCifrado.findMany({
+            where: { vendedorId: p.vendedorId, solicitudId: { in: idsSolicitud } },
+            orderBy: { createdAt: "desc" },
+            take: DATOS_MAX,
+            // Select explícito: payload / iv / tag NUNCA salen de la bóveda.
+            select: {
+              id: true,
+              titular: true,
+              emisor: true,
+              ultimos4: true,
+              createdAt: true,
+              expiraAt: true,
+              vistoAt: true,
+              purgadoAt: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const ahora = Date.now();
+    return {
+      referencia,
+      puedePedir,
+      motivo: puedePedir ? null : SOLO_EL_FIRMANTE,
+      solicitudes: solicitudes.map((f) => ({
+        ...f,
+        tipo: f.tipo as TipoDato,
+        estado: estadoDeSolicitud(f),
+      })),
+      envios: envios.map((e) => {
+        const primero = e.pasajeros[0];
+        return {
+          id: e.id,
+          createdAt: e.createdAt,
+          cantidad: e._count.pasajeros,
+          contacto: primero ? `${primero.nombres} ${primero.apellidos}`.trim() : "·",
+          destino: e.destino,
+          vistoAt: e.vistoAt,
+          href: `/backend/datos/pasajeros/${e.id}`,
+        };
+      }),
+      pagos: pagos.map((f) => ({
+        ...f,
+        estado:
+          f.purgadoAt || f.expiraAt.getTime() <= ahora
+            ? ("purgado" as const)
+            : f.vistoAt
+              ? ("visto" as const)
+              : ("vivo" as const),
+        href: `/backend/datos/pagos/${f.id}`,
+      })),
+    };
+  });
+}
+
+const pedirDatosSchema = z.object({
+  tipo: z.enum(DATOS_TIPOS),
+  canal: z.enum(["email", "whatsapp", "link"]),
+});
+
+export interface PedidoDatosResumen {
+  /** Texto para el toast. */
+  mensaje: string;
+  /** `true` cuando además salió el email con el token de un uso. */
+  solicitud: boolean;
+}
+
+const TITULO_PEDIDO: Record<TipoDato, string> = {
+  PASAJEROS: "Datos de pasajeros pedidos",
+  PAGO: "Datos de tarjeta pedidos",
+};
+const TIPO_EVENTO: Record<TipoDato, string> = {
+  PASAJEROS: "datos_pasajeros_pedidos",
+  PAGO: "datos_pago_pedidos",
+};
+const CANAL_TEXTO: Record<string, string> = {
+  email: "por email",
+  whatsapp: "por WhatsApp",
+  link: "link copiado",
+};
+
+/**
+ * Le pide al pasajero los datos desde la cotización.
+ *
+ * Con `canal: "email"` crea una solicitud de verdad —la misma action que usa el
+ * modal del vendedor— con el destino y el número de la cotización precargados,
+ * así lo que vuelva queda atado sin que nadie escriba una referencia a mano.
+ * Con "whatsapp" o "link" no manda nada: el vendedor comparte el link
+ * permanente desde su teléfono y acá solo queda anotado en la bitácora.
+ *
+ * Scope: la solicitud sale SIEMPRE a nombre del vendedor de la sesión (así lo
+ * resuelve `crearSolicitud`), así que un admin mirando la cotización de otro no
+ * puede pedir en su nombre. Se corta acá con un mensaje que lo explica en vez
+ * de mandar un email firmado por quien no corresponde.
+ */
+export async function pedirDatosDelPasajero(
+  presupuestoId: string,
+  input: z.input<typeof pedirDatosSchema>,
+): Promise<Resultado<PedidoDatosResumen>> {
+  return ejecutar("pedirDatosDelPasajero", async () => {
+    const parsed = pedirDatosSchema.safeParse(input ?? {});
+    if (!parsed.success) fallar(parsed.error.issues[0]?.message ?? "Pedido inválido.");
+    const { tipo, canal } = parsed.data;
+
+    const s = await scopeVendedor();
+    const p = await cargarPropia(String(presupuestoId ?? ""), s);
+    // Copiar el link o abrirlo en WhatsApp lo puede hacer cualquiera que vea la
+    // cotización: el link es público y el mensaje sale de su teléfono. Lo que
+    // no se puede es mandar un email firmado por otro vendedor.
+    if (canal === "email" && p.vendedorId !== s.userId) fallar(SOLO_EL_FIRMANTE);
+
+    const fila = await prisma.presupuesto.findUnique({
+      where: { id: p.id },
+      select: {
+        clienteNombre: true,
+        clienteApellido: true,
+        clienteEmail: true,
+        destino: true,
+      },
+    });
+
+    let mensaje: string;
+    let solicitud = false;
+
+    if (canal === "email") {
+      const email = (fila?.clienteEmail ?? "").trim();
+      if (!email) {
+        fallar("Esta cotización no tiene email del cliente. Cargalo y volvé a intentar.");
+      }
+      const r = await crearSolicitud({
+        tipo,
+        email,
+        nombre: [fila?.clienteNombre, fila?.clienteApellido].filter(Boolean).join(" ").trim(),
+        destino: fila?.destino ?? undefined,
+        referencia: p.numero,
+      });
+      if (!r.ok) fallar(r.message);
+      mensaje = r.message;
+      solicitud = true;
+    } else {
+      mensaje =
+        tipo === "PAGO"
+          ? "Anotado: le pasaste el link de datos de tarjeta."
+          : "Anotado: le pasaste el link de datos de pasajeros.";
+    }
+
+    await anotar(p.id, {
+      tipo: TIPO_EVENTO[tipo],
+      titulo: TITULO_PEDIDO[tipo],
+      detalle:
+        canal === "email"
+          ? `${CANAL_TEXTO[canal]} a ${(fila?.clienteEmail ?? "").trim()}`
+          : CANAL_TEXTO[canal],
+      actorId: s.userId,
+    });
+
+    return { mensaje, solicitud };
+  });
+}
+
+export interface PresupuestoPorNumero {
+  id: string;
+  numero: string;
+  destino: string | null;
+  clienteNombre: string | null;
+  clienteApellido: string | null;
+}
+
+/** Tope de referencias por consulta: una página de la bandeja son 20 filas. */
+const REFERENCIAS_MAX = 50;
+
+/**
+ * Del número al expediente. La usan las pantallas de Pasajeros y Pagos para
+ * convertir la `referencia` que quedó pegada al envío en un link que abre el
+ * drawer de esa cotización (`/backend/cotizador?abrir=<id>`).
+ *
+ * Devuelve solo las que existen y caen dentro del scope de quien mira: es una
+ * comodidad de navegación, no un buscador. Una referencia escrita a mano que
+ * no matchea ningún número simplemente no vuelve, y la fila se queda sin link.
+ */
+export async function cotizacionesPorReferencia(
+  numeros: string[],
+): Promise<Resultado<PresupuestoPorNumero[]>> {
+  return ejecutar("cotizacionesPorReferencia", async () => {
+    const limpios = Array.from(
+      new Set((numeros ?? []).map((n) => String(n ?? "").trim()).filter(Boolean)),
+    ).slice(0, REFERENCIAS_MAX);
+    if (!limpios.length) return [];
+
+    const s = await scopeVendedor();
+    return prisma.presupuesto.findMany({
+      where: { ...whereScope(s), numero: { in: limpios } },
+      select: {
+        id: true,
+        numero: true,
+        destino: true,
+        clienteNombre: true,
+        clienteApellido: true,
+      },
+      take: REFERENCIAS_MAX,
     });
   });
 }

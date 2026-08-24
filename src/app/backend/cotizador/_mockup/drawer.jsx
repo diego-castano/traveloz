@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Trash2, Clock3, Copy,
-  Lock, Smartphone, Monitor, Loader2, Link2, Download
+  Lock, Smartphone, Monitor, Loader2, Link2, Download, Users, CreditCard, ClipboardList,
+  MailCheck, Clock3 as Reloj, ExternalLink, Inbox
 } from "lucide-react";
 import { semaforo, fmtHace, money, ESTADOS } from "./data";
 import { useCtz, buscarVendedor } from "./contexto";
-import { obtenerPresupuesto, emitirLink } from "@/actions/presupuesto.actions";
+import { obtenerPresupuesto, emitirLink, datosDelPasajero } from "@/actions/presupuesto.actions";
 import { SECCIONES } from "@/lib/presupuesto/secciones";
 import { calcularTramos } from "./tramos";
 import { Btn, Pill } from "./ui";
@@ -29,7 +30,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
   const V = buscarVendedor(vendedores, r.vendedor);
   const S = semaforo(r);
   const E = ESTADOS[r.estado];
-  const [comp, setComp] = useState(false);
+  /* null | "recordatorio" | "datos": el modal de compartir abre en esa pestaña */
+  const [comp, setComp] = useState(null);
   const [confOpen, setConfOpen] = useState(false);
   const [editEst, setEditEst] = useState(false);
   const [preview, setPreview] = useState(null);   // null | "cel" | "tab" | "desk"
@@ -85,6 +87,20 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
   const bajarPdf = () => {
     window.open(`/api/cotizador/${r.id}/pdf`, "_blank", "noopener");
   };
+
+  /* ── lo que llegó del pasajero para ESTA cotización ──────────────────────
+     Solicitudes, envíos y tarjetas atados por el número (COT-…). Se pide al
+     abrir el drawer: son tres consultas chicas y es lo primero que el vendedor
+     mira cuando la cotización ya está confirmada. */
+  const [datos, setDatos] = useState(null);
+  const [errDatos, setErrDatos] = useState(null);
+  const cargarDatos = useCallback(async () => {
+    const res = await datosDelPasajero(r.id);
+    if (!res.ok) { setErrDatos(res.error); return; }
+    setErrDatos(null);
+    setDatos(res.data);
+  }, [r.id]);
+  useEffect(() => { setDatos(null); void cargarDatos(); }, [cargarDatos]);
 
   const [op, setOp] = useState("Opción 1");
   const [via, setVia] = useState("WhatsApp");
@@ -318,6 +334,27 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           </div>
 
 
+          {/* ── datos del pasajero: lo que volvió por los links del vendedor ── */}
+          <div style={{ display:"flex", alignItems:"center", gap:7, margin:"18px 0 8px" }}>
+            <span className="lbl">Datos del pasajero</span>
+            <button className="btn btn-g btn-xs" style={{ marginLeft:"auto" }}
+              title="Mandarle el formulario de datos o el de tarjeta"
+              disabled={cargandoQ}
+              onClick={async () => { if (await cargarContenido()) setComp("datos"); }}>
+              <ClipboardList size={11} /> Pedir datos
+            </button>
+          </div>
+
+          {errDatos ? (
+            <div style={{ fontSize:11.5, color:"var(--coral)", lineHeight:1.5 }}>{errDatos}</div>
+          ) : !datos ? (
+            <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:11.5, color:"var(--n400)" }}>
+              <Loader2 size={12} className="spin" /> Buscando lo que llegó con {r.num}…
+            </div>
+          ) : (
+            <BloqueDatos d={datos} num={r.num} />
+          )}
+
           {/* ── bitácora interna: se maneja acá mismo, sin abrir la cotización ── */}
           <div style={{ display:"flex", alignItems:"center", gap:7, margin:"16px 0 8px" }}>
             <span className="lbl">Notas internas</span>
@@ -376,7 +413,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               <Copy size={13} /> Duplicar
             </Btn>
             <Btn variant="p" style={{ flex:1, height:38 }} disabled={cargandoQ}
-              onClick={async () => { if (await cargarContenido()) setComp(true); }}>
+              onClick={async () => { if (await cargarContenido()) setComp("recordatorio"); }}>
               <Send size={13} /> Recordatorio
             </Btn>
             {puedeConfirmar && (
@@ -421,8 +458,10 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           </div>
         )}
       </div>
-      {comp && contenido && <ModalCompartir q={contenido} presupuestoId={r.id} vendedor={r.vendedor} recordatorio toast={toast}
-        onClose={() => setComp(false)} onEnviada={(d) => onRecordatorio?.(r, d)} />}
+      {comp && contenido && <ModalCompartir q={contenido} presupuestoId={r.id} vendedor={r.vendedor}
+        recordatorio={comp === "recordatorio"} tabInicial={comp === "datos" ? "datos" : undefined}
+        toast={toast} onPedido={cargarDatos}
+        onClose={() => setComp(null)} onEnviada={(d) => onRecordatorio?.(r, d)} />}
       {preview && contenido && (() => {
         const qPrev = contenido;
         return (
@@ -490,6 +529,105 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
       })()}
     </>
   );
+}
+
+/* ── Lo recibido para una cotización ──────────────────────────────────────
+   Tres listas cortas: las solicitudes que salieron con este número, los grupos
+   de pasajeros que volvieron y las tarjetas que quedaron en la bóveda. Cada
+   fila abre su ficha en el panel — la ruta es la misma para el vendedor y para
+   el admin: cada uno entra con su propio alcance.
+
+   Las tarjetas se atan por la solicitud, que es el único hilo que guarda el
+   modelo de la bóveda: una tarjeta cargada desde el link permanente (sin
+   solicitud) no puede saber a qué cotización pertenece. */
+function BloqueDatos({ d, num }) {
+  const nada = !d.solicitudes.length && !d.envios.length && !d.pagos.length;
+  if (nada) {
+    return (
+      <div style={{ display:"flex", gap:9, padding:"11px 12px", borderRadius:12,
+        background:"var(--tile)" }}>
+        <Inbox size={15} style={{ color:"var(--n300)", flexShrink:0, marginTop:1 }} />
+        <div style={{ fontSize:11.5, color:"var(--n500)", lineHeight:1.55 }}>
+          Todavía no llegó nada con la referencia <span className="mono">{num}</span>. Con
+          <strong> Pedir datos</strong> le mandás el formulario y lo que cargue vuelve acá.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+      {d.solicitudes.map((sx) => {
+        const tono = sx.estado === "completada" ? "teal" : sx.estado === "vencida" ? "coral" : "n";
+        const Icono = sx.tipo === "PAGO" ? CreditCard : Users;
+        return (
+          <div key={sx.id} style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px",
+            borderRadius:11, background:"var(--tile)" }}>
+            <Icono size={13} style={{ color:"var(--n400)", flexShrink:0 }} />
+            <div style={{ minWidth:0, flex:1 }}>
+              <div style={{ fontSize:12, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden",
+                textOverflow:"ellipsis" }}>
+                {sx.tipo === "PAGO" ? "Datos de tarjeta" : "Datos de pasajeros"} · pedidos por email
+              </div>
+              <div className="mono" style={{ fontSize:10.5, color:"var(--n400)", marginTop:1,
+                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                {sx.destinatarioEmail} · {fmtDesde(sx.enviadoAt)}
+              </div>
+            </div>
+            <Pill tone={tono}>
+              {sx.estado === "completada" ? <><MailCheck size={9} /> Completada</>
+                : sx.estado === "vencida" ? <><Reloj size={9} /> Vencida</>
+                : <><Reloj size={9} /> Vigente</>}
+            </Pill>
+          </div>
+        );
+      })}
+
+      {d.envios.map((e) => (
+        <a key={e.id} href={e.href} target="_blank" rel="noreferrer"
+          style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px", borderRadius:11,
+            background:"rgba(59,191,173,.09)", border:"1px solid rgba(42,158,142,.25)",
+            textDecoration:"none", color:"inherit" }}>
+          <Users size={13} style={{ color:"var(--teal-3)", flexShrink:0 }} />
+          <div style={{ minWidth:0, flex:1 }}>
+            <div style={{ fontSize:12, fontWeight:700 }}>
+              {e.cantidad} {e.cantidad === 1 ? "pasajero" : "pasajeros"} · {e.contacto}
+            </div>
+            <div className="mono" style={{ fontSize:10.5, color:"var(--n400)", marginTop:1 }}>
+              {fmtDesde(e.createdAt)}{e.vistoAt ? "" : " · sin abrir"}
+            </div>
+          </div>
+          <ExternalLink size={12} style={{ color:"var(--n400)", flexShrink:0 }} />
+        </a>
+      ))}
+
+      {d.pagos.map((pg) => (
+        <a key={pg.id} href={pg.href} target="_blank" rel="noreferrer"
+          style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px", borderRadius:11,
+            background:"rgba(120,90,229,.08)", border:"1px solid rgba(120,90,229,.22)",
+            textDecoration:"none", color:"inherit" }}>
+          <CreditCard size={13} style={{ color:"var(--violet)", flexShrink:0 }} />
+          <div style={{ minWidth:0, flex:1 }}>
+            <div style={{ fontSize:12, fontWeight:700, whiteSpace:"nowrap", overflow:"hidden",
+              textOverflow:"ellipsis" }}>
+              {pg.titular} · {pg.emisor || "Tarjeta"} •••• {pg.ultimos4}
+            </div>
+            <div className="mono" style={{ fontSize:10.5, color:"var(--n400)", marginTop:1 }}>
+              {fmtDesde(pg.createdAt)} · {pg.estado === "purgado" ? "ya no se puede abrir" : pg.estado === "visto" ? "abierta" : "en la bóveda"}
+            </div>
+          </div>
+          <ExternalLink size={12} style={{ color:"var(--n400)", flexShrink:0 }} />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+/* "hace 3 h" con el mismo formateo que el resto del drawer. */
+function fmtDesde(fecha) {
+  const t = new Date(fecha).getTime();
+  if (!Number.isFinite(t)) return "—";
+  return fmtHace(Math.max(0, Math.round((Date.now() - t) / 3600000)));
 }
 
 export { DrawerAnalytics };

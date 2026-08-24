@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2, Clock
+  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2, Clock,
+  CreditCard, Lock
 } from "lucide-react";
 import {
   MESES, MES_AB, ANIO_ACTUAL,
@@ -10,6 +11,7 @@ import {
 } from "./data";
 import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
+import { telefonoWa } from "@/lib/telefono";
 
 /* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
 const PAGO_TARJETAS = [
@@ -87,7 +89,8 @@ function SalidaPasajero({
   const { vendedores } = useCtz();
   const ajustes = useAjustes();
   const V = buscarVendedor(vendedores, vendedor);
-  const telWa = String(V.tel || "").replace(/\D/g, "");
+  /* wa.me necesita el número con código de país, no el local. */
+  const telWa = telefonoWa(V.tel);
   const totalNoches = tramos.reduce((a, t) => a + t.noches, 0);
 
   /* v2C · comparación: la opción 1 es la base, las demás muestran cuánto suben o bajan */
@@ -592,17 +595,37 @@ function SalidaPasajero({
                                 {V.nombre.split(" ")[0]} te contacta a la brevedad para coordinar la seña y el pago.
                               </div>
                               {V.linkDatos && (
-                                <>
-                                  <a href={V.linkDatos} target="_blank" rel="noreferrer"
-                                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8,
-                                      marginTop:10, padding:"11px 14px", borderRadius:12, color:"#fff",
-                                      fontSize:fz(12.5, 13), fontWeight:800, background:grad, textDecoration:"none" }}>
-                                    <Link2 size={15} /> Cargar los datos de los pasajeros
-                                  </a>
-                                  <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5", textAlign:"center", marginTop:6 }}>
-                                    Nombre, documento y pasaporte de cada pasajero, tal cual figuran en el documento de viaje. Con eso arranca la reserva.
+                                <a href={V.linkDatos} target="_blank" rel="noreferrer"
+                                  style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                                    marginTop:10, padding:"11px 14px", borderRadius:12, color:"#fff",
+                                    fontSize:fz(12.5, 13), fontWeight:800, background:grad, textDecoration:"none" }}>
+                                  <Link2 size={15} /> Cargar los datos de los pasajeros
+                                </a>
+                              )}
+                              {V.linkDatos && (
+                                <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5", textAlign:"center", marginTop:6 }}>
+                                  Nombre, documento y pasaporte de cada pasajero, tal cual figuran en el documento de viaje. Con eso arranca la reserva.
+                                </div>
+                              )}
+                              {/* El segundo formulario, en secundario: primero los pasajeros,
+                                  después la tarjeta. */}
+                              {V.linkPago && (
+                                <a href={V.linkPago} target="_blank" rel="noreferrer"
+                                  style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                                    marginTop:8, padding:"10px 14px", borderRadius:12,
+                                    fontSize:fz(12, 12.5), fontWeight:800, color:G.b, textDecoration:"none",
+                                    background:"#fff", border:`1.5px solid ${G.b}44` }}>
+                                  <CreditCard size={14} /> Cargar los datos de pago
+                                </a>
+                              )}
+                              {(V.linkDatos || V.linkPago) && (
+                                <div style={{ display:"flex", alignItems:"flex-start", gap:6, marginTop:8 }}>
+                                  <Lock size={11} style={{ color:"#8A8DB5", flexShrink:0, marginTop:1 }} />
+                                  <div style={{ fontSize:fz(9.5, 10), color:"#8A8DB5", lineHeight:1.5 }}>
+                                    Los dos formularios son de {V.nombre.split(" ")[0]} y viajan cifrados:
+                                    los datos llegan directo a tu asesor, no a un buzón general.
                                   </div>
-                                </>
+                                </div>
                               )}
                             </div>
                           </div>

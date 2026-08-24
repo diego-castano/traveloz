@@ -96,6 +96,14 @@ function aInt(n: number): number {
 }
 
 /**
+ * El teléfono listo para wa.me. Vive en `@/lib/telefono` (módulo hoja, sin
+ * dependencias) porque la ficha del pasajero lo usa también del lado público y
+ * desde acá se llevaría puesto el zod de `./schema`. Se reexporta para que
+ * quede al lado de `soloDigitos`, que hace lo contrario: normaliza para buscar.
+ */
+export { telefonoWa } from "@/lib/telefono";
+
+/**
  * Dígitos comparables de un teléfono. "+598 99 123 456", "099123456" y
  * "99123456" tienen que dar lo mismo, así el buscador del historial encuentra
  * al cliente escriba el vendedor como escriba. Misma regla que telDigitos()

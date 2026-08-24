@@ -368,7 +368,7 @@ function ModalIA({ onClose, onArmar }) {
 function Inicio({
   onPaquete, onBlanco, onPlantilla, onIA, onDuplicarFila, onEditarFila, toast, tab, setTab,
   plantillas, onCrearPlantilla, onBorrarPlantilla, onDuplicarPlantilla, onSoloVuelos,
-  filas, cargandoFilas, recargar, verComo, setVerComo,
+  filas, cargandoFilas, recargar, verComo, setVerComo, abrirId, onAbierta,
 }) {
   const { esAdmin } = useCtz();
   const catalogo = useCatalogo();
@@ -569,7 +569,8 @@ function Inicio({
               </div>
               <ListadoContenido base={base} cargando={cargandoFilas} recargar={recargar}
                 verComo={verComo} setVerComo={setVerComo} toast={toast}
-                onDuplicar={onDuplicarFila} onEditar={onEditarFila} />
+                onDuplicar={onDuplicarFila} onEditar={onEditarFila}
+                abrirId={abrirId} onAbierta={onAbierta} />
             </div>
           )}
 
@@ -914,7 +915,10 @@ function TabSeguimiento({ base, recargar, toast, onEditar, onDuplicar }) {
   );
 }
 
-function ListadoContenido({ base, cargando, recargar, verComo, setVerComo, toast, onDuplicar, onEditar }) {
+function ListadoContenido({
+  base, cargando, recargar, verComo, setVerComo, toast, onDuplicar, onEditar,
+  abrirId, onAbierta,
+}) {
   const { vendedores, esAdmin } = useCtz();
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todas");
@@ -952,6 +956,14 @@ function ListadoContenido({ base, cargando, recargar, verComo, setVerComo, toast
     const k = (e) => e.key === "Escape" && setSelId(null);
     document.addEventListener("keydown", k); return () => document.removeEventListener("keydown", k);
   }, [sel]);
+
+  /* ?abrir=<id>: se espera a que la grilla llegue del server. Si el id no está
+     entre las filas que este usuario puede ver, se ignora sin ruido. */
+  useEffect(() => {
+    if (!abrirId || cargando) return;
+    if (conOv.some((r) => r.id === abrirId)) setSelId(abrirId);
+    onAbierta?.();
+  }, [abrirId, cargando, conOv, onAbierta]);
 
   return (
     <div className="a-fade">

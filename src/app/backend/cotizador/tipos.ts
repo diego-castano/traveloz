@@ -30,6 +30,8 @@ export interface VendedorCotizador {
   email: string;
   /** Link público de datos de pasajeros. `null` si no tiene slug o lo apagó. */
   linkDatos: string | null;
+  /** Link público de datos de tarjeta. Mismo criterio que `linkDatos`. */
+  linkPago: string | null;
   /** URL de la foto de perfil. `null` cae al avatar con iniciales. */
   foto: string | null;
   rol: string;
@@ -77,8 +79,14 @@ export function vendedorDesdeUsuario(
     cargo: u.cargo?.trim() || "Ejecutivo/a de ventas",
     tel: (u.whatsapp || u.telefono || "").trim(),
     email: u.email,
+    // Los dos links de "Pasajeros y Pagos" viajan juntos: el cotizador los
+    // ofrece en la misma pestaña y la ficha del pasajero los pinta uno abajo
+    // del otro. Si el vendedor no tiene slug o apagó el link, van los dos en
+    // null y la UI dice por qué en vez de mostrar una URL rota.
     linkDatos:
       u.slug && u.linkActivo ? `${siteBaseUrl}/datos-de-pasajeros/${u.slug}` : null,
+    linkPago:
+      u.slug && u.linkActivo ? `${siteBaseUrl}/datos-de-pago/${u.slug}` : null,
     // Mismo criterio que VendedorCard en los formularios públicos: la url del
     // storage se usa tal cual, sin proxy.
     foto: u.fotoUrl?.trim() || null,

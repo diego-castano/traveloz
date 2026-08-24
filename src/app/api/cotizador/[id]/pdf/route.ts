@@ -12,10 +12,17 @@
 //   404 → no existe, está borrada, o es de otro vendedor (a un ajeno le
 //         respondemos lo mismo que a una inexistente).
 //   429 → los dos slots de render ocupados y la espera se agotó.
-//   500 → la página cargó pero no devolvió la hoja (bug nuestro).
+//   500 → la página cargó pero no devolvió la hoja, o el navegador no llegó a
+//         ella, o cualquier otra rotura nuestra.
 //   503 → este servidor no tiene Chromium, o COTIZADOR_PDF_OFF=1.
 //   504 → el render pasó el techo de 45 s.
-// Todo lo que no es 200 sale como JSON { ok:false, error }.
+// Todo lo que no es 200 sale como JSON { ok:false, error } y, cuando el que
+// falló fue el render, además { codigo, etapa }. Esa ruta ya pide sesión de
+// vendedor, así que ahí no hay nada que esconderle a quien la llama: sin esos
+// dos campos, un 500 después de 30 s de espera no se puede diagnosticar sin
+// entrar al contenedor. `codigo` es SIN_CHROMIUM | TIMEOUT | PAGINA_INVALIDA |
+// OCUPADO | NAVEGACION | DESCONOCIDO; `etapa`, lanzar | goto | hoja | fuentes
+// | imagenes | pdf.
 //
 // Lo que esta ruta NO hace: sellar el envío. Bajar el PDF no es mandarle nada
 // al pasajero, así que el estado y el reloj de la vigencia no se tocan. Sí
@@ -35,10 +42,12 @@ import {
 } from "@/lib/presupuesto/acceso";
 import {
   codigoDeError,
+  etapaDeError,
   nombreArchivoPdf,
   pdfDisponible,
   renderizarPdfDeCotizacion,
 } from "@/lib/pdf";
+import type { CodigoErrorPdf, EtapaPdf } from "@/lib/pdf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,8 +57,12 @@ const log = logger.child({ op: "cotizador.pdf" });
 /** Una hora en milisegundos, igual que en las actions. */
 const HORA_MS = 3_600_000;
 
-function error(mensaje: string, status: number) {
-  return NextResponse.json({ ok: false, error: mensaje }, { status });
+function error(
+  mensaje: string,
+  status: number,
+  extra?: { codigo: CodigoErrorPdf; etapa: EtapaPdf | null },
+) {
+  return NextResponse.json({ ok: false, error: mensaje, ...extra }, { status });
 }
 
 export async function GET(
@@ -74,6 +87,7 @@ export async function GET(
     return error(
       "Este servidor no puede generar PDF ahora. Usá la vista de impresión del navegador.",
       503,
+      { codigo: "SIN_CHROMIUM", etapa: null },
     );
   }
 
@@ -120,24 +134,43 @@ export async function GET(
       },
     });
   } catch (err) {
-    switch (codigoDeError(err)) {
+    const codigo = codigoDeError(err) ?? "DESCONOCIDO";
+    const etapa = etapaDeError(err);
+    const detalle = { codigo, etapa };
+
+    // `pdf.ts` ya loguea el fallo con etapa, tiempos y status del goto. Acá
+    // solo se agrega lo que ese log no sabe: qué cotización se estaba pidiendo.
+    log.error("cotizador.pdf.render.fail", { id: params.id, codigo, etapa });
+
+    switch (codigo) {
       case "SIN_CHROMIUM":
         return error(
           "Este servidor no puede generar PDF ahora. Usá la vista de impresión del navegador.",
           503,
+          detalle,
         );
       case "TIMEOUT":
-        return error("El PDF tardó demasiado. Probá de nuevo en un minuto.", 504);
+        return error(
+          "El PDF tardó demasiado. Probá de nuevo en un minuto.",
+          504,
+          detalle,
+        );
       case "OCUPADO":
         return error(
           "Hay varios PDF generándose al mismo tiempo. Probá de nuevo en un minuto.",
           429,
+          detalle,
         );
       case "PAGINA_INVALIDA":
-        return error("No pudimos armar la hoja de la cotización.", 500);
+        return error("No pudimos armar la hoja de la cotización.", 500, detalle);
+      case "NAVEGACION":
+        return error(
+          "El servidor no pudo abrir la hoja de la cotización.",
+          500,
+          detalle,
+        );
       default:
-        log.error("cotizador.pdf.render.fail", { id: params.id, err });
-        return error("No pudimos generar el PDF. Probá de nuevo.", 500);
+        return error("No pudimos generar el PDF. Probá de nuevo.", 500, detalle);
     }
   }
 }

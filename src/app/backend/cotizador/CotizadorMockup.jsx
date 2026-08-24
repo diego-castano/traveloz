@@ -565,6 +565,27 @@ export default function Cotizador({
 
   useEffect(() => { void recargar(); }, [recargar]);
 
+  /* ── ?abrir=<id> ─────────────────────────────────────────────────────────
+     El deep-link que usan las pantallas de Pasajeros y Pagos: desde un envío
+     con referencia COT-… se vuelve a la cotización que lo pidió, con el drawer
+     ya abierto. Se lee una sola vez, del `location` y no de `useSearchParams`
+     (que obligaría a envolver esta pantalla en un Suspense por nada), y se
+     limpia de la URL para que un F5 no lo vuelva a abrir.
+
+     Si el id no está en el scope de quien mira, la grilla no lo encuentra y no
+     pasa nada: no se avisa, porque no hay nada que el vendedor pueda hacer. */
+  const [abrirId, setAbrirId] = useState(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("abrir");
+    if (!id) return;
+    setAbrirId(id);
+    setHomeTab("cotizar");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("abrir");
+    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+  }, []);
+
   const recargarPlantillas = useCallback(async () => {
     const res = await listarPlantillas();
     if (res.ok) setPlantillas(res.data);
@@ -933,6 +954,7 @@ export default function Cotizador({
           toast={toast}
           tab={homeTab} setTab={setHomeTab}
           filas={filas} cargandoFilas={cargandoFilas} recargar={recargar}
+          abrirId={abrirId} onAbierta={() => setAbrirId(null)}
           verComo={verComo} setVerComo={setVerComo}
           plantillas={plantillas}
           onCrearPlantilla={(nombre, destino) => { void crearPlantillaVacia(nombre, destino); }}

@@ -19,6 +19,7 @@ import {
   Inbox,
   Paperclip,
   ReceiptText,
+  Ticket,
   Users,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -28,6 +29,7 @@ import {
   type EnvioDetalle,
   type EnvioResumen,
 } from "@/actions/datos-vendedor.actions";
+import { cotizacionesPorReferencia } from "@/actions/presupuesto.actions";
 
 const fechaHora = (d: Date) =>
   new Intl.DateTimeFormat("es-UY", {
@@ -54,6 +56,9 @@ export function PasajerosTab() {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [openId, setOpenId] = useState<string | null>(null);
+  // referencia (COT-…) → id de la cotización, para el link de vuelta al
+  // cotizador. Una sola consulta por página, no una por fila.
+  const [cotizaciones, setCotizaciones] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let vivo = true;
@@ -72,6 +77,22 @@ export function PasajerosTab() {
       vivo = false;
     };
   }, [page]);
+
+  // El puente entre los dos módulos: la referencia del envío es el número de
+  // la cotización cuando la solicitud salió desde el cotizador. Las que no
+  // matchean ningún número (o caen fuera del scope) se quedan sin link.
+  useEffect(() => {
+    const refs = (rows ?? []).map((r) => r.referencia ?? "").filter(Boolean);
+    if (!refs.length) return;
+    let vivo = true;
+    void cotizacionesPorReferencia(refs).then((res) => {
+      if (!vivo || !res.ok) return;
+      setCotizaciones(Object.fromEntries(res.data.map((c) => [c.numero, c.id])));
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [rows]);
 
   // El detalle sella vistoAt en el server; acá bajamos el chip en el acto.
   const marcarVisto = useCallback((id: string) => {
@@ -141,6 +162,7 @@ export function PasajerosTab() {
                 isOpen={openId === row.id}
                 onToggle={() => setOpenId((cur) => (cur === row.id ? null : row.id))}
                 onVisto={() => marcarVisto(row.id)}
+                cotizacionId={row.referencia ? cotizaciones[row.referencia] : undefined}
               />
             ))}
           </tbody>
@@ -186,11 +208,14 @@ function EnvioRow({
   isOpen,
   onToggle,
   onVisto,
+  cotizacionId,
 }: {
   row: EnvioResumen;
   isOpen: boolean;
   onToggle: () => void;
   onVisto: () => void;
+  /** Cotización a la que pertenece la referencia, si la hay. */
+  cotizacionId?: string;
 }) {
   const [detalle, setDetalle] = useState<EnvioDetalle | null>(null);
   const [error, setError] = useState(false);
@@ -249,7 +274,21 @@ function EnvioRow({
           </span>
         </td>
         <td className="px-4 py-3 text-[12.5px] text-neutral-600">{row.destino || "·"}</td>
-        <td className="px-4 py-3 text-[12.5px] text-neutral-500">{row.referencia || "·"}</td>
+        <td className="px-4 py-3 text-[12.5px] text-neutral-500">
+          {cotizacionId ? (
+            <a
+              href={`/backend/cotizador?abrir=${cotizacionId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 rounded-[7px] bg-[#F1EEFF] px-2 py-0.5 font-mono text-[11.5px] font-semibold text-[#8B5CF6] transition hover:bg-[#E6E0FF]"
+              title="Abrir esta cotización en el cotizador"
+            >
+              <Ticket size={11} />
+              {row.referencia}
+            </a>
+          ) : (
+            row.referencia || "·"
+          )}
+        </td>
         <td className="px-2 py-3 text-center">
           <ChevronRight
             size={16}

@@ -19,6 +19,8 @@
 // firmas.
 // ---------------------------------------------------------------------------
 
+import { telefonoWa } from "@/lib/telefono";
+
 const ACCENT = "#F43E55";
 const INK = "#23232b";
 const MUTED = "#8a8f98";
@@ -174,7 +176,7 @@ export function solicitudDatosEmail(opts: {
 
   // Tarjeta del asesor: el pasajero tiene que ver a quién le está mandando sus
   // datos, tanto en el email como en la página.
-  const wa = (opts.vendedor.whatsapp ?? "").replace(/[^\d]/g, "");
+  const wa = telefonoWa(opts.vendedor.whatsapp);
   const foto = opts.vendedor.fotoUrl?.trim();
   const fotoAbsoluta = foto?.startsWith("/") ? `${SITE_BASE_URL}${foto}` : foto;
   const asesor = `

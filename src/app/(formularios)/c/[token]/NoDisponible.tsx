@@ -10,6 +10,7 @@
 // ---------------------------------------------------------------------------
 
 import { Clock3 } from "lucide-react";
+import { telefonoWa } from "@/lib/telefono";
 
 export interface VendedorDelLink {
   nombre: string;
@@ -28,7 +29,8 @@ export function CotizacionNoDisponible({
   vencida?: boolean;
 }) {
   const primerNombre = vendedor.nombre.split(" ")[0] || "tu asesor";
-  const wa = vendedor.tel.replace(/\D/g, "");
+  // wa.me sin código de país no abre ningún chat: lo agrega el helper.
+  const wa = telefonoWa(vendedor.tel);
   const texto = encodeURIComponent(
     `Hola ${primerNombre}, se me venció el link de la cotización. ¿Me la podés volver a mandar?`,
   );

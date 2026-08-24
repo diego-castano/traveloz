@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import { MessageCircle, Phone } from "lucide-react";
+import { telefonoWa } from "@/lib/telefono";
 import type { VendedorPublicoView } from "@/actions/datos-publico.actions";
 
 function iniciales(nombre: string): string {
@@ -19,8 +20,9 @@ function iniciales(nombre: string): string {
 }
 
 export function VendedorCard({ vendedor }: { vendedor: VendedorPublicoView }) {
-  // wa.me solo acepta dígitos con código de país, sin + ni separadores.
-  const whatsapp = (vendedor.whatsapp ?? "").replace(/\D/g, "");
+  // wa.me solo acepta dígitos con código de país, sin + ni separadores: el
+  // helper es el que le pone el 598 cuando el vendedor lo cargó local.
+  const whatsapp = telefonoWa(vendedor.whatsapp);
   // tel: tolera el + inicial, así el discado internacional funciona.
   const telefono = (vendedor.telefono ?? "").replace(/[^\d+]/g, "");
 

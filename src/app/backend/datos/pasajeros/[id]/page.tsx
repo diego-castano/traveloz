@@ -14,10 +14,11 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Ticket } from "lucide-react";
 import { auth } from "@/lib/auth.config";
 import { getEnvioAdmin, marcarVistoAdmin } from "@/actions/datos-admin.actions";
 import { getMiEnvioDetalle } from "@/actions/datos-vendedor.actions";
+import { cotizacionesPorReferencia } from "@/actions/presupuesto.actions";
 import { EnvioDetalleView, type EnvioVista } from "../../_components/EnvioDetalleView";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,13 @@ export default async function EnvioPage({ params }: { params: { id: string } }) 
 
   const titular = envio.pasajeros[0];
 
+  // El puente con el cotizador: cuando la solicitud salió desde una cotización,
+  // la referencia ES el número (COT-2026-…). Si matchea algo que este usuario
+  // puede ver, la ficha ofrece volver a esa cotización con el drawer abierto.
+  const ref = envio.referencia?.trim();
+  const cot = ref ? await cotizacionesPorReferencia([ref]) : null;
+  const cotizacion = cot?.ok ? (cot.data[0] ?? null) : null;
+
   return (
     <div className="mx-auto max-w-4xl space-y-5 p-6">
       <div>
@@ -74,6 +82,19 @@ export default async function EnvioPage({ params }: { params: { id: string } }) 
           {envio.destino ? ` · ${envio.destino}` : ""}
         </p>
       </div>
+
+      {cotizacion && (
+        <Link
+          href={`/backend/cotizador?abrir=${cotizacion.id}`}
+          className="inline-flex items-center gap-2 rounded-[10px] border border-[#8B5CF6]/30 bg-[#F8F7FF] px-3 py-2 text-[13px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6] hover:bg-[#F1EEFF]"
+        >
+          <Ticket className="h-3.5 w-3.5" />
+          Cotización {cotizacion.numero}
+          {cotizacion.destino ? (
+            <span className="font-normal text-neutral-500">· {cotizacion.destino}</span>
+          ) : null}
+        </Link>
+      )}
 
       <EnvioDetalleView envio={envio} vendedor={vendedor} />
     </div>

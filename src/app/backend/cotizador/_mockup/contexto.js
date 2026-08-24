@@ -35,7 +35,7 @@ export const CATALOGO_VACIO = {
    por vendedor y al drawer.
 
    Forma de cada vendedor: la arma `vendedorDesdeUsuario` en ../tipos.ts
-   → { id, nombre, inicial, cargo, tel, email, linkDatos, foto, rol }
+   → { id, nombre, inicial, cargo, tel, email, linkDatos, linkPago, foto, rol }
 
    `catalogo` es lo mismo pero para los datos: paquetes, hoteles, ciudades y
    regímenes reales del panel. Lo arma `useCatalogoCotizador()` (./catalogo.js)
@@ -97,7 +97,7 @@ function useAerolineas() {
    muestra un guión en vez de romperse. */
 const VENDEDOR_VACIO = {
   id: null, nombre: "—", inicial: "—", cargo: "", tel: "", email: "",
-  linkDatos: null, foto: null, rol: "",
+  linkDatos: null, linkPago: null, foto: null, rol: "",
 };
 
 function buscarVendedor(vendedores, id) {

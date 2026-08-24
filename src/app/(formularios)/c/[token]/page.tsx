@@ -161,8 +161,13 @@ export default async function CotizacionPublicaPage({
     cargo: u.cargo?.trim() || "Ejecutivo/a de ventas",
     tel: (u.whatsapp || u.telefono || "").trim(),
     email: u.email,
+    // Solo la URL: del vendedor cruzan nombre, cargo, contacto y estos dos
+    // links públicos, nada más. Si no tiene slug o lo apagó, van en null y la
+    // ficha no dibuja el botón.
     linkDatos:
       u.slug && u.linkActivo ? `${SITE_BASE_URL}/datos-de-pasajeros/${u.slug}` : null,
+    linkPago:
+      u.slug && u.linkActivo ? `${SITE_BASE_URL}/datos-de-pago/${u.slug}` : null,
     foto: u.fotoUrl?.trim() || null,
     rol: "",
   };

@@ -3,12 +3,16 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   FileText, CheckCheck, Download, Eye, X, Mail, Smartphone, Loader2, AlertCircle,
-  Printer, Lock, Info, Check, Link2, Copy, Send
+  Printer, Lock, Info, Check, Link2, Copy, Send, Users, CreditCard, ClipboardList,
+  ExternalLink, MailCheck
 } from "lucide-react";
 import { Btn, Label } from "./ui";
+import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion, renderPlantilla } from "./data";
 import { useAjustes, useCtz, buscarVendedor } from "./contexto";
-import { marcarEnviada, emitirLink, enviarPorEmail } from "@/actions/presupuesto.actions";
+import {
+  marcarEnviada, emitirLink, enviarPorEmail, pedirDatosDelPasajero,
+} from "@/actions/presupuesto.actions";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    COMPARTIR
@@ -36,14 +40,16 @@ import { marcarEnviada, emitirLink, enviarPorEmail } from "@/actions/presupuesto
  */
 function ModalCompartir({
   q, presupuestoId, vendedor, onClose, onEnviada, toast, recordatorio = false,
-  onVigencia, onIr, onPreview, onImprimir,
+  onVigencia, onIr, onPreview, onImprimir, tabInicial, onPedido,
 }) {
   const { emailCopia, vigenciaDefault } = useAjustes();
-  const { vendedores } = useCtz();
+  const { vendedores, esAdmin, yo } = useCtz();
   const V = buscarVendedor(vendedores, vendedor);
   const tel = String(q.cliente.telefono || "").trim();
   const nom = String(q.cliente.nombre || "").trim();
-  const [tab, setTab] = useState(recordatorio ? (tel ? "whatsapp" : "email") : "pdf");
+  const [tab, setTab] = useState(
+    tabInicial || (recordatorio ? (tel ? "whatsapp" : "email") : "pdf"),
+  );
   const [extras, setExtras] = useState("");
   const [marcando, setMarcando] = useState(false);
   const [vig, setVig] = useState(q.vigencia ?? vigenciaDefault ?? 48);
@@ -156,7 +162,9 @@ function ModalCompartir({
   /* lo que se ve en la caja: con el link si ya está, con el marcador si no */
   const vistaMensaje = link?.url ? mensajeCon(link.url) : `${base}\n\n${MARCADOR_LINK}`;
 
-  const telWa = tel.replace(/\D/g, "");
+  /* wa.me exige el número internacional completo: un "099 000 222" tal cual
+     sale de la ficha abre un chat vacío. */
+  const telWa = telefonoWa(tel);
   const urlWa = (url) => `https://wa.me/${telWa}?text=${encodeURIComponent(mensajeCon(url))}`;
 
   /* Un solo toque: si el link todavía no existe, se emite y se abre WhatsApp.
@@ -257,7 +265,20 @@ function ModalCompartir({
     onClose();
   };
 
-  const TABS = [["pdf","PDF",Printer],["whatsapp","WhatsApp",Smartphone],["email","Email",Mail]];
+  /* ── datos del pasajero ───────────────────────────────────────────────────
+     La solicitud por email sale SIEMPRE a nombre del vendedor de la sesión
+     (así la escribe `crearSolicitud`), así que un admin que mira la cotización
+     de otro puede copiar y mandar el link, pero no pedir en su nombre. */
+  const puedePedir = !yo?.id || String(vendedor) === String(yo.id);
+  const motivoPedido = puedePedir
+    ? null
+    : `La solicitud saldría a tu nombre, no al de ${V.nombre}. Copiá el link y pasáselo, o pedíselo desde su usuario.`;
+  const sinLinks = !V.linkDatos && !V.linkPago;
+
+  const TABS = [
+    ["pdf","PDF",Printer], ["whatsapp","WhatsApp",Smartphone], ["email","Email",Mail],
+    ["datos","Datos del pasajero",ClipboardList],
+  ];
 
   /* Caja del link: la misma en las tres pestañas. */
   const cajaLink = link && (
@@ -483,6 +504,50 @@ function ModalCompartir({
             </>
           )}
 
+          {tab === "datos" && (
+            <>
+              <div style={{ fontSize:11.5, color:"var(--n400)", lineHeight:1.6, marginBottom:12 }}>
+                Los dos formularios son de <strong style={{ color:"var(--n600)" }}>{V.nombre}</strong>: lo que
+                cargue el pasajero le llega a su bandeja, no a un buzón general. Lo que salga de acá queda
+                atado a {q.numero || "esta cotización"}.
+              </div>
+
+              {sinLinks ? (
+                <div style={{ display:"flex", gap:8, padding:"11px 12px", borderRadius:12,
+                  background:"rgba(232,161,60,.09)", border:"1px solid rgba(232,161,60,.28)" }}>
+                  <AlertCircle size={14} style={{ color:"#B87516", flexShrink:0, marginTop:1 }} />
+                  <div style={{ fontSize:11.5, lineHeight:1.55, color:"var(--n600)" }}>
+                    {V.nombre} todavía no tiene link personal, o lo tiene apagado. Sin eso no hay formulario
+                    que mandar.
+                    <a href={esAdmin ? "/backend/perfiles?vista=vendedores" : "/backend/mi-perfil"}
+                      target="_blank" rel="noreferrer"
+                      style={{ display:"inline-flex", alignItems:"center", gap:5, marginTop:7,
+                        fontWeight:700, color:"var(--violet)", textDecoration:"underline", textUnderlineOffset:3 }}>
+                      <ExternalLink size={11} /> {esAdmin ? "Abrir Perfiles" : "Abrir Mi perfil"}
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <FilaLinkDatos
+                    tipo="PASAJEROS" Icon={Users} titulo="Datos de pasajeros"
+                    ayuda="Nombre, documento y pasaporte de cada uno, tal cual figuran en el documento de viaje."
+                    url={V.linkDatos} tel={tel} nombre={nom} numero={q.numero}
+                    emailCliente={q.cliente.email} presupuestoId={presupuestoId}
+                    puedePedir={puedePedir} motivo={motivoPedido}
+                    toast={toast} onPedido={onPedido} copiar={copiar} copiado={copiado} />
+                  <FilaLinkDatos
+                    tipo="PAGO" Icon={CreditCard} titulo="Datos de tarjeta"
+                    ayuda="Los datos viajan cifrados y se borran solos a las 72 horas."
+                    url={V.linkPago} tel={tel} nombre={nom} numero={q.numero}
+                    emailCliente={q.cliente.email} presupuestoId={presupuestoId}
+                    puedePedir={puedePedir} motivo={motivoPedido}
+                    toast={toast} onPedido={onPedido} copiar={copiar} copiado={copiado} />
+                </>
+              )}
+            </>
+          )}
+
           {/* El caso raro: la mandó por fuera y solo quiere que arranque el reloj. */}
           <div style={{ marginTop:16, paddingTop:12, borderTop:"1px solid var(--hair-soft)", textAlign:"center" }}>
             <button onClick={marcar} disabled={marcando || !presupuestoId}
@@ -497,6 +562,113 @@ function ModalCompartir({
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Una fila de la pestaña "Datos del pasajero" ──────────────────────────
+   El mismo trío de acciones para los dos formularios: copiar el link
+   permanente del vendedor, mandarlo por WhatsApp al teléfono del cliente, o
+   pedirlo por email (eso sí crea una solicitud con token de un uso, con el
+   destino y el número de cotización ya adentro).
+
+   Las tres anotan en la bitácora de la cotización. Copiar y WhatsApp no mandan
+   nada: el mensaje sale del teléfono del vendedor, como todo lo demás acá. */
+function FilaLinkDatos({
+  tipo, Icon, titulo, ayuda, url, tel, nombre, numero, emailCliente,
+  presupuestoId, puedePedir, motivo, toast, onPedido, copiar, copiado,
+}) {
+  const [ocupado, setOcupado] = useState(null);   // null | "email" | "wa" | "link"
+  const [listo, setListo] = useState(false);
+  const telWa = telefonoWa(tel);
+
+  const texto = tipo === "PAGO"
+    ? `Hola${nombre ? ` ${nombre}` : ""}, para cerrar la reserva${numero ? ` ${numero}` : ""} necesito los datos de la tarjeta. Se cargan en este formulario seguro 👇`
+    : `Hola${nombre ? ` ${nombre}` : ""}, para arrancar la reserva${numero ? ` ${numero}` : ""} necesito los datos de los pasajeros. Se cargan acá 👇`;
+
+  /* La bitácora es secundaria: si falla, el link ya se compartió igual. */
+  const anotar = async (canal) => {
+    if (!presupuestoId) return;
+    const r = await pedirDatosDelPasajero(presupuestoId, { tipo, canal });
+    if (r.ok) onPedido?.();
+  };
+
+  const alWhatsApp = () => {
+    if (!url || ocupado) return;
+    /* La pestaña se abre con el gesto todavía vivo: si esperáramos al server,
+       Safari la bloquea por venir de una promesa. */
+    window.open(`https://wa.me/${telWa}?text=${encodeURIComponent(`${texto}\n\n${url}`)}`,
+      "_blank", "noopener");
+    void anotar("whatsapp");
+  };
+
+  const alCopiar = async () => {
+    if (!url || ocupado) return;
+    setOcupado("link");
+    await copiar(url, `dato-${tipo}`);
+    await anotar("link");
+    setOcupado(null);
+  };
+
+  const alEmail = async () => {
+    if (!presupuestoId) {
+      toast?.({ msg:"Guardá la cotización antes de pedir los datos", tone:"warn" });
+      return;
+    }
+    if (ocupado) return;
+    setOcupado("email");
+    const r = await pedirDatosDelPasajero(presupuestoId, { tipo, canal:"email" });
+    setOcupado(null);
+    if (!r.ok) { toast?.({ msg:r.error, tone:"warn" }); return; }
+    setListo(true);
+    setTimeout(() => setListo(false), 4000);
+    toast?.({ msg:r.data.mensaje, tone:"ok" });
+    onPedido?.();
+  };
+
+  if (!url) return null;
+
+  return (
+    <div style={{ padding:"12px 13px", borderRadius:13, border:"1px solid var(--hair-soft)",
+      background:"var(--card-3)", marginBottom:9 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+        <Icon size={14} style={{ color:"var(--violet)" }} />
+        <span style={{ fontSize:13, fontWeight:700 }}>{titulo}</span>
+      </div>
+      <div style={{ fontSize:11, color:"var(--n400)", lineHeight:1.5, marginBottom:9 }}>{ayuda}</div>
+
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 10px", borderRadius:10,
+        background:"var(--sunk)", border:"1px solid var(--hair-soft)", marginBottom:9 }}>
+        <Link2 size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
+        <span className="mono" style={{ fontSize:11, flex:1, minWidth:0, overflow:"hidden",
+          textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{url}</span>
+        <button className="btn btn-g btn-xs" onClick={() => { void alCopiar(); }}>
+          {copiado === `dato-${tipo}` ? <><Check size={11} /> Copiado</> : <><Copy size={11} /> Copiar</>}
+        </button>
+      </div>
+
+      <div style={{ display:"flex", gap:7 }}>
+        <Btn size="xs" style={{ flex:1, height:34 }} disabled={!telWa} onClick={alWhatsApp}
+          title={telWa ? "Abre tu WhatsApp con el mensaje y el link" : "El cliente no tiene teléfono cargado"}>
+          <Smartphone size={13} /> WhatsApp
+        </Btn>
+        <Btn size="xs" variant="p" style={{ flex:1, height:34 }}
+          disabled={!puedePedir || !emailCliente || ocupado === "email"}
+          title={!puedePedir ? motivo : emailCliente ? `Le llega a ${emailCliente}` : "El cliente no tiene email cargado"}
+          onClick={() => { void alEmail(); }}>
+          {ocupado === "email" ? <><Loader2 size={13} className="spin" /> Enviando…</>
+            : listo ? <><MailCheck size={13} /> Enviado</>
+            : <><Mail size={13} /> Pedir por email</>}
+        </Btn>
+      </div>
+
+      <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:7, lineHeight:1.5 }}>
+        {!puedePedir
+          ? motivo
+          : !emailCliente
+            ? "Sin email del cliente no se puede pedir por email — mandale el link por WhatsApp."
+            : `El email sale a nombre de tu usuario, con ${numero || "el número de la cotización"} como referencia: lo que cargue el pasajero vuelve atado a esta cotización.`}
       </div>
     </div>
   );

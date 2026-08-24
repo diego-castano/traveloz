@@ -44,6 +44,16 @@ registrada, confirmación, PDF y lector de itinerarios.**
   pantalla (foto, o Ctrl+V) carga los vuelos solos; el parser local sigue
   respondiendo al instante y la IA completa fechas y tramos. Costo estimado:
   menos de US$ 5 por mes.
+- **Pasajeros y Pagos atados a la cotización.** En Compartir hay una pestaña
+  "Datos del pasajero" con los dos links del vendedor (datos de pasajeros y
+  datos de tarjeta): copiar, mandar por WhatsApp o pedir por email con una
+  solicitud que ya lleva el número de cotización y el destino. El drawer
+  muestra lo que volvió: solicitudes vigentes, pasajeros cargados y tarjetas
+  en la bóveda, con acceso a cada ficha. Desde la bandeja de pasajeros, la
+  referencia abre la cotización. Al confirmar, el pasajero ve los dos
+  botones (pasajeros y pago), y el email al vendedor los trae listos para
+  reenviar. Los botones de WhatsApp ahora arman el número con código de país
+  (`wa.me/59899…`), antes fallaban con celulares locales.
 
 **El cotizador dejó de ser un mockup: vive adentro del panel y guarda en la
 base.** Hasta hoy vivía en una URL suelta, sin login, y todo lo que se armaba

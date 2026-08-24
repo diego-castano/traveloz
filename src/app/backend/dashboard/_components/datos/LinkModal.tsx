@@ -39,6 +39,10 @@ import {
   type PreviewSolicitud,
   type SolicitudResumen,
 } from "@/actions/datos-vendedor.actions";
+import {
+  listarPresupuestos,
+  type FilaPresupuesto,
+} from "@/actions/presupuesto.actions";
 
 export type TipoDato = "PASAJEROS" | "PAGO";
 
@@ -84,6 +88,10 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
   const [copiado, setCopiado] = useState(false);
 
   const [solicitudes, setSolicitudes] = useState<SolicitudResumen[] | null>(null);
+  // Últimas cotizaciones del vendedor, para el autocompletado de la referencia.
+  // Si eligiendo un COT-… se precarga el destino, lo que vuelva del pasajero
+  // queda atado a esa cotización sin que nadie escriba nada a mano.
+  const [cotizaciones, setCotizaciones] = useState<FilaPresupuesto[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [form, setForm] = useState({ email: "", nombre: "", destino: "", referencia: "" });
 
@@ -143,10 +151,27 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
         if (vivo) setLinkError(err instanceof Error ? err.message : "No pudimos armar tu link.");
       });
     cargarSolicitudes();
+    void listarPresupuestos({ take: 20 }).then((res) => {
+      if (vivo && res.ok) setCotizaciones(res.data);
+    });
     return () => {
       vivo = false;
     };
   }, [open, tipo, cargarSolicitudes]);
+
+  // Escribir (o elegir) un número de cotización trae el destino de arrastre.
+  function setReferencia(valor: string) {
+    const cot = cotizaciones.find((c) => c.numero === valor.trim());
+    setForm((f) => ({
+      ...f,
+      referencia: valor,
+      destino: cot?.destino?.trim() || f.destino,
+      nombre:
+        f.nombre ||
+        [cot?.clienteNombre, cot?.clienteApellido].filter(Boolean).join(" ").trim(),
+      email: f.email || cot?.clienteEmail || "",
+    }));
+  }
 
   async function copiar() {
     if (!link) return;
@@ -305,11 +330,20 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
                   />
                 </div>
                 <Input
-                  label="Referencia"
-                  placeholder="Nº de reserva, apellido del grupo…"
+                  label="Referencia (nº de cotización)"
+                  placeholder="COT-2026-0148, apellido del grupo…"
+                  list="linkmodal-cotizaciones"
                   value={form.referencia}
-                  onChange={(e) => setForm((f) => ({ ...f, referencia: e.target.value }))}
+                  onChange={(e) => setReferencia(e.target.value)}
                 />
+                <datalist id="linkmodal-cotizaciones">
+                  {cotizaciones.map((c) => (
+                    <option key={c.id} value={c.numero}>
+                      {[c.clienteNombre, c.clienteApellido].filter(Boolean).join(" ")}
+                      {c.destino ? ` · ${c.destino}` : ""}
+                    </option>
+                  ))}
+                </datalist>
                 <Button
                   type="submit"
                   loading={enviando}

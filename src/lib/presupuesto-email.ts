@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 import { SITE_BASE_URL } from "@/lib/datos-email";
+import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion } from "@/lib/presupuesto/derivados";
 import type { ContenidoPresupuesto } from "@/lib/presupuesto/schema";
 
@@ -173,7 +174,7 @@ function layout(opts: {
 
 /** Firma del vendedor al pie del cuerpo. Es la misma tarjeta de datos-email. */
 function tarjetaVendedor(v: VendedorEmail): string {
-  const wa = (v.tel ?? "").replace(/\D/g, "");
+  const wa = telefonoWa(v.tel);
   const foto = v.foto?.trim();
   const fotoAbs = foto?.startsWith("/") ? `${SITE_BASE_URL}${foto}` : foto;
   return `
@@ -366,12 +367,46 @@ export interface ConfirmacionEmailInput {
   precio?: number | null;
   /** Momento de la confirmación, ya formateado en hora uruguaya. */
   cuando: string;
+  /**
+   * Los dos links permanentes del vendedor. Van como recordatorio del paso
+   * siguiente: confirmada la cotización, lo que falta son los datos de los
+   * pasajeros y la tarjeta. `null` cuando el vendedor no tiene link personal
+   * o lo tiene apagado — ahí el bloque no se dibuja.
+   */
+  linksVendedor?: { pasajeros?: string | null; pago?: string | null } | null;
 }
 
 /**
  * Aviso al vendedor. Va con todo lo que necesita para levantar el teléfono sin
  * abrir el panel: quién, qué opción, cuánto y cómo ubicarlo.
  */
+/**
+ * Recordatorio del paso siguiente: los dos formularios del vendedor, listos
+ * para copiar y mandarle al pasajero.
+ */
+function linksDatos(
+  links: { pasajeros?: string | null; pago?: string | null } | null | undefined,
+): string {
+  const pasajeros = links?.pasajeros?.trim();
+  const pago = links?.pago?.trim();
+  if (!pasajeros && !pago) return "";
+
+  const boton = (url: string, label: string, bg: string) =>
+    `<td style="padding:0 8px 8px 0">${ctaButton(url, label, bg)}</td>`;
+
+  return `
+    <div style="margin:22px 0 0;padding:16px 18px;background-color:#f7f8fa;border-radius:12px">
+      <div style="font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:${MUTED};font-weight:600;margin-bottom:6px">Mandale al pasajero</div>
+      <p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:${INK}">
+        Tus dos links personales. Lo que cargue el pasajero te llega a vos, a tu bandeja de Pasajeros y Pagos.
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        ${pasajeros ? boton(pasajeros, "Datos de pasajeros", VIOLET) : ""}
+        ${pago ? boton(pago, "Datos de tarjeta", ACCENT) : ""}
+      </tr></table>
+    </div>`;
+}
+
 export function confirmacionEmail(input: ConfirmacionEmailInput): PlantillaEmail {
   const destino = (input.destino ?? "").trim();
   const filas = fieldRows([
@@ -396,10 +431,12 @@ export function confirmacionEmail(input: ConfirmacionEmailInput): PlantillaEmail
     )}
     ${tabla(filas)}
     <p style="margin:20px 0 0">${ctaButton(`${SITE_BASE_URL}/backend/cotizador`, "Abrir el cotizador", VIOLET)}</p>
+    ${linksDatos(input.linksVendedor)}
     ${PMUTED(
       "La cotización ya quedó en estado Confirmada. El siguiente paso es coordinar la seña y pedirle los datos de los pasajeros.",
     )}`;
 
+  const links = input.linksVendedor;
   const text = [
     `${input.cliente} confirmó ${input.numero} desde el link.`,
     `Opción: ${input.opcion}`,
@@ -410,6 +447,8 @@ export function confirmacionEmail(input: ConfirmacionEmailInput): PlantillaEmail
     `Cuándo: ${input.cuando}`,
     "",
     `${SITE_BASE_URL}/backend/cotizador`,
+    links?.pasajeros ? `Datos de pasajeros: ${links.pasajeros}` : null,
+    links?.pago ? `Datos de tarjeta: ${links.pago}` : null,
   ]
     .filter(Boolean)
     .join("\n");

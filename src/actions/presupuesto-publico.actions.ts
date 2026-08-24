@@ -27,7 +27,7 @@ import { sendEmail } from "@/lib/email";
 import { parseContenido } from "@/lib/presupuesto/schema";
 import { precioOpcion } from "@/lib/presupuesto/derivados";
 import { normalizarToken } from "@/lib/presupuesto/links";
-import { fechaLarga } from "@/lib/datos-email";
+import { fechaLarga, SITE_BASE_URL } from "@/lib/datos-email";
 import { confirmacionEmail, revisionEmail } from "@/lib/presupuesto-email";
 import {
   bitrixEnabled,
@@ -111,7 +111,11 @@ const SELECT_LINK = {
       confirmadaAt: true,
       confirmadaOpcion: true,
       deletedAt: true,
-      vendedor: { select: { id: true, name: true, email: true } },
+      // `slug` y `linkActivo` son lo que arma los links de Pasajeros y Pagos
+      // que van en el aviso de confirmación.
+      vendedor: {
+        select: { id: true, name: true, email: true, slug: true, linkActivo: true },
+      },
     },
   },
 } as const;
@@ -292,6 +296,20 @@ export async function confirmarDesdeLink(
   }
 }
 
+/**
+ * Los dos links permanentes del vendedor, si los tiene prendidos. Van en el
+ * aviso de confirmación como recordatorio del paso siguiente.
+ */
+function linksDeVendedor(
+  v: { slug: string | null; linkActivo: boolean } | null | undefined,
+): { pasajeros: string | null; pago: string | null } | null {
+  if (!v?.slug || !v.linkActivo) return null;
+  return {
+    pasajeros: `${SITE_BASE_URL}/datos-de-pasajeros/${v.slug}`,
+    pago: `${SITE_BASE_URL}/datos-de-pago/${v.slug}`,
+  };
+}
+
 /** Email al vendedor. Nunca frena la confirmación. */
 async function avisarConfirmacion(args: {
   p: LinkConPresupuesto["presupuesto"];
@@ -313,6 +331,7 @@ async function avisarConfirmacion(args: {
       opcion,
       precio,
       cuando: fechaLarga(cuando),
+      linksVendedor: linksDeVendedor(p.vendedor),
     });
     await sendEmail({
       to: para,
