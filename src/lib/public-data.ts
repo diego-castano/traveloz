@@ -263,10 +263,10 @@ function compararParaListado(
 }
 
 /**
- * Servicios que necesita `precioDesdeDePaquete` para recalcular el precio de un
- * paquete sin opciones hoteleras (los CIRCUITO). Va en una consulta aparte, con
- * los ids justos: son ~10 paquetes contra los ~100 publicados, así que sumarle
- * estos joins a TODAS las cards del listado sería pagar el costo de más.
+ * Servicios que necesita `precioDesdeDePaquete` para calcular el precio de un
+ * paquete: los costos fijos (aéreos, traslados, seguros, circuito) y las
+ * opciones hoteleras con sus tarifas. Va en una consulta aparte de la del
+ * listado para no arrastrar estos joins en el `include` de las cards.
  */
 const serviciosParaPrecio = {
   modalidad: true,
@@ -274,8 +274,32 @@ const serviciosParaPrecio = {
   noches: true,
   viajeDesde: true,
   validezDesde: true,
-  destinos: { select: { noches: true } },
-  opcionesHoteleras: { select: { precioVenta: true } },
+  destinos: { select: { id: true, noches: true } },
+  // Las opciones viajan con su factor y sus hoteles (con tarifas) porque el
+  // precio de cada una se calcula EN VIVO, igual que en la pestaña Precios.
+  // `precioVenta` queda de último recurso (ver precio-desde.ts).
+  opcionesHoteleras: {
+    select: {
+      precioVenta: true,
+      factor: true,
+      hoteles: {
+        select: {
+          destinoId: true,
+          alojamiento: {
+            select: {
+              precios: {
+                select: {
+                  periodoDesde: true,
+                  periodoHasta: true,
+                  precioPorNoche: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   aereos: {
     select: {
       aereo: {
@@ -331,23 +355,14 @@ async function conPrecioDesdeReal<
     opcionesHoteleras: { precioVenta: number }[];
   },
 >(rows: T[]): Promise<T[]> {
-  const ventasPorPaquete = new Map<string, number[]>(
-    rows.map((p) => [
-      p.id,
-      p.opcionesHoteleras.map((o) => o.precioVenta).filter((v) => v > 0),
-    ]),
-  );
-
-  // Sólo los que no resuelven por opciones necesitan el recálculo con costos
-  // fijos, y para eso hay que ir a buscar los servicios asignados.
-  const idsARecalcular = rows
-    .filter((p) => (ventasPorPaquete.get(p.id) ?? []).length === 0)
-    .map((p) => p.id);
-
+  // Se recalculan TODOS, no sólo los que no tienen opciones con precio: la
+  // venta de cada opción también se calcula en vivo, porque su `precioVenta`
+  // guardado queda viejo apenas cambia una tarifa de hotel o el período de
+  // viaje. Es una consulta más por listado, y los listados están cacheados.
   const recalculados = new Map<string, number | null>();
-  if (idsARecalcular.length > 0) {
+  if (rows.length > 0) {
     const conServicios = await prisma.paquete.findMany({
-      where: { id: { in: idsARecalcular } },
+      where: { id: { in: rows.map((p) => p.id) } },
       select: { id: true, ...serviciosParaPrecio },
     });
     for (const p of conServicios) {
@@ -356,11 +371,15 @@ async function conPrecioDesdeReal<
   }
 
   return rows
-    .map((p) => {
-      const ventas = ventasPorPaquete.get(p.id) ?? [];
-      if (ventas.length > 0) return { ...p, precioDesde: Math.min(...ventas) };
-      return { ...p, precioDesde: recalculados.get(p.id) ?? null };
-    })
+    .map((p) => ({
+      ...p,
+      precioDesde:
+        recalculados.get(p.id) ??
+        // Sin fila de servicios (no debería pasar): la copia guardada.
+        (p.opcionesHoteleras.length > 0
+          ? Math.min(...p.opcionesHoteleras.map((o) => o.precioVenta))
+          : null),
+    }))
     .sort(compararParaListado);
 }
 

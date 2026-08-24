@@ -16,7 +16,15 @@
 // MOSTRAR. Toda superficie que muestre el precio pasa por acá.
 //
 // La regla, en el mismo orden en que la aplica la pestaña Precios:
-//   1. Con opciones hoteleras con precio → la más barata.
+//   1. Con opciones hoteleras → la más barata, con la venta de cada opción
+//      CALCULADA EN VIVO: (costos fijos + alojamiento de la opción) / factor,
+//      la misma cuenta que hace la pestaña Precios.
+//
+//      `OpcionHotelera.precioVenta` es OTRA copia denormalizada, del mismo tipo
+//      que `Paquete.precioDesde`, y sólo se usa como último recurso (ver
+//      ventaDeOpcion). Mientras se leyó esa copia pasaba esto: el operador
+//      actualizaba una tarifa de hotel o el período de viaje, el panel mostraba
+//      el número nuevo y la web seguía publicando el viejo.
 //   2. Sin opciones y modalidad CIRCUITO → costos fijos vigentes / markup del
 //      paquete, con `calcularVenta` (la misma función que usa el motor).
 //   3. Sin nada con qué calcular → null, y la UI muestra "Consultar". Es lo
@@ -26,6 +34,7 @@
 import {
   calcularNetoFijos,
   calcularVenta,
+  calcularVentaOpcion,
   computeNochesTotales,
   fechaAnclaPaquete,
   resolvePrecioEnPeriodo,
@@ -129,8 +138,22 @@ export interface PaqueteConServicios {
   noches?: number | null;
   viajeDesde?: string | null;
   validezDesde?: string | null;
-  opcionesHoteleras: { precioVenta: number }[];
-  destinos: { noches: number }[];
+  /**
+   * `factor` y `hoteles` son opcionales para no romper a quien consulte sólo
+   * la copia guardada: sin ellos se cae a `precioVenta`. Con ellos, la venta se
+   * calcula en vivo igual que en el panel.
+   */
+  opcionesHoteleras: {
+    precioVenta: number;
+    factor?: number;
+    hoteles?: {
+      destinoId: string;
+      alojamiento: {
+        precios: (TarifaPorPeriodo & { precioPorNoche: number })[];
+      };
+    }[];
+  }[];
+  destinos: { id?: string; noches: number }[];
   aereos: {
     aereo: {
       deletedAt?: Date | null;
@@ -161,34 +184,82 @@ export function precioDesdeDePaquete(paquete: PaqueteConServicios): number | nul
   return resolverPrecioDesdePaquete(paquete).precioDesde;
 }
 
+/**
+ * Venta de UNA opción hotelera, con la misma cuenta que la pestaña Precios:
+ * (costos fijos + neto de alojamiento de esa opción) / factor.
+ *
+ * Devuelve `null` cuando la consulta no trajo con qué calcular (sin `hoteles`
+ * o sin `factor`): ahí el llamador cae a la copia guardada. Si los datos SÍ
+ * están, se calcula aunque alguna tarifa no resuelva para el período — es
+ * exactamente lo que hace `computePaquetePrecios` en el panel, y el objetivo es
+ * que los dos números no puedan discrepar.
+ */
+function ventaDeOpcion(
+  opcion: PaqueteConServicios["opcionesHoteleras"][number],
+  destinos: PaqueteConServicios["destinos"],
+  netoFijos: number,
+  fecha: string | null | undefined,
+): number | null {
+  if (!opcion.hoteles || !opcion.factor) return null;
+
+  const nochesPorDestino = new Map(
+    destinos.filter((d) => d.id).map((d) => [d.id as string, d.noches]),
+  );
+  let netoAlojamiento = 0;
+  for (const hotel of opcion.hoteles) {
+    const noches = nochesPorDestino.get(hotel.destinoId);
+    if (noches === undefined) continue;
+    const tarifa = resolvePrecioEnPeriodo(hotel.alojamiento.precios, fecha);
+    if (!tarifa) continue;
+    netoAlojamiento += tarifa.precioPorNoche * noches;
+  }
+  return calcularVentaOpcion(netoFijos, netoAlojamiento, opcion.factor);
+}
+
 /** Igual que {@link precioDesdeDePaquete} pero con el detalle del cálculo. */
 export function resolverPrecioDesdePaquete(
   paquete: PaqueteConServicios,
 ): PrecioDesdeResuelto {
   const fecha = fechaAnclaPaquete(paquete);
 
+  const serviciosResueltos: ServiciosResueltos = {
+    aereos: paquete.aereos
+      .filter((pa) => !pa.aereo.deletedAt)
+      .map((pa) => ({ precioAereo: resolvePrecioEnPeriodo(pa.aereo.precios, fecha) })),
+    traslados: paquete.traslados
+      .filter((pt) => !pt.traslado.deletedAt)
+      .map((pt) => pt.traslado),
+    seguros: paquete.seguros
+      .filter((ps) => !ps.seguro.deletedAt)
+      .map((ps) => ({ seguro: ps.seguro, diasCobertura: ps.diasCobertura })),
+    circuitos: paquete.circuitos
+      .filter((pc) => !pc.circuito.deletedAt)
+      .map((pc) => ({
+        circuito: pc.circuito,
+        precioCircuito: resolvePrecioEnPeriodo(pc.circuito.precios, fecha),
+      })),
+  };
+
+  // Costos fijos compartidos por todas las opciones. Las noches de referencia
+  // son las de los destinos, igual que en `computePaquetePrecios` para la rama
+  // con opciones (la rama CIRCUITO recalcula con las noches del circuito).
+  const nochesTotales = computeNochesTotales(paquete.destinos);
+  const netoFijos = calcularNetoFijos(
+    serviciosResueltos.aereos,
+    serviciosResueltos.traslados,
+    serviciosResueltos.seguros,
+    serviciosResueltos.circuitos,
+    nochesTotales,
+  );
+
   return resolverPrecioDesde({
     modalidad: paquete.modalidad,
     markup: paquete.markup,
     noches: paquete.noches,
-    nochesTotales: computeNochesTotales(paquete.destinos),
-    ventasOpciones: paquete.opcionesHoteleras.map((o) => o.precioVenta),
-    servicios: {
-      aereos: paquete.aereos
-        .filter((pa) => !pa.aereo.deletedAt)
-        .map((pa) => ({ precioAereo: resolvePrecioEnPeriodo(pa.aereo.precios, fecha) })),
-      traslados: paquete.traslados
-        .filter((pt) => !pt.traslado.deletedAt)
-        .map((pt) => pt.traslado),
-      seguros: paquete.seguros
-        .filter((ps) => !ps.seguro.deletedAt)
-        .map((ps) => ({ seguro: ps.seguro, diasCobertura: ps.diasCobertura })),
-      circuitos: paquete.circuitos
-        .filter((pc) => !pc.circuito.deletedAt)
-        .map((pc) => ({
-          circuito: pc.circuito,
-          precioCircuito: resolvePrecioEnPeriodo(pc.circuito.precios, fecha),
-        })),
-    },
+    nochesTotales,
+    ventasOpciones: paquete.opcionesHoteleras.map(
+      (o) => ventaDeOpcion(o, paquete.destinos, netoFijos, fecha) ?? o.precioVenta,
+    ),
+    servicios: serviciosResueltos,
   });
 }
