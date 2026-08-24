@@ -34,13 +34,17 @@ import {
   useServiceActions,
 } from "@/components/providers/ServiceProvider";
 import { useProveedores } from "@/components/providers/CatalogProvider";
-import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import { useServiceLoading } from "@/components/providers/ServiceProvider";
 import type { Circuito } from "@/lib/types";
 import { sortByRecency } from "@/lib/recency";
+import {
+  PaquetesToggle,
+  PaquetesRow,
+} from "@/components/ui/data/PaquetesDelServicio";
+import { usePaquetesDelServicio } from "@/components/ui/data/usePaquetesDelServicio";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 // ---------------------------------------------------------------------------
@@ -64,8 +68,6 @@ export default function CircuitosPage() {
   const proveedores = useProveedores();
   const { createCircuito, deleteCircuito, createCircuitoDia, createPrecioCircuito } =
     useServiceActions();
-
-  const packageState = usePackageState();
   const loading = useServiceLoading();
 
   // Component state
@@ -78,18 +80,18 @@ export default function CircuitosPage() {
   // Package usage count map
   // ---------------------------------------------------------------------------
 
-  const paqueteCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    const seen = new Set<string>();
-    for (const pa of packageState.paqueteCircuitos) {
-      const key = `${pa.circuitoId}::${pa.paqueteId}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        map[pa.circuitoId] = (map[pa.circuitoId] ?? 0) + 1;
-      }
-    }
-    return map;
-  }, [packageState.paqueteCircuitos]);
+  // Qué paquetes usan cada circuito (contador + lista + portada). La lógica vive en
+  // el hook porque los cinco listados de servicios muestran lo mismo.
+  const {
+    paquetesPorServicio,
+    countPorServicio: paqueteCountMap,
+    hydratando,
+  } = usePaquetesDelServicio("circuito");
+
+  // Uno abierto por vez: la tabla es densa y dos paneles la vuelven ilegible.
+  const [servicioExpandido, setServicioExpandido] = useState<string | null>(
+    null,
+  );
 
   // ---------------------------------------------------------------------------
   // Proveedor name map
@@ -295,11 +297,15 @@ export default function CircuitosPage() {
                           <div className="inline-flex items-center gap-2 truncate">
                             {circuito.nombre}
                             <RecentBadge createdAt={circuito.createdAt} />
-                            {(paqueteCountMap[circuito.id] ?? 0) > 0 && (
-                              <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
-                                {paqueteCountMap[circuito.id]} paq.
-                              </span>
-                            )}
+                            <PaquetesToggle
+                              count={paqueteCountMap[circuito.id] ?? 0}
+                              open={servicioExpandido === circuito.id}
+                              onToggle={() =>
+                                setServicioExpandido((prev) =>
+                                  prev === circuito.id ? null : circuito.id,
+                                )
+                              }
+                            />
                           </div>
                           <div className="mt-0.5 text-[11px] font-normal text-neutral-400">
                             Toca para ver el itinerario debajo
@@ -404,6 +410,15 @@ export default function CircuitosPage() {
                       </td>
                     </tr>
                   ) : null,
+                  // Desplegable de paquetes. Convive con el del itinerario:
+                  // son dos filas independientes, cada una con su toggle.
+                  <PaquetesRow
+                    key={`${circuito.id}-paquetes`}
+                    open={servicioExpandido === circuito.id}
+                    paquetes={paquetesPorServicio[circuito.id] ?? []}
+                    total={paqueteCountMap[circuito.id] ?? 0}
+                    cargando={hydratando}
+                  />,
                 ];
               })}
             </DataTableBody>

@@ -29,7 +29,6 @@ import {
   useServiceActions,
 } from "@/components/providers/ServiceProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
-import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
@@ -42,8 +41,8 @@ import { useAereosQueryState } from "./searchParams";
 import {
   PaquetesToggle,
   PaquetesRow,
-  type PaqueteDelServicio,
 } from "@/components/ui/data/PaquetesDelServicio";
+import { usePaquetesDelServicio } from "@/components/ui/data/usePaquetesDelServicio";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -71,51 +70,15 @@ export default function AereosPage() {
   // Data hooks
   const aereos = useAereos();
   const { createAereo, deleteAereo } = useServiceActions();
-  const packageState = usePackageState();
   const loading = useServiceLoading();
 
-  // Paquetes que usan cada aéreo. Antes acá sólo se contaba; ahora guardamos
-  // la lista para poder desplegarla (el cliente pidió saber CUÁLES son, no
-  // cuántos). El título sale de packageState.paquetes, que el provider hidrata
-  // por tandas: un id que todavía no llegó se omite y el panel avisa que está
-  // cargando.
-  const paquetesPorAereo = useMemo(() => {
-    const porId = new Map(packageState.paquetes.map((p) => [p.id, p]));
-    const map: Record<string, PaqueteDelServicio[]> = {};
-    const seen = new Set<string>();
-    for (const pa of packageState.paqueteAereos) {
-      const key = `${pa.aereoId}::${pa.paqueteId}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const paquete = porId.get(pa.paqueteId);
-      if (!paquete) continue;
-      (map[pa.aereoId] ??= []).push({
-        id: paquete.id,
-        titulo: paquete.titulo,
-        destino: paquete.destino,
-        estado: paquete.estado,
-      });
-    }
-    for (const lista of Object.values(map)) {
-      lista.sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
-    }
-    return map;
-  }, [packageState.paqueteAereos, packageState.paquetes]);
-
-  // El contador sigue saliendo del join, no de la lista resuelta: así el chip
-  // muestra el número real aunque los títulos todavía estén hidratando.
-  const paqueteCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    const seen = new Set<string>();
-    for (const pa of packageState.paqueteAereos) {
-      const key = `${pa.aereoId}::${pa.paqueteId}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        map[pa.aereoId] = (map[pa.aereoId] ?? 0) + 1;
-      }
-    }
-    return map;
-  }, [packageState.paqueteAereos]);
+  // Qué paquetes usan cada aéreo (contador + lista + portada). La lógica vive
+  // en el hook porque los cinco listados de servicios muestran lo mismo.
+  const {
+    paquetesPorServicio: paquetesPorAereo,
+    countPorServicio: paqueteCountMap,
+    hydratando,
+  } = usePaquetesDelServicio("aereo");
 
   // Qué aéreo tiene el desplegable abierto (uno por vez: la tabla es densa y
   // dos paneles abiertos la vuelven ilegible).
@@ -375,9 +338,9 @@ export default function AereosPage() {
                     aparte con colSpan para no romper la grilla de columnas. */}
                 <PaquetesRow
                   open={aereoExpandido === aereo.id}
-                  colSpan={5}
                   paquetes={paquetesPorAereo[aereo.id] ?? []}
-                  cargando={packageState.hydratingPaquetes}
+                  total={paqueteCountMap[aereo.id] ?? 0}
+                  cargando={hydratando}
                 />
                 </Fragment>
               ))}

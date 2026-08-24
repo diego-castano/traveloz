@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { Fragment, useState, useMemo, useEffect } from "react";
 import { Plus, Pencil, Copy, Trash2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -31,7 +31,6 @@ import {
   useProveedores,
 } from "@/components/providers/CatalogProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
-import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
@@ -40,6 +39,11 @@ import { formatCurrency } from "@/lib/utils";
 import type { Seguro } from "@/lib/types";
 import { matchesSearch } from "@/lib/search";
 import { sortByRecency } from "@/lib/recency";
+import {
+  PaquetesToggle,
+  PaquetesRow,
+} from "@/components/ui/data/PaquetesDelServicio";
+import { usePaquetesDelServicio } from "@/components/ui/data/usePaquetesDelServicio";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 // ---------------------------------------------------------------------------
@@ -69,22 +73,21 @@ export default function SegurosPage() {
     () => allProveedores.filter((p) => p.servicio === "SEGUROS" && !p.deletedAt),
     [allProveedores],
   );
-  const packageState = usePackageState();
   const loading = useServiceLoading();
 
   // Package usage count map
-  const paqueteCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    const seen = new Set<string>();
-    for (const pa of packageState.paqueteSeguros) {
-      const key = `${pa.seguroId}::${pa.paqueteId}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        map[pa.seguroId] = (map[pa.seguroId] ?? 0) + 1;
-      }
-    }
-    return map;
-  }, [packageState.paqueteSeguros]);
+  // Qué paquetes usan cada seguro (contador + lista + portada). La lógica vive en
+  // el hook porque los cinco listados de servicios muestran lo mismo.
+  const {
+    paquetesPorServicio,
+    countPorServicio: paqueteCountMap,
+    hydratando,
+  } = usePaquetesDelServicio("seguro");
+
+  // Uno abierto por vez: la tabla es densa y dos paneles la vuelven ilegible.
+  const [servicioExpandido, setServicioExpandido] = useState<string | null>(
+    null,
+  );
 
   // Proveedor lookup map for O(1) display in table (use allProveedores for name resolution)
   const proveedorMap = useMemo(() => {
@@ -275,8 +278,8 @@ export default function SegurosPage() {
             </DataTableHeader>
             <DataTableBody>
               {paginatedSeguros.map((s) => (
+                <Fragment key={s.id}>
                 <DataTableRow
-                  key={s.id}
                   onClick={() => handleOpenEdit(s)}
                   interactive
                 >
@@ -291,11 +294,15 @@ export default function SegurosPage() {
                   </DataTableCell>
                   <DataTableCell variant="primary">
                     {s.cobertura}
-                    {(paqueteCountMap[s.id] ?? 0) > 0 && (
-                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
-                        {paqueteCountMap[s.id]} paq.
-                      </span>
-                    )}
+                    <PaquetesToggle
+                      count={paqueteCountMap[s.id] ?? 0}
+                      open={servicioExpandido === s.id}
+                      onToggle={() =>
+                        setServicioExpandido((prev) =>
+                          prev === s.id ? null : s.id,
+                        )
+                      }
+                    />
                   </DataTableCell>
                   <DataTableCell variant="price" align="right">
                     {formatCurrency(s.costoPorDia)}
@@ -327,6 +334,15 @@ export default function SegurosPage() {
                     />
                   </DataTableCell>
                 </DataTableRow>
+                {/* Desplegable: qué paquetes usan este servicio. Fila aparte
+                    con colSpan para no romper la grilla de columnas. */}
+                <PaquetesRow
+                  open={servicioExpandido === s.id}
+                  paquetes={paquetesPorServicio[s.id] ?? []}
+                  total={paqueteCountMap[s.id] ?? 0}
+                  cargando={hydratando}
+                />
+                </Fragment>
               ))}
             </DataTableBody>
           </DataTable>

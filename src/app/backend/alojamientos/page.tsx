@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Copy, Trash2, Hotel } from "lucide-react";
 import { Star } from "lucide-react";
@@ -24,6 +24,11 @@ import { useTableSort } from "@/components/ui/data/useTableSort";
 import { DensityToggle } from "@/components/ui/data/Density";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAlojamientosQueryState } from "./searchParams";
+import {
+  PaquetesToggle,
+  PaquetesRow,
+} from "@/components/ui/data/PaquetesDelServicio";
+import { usePaquetesDelServicio } from "@/components/ui/data/usePaquetesDelServicio";
 import { Modal, ModalHeader, ModalBody, ModalFooter, ModalClose } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { Badge } from "@/components/ui/Badge";
@@ -34,7 +39,6 @@ import {
 } from "@/components/providers/ServiceProvider";
 import { usePaises } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { usePackageState } from "@/components/providers/PackageProvider";
 import { useToast } from "@/components/ui/Toast";
 import { DataTableSkeleton, PageSkeleton } from "@/components/ui/Skeletons";
 import {
@@ -123,7 +127,6 @@ export default function AlojamientosPage() {
   const serviceState = useServiceState();
   const { createAlojamiento, deleteAlojamiento, updateAlojamiento } = useServiceActions();
   const paises = usePaises();
-  const packageState = usePackageState();
   const loading = useServiceLoading();
   const {
     hydratingAlojamientos,
@@ -132,18 +135,18 @@ export default function AlojamientosPage() {
   } = useServiceProgress();
 
   // Package usage count map
-  const paqueteCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    const seen = new Set<string>();
-    for (const pa of packageState.paqueteAlojamientos) {
-      const key = `${pa.alojamientoId}::${pa.paqueteId}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        map[pa.alojamientoId] = (map[pa.alojamientoId] ?? 0) + 1;
-      }
-    }
-    return map;
-  }, [packageState.paqueteAlojamientos]);
+  // Qué paquetes usan cada alojamiento (contador + lista + portada). La lógica vive en
+  // el hook porque los cinco listados de servicios muestran lo mismo.
+  const {
+    paquetesPorServicio,
+    countPorServicio: paqueteCountMap,
+    hydratando,
+  } = usePaquetesDelServicio("alojamiento");
+
+  // Uno abierto por vez: la tabla es densa y dos paneles la vuelven ilegible.
+  const [servicioExpandido, setServicioExpandido] = useState<string | null>(
+    null,
+  );
 
   // URL-state filters (search, page) so refresh / share preserve the view.
   const [filters, setFilters] = useAlojamientosQueryState();
@@ -485,8 +488,8 @@ export default function AlojamientosPage() {
             </DataTableHeader>
             <DataTableBody>
               {paginatedAlojamientos.map((alojamiento) => (
+                <Fragment key={alojamiento.id}>
                 <DataTableRow
-                  key={alojamiento.id}
                   onClick={() => router.push(`/backend/alojamientos/${alojamiento.id}`)}
                   interactive
                 >
@@ -496,11 +499,15 @@ export default function AlojamientosPage() {
                       {alojamiento.nombre}
                       <RecentBadge createdAt={alojamiento.createdAt} />
                     </span>
-                    {(paqueteCountMap[alojamiento.id] ?? 0) > 0 && (
-                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
-                        {paqueteCountMap[alojamiento.id]} paq.
-                      </span>
-                    )}
+                    <PaquetesToggle
+                      count={paqueteCountMap[alojamiento.id] ?? 0}
+                      open={servicioExpandido === alojamiento.id}
+                      onToggle={() =>
+                        setServicioExpandido((prev) =>
+                          prev === alojamiento.id ? null : alojamiento.id,
+                        )
+                      }
+                    />
                   </DataTableCell>
                   <DataTableCell variant="muted">{ciudadMap[alojamiento.ciudadId] ?? "--"}</DataTableCell>
                   <DataTableCell variant="muted">{paisMap[alojamiento.paisId] ?? "--"}</DataTableCell>
@@ -582,6 +589,15 @@ export default function AlojamientosPage() {
                     />
                   </DataTableCell>
                 </DataTableRow>
+                {/* Desplegable: qué paquetes usan este servicio. Fila aparte
+                    con colSpan para no romper la grilla de columnas. */}
+                <PaquetesRow
+                  open={servicioExpandido === alojamiento.id}
+                  paquetes={paquetesPorServicio[alojamiento.id] ?? []}
+                  total={paqueteCountMap[alojamiento.id] ?? 0}
+                  cargando={hydratando}
+                />
+                </Fragment>
               ))}
             </DataTableBody>
           </DataTable>

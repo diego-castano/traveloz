@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Tooltip } from "radix-ui";
 import { Bus, Plus, Pencil, Trash2, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -34,13 +34,17 @@ import {
 } from "@/components/providers/ServiceProvider";
 import { useProveedores, usePaises } from "@/components/providers/CatalogProvider";
 import { useBrand } from "@/components/providers/BrandProvider";
-import { usePackageState } from "@/components/providers/PackageProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
 import { formatCurrency } from "@/lib/utils";
 import { matchesSearch } from "@/lib/search";
 import { sortByRecency } from "@/lib/recency";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
+import {
+  PaquetesToggle,
+  PaquetesRow,
+} from "@/components/ui/data/PaquetesDelServicio";
+import { usePaquetesDelServicio } from "@/components/ui/data/usePaquetesDelServicio";
 import type { Traslado, TipoTraslado } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
@@ -117,7 +121,6 @@ export default function TrasladosPage() {
 
   // Data hooks
   const traslados = useTraslados();
-  const packageState = usePackageState();
   const allProveedores = useProveedores();
   const paises = usePaises();
   const { createTraslado, updateTraslado, deleteTraslado } = useServiceActions();
@@ -140,18 +143,18 @@ export default function TrasladosPage() {
   // Lookup maps
   // ---------------------------------------------------------------------------
 
-  const paqueteCountMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    const seen = new Set<string>();
-    for (const pa of packageState.paqueteTraslados) {
-      const key = `${pa.trasladoId}::${pa.paqueteId}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        map[pa.trasladoId] = (map[pa.trasladoId] ?? 0) + 1;
-      }
-    }
-    return map;
-  }, [packageState.paqueteTraslados]);
+  // Qué paquetes usan cada traslado (contador + lista + portada). La lógica vive en
+  // el hook porque los cinco listados de servicios muestran lo mismo.
+  const {
+    paquetesPorServicio,
+    countPorServicio: paqueteCountMap,
+    hydratando,
+  } = usePaquetesDelServicio("traslado");
+
+  // Uno abierto por vez: la tabla es densa y dos paneles la vuelven ilegible.
+  const [servicioExpandido, setServicioExpandido] = useState<string | null>(
+    null,
+  );
 
   const proveedorMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -392,8 +395,8 @@ export default function TrasladosPage() {
 
             <DataTableBody>
               {paginatedTraslados.map((traslado) => (
+                <Fragment key={traslado.id}>
                 <DataTableRow
-                  key={traslado.id}
                   interactive={canEdit}
                   onClick={canEdit ? () => openEdit(traslado) : undefined}
                 >
@@ -411,11 +414,15 @@ export default function TrasladosPage() {
                           Toca para editar o usa las acciones rápidas
                         </div>
                       </div>
-                      {(paqueteCountMap[traslado.id] ?? 0) > 0 && (
-                        <span className="ml-1 inline-flex shrink-0 items-center rounded-full bg-brand-teal-500/10 px-2 py-0.5 text-[11px] font-medium text-brand-teal-400">
-                          {paqueteCountMap[traslado.id]} paq.
-                        </span>
-                      )}
+                      <PaquetesToggle
+                        count={paqueteCountMap[traslado.id] ?? 0}
+                        open={servicioExpandido === traslado.id}
+                        onToggle={() =>
+                          setServicioExpandido((prev) =>
+                            prev === traslado.id ? null : traslado.id,
+                          )
+                        }
+                      />
                     </div>
                   </DataTableCell>
 
@@ -463,6 +470,15 @@ export default function TrasladosPage() {
                     </Tooltip.Provider>
                   </DataTableCell>
                 </DataTableRow>
+                {/* Desplegable: qué paquetes usan este servicio. Fila aparte
+                    con colSpan para no romper la grilla de columnas. */}
+                <PaquetesRow
+                  open={servicioExpandido === traslado.id}
+                  paquetes={paquetesPorServicio[traslado.id] ?? []}
+                  total={paqueteCountMap[traslado.id] ?? 0}
+                  cargando={hydratando}
+                />
+                </Fragment>
               ))}
             </DataTableBody>
           </DataTable>
