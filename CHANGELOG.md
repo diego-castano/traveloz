@@ -126,6 +126,11 @@ vendedor de prueba.**
 
 ### Operación
 
+- Las tipografías del cotizador (DM Sans, Playfair Display, JetBrains Mono)
+  ahora se sirven desde el propio sitio (`/fonts/cotizador`, licencia OFL).
+  Antes venían de Google Fonts, que el Chromium del servidor no alcanzaba y
+  el PDF salía con una tipografía genérica. De paso el panel dejó de
+  necesitar excepciones de seguridad para fuentes externas.
 - Chromium entra al contenedor de Railway vía `nixpacks.toml` (paquetes
   `chromium`, `dejavu_fonts`, `freefont_ttf`) para generar los PDF. Chequeo
   post-deploy: `/api/cotizador/pdf/salud` (solo admin). Variables nuevas,
