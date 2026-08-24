@@ -15,6 +15,36 @@ del catálogo, CRM).
 
 ### Nuevo
 
+**El cotizador cierra el circuito con el pasajero: link real, lectura
+registrada, confirmación, PDF y lector de itinerarios.**
+
+- **Link público de la cotización.** Cada envío genera un link corto
+  `traveloz.com.uy/c/xxxxxxxx` con vigencia (24/48/72 h). El pasajero ve la
+  cotización tal cual la aprobó Gero, en celular o escritorio. Vencido el
+  link, ve un aviso con el WhatsApp del vendedor para pedir una nueva. Al
+  pasajero le llega solo lo que tiene que ver: precios de venta, nunca netos,
+  factores ni notas internas.
+- **WhatsApp y email de verdad.** La pestaña WhatsApp arma el mensaje con el
+  link y abre la conversación con el cliente; la de Email lo manda desde
+  `notificaciones@app.traveloz.com.uy` con copia a la casilla configurada,
+  destinatarios extra, respuesta al vendedor y **el PDF adjunto**.
+- **Se registra la lectura.** Cuántas veces la abrió, desde qué dispositivo,
+  cuánto tardó en abrirla, cuánto tiempo la leyó y hasta qué sección llegó.
+  La cotización pasa sola a "Abierta"; el semáforo, "Para hoy" y el embudo
+  del drawer usan esos datos reales.
+- **Confirmación desde el link.** "Confirmar esta opción" registra la
+  confirmación (con fecha, IP y dispositivo, vale como firma), le manda un
+  email al vendedor, deja comentario en el negocio abierto de Bitrix si el
+  contacto tiene uno, y muestra al pasajero el botón para cargar los datos
+  de los pasajeros. "Solicitar una revisión" avisa al vendedor por email.
+- **PDF desde el sistema.** "Descargar PDF" en Compartir y en el drawer
+  genera el PDF en el servidor con la misma hoja que ve el pasajero; es el
+  mismo archivo que va adjunto en el email.
+- **Lector de itinerarios con IA.** Pegar el código del GDS o una captura de
+  pantalla (foto, o Ctrl+V) carga los vuelos solos; el parser local sigue
+  respondiendo al instante y la IA completa fechas y tramos. Costo estimado:
+  menos de US$ 5 por mes.
+
 **El cotizador dejó de ser un mockup: vive adentro del panel y guarda en la
 base.** Hasta hoy vivía en una URL suelta, sin login, y todo lo que se armaba
 se perdía al cerrar la pestaña.
@@ -86,6 +116,12 @@ vendedor de prueba.**
 
 ### Operación
 
+- Chromium entra al contenedor de Railway vía `nixpacks.toml` (paquetes
+  `chromium`, `dejavu_fonts`, `freefont_ttf`) para generar los PDF. Chequeo
+  post-deploy: `/api/cotizador/pdf/salud` (solo admin). Variables nuevas,
+  todas opcionales: `COTIZADOR_PDF_OFF=1` apaga el PDF (el email sale con el
+  link), `COTIZADOR_IA_OFF=1` apaga el lector, `GEMINI_MODELO` cambia el
+  modelo, `PUPPETEER_EXECUTABLE_PATH` fuerza la ruta de Chromium.
 - Migración `20260824120000_presupuestos`: tablas Presupuesto,
   PresupuestoEvento, PresupuestoLink, PresupuestoApertura,
   PlantillaPresupuesto, HotelFavorito, Aeropuerto y Aerolinea; columna

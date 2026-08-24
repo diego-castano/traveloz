@@ -1385,7 +1385,7 @@ model PresupuestoLink {
   id            String    @id @default(cuid())
   presupuestoId String
   token         String    @unique
-  // whatsapp | email | manual
+  // whatsapp | email | pdf | manual
   canal         String
   vigenciaHoras Int
   emitidoAt     DateTime  @default(now())

@@ -30,6 +30,8 @@ export const RESERVED_SLUGS = new Set([
   // Links personales de cada vendedor (route group (formularios)).
   "datos-de-pasajeros",
   "datos-de-pago",
+  // Links públicos de cotización: /c/<token>.
+  "c",
 ]);
 
 export function normalizeSlug(input: string): string {

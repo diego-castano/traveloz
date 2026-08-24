@@ -14,6 +14,8 @@ import {
 import { useCtz, useCatalogo, buscarVendedor } from "./contexto";
 import { Foto, Btn, Pill, ChipIA, Vacio } from "./ui";
 import { DrawerAnalytics } from "./drawer";
+import { fmtDuracion, fmtLectura } from "./adaptadores";
+import { SECCIONES } from "@/lib/presupuesto/secciones";
 import {
   setEstadoManual, setNotasInternas, registrarConfirmacion, reactivarPresupuesto,
   extenderVigencia as extenderVigenciaAction, eliminarPresupuesto,
@@ -1162,9 +1164,40 @@ function TabAnalytics({ base = [] }) {
     }
     const porDestino = [...dests.values()].sort((a, b) => b.env - a.env).slice(0, 6);
 
+    /* ── lectura del pasajero ────────────────────────────────────────────
+       Mediana y no promedio: una cotización que alguien dejó abierta toda la
+       noche corre el promedio media hora y deja de describir a nadie. */
+    const mediana = (nums) => {
+      const l = nums.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+      if (!l.length) return null;
+      const m = Math.floor(l.length / 2);
+      return l.length % 2 ? l[m] : Math.round((l[m - 1] + l[m]) / 2);
+    };
+    const medApertura = mediana(base.map((r) => r.hastaMs));
+    const medLectura = mediana(base.map((r) => r.lecturaSeg));
+
+    /* la sección más lejos a la que llegó la mayoría, y el dispositivo que
+       más se repite: los dos salen del mismo conteo simple */
+    const masFrecuente = (valores) => {
+      const cuenta = new Map();
+      for (const v of valores) {
+        if (v == null || v === "" || v === "—") continue;
+        cuenta.set(v, (cuenta.get(v) || 0) + 1);
+      }
+      let mejor = null, tope = 0;
+      for (const [v, n] of cuenta) if (n > tope) { mejor = v; tope = n; }
+      return mejor;
+    };
+    const seccionTipica = masFrecuente(
+      base.filter((r) => r.hastaSecIdx >= 0).map((r) => SECCIONES[r.hastaSecIdx]?.label),
+    );
+    const dispositivoTipico = masFrecuente(base.map((r) => r.dispositivo));
+
     return { creadas, enviadas, abiertas, confirmadas: confirmadas.length, montoConfirmado,
       tasaApertura: pct(abiertas, enviadas), tasaConfirmacion: pct(confirmadas.length, enviadas),
-      porVendedor, porMes, porDestino, pct };
+      porVendedor, porMes, porDestino, pct,
+      medApertura, medLectura, seccionTipica, dispositivoTipico,
+      conLectura: base.filter((r) => r.hastaSecIdx >= 0).length };
   }, [base, vendedores]);
 
   if (!base.length) {
@@ -1181,7 +1214,9 @@ function TabAnalytics({ base = [] }) {
     { l:"Tasa de apertura", v: m.enviadas ? `${m.tasaApertura}%` : "—", d:`${m.abiertas} de ${m.enviadas} abiertas` },
     { l:"Tasa de confirmación", v: m.enviadas ? `${m.tasaConfirmacion}%` : "—", d:`${m.confirmadas} confirmadas` },
     { l:"Monto confirmado", v: money(m.montoConfirmado), d:"opción principal de cada una" },
-    { l:"1ª apertura (mediana)", v:"—", d:"llega con los links públicos" },
+    { l:"1ª apertura (mediana)",
+      v: m.medApertura != null ? fmtDuracion(m.medApertura) : "—",
+      d: m.medApertura != null ? "desde que sale hasta que la abren" : "sin aperturas todavía" },
   ];
   const FUNNEL = [
     { l:"Creadas", n:m.creadas, c:"#B0B4CD" },
@@ -1214,7 +1249,7 @@ function TabAnalytics({ base = [] }) {
               pct={m.pct(f.n, m.creadas)} color={f.c} />
           ))}
           <div style={{ fontSize:11, color:"var(--n400)", marginTop:4, lineHeight:1.5 }}>
-            Abiertas se cuenta con las aperturas del pasajero, que empiezan a registrarse cuando salgan los links públicos.
+            Abiertas se cuenta con las aperturas reales del pasajero sobre su link. La vista previa del vendedor no suma.
           </div>
         </div>
 
@@ -1262,14 +1297,21 @@ function TabAnalytics({ base = [] }) {
         {/* lo que falta */}
         <div className="card" style={{ padding:16, background:"linear-gradient(160deg,var(--card),var(--card-2))" }}>
           <div className="lbl" style={{ marginBottom:10 }}>Métricas de lectura</div>
-          {["Tiempo hasta la primera apertura", "Cuánto tiempo la leyó", "Hasta qué sección llegó", "Dispositivo y canal"].map((t) => (
+          {[
+            ["Tiempo hasta la primera apertura", m.medApertura != null ? fmtDuracion(m.medApertura) : null],
+            ["Cuánto tiempo la leyó", m.medLectura != null ? fmtLectura(m.medLectura) : null],
+            ["Hasta qué sección llegó", m.seccionTipica],
+            ["Dispositivo más común", m.dispositivoTipico],
+          ].map(([t, v]) => (
             <div key={t} style={{ display:"flex", alignItems:"center", gap:9, marginBottom:9 }}>
               <span style={{ fontSize:12, color:"var(--n600)", flex:1 }}>{t}</span>
-              <span className="mono" style={{ fontSize:12, color:"var(--n300)" }}>—</span>
+              <span className="mono" style={{ fontSize:12, color: v ? "var(--n600)" : "var(--n300)" }}>{v || "—"}</span>
             </div>
           ))}
           <div style={{ fontSize:11, color:"var(--n400)", marginTop:4, lineHeight:1.5 }}>
-            Se registran cuando el pasajero abra la cotización desde su link, en la próxima entrega.
+            {m.conLectura
+              ? `Medianas sobre ${m.conLectura} ${m.conLectura === 1 ? "cotización leída" : "cotizaciones leídas"}.`
+              : "Se llenan solas en cuanto un pasajero abra su link."}
           </div>
         </div>
       </div>

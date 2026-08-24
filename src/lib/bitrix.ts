@@ -421,7 +421,7 @@ type DuplicateResult = {
  * viejo. Es determinístico y es el contacto con historia, el que recepción
  * reconoce.
  */
-async function buscarContactoPorComunicacion(
+export async function buscarContactoPorComunicacion(
   type: "EMAIL" | "PHONE",
   values: string[],
 ): Promise<number | null> {
@@ -792,6 +792,52 @@ async function buscarNegocioAbiertoReciente(
 }
 
 /**
+ * ID del negocio abierto más reciente del contacto, SIN ventana de tiempo.
+ *
+ * Es el hermano de `buscarNegocioAbiertoReciente` para un caso distinto: acá
+ * no estamos deduplicando un lead nuevo, estamos anotando un hecho ("confirmó
+ * la cotización") sobre la venta que ya está en curso. Esa venta puede haber
+ * empezado hace tres semanas, así que la ventana de 24 h de la deduplicación
+ * no aplica y `BITRIX_DEDUPE_HOURS` no lo apaga.
+ *
+ * Mismo filtro que el otro: nuestro embudo (`CATEGORY_ID`) y `CLOSED:"N"`.
+ * Nunca tira: si Bitrix falla devuelve `null` y el caller sigue de largo — la
+ * confirmación del pasajero ya quedó en nuestra base.
+ */
+export async function buscarNegocioAbiertoDelContacto(
+  contactId: number,
+): Promise<number | null> {
+  try {
+    const deals = await bitrixCall<DealResumen[]>("crm.deal.list", {
+      filter: {
+        CONTACT_ID: contactId,
+        CATEGORY_ID: envInt("BITRIX_CATEGORY_ID", DEFAULT_CATEGORY_ID),
+        CLOSED: "N",
+      },
+      select: ["ID", "DATE_CREATE", "STAGE_ID"],
+      order: { DATE_CREATE: "DESC" },
+    });
+
+    const primero = deals?.[0];
+    if (!primero) return null;
+
+    const dealId = Number(primero.ID);
+    if (!Number.isFinite(dealId)) return null;
+
+    log.info("bitrix.deal.abierto.hit", {
+      contactId,
+      dealId,
+      dateCreate: primero.DATE_CREATE,
+      stageId: primero.STAGE_ID,
+    });
+    return dealId;
+  } catch (err) {
+    log.error("bitrix.deal.abierto.fail", err);
+    return null;
+  }
+}
+
+/**
  * Fecha y hora de la consulta como la lee el vendedor: "05/08/2026, 18:03".
  * Va en hora uruguaya porque el portal está en +03:00 y la tarjeta la abre
  * alguien sentado en Montevideo.
@@ -850,7 +896,7 @@ export interface CrearNegocioResult {
  * Devuelve `false` si Bitrix rechaza el comentario, y ahí el caller crea el
  * negocio como siempre: preferimos un duplicado antes que un lead que no llega.
  */
-async function comentarEnNegocio(
+export async function comentarEnNegocio(
   dealId: number,
   comment: string,
 ): Promise<boolean> {

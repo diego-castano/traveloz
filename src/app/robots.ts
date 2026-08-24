@@ -85,10 +85,12 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           // El cotizador se mudo a /backend/cotizador (ya cubierto por /backend).
           // La vieja queda como 301 para los links que circularon: fuera del indice.
           "/cotizador",
-          // Links personales de datos de pasajeros / pago. Llevan datos de
-          // terceros: nunca en un indice, aunque las paginas ya salgan noindex.
+          // Links personales de datos de pasajeros / pago y el link publico de
+          // cotizacion. Llevan datos de terceros (nombre, itinerario, precio):
+          // nunca en un indice, aunque las paginas ya salgan noindex.
           "/datos-de-pasajeros",
           "/datos-de-pago",
+          "/c",
           ...extra,
         ],
       },

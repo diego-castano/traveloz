@@ -3,19 +3,22 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Trash2, Clock3, Copy,
-  Lock, Smartphone, Monitor, Loader2
+  Lock, Smartphone, Monitor, Loader2, Link2, Download
 } from "lucide-react";
-import { semaforo, fmtHace, money, addDays, ESTADOS } from "./data";
+import { semaforo, fmtHace, money, ESTADOS } from "./data";
 import { useCtz, buscarVendedor } from "./contexto";
-import { obtenerPresupuesto } from "@/actions/presupuesto.actions";
+import { obtenerPresupuesto, emitirLink } from "@/actions/presupuesto.actions";
+import { SECCIONES } from "@/lib/presupuesto/secciones";
+import { calcularTramos } from "./tramos";
 import { Btn, Pill } from "./ui";
 import { SalidaPasajero } from "./telefono";
 import { ModalCompartir } from "./compartir";
 
 /* El detalle de lectura del pasajero —cuántas veces la abrió, cuánto tardó en
-   abrirla, hasta qué sección llegó y desde qué dispositivo— sale del link
-   público, que llega en la próxima ola. Hasta entonces el drawer dice "Sin
-   datos todavía" en vez de dibujar un embudo inventado. */
+   abrirla, hasta qué sección llegó y desde qué dispositivo— sale de las
+   aperturas del link público. Una cotización que nunca se compartió no tiene
+   nada de eso: ahí el drawer dice "Sin datos todavía" en vez de dibujar un
+   embudo inventado. */
 function SinDatos() {
   return <span style={{ color:"var(--n300)", fontWeight:500, fontSize:12 }}>Sin datos todavía</span>;
 }
@@ -43,24 +46,53 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
     setContenido(res.data.contenido);
     return res.data.contenido;
   };
-  /* los tramos del itinerario los deriva la ficha del pasajero a partir de la
-     fecha de salida, igual que en el editor */
-  const tramosPrev = useMemo(() => {
-    if (!contenido) return [];
-    let acum = 0;
-    return (contenido.destinos || []).map((d) => {
-      const checkin = d.checkinManual || (contenido.fechaSalida ? addDays(contenido.fechaSalida, acum) : "");
-      const fila = { id:d.id, ciudad:d.ciudad, noches:d.noches, checkin,
-        checkout: checkin ? addDays(checkin, d.noches) : "", manual:false };
-      acum += Number(d.noches) || 0;
-      return fila;
-    });
-  }, [contenido]);
+  /* los tramos salen del mismo helper que usa el editor y la página pública:
+     una sola aritmética para las tres pantallas */
+  const tramosPrev = useMemo(() => (contenido ? calcularTramos(contenido) : []), [contenido]);
+  /* El link vivo llega con la fila. "Copiar link" en una cotización que nunca
+     se compartió emite uno con canal manual — y eso, como cualquier emisión,
+     sella el envío: desde que existe una URL viva el pasajero puede abrirla. */
+  const [linkUrl, setLinkUrl] = useState(r.linkUrl || null);
+  const [copiando, setCopiando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  useEffect(() => { setLinkUrl(r.linkUrl || null); }, [r.id, r.linkUrl]);
+
+  const copiarLink = async () => {
+    if (copiando) return;
+    let url = linkUrl;
+    if (!url) {
+      setCopiando(true);
+      const res = await emitirLink(r.id, { canal:"manual", vigenciaHoras: r.vigencia || 48 });
+      setCopiando(false);
+      if (!res.ok) { toast?.({ msg:res.error, tone:"warn" }); return; }
+      url = res.data.url;
+      setLinkUrl(url);
+      onRecordatorio?.(r, res.data);
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2200);
+      toast?.({ msg:"Link copiado", tone:"ok" });
+    } catch {
+      toast?.({ msg:"El navegador no dejó copiar — seleccioná la URL a mano", tone:"warn" });
+    }
+  };
+
+  /* El PDF lo genera el server contra el link público (`/api/cotizador/<id>/pdf`).
+     Se abre en una pestaña: así el navegador maneja la descarga y muestra su
+     propio error si el server contesta 503 (sin Chromium) o 504. */
+  const bajarPdf = () => {
+    window.open(`/api/cotizador/${r.id}/pdf`, "_blank", "noopener");
+  };
+
   const [op, setOp] = useState("Opción 1");
   const [via, setVia] = useState("WhatsApp");
   const [borrando, setBorrando] = useState(false);
   const [notas, setNotas] = useState(r.bitacora || "");
-  const puedeConfirmar = r.estado === "enviada" || r.estado === "abierta";
+  /* también con el link vencido: el pasajero puede haber confirmado por
+     teléfono un rato después, y el vendedor tiene que poder anotarlo */
+  const puedeConfirmar = r.estado === "enviada" || r.estado === "abierta" || r.estado === "vencida";
   const apDet = r.apDet || [];
   /* la vigencia y el vencimiento son los que guardó el server al marcarla enviada */
   const vigTotal = r.vigencia || 48;
@@ -89,7 +121,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
   const eventos = [
     { c:"#B0B4CD", t:`Creada por ${V.nombre.split(" ")[0]}`, s:r.dias === 0 ? "hoy" : `hace ${r.dias} d` },
     ...(r.hEnvio != null ? [{ c:"#785AE5", t:"Enviada al pasajero", s:fmtHace(r.hEnvio) }] : []),
-    ...apDet.map((a, i) => ({ c:"#2A9E8E", t: i === 0 ? "Primera apertura" : "Reabierta", s:`${a.hace} · ${a.disp} · ${a.lugar}` })),
+    ...apDet.map((a, i) => ({ c:"#2A9E8E", t: i === 0 ? "Primera apertura" : "Reabierta",
+      s:`${a.hace} · ${a.disp}${a.seccion && a.seccion !== "—" ? ` · llegó a ${a.seccion}` : ""}` })),
     ...(r.estado === "confirmada" ? [{ c:"#2A9E8E",
       t: r.confOpcion ? `Confirmada · ${r.confOpcion}` : "Confirmada",
       s: r.confVia ? `vía ${r.confVia}` : "—" }] : []),
@@ -204,6 +237,34 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             </div>
           )}
 
+          {/* la URL que tiene el pasajero, tal cual */}
+          <div style={{ marginTop:8, padding:"10px 12px", borderRadius:11, background:"var(--tile)" }}>
+            <div className="lbl" style={{ marginBottom:6 }}>Link del pasajero</div>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <Link2 size={13} style={{ color: linkUrl ? "var(--violet)" : "var(--n300)", flexShrink:0 }} />
+              <span className="mono" style={{ fontSize:11.5, flex:1, minWidth:0, overflow:"hidden",
+                textOverflow:"ellipsis", whiteSpace:"nowrap",
+                color: linkUrl ? "var(--n600)" : "var(--n300)" }}>
+                {linkUrl || "Sin link todavía"}
+              </span>
+              <button className="btn btn-g btn-xs" onClick={copiarLink} disabled={copiando}
+                title={linkUrl ? "Copiar la URL" : "Generar el link y copiarlo"}>
+                {copiando ? <Loader2 size={11} className="spin" />
+                  : copiado ? <><Check size={11} /> Copiado</>
+                  : <><Copy size={11} /> {linkUrl ? "Copiar" : "Generar"}</>}
+              </button>
+              <button className="btn btn-g btn-xs" onClick={bajarPdf}
+                title="Bajar el PDF con la misma hoja que ve el pasajero">
+                <Download size={11} /> PDF
+              </button>
+            </div>
+            {!linkUrl && (
+              <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:6, lineHeight:1.5 }}>
+                Generarlo sella el envío: desde que existe la URL el pasajero puede abrirla.
+              </div>
+            )}
+          </div>
+
           {/* stats de lectura */}
           <div className="lbl" style={{ margin:"16px 0 8px" }}>Lectura del pasajero</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
@@ -212,9 +273,32 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
             {stat("Tiempo de lectura", r.lectura ?? <SinDatos />)}
             {stat("Llegó hasta", r.hastaSec ?? <SinDatos />)}
           </div>
-          <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:7, lineHeight:1.5 }}>
-            El detalle de lectura llega con los links públicos, en la próxima entrega.
-          </div>
+          {/* embudo: hasta qué sección bajó. `hastaSecIdx` es el índice en
+              SECCIONES (src/lib/presupuesto/secciones.ts), que es el mismo
+              orden que manda el beacon de la página pública. */}
+          {r.hastaSecIdx >= 0 ? (
+            <div style={{ marginTop:12 }}>
+              {SECCIONES.map((sc, i) => (
+                <div key={sc.clave} className="fun-row"
+                  data-on={i <= r.hastaSecIdx ? "1" : "0"}
+                  data-fin={i === r.hastaSecIdx ? "1" : "0"}>
+                  <span className="fun-l">{sc.label}</span>
+                  <span className="fun-t">
+                    <span className="fun-b" style={{ width: i <= r.hastaSecIdx ? "100%" : "0%" }} />
+                  </span>
+                </div>
+              ))}
+              <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:7, lineHeight:1.5 }}>
+                Se mide con la sección que quedó en pantalla mientras leía. Volver
+                a subir no borra lo que ya vio.
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:7, lineHeight:1.5 }}>
+              Cuando el pasajero abra el link vas a ver acá cuánto tardó en abrirla,
+              cuánto la leyó y hasta qué sección bajó.
+            </div>
+          )}
 
           {/* timeline */}
           <div className="lbl" style={{ margin:"16px 0 8px" }}>Historia</div>
@@ -337,7 +421,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
           </div>
         )}
       </div>
-      {comp && contenido && <ModalCompartir q={contenido} presupuestoId={r.id} recordatorio toast={toast}
+      {comp && contenido && <ModalCompartir q={contenido} presupuestoId={r.id} vendedor={r.vendedor} recordatorio toast={toast}
         onClose={() => setComp(false)} onEnviada={(d) => onRecordatorio?.(r, d)} />}
       {preview && contenido && (() => {
         const qPrev = contenido;
@@ -388,7 +472,9 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
                   <span className="browser-dot" style={{ background:"#45D4C0" }} />
                   <div className="browser-url">
                     <Lock size={10} style={{ color:"var(--teal-2)" }} />
-                    traveloz.com.uy/c/{r.num.toLowerCase()}
+                    {linkUrl
+                      ? linkUrl.replace(/^https?:\/\//, "")
+                      : <span style={{ opacity:.6 }}>sin link todavía</span>}
                   </div>
                 </div>
                 <div style={{ height:"min(560px,66vh)", overflowY:"auto" }}>

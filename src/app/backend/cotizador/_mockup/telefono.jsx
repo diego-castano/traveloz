@@ -30,7 +30,26 @@ const PAGO_BANCOS = [
    Lo que se comparte por WhatsApp. Las notas internas NUNCA llegan acá.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "cel" }) {
+/**
+ * La cotización como la ve el pasajero.
+ *
+ * `onConfirmar` y `onRevision` son opcionales a propósito. Sin ellos —vista
+ * previa del editor y del drawer— los botones solo cambian el estado local: el
+ * vendedor tiene que poder mirar la pantalla sin confirmarse una venta a sí
+ * mismo. En el link público (/c/<token>) llegan cableados a las actions y su
+ * respuesta es la que decide qué se muestra.
+ *
+ * `confirmadaInicial` es el id de la opción ya confirmada: la página pública
+ * abre directamente en ese estado, sin que el pasajero tenga que volver a
+ * apretar nada.
+ *
+ * `data-sec` marca las secciones que mide el tracking de lectura. Las claves
+ * son las de SECCIONES en src/lib/presupuesto/links.ts y el orden importa.
+ */
+function SalidaPasajero({
+  q, marca, vendedor, tramos, foco, scrollRef, modo = "cel",
+  onConfirmar, onRevision, confirmadaInicial = null,
+}) {
   const { hotelById } = useCatalogo();
   const anclas = useRef({});
   useEffect(() => {
@@ -40,16 +59,20 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
     cont.scrollTo({ top, behavior:"smooth" });
   }, [foco, scrollRef]);
 
-  const [abierta, setAbierta] = useState(q.opciones[0]?.id || null);
-  const [confirmada, setConfirmada] = useState(null);
+  const [abierta, setAbierta] = useState(confirmadaInicial || q.opciones[0]?.id || null);
+  const [confirmada, setConfirmada] = useState(confirmadaInicial || null);
   const [revision, setRevision] = useState(null);
+  /* acciones reales: mientras viaja la action los botones se bloquean y, si el
+     server dice que no, el pasajero lee el motivo en vez de quedarse mirando */
+  const [enviando, setEnviando] = useState(null);   /* "conf" | "rev" | null */
+  const [errorAcc, setErrorAcc] = useState(null);
   useEffect(() => {
     if (!q.opciones.length) { setAbierta(null); return; }
     if (!q.opciones.some((o) => o.id === abierta)) setAbierta(q.opciones[0].id);
   }, [q.opciones, abierta]);
 
   /* v2C · el pasajero cambia de opción desde el switcher (solo vista, no toca el editor) */
-  const [sel, setSel] = useState(q.opciones[0]?.id || null);
+  const [sel, setSel] = useState(confirmadaInicial || q.opciones[0]?.id || null);
   useEffect(() => {
     if (!q.opciones.length) { setSel(null); return; }
     if (!q.opciones.some((o) => o.id === sel)) setSel(q.opciones[0].id);
@@ -88,6 +111,31 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
     return (ajustes.condiciones || []).map((l) => String(l).replace(/\{vigencia\}/g, horas));
   }, [ajustes.condiciones, ajustes.vigenciaDefault, q.vigencia]);
 
+  /* nombre visible de una opción, el mismo fallback que usa el switcher */
+  const nombreDe = (o) => String(o?.nombre || "").trim() || `Opción ${q.opciones.indexOf(o) + 1}`;
+
+  const confirmar = async (o) => {
+    if (enviando) return;
+    setErrorAcc(null);
+    if (!onConfirmar) { setConfirmada(o.id); return; }
+    setEnviando("conf");
+    const r = await onConfirmar({ id: o.id, nombre: nombreDe(o) });
+    setEnviando(null);
+    if (r && r.ok === false) { setErrorAcc(r.error || "No pudimos registrarlo. Probá de nuevo."); return; }
+    setConfirmada(o.id);
+  };
+
+  const pedirRevision = async (o) => {
+    if (enviando) return;
+    setErrorAcc(null);
+    if (!onRevision) { setRevision(o.id); return; }
+    setEnviando("rev");
+    const r = await onRevision({ id: o.id, nombre: nombreDe(o) });
+    setEnviando(null);
+    if (r && r.ok === false) { setErrorAcc(r.error || "No pudimos avisarle. Probá de nuevo."); return; }
+    setRevision(o.id);
+  };
+
   /* itinerario agrupado en trayectos (Ida / Vuelta / Tramo N) */
   const trayectos = useMemo(() => agruparTrayectos(q.vuelos), [q.vuelos]);
   /* el PNR trae día y mes pero no el año: lo saca de la fecha de salida cargada */
@@ -100,7 +148,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
     <div style={{ fontFamily:"'DM Sans',sans-serif", color:"#1A1A2E", background:"#fff", minHeight:"100%" }}>
 
       {/* ── encabezado de marca ── */}
-      <div style={{ background:grad, padding: desk ? "34px 40px 26px" : "36px 20px 22px", color:"#fff",
+      <div data-sec="encabezado" style={{ background:grad, padding: desk ? "34px 40px 26px" : "36px 20px 22px", color:"#fff",
         position:"relative", overflow:"hidden" }}>
         <div style={{ position:"absolute", right:-40, top:-40, width:170, height:170, borderRadius:"50%", background:"rgba(255,255,255,.10)" }} />
         <div style={{ position:"absolute", right:30, bottom:-56, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,.07)" }} />
@@ -193,7 +241,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
         {/* incluye */}
         {q.servicios.length > 0 && !q.soloVuelos && (
-          <div ref={(el) => { anclas.current["b-servicios"] = el; }}>
+          <div ref={(el) => { anclas.current["b-servicios"] = el; }} data-sec="servicios">
             <SecTitulo texto="Tu viaje incluye" color={G.b} />
             <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr", gap:"9px 18px", marginBottom:24 }}>
               {q.servicios.map((sv) => {
@@ -219,7 +267,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
         {/* itinerario — tarjetas por trayecto (Ida / Vuelta / Tramo N) */}
         {q.vuelos.length > 0 && (
-          <div ref={(el) => { anclas.current["b-vuelos"] = el; }}>
+          <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos">
             <SecTitulo texto="Itinerario de vuelos" color={G.b} />
             <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom: q.soloVuelos ? 14 : 24 }}>
               {trayectos.map((seg, ti) => {
@@ -343,7 +391,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
         {/* opciones — cards verticales, foto protagonista */}
         {q.opciones.length > 0 && !q.soloVuelos && (
-          <div ref={(el) => { anclas.current["b-alojamiento"] = el; }}>
+          <div ref={(el) => { anclas.current["b-alojamiento"] = el; }} data-sec="hoteles">
             <SecTitulo texto="Opciones de alojamiento" color={G.b} />
             <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", margin:"-4px 0 12px" }}>
               {impresion
@@ -560,12 +608,13 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                           </div>
                         ) : (
                           <>
-                            <button className="a-fade" onClick={() => setConfirmada(o.id)}
+                            <button className="a-fade" onClick={() => confirmar(o)} disabled={!!enviando}
                               style={{ width:"100%", marginTop:9, padding:"13px", borderRadius:13, color:"#fff",
                                 fontSize:fz(13.5, 14), fontWeight:800, letterSpacing:"-.01em",
+                                opacity: enviando ? .65 : 1, cursor: enviando ? "wait" : "pointer",
                                 background:"linear-gradient(145deg,#45D4C0,#2A9E8E)",
                                 boxShadow:"0 8px 20px -6px rgba(42,158,142,.5), inset 0 1px 0 rgba(255,255,255,.3)" }}>
-                              Confirmar esta opción
+                              {enviando === "conf" ? "Confirmando…" : "Confirmar esta opción"}
                             </button>
                             <div style={{ fontSize:fz(9.5, 10), color:"#8A8DB5", textAlign:"center", marginTop:6 }}>
                               Al confirmar aceptás esta cotización — vale como firma digital.
@@ -577,11 +626,19 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                                 Le avisamos a {V.nombre.split(" ")[0]} — te contacta para ajustar la cotización.
                               </div>
                             ) : (
-                              <button onClick={() => setRevision(o.id)}
+                              <button onClick={() => pedirRevision(o)} disabled={!!enviando}
                                 style={{ display:"block", margin:"7px auto 0", fontSize:fz(10.5, 11), fontWeight:700,
-                                  color:G.b, textDecoration:"underline", textUnderlineOffset:3 }}>
-                                Solicitar una revisión
+                                  color:G.b, textDecoration:"underline", textUnderlineOffset:3,
+                                  opacity: enviando ? .65 : 1 }}>
+                                {enviando === "rev" ? "Avisando…" : "Solicitar una revisión"}
                               </button>
+                            )}
+                            {errorAcc && (
+                              <div className="a-pop" style={{ marginTop:8, padding:"9px 12px", borderRadius:11,
+                                background:"rgba(244,62,85,.08)", fontSize:fz(11, 11.5), color:"#CC2030",
+                                textAlign:"center", fontWeight:600, lineHeight:1.5 }}>
+                                {errorAcc}
+                              </div>
                             )}
                           </>
                         )}
@@ -596,7 +653,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
         {/* notas para el pasajero — bloc de HTML libre */}
         {((q.notasCliente || "").replace(/<[^>]*>/g, "").trim() || (q.notasCliente || "").includes("<img")) && (
-          <div ref={(el) => { anclas.current["b-notascliente"] = el; }}>
+          <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas">
             <SecTitulo texto="Notas" color={G.b} />
             <div style={{ fontSize:fz(12.5, 13), lineHeight:1.6, color:"#3D4066", marginBottom:22, overflowWrap:"anywhere" }}
               dangerouslySetInnerHTML={{ __html: q.notasCliente }} />
@@ -605,7 +662,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
         {/* condiciones — si el máster las borró todas, el bloque no se dibuja */}
         {condiciones.length > 0 && (
-        <div style={{ background:"#F5F6FA", borderRadius:13, padding:"13px 15px", marginBottom:18, breakInside:"avoid" }}>
+        <div data-sec="condiciones" style={{ background:"#F5F6FA", borderRadius:13, padding:"13px 15px", marginBottom:18, breakInside:"avoid" }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Condiciones</div>
           {/* las escribe el máster en /backend/cotizador/ajustes, una por línea */}
@@ -617,7 +674,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
 
         {/* pago — logos reales del sitio público, en cajas uniformes */}
         <SecTitulo texto="Formas de pago" color={G.b} />
-        <div style={{ marginBottom:22 }}>
+        <div data-sec="pago" style={{ marginBottom:22 }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Tarjetas de crédito</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
@@ -645,7 +702,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         </div>
 
         {/* firma + cierre: en papel viajan juntos */}
-        <div style={{ breakInside:"avoid" }}>
+        <div data-sec="firma" style={{ breakInside:"avoid" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px", borderRadius:15, breakInside:"avoid",
           border:"1px solid rgba(17,17,36,.09)", background:"linear-gradient(180deg,#fff,#FAFBFE)" }}>
           {/* foto del vendedor, la que cargó en Perfiles. Sin foto, el degradado

@@ -1,7 +1,30 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { CATALOGO_VACIO } from "./catalogo";
+
+/* Catálogo vacío: la forma que espera todo el que llama `useCatalogo()` cuando
+   todavía no cargó nada — o cuando NO hay panel del que cargar.
+
+   Vive acá y no en catalogo.js a propósito. La ficha del pasajero se monta
+   también en el link público (/c/<token>), que no tiene ni PackageProvider ni
+   ServiceProvider; si esta constante siguiera en catalogo.js, importarla desde
+   el contexto arrastraría los tres providers del panel al bundle público. */
+export const CATALOGO_VACIO = {
+  paquetes: [],
+  hoteles: [],
+  ciudades: [],
+  regionesIA: [],
+  hotelById: () => undefined,
+  hotelesCotizadosEn: () => [],
+  registrarHotelLibre: () => null,
+  esFavorito: () => false,
+  toggleFavorito: () => false,
+  aplicarFavoritos: () => {},
+  favoritos: [],
+  regimenTexto: () => "",
+  cargando: true,
+  progreso: "Cargando catálogo…",
+};
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CONTEXTO DEL COTIZADOR

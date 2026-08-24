@@ -39,6 +39,13 @@ export interface EmailAttachment {
 
 export interface SendEmailInput {
   to: string | string[];
+  /**
+   * Copia visible. Se usa en el envío de cotizaciones: el máster configura una
+   * casilla fija (`cotizador_email_copia`) que recibe todo lo que sale, y el
+   * vendedor puede sumar destinatarios puntuales desde el modal de compartir.
+   * Vacío o array vacío → no se manda el campo (Resend rechaza `cc: []`).
+   */
+  cc?: string | string[];
   subject: string;
   html: string;
   text?: string;
@@ -85,6 +92,19 @@ export interface CancelEmailResult {
   error?: string;
 }
 
+/**
+ * Normaliza el `cc`: string suelto o array, sin vacíos y sin duplicados.
+ * Devuelve `undefined` cuando no queda nada — Resend rechaza `cc: []`.
+ */
+function ccLimpio(cc: string | string[] | undefined): string[] | undefined {
+  if (!cc) return undefined;
+  const lista = (Array.isArray(cc) ? cc : [cc])
+    .map((c) => String(c ?? "").trim())
+    .filter(Boolean);
+  const unicos = Array.from(new Set(lista));
+  return unicos.length ? unicos : undefined;
+}
+
 export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult> {
   const apiKey = process.env.RESEND_API_KEY;
   // OJO con el `??`: si EMAIL_FROM viene como "" (string vacío, no ausente),
@@ -98,6 +118,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
     log.warn("email.stub", {
       reason: "RESEND_API_KEY not set — printing email to console",
       to: input.to,
+      cc: ccLimpio(input.cc),
       subject: input.subject,
       from,
       scheduledAt: input.scheduledAt ? isoOrUndefined(input.scheduledAt) : undefined,
@@ -126,6 +147,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
       body: JSON.stringify({
         from,
         to: input.to,
+        cc: ccLimpio(input.cc),
         subject: input.subject,
         html: input.html,
         text: input.text,

@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# Nixpacks — build de Railway.
+#
+# Existe por un solo motivo: meter Chromium en la imagen. El cotizador
+# renderiza el PDF server-side con puppeteer-core (`src/lib/pdf.ts`), y
+# puppeteer-core NO trae navegador: usa el que encuentre en el sistema.
+#
+# Trampas de Nixpacks que ya nos costaron tiempo, escritas para el próximo:
+#
+#   • Los "..." de `nixPkgs` NO son un placeholder para completar: son la
+#     sintaxis real de Nixpacks para "dejá los paquetes que ya venías poniendo
+#     (node, npm) y sumá estos". Si se borran, el build se queda sin Node.
+#
+#   • El paquete de nixpkgs se llama `chromium` (no `chromium-browser`, que es
+#     el nombre del binario en Debian/Ubuntu). El derivation instala el
+#     ejecutable como `chromium` y lo deja en el PATH del contenedor, así que
+#     `which chromium` lo encuentra en runtime. `resolverChromium()` igual
+#     prueba `chromium-browser` y `google-chrome` por si alguna vez cambia la
+#     base, y se puede forzar con PUPPETEER_EXECUTABLE_PATH sin tocar código.
+#
+#   • Chromium sin fuentes dibuja cuadraditos (tofu) en todo el PDF. La imagen
+#     base no trae ninguna: por eso van `dejavu_fonts` (sans/serif/mono con
+#     acentos y ñ) y `freefont_ttf`. Fontconfig las levanta solo.
+#
+#   • Chromium acá corre como root y sin namespaces de usuario: por eso
+#     `src/lib/pdf.ts` lanza con --no-sandbox --disable-setuid-sandbox. El
+#     /dev/shm del contenedor es chico, de ahí --disable-dev-shm-usage.
+#
+#   • Suma ~200 MB a la imagen. Es el precio de no depender de un servicio
+#     externo de PDF; si algún día molesta, la salida es un microservicio
+#     aparte, no sacar el paquete de acá.
+#
+# El resto del pipeline (buildCommand, startCommand, healthcheck) sigue en
+# railway.json — este archivo solo toca la fase de setup.
+# ---------------------------------------------------------------------------
+
+[phases.setup]
+nixPkgs = ["...", "chromium", "dejavu_fonts", "freefont_ttf"]

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   FileText, CheckCheck, Download, Eye, X, Mail, Smartphone, Loader2, AlertCircle,
-  Printer, Lock, Info, Check
+  Printer, Lock, Info, Check, Link2, Copy, Send
 } from "lucide-react";
 import { Btn, Label } from "./ui";
-import { precioOpcion } from "./data";
-import { useAjustes } from "./contexto";
-import { marcarEnviada } from "@/actions/presupuesto.actions";
+import { precioOpcion, renderPlantilla } from "./data";
+import { useAjustes, useCtz, buscarVendedor } from "./contexto";
+import { marcarEnviada, emitirLink, enviarPorEmail } from "@/actions/presupuesto.actions";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    COMPARTIR
@@ -17,24 +17,44 @@ import { marcarEnviada } from "@/actions/presupuesto.actions";
 /**
  * Compartir una cotización.
  *
- * Los links públicos y el envío automático (WhatsApp Business y el mail con el
- * PDF adjunto) llegan en la próxima ola. Hasta entonces las dos pestañas de
- * envío quedan visibles pero apagadas —para que se vea a dónde va la cosa— y
- * el camino real es: PDF + "Marcar como enviada", que es lo que arranca el
- * reloj de la vigencia y el seguimiento.
+ * Las tres pestañas mandan de verdad:
+ *   • WhatsApp — emite el link público y arma el mensaje; el vendedor lo abre
+ *     en su WhatsApp (no mandamos nosotros: el pasajero tiene que ver el
+ *     mensaje viniendo de su asesor, no de un número de sistema).
+ *   • Email    — lo manda el server con el link adentro, con copia a la casilla
+ *     del máster y responder-a del vendedor.
+ *   • PDF      — lo baja el server (Chromium imprime la misma página que abre
+ *     el pasajero). La vista de impresión del navegador queda como salida de
+ *     emergencia si el render del server está caído.
  *
- * `presupuestoId` es la fila en la base; sin él no hay nada que marcar (una
+ * Cualquiera de las tres sella el envío: estado Enviada, reloj de la vigencia
+ * corriendo y el link listo para que el pasajero lo abra. El "ya la mandé por
+ * otro medio" quedó como una línea al pie, para el caso raro.
+ *
+ * `presupuestoId` es la fila en la base; sin él no hay nada que compartir (una
  * cotización recién abierta que todavía no guardó).
  */
-function ModalCompartir({ q, presupuestoId, onClose, onEnviada, toast, recordatorio = false, onVigencia, onIr, onPreview, onImprimir }) {
+function ModalCompartir({
+  q, presupuestoId, vendedor, onClose, onEnviada, toast, recordatorio = false,
+  onVigencia, onIr, onPreview, onImprimir,
+}) {
   const { emailCopia, vigenciaDefault } = useAjustes();
+  const { vendedores } = useCtz();
+  const V = buscarVendedor(vendedores, vendedor);
   const tel = String(q.cliente.telefono || "").trim();
   const nom = String(q.cliente.nombre || "").trim();
-  const [tab, setTab] = useState("pdf");
+  const [tab, setTab] = useState(recordatorio ? (tel ? "whatsapp" : "email") : "pdf");
   const [extras, setExtras] = useState("");
-  const [canal, setCanal] = useState(tel ? "whatsapp" : "email");
   const [marcando, setMarcando] = useState(false);
   const [vig, setVig] = useState(q.vigencia ?? vigenciaDefault ?? 48);
+
+  /* el link público: se emite al entrar a WhatsApp o al tocar "Generar link" */
+  const [link, setLink] = useState(null);
+  const [generando, setGenerando] = useState(false);
+  const [errLink, setErrLink] = useState(null);
+  const [enviandoMail, setEnviandoMail] = useState(false);
+  const [mailListo, setMailListo] = useState(null);
+  const [copiado, setCopiado] = useState(null);
 
   /* v2C · pre-flight: cuenta lo que falta, nunca frena el envío */
   const checks = useMemo(() => {
@@ -67,9 +87,161 @@ function ModalCompartir({ q, presupuestoId, onClose, onEnviada, toast, recordato
     document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
   }, [onClose]);
 
-  /* Sella el envío en la base: arranca el reloj de la vigencia y la fila pasa a
-     Enviada en el seguimiento. El mensaje sale por afuera (el vendedor manda el
-     PDF), así que acá solo queda registrado que salió y por dónde. */
+  /* ── el link ──────────────────────────────────────────────────────────────
+     Emitirlo YA sella el envío: en cuanto existe una URL viva, el pasajero la
+     puede abrir, así que la cotización está enviada aunque el vendedor todavía
+     no haya tocado "Abrir WhatsApp". */
+  const generar = useCallback(async (canal) => {
+    if (!presupuestoId) {
+      toast?.({ msg:"Guardá la cotización antes de compartirla", tone:"warn" });
+      return null;
+    }
+    setGenerando(true); setErrLink(null);
+    const r = await emitirLink(presupuestoId, { canal, vigenciaHoras: vig });
+    setGenerando(false);
+    if (!r.ok) { setErrLink(r.error); return null; }
+    setLink(r.data);
+    onEnviada?.(r.data);
+    return r.data;
+  }, [presupuestoId, vig, toast, onEnviada]);
+
+  /* Mirar la pestaña de WhatsApp NO emite nada.
+     Emitir el link sella el envío: la cotización pasa a Enviada, arranca el
+     reloj de la vigencia y el pasajero ya podría abrirla. Que eso pasara por
+     tocar una pestaña —para espiar cómo iba a quedar el mensaje— dejaba
+     cotizaciones "enviadas" que nunca se mandaron y el vencimiento corriendo.
+     El link sale con una acción explícita: "Abrir WhatsApp", "Copiar mensaje",
+     "Copiar link" o "Generar el link". Hasta entonces la vista previa muestra
+     el mensaje con un marcador en el lugar del link. */
+
+  /* Cambiar la vigencia con el link ya emitido lo corre: el token es el mismo,
+     lo que se mueve es el vencimiento. */
+  useEffect(() => {
+    if (!link || generando) return;
+    /* si el vencimiento ya está donde tendría que estar (±2 min de holgura),
+       no hay nada que correr */
+    const objetivo = Date.now() + vig * 3600000;
+    const actual = link.expiraAt ? new Date(link.expiraAt).getTime() : 0;
+    if (Math.abs(actual - objetivo) < 120000) return;
+    void generar(tab === "email" ? "email" : "whatsapp");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vig]);
+
+  const copiar = async (texto, clave) => {
+    try {
+      await navigator.clipboard.writeText(texto);
+      setCopiado(clave);
+      setTimeout(() => setCopiado(null), 2200);
+    } catch {
+      toast?.({ msg:"El navegador no dejó copiar — seleccioná el texto a mano", tone:"warn" });
+    }
+  };
+
+  /* ── el mensaje de WhatsApp ─────────────────────────────────────────────
+     `base` es el saludo; el link se le pega recién cuando existe. Antes de
+     generarlo, la vista previa muestra un marcador para que el vendedor lea el
+     mensaje entero sin emitir nada. */
+  const MARCADOR_LINK = "🔗 (el link se genera al mandar)";
+
+  const base = useMemo(() => {
+    const destino = q.titulo?.destino || "tu viaje";
+    return (q.mensajeAuto || "").trim()
+      ? renderPlantilla(q.mensajeAuto, nom, V.linkDatos)
+      : recordatorio
+        ? `Hola${nom ? ` ${nom}` : ""} 👋 ¿pudiste ver la cotización de ${destino}? Te la dejo de nuevo por acá 👇`
+        : `Hola${nom ? ` ${nom}` : ""}, te comparto la cotización de ${destino}. Se abre desde el celular 👇`;
+  }, [q.mensajeAuto, q.titulo, nom, V.linkDatos, recordatorio]);
+
+  const mensajeCon = useCallback((url) => (url ? `${base}\n\n${url}` : base), [base]);
+  /* lo que se ve en la caja: con el link si ya está, con el marcador si no */
+  const vistaMensaje = link?.url ? mensajeCon(link.url) : `${base}\n\n${MARCADOR_LINK}`;
+
+  const telWa = tel.replace(/\D/g, "");
+  const urlWa = (url) => `https://wa.me/${telWa}?text=${encodeURIComponent(mensajeCon(url))}`;
+
+  /* Un solo toque: si el link todavía no existe, se emite y se abre WhatsApp.
+     La pestaña se reserva ANTES del await —con el gesto del vendedor todavía
+     vivo— porque si no Safari la bloquea por venir de una promesa. */
+  const abrirWhatsApp = async () => {
+    if (generando) return;
+    const listo = (url) => {
+      toast?.({ msg:`Se abrió WhatsApp — la cotización vence en ${vig} h`, tone:"ok" });
+      onClose();
+      return url;
+    };
+    if (link?.url) {
+      window.open(urlWa(link.url), "_blank", "noopener");
+      listo(link.url);
+      return;
+    }
+    const w = window.open("", "_blank");
+    if (w) w.opener = null;
+    const nuevo = await generar("whatsapp");
+    if (!nuevo?.url) { w?.close(); return; }
+    if (w) w.location.href = urlWa(nuevo.url);
+    else window.open(urlWa(nuevo.url), "_blank", "noopener");
+    listo(nuevo.url);
+  };
+
+  /* Copiar también es una acción explícita: emite si hace falta y copia el
+     mensaje con el link adentro (nunca el saludo pelado). */
+  const copiarMensaje = async () => {
+    if (generando) return;
+    const l = link?.url ? link : await generar("whatsapp");
+    if (!l?.url) return;
+    await copiar(mensajeCon(l.url), "msg");
+  };
+
+  const copiarLink = async () => {
+    if (generando) return;
+    const l = link?.url ? link : await generar("whatsapp");
+    if (!l?.url) return;
+    await copiar(l.url, "url");
+  };
+
+  /* ── el envío por email ───────────────────────────────────────────────── */
+  const mandarMail = async () => {
+    if (enviandoMail) return;
+    if (!presupuestoId) {
+      toast?.({ msg:"Guardá la cotización antes de compartirla", tone:"warn" });
+      return;
+    }
+    setEnviandoMail(true); setErrLink(null);
+    const lista = extras.split(/[,;]+/).map((e) => e.trim()).filter(Boolean);
+    const r = await enviarPorEmail(presupuestoId, {
+      vigenciaHoras: vig,
+      extras: lista,
+      esRecordatorio: recordatorio,
+    });
+    setEnviandoMail(false);
+    if (!r.ok) { setErrLink(r.error); return; }
+    setLink(r.data);
+    setMailListo(r.data);
+    onEnviada?.(r.data);
+    toast?.({
+      msg: r.data.entregado
+        ? `Email enviado a ${r.data.destinatarios[0]}${
+            r.data.pdfAdjunto ? " con el PDF adjunto" : " (sin PDF adjunto)"
+          } — vence en ${vig} h`
+        : "Email preparado (sin proveedor configurado): el link ya está vivo",
+      tone: r.data.entregado ? "ok" : "warn",
+    });
+    onClose();
+  };
+
+  /* ── el PDF ───────────────────────────────────────────────────────────────
+     Lo arma el server contra el link público. Se abre en una pestaña en vez de
+     hacer fetch + blob para que el navegador muestre su propia descarga (y su
+     propio error si el server contesta 503). */
+  const bajarPdf = () => {
+    if (!presupuestoId) {
+      toast?.({ msg:"Guardá la cotización antes de bajar el PDF", tone:"warn" });
+      return;
+    }
+    window.open(`/api/cotizador/${presupuestoId}/pdf`, "_blank", "noopener");
+  };
+
+  /* ── "ya la mandé por otro medio" ─────────────────────────────────────── */
   const marcar = async () => {
     if (marcando) return;
     if (!presupuestoId) {
@@ -77,28 +249,28 @@ function ModalCompartir({ q, presupuestoId, onClose, onEnviada, toast, recordato
       return;
     }
     setMarcando(true);
-    const r = await marcarEnviada(presupuestoId, { canal, vigenciaHoras: vig });
+    const r = await marcarEnviada(presupuestoId, { canal:"manual", vigenciaHoras: vig });
     setMarcando(false);
     if (!r.ok) { toast?.({ msg:r.error, tone:"warn" }); return; }
     onEnviada?.(r.data);
-    toast?.({ msg: recordatorio
-      ? `Recordatorio anotado — el link vuelve a valer ${vig} h`
-      : `Marcada como enviada — vence en ${vig} h`, tone:"ok" });
+    toast?.({ msg:`Marcada como enviada — vence en ${vig} h`, tone:"ok" });
     onClose();
   };
 
-  /* Aviso único de las dos vías que todavía no mandan solas. */
-  const notaProximaOla = (
-    <div style={{ display:"flex", gap:9, padding:"12px 13px", borderRadius:12,
-      background:"rgba(120,90,229,.06)", border:"1px solid rgba(120,90,229,.2)" }}>
-      <Info size={15} style={{ color:"var(--violet)", flexShrink:0, marginTop:1 }} />
-      <div style={{ fontSize:12, lineHeight:1.55, color:"var(--n600)" }}>
-        Disponible en la próxima entrega; mientras tanto mandá el PDF.
-      </div>
+  const TABS = [["pdf","PDF",Printer],["whatsapp","WhatsApp",Smartphone],["email","Email",Mail]];
+
+  /* Caja del link: la misma en las tres pestañas. */
+  const cajaLink = link && (
+    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 11px", borderRadius:11,
+      background:"var(--sunk)", border:"1px solid var(--hair-soft)", marginBottom:11 }}>
+      <Link2 size={13} style={{ color:"var(--violet)", flexShrink:0 }} />
+      <span className="mono" style={{ fontSize:11.5, flex:1, minWidth:0, overflow:"hidden",
+        textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{link.url}</span>
+      <button className="btn btn-g btn-xs" onClick={copiarLink}>
+        {copiado === "url" ? <><Check size={11} /> Copiado</> : <><Copy size={11} /> Copiar</>}
+      </button>
     </div>
   );
-
-  const TABS = [["pdf","PDF",Printer],["whatsapp","WhatsApp",Smartphone],["email","Email",Mail]];
 
   return (
     <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -153,7 +325,7 @@ function ModalCompartir({ q, presupuestoId, onClose, onEnviada, toast, recordato
                 onClick={() => { setVig(h); onVigencia?.(h); }}>{h}h</button>
             ))}
           </div>
-          <span style={{ fontSize:10.5, color:"var(--n400)" }}>después se muestra como vencida y se puede reactivar</span>
+          <span style={{ fontSize:10.5, color:"var(--n400)" }}>después el link muestra "cotización vencida" y se puede reactivar</span>
         </div>
 
         <div style={{ display:"flex", gap:5, padding:"11px 17px 0" }}>
@@ -165,49 +337,111 @@ function ModalCompartir({ q, presupuestoId, onClose, onEnviada, toast, recordato
         </div>
 
         <div style={{ padding:"15px 17px 17px" }}>
+          {errLink && (
+            <div style={{ display:"flex", gap:8, padding:"10px 12px", borderRadius:11, marginBottom:11,
+              background:"rgba(244,62,85,.07)", border:"1px solid rgba(244,62,85,.22)" }}>
+              <AlertCircle size={14} style={{ color:"var(--coral)", flexShrink:0, marginTop:1 }} />
+              <span style={{ fontSize:12, color:"var(--ink-coral)", lineHeight:1.5 }}>{errLink}</span>
+            </div>
+          )}
+
           {tab === "whatsapp" && (
             <>
-              {notaProximaOla}
-              <div style={{ marginTop:13, padding:"12px 13px", borderRadius:12, background:"var(--wa-bg)",
-                border:"1px solid rgba(59,191,173,.28)" }}>
-                <div style={{ fontSize:12, lineHeight:1.6, color:"var(--wa-fg)" }}>
-                  {recordatorio
-                    ? <>Hola{nom ? ` ${nom}` : ""} 👋 ¿pudiste ver la cotización de{" "}
-                        <strong>{q.titulo.destino || "tu viaje"}</strong>? Te la dejo de nuevo por acá 👇</>
-                    : <>Hola{nom ? ` ${nom}` : ""}, te comparto la cotización de{" "}
-                        <strong>{q.titulo.destino || "tu viaje"}</strong>. Se abre desde el celular 👇</>}
+              {generando && !link && (
+                <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:"var(--n400)", marginBottom:11 }}>
+                  <Loader2 size={13} className="spin" /> Generando el link…
                 </div>
+              )}
+              {!link && !generando && (
+                <Btn variant="p" style={{ width:"100%", height:40, marginBottom:11 }}
+                  disabled={!presupuestoId} onClick={() => generar("whatsapp")}>
+                  <Link2 size={14} /> Generar el link
+                </Btn>
+              )}
+              {cajaLink}
+
+              <div style={{ padding:"12px 13px", borderRadius:12, background:"var(--wa-bg)",
+                border:"1px solid rgba(59,191,173,.28)", whiteSpace:"pre-wrap",
+                fontSize:12, lineHeight:1.6, color:"var(--wa-fg)", maxHeight:180, overflowY:"auto" }}>
+                {vistaMensaje}
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:11, fontSize:11.5, color:"var(--n400)" }}>
+
+              <div style={{ display:"flex", gap:7, marginTop:12 }}>
+                {telWa ? (
+                  <Btn variant="p" style={{ flex:1, height:42 }} disabled={!presupuestoId || generando}
+                    onClick={abrirWhatsApp}>
+                    {generando
+                      ? <><Loader2 size={15} className="spin" /> Generando el link…</>
+                      : <><Smartphone size={15} /> Abrir WhatsApp</>}
+                  </Btn>
+                ) : (
+                  <Btn variant="p" style={{ flex:1, height:42 }} disabled={!presupuestoId || generando}
+                    onClick={copiarMensaje}>
+                    {copiado === "msg" ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Copiar mensaje</>}
+                  </Btn>
+                )}
+                {telWa && (
+                  <Btn style={{ height:42 }} disabled={!presupuestoId || generando}
+                    title="Copiar el mensaje al portapapeles" onClick={copiarMensaje}>
+                    {copiado === "msg" ? <Check size={14} /> : <Copy size={14} />}
+                  </Btn>
+                )}
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:10, fontSize:11.5, color:"var(--n400)" }}>
                 <Smartphone size={12} style={{ color:"var(--teal-2)" }} />
-                {tel ? `El pasajero está en ${tel}.` : "Sin teléfono cargado — completalo en el bloque Cliente."}
+                {tel ? `El pasajero está en ${tel}. El mensaje sale desde tu WhatsApp.` : "Sin teléfono cargado — copiá el mensaje y pegalo donde lo tengas."}
               </div>
             </>
           )}
 
           {tab === "email" && (
             <>
-              {notaProximaOla}
-              <div style={{ marginTop:13 }}>
-                <Label>Para</Label>
-                <div className="in" style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10 }}>
-                  <Mail size={13} style={{ color:"var(--n300)" }} />
-                  <span style={{ fontSize:13 }}>{q.cliente.email || <span style={{ color:"var(--n300)" }}>Sin email cargado</span>}</span>
+              {mailListo ? (
+                <div className="a-pop" style={{ padding:"13px", borderRadius:12,
+                  background:"rgba(59,191,173,.1)", border:"1px solid rgba(42,158,142,.35)" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, fontWeight:700, color:"var(--teal-3)" }}>
+                    <CheckCheck size={15} /> Enviado a {mailListo.destinatarios.join(", ")}
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:6, fontSize:11.5,
+                    color:"var(--n500)", lineHeight:1.5 }}>
+                    {mailListo.pdfAdjunto
+                      ? <><Download size={12} style={{ color:"var(--teal-2)" }} /> Con el PDF adjunto.</>
+                      : <><AlertCircle size={12} style={{ color:"var(--coral)" }} /> Salió sin PDF adjunto — el link va igual en el cuerpo.</>}
+                  </div>
                 </div>
-                <Label>Copia</Label>
-                <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
-                  <span className="chip chip-on" style={{ gap:6 }}>
-                    <Lock size={10} /> {emailCopia || "sin casilla configurada"}
-                  </span>
-                  <span style={{ fontSize:11, color:"var(--n400)" }}>fija, se cambia en Ajustes</span>
-                </div>
-                <Label hint="separados por coma">Otros destinatarios</Label>
-                <input className="in" value={extras} placeholder="supervisor@…, operaciones@…"
-                  onChange={(e) => setExtras(e.target.value)} />
-                <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:11, fontSize:11.5, color:"var(--n400)" }}>
-                  <Download size={12} style={{ color:"var(--teal-2)" }} /> El PDF va a ir adjunto automáticamente.
-                </div>
-              </div>
+              ) : (
+                <>
+                  {cajaLink}
+                  <Label>Para</Label>
+                  <div className="in" style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10 }}>
+                    <Mail size={13} style={{ color:"var(--n300)" }} />
+                    <span style={{ fontSize:13 }}>{q.cliente.email || <span style={{ color:"var(--n300)" }}>Sin email cargado</span>}</span>
+                  </div>
+                  <Label>Copia</Label>
+                  <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
+                    <span className="chip chip-on" style={{ gap:6 }}>
+                      <Lock size={10} /> {emailCopia || "sin casilla configurada"}
+                    </span>
+                    <span style={{ fontSize:11, color:"var(--n400)" }}>fija, se cambia en Ajustes</span>
+                  </div>
+                  <Label hint="separados por coma · hasta 5">Otros destinatarios</Label>
+                  <input className="in" value={extras} placeholder="supervisor@…, operaciones@…"
+                    onChange={(e) => setExtras(e.target.value)} />
+
+                  <Btn variant="p" style={{ width:"100%", height:42, marginTop:13 }}
+                    disabled={enviandoMail || !presupuestoId || !q.cliente.email}
+                    onClick={mandarMail}>
+                    {enviandoMail
+                      ? <><Loader2 size={15} className="spin" /> Enviando…</>
+                      : <><Send size={15} /> {recordatorio ? "Mandar recordatorio" : "Mandar la cotización"}</>}
+                  </Btn>
+                  <div style={{ display:"flex", alignItems:"flex-start", gap:7, marginTop:10, fontSize:11.5,
+                    color:"var(--n400)", lineHeight:1.55 }}>
+                    <Download size={12} style={{ color:"var(--teal-2)", flexShrink:0, marginTop:2 }} />
+                    El PDF va adjunto y el link en el cuerpo. Generarlo suma unos segundos al envío.
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -230,32 +464,35 @@ function ModalCompartir({ q, presupuestoId, onClose, onEnviada, toast, recordato
                 Las opciones salen una debajo de la otra, con los saltos de página cuidados:
                 nada se corta al medio y la firma no queda huérfana en la última hoja.
               </div>
-              <Btn variant="p" style={{ width:"100%", height:42 }} onClick={() => onImprimir?.()}>
-                <Printer size={15} /> Abrir la vista de impresión
+              <Btn variant="p" style={{ width:"100%", height:42 }}
+                disabled={!presupuestoId}
+                title={presupuestoId
+                  ? "Lo genera el servidor con la misma hoja que ve el pasajero"
+                  : "Guardá la cotización antes de bajar el PDF"}
+                onClick={bajarPdf}>
+                <Download size={15} /> Descargar PDF
               </Btn>
-              <div style={{ fontSize:10.5, color:"var(--n400)", textAlign:"center", marginTop:8 }}>
-                Desde ahí guardás el PDF o mandás a la impresora.
+              <Btn style={{ width:"100%", height:38, marginTop:8 }} onClick={() => onImprimir?.()}>
+                <Printer size={14} /> Vista de impresión
+              </Btn>
+              <div style={{ fontSize:10.5, color:"var(--n400)", textAlign:"center", marginTop:8, lineHeight:1.55 }}>
+                {presupuestoId
+                  ? "La descarga tarda unos segundos: la hoja se imprime en el servidor. La vista de impresión es la salida del navegador, por si la necesitás."
+                  : "Todavía no está guardada: escribí algo y el autoguardado la crea."}
               </div>
             </>
           )}
 
-          {/* el envío real es por afuera; esto es lo que arranca el seguimiento */}
-          <div style={{ marginTop:16, paddingTop:14, borderTop:"1px solid var(--hair-soft)" }}>
-            <Label hint="arranca el reloj de la vigencia">¿Ya se la mandaste?</Label>
-            <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:11 }}>
-              {[["whatsapp","WhatsApp"],["email","Email"],["manual","Otro canal"]].map(([k, l]) => (
-                <button key={k} className={`chip ${canal === k ? "chip-on" : ""}`} onClick={() => setCanal(k)}>{l}</button>
-              ))}
-            </div>
-            <Btn variant="p" style={{ width:"100%", height:42 }} disabled={marcando || !presupuestoId}
-              onClick={marcar}>
-              {marcando
-                ? <><Loader2 size={15} className="spin" /> Marcando…</>
-                : <><CheckCheck size={15} /> Marcar como enviada · {vig} h</>}
-            </Btn>
-            <div style={{ fontSize:10.5, color:"var(--n400)", textAlign:"center", marginTop:8, lineHeight:1.5 }}>
+          {/* El caso raro: la mandó por fuera y solo quiere que arranque el reloj. */}
+          <div style={{ marginTop:16, paddingTop:12, borderTop:"1px solid var(--hair-soft)", textAlign:"center" }}>
+            <button onClick={marcar} disabled={marcando || !presupuestoId}
+              style={{ fontSize:11.5, fontWeight:600, color:"var(--n400)", textDecoration:"underline",
+                textUnderlineOffset:3, opacity: presupuestoId ? 1 : .5 }}>
+              {marcando ? "Marcando…" : "Ya la mandé por otro medio"}
+            </button>
+            <div style={{ fontSize:10.5, color:"var(--n300)", marginTop:5, lineHeight:1.5 }}>
               {presupuestoId
-                ? "Queda registrada como enviada y empieza a correr la vigencia del seguimiento."
+                ? `Sella el envío y arranca la vigencia de ${vig} h, sin abrir nada.`
                 : "Todavía no está guardada: escribí algo y el autoguardado la crea."}
             </div>
           </div>

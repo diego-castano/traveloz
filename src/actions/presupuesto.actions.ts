@@ -21,7 +21,6 @@
 import { z } from "zod";
 import type { EstadoPresupuesto, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/require-auth";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { COTIZADOR_SETTINGS } from "@/lib/site-settings-bootstrap";
@@ -35,15 +34,37 @@ import {
   VIGENCIA_MAX,
   type ContenidoPresupuesto,
 } from "@/lib/presupuesto/schema";
+import { sanitizarContenidoGuardado } from "@/lib/presupuesto/sanitizar";
 import {
   columnasDesdeContenido,
+  precioOpcion,
   soloDigitos,
 } from "@/lib/presupuesto/derivados";
+import { urlDeToken } from "@/lib/presupuesto/links";
+import {
+  ErrorDeNegocio,
+  NO_ENCONTRADA,
+  cargarPropia,
+  emitirORenovar,
+  fallar,
+  linkVivo,
+  scopeVendedor,
+  type FilaPropia,
+  type LinkEmitido,
+  type Scope,
+} from "@/lib/presupuesto/acceso";
+import { SITE_BASE_URL } from "@/lib/datos-email";
+import { sendEmail, type EmailAttachment } from "@/lib/email";
+import {
+  codigoDeError,
+  nombreArchivoPdf,
+  pdfDisponible,
+  renderizarPdfDeCotizacion,
+} from "@/lib/pdf";
+import { cotizacionEmail } from "@/lib/presupuesto-email";
 
 const log = logger.child({ module: "presupuesto.actions" });
 
-const SIN_PERMISO = "Tu rol no tiene acceso al cotizador.";
-const NO_ENCONTRADA = "No encontramos esa cotización.";
 const GENERICO = "No pudimos completar la operación. Probá de nuevo.";
 /** Código que el editor reconoce para recargar y avisar, no un texto de UI. */
 const CONFLICTO = "CONFLICTO";
@@ -62,6 +83,12 @@ const TAKE_DEFAULT = 200;
 /** Cuántos eventos de bitácora viajan con el detalle. */
 const EVENTOS_MAX = 100;
 
+/** Cuántas aperturas del pasajero viajan con cada fila (las más recientes). */
+const APERTURAS_MAX = 20;
+
+/** Una hora en milisegundos. La vigencia se cuenta en horas en todos lados. */
+const HORA_MS = 3_600_000;
+
 /** Resultados del buscador de historial (el panel muestra pocos). */
 const HISTORIAL_MAX = 8;
 
@@ -74,14 +101,9 @@ export type Resultado<T> = { ok: true; data: T } | { ok: false; error: string };
 /**
  * Envoltorio único: corre la action y traduce cualquier excepción a
  * { ok:false, error }. Los mensajes de negocio se levantan con `fallar()`
- * para que lleguen tal cual al vendedor; el resto sale genérico y queda el
- * detalle en los logs.
+ * (de `@/lib/presupuesto/acceso`) para que lleguen tal cual al vendedor; el
+ * resto sale genérico y queda el detalle en los logs.
  */
-class ErrorDeNegocio extends Error {}
-function fallar(mensaje: string): never {
-  throw new ErrorDeNegocio(mensaje);
-}
-
 async function ejecutar<T>(
   nombre: string,
   fn: () => Promise<T>,
@@ -102,40 +124,12 @@ async function ejecutar<T>(
 
 // ---------------------------------------------------------------------------
 // Scope
+//
+// `scopeVendedor` y `cargarPropia` viven en `@/lib/presupuesto/acceso` desde
+// que la ruta del PDF (`/api/cotizador/[id]/pdf`) necesitó el mismo scope: un
+// route handler no puede importar de un archivo "use server" sin volver cada
+// helper un endpoint. Acá queda solo lo que usa el listado.
 // ---------------------------------------------------------------------------
-
-interface Scope {
-  userId: string;
-  role: string;
-  brandId: string;
-  isAdmin: boolean;
-  /** null = sin filtro por vendedor (solo puede pasar siendo ADMIN). */
-  targetId: string | null;
-}
-
-/**
- * Quién mira y qué puede tocar.
- *
- * Un VENDEDOR llega acá con `canEdit:false` del contrato general del panel —
- * eso es sobre el catálogo (paquetes, hoteles, precios), que solo edita el
- * máster. El cotizador es otra cosa: es la herramienta de trabajo del
- * vendedor y las cotizaciones son suyas, así que acá escribe. Lo que lo
- * encierra no es el permiso de edición sino el scope: `targetId` lo clava en
- * su propio `vendedorId` y el `vendedorId` que mande de afuera se ignora.
- */
-async function scopeVendedor(vendedorId?: string | null): Promise<Scope> {
-  const ctx = await requireAuth();
-  if (ctx.role !== "ADMIN" && ctx.role !== "VENDEDOR") fallar(SIN_PERMISO);
-  const isAdmin = ctx.role === "ADMIN";
-  return {
-    userId: ctx.userId,
-    role: ctx.role,
-    brandId: ctx.brandId,
-    isAdmin,
-    // El vendedor siempre lo suyo; el admin lo que pida, o todo si no filtra.
-    targetId: isAdmin ? (vendedorId ?? null) : ctx.userId,
-  };
-}
 
 /** WHERE base del listado: marca, vivos y el scope de quien mira. */
 function whereScope(s: Scope): Prisma.PresupuestoWhereInput {
@@ -144,30 +138,6 @@ function whereScope(s: Scope): Prisma.PresupuestoWhereInput {
     deletedAt: null,
     ...(s.targetId ? { vendedorId: s.targetId } : {}),
   };
-}
-
-/**
- * Trae la cotización comprobando que quien pide la pueda tocar. A un ajeno le
- * responde lo mismo que a una inexistente: no confirmamos que exista.
- */
-async function cargarPropia(id: string, s: Scope) {
-  const row = await prisma.presupuesto.findFirst({
-    where: { id, brandId: s.brandId, deletedAt: null },
-    select: {
-      id: true,
-      numero: true,
-      vendedorId: true,
-      estado: true,
-      estadoManual: true,
-      vigenciaHoras: true,
-      enviadaAt: true,
-      expiraAt: true,
-      contenido: true,
-    },
-  });
-  if (!row) fallar(NO_ENCONTRADA);
-  if (!s.isAdmin && row.vendedorId !== s.userId) fallar(NO_ENCONTRADA);
-  return row;
 }
 
 /** Bitácora best-effort: si falla, la operación que la disparó ya se hizo. */
@@ -229,12 +199,65 @@ const SELECT_FILA = {
   createdAt: true,
   updatedAt: true,
   vendedor: { select: { name: true } },
+  // El link "vivo" y sus aperturas. Un presupuesto tiene UN link sin revocar a
+  // la vez (`emitirLink` reutiliza el activo y revoca los viejos), así que
+  // `take:1` alcanza y las aperturas no se mezclan entre rondas de envío.
+  links: {
+    where: { revocadoAt: null },
+    orderBy: { emitidoAt: "desc" },
+    take: 1,
+    select: {
+      token: true,
+      canal: true,
+      vigenciaHoras: true,
+      emitidoAt: true,
+      expiraAt: true,
+      aperturas: {
+        orderBy: { abiertaAt: "desc" },
+        take: APERTURAS_MAX,
+        select: {
+          id: true,
+          abiertaAt: true,
+          dispositivo: true,
+          seccionMax: true,
+          segundos: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.PresupuestoSelect;
+
+/** Una apertura del pasajero, como la dibuja el drawer. */
+export interface AperturaPresupuesto {
+  id: string;
+  abiertaAt: Date;
+  dispositivo: string | null;
+  seccionMax: string | null;
+  segundos: number | null;
+}
+
+/** El link público vivo de una cotización. */
+export interface LinkPresupuesto {
+  token: string;
+  url: string;
+  canal: string;
+  vigenciaHoras: number;
+  emitidoAt: Date;
+  expiraAt: Date;
+  /** `true` cuando ya pasó `expiraAt`: el link existe pero no abre. */
+  vencido: boolean;
+}
 
 export interface FilaPresupuesto {
   id: string;
   numero: string;
   estado: EstadoPresupuesto;
+  /**
+   * Estado que tiene que mostrar la UI: el manual si lo hay, "VENCIDA" si la
+   * vigencia se cumplió, y si no el estado real. No se persiste — se calcula
+   * en cada lectura contra `expiraAt`, igual que hacía el cliente.
+   */
+  estadoEfectivo: EstadoPresupuesto;
   estadoManual: EstadoPresupuesto | null;
   clienteNombre: string | null;
   clienteApellido: string | null;
@@ -258,13 +281,55 @@ export interface FilaPresupuesto {
   notasInternas: string | null;
   createdAt: Date;
   updatedAt: Date;
+  /** El link público vivo, o `null` si nunca se emitió uno. */
+  link: LinkPresupuesto | null;
+  /** Aperturas del pasajero sobre ese link, de la más nueva a la más vieja. */
+  aperturasDet: AperturaPresupuesto[];
 }
 
 type FilaCruda = Prisma.PresupuestoGetPayload<{ select: typeof SELECT_FILA }>;
 
+/**
+ * Estado que ve el vendedor.
+ *
+ * El manual gana siempre. Después, una cotización enviada o abierta cuya
+ * vigencia se cumplió es VENCIDA aunque la columna diga otra cosa: el
+ * vencimiento no se persiste (nadie corre un cron para escribirlo), se calcula
+ * al leer. Una confirmada no vence nunca.
+ */
+function estadoEfectivoDe(r: {
+  estado: EstadoPresupuesto;
+  estadoManual: EstadoPresupuesto | null;
+  expiraAt: Date | null;
+  confirmadaAt: Date | null;
+}): EstadoPresupuesto {
+  if (r.estadoManual) return r.estadoManual;
+  if (r.estado === "CONFIRMADA" || r.confirmadaAt) return r.estado;
+  if (r.estado !== "ENVIADA" && r.estado !== "ABIERTA") return r.estado;
+  if (r.expiraAt && r.expiraAt.getTime() < Date.now()) return "VENCIDA";
+  return r.estado;
+}
+
 function aFila(r: FilaCruda): FilaPresupuesto {
-  const { vendedor, ...resto } = r;
-  return { ...resto, vendedorNombre: vendedor?.name ?? "" };
+  const { vendedor, links, ...resto } = r;
+  const vivo = links?.[0] ?? null;
+  return {
+    ...resto,
+    vendedorNombre: vendedor?.name ?? "",
+    estadoEfectivo: estadoEfectivoDe(resto),
+    link: vivo
+      ? {
+          token: vivo.token,
+          url: urlDeToken(SITE_BASE_URL, vivo.token),
+          canal: vivo.canal,
+          vigenciaHoras: vivo.vigenciaHoras,
+          emitidoAt: vivo.emitidoAt,
+          expiraAt: vivo.expiraAt,
+          vencido: vivo.expiraAt.getTime() < Date.now(),
+        }
+      : null,
+    aperturasDet: vivo?.aperturas ?? [],
+  };
 }
 
 export interface EventoPresupuesto {
@@ -321,6 +386,8 @@ async function cargarCompleto(id: string, s: Scope): Promise<PresupuestoCompleto
     contenido, origenTipo, origenRef, confirmadaOpcion, confirmadaVia,
     tiempoArmadoSeg, eventos, ...fila
   } = row;
+  // `fila` conserva `links` y `vendedor`: los consume aFila().
+
 
   // El JSON guardado se re-valida al leer: una cotización vieja se normaliza
   // a la forma de hoy en vez de romper el editor con campos faltantes.
@@ -642,11 +709,13 @@ export async function crearPresupuesto(
     const vendedorId = await resolverVendedor(s, parsedInput.data.vendedorId);
 
     const numero = await generarNumeroPresupuesto(prisma);
-    const contenido: ContenidoPresupuesto = {
+    // El HTML del vendedor se limpia ANTES de escribirlo: de la base sale para
+    // el PDF, el email y el link público del pasajero.
+    const contenido: ContenidoPresupuesto = sanitizarContenidoGuardado({
       ...parsed.contenido,
       numero,
       estado: parsed.contenido.estado || "borrador",
-    };
+    });
     const cols = columnasDesdeContenido(contenido);
     const vigenciaHoras = acotarVigencia(contenido.vigencia || VIGENCIA_DEFAULT);
 
@@ -732,7 +801,11 @@ export async function guardarPresupuesto(
     if (!parsed.ok) fallar(parsed.error);
 
     // El número lo manda la base, no el cliente: un editor viejo no lo pisa.
-    const contenido: ContenidoPresupuesto = { ...parsed.contenido, numero: actual.numero };
+    // El HTML de las notas del pasajero pasa por el saneo en cada guardado.
+    const contenido: ContenidoPresupuesto = sanitizarContenidoGuardado({
+      ...parsed.contenido,
+      numero: actual.numero,
+    });
     const cols = columnasDesdeContenido(contenido);
     const vigenciaHoras = acotarVigencia(contenido.vigencia || actual.vigenciaHoras);
 
@@ -935,18 +1008,21 @@ export async function setNotasInternas(
 }
 
 const enviarSchema = z.object({
-  canal: z.enum(["whatsapp", "email", "manual"]),
+  canal: z.enum(["whatsapp", "email", "pdf", "manual"]),
   vigenciaHoras: z.number().int().positive().max(24 * 30),
 });
 
 /**
- * Sella el envío y arranca el reloj de la vigencia. El link público lo emite
- * la próxima ola: acá solo queda registrado que salió y por dónde.
+ * Sella el envío y arranca el reloj de la vigencia.
+ *
+ * Es el camino de "ya se la mandé por otro medio": el vendedor mandó el PDF
+ * por su cuenta y solo quiere que el seguimiento arranque. Igual deja el link
+ * emitido, así el drawer siempre tiene una URL para copiar.
  */
 export async function marcarEnviada(
   id: string,
   input: z.input<typeof enviarSchema>,
-): Promise<Resultado<{ id: string; enviadaAt: Date; expiraAt: Date }>> {
+): Promise<Resultado<{ id: string; enviadaAt: Date; expiraAt: Date; link: LinkEmitido }>> {
   return ejecutar("marcarEnviada", async () => {
     const parsedInput = enviarSchema.safeParse(input);
     if (!parsedInput.success) {
@@ -956,34 +1032,385 @@ export async function marcarEnviada(
 
     const s = await scopeVendedor();
     const row = await cargarPropia(String(id ?? ""), s);
+    const horas = acotarVigencia(vigenciaHoras);
 
-    const ahora = new Date();
-    const expira = new Date(ahora.getTime() + vigenciaHoras * 3_600_000);
+    const sellado = await sellarEnvio(row, canal, horas, s.userId);
 
-    const actualizada = await prisma.presupuesto.update({
-      where: { id: row.id },
-      data: {
-        estado: "ENVIADA",
-        enviadaAt: ahora,
-        expiraAt: expira,
-        vigenciaHoras,
+    return {
+      id: row.id,
+      enviadaAt: sellado.enviadaAt,
+      expiraAt: sellado.expiraAt,
+      link: sellado.link,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Links públicos
+//
+// Un presupuesto tiene UN link vivo a la vez. Reenviar no emite otro: mueve el
+// vencimiento del que ya está y le cambia el canal. Es lo que hace que el
+// seguimiento cierre — si cada envío emitiera un token nuevo, las aperturas
+// quedarían repartidas entre links y el drawer mostraría "1 apertura" cuando el
+// pasajero la abrió seis veces.
+//
+// La emisión en sí (`linkVivo`, `emitirORenovar`) vive en
+// `@/lib/presupuesto/acceso`: la comparten estas actions y la ruta del PDF.
+// ---------------------------------------------------------------------------
+
+/**
+ * Sella el envío y deja el link listo. Es el corazón compartido de
+ * `marcarEnviada`, `emitirLink` y `enviarPorEmail`.
+ *
+ * `enviadaAt` solo se escribe la primera vez de la ronda (borrador o vencida).
+ * Un recordatorio sobre una cotización ya enviada NO lo pisa: si lo pisara,
+ * "tardó 3 h en abrirla" pasaría a ser negativo en cuanto el vendedor insiste.
+ * El reinicio de ronda es tarea de `reactivarPresupuesto`.
+ */
+async function sellarEnvio(
+  row: FilaPropia,
+  canal: string,
+  vigenciaHoras: number,
+  actorId: string,
+  opts: {
+    evento?: string;
+    tituloEvento?: string;
+    detalleExtra?: string;
+    /**
+     * `true` para los sellados que NO son un envío del vendedor (emitir el
+     * link, correr la vigencia desde el modal): ahí el evento "enviada" solo
+     * se anota si el link es nuevo o si el estado se movió. Sin esto, tocar
+     * 24h/48h/72h dejaba una "Enviada por whatsapp" por toque.
+     */
+    soloSiCambia?: boolean;
+  } = {},
+): Promise<{ link: LinkEmitido; enviadaAt: Date; expiraAt: Date }> {
+  const ahora = new Date();
+  const expira = new Date(ahora.getTime() + vigenciaHoras * HORA_MS);
+
+  const arrancaRonda = row.estado === "BORRADOR" || row.estado === "VENCIDA" || !row.enviadaAt;
+  // Una confirmada o una abierta no vuelven a "enviada" porque el vendedor
+  // mande un recordatorio: el estado cuenta lo que pasó, no lo último que se hizo.
+  const estado =
+    row.estado === "BORRADOR" || row.estado === "VENCIDA" ? "ENVIADA" : row.estado;
+
+  const link = await emitirORenovar(row.id, canal, vigenciaHoras, expira);
+
+  const actualizada = await prisma.presupuesto.update({
+    where: { id: row.id },
+    data: {
+      estado,
+      // Volver a mandarla saca la marca manual de "vencida": el vendedor acaba
+      // de decir con los hechos que sigue viva.
+      ...(row.estadoManual === "VENCIDA" ? { estadoManual: null } : {}),
+      ...(arrancaRonda ? { enviadaAt: ahora } : {}),
+      expiraAt: expira,
+      vigenciaHoras,
+    },
+    select: { enviadaAt: true, expiraAt: true },
+  });
+
+  const detalle = `Vigencia ${vigenciaHoras} h · link /c/${link.token}${
+    opts.detalleExtra ? ` · ${opts.detalleExtra}` : ""
+  }`;
+
+  if (!opts.soloSiCambia) {
+    await anotar(row.id, {
+      tipo: opts.evento ?? "enviada",
+      titulo: opts.tituloEvento ?? `Enviada por ${canal}`,
+      detalle,
+      actorId,
+    });
+  } else if (link.nuevo || estado !== row.estado || arrancaRonda) {
+    // Link recién emitido o cotización que recién ahora sale a la cancha: eso
+    // sí es un envío.
+    await anotar(row.id, {
+      tipo: opts.evento ?? "enviada",
+      titulo: opts.tituloEvento ?? `Enviada por ${canal}`,
+      detalle,
+      actorId,
+    });
+  } else if (!row.expiraAt || Math.abs(row.expiraAt.getTime() - expira.getTime()) > 60_000) {
+    // Mismo link, mismo estado: lo único que se movió es el vencimiento.
+    await anotar(row.id, {
+      tipo: "vigencia_extendida",
+      titulo: `Vigencia actualizada a ${vigenciaHoras} h`,
+      detalle,
+      actorId,
+    });
+  }
+  // Si no cambió nada, no se anota nada: la bitácora cuenta hechos.
+
+  return {
+    link,
+    enviadaAt: (actualizada.enviadaAt ?? ahora) as Date,
+    expiraAt: actualizada.expiraAt as Date,
+  };
+}
+
+const emitirLinkSchema = z.object({
+  canal: z.enum(["whatsapp", "email", "pdf", "manual"]),
+  vigenciaHoras: z.number().int().positive().max(VIGENCIA_MAX).optional(),
+});
+
+/**
+ * Devuelve el link público de la cotización, emitiéndolo si hace falta, y de
+ * paso la sella como enviada. Es lo que llama el modal de compartir cuando el
+ * vendedor abre la pestaña de WhatsApp o toca "Generar link".
+ */
+export async function emitirLink(
+  id: string,
+  input: z.input<typeof emitirLinkSchema>,
+): Promise<Resultado<LinkEmitido>> {
+  return ejecutar("emitirLink", async () => {
+    const parsedInput = emitirLinkSchema.safeParse(input);
+    if (!parsedInput.success) {
+      fallar(parsedInput.error.issues[0]?.message ?? "Datos inválidos.");
+    }
+    const { canal } = parsedInput.data;
+
+    const s = await scopeVendedor();
+    const row = await cargarPropia(String(id ?? ""), s);
+    const horas = acotarVigencia(parsedInput.data.vigenciaHoras ?? row.vigenciaHoras);
+
+    // `soloSiCambia`: el modal llama a esta action al generar el link y cada
+    // vez que el vendedor mueve la vigencia. Solo la primera es un envío.
+    const { link } = await sellarEnvio(row, canal, horas, s.userId, { soloSiCambia: true });
+    return link;
+  });
+}
+
+/**
+ * El link vivo, sin emitir nada. Lo usa el drawer para "Copiar link" cuando ya
+ * existe y para mostrar la URL real en la vista previa de escritorio.
+ */
+export async function obtenerLinkActivo(
+  id: string,
+): Promise<Resultado<LinkEmitido | null>> {
+  return ejecutar("obtenerLinkActivo", async () => {
+    const s = await scopeVendedor();
+    const row = await cargarPropia(String(id ?? ""), s);
+    const vivo = await linkVivo(row.id);
+    if (!vivo) return null;
+    return {
+      token: vivo.token,
+      url: urlDeToken(SITE_BASE_URL, vivo.token),
+      expiraAt: vivo.expiraAt,
+      nuevo: false,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Envío por email
+// ---------------------------------------------------------------------------
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EXTRAS_MAX = 5;
+
+function emailValido(v: unknown): string | null {
+  const e = String(v ?? "").trim().toLowerCase();
+  return EMAIL_RE.test(e) && e.length <= 200 ? e : null;
+}
+
+const enviarEmailSchema = z.object({
+  vigenciaHoras: z.number().int().positive().max(VIGENCIA_MAX).optional(),
+  /** Destinatarios sueltos que el vendedor escribió en el modal. */
+  extras: z.array(z.string()).max(20).optional(),
+  /** Recordatorio: mismo email, otro asunto y otro evento. */
+  esRecordatorio: z.boolean().optional(),
+});
+
+export interface EnvioEmailResumen extends LinkEmitido {
+  /** A quién salió, ya validado y deduplicado. */
+  destinatarios: string[];
+  copias: string[];
+  /** `false` cuando no hay RESEND_API_KEY (dev): el link igual quedó emitido. */
+  entregado: boolean;
+  /** `false` si el PDF no se pudo generar: el email salió igual, con el link. */
+  pdfAdjunto: boolean;
+}
+
+/**
+ * Manda la cotización por email con el link adentro y el PDF adjunto.
+ *
+ * El PDF se renderiza acá mismo, contra el MISMO token que viaja en el cuerpo:
+ * el pasajero abre el link y el adjunto y ve exactamente lo mismo. Tarda 3–6 s
+ * y por eso el botón de la UI muestra "Enviando…" ese rato.
+ *
+ * El adjunto nunca frena el envío. Si el servidor no tiene Chromium, si el
+ * render se cuelga o si alguien apagó la función con COTIZADOR_PDF_OFF, el
+ * email sale igual con el link y la bitácora anota "sin PDF adjunto: <código>".
+ * Un pasajero sin PDF pero con la cotización a un toque es infinitamente mejor
+ * que un vendedor mirando un error.
+ *
+ * Si Resend rechaza el envío, el envío NO se sella: la cotización no pasa a
+ * Enviada y el reloj no arranca, así el vendedor reintenta sin que la fila
+ * mienta. El link ya emitido queda y se reutiliza en el reintento.
+ */
+export async function enviarPorEmail(
+  id: string,
+  input: z.input<typeof enviarEmailSchema> = {},
+): Promise<Resultado<EnvioEmailResumen>> {
+  return ejecutar("enviarPorEmail", async () => {
+    const parsedInput = enviarEmailSchema.safeParse(input ?? {});
+    if (!parsedInput.success) {
+      fallar(parsedInput.error.issues[0]?.message ?? "Datos inválidos.");
+    }
+    const esRecordatorio = parsedInput.data.esRecordatorio === true;
+
+    const s = await scopeVendedor();
+    const row = await cargarPropia(String(id ?? ""), s);
+
+    const parsed = parseContenido(row.contenido);
+    if (!parsed.ok) fallar(parsed.error);
+    const q = parsed.contenido;
+
+    const para = emailValido(q.cliente?.email);
+    if (!para) fallar("El cliente no tiene un email válido cargado.");
+
+    const extras = (parsedInput.data.extras ?? [])
+      .map(emailValido)
+      .filter((e): e is string => !!e && e !== para);
+    if (extras.length > EXTRAS_MAX) {
+      fallar(`No más de ${EXTRAS_MAX} destinatarios extra.`);
+    }
+
+    const [vendedor, settings] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: row.vendedorId },
+        select: { name: true, email: true, cargo: true, telefono: true, whatsapp: true, fotoUrl: true, slug: true, linkActivo: true },
+      }),
+      prisma.siteSetting.findMany({
+        where: { key: { in: [...CLAVES_AJUSTES] } },
+        select: { key: true, value: true },
+      }),
+    ]);
+    if (!vendedor) fallar(NO_ENCONTRADA);
+    const ajustes = leerAjustes(settings);
+
+    const horas = acotarVigencia(
+      parsedInput.data.vigenciaHoras ?? q.vigencia ?? row.vigenciaHoras,
+    );
+    const expira = new Date(Date.now() + horas * HORA_MS);
+
+    // El link se emite ANTES de armar el email porque el email lo lleva
+    // adentro; el sellado del envío va después, solo si Resend lo aceptó.
+    const link = await emitirORenovar(row.id, "email", horas, expira);
+
+    // El PDF sale del link recién emitido, así que el adjunto y el cuerpo
+    // apuntan a la misma hoja. Best-effort: cualquier falla se anota y sigue.
+    let adjuntarPdf: EmailAttachment | undefined;
+    let motivoSinPdf: string | null = null;
+    if (await pdfDisponible()) {
+      try {
+        const pdf = await renderizarPdfDeCotizacion({
+          token: link.token,
+          numero: row.numero,
+        });
+        adjuntarPdf = {
+          filename: nombreArchivoPdf(row.numero),
+          content: pdf.toString("base64"),
+          contentType: "application/pdf",
+        };
+      } catch (err) {
+        motivoSinPdf = codigoDeError(err) ?? "DESCONOCIDO";
+        log.warn("presupuesto.email.pdf.fail", {
+          id: row.id,
+          codigo: motivoSinPdf,
+          err,
+        });
+      }
+    } else {
+      motivoSinPdf =
+        process.env.COTIZADOR_PDF_OFF === "1" ? "APAGADO" : "SIN_CHROMIUM";
+    }
+
+    const copiaMaster = emailValido(ajustes.emailCopia);
+    const copias = Array.from(
+      new Set([...(copiaMaster ? [copiaMaster] : []), ...extras]),
+    ).filter((c) => c !== para);
+
+    const plantilla = cotizacionEmail({
+      q,
+      url: link.url,
+      vigenciaHoras: horas,
+      esRecordatorio,
+      saludo: q.mensajeAuto
+        ? renderPlantillaServidor(
+            String(q.mensajeAuto),
+            q.cliente?.nombre,
+            vendedor.slug && vendedor.linkActivo
+              ? `${SITE_BASE_URL}/datos-de-pasajeros/${vendedor.slug}`
+              : null,
+          )
+        : null,
+      vendedor: {
+        nombre: vendedor.name,
+        cargo: vendedor.cargo,
+        email: vendedor.email,
+        tel: vendedor.whatsapp || vendedor.telefono,
+        foto: vendedor.fotoUrl,
       },
-      select: { id: true, enviadaAt: true, expiraAt: true },
     });
 
-    await anotar(row.id, {
-      tipo: "enviada",
-      titulo: `Enviada por ${canal}`,
-      detalle: `Vigencia ${vigenciaHoras} h`,
-      actorId: s.userId,
+    const envio = await sendEmail({
+      to: para,
+      cc: copias,
+      // El pasajero responde al vendedor, no a la casilla de notificaciones.
+      replyTo: vendedor.email,
+      subject: plantilla.subject,
+      html: plantilla.html,
+      text: plantilla.text,
+      attachments: adjuntarPdf ? [adjuntarPdf] : undefined,
+    });
+
+    if (!envio.delivered && envio.provider === "resend") {
+      log.error("presupuesto.email.fail", { id: row.id, error: envio.error });
+      fallar("No pudimos mandar el email. Revisá la dirección y probá de nuevo.");
+    }
+
+    await sellarEnvio(row, "email", horas, s.userId, {
+      evento: esRecordatorio ? "recordatorio" : "enviada",
+      tituloEvento: esRecordatorio
+        ? `Recordatorio por email a ${para}`
+        : `Enviada por email a ${para}`,
+      detalleExtra: motivoSinPdf
+        ? `sin PDF adjunto: ${motivoSinPdf}`
+        : "con PDF adjunto",
     });
 
     return {
-      id: actualizada.id,
-      enviadaAt: actualizada.enviadaAt as Date,
-      expiraAt: actualizada.expiraAt as Date,
+      ...link,
+      expiraAt: expira,
+      destinatarios: [para],
+      copias,
+      entregado: envio.delivered,
+      pdfAdjunto: !!adjuntarPdf,
     };
   });
+}
+
+/**
+ * `{nombre}` y `{link}` del mensaje automático, resueltos del lado del server.
+ * Es la misma regla que `renderPlantilla()` en _mockup/data.js: sin link
+ * cargado la línea entera se va, nunca se imprime "{link}" crudo al pasajero.
+ */
+function renderPlantillaServidor(
+  tpl: string,
+  nombre: unknown,
+  link: string | null,
+): string {
+  const conNombre = tpl.replace(/\{nombre\}/g, String(nombre ?? "").trim());
+  const conLink = link
+    ? conNombre.replace(/\{link\}/g, link)
+    : conNombre
+        .split("\n")
+        .filter((l) => !l.includes("{link}"))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .replace(/\s+$/, "");
+  return conLink.replace(/Hola\s+,/, "Hola,");
 }
 
 /**
@@ -993,12 +1420,15 @@ export async function marcarEnviada(
  */
 export async function reactivarPresupuesto(
   id: string,
-): Promise<Resultado<{ id: string; enviadaAt: Date; expiraAt: Date }>> {
+): Promise<Resultado<{ id: string; enviadaAt: Date; expiraAt: Date; link: LinkEmitido }>> {
   return ejecutar("reactivarPresupuesto", async () => {
     const s = await scopeVendedor();
     const row = await cargarPropia(String(id ?? ""), s);
 
-    const efectivo = row.estadoManual ?? row.estado;
+    // El mismo estado que ve el vendedor en la lista: una ABIERTA cuya
+    // vigencia se cumplió muestra "Vencida" y tiene que poder reactivarse. Con
+    // el estado crudo la UI ofrecía el botón y el server lo rechazaba.
+    const efectivo = estadoEfectivoDe(row);
     if (efectivo !== "VENCIDA" && efectivo !== "ENVIADA") {
       fallar("Solo se reactivan cotizaciones enviadas o vencidas.");
     }
@@ -1006,6 +1436,15 @@ export async function reactivarPresupuesto(
     const ahora = new Date();
     const horas = acotarVigencia(row.vigenciaHoras || VIGENCIA_DEFAULT);
     const expira = new Date(ahora.getTime() + horas * 3_600_000);
+
+    // Ronda nueva: el link viejo se revoca y sale uno nuevo. Reactivar borra el
+    // contador de aperturas, y si el token siguiera vivo las aperturas de la
+    // ronda anterior se le pegarían al link nuevo por el `linkId`.
+    await prisma.presupuestoLink.updateMany({
+      where: { presupuestoId: row.id, revocadoAt: null },
+      data: { revocadoAt: ahora },
+    });
+    const link = await emitirORenovar(row.id, "manual", horas, expira);
 
     const actualizada = await prisma.presupuesto.update({
       where: { id: row.id },
@@ -1015,6 +1454,7 @@ export async function reactivarPresupuesto(
         estadoManual: null,
         enviadaAt: ahora,
         expiraAt: expira,
+        vigenciaHoras: horas,
         aperturas: 0,
         primeraAperturaAt: null,
         ultimaAperturaAt: null,
@@ -1025,6 +1465,7 @@ export async function reactivarPresupuesto(
     await anotar(row.id, {
       tipo: "reactivada",
       titulo: `Reactivada por ${horas} h`,
+      detalle: `Link nuevo /c/${link.token}`,
       actorId: s.userId,
     });
 
@@ -1032,6 +1473,7 @@ export async function reactivarPresupuesto(
       id: actualizada.id,
       enviadaAt: actualizada.enviadaAt as Date,
       expiraAt: actualizada.expiraAt as Date,
+      link,
     };
   });
 }
@@ -1040,7 +1482,7 @@ export async function reactivarPresupuesto(
 export async function extenderVigencia(
   id: string,
   horas: number = VIGENCIA_DEFAULT,
-): Promise<Resultado<{ id: string; expiraAt: Date }>> {
+): Promise<Resultado<{ id: string; expiraAt: Date; link: LinkEmitido }>> {
   return ejecutar("extenderVigencia", async () => {
     const n = Math.round(Number(horas));
     if (!Number.isFinite(n) || n <= 0 || n > 24 * 30) {
@@ -1059,19 +1501,31 @@ export async function extenderVigencia(
     // `vigenciaHoras` es la ventana con la que se envía y con la que reactiva:
     // acumular acá la inflaba sola (48 + 48 + 48…) y una reactivación después
     // de tres extensiones daba una semana de vigencia sin que nadie lo pida.
+    // El vencimiento que manda para el pasajero es el del LINK: la página
+    // pública mira `PresupuestoLink.expiraAt`, no la columna del presupuesto.
+    // Si acá se corriera solo la columna, el drawer diría "quedan 48 h" y el
+    // link seguiría dando "esta cotización venció". Si no hay link vivo (nunca
+    // se compartió, o se revocó al reactivar) se emite uno.
+    const link = await emitirORenovar(row.id, "manual", acotarVigencia(row.vigenciaHoras), expira);
+
     const actualizada = await prisma.presupuesto.update({
       where: { id: row.id },
-      data: { expiraAt: expira },
+      data: {
+        expiraAt: expira,
+        // Extender es decir "sigue viva": la marca manual de vencida se cae.
+        ...(row.estadoManual === "VENCIDA" ? { estadoManual: null } : {}),
+      },
       select: { id: true, expiraAt: true },
     });
 
     await anotar(row.id, {
       tipo: "vigencia_extendida",
       titulo: `Vigencia extendida ${n} h`,
+      detalle: `Link /c/${link.token}`,
       actorId: s.userId,
     });
 
-    return { id: actualizada.id, expiraAt: actualizada.expiraAt as Date };
+    return { id: actualizada.id, expiraAt: actualizada.expiraAt as Date, link };
   });
 }
 

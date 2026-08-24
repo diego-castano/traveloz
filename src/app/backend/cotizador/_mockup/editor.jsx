@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
-  Plane, Building2, Sparkles, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
+  Plane, Building2, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
   StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon
@@ -12,7 +12,7 @@ import {
   MESES, ANIO_ACTUAL, REGIMENES, SUG, MODALIDADES, SUG_ALL,
   CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
   PNR_DEMO, uid, clamp, toISO, parseISO, fmtCorto, money, venta,
-  limpiarPegado, parsePNR,
+  limpiarPegado, parsePNR, fechaDeVuelo, itinerarioMasCompleto,
   habitacionNueva, tarifaNueva, ventaTarifa,
   precioOpcion
 } from "./data";
@@ -394,22 +394,101 @@ function BloqueMensaje({ q, set, refEl }) {
 }
 
 /* ── 5 · Itinerario de vuelos (PNR) ──────────────────────────────────── */
+const LECTOR_URL = "/api/cotizador/leer-itinerario";
+const TEXTO_MAX_LECTOR = 20000;   /* mismo tope que valida el endpoint */
+const LADO_MAX_FOTO = 1600;       /* una captura de reserva no necesita más */
+
+/* La captura viaja como JPEG chico: 1600 px de lado alcanzan para que el
+   modelo lea los horarios y evitan mandar 8 MB de PNG por la red. */
+function comprimirImagen(archivo) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(archivo);
+    const img = new Image();
+    img.onload = () => {
+      const lado = Math.max(img.width, img.height) || 1;
+      const escala = lado > LADO_MAX_FOTO ? LADO_MAX_FOTO / lado : 1;
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.width * escala));
+      c.height = Math.max(1, Math.round(img.height * escala));
+      const ctx = c.getContext("2d");
+      /* pasa con la memoria de video agotada (muchos canvas vivos) o con el
+         canvas bloqueado por anti-fingerprinting: sin esto la promesa quedaba
+         colgada para siempre y el spinner no se iba nunca */
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        reject(new Error("El navegador no pudo preparar la imagen. Probá con otra."));
+        return;
+      }
+      /* un PNG con transparencia sobre JPEG queda negro: fondo blanco primero */
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      const dataUrl = c.toDataURL("image/jpeg", 0.85);
+      const base64 = dataUrl.split(",")[1];
+      if (!base64) { reject(new Error("No se pudo preparar la imagen.")); return; }
+      resolve({ mimeType:"image/jpeg", base64 });
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("No se pudo abrir la imagen.")); };
+    img.src = url;
+  });
+}
+
+/* Una sola puerta al lector. Devuelve los vuelos ya planos o tira el mensaje
+   que mandó el server, que es el que ve el vendedor. */
+async function pedirLectura(payload) {
+  let r;
+  try {
+    r = await fetch(LECTOR_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    throw new Error("No hay conexión con el lector de itinerarios.");
+  }
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j?.ok) throw new Error(j?.error || "No se pudo leer el itinerario.");
+  return Array.isArray(j.vuelos) ? j.vuelos : [];
+}
+
 function BloqueVuelos({ q, set, refEl, toast }) {
   /* el parser traduce el código IATA de dos letras con la tabla Aerolinea */
   const aerolineas = useAerolineas();
   const [estado, setEstado] = useState("idle");  // idle | cargando | error
+  const [errorMsg, setErrorMsg] = useState(null);/* el mensaje real del lector */
+  const [refinando, setRefinando] = useState(false); /* la IA revisa lo del parser */
+  /* itinerario que devolvió la IA y NO se aplicó solo porque el vendedor
+     estuvo editando mientras tanto: queda ofrecido en un chip */
+  const [propuestaIA, setPropuestaIA] = useState(null);
   const [modo, setModo] = useState("texto");     // texto | foto
   const [foto, setFoto] = useState(null);        // { nombre, url }
   const [choque, setChoque] = useState(null);    // fecha del vuelo ≠ fecha de salida
   const fileRef = useRef(null);
+  /* cada lectura lleva número: si el vendedor dispara otra, la vieja se descarta */
+  const pedidoRef = useRef(0);
+  /* los vuelos de ESTE instante: adentro de una promesa el `q` del closure es
+     el de cuando se disparó la lectura y no sirve para saber si cambiaron */
+  const vuelosRef = useRef(q.vuelos);
+  useEffect(() => { vuelosRef.current = q.vuelos; }, [q.vuelos]);
+  const urlFotoRef = useRef(null);
+  useEffect(() => () => { if (urlFotoRef.current) URL.revokeObjectURL(urlFotoRef.current); }, []);
+  const mostrarFoto = (archivo) => {
+    if (urlFotoRef.current) URL.revokeObjectURL(urlFotoRef.current);
+    const url = URL.createObjectURL(archivo);
+    urlFotoRef.current = url;
+    setFoto({ nombre: archivo.name || "captura", url });
+  };
   /* el encabezado sigue a la fecha de salida, así que se acomoda con ella */
   const atarTitulo = (d, iso) => {
     const f = parseISO(iso);
     if (f) { d.titulo.mes = f.getMonth(); d.titulo.anio = f.getFullYear(); }
   };
   const aplicarVuelos = (v) => {
-    const p = v[0];
-    const iso = toISO(new Date(p.mes >= new Date().getMonth() ? ANIO_ACTUAL : ANIO_ACTUAL + 1, p.mes, p.dia));
+    if (!v?.length) return;
+    /* la IA manda la fecha ISO completa; el parser local solo día y mes */
+    const iso = fechaDeVuelo(v[0]);
+    if (!iso) { set((d) => { d.vuelos = v; }); return; }
     if (!q.fechaSalida) {
       set((d) => { d.vuelos = v; d.fechaSalida = iso; atarTitulo(d, iso); });
       toast({ msg:`Fecha de salida tomada del primer vuelo: ${fmtCorto(iso)}`, tone:"ok" });
@@ -420,29 +499,71 @@ function BloqueVuelos({ q, set, refEl, toast }) {
       set((d) => { d.vuelos = v; });
     }
   };
-  const leerFoto = (archivo) => {
-    const nombre = archivo ? archivo.name : "reserva-amadeus.png";
-    const url = archivo ? URL.createObjectURL(archivo) : null;
-    setFoto({ nombre, url });
+  const leerFoto = async (archivo) => {
+    if (!archivo) return;
+    mostrarFoto(archivo);
     setEstado("cargando");
-    setTimeout(() => {
-      const v = parsePNR(PNR_DEMO, aerolineas);
-      set((d) => { d.pnrRaw = PNR_DEMO; });
+    setErrorMsg(null);
+    setPropuestaIA(null);
+    const pedido = ++pedidoRef.current;
+    try {
+      const imagen = await comprimirImagen(archivo);
+      const v = await pedirLectura({ imagen });
+      if (pedido !== pedidoRef.current) return;
+      if (!v.length) throw new Error("No se reconoció ningún vuelo en esa imagen.");
       aplicarVuelos(v);
       setEstado("idle");
       toast({ msg:`Itinerario leído desde la imagen — ${v.length} tramos`, tone:"ok" });
-    }, 1400);
+    } catch (e) {
+      if (pedido !== pedidoRef.current) return;
+      setErrorMsg(e?.message || "No se pudo leer la imagen.");
+      setEstado("error");
+    }
   };
-  const convertir = () => {
-    if (!q.pnrRaw.trim()) return;
-    setEstado("cargando");
-    setTimeout(() => {
-      const v = parsePNR(q.pnrRaw, aerolineas);
-      if (!v.length) { setEstado("error"); return; }           // el pegado NO se pierde
-      aplicarVuelos(v);
+  /* Convertir: el parser local contesta al instante y la IA revisa en paralelo.
+     Si el regex no reconoce nada, esperamos a la IA con el spinner puesto. */
+  const convertir = async () => {
+    const crudo = q.pnrRaw || "";
+    if (!crudo.trim()) return;
+    const local = parsePNR(crudo, aerolineas);
+    const pedido = ++pedidoRef.current;
+    setErrorMsg(null);
+    setPropuestaIA(null);
+    /* foto del itinerario tal como queda al disparar la lectura. La IA tarda
+       unos segundos y el vendedor sigue trabajando: si en el medio corrigió un
+       horario a mano, la respuesta que llega después NO se la puede comer. */
+    const antes = JSON.stringify(local.length ? local : q.vuelos);
+    if (local.length) {
+      aplicarVuelos(local);
       setEstado("idle");
-      toast({ msg:`${v.length} tramos convertidos al formato de la marca`, tone:"ok" });
-    }, 620);
+      setRefinando(true);
+      toast({ msg:`${local.length} tramos convertidos al formato de la marca`, tone:"ok" });
+    } else {
+      setEstado("cargando");
+    }
+    try {
+      const ia = await pedirLectura({ texto: crudo.slice(0, TEXTO_MAX_LECTOR) });
+      if (pedido !== pedidoRef.current) return;
+      setRefinando(false);
+      if (!ia.length) throw new Error("No se reconoció ningún tramo en ese texto.");
+      if (itinerarioMasCompleto(local, ia)) {
+        if (JSON.stringify(vuelosRef.current) !== antes) {
+          /* hubo edición a mano: la IA queda ofrecida, no impuesta */
+          setPropuestaIA(ia);
+        } else {
+          aplicarVuelos(ia);
+          if (!local.length) toast({ msg:`Itinerario leído — ${ia.length} tramos`, tone:"ok" });
+        }
+      }
+      setEstado("idle");
+    } catch (e) {
+      if (pedido !== pedidoRef.current) return;
+      setRefinando(false);
+      /* si el parser ya cargó los tramos, la falla de la IA no molesta a nadie */
+      if (local.length) { setEstado("idle"); return; }
+      setErrorMsg(e?.message || "No se pudo leer el itinerario.");
+      setEstado("error");
+    }
   };
   /* la cabina y el equipaje escriben el ítem de aéreo de los servicios incluidos,
      aunque el vendedor lo haya editado a mano: le reponemos el flag y lo vuelve a seguir */
@@ -463,7 +584,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
     e.stopPropagation();   /* si vino del textarea, que el contenedor no la lea de nuevo */
     setModo("foto");
     toast({ msg:"Imagen pegada — leyendo el itinerario…", tone:"ok" });
-    leerFoto(f);
+    void leerFoto(f);
     return true;
   };
   return (
@@ -484,18 +605,24 @@ function BloqueVuelos({ q, set, refEl, toast }) {
         <textarea className="in mono" rows={q.pnrRaw ? 5 : 3} value={q.pnrRaw}
           style={{ fontSize:11.5, lineHeight:1.55, background: estado === "error" ? "rgba(244,62,85,.07)" : "var(--field)" }}
           placeholder="Pegá acá el PNR tal como sale del GDS… (igual que en el sistema actual)"
-          onChange={(e) => { set((d) => { d.pnrRaw = e.target.value; }); setEstado("idle"); }}
+          onChange={(e) => { set((d) => { d.pnrRaw = e.target.value; }); setEstado("idle"); setErrorMsg(null); }}
           onPaste={(e) => { if (pegarImagen(e)) return;
             e.preventDefault(); const t = e.clipboardData.getData("text/plain");
-            set((d) => { d.pnrRaw = t; }); setEstado("idle"); }} />
+            set((d) => { d.pnrRaw = t; }); setEstado("idle"); setErrorMsg(null); }} />
       ) : (
         <>
           <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }}
-            onChange={(e) => e.target.files?.[0] && leerFoto(e.target.files[0])} />
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void leerFoto(f); }} />
           {estado === "cargando" ? (
             <div className="dz" style={{ cursor:"default" }}>
+              {foto?.url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={foto.url} alt="" style={{ maxHeight:96, maxWidth:"100%", borderRadius:9,
+                  margin:"0 auto 9px", display:"block", objectFit:"contain",
+                  border:"1px solid var(--hair-soft)" }} />
+              )}
               <Loader2 size={20} className="spin" style={{ color:"var(--violet)", marginBottom:8 }} />
-              <div style={{ fontSize:13, fontWeight:600, color:"var(--n600)" }}>Leyendo la reserva…</div>
+              <div style={{ fontSize:13, fontWeight:600, color:"var(--n600)" }}>Leyendo el itinerario…</div>
               <div style={{ fontSize:11.5, color:"var(--n400)", marginTop:3 }}>{foto?.nombre}</div>
             </div>
           ) : (
@@ -506,19 +633,19 @@ function BloqueVuelos({ q, set, refEl, toast }) {
               <div style={{ fontSize:11.5, color:"var(--n400)", marginTop:3 }}>Captura de Amadeus, foto del papel, lo que tengas — lo leemos igual</div>
               <div style={{ fontSize:11, color:"var(--n400)", marginTop:4 }}>
                 También podés pegar una captura con <span className="kbd">Ctrl</span>+<span className="kbd">V</span> — la IA la lee igual que el texto.</div>
-              <div style={{ marginTop:10 }}>
-                <span className="chip" style={{ height:27, fontSize:11.5 }}
-                  onClick={(e) => { e.stopPropagation(); leerFoto(null); }}>
-                  <Sparkles size={11} /> Probar con una foto de ejemplo</span>
-              </div>
             </button>
           )}
-          {foto && estado === "idle" && (
+          {foto && estado === "idle" && q.vuelos.length > 0 && (
             <div className="a-pop" style={{ display:"flex", alignItems:"center", gap:9, marginTop:9, padding:"8px 11px",
               borderRadius:11, background:"rgba(59,191,173,.07)", border:"1px solid rgba(59,191,173,.2)" }}>
+              {foto.url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={foto.url} alt="" style={{ width:34, height:34, borderRadius:7, objectFit:"cover", flexShrink:0 }} />
+              )}
               <CheckCheck size={14} style={{ color:"var(--teal-2)" }} />
-              <span style={{ fontSize:12, color:"var(--teal-3)", fontWeight:600 }}>{foto.nombre}</span>
-              <span style={{ fontSize:11.5, color:"var(--n400)" }}>· itinerario extraído</span>
+              <span style={{ fontSize:12, color:"var(--teal-3)", fontWeight:600, minWidth:0, overflow:"hidden",
+                textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{foto.nombre}</span>
+              <span style={{ fontSize:11.5, color:"var(--n400)", flexShrink:0 }}>· itinerario extraído</span>
             </div>
           )}
         </>
@@ -535,8 +662,20 @@ function BloqueVuelos({ q, set, refEl, toast }) {
         {modo === "texto" && (
         <Btn variant="p" size="sm" onClick={convertir} disabled={!q.pnrRaw.trim() || estado === "cargando"}>
           {estado === "cargando" ? <Loader2 size={13} className="spin" /> : <Zap size={13} />}
-          {estado === "cargando" ? "Convirtiendo…" : "Convertir itinerario"}
+          {estado === "cargando" ? "Leyendo el itinerario…" : "Convertir itinerario"}
         </Btn>
+        )}
+        {refinando && (
+          <span style={{ display:"inline-flex", alignItems:"center", gap:6, fontSize:11.5, color:"var(--n400)" }}>
+            <Loader2 size={12} className="spin" style={{ color:"var(--violet)" }} />
+            La IA está revisando el itinerario…
+          </span>
+        )}
+        {propuestaIA && (
+          <button className="chip" title="Reemplaza los tramos cargados por los que leyó la IA"
+            onClick={() => { aplicarVuelos(propuestaIA); setPropuestaIA(null); }}>
+            <Zap size={11} /> La IA leyó {propuestaIA.length} tramos · Aplicar
+          </button>
         )}
         {modo === "texto" && !q.pnrRaw && (
           <Btn size="sm" onClick={() => set((d) => { d.pnrRaw = PNR_DEMO; })}>Pegar ejemplo</Btn>
@@ -553,7 +692,10 @@ function BloqueVuelos({ q, set, refEl, toast }) {
                 const cpVuelos = JSON.parse(JSON.stringify(q.vuelos));
                 const cpPnr = q.pnrRaw;
                 set((d) => { d.vuelos = []; d.pnrRaw = ""; });
-                setEstado("idle");
+                /* la captura se saca de pantalla: si no se revoca, el blob
+                   queda en memoria hasta que se recarga la página */
+                if (urlFotoRef.current) { URL.revokeObjectURL(urlFotoRef.current); urlFotoRef.current = null; }
+                setEstado("idle"); setErrorMsg(null); setFoto(null); setPropuestaIA(null);
                 toast({ msg:"Itinerario borrado", tone:"warn",
                   undo:() => set((d) => { d.vuelos = cpVuelos; d.pnrRaw = cpPnr; }) });
               }}>
@@ -568,13 +710,21 @@ function BloqueVuelos({ q, set, refEl, toast }) {
           background:"rgba(244,62,85,.07)", border:"1px solid rgba(244,62,85,.24)", borderRadius:11 }}>
           <AlertCircle size={14} style={{ color:"var(--coral)", flexShrink:0, marginTop:1 }} />
           <div style={{ fontSize:12, color:"var(--ink-coral)", flex:1 }}>
-            <strong>No se reconoció ningún tramo en ese texto.</strong> Lo pegado quedó intacto arriba:
-            corregilo y volvé a convertir, o cargá los tramos a mano.
-            <div style={{ marginTop:7 }}>
+            <strong>{errorMsg || "No se reconoció ningún tramo en ese texto."}</strong>{" "}
+            {modo === "texto"
+              ? "Lo pegado quedó intacto arriba: corregilo y volvé a convertir, o cargá los tramos a mano."
+              : "Probá con otra captura, pegá el texto del GDS, o cargá los tramos a mano."}
+            <div style={{ marginTop:7, display:"flex", gap:6, flexWrap:"wrap" }}>
               <Btn size="xs" onClick={() => { set((d) => { d.vuelos.push({ id:uid("vl"), cia:"LA", nro:"0000",
-                aerolinea:"LATAM", dia:1, mes:0, origen:"MVD", destino:"GRU", salida:"08:00", llegada:"09:40" }); }); setEstado("idle"); }}>
+                aerolinea:"LATAM", dia:1, mes:0, origen:"MVD", destino:"GRU", salida:"08:00", llegada:"09:40" }); });
+                setEstado("idle"); setErrorMsg(null); }}>
                 <Plus size={11} /> Cargar a mano
               </Btn>
+              {modo === "foto" && (
+                <Btn size="xs" onClick={() => { setEstado("idle"); setErrorMsg(null); fileRef.current?.click(); }}>
+                  <RefreshCw size={11} /> Probar con otra imagen
+                </Btn>
+              )}
             </div>
           </div>
         </div>

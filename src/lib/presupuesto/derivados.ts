@@ -24,6 +24,7 @@ type TarifaLike = {
 
 type OpcionLike = {
   neto?: unknown;
+  venta?: unknown;
   factor?: unknown;
   habitaciones?: Array<{ tarifas?: TarifaLike[] } | null | undefined>;
 } | null | undefined;
@@ -61,8 +62,12 @@ export function ventaTarifa(t: TarifaLike, factorFallback?: unknown): number {
 /** Precio principal de una opción: primera tarifa de la primera habitación. */
 export function precioOpcion(o: OpcionLike): number {
   const t = o?.habitaciones?.[0]?.tarifas?.[0];
+  if (t) return ventaTarifa(t, o?.factor);
+  // Opción ya resuelta (la que arma contenidoPublico para el pasajero): no
+  // tiene neto ni factor, el precio viene calculado. Mismo orden que data.js.
+  if (o?.venta !== null && o?.venta !== undefined && o?.venta !== "") return num(o.venta);
   // Sin habitaciones cae al modelo viejo (opciones importadas de un paquete).
-  return t ? ventaTarifa(t, o?.factor) : venta(o?.neto, o?.factor);
+  return venta(o?.neto, o?.factor);
 }
 
 /**

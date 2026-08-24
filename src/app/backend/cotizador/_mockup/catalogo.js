@@ -675,19 +675,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
 
 /* Catálogo vacío: lo usa el contexto antes de que el provider monte, así
    ningún consumidor tiene que chequear `catalogo &&` en cada línea. */
-export const CATALOGO_VACIO = {
-  paquetes: [],
-  hoteles: [],
-  ciudades: [],
-  regionesIA: [],
-  hotelById: () => undefined,
-  hotelesCotizadosEn: () => [],
-  registrarHotelLibre: () => null,
-  esFavorito: () => false,
-  toggleFavorito: () => false,
-  aplicarFavoritos: () => {},
-  favoritos: [],
-  regimenTexto: () => "",
-  cargando: true,
-  progreso: "Cargando catálogo…",
-};
+/* Se mudó a ./contexto.js (el link público lo necesita sin arrastrar los
+   providers del panel). Se re-exporta acá para no romper a quien ya lo
+   importaba desde este módulo. */
+export { CATALOGO_VACIO } from "./contexto";

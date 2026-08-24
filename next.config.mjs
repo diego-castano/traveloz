@@ -37,6 +37,23 @@ const cspBackend = csp
   )
   .replace("font-src 'self' data:", "font-src 'self' data: https://fonts.gstatic.com");
 
+// Variante para el link publico de cotizacion (/c/:path*). Suma Google Fonts
+// como el panel y RESTA lo que ahi no pinta nada: GTM, Google Analytics,
+// Facebook Pixel y Metricool. La hoja del pasajero no mide nada — cuanto abrio
+// y hasta donde bajo lo registra nuestro propio beacon (/api/cotizador/
+// apertura) — y en esa pagina hay nombre, itinerario y precio de una persona:
+// no tiene por que pasar por un tercero. 'self' y 'unsafe-inline' se quedan
+// porque Next inyecta sus scripts de hidratacion inline y sin nonce.
+const cspPublicoCotizacion = cspBackend
+  .replace(
+    /script-src [^;]+/,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  )
+  // Sin pixel no hace falta el iframe ni el POST de fallback a facebook.com, y
+  // esta pagina no embebe mapas: se cierran las dos puertas.
+  .replace(/frame-src [^;]+/, "frame-src 'none'")
+  .replace(/form-action [^;]+/, "form-action 'self'");
+
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -59,6 +76,11 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
+    // puppeteer-core solo lo usa el server (src/lib/pdf.ts, la ruta del PDF y
+    // la action del email). Se marca como externo para que webpack no intente
+    // empaquetarlo: adentro tiene requires dinámicos y un `import()` opcional
+    // de Playwright que en el bundle terminan en warnings o en un módulo roto.
+    serverComponentsExternalPackages: ["puppeteer-core"],
     // Enable the /instrumentation.ts hook so we can warm the Prisma connection
     // pool on server boot and avoid a slow first-query penalty.
     instrumentationHook: true,
@@ -115,6 +137,18 @@ const nextConfig = {
         source: "/backend/:path*",
         headers: [
           { key: "Content-Security-Policy", value: cspBackend },
+        ],
+      },
+      {
+        // Links públicos de cotización (/c/<token>). La pagina monta la misma
+        // ficha del pasajero que el cotizador y le inyecta el MISMO CSS, con su
+        // @import a Google Fonts. Sin esta ampliacion la CSP del sitio bloquea
+        // fonts.googleapis.com y la cotizacion le llega al pasajero en la
+        // tipografia del sistema. Lo que NO hereda del panel son los origenes
+        // de medicion (GTM, GA, Facebook, Metricool): ver cspPublicoCotizacion.
+        source: "/c/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: cspPublicoCotizacion },
         ],
       },
       {

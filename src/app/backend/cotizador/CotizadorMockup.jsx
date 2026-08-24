@@ -8,12 +8,13 @@ import {
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import {
-  ANIO_ACTUAL, registrarVendedores, uid, toISO, addDays, parseISO, ESTADOS,
+  ANIO_ACTUAL, registrarVendedores, uid, toISO, parseISO, ESTADOS,
   serviciosDefault, habitacionNueva, ventaTarifa, PNR_DEMO, parsePNR, FACTOR_DEFAULT,
 } from "./_mockup/data";
 import { CotizadorCtx, indexarAeropuertos, indexarAerolineas } from "./_mockup/contexto";
 import { useCatalogoCotizador } from "./_mockup/catalogo";
 import { filaDesdePresupuesto } from "./_mockup/adaptadores";
+import { calcularTramos } from "./_mockup/tramos";
 import {
   listarPresupuestos, obtenerPresupuesto, crearPresupuesto, guardarPresupuesto,
   duplicarPresupuesto, buscarEnHistorial,
@@ -608,18 +609,10 @@ export default function Cotizador({
   }, []);
 
 
-  /* ── propagación de fechas ─────────────────────────────────────────── */
-  const tramos = useMemo(() => {
-    let acum = 0;
-    return q.destinos.map((d) => {
-      const auto = q.fechaSalida ? addDays(q.fechaSalida, acum) : "";
-      const checkin = d.checkinManual || auto;
-      const out = { id:d.id, ciudad:d.ciudad, noches:d.noches,
-        checkin, checkout: checkin ? addDays(checkin, d.noches) : "",
-        manual: !!d.checkinManual && d.checkinManual !== auto };
-      acum += d.noches; return out;
-    });
-  }, [q.destinos, q.fechaSalida]);
+  /* ── propagación de fechas ───────────────────────────────────────────
+     El cálculo vive en ./_mockup/tramos.js: lo comparten el editor, la vista
+     previa del drawer y el link público del pasajero. */
+  const tramos = useMemo(() => calcularTramos(q), [q.destinos, q.fechaSalida]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const hayManual = tramos.some((t) => t.manual);
   const repropagar = () => { set((d) => { d.destinos.forEach((x) => { x.checkinManual = null; }); });
@@ -1195,7 +1188,7 @@ export default function Cotizador({
       )}
 
       {compartir && (
-        <ModalCompartir q={q} presupuestoId={presupuestoId} toast={toast}
+        <ModalCompartir q={q} presupuestoId={presupuestoId} vendedor={vendedor} toast={toast}
           onClose={() => setCompartir(false)}
           onPreview={() => { setCompartir(false); setPrev("cel"); }}
           onImprimir={() => { setCompartir(false); setImprimir(true); }}

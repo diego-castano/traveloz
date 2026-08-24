@@ -113,7 +113,9 @@ function horasDeVigencia(r) {
    cuánto le queda de vigencia al link. */
 function semaforo(r) {
   if (r.estado === "vencida")    return { c:"#F43E55", l:"Vencida",
-    d:"El link venció sin apertura. Reactivalo con un recordatorio o marcá el estado a mano si el seguimiento sigue por otro canal." };
+    d: r.aperturas > 0
+      ? `La abrió ${r.aperturas === 1 ? "una vez" : r.aperturas + " veces"} pero el link ya venció: si vuelve a entrar se encuentra con la pantalla de vencida. Extendé la vigencia o reactivala.`
+      : "El link venció sin apertura. Reactivalo con un recordatorio o marcá el estado a mano si el seguimiento sigue por otro canal." };
   if (r.estado === "borrador")   return { c:"#B0B4CD", l:"Borrador",
     d:"Todavía no se envió al pasajero. El semáforo arranca a correr cuando la compartas." };
   if (r.estado === "confirmada") return { c:"#2A9E8E", l:"Confirmada",
@@ -200,7 +202,12 @@ function etiquetaTarifa(t) { return t.tipo === "Otro" ? (t.tipoLibre?.trim() || 
 /* precio principal de una opción: primera tarifa de la primera habitación */
 function precioOpcion(o) {
   const t = o?.habitaciones?.[0]?.tarifas?.[0];
-  return t ? ventaTarifa(t, o.factor) : venta(o?.neto, o?.factor);   // fallback al modelo viejo
+  if (t) return ventaTarifa(t, o.factor);
+  /* La ficha del pasajero recibe el contenido recortado por contenidoPublico():
+     ahí no hay neto ni factor, el precio de la opción ya viene resuelto. En el
+     editor esta rama no corre nunca porque `venta` no existe en las opciones. */
+  if (o?.venta !== null && o?.venta !== undefined && o?.venta !== "") return Number(o.venta) || 0;
+  return venta(o?.neto, o?.factor);   // fallback al modelo viejo
 }
 
 /* Normaliza cualquier pegado a texto plano — mata el problema de tipografías */
@@ -240,6 +247,37 @@ function parsePNR(raw, aerolineas = {}) {
     });
   }
   return out;
+}
+
+/* ── adaptador del lector con IA ─────────────────────────────────────────
+   `POST /api/cotizador/leer-itinerario` devuelve los vuelos ya planos (los
+   arma `trayectosAVuelos` en src/lib/presupuesto/itinerario.ts) con un campo
+   de más: `fecha` en ISO, que el regex de `parsePNR` no puede sacar porque el
+   GDS escribe "01OCT" sin año. Estas dos funciones son el puente. */
+
+const ES_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/* Fecha de un vuelo: la ISO si la trae, y si no la próxima ocurrencia futura
+   del día/mes, que es lo que asumía el editor cuando solo existía el parser. */
+function fechaDeVuelo(v) {
+  if (!v) return "";
+  const f = String(v.fecha || "");
+  if (ES_ISO.test(f)) return f;
+  const dia = Number(v.dia), mes = Number(v.mes);
+  if (!Number.isFinite(dia) || !Number.isFinite(mes)) return "";
+  const anio = mes >= new Date().getMonth() ? ANIO_ACTUAL : ANIO_ACTUAL + 1;
+  return toISO(new Date(anio, mes, dia));
+}
+
+/* ¿La lectura de la IA le gana a la del parser local? Gana si encontró más
+   tramos, o los mismos pero con la fecha completa. Empate = se queda lo que ya
+   está aplicado, así el itinerario no parpadea delante del vendedor. */
+function itinerarioMasCompleto(local, ia) {
+  if (!Array.isArray(ia) || !ia.length) return false;
+  if (!Array.isArray(local) || !local.length) return true;
+  if (ia.length !== local.length) return ia.length > local.length;
+  const conFecha = (l) => l.filter((v) => ES_ISO.test(String(v?.fecha || ""))).length;
+  return conFecha(ia) > conFecha(local);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -436,12 +474,18 @@ const ESTADOS = {
   vencida:    { l:"Vencida",    tone:"coral",  Icon:Clock3 },
   confirmada: { l:"Confirmada", tone:"teal",   Icon:CheckCheck },
 };
-/* Vencida automática: enviada, sin abrir y con la vigencia cumplida — salvo
-   que el vendedor haya pisado el estado a mano. No se persiste: se calcula
-   contra `expiraAt`, que es lo que guarda el server al marcarla enviada. */
+/* Vencida automática: enviada o abierta con la vigencia cumplida — salvo que
+   el vendedor haya pisado el estado a mano. No se persiste: se calcula contra
+   `expiraAt`, que es lo que guarda el server al emitir el link.
+
+   Una ABIERTA también vence: desde que existe el link público, "abierta" quiere
+   decir que el pasajero entró, no que el link siga sirviendo. Si la vigencia se
+   cumplió, la próxima vez que toque el link se va a encontrar con la pantalla
+   de vencida, y el seguimiento tiene que decir lo mismo que ve el pasajero.
+   Misma regla que `estadoEfectivoDe` en presupuesto.actions.ts. */
 function estadoEfectivo(r) {
   if (r.estadoManual) return r.estadoManual;
-  if (r.estado === "enviada" && !r.aperturas) {
+  if (r.estado === "enviada" || r.estado === "abierta") {
     const restan = horasDeVigencia(r);
     if (restan != null && restan <= 0) return "vencida";
   }
@@ -456,6 +500,7 @@ export {
   registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,
   uid, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
+  fechaDeVuelo, itinerarioMasCompleto,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,
   /* v2B */
