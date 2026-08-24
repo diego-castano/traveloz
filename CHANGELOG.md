@@ -48,7 +48,24 @@ del catálogo, CRM).
   los nombres unidos por "+" se muestra solo con la card cerrada; abierta, el
   detalle ya los lista.
 
+**El confirmador cierra el circuito con los datos de pasajeros.** Cuando el
+pasajero toca "Confirmar esta opción" en su cotización, además del aviso de
+que el vendedor lo contacta, aparece el botón "Cargar los datos de los
+pasajeros" con el link personal del vendedor: el mismo flujo que pidió el
+cliente ("apretás confirmar, ya te pido datos de pasajero").
+
+**Los logos de pago son los del sitio.** En vez de chips de texto, la
+cotización muestra los mismos logos que publica traveloz.com.uy en el detalle
+de paquete: Visa, OCA, Mastercard y American Express; Santander, Itaú, BBVA
+y Banco República.
+
 ### Arreglado
+
+**Cambiar el mes arriba no movía la fecha de salida.** Era el bug que vieron
+en "solo vuelos": el PNR fija la fecha (1 de octubre) y al elegir después otro
+mes en el encabezado, la fecha quedaba clavada. Ahora mes, año y fecha de
+salida van atados en las dos direcciones: cambiás el mes o el año y la fecha
+se acomoda conservando el día; cambiás la fecha y el encabezado la sigue.
 
 **El PDF salía "sin estilos".** Chrome apaga fondos y degradés al imprimir,
 así que la vista de impresión quedaba plana. Ahora se fuerzan los colores en

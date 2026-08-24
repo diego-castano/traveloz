@@ -10,6 +10,20 @@ import {
 } from "./data";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
 
+/* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
+const PAGO_TARJETAS = [
+  { src:"/site/img/visa.png",       alt:"Visa" },
+  { src:"/site/img/dca.png",        alt:"OCA" },
+  { src:"/site/img/mastercard.png", alt:"Mastercard" },
+  { src:"/site/img/ae.png",         alt:"American Express" },
+];
+const PAGO_BANCOS = [
+  { src:"/site/img/santander.png",  alt:"Santander" },
+  { src:"/site/img/itau.png",       alt:"Itaú" },
+  { src:"/site/img/bbva.png",       alt:"BBVA" },
+  { src:"/site/img/banco.png",      alt:"Banco República" },
+];
+
 /* ═══════════════════════════════════════════════════════════════════════════
    SALIDA AL PASAJERO  ·  mobile-first
    Lo que se comparte por WhatsApp. Las notas internas NUNCA llegan acá.
@@ -518,6 +532,19 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                               <div style={{ fontSize:fz(11, 11.5), color:"#3D4066", lineHeight:1.5, marginTop:2 }}>
                                 {V.nombre.split(" ")[0]} te contacta a la brevedad para coordinar la seña y el pago.
                               </div>
+                              {V.linkDatos && (
+                                <>
+                                  <a href={`https://${V.linkDatos}`} target="_blank" rel="noreferrer"
+                                    style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                                      marginTop:10, padding:"11px 14px", borderRadius:12, color:"#fff",
+                                      fontSize:fz(12.5, 13), fontWeight:800, background:grad, textDecoration:"none" }}>
+                                    <Link2 size={15} /> Cargar los datos de los pasajeros
+                                  </a>
+                                  <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5", textAlign:"center", marginTop:6 }}>
+                                    Nombre, documento y pasaporte de cada pasajero, tal cual figuran en el documento de viaje. Con eso arranca la reserva.
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         ) : (
@@ -577,25 +604,31 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
           </ul>
         </div>
 
-        {/* pago */}
+        {/* pago — logos reales del sitio público, en cajas uniformes */}
         <SecTitulo texto="Formas de pago" color={G.b} />
         <div style={{ marginBottom:22 }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Tarjetas de crédito</div>
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
-            {["Visa","Mastercard","OCA","Amex"].map((b) => (
-              <div key={b} style={{ height:32, minWidth:66, padding:"0 11px", borderRadius:9,
-                border:"1px solid rgba(17,17,36,.09)", background:"#fff", display:"grid", placeItems:"center",
-                fontSize:fz(10.5, 11), fontWeight:700, color:"#3D4066" }}>{b}</div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
+            {PAGO_TARJETAS.map((l) => (
+              <div key={l.src} style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
+                width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
+                border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
+                <img src={l.src} alt={l.alt} loading="lazy"
+                  style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", display:"block" }} />
+              </div>
             ))}
           </div>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Transferencia bancaria</div>
-          <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-            {["BROU","Itaú","Santander","BBVA"].map((b) => (
-              <div key={b} style={{ height:32, minWidth:66, padding:"0 11px", borderRadius:9,
-                border:"1px solid rgba(17,17,36,.09)", background:"#fff", display:"grid", placeItems:"center",
-                fontSize:fz(10.5, 11), fontWeight:700, color:"#3D4066" }}>{b}</div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+            {PAGO_BANCOS.map((l) => (
+              <div key={l.src} style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
+                width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
+                border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
+                <img src={l.src} alt={l.alt} loading="lazy"
+                  style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", display:"block" }} />
+              </div>
             ))}
           </div>
         </div>

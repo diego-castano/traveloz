@@ -150,6 +150,14 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
     const n = r.current; if (!n) return;
     (n.matches?.("button,input,select") ? n : n.querySelector("button,input,select"))?.focus();
   });
+  /* si ya hay fecha de salida, seguir al mes/año elegido conservando el día */
+  const moverSalida = (d, mes, anio) => {
+    const f = parseISO(d.fechaSalida); if (!f) return;
+    const m = mes ?? f.getMonth(), y = anio ?? f.getFullYear();
+    if (m === f.getMonth() && y === f.getFullYear()) return;
+    const ultimo = new Date(y, m + 1, 0).getDate();
+    d.fechaSalida = toISO(new Date(y, m, Math.min(f.getDate(), ultimo)));
+  };
   const titulo = [q.titulo.destino || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : "Mes", q.titulo.anio || "Año"].join(" · ");
   const previa = `${q.titulo.destino || "Destino"}, ${q.titulo.mes != null ? MESES[q.titulo.mes] : "Mes"} ${q.titulo.anio || ""}`.trim();
 
@@ -178,7 +186,7 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
                 background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:13, padding:7,
                 boxShadow:"0 22px 50px -14px rgba(17,17,36,.28)", display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:4 }}>
                 {MESES.map((m, i) => (
-                  <button key={m} onClick={() => { set((d) => { d.titulo.mes = i; }); setOpenMes(false); saltar(anioRef); }}
+                  <button key={m} onClick={() => { set((d) => { d.titulo.mes = i; moverSalida(d, i, d.titulo.anio); }); setOpenMes(false); saltar(anioRef); }}
                     style={{ padding:"7px 4px", borderRadius:8, fontSize:11.5, fontWeight:600,
                       background: q.titulo.mes === i ? "linear-gradient(145deg,#45D4C0,#2A9E8E)" : "transparent",
                       color: q.titulo.mes === i ? "#fff" : "var(--n600)" }}>{m.slice(0,3)}</button>
@@ -192,7 +200,7 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
           <div style={{ display:"flex", gap:6 }}>
             {anios.map((a, ai) => (
               <button key={a} ref={ai === 0 ? anioRef : null}
-                onClick={() => { set((d) => { d.titulo.anio = a; }); saltar(fechaRef); }}
+                onClick={() => { set((d) => { d.titulo.anio = a; moverSalida(d, d.titulo.mes, a); }); saltar(fechaRef); }}
                 className="in in-lg" style={{ flex:1, fontWeight:700, padding:0,
                   background: q.titulo.anio === a ? "linear-gradient(145deg,#45D4C0,#2A9E8E)" : "var(--field)",
                   color: q.titulo.anio === a ? "#fff" : "var(--n500)",
@@ -248,7 +256,7 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
 
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
         <Zap size={11} style={{ color:"var(--teal-2)" }} />
-        El mes y el año se atan a la fecha de salida: si la cambiás, el encabezado se acomoda solo.
+        Mes, año y fecha de salida van atados: cambiá cualquiera y los otros se acomodan.
       </div>
 
       {hayManual && (
