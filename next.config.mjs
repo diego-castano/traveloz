@@ -28,23 +28,20 @@ const csp = [
   "object-src 'none'",
 ].join("; ");
 
-// Variante de la CSP para todo el panel (/backend/*): suma los dos origenes de
-// Google Fonts. Todo lo demas queda igual que la CSP del sitio publico.
-const cspBackend = csp
-  .replace(
-    "style-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  )
-  .replace("font-src 'self' data:", "font-src 'self' data: https://fonts.gstatic.com");
-
-// Variante para el link publico de cotizacion (/c/:path*). Suma Google Fonts
-// como el panel y RESTA lo que ahi no pinta nada: GTM, Google Analytics,
-// Facebook Pixel y Metricool. La hoja del pasajero no mide nada — cuanto abrio
-// y hasta donde bajo lo registra nuestro propio beacon (/api/cotizador/
-// apertura) — y en esa pagina hay nombre, itinerario y precio de una persona:
-// no tiene por que pasar por un tercero. 'self' y 'unsafe-inline' se quedan
-// porque Next inyecta sus scripts de hidratacion inline y sin nonce.
-const cspPublicoCotizacion = cspBackend
+// Variante para el link publico de cotizacion (/c/:path*). RESTA lo que ahi no
+// pinta nada: GTM, Google Analytics, Facebook Pixel y Metricool. La hoja del
+// pasajero no mide nada — cuanto abrio y hasta donde bajo lo registra nuestro
+// propio beacon (/api/cotizador/apertura) — y en esa pagina hay nombre,
+// itinerario y precio de una persona: no tiene por que pasar por un tercero.
+// 'self' y 'unsafe-inline' se quedan porque Next inyecta sus scripts de
+// hidratacion inline y sin nonce.
+//
+// Hasta 2026-08 existia ademas una CSP propia para todo /backend/* que abria
+// fonts.googleapis.com y fonts.gstatic.com, porque el CSS del cotizador traia
+// un @import a Google Fonts. Las tres familias ahora se sirven desde
+// public/fonts/cotizador (ver styles.js), asi que 'self' alcanza y el panel
+// vuelve a la CSP del sitio.
+const cspPublicoCotizacion = csp
   .replace(
     /script-src [^;]+/,
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
@@ -121,34 +118,23 @@ const nextConfig = {
         headers: securityHeaders,
       },
       {
-        // Panel entero (/backend/*). El cotizador trae su CSS embebido con un
-        // @import a Google Fonts (DM Sans, Playfair Display, JetBrains Mono) y
-        // la CSP del sitio no permite esos origenes. La CSP la fija el
-        // documento, no la ruta que se pinta: si el usuario entra por
-        // /backend/dashboard y navega client-side al cotizador, sigue rigiendo
-        // la CSP del documento inicial. Por eso la ampliacion cubre todo el
-        // panel y no solo /backend/cotizador.
-        // Va DESPUES de la catch-all a proposito: ante la misma clave gana la
-        // ultima entrada que matchea, asi que /backend/* recibe esta CSP y el
-        // sitio publico queda con la del sitio. El resto de los headers de
-        // seguridad (nosniff, X-Frame-Options, Referrer-Policy,
-        // Permissions-Policy, HSTS) los sigue aportando la catch-all: el merge
-        // es por clave, no reemplaza el bloque entero.
-        source: "/backend/:path*",
-        headers: [
-          { key: "Content-Security-Policy", value: cspBackend },
-        ],
-      },
-      {
         // Links públicos de cotización (/c/<token>). La pagina monta la misma
-        // ficha del pasajero que el cotizador y le inyecta el MISMO CSS, con su
-        // @import a Google Fonts. Sin esta ampliacion la CSP del sitio bloquea
-        // fonts.googleapis.com y la cotizacion le llega al pasajero en la
-        // tipografia del sistema. Lo que NO hereda del panel son los origenes
-        // de medicion (GTM, GA, Facebook, Metricool): ver cspPublicoCotizacion.
+        // ficha del pasajero que el cotizador y le inyecta el MISMO CSS. Lo que
+        // esta CSP recorta son los origenes de medicion (GTM, GA, Facebook,
+        // Metricool): ver cspPublicoCotizacion.
         source: "/c/:path*",
         headers: [
           { key: "Content-Security-Policy", value: cspPublicoCotizacion },
+        ],
+      },
+      {
+        // Tipografías del cotizador (public/fonts/cotizador/*.woff2). El nombre
+        // del archivo lleva la version de gstatic (dm-sans-v17…), asi que
+        // actualizar una fuente crea una URL nueva: por eso se puede ir a un
+        // año e immutable sin quedar clavado con una version vieja en caché.
+        source: "/fonts/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
       {

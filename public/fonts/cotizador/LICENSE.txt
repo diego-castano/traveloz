@@ -1,0 +1,15 @@
+Las seis .woff2 de esta carpeta son los subconjuntos latin y latin-ext que
+sirve Google Fonts (fonts.gstatic.com), copiados tal cual el 2026-08-24. Las
+tres familias estan bajo SIL Open Font License 1.1, que permite redistribuirlas
+embebidas en un sitio: https://openfontlicense.org
+
+  DM Sans           Copyright 2014-2024 The DM Sans Project Authors
+                    https://github.com/googlefonts/dm-fonts
+  Playfair Display  Copyright 2017 The Playfair Display Project Authors
+                    https://github.com/clauseggers/Playfair-Display
+  JetBrains Mono    Copyright 2020 The JetBrains Mono Project Authors
+                    https://github.com/JetBrains/JetBrainsMono
+
+El numero de version en el nombre del archivo (v17, v40, v24) es el que usa
+gstatic. Cambia solo si se vuelven a bajar: por eso se pueden servir con
+Cache-Control immutable (ver `headers()` en next.config.mjs).

@@ -28,8 +28,8 @@
 // de challenge es justo lo que ese proxy retiene, y todos los renders morían
 // en el techo del `goto`. Por loopback la request no sale de la máquina.
 // Lo que se pierde es poco: los assets de la hoja son relativos
-// (`/api/image/...`, `/site/img/...`) y resuelven contra el mismo Next; solo
-// las fuentes de Google salen a Internet, y esa salida sí funciona.
+// (`/api/image/...`, `/site/img/...`, `/fonts/cotizador/*.woff2`) y resuelven
+// contra el mismo Next. Nada del render sale a Internet.
 // El middleware no toca `/c/*` (su matcher es `/backend/:path*`) y el único
 // redirect por host mira `app.traveloz.com.uy`, así que una request con
 // `Host: 127.0.0.1:PORT` llega derecho a la página. `COTIZADOR_PDF_BASE_URL`
@@ -288,7 +288,7 @@ const LANZAR_MS = 20_000;
 const NAVEGAR_MS = 20_000;
 /** Techo para que aparezca `.print-hoja` (la pinta React tras hidratar). */
 const HOJA_MS = 15_000;
-/** Las fuentes de Google salen a Internet: si tardan, se imprime igual. */
+/** Las fuentes salen del mismo Next: si igual tardan, se imprime sin ellas. */
 const FUENTES_MS = 8_000;
 /** Ídem las imágenes: mejor una foto faltante que un PDF que nunca sale. */
 const IMAGENES_MS = 8_000;
@@ -342,10 +342,12 @@ interface DetalleRender {
   urlFinal: string | null;
   /** Milisegundos por etapa. */
   tiempos: Partial<Record<EtapaPdf, number>>;
+  /** Familias que el navegador terminó de cargar, para el log. */
+  familias: string[] | null;
 }
 
 function nuevoDetalle(): DetalleRender {
-  return { paso: "lanzar", status: null, urlFinal: null, tiempos: {} };
+  return { paso: "lanzar", status: null, urlFinal: null, tiempos: {}, familias: null };
 }
 
 async function abrirNavegador(): Promise<Browser> {
@@ -478,9 +480,11 @@ async function correr(
   }
 
   // ── fuentes ─────────────────────────────────────────────────────────────
-  // Vienen de Google Fonts (@import del CSS del cotizador). Imprimir antes de
-  // que carguen deja la cotización en la tipografía del sistema, que es
-  // exactamente lo que el vendedor no aprobó. Si no llegan, se sigue igual.
+  // Las declara el CSS del cotizador y las sirve este mismo Next desde
+  // /fonts/cotizador (antes venían de Google Fonts, que este contenedor no
+  // alcanza: por eso el PDF salía en DejaVu). Imprimir antes de que carguen
+  // deja la cotización en la tipografía del sistema, que es exactamente lo que
+  // el vendedor no aprobó. Si no llegan, se sigue igual.
   detalle.paso = "fuentes";
   reloj = Date.now();
   await conTiempo(
@@ -490,6 +494,20 @@ async function correr(
     "fuentes",
   ).catch(() => {});
   detalle.tiempos.fuentes = Date.now() - reloj;
+  // Qué familias quedaron cargadas de verdad. Es la única forma de ver desde
+  // afuera si el PDF salió con la tipografía buena: si acá faltan DM Sans,
+  // Playfair Display o JetBrains Mono, la hoja se imprimió con el respaldo.
+  detalle.familias = await page
+    .evaluate(() => {
+      if (!document.fonts) return [];
+      const vistas: Record<string, true> = {};
+      document.fonts.forEach((f) => {
+        // Chromium devuelve el family entrecomillado ("DM Sans"): se limpia.
+        if (f.status === "loaded") vistas[f.family.replace(/^["']|["']$/g, "")] = true;
+      });
+      return Object.keys(vistas).sort();
+    })
+    .catch(() => null);
 
   // ── imágenes ────────────────────────────────────────────────────────────
   // Dos trampas de este paso, las dos costaban el techo entero de la etapa en
@@ -609,6 +627,7 @@ export async function renderizarPdfDeCotizacion({
       bytes: buffer.length,
       status: detalle.status,
       tiempos: detalle.tiempos,
+      familias: detalle.familias,
     });
     return buffer;
   } catch (err) {

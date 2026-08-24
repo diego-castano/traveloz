@@ -39,14 +39,27 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
      (vista previa o recordatorio), no en cada apertura del drawer */
   const [contenido, setContenido] = useState(null);
   const [cargandoQ, setCargandoQ] = useState(false);
+  /* Devuelve el contenido o null. Nunca falla en silencio: cualquier salida sin
+     contenido (error de la action, red caída, fila sin JSON guardado) avisa con
+     un toast, y el `finally` deja el botón habilitado de vuelta. Sin eso, los
+     tres botones que dependen de esto — "Pedir datos", "Ver cotización" y el
+     recordatorio — quedaban muertos y sin explicación. */
   const cargarContenido = async () => {
     if (contenido) return contenido;
     setCargandoQ(true);
-    const res = await obtenerPresupuesto(r.id);
-    setCargandoQ(false);
-    if (!res.ok) { toast?.({ msg:res.error, tone:"warn" }); return null; }
-    setContenido(res.data.contenido);
-    return res.data.contenido;
+    try {
+      const res = await obtenerPresupuesto(r.id);
+      if (!res.ok) { toast?.({ msg:res.error, tone:"warn" }); return null; }
+      const c = res.data?.contenido || null;
+      if (!c) { toast?.({ msg:`${r.num} todavía no tiene contenido guardado`, tone:"warn" }); return null; }
+      setContenido(c);
+      return c;
+    } catch {
+      toast?.({ msg:"No pude abrir la cotización — probá de nuevo en un momento", tone:"warn" });
+      return null;
+    } finally {
+      setCargandoQ(false);
+    }
   };
   /* los tramos salen del mismo helper que usa el editor y la página pública:
      una sola aritmética para las tres pantallas */

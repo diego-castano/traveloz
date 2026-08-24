@@ -312,6 +312,7 @@ export default function Cotizador({
   }, [imprimir]);
   const [prev, setPrev] = useState(null);                  // overlay de vista previa: null | "cel" | "tab" | "desk"
   const [plantillas, setPlantillas] = useState([]);
+  /* el deep-link ?abrir cuenta con que el listado vive en este tab */
   const [homeTab, setHomeTab] = useState("cotizar");
   /* grilla de cotizaciones: la carga el server y se refresca tras cada cambio */
   const [filas, setFilas] = useState([]);
@@ -555,12 +556,20 @@ export default function Cotizador({
   }, []);
 
   /* ── listado y plantillas ─────────────────────────────────────────────── */
+  /* El `finally` no es decorativo: si la server action se cae (red, deploy en
+     curso, sesión vencida) el `await` rechaza y sin él `cargandoFilas` se
+     quedaba en true — la grilla girando para siempre y ningún aviso. */
   const recargar = useCallback(async () => {
     setCargandoFilas(true);
-    const res = await listarPresupuestos(verComo && verComo !== "todos" ? { vendedorId: verComo } : {});
-    setCargandoFilas(false);
-    if (!res.ok) { toast({ msg:res.error, tone:"warn" }); return; }
-    setFilas(res.data.map(filaDesdePresupuesto));
+    try {
+      const res = await listarPresupuestos(verComo && verComo !== "todos" ? { vendedorId: verComo } : {});
+      if (!res.ok) { toast({ msg:res.error, tone:"warn" }); return; }
+      setFilas(res.data.map(filaDesdePresupuesto));
+    } catch {
+      toast({ msg:"No pude traer las cotizaciones — probá de nuevo en un momento", tone:"warn" });
+    } finally {
+      setCargandoFilas(false);
+    }
   }, [verComo, toast]);
 
   useEffect(() => { void recargar(); }, [recargar]);
@@ -568,29 +577,65 @@ export default function Cotizador({
   /* ── ?abrir=<id> ─────────────────────────────────────────────────────────
      El deep-link que usan las pantallas de Pasajeros y Pagos: desde un envío
      con referencia COT-… se vuelve a la cotización que lo pidió, con el drawer
-     ya abierto. Se lee una sola vez, del `location` y no de `useSearchParams`
-     (que obligaría a envolver esta pantalla en un Suspense por nada), y se
-     limpia de la URL para que un F5 no lo vuelva a abrir.
+     ya abierto. Se lee del `location` y no de `useSearchParams` (que obligaría
+     a envolver esta pantalla en un Suspense por nada).
+
+     El parámetro se lee en el inicializador del estado, NO en un efecto de
+     montaje, y la URL se limpia mucho después. El motivo es concreto: Next 14
+     parchea `window.history.replaceState` (client/components/app-router.js)
+     para despachar ACTION_RESTORE, y la cola de acciones del router
+     (shared/lib/router/action-queue.js · dispatchAction) trata un restore como
+     una navegación: descarta la acción en vuelo y pisa `actionQueue.last`, con
+     lo que las server actions que estaban encoladas detrás quedan huérfanas —
+     no arrancan nunca y su promesa no resuelve jamás. Tocar la URL en el mismo
+     commit en el que la grilla dispara su primera `listarPresupuestos()`
+     dejaba ese `await` colgado y el listado en "Cargando cotizaciones…", sin
+     request ni error en consola.
 
      Si el id no está en el scope de quien mira, la grilla no lo encuentra y no
      pasa nada: no se avisa, porque no hay nada que el vendedor pueda hacer. */
-  const [abrirId, setAbrirId] = useState(null);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const id = new URLSearchParams(window.location.search).get("abrir");
-    if (!id) return;
-    setAbrirId(id);
-    setHomeTab("cotizar");
-    const url = new URL(window.location.href);
-    url.searchParams.delete("abrir");
-    window.history.replaceState(null, "", url.pathname + url.search + url.hash);
-  }, []);
+  const leerAbrir = () => {
+    if (typeof window === "undefined") return null;
+    return new URLSearchParams(window.location.search).get("abrir") || null;
+  };
+  const [abrirId, setAbrirId] = useState(leerAbrir);
+  const [urlConAbrir, setUrlConAbrir] = useState(() => !!leerAbrir());
+  /* estable: es dependencia del efecto que abre el drawer en el listado */
+  const marcarAbierta = useCallback(() => setAbrirId(null), []);
 
+  /* la carga de plantillas también avisa cuando terminó: es la última server
+     action del montaje y la limpieza de la URL espera a que no quede ninguna */
+  const [plantillasListas, setPlantillasListas] = useState(false);
   const recargarPlantillas = useCallback(async () => {
-    const res = await listarPlantillas();
-    if (res.ok) setPlantillas(res.data);
+    try {
+      const res = await listarPlantillas();
+      if (res.ok) setPlantillas(res.data);
+    } catch {
+      /* sin plantillas se cotiza igual: no vale un toast */
+    } finally {
+      setPlantillasListas(true);
+    }
   }, []);
   useEffect(() => { void recargarPlantillas(); }, [recargarPlantillas]);
+
+  /* Recién acá se saca el `?abrir` de la barra, para que un F5 no reabra el
+     drawer: con la grilla cargada, el catálogo cargado, las plantillas
+     pedidas y el drawer ya resuelto, la cola del router está vacía y el
+     ACTION_RESTORE del `replaceState` no tiene nada que descartar. El `data`
+     va vacío a propósito: si llevara el `__NA` de Next el parche cortaría de
+     largo, el router se quedaría con la URL vieja y el HistoryUpdater
+     devolvería el parámetro a la barra en el próximo guardado. */
+  useEffect(() => {
+    if (!urlConAbrir) return;
+    if (abrirId || cargandoFilas || !plantillasListas || catalogo.cargando) return;
+    const t = setTimeout(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("abrir");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+      setUrlConAbrir(false);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [urlConAbrir, abrirId, cargandoFilas, plantillasListas, catalogo.cargando]);
 
   /* cronómetro. El ref lo lee el autoguardado para mandar `tiempoArmadoSeg`
      sin volverse dependencia del efecto que graba. */
@@ -954,7 +999,7 @@ export default function Cotizador({
           toast={toast}
           tab={homeTab} setTab={setHomeTab}
           filas={filas} cargandoFilas={cargandoFilas} recargar={recargar}
-          abrirId={abrirId} onAbierta={() => setAbrirId(null)}
+          abrirId={abrirId} onAbierta={marcarAbierta}
           verComo={verComo} setVerComo={setVerComo}
           plantillas={plantillas}
           onCrearPlantilla={(nombre, destino) => { void crearPlantillaVacia(nombre, destino); }}
