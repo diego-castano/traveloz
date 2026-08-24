@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Pencil, Copy, Trash2, Plane } from "lucide-react";
 import { Button } from "@/components/ui/Button";
@@ -39,6 +39,11 @@ import { matchesId, matchesSearch } from "@/lib/search";
 import { sortByRecency } from "@/lib/recency";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
 import { useAereosQueryState } from "./searchParams";
+import {
+  PaquetesToggle,
+  PaquetesRow,
+  type PaqueteDelServicio,
+} from "@/components/ui/data/PaquetesDelServicio";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,7 +74,36 @@ export default function AereosPage() {
   const packageState = usePackageState();
   const loading = useServiceLoading();
 
-  // Package usage count map
+  // Paquetes que usan cada aéreo. Antes acá sólo se contaba; ahora guardamos
+  // la lista para poder desplegarla (el cliente pidió saber CUÁLES son, no
+  // cuántos). El título sale de packageState.paquetes, que el provider hidrata
+  // por tandas: un id que todavía no llegó se omite y el panel avisa que está
+  // cargando.
+  const paquetesPorAereo = useMemo(() => {
+    const porId = new Map(packageState.paquetes.map((p) => [p.id, p]));
+    const map: Record<string, PaqueteDelServicio[]> = {};
+    const seen = new Set<string>();
+    for (const pa of packageState.paqueteAereos) {
+      const key = `${pa.aereoId}::${pa.paqueteId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const paquete = porId.get(pa.paqueteId);
+      if (!paquete) continue;
+      (map[pa.aereoId] ??= []).push({
+        id: paquete.id,
+        titulo: paquete.titulo,
+        destino: paquete.destino,
+        estado: paquete.estado,
+      });
+    }
+    for (const lista of Object.values(map)) {
+      lista.sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
+    }
+    return map;
+  }, [packageState.paqueteAereos, packageState.paquetes]);
+
+  // El contador sigue saliendo del join, no de la lista resuelta: así el chip
+  // muestra el número real aunque los títulos todavía estén hidratando.
   const paqueteCountMap = useMemo(() => {
     const map: Record<string, number> = {};
     const seen = new Set<string>();
@@ -82,6 +116,10 @@ export default function AereosPage() {
     }
     return map;
   }, [packageState.paqueteAereos]);
+
+  // Qué aéreo tiene el desplegable abierto (uno por vez: la tabla es densa y
+  // dos paneles abiertos la vuelven ilegible).
+  const [aereoExpandido, setAereoExpandido] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<Aereo | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -283,8 +321,8 @@ export default function AereosPage() {
             </DataTableHeader>
             <DataTableBody>
               {paginatedAereos.map((aereo) => (
+                <Fragment key={aereo.id}>
                 <DataTableRow
-                  key={aereo.id}
                   onClick={() => router.push(`/backend/aereos/${aereo.id}`)}
                   interactive
                 >
@@ -294,11 +332,15 @@ export default function AereosPage() {
                       {aereo.ruta}
                       <RecentBadge createdAt={aereo.createdAt} />
                     </span>
-                    {(paqueteCountMap[aereo.id] ?? 0) > 0 && (
-                      <span className="ml-2 font-mono text-[10.5px] text-neutral-400">
-                        {paqueteCountMap[aereo.id]} paq.
-                      </span>
-                    )}
+                    <PaquetesToggle
+                      count={paqueteCountMap[aereo.id] ?? 0}
+                      open={aereoExpandido === aereo.id}
+                      onToggle={() =>
+                        setAereoExpandido((prev) =>
+                          prev === aereo.id ? null : aereo.id,
+                        )
+                      }
+                    />
                   </DataTableCell>
                   <DataTableCell variant="muted">{aereo.destino}</DataTableCell>
                   <DataTableCell variant="muted">{aereo.aerolinea}</DataTableCell>
@@ -329,6 +371,15 @@ export default function AereosPage() {
                     />
                   </DataTableCell>
                 </DataTableRow>
+                {/* Desplegable: qué paquetes usan este aéreo. Va como fila
+                    aparte con colSpan para no romper la grilla de columnas. */}
+                <PaquetesRow
+                  open={aereoExpandido === aereo.id}
+                  colSpan={5}
+                  paquetes={paquetesPorAereo[aereo.id] ?? []}
+                  cargando={packageState.hydratingPaquetes}
+                />
+                </Fragment>
               ))}
             </DataTableBody>
           </DataTable>
