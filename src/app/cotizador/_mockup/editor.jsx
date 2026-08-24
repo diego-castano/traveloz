@@ -13,8 +13,8 @@ import {
   CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
   PNR_DEMO, CLIENTES, uid, hotelById, clamp, toISO, parseISO, fmtCorto, money, venta, margenPct,
   limpiarPegado, parsePNR, pareceTel, matchTel, ultimaDe, hotelesCotizadosEn,
-  habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa,
-  precioOpcion
+  habitacionNueva, tarifaNueva, ventaTarifa,
+  precioOpcion, registrarHotelLibre
 } from "./data";
 import {
   Foto, CATS, Btn, Label, Pill, ChipIA, Estrellas, Block, Vacio, Calendario, AutoCiudad,
@@ -513,10 +513,24 @@ function BloqueVuelos({ q, set, refEl, toast }) {
           <Btn size="sm" onClick={() => set((d) => { d.pnrRaw = PNR_DEMO; })}>Pegar ejemplo</Btn>
         )}
         {q.vuelos.length > 0 && (
-          <Btn size="sm" onClick={() => set((d) => { d.vuelos.push({ id:uid("vl"), cia:"LA", nro:"0000",
-            aerolinea:"LATAM", dia:1, mes:0, origen:"MVD", destino:"GRU", salida:"08:00", llegada:"09:40" }); })}>
-            <Plus size={12} /> Agregar tramo a mano
-          </Btn>
+          <>
+            <Btn size="sm" onClick={() => set((d) => { d.vuelos.push({ id:uid("vl"), cia:"LA", nro:"0000",
+              aerolinea:"LATAM", dia:1, mes:0, origen:"MVD", destino:"GRU", salida:"08:00", llegada:"09:40" }); })}>
+              <Plus size={12} /> Agregar tramo a mano
+            </Btn>
+            {/* borrar de a uno es un embole: esto vacía el itinerario y el pegado, con deshacer */}
+            <Btn size="sm" variant="ta" title="Vaciar el itinerario y empezar de nuevo"
+              onClick={() => {
+                const cpVuelos = JSON.parse(JSON.stringify(q.vuelos));
+                const cpPnr = q.pnrRaw;
+                set((d) => { d.vuelos = []; d.pnrRaw = ""; });
+                setEstado("idle");
+                toast({ msg:"Itinerario borrado", tone:"warn",
+                  undo:() => set((d) => { d.vuelos = cpVuelos; d.pnrRaw = cpPnr; }) });
+              }}>
+              <Trash2 size={12} /> Borrar itinerario
+            </Btn>
+          </>
         )}
       </div>
 
@@ -620,15 +634,22 @@ function BloqueVuelos({ q, set, refEl, toast }) {
               <Label>Por adulto</Label>
               <input className="in mono" type="number" style={{ height:34, textAlign:"right" }}
                 value={q.precioVuelo?.adulto ?? ""}
-                onChange={(e) => set((d) => { d.precioVuelo = d.precioVuelo || { adulto:"", menor:"" };
-                  d.precioVuelo.adulto = e.target.value; })} />
+                onChange={(e) => { const v = e.target.value;
+                  set((d) => { d.precioVuelo = { ...(d.precioVuelo || {}), adulto:v }; }); }} />
             </div>
             <div style={{ width:110 }}>
               <Label>Por menor</Label>
               <input className="in mono" type="number" style={{ height:34, textAlign:"right" }}
                 value={q.precioVuelo?.menor ?? ""}
-                onChange={(e) => set((d) => { d.precioVuelo = d.precioVuelo || { adulto:"", menor:"" };
-                  d.precioVuelo.menor = e.target.value; })} />
+                onChange={(e) => { const v = e.target.value;
+                  set((d) => { d.precioVuelo = { ...(d.precioVuelo || {}), menor:v }; }); }} />
+            </div>
+            <div style={{ width:110 }}>
+              <Label>Por infante</Label>
+              <input className="in mono" type="number" style={{ height:34, textAlign:"right" }}
+                value={q.precioVuelo?.infante ?? ""}
+                onChange={(e) => { const v = e.target.value;
+                  set((d) => { d.precioVuelo = { ...(d.precioVuelo || {}), infante:v }; }); }} />
             </div>
             <div style={{ fontSize:11, color:"var(--n400)", flex:"1 1 180px", paddingBottom:9 }}>
               Va directo en la cotización — sin hoteles ni servicios.
@@ -1047,6 +1068,8 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
   const [over, setOver] = useState(null);
   const [armado, setArmado] = useState(null);
   const nombreRefs = useRef({});
+  /* el régimen del destino es solo el arranque: después cada hotel manda el suyo */
+  const regimenDeTramo = (hi) => q.destinos[hi]?.regimen || "Desayuno incluido";
 
   useEffect(() => { if (foco && nombreRefs.current[foco]) { nombreRefs.current[foco].focus(); nombreRefs.current[foco].select(); setFoco(null); } }, [foco, q.opciones.length]);
 
@@ -1066,9 +1089,10 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
         });
         d.opciones.push(copia);
       } else {
+        /* el régimen viaja con cada hotel: Madrid con desayuno, Barcelona solo alojamiento */
         d.opciones.push({ id, nombre:`Opción ${n}`,
-          hoteles: d.destinos.map(() => ({ hotelId:null, libre:"" })),
-          regimen: d.destinos.find((x) => x.regimen)?.regimen || "Desayuno incluido",
+          hoteles: d.destinos.map((x) => ({ hotelId:null, libre:"", cat:0,
+            regimen: x.regimen || "Desayuno incluido" })),
           factor:0.88, habitaciones:[habitacionNueva("Doble")] });
       }
     });
@@ -1077,6 +1101,20 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
   };
   /* la segunda tarifa suele ser el menor, después el infante y la familiar */
   const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por infante" : n === 3 ? "Por familia" : "Por adulto");
+  /* "+ Habitación" clona la última: casi siempre cambia una sola cosa (la ocupación o un neto) */
+  const agregarHabitacion = (i) => {
+    const clona = (q.opciones[i]?.habitaciones || []).length > 0;
+    set((d) => {
+      const hs = d.opciones[i].habitaciones || (d.opciones[i].habitaciones = []);
+      const ult = hs[hs.length - 1];
+      if (!ult) { hs.push(habitacionNueva("Doble")); return; }
+      const cp = JSON.parse(JSON.stringify(ult));
+      cp.id = uid("hab");
+      (cp.tarifas || []).forEach((tf) => { tf.id = uid("tf"); });
+      hs.push(cp);
+    });
+    if (clona) toast({ msg:"Habitación agregada igual a la anterior — ajustá lo que cambie", tone:"ok" });
+  };
   /* el "+" de la cabecera: agrega una opción en las mismas condiciones que esta */
   const duplicar = (i) => {
     const src = q.opciones[i]; const id = uid("op");
@@ -1111,10 +1149,6 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
       <div style={{ display:"flex", flexDirection:"column", gap:11 }}>
         {q.opciones.map((o, i) => {
           const habs = o.habitaciones || [];
-          const t0 = habs[0]?.tarifas?.[0] || null;
-          const pv = precioOpcion(o);
-          const etiqueta = t0 ? `${etiquetaTarifa(t0)} · ${habs[0].ocupacion}` : "sin tarifas cargadas";
-          const faltaPrecio = habs.some((h) => (h.tarifas || []).some((t) => !Number(t.neto) && !Number(t.venta)));
           return (
             <React.Fragment key={o.id}>
               {over === i && drag !== null && <div className="drop-line" />}
@@ -1135,6 +1169,11 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                     className="in" style={{ flex:"1 1 150px", height:31, fontWeight:700, fontSize:13,
                       border:"1px solid transparent", background:"transparent", paddingLeft:2 }}
                     value={o.nombre} onChange={(e) => set((d) => { d.opciones[i].nombre = e.target.value; })} />
+                  {/* el precio de la opción, a la vista mientras se toca cualquier tarifa */}
+                  <span className="mono" title="Primera tarifa de la primera habitación"
+                    style={{ fontSize:12, fontWeight:600, color:"var(--teal-3)", whiteSpace:"nowrap" }}>
+                    {money(precioOpcion(o))}
+                  </span>
                   <div style={{ display:"flex", gap:3 }}>
                     <button className="btn btn-tt btn-ico" title="Agregar una opción igual a esta — solo cambiás hotel y precio"
                       onClick={() => duplicar(i)}>
@@ -1152,7 +1191,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                 <div style={{ padding:"11px" }}>
                   {tramos.length === 0 && <div style={{ fontSize:12, color:"var(--n400)" }}>Agregá destinos para elegir hoteles por tramo.</div>}
                   {tramos.map((t, hi) => {
-                    const h = o.hoteles[hi] || { hotelId:null, libre:"" };
+                    const h = o.hoteles[hi] || { hotelId:null, libre:"", cat:0, regimen:"" };
                     const H = hotelById(h.hotelId);
                     const antes = hotelesCotizadosEn(t.ciudad);   /* v2B · de los paquetes publicados */
                     return (
@@ -1166,11 +1205,29 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                                 {t.noches}n · {fmtCorto(t.checkin)} → {fmtCorto(t.checkout)}
                               </span>
                             </div>
-                            <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""}
-                              onPick={(hh) => set((d) => { if (!d.opciones[i].hoteles[hi]) d.opciones[i].hoteles[hi] = {};
-                                d.opciones[i].hoteles[hi] = { hotelId:hh.id, libre:"" }; })}
-                              onLibre={(txt) => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
-                                d.opciones[i].hoteles[hi] = { hotelId:null, libre:txt, cat:prev.cat || 0 }; })} />
+                            {/* el régimen va pegado al buscador: cada hotel el suyo */}
+                            <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+                              <div style={{ flex:"1 1 200px", minWidth:0 }}>
+                                <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""}
+                                  onPick={(hh) => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
+                                    d.opciones[i].hoteles[hi] = { ...prev, hotelId:hh.id, libre:"",
+                                      regimen: prev.regimen || regimenDeTramo(hi) }; })}
+                                  onLibre={(txt) => {
+                                    registrarHotelLibre(txt, t.ciudad, h.cat || 0);
+                                    set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
+                                      d.opciones[i].hoteles[hi] = { ...prev, hotelId:null, libre:txt,
+                                        cat: prev.cat || 0, regimen: prev.regimen || regimenDeTramo(hi) }; });
+                                  }} />
+                              </div>
+                              <select className="in" style={{ flex:"0 1 190px", height:38, fontSize:12 }}
+                                title="Régimen de este hotel" value={h.regimen || ""}
+                                onChange={(e) => { const v = e.target.value;
+                                  set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
+                                    d.opciones[i].hoteles[hi] = { ...prev, regimen:v }; }); }}>
+                                <option value="">Régimen…</option>
+                                {REGIMENES.map((x) => <option key={x}>{x}</option>)}
+                              </select>
+                            </div>
                           </div>
                           {H && <div style={{ flexShrink:0 }}><Estrellas n={H.cat} /></div>}
                           {h.libre && (
@@ -1178,8 +1235,9 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                               title="Categoría del hotel — un clic en la estrella; el mismo clic la saca">
                               {[1, 2, 3, 4, 5].map((n) => (
                                 <button key={n} style={{ padding:2, lineHeight:0 }}
-                                  onClick={() => set((d) => { const hh = d.opciones[i].hoteles[hi];
-                                    hh.cat = hh.cat === n ? 0 : n; })}>
+                                  onClick={() => { const cat = h.cat === n ? 0 : n;
+                                    registrarHotelLibre(h.libre, t.ciudad, cat);
+                                    set((d) => { const hh = d.opciones[i].hoteles[hi]; hh.cat = cat; }); }}>
                                   <Star size={14} fill={(h.cat || 0) >= n ? "#F7B267" : "none"}
                                     style={{ color:(h.cat || 0) >= n ? "#E8A13C" : "var(--n300)" }} />
                                 </button>
@@ -1195,8 +1253,9 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             {antes.map((hh) => (
                               <button key={hh.id} className={`chip chip-mini ${h.hotelId === hh.id ? "chip-on" : ""}`}
                                 title={`${hh.nombre} · ${hh.cat} estrellas`}
-                                onClick={() => set((d) => { if (!d.opciones[i].hoteles[hi]) d.opciones[i].hoteles[hi] = {};
-                                  d.opciones[i].hoteles[hi] = { hotelId:hh.id, libre:"" }; })}>
+                                onClick={() => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
+                                  d.opciones[i].hoteles[hi] = { ...prev, hotelId:hh.id, libre:"",
+                                    regimen: prev.regimen || regimenDeTramo(hi) }; })}>
                                 {h.hotelId === hh.id ? <Check size={10} /> : <Plus size={10} />}{hh.nombre}
                               </button>
                             ))}
@@ -1206,23 +1265,13 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                     );
                   })}
 
-                  <div style={{ display:"flex", gap:9, flexWrap:"wrap", marginTop:11 }}>
-                    <div style={{ flex:"1 1 180px" }}>
-                      <Label>Régimen</Label>
-                      <select className="in" value={o.regimen} onChange={(e) => set((d) => { d.opciones[i].regimen = e.target.value; })}>
-                        {REGIMENES.map((x) => <option key={x}>{x}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
                   {/* habitaciones: cada una con su ocupación, su tipo y sus tarifas */}
                   <div style={{ display:"flex", alignItems:"center", gap:8, margin:"14px 0 8px" }}>
                     <span className="lbl">Habitaciones</span>
                     {habs.length > 0 && <Pill tone="n">{habs.length}</Pill>}
                     <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
-                    <Btn size="xs" onClick={() => set((d) => {
-                      d.opciones[i].habitaciones = d.opciones[i].habitaciones || [];
-                      d.opciones[i].habitaciones.push(habitacionNueva("Doble")); })}>
+                    <Btn size="xs" title="Agrega una habitación igual a la última — cambiá lo que difiera"
+                      onClick={() => agregarHabitacion(i)}>
                       <Plus size={11} /> Agregar habitación</Btn>
                   </div>
 
@@ -1286,21 +1335,28 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                                   onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].neto = e.target.value; })} />
                               </div>
                               <div style={{ width:112 }}>
-                                {L("Venta", manual ? null : "automática")}
+                                {L("Venta")}
                                 <input className="in mono" type="number"
                                   style={{ height:32, textAlign:"right",
                                     color: manual ? "var(--ink-amber)" : "var(--teal-3)" }}
                                   value={manual ? t.venta : Math.round(ventaTarifa(t, o.factor))}
-                                  onChange={(e) => set((d) => { const v = e.target.value;
-                                    d.opciones[i].habitaciones[hj].tarifas[tk].venta = v === "" ? null : v; })} />
+                                  onChange={(e) => { const v = e.target.value;
+                                    set((d) => { const tt = d.opciones[i].habitaciones[hj].tarifas[tk];
+                                      tt.venta = v === "" ? null : v;
+                                      /* si el vendedor escribe la venta, el factor pasa a contar la relación real */
+                                      if (Number(tt.neto) > 0 && Number(v) > 0)
+                                        tt.factor = Math.round((Number(tt.neto) / Number(v)) * 100) / 100; }); }} />
                               </div>
-                              {manual && (
-                                <button className="pill" title="Volver a la venta automática (neto ÷ factor)"
-                                  style={{ height:32, background:"rgba(247,178,103,.2)", color:"var(--ink-amber)", cursor:"pointer" }}
-                                  onClick={() => set((d) => { d.opciones[i].habitaciones[hj].tarifas[tk].venta = null; })}>
-                                  manual <RefreshCw size={9} />
-                                </button>
-                              )}
+                              <div style={{ width:78 }}>
+                                {L("Factor", Number(t.factor ?? 0.88) > 0
+                                  ? `${Math.round((1 - Number(t.factor ?? 0.88)) * 100)}%` : null)}
+                                <input className="in mono" type="number" step="0.01" min="0.5" max="1"
+                                  style={{ height:32, textAlign:"right" }} value={t.factor ?? 0.88}
+                                  title="Neto ÷ factor = venta. 0,88 es el 12% mínimo."
+                                  onChange={(e) => { const v = e.target.value;
+                                    set((d) => { const tt = d.opciones[i].habitaciones[hj].tarifas[tk];
+                                      tt.factor = v; tt.venta = null; }); }} />
+                              </div>
                               <button className="btn btn-g btn-ico" style={{ width:32, height:32 }} title="Quitar tarifa"
                                 disabled={(hab.tarifas || []).length <= 1}
                                 onClick={() => set((d) => { d.opciones[i].habitaciones[hj].tarifas.splice(tk, 1); })}>
@@ -1313,40 +1369,15 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             const ts = d.opciones[i].habitaciones[hj].tarifas;
                             ts.push(tarifaNueva(tipoSiguiente(ts.length))); })}>
                             <Plus size={11} /> Tarifa</Btn>
-                          <Btn size="xs" style={{ marginLeft:"auto" }} onClick={() => set((d) => {
-                            d.opciones[i].habitaciones = d.opciones[i].habitaciones || [];
-                            d.opciones[i].habitaciones.push(habitacionNueva("Doble")); })}>
+                          <Btn size="xs" style={{ marginLeft:"auto" }}
+                            title="Agrega una habitación igual a esta — cambiá lo que difiera"
+                            onClick={() => agregarHabitacion(i)}>
                             <Plus size={11} /> Habitación</Btn>
                         </div>
                       </div>
                     </div>
                   ))}
 
-                  {/* markup: factor divisor, venta en vivo */}
-                  <div style={{ display:"flex", gap:9, flexWrap:"wrap", marginTop:12, alignItems:"flex-end",
-                    padding:"10px", background:"rgba(59,191,173,.045)", border:"1px solid rgba(59,191,173,.16)", borderRadius:11 }}>
-                    <div style={{ flex:"1 1 110px" }}>
-                      <Label hint={vistaPasajero ? null : `${margenPct(o.factor)}%`}>Factor</Label>
-                      <input className="in mono" type="number" step="0.01" min="0.5" max="1" value={o.factor}
-                        onChange={(e) => set((d) => { d.opciones[i].factor = e.target.value; })} />
-                    </div>
-                    <div style={{ flex:"2 1 150px", textAlign:"right" }}>
-                      <Label>Precio de venta</Label>
-                      <div key={pv} className="a-pulse" style={{ fontSize:20, fontWeight:700, letterSpacing:"-.025em",
-                        color:"var(--teal-3)", lineHeight:1.25 }}>{money(pv)}</div>
-                      <div style={{ fontSize:10.5, color:"var(--n400)" }}>{etiqueta}</div>
-                    </div>
-                  </div>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:6, flexWrap:"wrap" }}>
-                    {faltaPrecio && (
-                      <span style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:11, color:"var(--ink-amber)" }}>
-                        <AlertCircle size={11} /> Hay tarifas sin neto ni venta
-                      </span>
-                    )}
-                    {!vistaPasajero && (
-                      <div style={{ marginLeft:"auto" }}><LineaMargen neto={t0?.neto ?? 0} factor={o.factor} /></div>
-                    )}
-                  </div>
                 </div>
               </div>
             </React.Fragment>

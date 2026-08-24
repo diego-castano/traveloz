@@ -5,7 +5,10 @@ import {
   Sparkles, MapPin, Calendar, ChevronDown, ChevronRight, Search, Star, Undo2, X, CheckCheck,
   AlertCircle, PenLine
 } from "lucide-react";
-import { MESES, MES_AB, fotoBg, HOTELES, CIUDADES, clamp, parseISO, toISO, addDays, norm } from "./data";
+import {
+  MESES, MES_AB, fotoBg, HOTELES, HOTELES_CUSTOM, CIUDADES, clamp, parseISO, toISO, addDays, norm,
+  esFavorito, toggleFavorito,
+} from "./data";
 
 function Foto({ seed = 0, w = 56, h = 42, r = 10, children, style }) {
   return (
@@ -367,14 +370,24 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
+  const [tick, setTick] = useState(0);   // fuerza reordenar cuando se togglea un favorito
   const box = useRef(null);
   const res = useMemo(() => {
-    const base = HOTELES.filter((h) => !ciudad || h.ciudad === ciudad);
-    const pool = base.length ? base : HOTELES;
-    if (!q.trim()) return pool.slice(0, 6);
-    const s = q.toLowerCase();
-    return pool.filter((h) => h.nombre.toLowerCase().includes(s) || h.ciudad.toLowerCase().includes(s)).slice(0, 6);
-  }, [q, ciudad]);
+    const todos = [...HOTELES, ...HOTELES_CUSTOM];
+    const base = todos.filter((h) => !ciudad || h.ciudad === ciudad);
+    const pool = base.length ? base : todos;
+    const filtrados = !q.trim() ? pool
+      : pool.filter((h) => {
+          const s = q.toLowerCase();
+          return h.nombre.toLowerCase().includes(s) || h.ciudad.toLowerCase().includes(s);
+        });
+    /* favoritos primero — cada vendedor tiene sus caballitos de batalla; ordenamiento estable */
+    const ordenados = filtrados
+      .map((h, i) => ({ h, i, fav: esFavorito(h.id) }))
+      .sort((a, b) => (b.fav - a.fav) || (a.i - b.i))
+      .map((x) => x.h);
+    return ordenados.slice(0, 6);
+  }, [q, ciudad, tick]);
 
   useEffect(() => {
     const h = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
@@ -405,20 +418,31 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
         <div className="a-slide" style={{ position:"absolute", top:"calc(100% + 5px)", left:0, right:0, zIndex:40,
           background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:13, overflow:"hidden",
           boxShadow:"0 22px 50px -14px rgba(17,17,36,.28)" }}>
-          {res.map((h, i) => (
-            <button key={h.id} onMouseEnter={() => setIdx(i)}
+          {res.map((h, i) => {
+            const fav = esFavorito(h.id);
+            return (
+            <div key={h.id} role="button" tabIndex={0} onMouseEnter={() => setIdx(i)}
               onClick={() => { onPick(h); setOpen(false); setQ(""); }}
-              style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"8px 10px", textAlign:"left",
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(h); setOpen(false); setQ(""); } }}
+              style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"8px 10px", textAlign:"left", cursor:"pointer",
                 background: i === idx ? "rgba(120,90,229,.07)" : "transparent" }}>
               <Foto seed={h.seed} w={40} h={30} r={7} />
               <div style={{ minWidth:0, flex:1 }}>
-                <div style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nombre}</div>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nombre}</span>
+                  {h.propio && <Pill tone="amber" style={{ flexShrink:0 }}>propio</Pill>}
+                </div>
                 <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"var(--n400)" }}>
                   <MapPin size={10} />{h.ciudad}<Estrellas n={h.cat} size={9} />
                 </div>
               </div>
-            </button>
-          ))}
+              <button type="button" title="Marcar como favorito — aparece primero" style={{ flexShrink:0, display:"grid", placeItems:"center", width:24, height:24 }}
+                onClick={(e) => { e.stopPropagation(); toggleFavorito(h.id); setTick((t) => t + 1); }}>
+                <Star size={14} style={fav ? { fill:"#F7B267", color:"#E8A13C" } : { color:"var(--n300)" }} />
+              </button>
+            </div>
+            );
+          })}
           <button onMouseEnter={() => setIdx(res.length)}
             onClick={() => { if (q.trim()) { onLibre(q.trim()); setOpen(false); setQ(""); } }}
             style={{ display:"flex", alignItems:"center", gap:9, width:"100%", padding:"9px 10px", textAlign:"left",

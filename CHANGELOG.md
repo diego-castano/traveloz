@@ -11,6 +11,55 @@ del catálogo, CRM).
 
 ---
 
+## 24 de agosto de 2026
+
+### Cambiado
+
+**El cotizador incorpora la ronda de chequeo del 19/08 con Gero y Santi.**
+
+- **El margen se maneja por tarifa.** Desapareció el bloque de abajo con el
+  factor global, el precio de venta y la línea de margen ("es al pedo que
+  figure"). Ahora cada tarifa tiene neto, venta y factor en la misma fila:
+  arranca en 0,88 (12%, el mínimo aceptable), si cambiás la venta el factor
+  se recalcula para mostrar la relación real, y si cambiás el factor la venta
+  se recalcula. El precio de la opción se lee en su cabecera.
+- **Régimen por hotel.** Dentro de cada opción, cada hotel lleva su régimen
+  (Madrid con desayuno, Barcelona solo alojamiento) al lado del buscador, que
+  se achicó para hacerle lugar. El pasajero lo ve hotel por hotel.
+- **La línea de noches separa por destino.** "15 noches de alojamiento" pasó
+  a "03 noches en Madrid · 03 noches en Barcelona · Desayuno incluido", y si
+  los regímenes difieren, cada destino aclara el suyo entre paréntesis.
+- **"+ Habitación" duplica la anterior** con ocupación, tipo y tarifas, y el
+  tipo de habitación arranca en "Estándar".
+- **La IA arma siempre en blanco.** Marcha atrás del cliente: al pegar una
+  consulta de WhatsApp ya no busca ni ofrece paquetes de la web; arma la
+  cotización de cero con el destino, el mes, las noches y los pasajeros que
+  entendió. Si el pedido existe como paquete, se arranca desde "Desde un
+  paquete o plantilla".
+- **Hoteles propios y favoritos.** El hotel que se escribe a mano queda
+  guardado para la próxima cotización (marcado "propio"), y cada hotel del
+  buscador tiene una estrellita para marcarlo favorito y que aparezca primero.
+- **Vuelos:** botón "Borrar itinerario" para arrancar de nuevo sin borrar de a
+  un tramo; las horas salen con "hs" en la cotización; y solo vuelos suma el
+  precio por infante.
+- **Servicios:** las sugerencias de seguro quedaron en "Seguro de Asistencia
+  al Viajero", sin básica, premium ni cancelación.
+- **En la card de la opción los hoteles no se repiten:** la línea resumen con
+  los nombres unidos por "+" se muestra solo con la card cerrada; abierta, el
+  detalle ya los lista.
+
+### Arreglado
+
+**El PDF salía "sin estilos".** Chrome apaga fondos y degradés al imprimir,
+así que la vista de impresión quedaba plana. Ahora se fuerzan los colores en
+la hoja, los títulos de sección no quedan huérfanos al pie de una página y la
+firma viaja junto al cierre. Se agregó `?imprimir=demo` para generar el PDF de
+prueba sin clickear nada; el resultado se verificó con un PDF real de cinco
+páginas: encabezado con marca, itinerario Ida/Vuelta, tres opciones una debajo
+de la otra, notas, condiciones, pagos y firma.
+
+---
+
 ## 19 de agosto de 2026
 
 ### Nuevo

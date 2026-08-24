@@ -175,6 +175,11 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz .print-tools { display:none !important; }
   .ctz .print-root { position:static !important; overflow:visible !important; background:#fff !important; }
   .ctz .print-hoja { max-width:none; margin:0; border-radius:0; box-shadow:none; }
+  html, body { background:#fff !important; }
+  .ctz .print-hoja, .ctz .print-hoja * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  .ctz .print-hoja img { max-width:100% !important; }
+  .ctz .print-hoja [style*="break-inside"] { page-break-inside:avoid; }
+  .ctz .print-hoja .sec-t { break-after:avoid; page-break-after:avoid; }
 }
 @page { margin:10mm; }
 

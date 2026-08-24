@@ -64,7 +64,7 @@ const SUG = {
   traslado: ["Traslado de llegada","Traslado de salida","Traslado llegada y salida","Traslado llegada, salida e interhotel"],
   alojamiento: ["Alojamiento en base doble","Impuestos hoteleros incluidos","Early check-in sujeto a disponibilidad"],
   vehiculo: ["Alquiler de auto categoría económica","Alquiler de auto categoría SUV","Seguro de cobertura total del vehículo"],
-  seguro: ["Asistencia al viajero cobertura básica","Asistencia al viajero cobertura premium","Cobertura por cancelación"],
+  seguro: ["Seguro de Asistencia al Viajero"],
   opcionales: ["Excursión Cristo Redentor y Pan de Azúcar","City tour de medio día","Paseo en catamarán","Entradas a parques temáticos","Cena show típica"],
 };
 const MODALIDADES = ["Regular","Privado"];
@@ -106,7 +106,7 @@ const PAQUETES = [
       {cat:"traslado",    texto:"Traslado llegada y salida", ciudad:"Río de Janeiro", modalidad:"Regular"},
       {cat:"traslado",    texto:"Traslado interhotel Río – Búzios", ciudad:"Búzios", modalidad:"Privado"},
       {cat:"alojamiento", texto:"Alojamiento en base doble"},
-      {cat:"seguro",      texto:"Asistencia al viajero cobertura básica"},
+      {cat:"seguro",      texto:"Seguro de Asistencia al Viajero"},
       {cat:"opcionales",  texto:"Excursión Cristo Redentor y Pan de Azúcar"},
     ],
     opciones:[
@@ -123,7 +123,7 @@ const PAQUETES = [
       {cat:"aereo",       texto:"Aéreo ida y vuelta con valija en bodega 23kg"},
       {cat:"traslado",    texto:"Traslado llegada y salida", ciudad:"Punta Cana", modalidad:"Regular"},
       {cat:"alojamiento", texto:"Alojamiento en base doble"},
-      {cat:"seguro",      texto:"Asistencia al viajero cobertura premium"},
+      {cat:"seguro",      texto:"Seguro de Asistencia al Viajero"},
     ],
     opciones:[
       { nombre:"Opción 1 · Occidental", hoteles:["h10"], regimen:"All Inclusive", habitacion:"Doble estándar", neto:1390, factor:0.88 },
@@ -141,7 +141,7 @@ const PAQUETES = [
       {cat:"traslado",    texto:"Traslado de salida", ciudad:"Lisboa", modalidad:"Privado"},
       {cat:"alojamiento", texto:"Alojamiento en base doble"},
       {cat:"opcionales",  texto:"Tren de alta velocidad Madrid – Barcelona"},
-      {cat:"seguro",      texto:"Asistencia al viajero cobertura premium"},
+      {cat:"seguro",      texto:"Seguro de Asistencia al Viajero"},
     ],
     opciones:[
       { nombre:"Opción 1 · Céntrica", hoteles:["h13","h14","h15"], regimen:"Desayuno incluido", habitacion:"Doble estándar", neto:2340, factor:0.86 },
@@ -155,7 +155,7 @@ const PAQUETES = [
       {cat:"aereo",       texto:"Aéreo ida y vuelta con equipaje de mano"},
       {cat:"traslado",    texto:"Traslado llegada y salida", ciudad:"Florianópolis", modalidad:"Regular"},
       {cat:"alojamiento", texto:"Alojamiento en base doble"},
-      {cat:"seguro",      texto:"Asistencia al viajero cobertura básica"},
+      {cat:"seguro",      texto:"Seguro de Asistencia al Viajero"},
     ],
     opciones:[
       { nombre:"Opción 1 · Praia Centro", hoteles:["h11"], regimen:"Desayuno incluido",           habitacion:"Doble estándar", neto:780,  factor:0.88 },
@@ -167,7 +167,7 @@ const PAQUETES = [
 const PAQUETES_EXTRA = [
   { id:"pq5", nombre:"Cancún y Riviera Maya", mes:11, anio:2026, seed:7, resumen:"7 noches · all inclusive · salidas de diciembre",
     destinos:[{ciudad:"Cancún", noches:7}],
-    servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado llegada y salida",ciudad:"Cancún",modalidad:"Regular"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Asistencia al viajero cobertura premium"}],
+    servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado llegada y salida",ciudad:"Cancún",modalidad:"Regular"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Seguro de Asistencia al Viajero"}],
     opciones:[{ nombre:"Opción 1 · Riviera", hoteles:["h8"], regimen:"All Inclusive", habitacion:"Doble estándar", neto:1610, factor:0.87 }] },
   { id:"pq6", nombre:"Buenos Aires escapada", mes:8, anio:2026, seed:2, resumen:"3 noches · city break · salidas de septiembre",
     destinos:[{ciudad:"Buenos Aires", noches:3}],
@@ -175,7 +175,7 @@ const PAQUETES_EXTRA = [
     opciones:[{ nombre:"Opción 1 · Recoleta", hoteles:["h16"], regimen:"Desayuno incluido", habitacion:"Doble superior", neto:420, factor:0.88 }] },
   { id:"pq7", nombre:"París y Roma", mes:3, anio:2027, seed:4, resumen:"9 noches · 2 capitales · salidas de abril",
     destinos:[{ciudad:"París", noches:5},{ciudad:"Roma", noches:4}],
-    servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado de llegada",ciudad:"París",modalidad:"Privado"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Asistencia al viajero cobertura premium"}],
+    servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado de llegada",ciudad:"París",modalidad:"Privado"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Seguro de Asistencia al Viajero"}],
     opciones:[{ nombre:"Opción 1 · Céntrica", hoteles:["h13","h14"], regimen:"Desayuno incluido", habitacion:"Doble estándar", neto:2680, factor:0.85 }] },
   { id:"pq8", nombre:"Miami y Orlando", mes:6, anio:2027, seed:9, resumen:"8 noches · parques + playa · salidas de julio",
     destinos:[{ciudad:"Miami", noches:3},{ciudad:"Orlando", noches:5}],
@@ -187,7 +187,7 @@ const PAQUETES_EXTRA = [
     opciones:[{ nombre:"Opción 1 · Centro", hoteles:["h11"], regimen:"Media pensión (sin bebidas)", habitacion:"Doble estándar", neto:940, factor:0.88 }] },
   { id:"pq10", nombre:"Cartagena caribe colombiano", mes:9, anio:2026, seed:11, resumen:"6 noches · ciudad amurallada · salidas de octubre",
     destinos:[{ciudad:"Cartagena", noches:6}],
-    servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado llegada y salida",ciudad:"Cartagena",modalidad:"Regular"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Asistencia al viajero cobertura básica"}],
+    servicios:[{cat:"aereo",texto:"Aéreo ida y vuelta con valija en bodega 23kg"},{cat:"traslado",texto:"Traslado llegada y salida",ciudad:"Cartagena",modalidad:"Regular"},{cat:"alojamiento",texto:"Alojamiento en base doble"},{cat:"seguro",texto:"Seguro de Asistencia al Viajero"}],
     opciones:[{ nombre:"Opción 1 · Ciudad vieja", hoteles:["h15"], regimen:"Desayuno incluido", habitacion:"Doble superior", neto:1120, factor:0.87 }] },
 ];
 PAQUETES.push(...PAQUETES_EXTRA);
@@ -275,7 +275,20 @@ function fmtHace(h) { if (h == null) return "—"; if (h <= 0) return "recién";
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const uid = (() => { let n = 0; return (p = "id") => `${p}_${++n}_${Math.random().toString(36).slice(2, 6)}`; })();
-const hotelById = (id) => HOTELES.find((h) => h.id === id);
+/* hoteles escritos a mano: quedan para la próxima cotización de la sesión */
+const HOTELES_CUSTOM = [];
+const FAVORITOS = new Set();
+function registrarHotelLibre(nombre, ciudad, cat = 0) {
+  const n = String(nombre || "").trim(); if (!n) return null;
+  let h = HOTELES_CUSTOM.find((x) => norm(x.nombre) === norm(n));
+  if (!h) { h = { id:uid("hc"), nombre:n, ciudad:ciudad || "", cat:cat || 0, seed:40 + HOTELES_CUSTOM.length, propio:true }; HOTELES_CUSTOM.push(h); }
+  else { if (ciudad) h.ciudad = ciudad; if (cat) h.cat = cat; }
+  return h;
+}
+const esFavorito = (id) => FAVORITOS.has(id);
+function toggleFavorito(id) { if (FAVORITOS.has(id)) FAVORITOS.delete(id); else FAVORITOS.add(id); return FAVORITOS.has(id); }
+/* busca en el catálogo y también en los hoteles que escribió el vendedor */
+const hotelById = (id) => HOTELES.find((h) => h.id === id) || HOTELES_CUSTOM.find((h) => h.id === id);
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 function parseISO(s) { if (!s) return null; const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); }
@@ -303,15 +316,17 @@ function serviciosDefault(noches = 7) {
 /* ── Opción hotelera: habitaciones, y dentro de cada una sus tarifas ───── */
 function tarifaNueva(tipo = "Por adulto") {
   /* venta null → se calcula sola (neto ÷ factor); un número → pisada a mano */
-  return { id:uid("tf"), tipo, tipoLibre:"", neto:0, venta:null };
+  return { id:uid("tf"), tipo, tipoLibre:"", neto:0, venta:null, factor:0.88 };
 }
 function habitacionNueva(ocupacion = "Doble") {
-  return { id:uid("hab"), ocupacion, tipo:"", tarifas:[tarifaNueva()] };
+  return { id:uid("hab"), ocupacion, tipo:"Estándar", tarifas:[tarifaNueva()] };
 }
-function ventaTarifa(t, factor) {
+/* cada tarifa lleva su propio factor; el de la opción quedó solo de respaldo
+   para las tarifas viejas que todavía no lo tienen */
+function ventaTarifa(t, factorFallback) {
   if (t == null) return 0;
   if (t.venta !== null && t.venta !== "" && t.venta !== undefined) return Number(t.venta) || 0;
-  return venta(t.neto, factor);
+  return venta(t.neto, t.factor ?? factorFallback ?? 0.88);
 }
 function etiquetaTarifa(t) { return t.tipo === "Otro" ? (t.tipoLibre?.trim() || "Otro") : t.tipo; }
 /* precio principal de una opción: primera tarifa de la primera habitación */
@@ -536,7 +551,7 @@ const FRECUENTES = [
   { cat:"aereo",       texto:"Aéreo ida y vuelta con valija en bodega 23kg" },
   { cat:"traslado",    texto:"Traslado llegada y salida" },
   { cat:"alojamiento", texto:"Alojamiento en base doble" },
-  { cat:"seguro",      texto:"Asistencia al viajero cobertura premium" },
+  { cat:"seguro",      texto:"Seguro de Asistencia al Viajero" },
   { cat:"aereo",       texto:"Tasas e impuestos incluidos" },
 ];
 
@@ -634,6 +649,8 @@ export {
   serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion,
   SUG_ALL, CIUDADES, AEROLINEAS, AEROPUERTOS, AEROPUERTOS_NOMBRE, PNR_DEMO, PAQUETES, PAQUETES_EXTRA, PLANTILLAS,
   CLIENTES, VENDEDORES, HISTORIAL, semaforo, fmtHace, uid, hotelById, clamp, parseISO, toISO,
+  /* v5 · hoteles escritos a mano y favoritos */
+  HOTELES_CUSTOM, registrarHotelLibre, esFavorito, toggleFavorito,
   addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,

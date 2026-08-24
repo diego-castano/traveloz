@@ -301,6 +301,17 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                   </div>
                 </>
               )}
+              {Number(q.precioVuelo?.infante) > 0 && (
+                <>
+                  <div style={{ borderBottom:"1px solid rgba(17,17,36,.07)", margin:"0 14px" }} />
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 14px" }}>
+                    <span style={{ fontSize:fz(12, 12.5), color:"#3D4066", fontWeight:600 }}>Por infante</span>
+                    <span className="mono" style={{ fontSize:fz(14, 15), fontWeight:700, color:"#1A1A2E" }}>
+                      {money(q.precioVuelo.infante)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -345,6 +356,8 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                 const caption = tarifa0
                   ? `${etiquetaTarifa(tarifa0).toLowerCase()}${hab0.ocupacion ? ` · hab. ${String(hab0.ocupacion).toLowerCase()}` : ""}`
                   : "por adulto · base doble";
+                const regimenesOpcion = [...new Set((o.hoteles || []).map((h) => h.regimen).filter(Boolean))];
+                const regimenTxt = regimenesOpcion.length > 1 ? "Régimen según hotel" : (regimenesOpcion[0] || o.regimen);
                 return (
                   /* con switcher hay una sola card: la clave fija deja que el precio ruede al cambiar */
                   <div key={varias && !impresion ? "op-visible" : o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
@@ -392,14 +405,18 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                       {/* resumen bajo la foto */}
                       <div style={{ display:"flex", alignItems:"center", gap:9, padding:"11px 14px" }}>
                         <div style={{ minWidth:0, flex:1 }}>
-                          <div style={{ fontSize:fz(12.5, 13), fontWeight:700, whiteSpace:"nowrap",
-                            overflow:"hidden", textOverflow:"ellipsis" }}>
-                            {(tramos.length ? tramos : []).map((_, k) => o.hoteles?.[k])
-                              .map((h) => h && (h.libre || hotelById(h.hotelId)?.nombre)).filter(Boolean).join("  +  ") || "Hoteles a definir"}
-                          </div>
+                          {/* hoteles anidados (Santi): con el detalle abierto ya se listan uno por uno,
+                              así que este resumen unido con "+" solo se muestra con la card cerrada */}
+                          {!on && (
+                            <div style={{ fontSize:fz(12.5, 13), fontWeight:700, whiteSpace:"nowrap",
+                              overflow:"hidden", textOverflow:"ellipsis" }}>
+                              {(tramos.length ? tramos : []).map((_, k) => o.hoteles?.[k])
+                                .map((h) => h && (h.libre || hotelById(h.hotelId)?.nombre)).filter(Boolean).join("  +  ") || "Hoteles a definir"}
+                            </div>
+                          )}
                           <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:fz(10.5, 11),
                             color:"#8A8DB5", marginTop:2 }}>
-                            <Utensils size={10} /> {o.regimen}
+                            <Utensils size={10} /> {regimenTxt}
                             {o.habitaciones?.length ? <> · <Bed size={10} /> {o.habitaciones.map((h) => h.ocupacion).join(" + ")}</> : null}
                           </div>
                         </div>
@@ -431,6 +448,12 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
                                   {H && <Estrellas n={H.cat} size={10} />}
                                   {!H && h.libre && (h.cat || 0) > 0 && <Estrellas n={h.cat} size={10} />}
                                 </div>
+                                {(h.regimen || o.regimen) && (
+                                  <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4,
+                                    fontSize:fz(11, 11.5), color:"#6B6F99", fontWeight:600 }}>
+                                    <Utensils size={10} style={{ color:G.b }} /> {h.regimen || o.regimen}
+                                  </div>
+                                )}
                                 {t && (
                                   <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4,
                                     fontSize:fz(11, 11.5), color:"#6B6F99", fontWeight:600 }}>
@@ -577,7 +600,8 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
           </div>
         </div>
 
-        {/* firma */}
+        {/* firma + cierre: en papel viajan juntos */}
+        <div style={{ breakInside:"avoid" }}>
         <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px", borderRadius:15, breakInside:"avoid",
           border:"1px solid rgba(17,17,36,.09)", background:"linear-gradient(180deg,#fff,#FAFBFE)" }}>
           {/* acá va la FOTO del vendedor, cargada desde su perfil de usuario —
@@ -609,6 +633,7 @@ function SalidaPasajero({ q, marca, vendedor, tramos, foco, scrollRef, modo = "c
         </div>
         <div style={{ textAlign:"center", marginTop:16 }}><Wordmark size={13} /></div>
         <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color:"#B0B4CD", marginTop:4 }}>{G.web}</div>
+        </div>
       </div>
     </div>
   );
@@ -650,7 +675,7 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
       <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap" }}>
         <span style={{ fontSize:fz(15, 16), fontWeight:700, lineHeight:1.25, overflowWrap:"anywhere" }}>{ciudad}</span>
         <span style={{ fontSize:fz(12.5, 13), fontWeight:600, color:"#6B6F99", whiteSpace:"nowrap" }}>
-          — {hora}
+          — {hora} hs
           {plus && (
             <span style={{ fontSize:fz(10, 10.5), fontWeight:700, color:coral, marginLeft:3 }}>+1 día</span>
           )}
@@ -735,7 +760,7 @@ function Odometro({ valor }) {
 
 function SecTitulo({ texto, color }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11 }}>
+    <div className="sec-t" style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11, breakAfter:"avoid" }}>
       <div style={{ width:3, height:13, borderRadius:9, background:color }} />
       <span style={{ fontSize:10, fontWeight:700, letterSpacing:".09em", textTransform:"uppercase", color:"#3D4066" }}>{texto}</span>
       <div style={{ flex:1, height:1, background:"rgba(17,17,36,.07)" }} />

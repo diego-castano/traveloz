@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sparkles, MessageSquare, FileText, Copy, Trash2, Plus, Check, ChevronDown, ChevronRight, Search,
-  Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, Loader2, CheckCheck, AlertCircle,
+  Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, Loader2, CheckCheck,
   RefreshCw, Link2, TrendingUp, Ticket, Files, ListChecks, Sun, Moon, Plane, Settings
 } from "lucide-react";
 import {
@@ -58,7 +58,7 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
 
   const CAMINOS = [
     { k:"ia",        n:1, Icon:MessageSquare, t:"Desde una consulta de WhatsApp",
-      d:"Pegá lo que te escribió el pasajero y la IA arma el borrador" },
+      d:"Pegá lo que te escribió el pasajero y te arma el borrador en blanco con lo que entendió" },
     { k:"blanco",    n:2, Icon:FileText,   t:"En blanco",             d:"Formulario vacío, listo para escribir" },
     { k:"plantilla", n:3, Icon:Files,      t:"Desde un paquete o plantilla", d:"Los paquetes de la web y tus plantillas, en un solo lugar" },
     { k:"vuelos",    n:4, Icon:Plane,      t:"Solo vuelos",           d:"Itinerario, equipaje y precio — sin hoteles ni servicios" },
@@ -235,49 +235,24 @@ function ModalIA({ onClose, onArmar }) {
     document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
   }, [onClose, fase]);
 
-  /* si la consulta no trae mes, mandan las fechas del paquete */
-  const salidaMes = det?.paquete ? (det.mes != null ? det.mes : det.paquete.mes) : det?.mes;
-  const salidaAnio = det?.paquete ? (det.mes != null ? det.anio : det.paquete.anio) : det?.anio;
-  const varios = !det?.paquete && (det?.candidatos?.length || 0) > 1;
-  const pasos = det ? [
+  /* v2G · la IA arma SIEMPRE en blanco: nunca ofrece paquetes ni precarga uno —
+     pedido explícito de Gero, quien ya sabe que no hay un paquete en la web cuando pega la consulta */
+  const pasos = [
     { l:"Leyendo tu consulta…" },
-    { l:`Buscando entre tus ${PAQUETES.length} paquetes publicados…` },
-    det.paquete
-      ? { l:`Encontré: ${det.paquete.nombre} · ${MESES[salidaMes].slice(0,3)} ${salidaAnio}` }
-      : varios
-      ? { l:`Encontré ${det.candidatos.length} paquetes que encajan — elegís vos` }
-      : { l:"No encontré un paquete que coincida" },
-    { l: det.paquete ? "Preparando las dos opciones: paquete o en blanco…" : "Preparando lo que entendí…" },
-  ] : [];
-
-  /* v2E · lo que se ofrece en el paso de elección: los candidatos que empataron,
-     o —si no encajó ninguno— los primeros paquetes publicados como sugerencia */
-  const lista = useMemo(() => (!det ? [] : det.candidatos?.length ? det.candidatos.slice(0, 4) : PAQUETES.slice(0, 3)),
-    [det]);
+    { l:"Detectando destino, mes, noches y pasajeros…" },
+    { l:"Armando el borrador en blanco con lo que entendí…" },
+  ];
 
   const armar = () => { if (!texto.trim()) return; setDet(detectarConsulta(texto)); setPaso(0); setFase("corriendo"); };
 
   useEffect(() => {
     if (fase !== "corriendo" || !det) return;
-    const durs = [600, 800, 620, 640];
+    const durs = [600, 800, 640];
     const ts = []; let acum = 0;
     for (let i = 1; i <= durs.length; i++) { acum += durs[i - 1]; ts.push(setTimeout(() => setPaso(i), acum)); }
-    /* paso previo SIEMPRE: aunque haya un ganador claro, el vendedor elige
-       entre el paquete y armarla en blanco — pedido explícito de la llamada */
-    ts.push(setTimeout(() => setFase("elegir"), acum + 220));
+    ts.push(setTimeout(() => armarRef.current({ ...det, paquete:null }), acum + 220));
     return () => ts.forEach(clearTimeout);
   }, [fase, det]);
-
-  /* v2E · teclado del paso de elección: 1…n elige, Escape vuelve al texto */
-  useEffect(() => {
-    if (fase !== "elegir") return;
-    const h = (e) => {
-      if (e.key === "Escape") { setFase("edit"); return; }
-      const n = Number(e.key);
-      if (n >= 1 && n <= lista.length) armarRef.current({ ...det, paquete: lista[n - 1] });
-    };
-    document.addEventListener("keydown", h); return () => document.removeEventListener("keydown", h);
-  }, [fase, det, lista]);
 
   return (
     <div className="ov" onMouseDown={(e) => e.target === e.currentTarget && fase === "edit" && onClose()}>
@@ -319,55 +294,10 @@ function ModalIA({ onClose, onArmar }) {
               <Sparkles size={16} /> Armar borrador
             </button>
             <div style={{ fontSize:11, color:"var(--n400)", textAlign:"center", marginTop:8, lineHeight:1.5 }}>
-              Lee destino, mes, cuántos viajan y cuántas noches. Si el destino es amplio
-              (Brasil, el Caribe…) te muestra los paquetes que encajan y elegís vos.
+              Lee destino, mes, cuántos viajan y cuántas noches, y arma la cotización en blanco
+              con eso. Si el pedido ya existe como paquete en la web, arrancá desde “Desde un
+              paquete o plantilla”.
             </div>
-          </div>
-        ) : fase === "elegir" ? (
-          <div style={{ padding:"16px 17px 18px" }}>
-            <div className="disp" style={{ fontSize:15.5, fontWeight:600, letterSpacing:"-.015em", marginBottom:3 }}>
-              {det?.paquete ? "¿La armamos desde este paquete?"
-                : varios ? "¿Desde cuál paquete lo armamos?" : "No encontré un paquete que coincida"}
-            </div>
-            <div style={{ fontSize:11.5, color:"var(--n400)", marginBottom:12, lineHeight:1.5 }}>
-              {det?.paquete
-                ? "Encontré uno que aplica: hoteles y servicios ya cargados, solo ajustás. O armala en blanco con lo que entendí."
-                : varios
-                ? "La consulta encaja con más de uno. Elegí y todo lo demás queda precargado."
-                : "¿Era alguno de estos? También podés seguir en blanco con lo que entendí."}
-            </div>
-
-            {lista.map((p, i) => (
-              <button key={p.id} className="cam" style={{ width:"100%", marginBottom:7 }}
-                onClick={() => armarRef.current({ ...det, paquete:p })}>
-                <Foto seed={p.seed} w={54} h={40} r={9} />
-                <div style={{ flex:1, minWidth:0, textAlign:"left" }}>
-                  <div style={{ fontSize:13, fontWeight:700, display:"flex", alignItems:"center", gap:6 }}>{p.nombre}
-                    {det?.paquete && i === 0 && <Pill tone="teal" style={{ flexShrink:0 }}><Zap size={8} /> mejor coincidencia</Pill>}
-                  </div>
-                  <div style={{ fontSize:11, color:"var(--n400)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.resumen}</div>
-                </div>
-                <span className="mono" style={{ fontSize:11.5, color:"var(--teal-3)", flexShrink:0 }}>
-                  desde {money(venta(p.opciones[0].neto, p.opciones[0].factor))}
-                </span>
-                <span className="cam-n">{i + 1}</span>
-              </button>
-            ))}
-
-            <button className="btn btn-tv" style={{ width:"100%", height:44, borderRadius:12, marginTop:5,
-              fontSize:13.5, fontWeight:700 }}
-              onClick={() => armarRef.current({ ...det, paquete:null })}>
-              <FileText size={15} /> Armar en blanco con lo que entendí
-            </button>
-
-            {det?.chips?.length > 0 && (
-              <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap", marginTop:12 }}>
-                <span className="lbl" style={{ marginRight:2 }}>Entendí</span>
-                {det.chips.map((c) => (
-                  <span key={c} className="pill" data-tone="violet">{c}</span>
-                ))}
-              </div>
-            )}
           </div>
         ) : (
           <div style={{ padding:"16px 17px 18px" }}>
@@ -379,26 +309,6 @@ function ModalIA({ onClose, onArmar }) {
                 <span style={{ flex:1 }}>{p.l}</span>
               </div>
             ))}
-
-            {/* mini-card del paquete encontrado */}
-            {det?.paquete && paso >= 2 && (
-              <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:10, marginTop:8, padding:"9px 10px",
-                borderRadius:13, background:"rgba(59,191,173,.06)", border:"1px solid rgba(59,191,173,.22)" }}>
-                <Foto seed={det.paquete.seed} w={54} h={40} r={9} />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:700 }}>{det.paquete.nombre}</div>
-                  <div style={{ fontSize:11, color:"var(--n400)" }}>{det.paquete.resumen}</div>
-                </div>
-                <CheckCheck size={16} style={{ color:"var(--teal-2)", flexShrink:0 }} />
-              </div>
-            )}
-            {det && !det.paquete && !varios && paso >= 2 && (
-              <div className="a-rise" style={{ display:"flex", alignItems:"center", gap:9, marginTop:8, padding:"9px 11px",
-                borderRadius:12, background:"rgba(247,178,103,.13)", border:"1px solid rgba(247,178,103,.32)" }}>
-                <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
-                <span style={{ fontSize:11.5, color:"var(--ink-amber)" }}>Igual no arrancás de cero: te sugiero paquetes y me guardo lo que entendí.</span>
-              </div>
-            )}
 
             {det?.chips?.length > 0 && (
               <div className="a-rise" style={{ display:"flex", gap:6, flexWrap:"wrap", marginTop:11 }}>

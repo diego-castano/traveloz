@@ -9,7 +9,7 @@ import {
 import { CSS } from "./_mockup/styles";
 import {
   MESES, ANIO_BASE, PLANTILLAS, PLANTILLA_MENSAJE, VENDEDORES, uid, toISO, addDays, parseISO, norm, ESTADOS,
-  CLIENTES, matchTel, serviciosDefault, habitacionNueva, precioOpcion
+  CLIENTES, matchTel, serviciosDefault, habitacionNueva, precioOpcion, PAQUETES, PNR_DEMO, parsePNR
 } from "./_mockup/data";
 import { Btn, Pill, Toasts } from "./_mockup/ui";
 import { SalidaPasajero } from "./_mockup/telefono";
@@ -55,7 +55,7 @@ function cotizacionVacia(plantilla = PLANTILLA_MENSAJE) {
     mensajeHtml: "",
     mensajeAuto: plantilla,   /* v4 · texto fijo con {nombre} y {link}, editable por cotización */
     soloVuelos: false,        /* v4 · cotización de solo vuelos: sin servicios ni alojamiento */
-    precioVuelo: { adulto:"", menor:"" },
+    precioVuelo: { adulto:"", menor:"", infante:"" },
     fotosHotel: false,        /* v4 · Gero las prefiere apagadas */
     pnrRaw: "",
     vuelos: [],
@@ -69,6 +69,32 @@ function cotizacionVacia(plantilla = PLANTILLA_MENSAJE) {
     vigencia: 48,
     opciones: [],
   };
+}
+
+/* "15 noches de alojamiento" no le sirve a nadie cuando hay varias ciudades:
+   el cliente quiere leer 03 noches en Madrid, 03 en Barcelona… */
+const nn = (n) => String(Number(n) || 0).padStart(2, "0");
+/* en el paréntesis va el régimen corto: "Solo alojamiento", no todo el paréntesis de adentro */
+function regimenCorto(r) {
+  const t = String(r || "").trim(); const i = t.indexOf(" (");
+  return i > 0 ? t.slice(0, i) : t;
+}
+function lineaNoches(destinos) {
+  const ds = (destinos || []).filter(Boolean);
+  if (!ds.length) return "07 noches de alojamiento";
+  const regs = [...new Set(ds.map((d) => (d.regimen || "").trim()).filter(Boolean))];
+  if (ds.length === 1)
+    return `${nn(ds[0].noches)} noches de alojamiento${regs.length ? ` · ${regs[0]}` : ""}`;
+  /* todos con el mismo régimen: se nombra una sola vez al final */
+  if (regs.length <= 1) {
+    const txt = ds.map((d) => `${nn(d.noches)} noches en ${d.ciudad || "destino"}`).join(" · ");
+    return regs.length ? `${txt} · ${regs[0]}` : txt;
+  }
+  /* regímenes mezclados: cada destino aclara el suyo */
+  return ds.map((d) => {
+    const r = regimenCorto(d.regimen);
+    return `${nn(d.noches)} noches en ${d.ciudad || "destino"}${r ? ` (${r})` : ""}`;
+  }).join(" · ");
 }
 
 /* el encabezado sigue a la fecha de salida */
@@ -93,10 +119,10 @@ function desdePaquete(p, plantilla) {
     ciudad:s.ciudad ?? null, modalidad:s.modalidad ?? null }));
   /* el catálogo guarda un neto por opción: se convierte a una habitación con una tarifa */
   q.opciones = p.opciones.map((o) => ({ id:uid("op"), nombre:o.nombre,
-    hoteles:o.hoteles.map((h) => ({ hotelId:h, libre:"" })),
+    hoteles:o.hoteles.map((h) => ({ hotelId:h, libre:"", regimen:o.regimen })),
     regimen:o.regimen, factor:o.factor,
     habitaciones:[{ id:uid("hab"), ocupacion:"Doble", tipo:o.habitacion || "",
-      tarifas:[{ id:uid("tf"), tipo:"Por adulto", tipoLibre:"", neto:o.neto, venta:null }] }] }));
+      tarifas:[{ id:uid("tf"), tipo:"Por adulto", tipoLibre:"", neto:o.neto, venta:null, factor:o.factor }] }] }));
   q.notas = [
     { id:uid("nt"), concepto:"Neto aéreo por pasajero", neto:Math.round(o0(p) * 0.42) },
     { id:uid("nt"), concepto:"Traslados", neto:64 },
@@ -305,12 +331,7 @@ export default function Cotizador() {
   /* ── los servicios marcados `auto` siguen a lo que se carga arriba.
         En cuanto el vendedor los edita a mano pierden el flag y quedan quietos. ── */
   useEffect(() => {
-    const noches = tramos.reduce((a, t) => a + (Number(t.noches) || 0), 0) || 7;
-    /* el régimen entra en la línea de noches: uno solo se nombra, dos o más se resumen */
-    const regs = [...new Set(q.destinos.map((d) => (d.regimen || "").trim()).filter(Boolean))];
-    const sufijo = regs.length === 1 ? ` · ${regs[0]}`
-      : regs.length > 1 ? " · régimen según destino" : "";
-    const txtNoches = `${String(noches).padStart(2, "0")} noches de alojamiento${sufijo}`;
+    const txtNoches = lineaNoches(q.destinos);
     const txtAereo = (q.cabina || q.equipaje)
       ? "Aéreo ida y vuelta · " + [q.cabina, q.equipaje].filter(Boolean).join(" · ")
       : "Aéreo ida y vuelta con artículo personal y equipaje de mano";
@@ -373,6 +394,20 @@ export default function Cotizador() {
     requestAnimationFrame(() => window.scrollTo({ top:0, behavior:"instant" }));
   };
 
+  /* ?imprimir=demo · deja una cotización de ejemplo lista en la vista de impresión,
+     así se prueba el PDF sin clickear nada */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("imprimir") !== "demo") return;
+    const q0 = desdePaquete(PAQUETES[0], PLANTILLA_MENSAJE);
+    q0.cliente.nombre = "Sonia";
+    q0.pnrRaw = PNR_DEMO;
+    q0.vuelos = parsePNR(PNR_DEMO);
+    abrir(q0);
+    setImprimir(true);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
+
   /* "Edición total" del drawer: la fila se abre en el formulario completo,
      con su mismo número y estado — es la misma cotización, no una copia */
   const editarFila = (r) => {
@@ -399,7 +434,8 @@ export default function Cotizador() {
           d.opciones.push(c);
         } else {
           d.opciones.push({ id:uid("op"), nombre:`Opción ${d.opciones.length + 1}`,
-            hoteles:d.destinos.map(() => ({ hotelId:null, libre:"" })),
+            hoteles:d.destinos.map((x) => ({ hotelId:null, libre:"", cat:0,
+              regimen: x.regimen || "Desayuno incluido" })),
             regimen: d.destinos[0]?.regimen || "Desayuno incluido", factor:0.88,
             habitaciones:[habitacionNueva("Doble")] });
         }
