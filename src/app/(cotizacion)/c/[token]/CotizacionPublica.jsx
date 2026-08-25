@@ -254,6 +254,10 @@ export default function CotizacionPublica({
           onConfirmar={onConfirmar}
           onRevision={onRevision}
           confirmadaInicial={yaConfirmada}
+          /* la entrada escalonada de los bloques es solo de este lado: en el
+             teléfono de vista previa del editor, al vendedor le tapa lo que
+             acaba de tocar */
+          animar
         />
       </div>
     </CotizadorCtx.Provider>

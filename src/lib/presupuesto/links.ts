@@ -3,7 +3,7 @@
 //
 // Lo usan tres lados que no se pueden importar entre sí:
 //   • las actions del vendedor (emitir el link, extender la vigencia),
-//   • la página pública `(formularios)/c/[token]`,
+//   • la página pública `(cotizacion)/c/[token]`,
 //   • el beacon `POST /api/cotizador/apertura`.
 //
 // Nada de acá toca la base ni la sesión: son helpers puros.

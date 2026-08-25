@@ -13,6 +13,32 @@ del catálogo, CRM).
 
 ## 25 de agosto de 2026
 
+### Cambiado
+
+**La página que ve el cliente y el PDF, rediseñados.** El link `traveloz.com.uy/c/…`
+heredaba la barra violeta y el footer oscuro del sitio; ahora tiene su propio
+marco: wordmark arriba, la cotización, y un cierre discreto con dirección,
+teléfono y web de la agencia. Tipografía con jerarquía (el precio manda),
+sombras tintadas, entradas escalonadas y respuesta al tacto en botones, sin
+animaciones para quien las desactiva en su dispositivo. Los logos de pago ya
+no aparecen vacíos hasta scrollear. Sin nombre de cliente, el saludo dice
+"¡Hola! ¿Cómo estás?". El PDF gana tabla de tarifas con líneas finas y
+números alineados, firma con más presencia y mismo recuento de páginas.
+
+**El panel trabaja con más espacio.** Al entrar al cotizador el menú lateral
+se colapsa solo y vuelve a como estaba al salir. Los selectores largos
+(ciudad del traslado, ciudad del hotel nuevo, vendedor en "Ver como" y en
+Analytics, destino en los filtros) pasan a ser buscadores: escribís "mont" y
+elegís. Un botón **Mis links**, en el inicio y en el editor, muestra los links
+de datos de pasajeros y de tarjeta del vendedor para copiar o mandar por
+WhatsApp sin abrir Compartir.
+
+### Arreglado
+
+- La vista de impresión de demo (`?imprimir=demo`) dejaba borradores en el
+  seguimiento cada vez que se usaba para generar un PDF de prueba. Ya no
+  guarda nada.
+
 ### Nuevo
 
 **Ajustes pedidos por Gero después de ver el cotizador funcionando.**

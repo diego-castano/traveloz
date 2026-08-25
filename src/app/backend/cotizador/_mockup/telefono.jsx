@@ -47,13 +47,19 @@ const PAGO_BANCOS = [
  *
  * `data-sec` marca las secciones que mide el tracking de lectura. Las claves
  * son las de SECCIONES en src/lib/presupuesto/links.ts y el orden importa.
+ *
+ * `animar` enciende la entrada escalonada de los bloques. Va apagado por
+ * defecto porque esta misma ficha vive dentro del teléfono de vista previa del
+ * editor: al vendedor, que toca un campo y mira, los bloques subiendo de a uno
+ * le tapan justo lo que quiere ver. Lo prende el link público y nadie más.
  */
 function SalidaPasajero({
   q, marca, vendedor, tramos, foco, scrollRef, modo = "cel",
-  onConfirmar, onRevision, confirmadaInicial = null,
+  onConfirmar, onRevision, confirmadaInicial = null, animar = false,
 }) {
   const { hotelById } = useCatalogo();
   const anclas = useRef({});
+  const raiz = useRef(null);
   useEffect(() => {
     const cont = scrollRef?.current; if (!cont || !foco) return;
     const el = anclas.current[foco];
@@ -82,8 +88,56 @@ function SalidaPasajero({
 
   const impresion = modo === "print";   /* PDF: todas las opciones abiertas, sin botones */
   const desk = modo === "desk" || impresion;
+
+  /* ── entrada de los bloques ───────────────────────────────────────────────
+     El marcado sale VISIBLE del server: el `data-animar` que esconde los
+     bloques lo pone este efecto, ya montado, así que una cotización sin JS —o
+     con el observer roto— se lee igual. Cada bloque se revela una sola vez y
+     con un escalón de retardo dentro de su tanda; después deja de observarse.
+     Nada de esto corre en el papel ni con reduce-motion. */
+  useEffect(() => {
+    const nodo = raiz.current;
+    if (!animar || impresion || !nodo) return undefined;
+    if (typeof window === "undefined" || !("IntersectionObserver" in window)) return undefined;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion:reduce)").matches) return undefined;
+    const bloques = Array.from(nodo.querySelectorAll("[data-ap]"));
+    if (!bloques.length) return undefined;
+
+    let io;
+    try {
+      io = new IntersectionObserver(
+        (entradas) => {
+          let i = 0;
+          for (const e of entradas) {
+            if (!e.isIntersecting) continue;
+            e.target.style.transitionDelay = `${Math.min(i++, 4) * 70}ms`;
+            e.target.setAttribute("data-vis", "1");
+            io.unobserve(e.target);
+          }
+        },
+        { rootMargin: "0px 0px -6% 0px", threshold: 0.02 },
+      );
+    } catch {
+      return undefined;   /* sin observer no se esconde nada */
+    }
+    nodo.setAttribute("data-animar", "1");
+    bloques.forEach((b) => io.observe(b));
+    return () => { io.disconnect(); nodo.removeAttribute("data-animar"); };
+  }, [animar, impresion]);
   const G = { a:"#F43E55", b:"#785AE5", web:"traveloz.com.uy" };
   const grad = `linear-gradient(87deg, ${G.a} 0%, ${G.b} 100%)`;
+  /* El encabezado es la marca y se queda, pero un lineal de 45° plano es
+     exactamente el degradado que dibuja cualquiera. Acá el coral y el violeta
+     pasan por un magenta intermedio y encima caen dos radiales —luz arriba a
+     la izquierda, sombra abajo a la derecha— para que la banda tenga volumen
+     en vez de ser una rampa de dos paradas. */
+  const gradHead = [
+    `radial-gradient(125% 155% at 6% -35%, rgba(255,255,255,.22), rgba(255,255,255,0) 56%)`,
+    `radial-gradient(105% 135% at 97% 120%, rgba(74,48,168,.55), rgba(74,48,168,0) 62%)`,
+    `linear-gradient(103deg, ${G.a} 0%, #C4409B 47%, ${G.b} 100%)`,
+  ].join(", ");
+  /* grano finísimo sobre el degradado: rompe el banding de la rampa */
+  const GRANO = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E\")";
   const titulo = [q.titulo.destino || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : null, q.titulo.anio]
     .filter(Boolean).join(", ").replace(/, (\w+), (\d{4})$/, ", $1 $2");
   const { vendedores } = useCtz();
@@ -99,12 +153,20 @@ function SalidaPasajero({
   const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
   const visibles = !q.opciones.length ? [] : impresion ? q.opciones : varias ? [elegida] : q.opciones;
 
-  /* escala: en escritorio todo un punto más grande */
+  /* escala: en escritorio todo un punto más grande.
+     `fzp` es la variante con tercer valor para el papel: cuando la pantalla
+     abrió una medida para que respire, el papel se queda con la de antes. Una
+     carilla de más por documento es un costo real —el PDF se manda por mail—
+     y sobre papel nadie scrollea buscando aire. */
   const fz = (cel, d) => desk ? d : cel;
+  const fzp = (cel, d, papel) => impresion ? papel : desk ? d : cel;
 
   /* mensaje automático: texto ya resuelto ({nombre}/{link}), listo para partir en párrafos */
   const mensajeAutoTxt = useMemo(
-    () => (q.mensajeAuto ? renderPlantilla(q.mensajeAuto, q.cliente.nombre, V.linkDatos) : ""),
+    () => {
+      const txt = q.mensajeAuto ? renderPlantilla(q.mensajeAuto, q.cliente.nombre, V.linkDatos) : "";
+      return String(q.cliente.nombre || "").trim() ? txt : saludoSinNombre(txt);
+    },
     [q.mensajeAuto, q.cliente.nombre, V.linkDatos]
   );
 
@@ -204,7 +266,7 @@ function SalidaPasajero({
   }, [q.numero]);
 
   return (
-    <div style={{ fontFamily:"'DM Sans',sans-serif", color:"#1A1A2E", background:"#fff", minHeight:"100%" }}>
+    <div ref={raiz} style={{ fontFamily:"'DM Sans',sans-serif", color:"#1A1A2E", background:"#fff", minHeight:"100%" }}>
 
       {/* el número que lleva el pie de las páginas 2+ (ver @page en styles.js) */}
       {impresion && (
@@ -212,19 +274,28 @@ function SalidaPasajero({
       )}
 
       {/* ── encabezado de marca ── */}
-      <div data-sec="encabezado" style={{ background:grad, padding: desk ? "34px 40px 26px" : "36px 20px 22px", color:"#fff",
+      <div data-sec="encabezado" data-ap style={{ background:gradHead, padding: impresion ? "33px 38px 25px" : desk ? "38px 40px 30px" : "36px 20px 24px", color:"#fff",
         position:"relative", overflow:"hidden" }}>
-        <div style={{ position:"absolute", right:-40, top:-40, width:170, height:170, borderRadius:"50%", background:"rgba(255,255,255,.10)" }} />
-        <div style={{ position:"absolute", right:30, bottom:-56, width:100, height:100, borderRadius:"50%", background:"rgba(255,255,255,.07)" }} />
+        {/* El grano va solo a pantalla. En el papel Chromium rasteriza el
+            mosaico de ruido a la resolución de impresión y el PDF pasa de
+            medio mega a cuatro: el adjunto del email no vale ese precio, y
+            sobre papel el banding que el grano viene a tapar no se ve. */}
+        {!impresion && (
+          <div aria-hidden style={{ position:"absolute", inset:0, backgroundImage:GRANO, opacity:.075,
+            mixBlendMode:"overlay", pointerEvents:"none" }} />
+        )}
+        <div aria-hidden style={{ position:"absolute", right:-46, top:-52, width:190, height:190, borderRadius:"50%",
+          background:"radial-gradient(circle at 34% 30%, rgba(255,255,255,.16), rgba(255,255,255,0) 70%)" }} />
         <div style={{ maxWidth: desk ? 660 : "none", margin:"0 auto", position:"relative" }}>
-          <div style={{ display:"flex", alignItems:"center", marginBottom:desk ? 20 : 16 }}>
-            <div className="wm-pildora" style={{ background:"rgba(255,255,255,.94)", borderRadius:10, padding:"6px 12px",
-              boxShadow:"0 4px 14px rgba(0,0,0,.14)" }}>
+          <div style={{ display:"flex", alignItems:"center", marginBottom:fzp(18, 22, 18) }}>
+            <div className="wm-pildora" style={{ background:"rgba(255,255,255,.95)", borderRadius:11, padding:"6px 12px",
+              boxShadow:"0 6px 18px -6px rgba(48,20,70,.45)" }}>
               <Wordmark size={fz(17, 20)} />
             </div>
-            <div className="mono" style={{ marginLeft:"auto", fontSize:fz(10, 11), opacity:.8 }}>{q.numero}</div>
+            <div className="mono" style={{ marginLeft:"auto", fontSize:fz(10, 11), opacity:.78, letterSpacing:".02em" }}>{q.numero}</div>
           </div>
-          <div className="disp" style={{ fontSize:fz(27, 34), fontWeight:600, lineHeight:1.14, letterSpacing:"-.02em" }}>
+          <div className="disp" style={{ fontSize:fzp(28, 37, 33), fontWeight:600, lineHeight:1.1, letterSpacing:"-.028em",
+            textWrap:"balance", maxWidth:"22ch", textShadow:"0 1px 20px rgba(60,20,80,.18)" }}>
             {titulo}
           </div>
           <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginTop:13 }}>
@@ -250,13 +321,14 @@ function SalidaPasajero({
         </div>
       </div>
 
-      <div style={{ padding: desk ? "26px 40px 34px" : "20px 20px 28px", maxWidth: desk ? 740 : "none", margin:"0 auto" }}>
+      <div style={{ padding: impresion ? "24px 38px 26px" : desk ? "30px 42px 40px" : "22px 20px 30px",
+        maxWidth: desk ? 748 : "none", margin:"0 auto" }}>
 
         {/* saludo — mensaje automático de la cotización, o el fallback fijo si no hay plantilla */}
         {mensajeAutoTxt ? (
-          <div style={{ margin:"0 0 18px" }}>
+          <div data-ap style={{ margin: impresion ? "0 0 16px" : "0 0 22px", maxWidth:"68ch" }}>
             {mensajeAutoTxt.split("\n\n").map((parrafo, pi) => (
-              <div key={pi} style={{ margin: pi === 0 ? "0 0 6px" : "0 0 8px" }}>
+              <div key={pi} style={{ margin: pi === 0 ? "0 0 7px" : "0 0 9px" }}>
                 {parrafo.split("\n").map((linea, li) => {
                   const t = linea.trim();
                   const esLink = !!t && (t.includes("datos-de-pasajeros")
@@ -275,8 +347,10 @@ function SalidaPasajero({
                   }
                   const primera = pi === 0 && li === 0;
                   return (
-                    <p key={li} style={{ fontSize: primera ? fz(14.5, 15.5) : fz(13.5, 14.5),
-                      lineHeight:1.65, margin:0, fontWeight: primera ? 600 : 400,
+                    <p key={li} style={{ fontSize: primera ? fzp(15, 16.5, 15.5) : fzp(14, 15.5, 14.5),
+                      lineHeight: primera ? 1.4 : (impresion ? 1.55 : 1.58), margin:0, fontWeight: primera ? 600 : 400,
+                      letterSpacing: primera ? "-.012em" : "-.004em",
+                      textWrap:"pretty",
                       color: primera ? "#1A1A2E" : "#3D4066" }}>
                       {t}
                     </p>
@@ -286,27 +360,29 @@ function SalidaPasajero({
             ))}
           </div>
         ) : (
-          <>
-            <p style={{ fontSize:fz(14.5, 15.5), lineHeight:1.65, margin:"0 0 6px", fontWeight:600 }}>
-              Hola{q.cliente.nombre ? ` ${q.cliente.nombre}` : ""} 👋
+          <div data-ap style={{ maxWidth:"68ch" }}>
+            <p style={{ fontSize:fzp(15, 16.5, 15.5), lineHeight:1.4, margin:"0 0 7px", fontWeight:600,
+              letterSpacing:"-.012em" }}>
+              {q.cliente.nombre ? `Hola ${q.cliente.nombre} 👋` : "¡Hola! 👋"}
             </p>
-            <p style={{ fontSize:fz(13.5, 14.5), lineHeight:1.65, margin:"0 0 18px", color:"#3D4066" }}>
+            <p style={{ fontSize:fzp(14, 15.5, 14.5), lineHeight:1.55, margin: impresion ? "0 0 16px" : "0 0 22px",
+              color:"#3D4066", textWrap:"pretty" }}>
               De acuerdo a lo conversado, te comparto la cotización de tu viaje.
             </p>
-          </>
+          </div>
         )}
 
         {q.mensaje && (
-          <div style={{ fontSize:fz(13.5, 14), lineHeight:1.7, margin:"0 0 20px", color:"#3D4066",
-            padding:"12px 14px", background:"#F5F6FA", borderRadius:12,
+          <div data-ap style={{ fontSize:fz(13.5, 14.5), lineHeight:1.68, margin:"0 0 22px", color:"#3D4066",
+            maxWidth:"68ch", padding:"13px 16px", background:"rgba(120,90,229,.045)", borderRadius:"4px 14px 14px 4px",
             borderLeft:`3px solid ${G.b}` }}
             dangerouslySetInnerHTML={{ __html: q.mensajeHtml || q.mensaje }} />
         )}
 
         {/* incluye */}
         {q.servicios.length > 0 && !q.soloVuelos && (
-          <div ref={(el) => { anclas.current["b-servicios"] = el; }} data-sec="servicios">
-            <SecTitulo texto="Tu viaje incluye" color={G.b} />
+          <div ref={(el) => { anclas.current["b-servicios"] = el; }} data-sec="servicios" data-ap>
+            <SecTitulo texto="Tu viaje incluye" />
             <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr", gap:"9px 18px", marginBottom:24 }}>
               {q.servicios.map((sv) => {
                 const C = CATS.find((c) => c.id === sv.categoria) || CATS[0];
@@ -331,16 +407,17 @@ function SalidaPasajero({
 
         {/* itinerario — tarjetas por trayecto (Ida / Vuelta / Tramo N) */}
         {q.vuelos.length > 0 && (
-          <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos">
-            <SecTitulo texto="Itinerario de vuelos" color={G.b} />
+          <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap>
+            <SecTitulo texto="Itinerario de vuelos" />
             <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom: q.soloVuelos ? 14 : 24 }}>
               {trayectos.map((seg, ti) => {
                 const primero = seg[0];
                 const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
                 return (
-                  <div key={ti} style={{ borderRadius:18, background:"#fff", overflow:"hidden",
-                    border:"1px solid rgba(17,17,36,.08)", breakInside:"avoid",
-                    boxShadow:"0 1px 3px rgba(17,17,36,.06), 0 10px 26px -14px rgba(17,17,36,.22)" }}>
+                  <div key={ti} style={{ borderRadius:18, background:"#fff", overflow:"hidden", breakInside:"avoid",
+                    ...(impresion
+                      ? { border:"1px solid rgba(17,17,36,.14)" }
+                      : { boxShadow:"0 1px 2px rgba(58,38,120,.05), 0 14px 30px -20px rgba(58,38,120,.35)" }) }}>
 
                     {/* cabecera del trayecto: pill de marca + fecha */}
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
@@ -417,8 +494,8 @@ function SalidaPasajero({
 
         {/* solo vuelos: precio final sin alojamiento */}
         {q.soloVuelos && (
-          <div>
-            <SecTitulo texto="Precio del vuelo" color={G.b} />
+          <div data-ap>
+            <SecTitulo texto="Precio del vuelo" />
             <div style={{ borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.08)",
               marginBottom:24, overflow:"hidden" }}>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 14px" }}>
@@ -455,10 +532,11 @@ function SalidaPasajero({
 
         {/* opciones — cards verticales, foto protagonista */}
         {q.opciones.length > 0 && !q.soloVuelos && (
-          <div ref={(el) => { anclas.current["b-alojamiento"] = el; }} data-sec="hoteles"
+          <div ref={(el) => { anclas.current["b-alojamiento"] = el; }} data-sec="hoteles" data-ap
             data-print-corte={cortarAntesDeOpciones ? "pagina" : undefined}>
-            <SecTitulo texto="Opciones de alojamiento" color={G.b} />
-            <div className="sec-sub" style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", margin:"-4px 0 12px" }}>
+            <SecTitulo texto="Opciones de alojamiento" />
+            <div className="sec-sub" style={{ fontSize:fz(12, 12.5), color:"#8A8DB5", margin:"-6px 0 14px",
+              lineHeight:1.5 }}>
               {impresion
                 ? (varias ? "Las opciones cotizadas, una debajo de la otra." : "El detalle de hoteles y fechas.")
                 : varias
@@ -504,9 +582,14 @@ function SalidaPasajero({
                 const regimenTxt = regimenesOpcion.length > 1 ? "Régimen según hotel" : (regimenesOpcion[0] || o.regimen);
                 return (
                   /* con switcher hay una sola card: la clave fija deja que el precio ruede al cambiar */
-                  <div key={varias && !impresion ? "op-visible" : o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
-                    border: on ? `1.5px solid ${G.b}55` : "1px solid rgba(17,17,36,.09)",
-                    boxShadow: on ? `0 14px 34px -14px ${G.b}45` : "0 2px 6px rgba(17,17,36,.06)",
+                  <div key={varias && !impresion ? "op-visible" : o.id} className="op-card" style={{ borderRadius:20, overflow:"hidden", background:"#fff",
+                    ...(impresion
+                      ? { border:"1px solid rgba(17,17,36,.14)" }
+                      : {
+                          boxShadow: on
+                            ? `inset 0 0 0 1px ${G.b}22, 0 2px 5px rgba(58,38,120,.07), 0 26px 52px -26px ${G.b}80`
+                            : "inset 0 0 0 1px rgba(17,17,36,.055), 0 1px 2px rgba(58,38,120,.05), 0 12px 28px -20px rgba(58,38,120,.4)",
+                        }),
                     /* En papel la opción NO viaja entera. Una opción de tres
                        hoteles con foto pasa de los 700 px: pedir que no se parta
                        la empuja a la hoja siguiente y deja media carilla en
@@ -514,13 +597,12 @@ function SalidaPasajero({
                        juntas — el header con su primer hotel, cada hotel, el
                        bloque de tarifas — y el corte cae entre hotel y hotel,
                        que es donde no molesta. */
-                    ...(impresion ? { marginBottom:14 } : null),
-                    transition:"box-shadow .28s, border-color .28s, transform .28s" }}>
+                    ...(impresion ? { marginBottom:16 } : null) }}>
 
                     {/* foto full-width con overlay — o, si están apagadas, header compacto.
                         `break-after:avoid` lo pega a lo que sigue: el primer hotel del
                         detalle. Un header al pie de la hoja, solo, no dice nada. */}
-                    <button onClick={() => !impresion && setAbierta(on ? null : o.id)}
+                    <button className="op-cab" onClick={() => !impresion && setAbierta(on ? null : o.id)}
                       style={{ width:"100%", textAlign:"left", display:"block", cursor: impresion ? "default" : "pointer",
                         breakInside:"avoid", breakAfter:"avoid" }}>
                       {q.fotosHotel ? (
@@ -533,27 +615,31 @@ function SalidaPasajero({
                               display:"grid", placeItems:"center", fontSize:9 }}>{oi + 1}</span>
                             {o.nombre}
                           </span>
-                          <span style={{ position:"absolute", right:10, bottom:10, padding:"6px 13px", borderRadius:12,
-                            background:"rgba(255,255,255,.96)", boxShadow:"0 4px 14px rgba(0,0,0,.2)", textAlign:"right" }}>
-                            <span style={{ display:"block", fontSize:fz(15.5, 17), fontWeight:800, color:G.b,
-                              letterSpacing:"-.025em", lineHeight:1.1 }}><Odometro valor={pv} /></span>
-                            <span style={{ display:"block", fontSize:fz(8.5, 9), color:"#6B6F99", fontWeight:600 }}>{caption}</span>
-                          </span>
+                          <ChipPrecio valor={pv} late={animar && !impresion}
+                            style={{ position:"absolute", right:10, bottom:10, padding:"8px 14px 7px", borderRadius:"14px 14px 14px 6px",
+                            background:"rgba(255,255,255,.97)", boxShadow:"0 8px 22px -8px rgba(26,10,50,.45)", textAlign:"right" }}>
+                            <span style={{ display:"block", fontSize:fz(19, 22), fontWeight:800, color:G.b,
+                              letterSpacing:"-.035em", lineHeight:1.05 }}><Odometro valor={pv} /></span>
+                            <span style={{ display:"block", fontSize:fz(9, 9.5), color:"#6B6F99", fontWeight:600,
+                              letterSpacing:".01em", marginTop:2 }}>{caption}</span>
+                          </ChipPrecio>
                         </Foto>
                       ) : (
-                        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px",
-                          background:"#fff", borderBottom:"1px solid rgba(17,17,36,.08)" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px 13px",
+                          background:"#fff", borderBottom:"1px solid rgba(17,17,36,.07)" }}>
                           <span style={{ display:"inline-flex", alignItems:"center", gap:7, minWidth:0, flex:1 }}>
                             <span style={{ width:20, height:20, borderRadius:99, background:grad, color:"#fff",
                               display:"grid", placeItems:"center", fontSize:10, fontWeight:800, flexShrink:0 }}>{oi + 1}</span>
                             <span style={{ fontSize:fz(12.5, 13), fontWeight:700, whiteSpace:"nowrap",
                               overflow:"hidden", textOverflow:"ellipsis" }}>{o.nombre}</span>
                           </span>
-                          <span style={{ textAlign:"right", flexShrink:0 }}>
-                            <span style={{ display:"block", fontSize:fz(15.5, 17), fontWeight:800, color:G.b,
-                              letterSpacing:"-.025em", lineHeight:1.1 }}><Odometro valor={pv} /></span>
-                            <span style={{ display:"block", fontSize:fz(8.5, 9), color:"#6B6F99", fontWeight:600 }}>{caption}</span>
-                          </span>
+                          <ChipPrecio valor={pv} late={animar && !impresion}
+                            style={{ textAlign:"right", flexShrink:0 }}>
+                            <span style={{ display:"block", fontSize:fz(19, 22), fontWeight:800, color:G.b,
+                              letterSpacing:"-.035em", lineHeight:1.05 }}><Odometro valor={pv} /></span>
+                            <span style={{ display:"block", fontSize:fz(9, 9.5), color:"#6B6F99", fontWeight:600,
+                              letterSpacing:".01em", marginTop:2 }}>{caption}</span>
+                          </ChipPrecio>
                         </div>
                       )}
 
@@ -576,8 +662,8 @@ function SalidaPasajero({
                           </div>
                         </div>
                         {!impresion && (
-                        <span style={{ display:"inline-flex", alignItems:"center", gap:4, flexShrink:0,
-                          fontSize:fz(10.5, 11), fontWeight:700, color:G.b }}>
+                        <span className="op-ver" style={{ display:"inline-flex", alignItems:"center", gap:4, flexShrink:0,
+                          fontSize:fz(11, 11.5), fontWeight:700, color:G.b }}>
                           {on ? "Cerrar" : "Ver detalle"}
                           <ChevronDown size={13} style={{ transform: on ? "rotate(180deg)" : "none",
                             transition:"transform .26s cubic-bezier(.2,.8,.2,1)" }} />
@@ -631,13 +717,13 @@ function SalidaPasajero({
                           /* las tarifas son la unidad que cierra la opción: el título
                              y las habitaciones caen juntos o pasan juntos de hoja */
                           <div style={{ breakInside:"avoid" }}>
-                            <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
-                              color:"#8A8DB5", margin:"2px 0 8px" }}>Tarifas</div>
+                            <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".08em", textTransform:"uppercase",
+                              color:"#8A8DB5", margin:"4px 0 8px" }}>Tarifas</div>
                             {o.habitaciones.map((hab, hi) => (
-                              <div key={hab.id ?? hi} style={{ borderRadius:13, background:"#FAFBFE",
-                                border:"1px solid rgba(17,17,36,.08)", overflow:"hidden",
+                              <div key={hab.id ?? hi} className="tar-box" style={{ borderRadius:13, background:"#FAFBFE",
+                                border:"1px solid rgba(17,17,36,.07)", overflow:"hidden",
                                 marginBottom: hi < o.habitaciones.length - 1 ? 10 : 0 }}>
-                                <div style={{ padding:"10px 14px", fontSize:fz(11.5, 12), fontWeight:700, color:"#3D4066",
+                                <div className="tar-hd" style={{ padding:"10px 14px", fontSize:fz(11.5, 12), fontWeight:700, color:"#3D4066",
                                   borderBottom:"1px solid rgba(17,17,36,.07)" }}>
                                   Habitación {hab.ocupacion}{hab.tipo ? ` · ${hab.tipo}` : ""}
                                 </div>
@@ -646,12 +732,13 @@ function SalidaPasajero({
                                   const ultima = ti === (hab.tarifas || []).length - 1;
                                   return (
                                     <div key={tar.id ?? ti}>
-                                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                                        padding:"9px 14px" }}>
-                                        <span style={{ fontSize:fz(11, 11.5), color:"#3D4066", fontWeight:600 }}>{etiquetaTarifa(tar)}</span>
-                                        <span className="mono" style={{ fontSize:fz(12.5, 13), fontWeight:700, color:"#1A1A2E" }}>{money(valor)}</span>
+                                      <div className="tar-row" style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between",
+                                        gap:12, padding:"9px 14px" }}>
+                                        <span style={{ fontSize:fz(11.5, 12), color:"#3D4066", fontWeight:500 }}>{etiquetaTarifa(tar)}</span>
+                                        <span className="mono" style={{ fontSize:fz(12.5, 13.5), fontWeight:700, color:"#1A1A2E",
+                                          fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" }}>{money(valor)}</span>
                                       </div>
-                                      {!ultima && <div style={{ borderBottom:"1px solid rgba(17,17,36,.07)", margin:"0 14px" }} />}
+                                      {!ultima && <div className="tar-sep" style={{ borderBottom:"1px solid rgba(17,17,36,.06)", margin:"0 14px" }} />}
                                     </div>
                                   );
                                 })}
@@ -669,7 +756,7 @@ function SalidaPasajero({
                           <div className="a-pop" style={{ marginTop:9, padding:"12px 14px", borderRadius:13,
                             background:"rgba(59,191,173,.1)", border:"1.5px solid rgba(42,158,142,.4)",
                             display:"flex", gap:10, alignItems:"flex-start" }}>
-                            <CheckCheck size={17} style={{ color:"#2A9E8E", flexShrink:0, marginTop:1 }} />
+                            <CheckCheck size={18} className="a-pulse" style={{ color:"#2A9E8E", flexShrink:0, marginTop:1 }} />
                             <div>
                               <div style={{ fontSize:fz(12.5, 13), fontWeight:800, color:"#1F7D70" }}>¡Recibimos tu confirmación!</div>
                               <div style={{ fontSize:fz(11, 11.5), color:"#3D4066", lineHeight:1.5, marginTop:2 }}>
@@ -712,15 +799,17 @@ function SalidaPasajero({
                           </div>
                         ) : (
                           <>
-                            <button className="a-fade" onClick={() => confirmar(o)} disabled={!!enviando}
-                              style={{ width:"100%", marginTop:9, padding:"13px", borderRadius:13, color:"#fff",
-                                fontSize:fz(13.5, 14), fontWeight:800, letterSpacing:"-.01em",
-                                opacity: enviando ? .65 : 1, cursor: enviando ? "wait" : "pointer",
-                                background:"linear-gradient(145deg,#45D4C0,#2A9E8E)",
-                                boxShadow:"0 8px 20px -6px rgba(42,158,142,.5), inset 0 1px 0 rgba(255,255,255,.3)" }}>
+                            <button className="a-fade btn-conf" onClick={() => confirmar(o)} disabled={!!enviando}
+                              data-enviando={enviando === "conf" ? "1" : undefined}
+                              style={{ width:"100%", marginTop:11, minHeight:50, padding:"14px", borderRadius:14, color:"#fff",
+                                fontSize:fz(14, 14.5), fontWeight:800, letterSpacing:"-.012em",
+                                opacity: enviando ? .7 : 1, cursor: enviando ? "wait" : "pointer",
+                                background:"linear-gradient(152deg,#4FDDC8 0%,#2A9E8E 62%,#1F7D70 100%)",
+                                boxShadow:"0 10px 24px -8px rgba(42,158,142,.55), inset 0 1px 0 rgba(255,255,255,.32)" }}>
                               {enviando === "conf" ? "Confirmando…" : "Confirmar esta opción"}
                             </button>
-                            <div style={{ fontSize:fz(9.5, 10), color:"#8A8DB5", textAlign:"center", marginTop:6 }}>
+                            <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5", textAlign:"center", marginTop:7,
+                              lineHeight:1.5 }}>
                               Al confirmar aceptás esta cotización — vale como firma digital.
                             </div>
                             {revision === o.id ? (
@@ -730,8 +819,9 @@ function SalidaPasajero({
                                 Le avisamos a {V.nombre.split(" ")[0]} — te contacta para ajustar la cotización.
                               </div>
                             ) : (
-                              <button onClick={() => pedirRevision(o)} disabled={!!enviando}
-                                style={{ display:"block", margin:"7px auto 0", fontSize:fz(10.5, 11), fontWeight:700,
+                              <button className="lnk-rev" onClick={() => pedirRevision(o)} disabled={!!enviando}
+                                style={{ display:"block", margin:"2px auto 0", minHeight:44, padding:"0 14px",
+                                  fontSize:fz(11.5, 11.5), fontWeight:700,
                                   color:G.b, textDecoration:"underline", textUnderlineOffset:3,
                                   opacity: enviando ? .65 : 1 }}>
                                 {enviando === "rev" ? "Avisando…" : "Solicitar una revisión"}
@@ -769,8 +859,8 @@ function SalidaPasajero({
 
         {/* notas para el pasajero — bloc de HTML libre */}
         {hayNotas && (
-          <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas">
-            <SecTitulo texto="Notas" color={G.b} />
+          <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas" data-ap>
+            <SecTitulo texto="Notas" />
             <div style={{ fontSize:fz(12.5, 13), lineHeight:1.6, color:"#3D4066", marginBottom:22, overflowWrap:"anywhere" }}
               dangerouslySetInnerHTML={{ __html: q.notasCliente }} />
           </div>
@@ -778,7 +868,8 @@ function SalidaPasajero({
 
         {/* condiciones — si el máster las borró todas, el bloque no se dibuja */}
         {condiciones.length > 0 && (
-        <div data-sec="condiciones" style={{ background:"#F5F6FA", borderRadius:13, padding:"13px 15px", marginBottom:18, breakInside:"avoid" }}>
+        <div data-sec="condiciones" data-ap style={{ background:"rgba(17,17,36,.028)", borderRadius:"14px", padding: impresion ? "12px 15px 13px" : "15px 17px 16px",
+          marginBottom: impresion ? 16 : 20, breakInside:"avoid" }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Condiciones</div>
           {/* las escribe el máster en /backend/cotizador/ajustes, una por línea */}
@@ -790,8 +881,8 @@ function SalidaPasajero({
 
         {/* pago — logos reales del sitio público, en cajas uniformes.
             El título y las dos filas de logos son una sola unidad de lectura. */}
-        <div style={{ breakInside:"avoid" }}>
-        <SecTitulo texto="Formas de pago" color={G.b} />
+        <div data-ap style={{ breakInside:"avoid" }}>
+        <SecTitulo texto="Formas de pago" />
         <div data-sec="pago" style={{ marginBottom:22 }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Tarjetas de crédito</div>
@@ -800,7 +891,7 @@ function SalidaPasajero({
               <div key={l.src} style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
                 width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
                 border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
-                <img src={l.src} alt={l.alt} loading="lazy"
+                <img src={l.src} alt={l.alt} loading="eager" decoding="async"
                   style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", display:"block" }} />
               </div>
             ))}
@@ -812,7 +903,7 @@ function SalidaPasajero({
               <div key={l.src} style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
                 width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
                 border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
-                <img src={l.src} alt={l.alt} loading="lazy"
+                <img src={l.src} alt={l.alt} loading="eager" decoding="async"
                   style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", display:"block" }} />
               </div>
             ))}
@@ -821,26 +912,27 @@ function SalidaPasajero({
         </div>{/* /formas de pago */}
 
         {/* firma + cierre: en papel viajan juntos */}
-        <div data-sec="firma" style={{ breakInside:"avoid" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px", borderRadius:15, breakInside:"avoid",
-          border:"1px solid rgba(17,17,36,.09)", background:"linear-gradient(180deg,#fff,#FAFBFE)" }}>
+        <div data-sec="firma" data-ap style={{ breakInside:"avoid" }}>
+        <div className="firma-caja" style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 17px", borderRadius:17, breakInside:"avoid",
+          border:"1px solid rgba(17,17,36,.085)",
+          background:"linear-gradient(170deg,#fff 0%,#FAF9FE 100%)" }}>
           {/* foto del vendedor, la que cargó en Perfiles. Sin foto, el degradado
               con las iniciales encima. */}
           {V.foto ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={V.foto} alt="" style={{ width:46, height:46, borderRadius:"50%", flexShrink:0,
-              objectFit:"cover", boxShadow:"inset 0 0 0 2px rgba(255,255,255,.65)" }} />
+            <img src={V.foto} alt="" style={{ width:fzp(54, 54, 50), height:fzp(54, 54, 50), borderRadius:"50%", flexShrink:0,
+              objectFit:"cover", boxShadow:"0 0 0 3px rgba(120,90,229,.13), inset 0 0 0 2px rgba(255,255,255,.65)" }} />
           ) : (
-            <div style={{ width:46, height:46, borderRadius:"50%", flexShrink:0, overflow:"hidden",
+            <div style={{ width:fzp(54, 54, 50), height:fzp(54, 54, 50), borderRadius:"50%", flexShrink:0, overflow:"hidden",
               position:"relative", background:fotoBg(String(V.id || "").length + 20),
-              boxShadow:"inset 0 0 0 2px rgba(255,255,255,.65)" }}>
+              boxShadow:"0 0 0 3px rgba(120,90,229,.13), inset 0 0 0 2px rgba(255,255,255,.65)" }}>
               <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", color:"#fff",
                 fontWeight:700, fontSize:15, textShadow:"0 1px 6px rgba(0,0,0,.35)" }}>{V.inicial}</div>
             </div>
           )}
           <div style={{ minWidth:0, flex:1 }}>
-            <div style={{ fontSize:fz(13, 14), fontWeight:700 }}>{V.nombre}</div>
-            <div style={{ fontSize:fz(11, 11.5), color:"#8A8DB5" }}>{V.cargo} · TravelOz</div>
+            <div style={{ fontSize:fz(14.5, 15.5), fontWeight:700, letterSpacing:"-.015em" }}>{V.nombre}</div>
+            <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", marginTop:1 }}>{V.cargo} · TravelOz</div>
             {telWa && (
               <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
                 title="Escribirle por WhatsApp" className="mono"
@@ -879,6 +971,16 @@ function SalidaPasajero({
 /* ═══════════════════════════════════════════════════════════════════════════
    ITINERARIO POR TRAYECTOS
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* La plantilla del saludo dice "Hola {nombre}, ¿cómo estás?". Cuando la
+   cotización no tiene nombre cargado, esa coma queda sosteniendo un vocativo
+   que no existe. En vez de dejarla colgada, el saludo cierra en su propia
+   exclamación y lo que sigue arranca en mayúscula. */
+function saludoSinNombre(txt) {
+  return String(txt)
+    .replace(/^(\s*)¡?\s*Hola\s*[,;]\s*/i, "$1¡Hola! ")
+    .replace(/^(\s*¡Hola! [¿¡]?)([a-záéíóúüñ])/u, (m, cab, c) => cab + c.toLocaleUpperCase("es"));
+}
 
 /* "Jueves 01 Oct" — el PNR no trae el año, se lo pasa quien renderiza */
 const DIAS_SEMANA = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
@@ -965,6 +1067,26 @@ function delta(pv, base) {
   return `${d > 0 ? "+" : "−"}${money(Math.abs(d))}`;
 }
 
+/* El chip del precio late cuando el número cambia de verdad. El odómetro rueda
+   solo, y sin nada alrededor ese giro pasa desapercibido justo en el momento
+   que importa: el pasajero comparando dos opciones. Ojo con el remonte — un
+   `key` que cambie acá mata el rodado, así que el latido va por estado. */
+function ChipPrecio({ valor, late = false, style, children }) {
+  const [on, setOn] = useState(false);
+  const previo = useRef(valor);
+  useEffect(() => {
+    if (previo.current === valor) return undefined;
+    previo.current = valor;
+    if (!late) return undefined;
+    setOn(true);
+    const t = setTimeout(() => setOn(false), 460);
+    return () => clearTimeout(t);
+  }, [valor, late]);
+  return (
+    <span className="precio-chip" data-latido={on ? "1" : undefined} style={style}>{children}</span>
+  );
+}
+
 /* Odómetro: cada dígito es una columna 0-9 que rueda; "USD" y los puntos quedan quietos */
 const DIGITOS = ["0","1","2","3","4","5","6","7","8","9"];
 function Odometro({ valor }) {
@@ -986,12 +1108,18 @@ function Odometro({ valor }) {
   );
 }
 
-function SecTitulo({ texto, color }) {
+/* El título de una sección.
+   Era el patrón de siempre: barrita de color, texto de 10 px en versalitas y
+   una línea gris estirada hasta el borde. Lo dibuja cualquier plantilla y no
+   deja jerarquía: todas las secciones pesaban lo mismo que un pie de tabla.
+   Ahora es un título de verdad —sentence case, 15 px, semibold— con un guion
+   corto de marca arriba. La regla se queda cortita a propósito: marca dónde
+   arranca la sección sin cerrarla de lado a lado. */
+function SecTitulo({ texto }) {
   return (
-    <div className="sec-t" style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11, breakAfter:"avoid" }}>
-      <div style={{ width:3, height:13, borderRadius:9, background:color }} />
-      <span style={{ fontSize:10, fontWeight:700, letterSpacing:".09em", textTransform:"uppercase", color:"#3D4066" }}>{texto}</span>
-      <div style={{ flex:1, height:1, background:"rgba(17,17,36,.07)" }} />
+    <div className="sec-t" style={{ breakAfter:"avoid" }}>
+      <span className="sec-t-rule" />
+      <span className="sec-t-tx">{texto}</span>
     </div>
   );
 }

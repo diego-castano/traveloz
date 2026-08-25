@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useId } from "react";
+import { createPortal } from "react-dom";
 import {
   Sparkles, MapPin, Calendar, ChevronDown, ChevronRight, Search, Star, Undo2, X, CheckCheck,
-  AlertCircle, PenLine, Plus
+  AlertCircle, PenLine, Plus, Check
 } from "lucide-react";
 import {
   MESES, MES_AB, fotoBg, clamp, parseISO, toISO, addDays, norm,
@@ -428,11 +429,12 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
 
   useEffect(() => {
     const h = (e) => {
-      /* El desplegable nativo de un <select> se dibuja FUERA del DOM del box en
-         Safari y en Firefox: elegir una ciudad contaba como click afuera y
-         cerraba el formulario justo cuando el vendedor lo estaba llenando. */
+      /* El panel del SelectBuscable se dibuja FUERA del DOM del box (portal a
+         `.ctz`): elegir una ciudad contaba como click afuera y cerraba el
+         formulario justo cuando el vendedor lo estaba llenando. Lo mismo pasaba
+         con el desplegable nativo de un <select> en Safari y en Firefox. */
       const t = e.target;
-      if (t instanceof Element && (t.closest("select") || t.tagName === "OPTION")) return;
+      if (t instanceof Element && (t.closest(".sb-pop") || t.closest("select") || t.tagName === "OPTION")) return;
       if (box.current && !box.current.contains(t)) {
         /* un click afuera no es "cancelar": se guarda lo escrito y, si vuelve a
            entrar por el mismo texto, el formulario reaparece como estaba */
@@ -529,9 +531,9 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
                foco vive adentro del formulario, así que el `onKeyDown` del
                <input> del buscador ya no ve nada.
                  · Escape cierra el formulario esté donde esté el foco;
-                 · Enter crea, pero solo desde un <input>: en un <select> Enter
-                   es "confirmá la opción marcada", y dar de alta el hotel ahí
-                   le roba la tecla al que está eligiendo la ciudad. */
+                 · Enter crea, pero solo desde un <input>: el buscador de
+                   ciudad se queda con su propio Enter ("confirmá la opción
+                   marcada") antes de que la tecla llegue hasta acá. */
             <div style={{ padding:"11px 12px 12px" }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelarAlta(); return; }
@@ -549,11 +551,9 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
               <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
                 <input className="in" autoFocus value={alta.nombre} placeholder="Nombre del hotel"
                   onChange={(e) => setAlta((a) => ({ ...a, nombre:e.target.value }))} />
-                <select className="in" value={alta.ciudad}
-                  onChange={(e) => setAlta((a) => ({ ...a, ciudad:e.target.value }))}>
-                  <option value="">Ciudad…</option>
-                  {ciudades.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <SelectBuscable valor={alta.ciudad} opciones={ciudades} vacio="Ciudad…"
+                  placeholder="Ciudad…" buscarPlaceholder="Buscar ciudad…"
+                  onChange={(v) => setAlta((a) => ({ ...a, ciudad:v }))} />
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ fontSize:11.5, color:"var(--n400)" }}>Categoría</span>
                   <div style={{ display:"flex", alignItems:"center", gap:1 }}
@@ -658,8 +658,287 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   SELECT CON BUSCADOR
+
+   El `<select>` nativo aguanta bien diez opciones. Las ubicaciones de traslado
+   son decenas, y los vendedores del panel crecen con el equipo: ahí el nativo
+   obliga a scrollear a ciegas. Esto es el reemplazo — un botón que abre un
+   panel con buscador, flechas y Enter.
+
+   Tres decisiones que valen la pena contar:
+
+     · El panel sale por un portal a `.ctz`, no ahí donde vive el botón. La
+       fila de un servicio, el header pegajoso y la grilla del listado tienen
+       `overflow` propio: un desplegable en flujo se cortaba contra el borde.
+       Portal a `.ctz` y no a `<body>` porque las variables de color viven en
+       `.ctz`; afuera, el panel salía sin tema (y sin modo oscuro).
+     · La posición se calcula `fixed` contra el `getBoundingClientRect()` del
+       botón y se recalcula en scroll y resize. Si abajo no entra, abre para
+       arriba.
+     · El filtro pasa por `norm`, así que "mont" encuentra Montevideo y
+       "bariloche" encuentra Bariloche escrito con o sin tilde.
+
+   Props:
+     valor      · el value elegido hoy
+     opciones   · [{ value, label, sub? }] · un string suelto vale por los tres
+     onChange   · (value) => void
+     placeholder· qué dice el botón cuando no hay nada elegido
+     vacio      · la opción "sin filtro". String → { value:"", label:string }.
+                  Objeto { value, label } para filtros que usan "todos".
+     ancho      · ancho del control (número = px). Sin él ocupa lo que le den.
+     limpiar    · false esconde la crucecita, para los campos que siempre
+                  tienen que tener algo elegido (el vendedor que firma).
+   ═══════════════════════════════════════════════════════════════════════════ */
+function SelectBuscable({
+  valor,
+  opciones = [],
+  onChange,
+  placeholder = "Elegir…",
+  vacio = null,
+  ancho,
+  limpiar = true,
+  alto = 38,
+  fontSize,
+  titulo,
+  disabled = false,
+  buscarPlaceholder = "Buscar…",
+}) {
+  const uid = useId();
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [idx, setIdx] = useState(0);
+  const [pos, setPos] = useState(null);
+  const refBtn = useRef(null);
+  const refPop = useRef(null);
+  const refInp = useRef(null);
+
+  /* La opción vacía se desarma en primitivas para que los useMemo de abajo no
+     se recalculen por un objeto nuevo en cada render. */
+  const vacioValue = vacio == null ? null : typeof vacio === "string" ? "" : vacio.value ?? "";
+  const vacioLabel = vacio == null ? null : typeof vacio === "string" ? vacio : vacio.label ?? "—";
+
+  const lista = useMemo(() => {
+    const base = (opciones || [])
+      .filter((o) => o != null)
+      .map((o) => (typeof o === "string"
+        ? { value: o, label: o }
+        : { value: o.value, label: o.label ?? String(o.value ?? ""), sub: o.sub }));
+    return vacioValue == null ? base : [{ value: vacioValue, label: vacioLabel, esVacio: true }, ...base];
+  }, [opciones, vacioValue, vacioLabel]);
+
+  const res = useMemo(() => {
+    const t = norm(q.trim());
+    if (!t) return lista;
+    return lista.filter((o) => norm(o.label).includes(t) || (o.sub && norm(o.sub).includes(t)));
+  }, [q, lista]);
+
+  const sel = lista.find((o) => o.value === (valor ?? "")) || null;
+  const enVacio = !sel || sel.esVacio === true;
+  const limpiable = limpiar && !disabled && !enVacio;
+
+  /* Dónde cae el panel. `fixed` contra el rectángulo del botón: así no importa
+     cuántos contenedores con scroll haya en el medio. */
+  const medir = useCallback(() => {
+    const el = refBtn.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const w = Math.min(Math.max(r.width, 248), Math.max(200, window.innerWidth - 16));
+    const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - w - 8));
+    const abajo = window.innerHeight - r.bottom;
+    const arriba = r.top;
+    const haciaArriba = abajo < 210 && arriba > abajo;
+    setPos({
+      left,
+      width: w,
+      top: haciaArriba ? null : Math.round(r.bottom + 6),
+      bottom: haciaArriba ? Math.round(window.innerHeight - r.top + 6) : null,
+      max: Math.max(150, Math.round((haciaArriba ? arriba : abajo) - 18)),
+    });
+  }, []);
+
+  const cerrar = useCallback((devolverFoco = true) => {
+    setOpen(false);
+    setQ("");
+    if (devolverFoco) refBtn.current?.focus();
+  }, []);
+
+  const abrir = useCallback(() => {
+    if (disabled) return;
+    medir();
+    setQ("");
+    setOpen(true);
+  }, [disabled, medir]);
+
+  /* Arranca marcada la opción que ya está elegida: abrir y apretar Enter no
+     cambia nada, que es lo que espera cualquiera. */
+  useEffect(() => {
+    if (!open) return;
+    const i = res.findIndex((o) => o.value === (valor ?? ""));
+    setIdx(i >= 0 ? i : 0);
+    refInp.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  useEffect(() => { setIdx(0); }, [q]);
+
+  useEffect(() => {
+    if (!open) return;
+    const re = () => medir();
+    /* capture:true porque el scroll que mueve el botón suele ser el de un
+       contenedor interno, no el de la ventana */
+    window.addEventListener("scroll", re, true);
+    window.addEventListener("resize", re);
+    return () => {
+      window.removeEventListener("scroll", re, true);
+      window.removeEventListener("resize", re);
+    };
+  }, [open, medir]);
+
+  useEffect(() => {
+    if (!open) return;
+    const fuera = (e) => {
+      if (refBtn.current?.contains(e.target)) return;
+      if (refPop.current?.contains(e.target)) return;
+      cerrar(false);
+    };
+    document.addEventListener("mousedown", fuera);
+    return () => document.removeEventListener("mousedown", fuera);
+  }, [open, cerrar]);
+
+  /* La opción marcada siempre a la vista, venga del teclado o del filtro. */
+  useEffect(() => {
+    if (!open) return;
+    document.getElementById(`${uid}-o${idx}`)?.scrollIntoView({ block: "nearest" });
+  }, [idx, open, uid, res.length]);
+
+  const elegir = (o) => {
+    onChange?.(o.value);
+    cerrar();
+  };
+
+  const teclas = (e) => {
+    /* Todo lo que el panel entiende muere acá: la fila de un servicio, el alta
+       rápida de hotel y el editor tienen sus propios atajos con Enter. */
+    const mias = ["ArrowDown", "ArrowUp", "Home", "End", "Enter", "Escape"];
+    if (mias.includes(e.key)) e.stopPropagation();
+
+    if (e.key === "ArrowDown") { e.preventDefault(); setIdx((i) => clamp(i + 1, 0, res.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => clamp(i - 1, 0, res.length - 1)); }
+    else if (e.key === "Home") { e.preventDefault(); setIdx(0); }
+    else if (e.key === "End") { e.preventDefault(); setIdx(Math.max(0, res.length - 1)); }
+    else if (e.key === "Enter") { e.preventDefault(); if (res[idx]) elegir(res[idx]); }
+    else if (e.key === "Escape") { e.preventDefault(); cerrar(); }
+    else if (e.key === "Tab") { cerrar(false); }
+  };
+
+  /* Resalta el pedazo que coincide. `norm` no cambia el largo, así que el
+     índice del texto normalizado sirve para cortar el original. */
+  const marcar = (txt) => {
+    const t = q.trim();
+    if (!t) return txt;
+    const i = norm(txt).indexOf(norm(t));
+    if (i < 0) return txt;
+    return <>{txt.slice(0, i)}<b>{txt.slice(i, i + t.length)}</b>{txt.slice(i + t.length)}</>;
+  };
+
+  const cont = open && typeof document !== "undefined"
+    ? document.querySelector(".ctz") || document.body
+    : null;
+
+  return (
+    <div className="sb-wrap" style={ancho ? { width: ancho, flexShrink: 0 } : undefined}>
+      <button
+        type="button"
+        ref={refBtn}
+        className="in sb-btn"
+        data-open={open ? "1" : "0"}
+        data-vacio={enVacio ? "1" : "0"}
+        role="combobox"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-controls={`${uid}-lb`}
+        title={titulo}
+        disabled={disabled}
+        style={{ height: alto, fontSize, paddingRight: limpiable ? 48 : 28 }}
+        onClick={() => (open ? cerrar(false) : abrir())}
+        onKeyDown={(e) => {
+          if (open) return;
+          if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") { e.preventDefault(); abrir(); }
+          else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+            /* escribir con el botón enfocado abre y arranca a filtrar */
+            e.preventDefault();
+            medir();
+            setQ(e.key);
+            setOpen(true);
+          }
+        }}>
+        <span className="sb-val">{sel ? sel.label : placeholder}</span>
+      </button>
+
+      {limpiable && (
+        <button type="button" className="sb-x" tabIndex={-1} title="Limpiar"
+          aria-label="Limpiar la selección"
+          onClick={(e) => { e.stopPropagation(); onChange?.(vacioValue ?? ""); }}>
+          <X size={11} />
+        </button>
+      )}
+      <ChevronDown className="sb-chev" size={13} aria-hidden="true" />
+
+      {open && cont && createPortal(
+        <div ref={refPop} className="sb-pop" style={{
+          left: pos?.left ?? 0,
+          width: pos?.width ?? 248,
+          ...(pos?.top != null ? { top: pos.top } : { bottom: pos?.bottom ?? 0 }),
+          maxHeight: pos?.max ?? 300,
+        }}>
+          <div className="sb-buscar">
+            <Search size={13} aria-hidden="true" />
+            <input
+              ref={refInp}
+              value={q}
+              placeholder={buscarPlaceholder}
+              aria-controls={`${uid}-lb`}
+              aria-autocomplete="list"
+              aria-activedescendant={res[idx] ? `${uid}-o${idx}` : undefined}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={teclas} />
+          </div>
+
+          <div className="sb-lista" id={`${uid}-lb`} role="listbox">
+            {res.length === 0 && <div className="sb-nada">Nada con “{q.trim()}”</div>}
+            {res.map((o, i) => {
+              const on = o.value === (valor ?? "");
+              return (
+                <button key={`${o.value}__${i}`} type="button" id={`${uid}-o${i}`}
+                  className="sb-i" role="option" aria-selected={on}
+                  data-on={i === idx ? "1" : "0"}
+                  onMouseEnter={() => setIdx(i)}
+                  onClick={() => elegir(o)}>
+                  <span className="sb-i-txt">
+                    <span className={o.esVacio ? "sb-i-vacio" : undefined}>{marcar(o.label)}</span>
+                    {o.sub && <span className="sb-i-sub">{marcar(o.sub)}</span>}
+                  </span>
+                  {on && <Check size={13} className="sb-i-ok" />}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="sb-pie">
+            <span><span className="kbd">↑↓</span> elegir</span>
+            <span><span className="kbd">↵</span> confirmar</span>
+            <span><span className="kbd">esc</span> cerrar</span>
+          </div>
+        </div>,
+        cont,
+      )}
+    </div>
+  );
+}
+
 export {
   Foto, TzIcon, IcoAvion, IcoCama, IcoBus, IcoAuto, IcoEscudo, IcoEstrella, CATS, Btn, Label, Pill,
   ChipIA, Estrellas, Block, Vacio, Toasts, Wordmark, DSEM, DOW, fmtBtn, diffDias, Calendario,
-  AutoCiudad, BuscadorHotel,
+  AutoCiudad, BuscadorHotel, SelectBuscable,
 };

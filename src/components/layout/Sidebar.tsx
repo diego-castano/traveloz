@@ -41,6 +41,7 @@ import { useBrand } from "@/components/providers/BrandProvider";
 import { springs } from "@/components/lib/animations";
 import { cn } from "@/components/lib/cn";
 import { Avatar } from "@/components/ui/Avatar";
+import { esRutaCotizador } from "@/app/backend/cotizador/tipos";
 import type { LucideIcon } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -202,15 +203,24 @@ const ROLE_LABELS: Record<string, string> = {
 const W_EXPANDED = 256;
 const W_COLLAPSED = 68;
 
+/** Dónde queda anotado el ancho del menú de antes de entrar al cotizador. */
+const K_MENU_PREVIO = "tz:menu-antes-del-cotizador";
+
 // ---------------------------------------------------------------------------
 // Sidebar component
 // ---------------------------------------------------------------------------
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
   const { visibleModules, user, isAdmin } = useAuth();
   const { activeBrand } = useBrand();
   const pathname = usePathname();
   const router = useRouter();
+
+  // El cotizador se dibuja a pantalla completa y necesita el ancho: al entrar
+  // el menú se colapsa solo, y al salir vuelve al estado que tenía antes.
+  // La decisión se toma en el inicializador —no en un efecto— para que el
+  // primer pintado ya salga angosto y no se vea el menú saltar.
+  const enCotizador = esRutaCotizador(pathname);
+  const [collapsed, setCollapsed] = useState(enCotizador);
   const { isMobile, mobileOpen, setMobileOpen } = useSidebar();
   const prefetchedRoutesRef = useRef<Set<string>>(new Set());
   const reduceMotion = useReducedMotion();
@@ -231,6 +241,42 @@ export function Sidebar() {
   const isActive = (href: string) => {
     return pathname === href || pathname.startsWith(href + "/");
   };
+
+  // --- Colapso automático en el cotizador ---------------------------------
+  // `collapsedRef` va un paso atrás a propósito: cuando el efecto de abajo
+  // corre por un cambio de ruta, todavía tiene el valor con el que el usuario
+  // venía navegando, que es justo lo que hay que guardar. Se declara antes
+  // para que React lo actualice primero (los efectos corren en orden).
+  const collapsedRef = useRef(collapsed);
+  const modoCotizadorRef = useRef(enCotizador);
+  useEffect(() => {
+    collapsedRef.current = collapsed;
+  }, [collapsed]);
+
+  useEffect(() => {
+    if (enCotizador === modoCotizadorRef.current) return;
+    modoCotizadorRef.current = enCotizador;
+
+    if (enCotizador) {
+      // sessionStorage y no un ref: una recarga adentro del cotizador —que
+      // pasa seguido, el editor autoguarda— no puede perder a dónde volver.
+      try {
+        sessionStorage.setItem(K_MENU_PREVIO, collapsedRef.current ? "1" : "0");
+      } catch {
+        /* modo privado o storage bloqueado: se pierde la preferencia, nada más */
+      }
+      setCollapsed(true);
+      return;
+    }
+
+    let previo = false;
+    try {
+      previo = sessionStorage.getItem(K_MENU_PREVIO) === "1";
+    } catch {
+      /* sin storage se vuelve expandido, que es el default del panel */
+    }
+    setCollapsed(previo);
+  }, [enCotizador]);
 
   // On mobile, the sidebar is always "expanded" when open (never collapsed)
   const effectiveCollapsed = isMobile ? false : collapsed;

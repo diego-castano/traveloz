@@ -13,7 +13,8 @@ import {
   ESTADOS, estadoEfectivo
 } from "./data";
 import { useCtz, useCatalogo, buscarVendedor } from "./contexto";
-import { Foto, Btn, Pill, ChipIA, Vacio } from "./ui";
+import { Foto, Btn, Pill, ChipIA, Vacio, SelectBuscable } from "./ui";
+import { MisLinks } from "./mis-links";
 import { DrawerAnalytics } from "./drawer";
 import { TabAnalytics as TabAnalyticsAdmin } from "./analytics";
 import { fmtDuracion, fmtLectura } from "./adaptadores";
@@ -436,6 +437,10 @@ function Inicio({
           <div className="disp" style={{ fontSize:24, fontWeight:600, letterSpacing:"-.025em", lineHeight:1.1, marginTop:4 }}>Cotizador</div>
           <div style={{ fontSize:12, color:"var(--n400)" }}>Cotizaciones a medida para mandar por WhatsApp</div>
         </div>
+        {/* Pedido del cliente: el link de datos del pasajero, arriba y a mano.
+            Si el admin está mirando a un vendedor puntual, los links son de él. */}
+        <MisLinks vendedorId={esAdmin && verComo !== "todos" ? verComo : null} toast={toast} />
+
         {/* ajustes del cotizador — solo el admin, en su propia página */}
         {esAdmin && (
           <Link href="/backend/cotizador/ajustes" className="btn btn-s btn-ico"
@@ -940,7 +945,7 @@ function ListadoContenido({
   const conOv = useMemo(() => conPisadas(base, acc.ov), [base, acc.ov]);
   const sel = conOv.find((r) => r.id === selId) || null;
 
-  /* v2F · destinos y meses presentes hoy, para armar los <select> de filtro */
+  /* v2F · destinos y meses presentes hoy, para armar los filtros de arriba */
   const destinosUnicos = useMemo(() => Array.from(new Set(conOv.map((r) => destinoBase(r.destino)))).filter(Boolean).sort(), [conOv]);
   const mesesUnicos = useMemo(() => {
     const presentes = new Set(conOv.map((r) => mesDeDestino(r.destino)));
@@ -1015,23 +1020,20 @@ function ListadoContenido({
             {k === "todas" ? "Todas" : ESTADOS[k].l}
           </button>
         ))}
-        <select className="in" style={{ width:150 }} value={destFiltro} onChange={(e) => setDestFiltro(e.target.value)}>
-          <option value="todos">Todos los destinos</option>
-          {destinosUnicos.map((d) => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <select className="in" style={{ width:150 }} value={mesFiltro} onChange={(e) => setMesFiltro(e.target.value)}>
-          <option value="todos">Todos los meses</option>
-          {mesesUnicos.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
+        <SelectBuscable valor={destFiltro} opciones={destinosUnicos} ancho={150}
+          vacio={{ value:"todos", label:"Todos los destinos" }}
+          buscarPlaceholder="Buscar destino…" onChange={setDestFiltro} />
+        <SelectBuscable valor={mesFiltro} opciones={mesesUnicos} ancho={150}
+          vacio={{ value:"todos", label:"Todos los meses" }}
+          buscarPlaceholder="Buscar mes…" onChange={setMesFiltro} />
         {esAdmin && (
           <>
             {/* el filtro por vendedor lo aplica el server: vuelve a pedir la lista */}
             <span className="lbl" style={{ flexShrink:0, marginLeft:2 }}>Ver como</span>
-            <select className="in" style={{ width:190 }} value={verComo}
-              onChange={(e) => { setVerComo(e.target.value); }}>
-              <option value="todos">Todos los vendedores</option>
-              {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-            </select>
+            <SelectBuscable valor={verComo} ancho={190}
+              opciones={vendedores.map((v) => ({ value:v.id, label:v.nombre, sub:v.cargo }))}
+              vacio={{ value:"todos", label:"Todos los vendedores" }}
+              buscarPlaceholder="Buscar vendedor…" onChange={setVerComo} />
             <span className="sem" style={{ flexShrink:0, cursor:"help" }}>
               <Eye size={13} style={{ color:"var(--n300)" }} />
               <div className="tip">Cada vendedor ve solo sus cotizaciones; el admin las ve todas.</div>

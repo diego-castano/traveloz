@@ -7,6 +7,7 @@ import {
   StickyNote, ListChecks, Eye, EyeOff, Keyboard
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
+import { CSS_UI } from "./_mockup/styles-ui";
 import {
   ANIO_ACTUAL, registrarVendedores, uid, toISO, parseISO, ESTADOS,
   serviciosDefault, habitacionNueva, ventaTarifa, PNR_DEMO, parsePNR, FACTOR_DEFAULT,
@@ -21,7 +22,8 @@ import {
   listarPlantillas, crearPlantilla, eliminarPlantilla, usarPlantilla, leerPlantilla,
   toggleFavorito as toggleFavoritoAction,
 } from "@/actions/presupuesto.actions";
-import { Btn, Pill, Toasts } from "./_mockup/ui";
+import { Btn, Pill, Toasts, SelectBuscable } from "./_mockup/ui";
+import { MisLinks } from "./_mockup/mis-links";
 import { SalidaPasajero } from "./_mockup/telefono";
 import {
   BloqueCliente, BloqueEncabezado, BloqueAlojamiento, BloqueMensaje, BloqueVuelos, BloqueServicios,
@@ -388,8 +390,16 @@ export default function Cotizador({
   /* El vendedor que firma lo lee el alta sin volverse dependencia del efecto. */
   const vendedorRef = useRef(vendedor);
   vendedorRef.current = vendedor;
+  /* La cotización de `?imprimir=demo` no existe en la base y no tiene que
+     existir. El comentario de allá abajo dice "nada de esto toca la base", y
+     era mentira: apenas se abre, el efecto que sincroniza los servicios `auto`
+     reescribe el texto de las noches, eso cuenta como cambio y el autoguardado
+     salía a crear la fila. Cada corrida del PDF dejaba un borrador nuevo. Con
+     esto prendido el autoguardado no llama a ninguna action. */
+  const demoRef = useRef(false);
 
   const guardarInterno = useCallback(async () => {
+    if (demoRef.current) return;                 // la demo del PDF no se guarda
     if (guardandoRef.current) { pendienteRef.current = true; return; }
     const epoca = epocaRef.current;
     const actual = qRef.current;
@@ -504,7 +514,7 @@ export default function Cotizador({
 
   /* el debounce: 1.500 ms desde la última tecla */
   useEffect(() => {
-    if (pantalla !== "editor") return;
+    if (pantalla !== "editor" || demoRef.current) return;
     if (JSON.stringify(q) === ultimoGuardadoRef.current) return;
     setGuardado((g) => (g === "error" ? g : "guardando"));
     clearTimeout(debounceRef.current);
@@ -540,7 +550,7 @@ export default function Cotizador({
          con la que arranca el componente y `ultimoGuardadoRef` está en "":
          nunca coinciden, así que el aviso saltaba al ir a cualquier otra
          sección del panel sin tener nada a medio escribir. */
-      if (pantallaRef.current !== "editor") return;
+      if (pantallaRef.current !== "editor" || demoRef.current) return;
       if (JSON.stringify(qRef.current) === ultimoGuardadoRef.current) return;
       if (presupuestoIdRef.current) void guardarAhora();
       e.preventDefault();
@@ -771,6 +781,9 @@ export default function Cotizador({
     claveEdicionRef.current = id ? null : nuevaClaveEdicion();
     updatedAtRef.current = updatedAt ? new Date(updatedAt).toISOString() : null;
     origenRef.current = { tipo: origenTipo, ref: refOrigen };
+    /* cualquier apertura normal vuelve a guardar: el modo demo lo prende
+       después el efecto de `?imprimir=demo`, y solo él */
+    demoRef.current = false;
     ultimoGuardadoRef.current = JSON.stringify(nueva);
     qRef.current = nueva;
     cronoRef.current = 0;
@@ -807,8 +820,8 @@ export default function Cotizador({
                 vuelos: la opción arranca a media carilla y no entra entera,
                 que es como se ve si el corte cae entre hotel y hotel en vez
                 de tirar la opción completa a la hoja siguiente
-     Nada de esto toca la base: el borrador vive en memoria hasta que alguien
-     escriba encima. */
+     Nada de esto toca la base: `demoRef` apaga el autoguardado y el borrador
+     vive en memoria hasta que se recarga la página. */
   const demoHecha = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined" || demoHecha.current) return;
@@ -901,6 +914,9 @@ export default function Cotizador({
     }
 
     abrir(q0);
+    /* después de `abrir`, que lo apaga. De acá en más nada de esta cotización
+       llega a la base: ni el alta, ni el aviso de "cambios sin guardar". */
+    demoRef.current = true;
     setImprimir(true);
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [catalogo]);
@@ -1070,6 +1086,9 @@ export default function Cotizador({
     <CotizadorCtx.Provider value={ctx}>
     <div className={`ctz${oscuro ? " dark" : ""}${imprimir ? " imprimiendo" : ""}`} data-brand={marca} style={{ minHeight:"100%" }}>
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
+      {/* los controles nuevos van en su propia hoja, y después de CSS: a igual
+          especificidad manda el que se declara último */}
+      <style dangerouslySetInnerHTML={{ __html: CSS_UI }} />
 
       {pantalla === "inicio" && (
         <Inicio
@@ -1144,11 +1163,16 @@ export default function Cotizador({
 
               {/* firmar como otro es cosa del admin: el vendedor firma siempre él */}
               {esAdmin && (
-                <select className="in" style={{ width:150, height:34, fontSize:12 }} value={vendedor ?? ""}
-                  onChange={(e) => setVendedor(e.target.value)} title="Vendedor que firma la cotización">
-                  {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-                </select>
+                <SelectBuscable valor={vendedor ?? ""} ancho={150} alto={34} fontSize={12} limpiar={false}
+                  opciones={vendedores.map((v) => ({ value:v.id, label:v.nombre, sub:v.cargo }))}
+                  placeholder="Vendedor…" buscarPlaceholder="Buscar vendedor…"
+                  titulo="Vendedor que firma la cotización"
+                  onChange={(v) => setVendedor(v)} />
               )}
+
+              {/* Pedido del cliente: el link de datos del pasajero, arriba y a mano.
+                  Firma el mismo vendedor que firma la cotización. */}
+              <MisLinks compacto vendedorId={vendedor} cliente={q.cliente} numero={q.numero} toast={toast} />
 
               {/* v2B · ver la pantalla sin nada interno */}
               <button className={`btn btn-sm ${vistaPasajero ? "btn-v" : "btn-s"}`}

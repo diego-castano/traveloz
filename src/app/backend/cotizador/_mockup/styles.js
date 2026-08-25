@@ -834,6 +834,209 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz .drawer-acc { flex-wrap:wrap; }
   .ctz .drawer-acc > .btn { min-height:42px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LINK PÚBLICO DE COTIZACIÓN  ·  /c/<token>
+   ──────────────────────────────────────────────────────────────────────────
+   El pasajero abre esto desde WhatsApp. No es una página del sitio: es un
+   documento dirigido a una persona, así que el chrome se reduce al wordmark
+   arriba y a los datos de la agencia abajo, y todo lo demás es la hoja.
+
+   Todo cuelga de .ctz-pub — la raíz que pone el layout del route group
+   (cotizacion) — para no tocar ni el panel ni la vista previa del editor.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.ctz-pub {
+  --pub-w:880px;
+  /* Fondo tintado con el violeta de marca y un resto de coral arriba a la
+     derecha: gris puro deja la hoja flotando sobre nada. */
+  --pub-bg:#F3F1F9;
+  min-height:100dvh; display:flex; flex-direction:column;
+  background:
+    radial-gradient(115% 52% at 84% -10%, rgba(244,62,85,.10), transparent 62%),
+    radial-gradient(95% 58% at 2% 106%, rgba(120,90,229,.13), transparent 66%),
+    var(--pub-bg);
+  font-variant-numeric:tabular-nums;
+}
+/* grano fijo: rompe el plano del fondo sin que se note qué lo rompe */
+.ctz-pub::before {
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.ctz-pub-top { position:relative; z-index:1; width:100%; max-width:var(--pub-w);
+  margin:0 auto; padding:26px 20px 15px; display:flex; align-items:center; }
+.ctz-pub-top .wordmark { opacity:.92; }
+.ctz-pub-main { position:relative; z-index:1; flex:1 0 auto; }
+
+.ctz-pub-pie { position:relative; z-index:1; width:100%; max-width:var(--pub-w);
+  margin:0 auto; padding:26px 22px 44px; text-align:center; }
+.ctz-pub-pie-l { margin:0 0 4px; font-size:11.5px; line-height:1.7; color:var(--n400);
+  text-wrap:pretty; }
+.ctz-pub-pie a { color:var(--n500); text-decoration:none;
+  border-bottom:1px solid rgba(17,17,36,.13); transition:color .2s, border-color .2s; }
+.ctz-pub-pie a:hover { color:var(--violet); border-color:rgba(120,90,229,.5); }
+
+/* la hoja: sin borde — la elevación ya la separa del fondo — y con la sombra
+   tintada del violeta que tiñe la página, no negro al 35 % */
+.ctz-pub .cot-hoja { position:relative; max-width:var(--pub-w); margin:0 auto; background:#fff;
+  box-shadow:0 1px 2px rgba(58,38,120,.055), 0 44px 84px -48px rgba(58,38,120,.45); }
+@media (min-width:768px){
+  .ctz-pub .cot-hoja { border-radius:22px; overflow:hidden; }
+}
+
+/* ── entrada escalonada de las secciones ──────────────────────────────────
+   El estado por defecto es VISIBLE: si el JS no corre, si el observer no
+   existe o si el navegador respeta reduce-motion, la cotización se lee igual.
+   Solo cuando la ficha se marca a sí misma con data-animar="1" —después de
+   montar, y nunca en la vista previa del vendedor ni en el papel— los bloques
+   arrancan corridos y suben a su lugar. */
+[data-animar="1"] [data-ap] { opacity:0; transform:translateY(15px); }
+[data-animar="1"] [data-ap][data-vis="1"] { opacity:1; transform:none;
+  transition:opacity .45s cubic-bezier(.2,.8,.2,1), transform .45s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion:reduce){
+  [data-animar="1"] [data-ap] { opacity:1 !important; transform:none !important; }
+}
+
+/* ── título de sección ────────────────────────────────────────────────────
+   Vive fuera de .ctz-pub a propósito: la misma pieza la usan la pantalla del
+   pasajero, la vista previa del vendedor y el papel. */
+.sec-t { margin:0 0 12px; break-after:avoid; }
+.sec-t-rule { display:block; width:26px; height:2.5px; border-radius:99px; margin-bottom:9px;
+  background:linear-gradient(90deg,var(--coral),var(--violet)); }
+.sec-t-tx { display:block; font-size:15px; font-weight:600; line-height:1.25;
+  letter-spacing:-.018em; color:var(--ink); }
+
+/* ── switcher de opciones: le faltaba todo lo que pasa antes del click ──── */
+.opt-seg > button { transition:background .2s, color .2s, box-shadow .2s, transform .14s cubic-bezier(.2,.8,.2,1); }
+.opt-seg > button:hover:not([data-on="1"]) { background:rgba(255,255,255,.6); color:var(--ink); }
+.opt-seg > button[data-on="1"] { transform:translateY(-1px); }
+
+/* ── confirmar: presión física y llegada del sí ──────────────────────────── */
+.btn-conf { position:relative; overflow:hidden;
+  transition:transform .14s cubic-bezier(.2,.8,.2,1), box-shadow .22s, filter .22s; }
+.btn-conf:hover:not(:disabled) { transform:translateY(-1px); filter:saturate(1.06);
+  box-shadow:0 12px 26px -8px rgba(42,158,142,.55), inset 0 1px 0 rgba(255,255,255,.34); }
+.btn-conf:active:not(:disabled) { transform:translateY(1px) scale(.985);
+  box-shadow:0 4px 10px -4px rgba(42,158,142,.5), inset 0 2px 7px rgba(0,0,0,.14); }
+.btn-conf:disabled { transform:none; }
+/* el barrido de luz mientras viaja la action: dice "está pasando algo" sin spinner */
+.btn-conf[data-enviando="1"]::after { content:''; position:absolute; inset:0;
+  background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.34) 50%,transparent 70%);
+  animation:shimmer 1.1s linear infinite; background-size:220% 100%; }
+
+/* "Ver detalle" / "Cerrar" y "Solicitar una revisión": estados, no texto muerto */
+.op-ver { transition:color .18s, gap .18s; }
+.op-cab:hover .op-ver { gap:6px; }
+.op-cab { transition:background .2s; }
+.op-cab:hover { background:rgba(120,90,229,.028); }
+.lnk-rev { transition:color .18s, opacity .18s; }
+.lnk-rev:hover:not(:disabled) { color:var(--violet-ink); }
+
+/* la tarjeta de opción respira al pasarle por encima */
+.op-card { transition:box-shadow .28s cubic-bezier(.2,.8,.2,1), transform .28s cubic-bezier(.2,.8,.2,1); }
+.ctz-pub .op-card:hover { transform:translateY(-2px); }
+
+/* el precio del encabezado de la opción, cuando rueda el odómetro */
+@keyframes precioLatido { 0%{transform:scale(1)} 40%{transform:scale(1.045)} 100%{transform:scale(1)} }
+.precio-chip { display:inline-block; transform-origin:right center; }
+.precio-chip[data-latido="1"] { animation:precioLatido .42s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion:reduce){ .precio-chip[data-latido="1"] { animation:none; } }
+
+/* ── link vencido o revocado ──────────────────────────────────────────────
+   Misma tarjeta, misma sombra y mismo Playfair que la hoja: el pasajero tiene
+   que reconocer de dónde viene, aunque lo que abrió ya no esté. */
+.cot-vencida { max-width:560px; margin:0 auto; padding:8px 20px 20px; }
+.cot-vencida > section { background:#fff; border-radius:22px; padding:34px 30px 30px;
+  box-shadow:0 1px 2px rgba(58,38,120,.055), 0 44px 84px -48px rgba(58,38,120,.45); }
+.cv-rule { display:block; width:30px; height:3px; border-radius:99px; margin-bottom:16px;
+  background:linear-gradient(90deg,var(--coral),var(--violet)); }
+.cv-t { font-size:29px; font-weight:600; line-height:1.12; letter-spacing:-.03em;
+  margin:0 0 12px; text-wrap:balance; color:var(--ink); }
+.cv-p { font-size:14.5px; line-height:1.6; color:var(--n600); margin:0; max-width:52ch;
+  text-wrap:pretty; }
+.cv-vend { display:flex; align-items:center; gap:13px; margin:26px 0 16px;
+  padding-top:22px; border-top:1px solid var(--hair-soft); }
+.cv-foto { width:52px; height:52px; border-radius:50%; flex-shrink:0; object-fit:cover;
+  box-shadow:0 0 0 3px rgba(120,90,229,.13); }
+.cv-ini { display:grid; place-items:center; font-size:17px; font-weight:700; color:#fff;
+  background:linear-gradient(145deg,var(--violet-2),var(--violet)); }
+.cv-vend-n { font-size:15.5px; font-weight:700; letter-spacing:-.015em; }
+.cv-vend-c { font-size:12px; color:var(--n400); margin-top:1px; }
+.cv-cta { display:flex; align-items:center; justify-content:center; min-height:50px;
+  border-radius:14px; color:#fff; font-size:14.5px; font-weight:800; letter-spacing:-.012em;
+  text-decoration:none; background:linear-gradient(103deg,var(--coral) 0%,#C4409B 47%,var(--violet) 100%);
+  box-shadow:0 10px 24px -9px rgba(120,90,229,.6);
+  transition:transform .14s cubic-bezier(.2,.8,.2,1), box-shadow .22s, filter .22s; }
+.cv-cta:hover { transform:translateY(-1px); filter:saturate(1.06);
+  box-shadow:0 14px 30px -10px rgba(120,90,229,.7); }
+.cv-cta:active { transform:translateY(1px) scale(.99); box-shadow:0 5px 12px -6px rgba(120,90,229,.6); }
+.cv-nota { display:flex; align-items:center; justify-content:center; gap:6px; margin:14px 0 0;
+  font-size:11.5px; color:var(--n300); text-align:center; }
+@media (max-width:520px){
+  .cot-vencida > section { padding:28px 22px 26px; border-radius:20px; }
+  .cv-t { font-size:25px; }
+}
+
+/* ── esqueleto mientras la hoja monta ────────────────────────────────────── */
+@keyframes pubShim { 0%{background-position:-180% 0} 100%{background-position:180% 0} }
+.pub-sk { max-width:var(--pub-w); margin:0 auto; background:#fff; overflow:hidden; }
+@media (min-width:768px){ .pub-sk { border-radius:22px; } }
+.pub-sk-h { height:150px; background:linear-gradient(103deg,rgba(244,62,85,.45),rgba(120,90,229,.45)); }
+.pub-sk-b { padding:24px 22px 34px; }
+.pub-sk-l { height:12px; border-radius:99px; margin-bottom:11px;
+  background:linear-gradient(90deg,var(--n100),rgba(17,17,36,.05),var(--n100));
+  background-size:180% 100%; animation:pubShim 1.5s ease-in-out infinite; }
+
+/* ══ móvil ══ */
+@media (max-width:767px){
+  .ctz-pub-top { padding:20px 18px 12px; }
+  .ctz-pub-pie { padding:22px 20px 36px; }
+  /* nada de tablas de tarifas empujando la hoja a lo ancho */
+  .ctz-pub .cot-hoja { overflow-x:hidden; }
+  /* el dedo pide 44 px: el switcher los tenía justos y el link de revisión, no */
+  .ctz-pub .opt-seg > button { min-height:48px; }
+  .ctz-pub .lnk-rev { min-height:44px; }
+  .ctz-pub .sec-t-tx { font-size:14.5px; }
+}
+
+/* ── el papel ─────────────────────────────────────────────────────────────
+   Mismo documento, otro soporte. Lo que cambia son tres cosas: el chrome de
+   la página no existe, el ritmo vertical se abre (un título respira arriba y
+   se pega a lo que titula), y las tarifas dejan de ser tarjetas para volverse
+   una tabla de líneas finas con los números alineados a la derecha. */
+@media print {
+  .ctz-pub { min-height:0; background:#fff !important; display:block; }
+  .ctz-pub::before { display:none !important; }
+  .ctz-pub [data-ctz-chrome] { display:none !important; }
+  .ctz-pub .cot-hoja { max-width:none; margin:0; border-radius:0; box-shadow:none; }
+  /* las animaciones de entrada no llegan al papel ni por accidente */
+  [data-animar="1"] [data-ap] { opacity:1 !important; transform:none !important; }
+
+  /* Ritmo del título de sección.
+     En pantalla el título pesa 15 px y respira: es lo que ordena el scroll.
+     En papel el mismo peso costaba una carilla entera por documento, así que
+     acá baja a 13 y la regla se acorta. El aire de arriba lo pone el bloque
+     anterior (24 px de margen), el de abajo son 6: el título queda pegado a lo
+     que titula, que es lo único que el corte de página tiene que respetar. */
+  .ctz .print-hoja .sec-t { margin:0 0 6px; break-inside:avoid; page-break-inside:avoid; }
+  .ctz .print-hoja .sec-t-rule { width:22px; height:2px; margin-bottom:5px; }
+  .ctz .print-hoja .sec-t-tx { font-size:13px; line-height:1.2; letter-spacing:-.015em; }
+
+  /* tarifas: tabla, no tarjeta */
+  .ctz .print-hoja .tar-box { background:#fff !important; border:none !important;
+    border-top:1px solid rgba(17,17,36,.14) !important;
+    border-bottom:1px solid rgba(17,17,36,.14) !important; border-radius:0 !important; }
+  .ctz .print-hoja .tar-hd { border-bottom:1px solid rgba(17,17,36,.09) !important;
+    padding-left:0 !important; padding-right:0 !important; }
+  .ctz .print-hoja .tar-row { padding-left:0 !important; padding-right:0 !important; }
+  .ctz .print-hoja .tar-sep { margin:0 !important; }
+
+  /* la firma cierra el documento: el peso lo dan el marco y la foto, no el
+     relleno — sobre papel cada milímetro se paga en páginas */
+  .ctz .print-hoja .firma-caja { padding:13px 15px !important;
+    border:1px solid rgba(17,17,36,.18) !important; }
+}
 `;
 
 export { CSS };

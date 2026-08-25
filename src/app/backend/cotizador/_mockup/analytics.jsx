@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { money } from "./data";
 import { useCtz } from "./contexto";
-import { Btn, Vacio } from "./ui";
+import { Btn, Vacio, SelectBuscable } from "./ui";
 import { analyticsCotizador } from "@/actions/presupuesto-analytics.actions";
 
 /* Los cuatro rangos del filtro. `dias:null` = desde el 1º de enero. */
@@ -294,11 +294,10 @@ export function TabAnalytics({ toast }) {
               onClick={() => setRango(x.id)}>{x.l}</button>
           ))}
         </div>
-        <select className="in" style={{ width: 190 }} value={vendedor}
-          onChange={(e) => setVendedor(e.target.value)}>
-          <option value="todos">Todos los vendedores</option>
-          {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-        </select>
+        <SelectBuscable valor={vendedor} ancho={190}
+          opciones={vendedores.map((v) => ({ value: v.id, label: v.nombre, sub: v.cargo }))}
+          vacio={{ value: "todos", label: "Todos los vendedores" }}
+          buscarPlaceholder="Buscar vendedor…" onChange={setVendedor} />
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
           {cargando && <Loader2 size={14} className="spin" style={{ color: "var(--n300)" }} />}
           <Btn size="sm" onClick={carga} title="Volver a calcular"><RefreshCw size={12} /> Actualizar</Btn>

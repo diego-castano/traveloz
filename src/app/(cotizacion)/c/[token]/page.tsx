@@ -29,7 +29,6 @@ import { contenidoPublico } from "@/lib/presupuesto/publico";
 import { TOKEN_RE } from "@/lib/presupuesto/links";
 import { condicionesConVencimiento } from "@/lib/presupuesto/habiles";
 import { proxyThumbUrl } from "@/components/lib/image-loader";
-import { CSS } from "@/app/backend/cotizador/_mockup/styles";
 import CotizacionPublica from "./CotizacionPublica";
 import { CotizacionNoDisponible } from "./NoDisponible";
 
@@ -276,29 +275,10 @@ export default async function CotizacionPublicaPage({
 
   const print = searchParams?.print === "1";
 
+  // El CSS del cotizador y el chrome (wordmark arriba, datos de la agencia
+  // abajo) los pone el layout del route group. Acá queda solo la hoja.
   return (
-    <div className="ctz cot-publica">
-      {/* El CSS del cotizador entero, igual que en CotizadorMockup: la ficha
-          del pasajero depende de sus variables (.ctz), de las animaciones y de
-          las reglas de impresión. La ampliación de la CSP para Google Fonts la
-          agrega next.config.mjs en /c/:path*. */}
-      <style dangerouslySetInnerHTML={{ __html: CSS }} />
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-        .cot-publica { background:#fff; }
-        .cot-publica .cot-hoja { max-width:860px; margin:0 auto; background:#fff;
-          box-shadow:0 24px 60px -30px rgba(17,17,36,.35); }
-        @media (min-width:768px){ .cot-publica .cot-hoja { border-radius:18px; overflow:hidden; margin:22px auto 40px; } }
-        /* El chrome del route group (logo + footer) no va al papel. */
-        @media print {
-          .formularios-root > header, .formularios-root > footer,
-          .formularios-root > [aria-hidden="true"] { display:none !important; }
-          .cot-publica .cot-hoja { max-width:none; margin:0; border-radius:0; box-shadow:none; }
-        }
-      `,
-        }}
-      />
+    <div className="cot-publica">
       <CotizacionPublica
         token={token}
         q={pub}

@@ -21,7 +21,7 @@ import { uploadFile } from "@/components/lib/upload";
 import { buscarEnHistorial } from "@/actions/presupuesto.actions";
 import {
   Foto, CATS, Btn, Label, Pill, ChipIA, Estrellas, Block, Vacio, Calendario, AutoCiudad,
-  BuscadorHotel
+  BuscadorHotel, SelectBuscable
 } from "./ui";
 
 /* ── v2B · Enter pasa al campo siguiente del mismo bloque ────────────────
@@ -1063,11 +1063,13 @@ function BloqueServicios({ q, set, refEl, toast }) {
                       delete d.servicios[i].auto; })} />
                   {s.categoria === "traslado" && (
                     <>
-                      <select className="in" style={{ width:126, height:30, fontSize:12 }} value={s.ciudad || ""}
-                        onChange={(e) => set((d) => { d.servicios[i].ciudad = e.target.value; })}>
-                        <option value="">Ciudad…</option>
-                        {[...new Set([...q.destinos.map((x) => x.ciudad), ...CIUDADES])].filter(Boolean).map((c) => <option key={c}>{c}</option>)}
-                      </select>
+                      {/* decenas de ubicaciones: va con buscador. Primero las
+                          ciudades de esta cotización, después el catálogo. */}
+                      <SelectBuscable valor={s.ciudad || ""} ancho={126} alto={30} fontSize={12}
+                        opciones={[...new Set([...q.destinos.map((x) => x.ciudad), ...CIUDADES])].filter(Boolean)}
+                        vacio="Ciudad…" buscarPlaceholder="Buscar ciudad…"
+                        titulo="Ciudad del traslado"
+                        onChange={(v) => set((d) => { d.servicios[i].ciudad = v; })} />
                       <select className="in" style={{ width:92, height:30, fontSize:12 }} value={s.modalidad || "Regular"}
                         onChange={(e) => set((d) => { d.servicios[i].modalidad = e.target.value; })}>
                         {MODALIDADES.map((m) => <option key={m}>{m}</option>)}

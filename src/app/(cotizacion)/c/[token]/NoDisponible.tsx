@@ -7,6 +7,11 @@
 //
 // Vive aparte de `NoDisponible` de los formularios porque el remate es otro: acá
 // el CTA es el WhatsApp del vendedor concreto, no un texto genérico.
+//
+// Comparte la identidad de la hoja: misma tarjeta blanca sobre el fondo
+// tintado del route group, mismo Playfair en el título, misma sombra violeta.
+// Antes escribía en blanco sobre la banda violeta del layout de formularios,
+// que ya no existe: sin ese fondo el texto quedaba invisible.
 // ---------------------------------------------------------------------------
 
 import { Clock3 } from "lucide-react";
@@ -34,62 +39,42 @@ export function CotizacionNoDisponible({
   const texto = encodeURIComponent(
     `Hola ${primerNombre}, se me venció el link de la cotización. ¿Me la podés volver a mandar?`,
   );
+  const href = wa ? `https://wa.me/${wa}?text=${texto}` : `mailto:${vendedor.email}`;
 
   return (
-    <div className="px-4 pb-16 pt-10 sm:px-5 sm:pt-16">
-      <section className="mx-auto max-w-xl text-center">
-        <h1 className="formularios-title text-[28px] leading-tight text-white sm:text-[34px]">
+    <div className="cot-vencida">
+      <section>
+        <span className="cv-rule" />
+        <h1 className="disp cv-t">
           {vencida ? "Esta cotización venció" : "Esta cotización no está disponible"}
         </h1>
-        <p className="mx-auto mt-3.5 max-w-md text-[15px] leading-relaxed text-white/90">
+        <p className="cv-p">
           {vencida
             ? "Los precios de aéreos y hoteles cambian todos los días, así que los links tienen fecha de vencimiento. La vigencia se cuenta en horas hábiles: no corren sábados ni domingos. Pedile a tu asesor uno nuevo y lo tenés en minutos."
             : "No pudimos abrirla. Escribile a tu asesor y te la manda de nuevo."}
         </p>
-      </section>
 
-      <div className="mx-auto mt-8 max-w-md rounded-2xl border border-neutral-200 bg-white p-6 text-center shadow-lg shadow-neutral-900/5">
-        <div className="flex items-center justify-center gap-3">
+        <div className="cv-vend">
           {vendedor.foto ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={vendedor.foto}
-              alt=""
-              className="h-14 w-14 shrink-0 rounded-full object-cover"
-            />
+            <img src={vendedor.foto} alt="" className="cv-foto" />
           ) : (
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#A05ED3] to-[#785AE5] text-lg font-bold text-white">
-              {vendedor.inicial}
-            </span>
+            <span className="cv-foto cv-ini">{vendedor.inicial}</span>
           )}
-          <div className="text-left">
-            <div className="text-[16px] font-bold text-neutral-900">{vendedor.nombre}</div>
-            <div className="text-[13px] text-neutral-500">{vendedor.cargo} · TravelOz</div>
+          <div>
+            <div className="cv-vend-n">{vendedor.nombre}</div>
+            <div className="cv-vend-c">{vendedor.cargo} · TravelOz</div>
           </div>
         </div>
 
-        {wa ? (
-          <a
-            href={`https://wa.me/${wa}?text=${texto}`}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#F43E55] to-[#785AE5] text-[15px] font-bold text-white"
-          >
-            Pedirle una cotización nueva
-          </a>
-        ) : (
-          <a
-            href={`mailto:${vendedor.email}`}
-            className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#F43E55] to-[#785AE5] text-[15px] font-bold text-white"
-          >
-            Escribirle por email
-          </a>
-        )}
+        <a href={href} target={wa ? "_blank" : undefined} rel={wa ? "noreferrer" : undefined} className="cv-cta">
+          {wa ? "Pedirle una cotización nueva" : "Escribirle por email"}
+        </a>
 
-        <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-neutral-400">
+        <p className="cv-nota">
           <Clock3 size={13} /> Los links valen unas horas hábiles: el fin de semana no cuenta.
         </p>
-      </div>
+      </section>
     </div>
   );
 }
