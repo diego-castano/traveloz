@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, CreditCard, LogOut, Receipt, User, UserCog, Users } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { resumenSemaforo } from "@/actions/presupuesto.actions";
 import { esRutaCotizador } from "../cotizador/tipos";
 import { Avatar } from "@/components/ui/Avatar";
 import { interactions } from "@/components/lib/animations";
@@ -27,11 +28,17 @@ import {
 export function VendedorShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, visibleModules } = useAuth();
 
   // El cotizador se dibuja a pantalla completa: sin el contenedor de 1200px ni
   // el padding que usa la tabla de paquetes.
   const esCotizador = esRutaCotizador(pathname);
+
+  // Badge del botón "Cotizador": cuántas cotizaciones piden algo hoy (vencidas
+  // sin abrir + sin abrir hace más de 24 h hábiles). `null` mientras no llegó
+  // el dato: el badge no aparece y después desaparece, que es peor que no
+  // mostrarlo. En 0 tampoco se dibuja — un cero no es una novedad.
+  const [paraHoy, setParaHoy] = useState<number | null>(null);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
@@ -82,6 +89,29 @@ export function VendedorShell({ children }: { children: ReactNode }) {
     };
   }, [menuOpen]);
 
+  // El cotizador es el único módulo con cola de trabajo, así que el badge se
+  // pide solo si el rol lo tiene habilitado. Cada 5 minutos alcanza: lo que
+  // cambia son recordatorios, no un chat.
+  const hayCotizador = visibleModules.includes("cotizador");
+  useEffect(() => {
+    if (!hayCotizador) return;
+    let vivo = true;
+    const traer = async () => {
+      try {
+        const res = await resumenSemaforo();
+        if (vivo && res.ok) setParaHoy(res.data.paraHoy);
+      } catch {
+        // Un badge no puede romper el shell: si falla, se queda como estaba.
+      }
+    };
+    void traer();
+    const id = setInterval(() => void traer(), 5 * 60 * 1000);
+    return () => {
+      vivo = false;
+      clearInterval(id);
+    };
+  }, [hayCotizador]);
+
   async function handleLogout() {
     setMenuOpen(false);
     await logout();
@@ -117,6 +147,7 @@ export function VendedorShell({ children }: { children: ReactNode }) {
                   href="/backend/cotizador"
                   activo={esCotizador}
                   icon={<Receipt size={14} strokeWidth={2.2} />}
+                  badge={paraHoy ?? 0}
                 />
                 <TopbarLinkButton
                   label="Datos de pasajeros"
@@ -248,16 +279,19 @@ function TopbarLinkAnchor({
   icon,
   href,
   activo,
+  badge = 0,
 }: {
   label: string;
   icon: ReactNode;
   href: string;
   activo: boolean;
+  /** Cuántas cosas esperan del otro lado. En 0 no se dibuja nada. */
+  badge?: number;
 }) {
   return (
     <Link
       href={href}
-      aria-label={label}
+      aria-label={badge > 0 ? `${label} · ${badge} para hoy` : label}
       aria-current={activo ? "page" : undefined}
       className={
         activo
@@ -267,6 +301,14 @@ function TopbarLinkAnchor({
     >
       {icon}
       <span className="hidden sm:inline">{label}</span>
+      {badge > 0 && (
+        <span
+          title={`${badge} ${badge === 1 ? "cotización pide" : "cotizaciones piden"} algo hoy`}
+          className="grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#F43E55] px-1 text-[10px] font-bold leading-none text-white"
+        >
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
     </Link>
   );
 }

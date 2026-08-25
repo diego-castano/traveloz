@@ -1,5 +1,6 @@
 import { MESES } from "./data";
 import { SECCIONES, indiceSeccion, labelSeccion } from "@/lib/presupuesto/secciones";
+import { horasHabilesEntre } from "@/lib/presupuesto/habiles";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ADAPTADORES — de la fila que devuelve el server a la forma que dibuja la UI
@@ -25,6 +26,17 @@ function horasDesde(fecha) {
   const t = new Date(fecha).getTime();
   if (!Number.isFinite(t)) return null;
   return Math.max(0, Math.floor((Date.now() - t) / HORA_MS));
+}
+
+/**
+ * Horas HÁBILES desde una fecha: las que cuentan para el semáforo. El sábado y
+ * el domingo no suman, igual que en la vigencia del link.
+ */
+function horasHabilesDesde(fecha) {
+  if (!fecha) return null;
+  const t = new Date(fecha).getTime();
+  if (!Number.isFinite(t)) return null;
+  return Math.max(0, Math.floor(horasHabilesEntre(t, Date.now())));
 }
 
 /** Días transcurridos desde una fecha (0 = hoy). */
@@ -152,6 +164,9 @@ export function filaDesdePresupuesto(fila) {
     monto: fila.montoPrincipal ?? 0,
     dias: diasDesde(fila.createdAt),
     hEnvio: horasDesde(fila.enviadaAt),
+    /* la misma antigüedad contada en hábiles: es la que mira el semáforo */
+    hEnvioHabil: horasHabilesDesde(fila.enviadaAt),
+    enviadaAt: fila.enviadaAt ?? null,
     expiraAt: fila.expiraAt ?? null,
     vigencia: fila.vigenciaHoras ?? 48,
     aperturas: fila.aperturas ?? 0,
@@ -182,4 +197,4 @@ export function filaDesdePresupuesto(fila) {
   };
 }
 
-export { horasDesde, horasHasta, diasDesde, nombreCliente, textoDestino, fmtDuracion, fmtLectura };
+export { horasDesde, horasHabilesDesde, horasHasta, diasDesde, nombreCliente, textoDestino, fmtDuracion, fmtLectura };

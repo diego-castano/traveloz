@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Sparkles, MapPin, Calendar, ChevronDown, ChevronRight, Search, Star, Undo2, X, CheckCheck,
-  AlertCircle, PenLine
+  AlertCircle, PenLine, Plus
 } from "lucide-react";
 import {
   MESES, MES_AB, fotoBg, clamp, parseISO, toISO, addDays, norm,
@@ -372,14 +372,38 @@ function AutoCiudad({ value, onChange, onPick, placeholder, excluir = [], grande
   );
 }
 
-/* Buscador con foto + escape a texto libre */
-function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
+/**
+ * Buscador de hoteles con tres salidas.
+ *
+ *   1. elegir uno del catálogo            → onPick(hotel)   · hotelId real
+ *   2. escribirlo como texto libre        → onLibre(texto)  · vive en la sesión
+ *   3. darlo de alta en el catálogo       → onPick(hotel)   · hotelId real
+ *
+ * La tercera es el pedido del cliente ("deben poder crear hoteles rápido, o
+ * usar los del sistema"): abre un mini-formulario acá mismo con nombre, ciudad
+ * y estrellas, y el hotel queda en /backend/alojamientos para la próxima
+ * cotización. El alta la hace `catalogo.crearHotelEnCatalogo` (catalogo.js) y
+ * no este archivo: la ficha del pasajero importa este módulo y se monta también
+ * en el link público, que no tiene ningún provider del panel.
+ *
+ * `onToast` es opcional. Cuando el llamador lo pasa, los errores salen por el
+ * toast del cotizador; sin él quedan escritos dentro del formulario, que es lo
+ * que ve el vendedor de todas formas.
+ */
+function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
   const [tick, setTick] = useState(0);   // fuerza reordenar cuando se togglea un favorito
+  /* alta rápida: null mientras el buscador es un buscador */
+  const [alta, setAlta] = useState(null);          // { nombre, ciudad, cat }
+  const [creando, setCreando] = useState(false);
+  const [errorAlta, setErrorAlta] = useState("");
   const box = useRef(null);
-  const { hoteles, esFavorito, toggleFavorito, cargando, progreso } = useCatalogo();
+  const {
+    hoteles, ciudades, esFavorito, toggleFavorito, cargando, progreso,
+    crearHotelEnCatalogo,
+  } = useCatalogo();
   const res = useMemo(() => {
     const todos = hoteles;
     const base = todos.filter((h) => !ciudad || h.ciudad === ciudad);
@@ -399,18 +423,88 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, ciudad, tick, hoteles, esFavorito]);
 
+  /* Lo tipeado en el alta cuando se cierra sin querer. Ver el efecto de abajo. */
+  const borrador = useRef(null);
+
   useEffect(() => {
-    const h = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
+    const h = (e) => {
+      /* El desplegable nativo de un <select> se dibuja FUERA del DOM del box en
+         Safari y en Firefox: elegir una ciudad contaba como click afuera y
+         cerraba el formulario justo cuando el vendedor lo estaba llenando. */
+      const t = e.target;
+      if (t instanceof Element && (t.closest("select") || t.tagName === "OPTION")) return;
+      if (box.current && !box.current.contains(t)) {
+        /* un click afuera no es "cancelar": se guarda lo escrito y, si vuelve a
+           entrar por el mismo texto, el formulario reaparece como estaba */
+        setAlta((a) => { if (a) borrador.current = a; return null; });
+        setOpen(false);
+      }
+    };
     document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  /* El alta aparece cuando hay texto escrito, ningún hotel se llama igual y el
+     catálogo sabe crear (en el link público no hay providers: ahí no está). */
+  const puedeCrear = !!crearHotelEnCatalogo && !!q.trim() &&
+    !res.some((h) => norm(h.nombre) === norm(q));
+
+  const abrirAlta = () => {
+    setErrorAlta("");
+    const guardado = borrador.current;
+    /* mismo hotel que la vez pasada ⇒ vuelve la ciudad y las estrellas que ya
+       había elegido; otro nombre ⇒ formulario limpio */
+    if (guardado && norm(guardado.nombre) === norm(q)) { setAlta(guardado); return; }
+    borrador.current = null;
+    setAlta({
+      nombre: q.trim(),
+      /* la ciudad del tramo, si es una del catálogo; si no, que la elija */
+      ciudad: ciudad && ciudades.some((c) => norm(c) === norm(ciudad)) ? ciudad : "",
+      cat: 0,
+    });
+  };
+
+  /* Cancelar de verdad: el borrador se tira. Lo llaman Escape y el botón. */
+  const cancelarAlta = () => { borrador.current = null; setAlta(null); setErrorAlta(""); };
+
+  const cerrar = () => {
+    borrador.current = null;
+    setOpen(false); setAlta(null); setQ(""); setErrorAlta("");
+  };
+
+  const crear = async () => {
+    if (creando || !alta) return;
+    const nombre = String(alta.nombre || "").trim();
+    if (nombre.length < 2) { setErrorAlta("Escribí el nombre del hotel."); return; }
+    if (!alta.ciudad) { setErrorAlta("Elegí la ciudad."); return; }
+    setCreando(true);
+    setErrorAlta("");
+    const r = await crearHotelEnCatalogo({ nombre, ciudad: alta.ciudad, cat: alta.cat });
+    setCreando(false);
+    if (!r.ok) {
+      setErrorAlta(r.error);
+      onToast?.({ msg: r.error, tone: "warn" });
+      return;
+    }
+    onPick(r.hotel);
+    onToast?.({
+      msg: r.existente
+        ? `${r.hotel.nombre} ya estaba en el catálogo — lo usamos`
+        : `${r.hotel.nombre} quedó en el catálogo`,
+      tone: "ok",
+    });
+    cerrar();
+  };
+
   const key = (e) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setIdx((i) => clamp(i + 1, 0, res.length)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => clamp(i - 1, 0, res.length)); }
+    if (alta) { if (e.key === "Escape") { e.preventDefault(); cancelarAlta(); } return; }
+    const ultimo = res.length + (puedeCrear ? 1 : 0);
+    if (e.key === "ArrowDown") { e.preventDefault(); setIdx((i) => clamp(i + 1, 0, ultimo)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => clamp(i - 1, 0, ultimo)); }
     else if (e.key === "Enter") {
       e.preventDefault();
-      if (idx < res.length) { onPick(res[idx]); } else if (q.trim()) { onLibre(q.trim()); }
-      setQ(""); setOpen(false);
+      if (idx < res.length) { onPick(res[idx]); setQ(""); setOpen(false); }
+      else if (idx === res.length && q.trim()) { onLibre(q.trim()); setQ(""); setOpen(false); }
+      else if (puedeCrear) { abrirAlta(); }
     } else if (e.key === "Escape") { setOpen(false); }
   };
 
@@ -428,6 +522,70 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
         <div className="a-slide" style={{ position:"absolute", top:"calc(100% + 5px)", left:0, right:0, zIndex:40,
           background:"var(--pop)", border:"1px solid var(--hair)", borderRadius:13, overflow:"hidden",
           boxShadow:"0 22px 50px -14px rgba(17,17,36,.28)" }}>
+
+          {/* ── alta rápida: el buscador se convierte en un formulario ── */}
+          {alta ? (
+            /* El teclado del alta se maneja acá arriba y no en cada campo: el
+               foco vive adentro del formulario, así que el `onKeyDown` del
+               <input> del buscador ya no ve nada.
+                 · Escape cierra el formulario esté donde esté el foco;
+                 · Enter crea, pero solo desde un <input>: en un <select> Enter
+                   es "confirmá la opción marcada", y dar de alta el hotel ahí
+                   le roba la tecla al que está eligiendo la ciudad. */
+            <div style={{ padding:"11px 12px 12px" }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancelarAlta(); return; }
+                if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+                  e.preventDefault();
+                  void crear();
+                }
+              }}>
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:9 }}>
+                <span style={{ width:22, height:22, borderRadius:7, display:"grid", placeItems:"center",
+                  background:"rgba(120,90,229,.1)", color:"var(--violet)" }}><Plus size={13} /></span>
+                <span style={{ fontSize:12.5, fontWeight:700 }}>Nuevo hotel en el catálogo</span>
+              </div>
+
+              <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+                <input className="in" autoFocus value={alta.nombre} placeholder="Nombre del hotel"
+                  onChange={(e) => setAlta((a) => ({ ...a, nombre:e.target.value }))} />
+                <select className="in" value={alta.ciudad}
+                  onChange={(e) => setAlta((a) => ({ ...a, ciudad:e.target.value }))}>
+                  <option value="">Ciudad…</option>
+                  {ciudades.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <span style={{ fontSize:11.5, color:"var(--n400)" }}>Categoría</span>
+                  <div style={{ display:"flex", alignItems:"center", gap:1 }}
+                    title="Un clic en la estrella; el mismo clic la saca">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <button key={n} type="button" style={{ padding:2, lineHeight:0 }}
+                        onClick={() => setAlta((a) => ({ ...a, cat: a.cat === n ? 0 : n }))}>
+                        <Star size={15} fill={(alta.cat || 0) >= n ? "#F7B267" : "none"}
+                          style={{ color:(alta.cat || 0) >= n ? "#E8A13C" : "var(--n300)" }} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {errorAlta && (
+                <div style={{ marginTop:8, fontSize:11.5, color:"var(--coral)", fontWeight:600 }}>{errorAlta}</div>
+              )}
+
+              <div style={{ display:"flex", gap:7, marginTop:10 }}>
+                <Btn variant="p" size="sm" onClick={() => void crear()} disabled={creando}>
+                  {creando ? "Creando…" : "Crear y usar"}
+                </Btn>
+                <Btn size="sm" onClick={cancelarAlta} disabled={creando}>Cancelar</Btn>
+              </div>
+              <div style={{ marginTop:8, fontSize:10.5, color:"var(--n400)", lineHeight:1.5 }}>
+                Queda en el catálogo con estos tres datos. Las fotos y los precios
+                se cargan después desde Alojamientos.
+              </div>
+            </div>
+          ) : (
+          <>
           {cargando && (
             <div style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 11px",
               fontSize:11.5, color:"var(--n400)", borderBottom:"1px solid var(--hair-soft)" }}>
@@ -472,9 +630,28 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus }) {
               <div style={{ fontSize:12.5, fontWeight:600, color:"var(--n600)" }}>
                 {q.trim() ? `Usar “${q.trim()}” como texto libre` : "Escribí para usar texto libre"}
               </div>
-              <div style={{ fontSize:11, color:"var(--n400)" }}>Para hoteles que no están en el catálogo</div>
+              <div style={{ fontSize:11, color:"var(--n400)" }}>Solo para esta cotización</div>
             </div>
           </button>
+
+          {/* la tercera salida: que el hotel quede en el sistema */}
+          {puedeCrear && (
+            <button onMouseEnter={() => setIdx(res.length + 1)} onClick={abrirAlta}
+              style={{ display:"flex", alignItems:"center", gap:9, width:"100%", padding:"9px 10px", textAlign:"left",
+                borderTop:"1px solid var(--hair-soft)",
+                background: idx === res.length + 1 ? "rgba(120,90,229,.09)" : "var(--wash)" }}>
+              <div style={{ width:40, height:30, borderRadius:7, display:"grid", placeItems:"center",
+                background:"rgba(120,90,229,.1)", color:"var(--violet)" }}><Plus size={14} /></div>
+              <div>
+                <div style={{ fontSize:12.5, fontWeight:600, color:"var(--violet)" }}>
+                  Crear “{q.trim()}” en el catálogo
+                </div>
+                <div style={{ fontSize:11, color:"var(--n400)" }}>Queda para todas las cotizaciones</div>
+              </div>
+            </button>
+          )}
+          </>
+          )}
         </div>
       )}
     </div>

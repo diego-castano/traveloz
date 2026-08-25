@@ -9,6 +9,7 @@ import {
 import { Btn, Label } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion, renderPlantilla } from "./data";
+import { sumarHorasHabiles, textoVencimiento, textoDiaCorto } from "@/lib/presupuesto/habiles";
 import { useAjustes, useCtz, buscarVendedor } from "./contexto";
 import {
   marcarEnviada, emitirLink, enviarPorEmail, pedirDatosDelPasajero,
@@ -41,6 +42,9 @@ import {
 function ModalCompartir({
   q, presupuestoId, vendedor, onClose, onEnviada, toast, recordatorio = false,
   onVigencia, onIr, onPreview, onImprimir, tabInicial, onPedido,
+  /* del drawer: el número, cuándo salió la primera y hasta cuándo abre el link
+     vivo. Solo los usa el recordatorio, que cuenta esa historia. */
+  numero, enviadaAt, expiraAt,
 }) {
   const { emailCopia, vigenciaDefault } = useAjustes();
   const { vendedores, esAdmin, yo } = useCtz();
@@ -126,7 +130,7 @@ function ModalCompartir({
     if (!link || generando) return;
     /* si el vencimiento ya está donde tendría que estar (±2 min de holgura),
        no hay nada que correr */
-    const objetivo = Date.now() + vig * 3600000;
+    const objetivo = sumarHorasHabiles(new Date(), vig).getTime();
     const actual = link.expiraAt ? new Date(link.expiraAt).getTime() : 0;
     if (Math.abs(actual - objetivo) < 120000) return;
     void generar(tab === "email" ? "email" : "whatsapp");
@@ -149,14 +153,47 @@ function ModalCompartir({
      mensaje entero sin emitir nada. */
   const MARCADOR_LINK = "🔗 (el link se genera al mandar)";
 
+  /* Hasta cuándo abre el link: el del link vivo si ya se emitió, y si no el que
+     va a quedar con la vigencia elegida. Horas hábiles, como en el server. */
+  const venceTxt = useMemo(() => {
+    const delLink = link?.expiraAt ?? expiraAt;
+    const t = delLink ? new Date(delLink).getTime() : NaN;
+    if (Number.isFinite(t) && t > Date.now()) return textoVencimiento(t);
+    return textoVencimiento(sumarHorasHabiles(new Date(), vig));
+  }, [link, expiraAt, vig]);
+
+  /* El mensaje inicial suele terminar firmado ("Agustina"). El recordatorio no
+     lo hereda entero, pero sí la firma: el pasajero tiene que seguir viendo
+     quién le escribe. */
+  const firma = useMemo(() => {
+    const txt = (q.mensajeAuto || "").trim()
+      ? renderPlantilla(q.mensajeAuto, nom, V.linkDatos)
+      : "";
+    const lineas = txt.split("\n").map((l) => l.trim()).filter(Boolean);
+    const ultima = lineas[lineas.length - 1] || "";
+    const pila = String(V.nombre || "").trim().split(/\s+/)[0].toLowerCase();
+    if (!pila || !ultima || ultima.length > 40) return "";
+    return ultima.toLowerCase().includes(pila) ? ultima : "";
+  }, [q.mensajeAuto, nom, V.linkDatos, V.nombre]);
+
   const base = useMemo(() => {
     const destino = q.titulo?.destino || "tu viaje";
+    /* El recordatorio tiene texto propio: recuerda cuándo salió y hasta cuándo
+       sirve. Mandar de nuevo el mismo mensaje del primer envío hacía que el
+       pasajero lo leyera como un copy-paste. */
+    if (recordatorio) {
+      const dia = enviadaAt ? textoDiaCorto(enviadaAt) : "";
+      const cuerpo = [
+        `Hola${nom ? ` ${nom}` : ""}, te escribo por la cotización${numero ? ` ${numero}` : ""}${dia ? ` que te mandé el ${dia}` : " que te mandé"}.`,
+        venceTxt ? `Sigue disponible hasta el ${venceTxt}.` : "Sigue disponible.",
+        "Cualquier duda me decís.",
+      ].join(" ");
+      return firma ? `${cuerpo}\n\n${firma}` : cuerpo;
+    }
     return (q.mensajeAuto || "").trim()
       ? renderPlantilla(q.mensajeAuto, nom, V.linkDatos)
-      : recordatorio
-        ? `Hola${nom ? ` ${nom}` : ""} 👋 ¿pudiste ver la cotización de ${destino}? Te la dejo de nuevo por acá 👇`
-        : `Hola${nom ? ` ${nom}` : ""}, te comparto la cotización de ${destino}. Se abre desde el celular 👇`;
-  }, [q.mensajeAuto, q.titulo, nom, V.linkDatos, recordatorio]);
+      : `Hola${nom ? ` ${nom}` : ""}, te comparto la cotización de ${destino}. Se abre desde el celular 👇`;
+  }, [q.mensajeAuto, q.titulo, nom, V.linkDatos, recordatorio, numero, enviadaAt, venceTxt, firma]);
 
   const mensajeCon = useCallback((url) => (url ? `${base}\n\n${url}` : base), [base]);
   /* lo que se ve en la caja: con el link si ya está, con el marcador si no */
@@ -173,7 +210,7 @@ function ModalCompartir({
   const abrirWhatsApp = async () => {
     if (generando) return;
     const listo = (url) => {
-      toast?.({ msg:`Se abrió WhatsApp — la cotización vence en ${vig} h`, tone:"ok" });
+      toast?.({ msg:`Se abrió WhatsApp — el link abre hasta el ${venceTxt}`, tone:"ok" });
       onClose();
       return url;
     };
@@ -230,7 +267,7 @@ function ModalCompartir({
       msg: r.data.entregado
         ? `Email enviado a ${r.data.destinatarios[0]}${
             r.data.pdfAdjunto ? " con el PDF adjunto" : " (sin PDF adjunto)"
-          } — vence en ${vig} h`
+          } — abre hasta el ${venceTxt}`
         : "Email preparado (sin proveedor configurado): el link ya está vivo",
       tone: r.data.entregado ? "ok" : "warn",
     });
@@ -261,7 +298,7 @@ function ModalCompartir({
     setMarcando(false);
     if (!r.ok) { toast?.({ msg:r.error, tone:"warn" }); return; }
     onEnviada?.(r.data);
-    toast?.({ msg:`Marcada como enviada — vence en ${vig} h`, tone:"ok" });
+    toast?.({ msg:`Marcada como enviada — abre hasta el ${venceTxt}`, tone:"ok" });
     onClose();
   };
 
@@ -346,7 +383,9 @@ function ModalCompartir({
                 onClick={() => { setVig(h); onVigencia?.(h); }}>{h}h</button>
             ))}
           </div>
-          <span style={{ fontSize:10.5, color:"var(--n400)" }}>después el link muestra "cotización vencida" y se puede reactivar</span>
+          <span style={{ fontSize:10.5, color:"var(--n400)" }}>
+            horas hábiles: no corren sábados ni domingos{venceTxt ? ` — vence el ${venceTxt}` : ""}. Después el link muestra “cotización vencida” y se puede reactivar
+          </span>
         </div>
 
         <div style={{ display:"flex", gap:5, padding:"11px 17px 0" }}>
@@ -557,7 +596,7 @@ function ModalCompartir({
             </button>
             <div style={{ fontSize:10.5, color:"var(--n300)", marginTop:5, lineHeight:1.5 }}>
               {presupuestoId
-                ? `Sella el envío y arranca la vigencia de ${vig} h, sin abrir nada.`
+                ? `Sella el envío y arranca la vigencia de ${vig} h hábiles, sin abrir nada.`
                 : "Todavía no está guardada: escribí algo y el autoguardado la crea."}
             </div>
           </div>

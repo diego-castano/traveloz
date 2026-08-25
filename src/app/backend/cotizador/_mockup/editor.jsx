@@ -6,7 +6,7 @@ import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon
+  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon, MapPin
 } from "lucide-react";
 import {
   MESES, ANIO_ACTUAL, REGIMENES, SUG, MODALIDADES, SUG_ALL,
@@ -14,7 +14,7 @@ import {
   PNR_DEMO, uid, clamp, toISO, parseISO, fmtCorto, money, venta,
   limpiarPegado, parsePNR, fechaDeVuelo, itinerarioMasCompleto,
   habitacionNueva, tarifaNueva, ventaTarifa,
-  precioOpcion
+  precioOpcion, norm
 } from "./data";
 import { useCatalogo, useAjustes, useAerolineas } from "./contexto";
 import { uploadFile } from "@/components/lib/upload";
@@ -157,6 +157,77 @@ function BloqueCliente({ q, set, refEl, onUsarBase }) {
   );
 }
 
+/* ── El campo del título: sugiere ciudades, no las impone ───────────────
+   El encabezado es "Caribe › Jamaica, Octubre 2026" y el vendedor tiene que
+   poder escribir eso tal cual. `AutoCiudad` (./ui) sirve para los tramos, donde
+   la ciudad SÍ tiene que ser una del catálogo: ahí Enter agarra la primera
+   sugerencia, y en el título eso pisaba lo escrito ("Punta" pasaba a "Punta
+   Cana"). Acá la lista solo aparece como ayuda: se elige con las flechas o con
+   el mouse, y Enter deja el texto como está y sigue al mes. */
+function DestinoLibre({ value, onChange, onElegir, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const [idx, setIdx] = useState(-1);   /* -1 = lo que el vendedor escribió */
+  const box = useRef(null);
+  const { ciudades } = useCatalogo();
+
+  const res = useMemo(() => {
+    const q = norm(String(value || "").trim());
+    const pool = ciudades || [];
+    return (q ? pool.filter((c) => norm(c).includes(q)) : pool).slice(0, 6);
+  }, [value, ciudades]);
+
+  useEffect(() => {
+    const h = (e) => { if (box.current && !box.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  const elegir = (c) => { onElegir(c); setOpen(false); setIdx(-1); };
+  const marcar = (c) => {
+    const q = String(value || "").trim();
+    if (!q) return c;
+    const i = norm(c).indexOf(norm(q));
+    return i < 0 ? c : <>{c.slice(0, i)}<b>{c.slice(i, i + q.length)}</b>{c.slice(i + q.length)}</>;
+  };
+
+  return (
+    <div ref={box} style={{ position:"relative" }}>
+      <div style={{ position:"relative" }}>
+        <MapPin size={15} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)",
+          color: value ? "var(--violet)" : "var(--n300)" }} />
+        <input className="in in-lg" style={{ paddingLeft:34 }} value={value} placeholder={placeholder}
+          onFocus={() => { setOpen(true); setIdx(-1); }}
+          onChange={(e) => { onChange(e.target.value); setOpen(true); setIdx(-1); }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") { e.preventDefault(); setOpen(true); setIdx((i) => clamp(i + 1, 0, res.length - 1)); }
+            else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => (i <= 0 ? -1 : i - 1)); }
+            else if (e.key === "Enter") {
+              e.preventDefault();
+              /* solo cuando el vendedor bajó a propósito a una sugerencia */
+              if (open && idx >= 0 && res[idx]) elegir(res[idx]);
+              else { setOpen(false); onElegir(String(value || "")); }
+            }
+            else if (e.key === "Escape") setOpen(false);
+          }} />
+      </div>
+      {open && res.length > 0 && (
+        <div className="ac-pop a-slide">
+          <div style={{ padding:"6px 10px", fontSize:10.5, color:"var(--n300)" }}>
+            Sugerencias — el título admite cualquier texto
+          </div>
+          {res.map((c, i) => (
+            <button key={c} className="ac-i" data-on={i === idx ? "1" : "0"}
+              onMouseEnter={() => setIdx(i)} onClick={() => elegir(c)}>
+              <MapPin size={12} style={{ color:"var(--n300)", flexShrink:0 }} />
+              <span>{marcar(c)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── 2 · Encabezado: título por clic + fecha disparadora ─────────────── */
 function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
   const [openMes, setOpenMes] = useState(false);
@@ -185,10 +256,10 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
       right={<Pill tone="violet"><Lock size={9} /> Formato controlado</Pill>}>
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
         <div style={{ flex:"2 1 190px", minWidth:0 }}>
-          <Label hint="con autocompletado">Destino</Label>
-          <AutoCiudad grande value={q.titulo.destino} placeholder="Punta Cana"
+          <Label hint="texto libre, con sugerencias">Destino</Label>
+          <DestinoLibre value={q.titulo.destino} placeholder="Destino o título libre"
             onChange={(v) => set((d) => { d.titulo.destino = v; })}
-            onPick={(v) => { set((d) => { d.titulo.destino = v; }); saltar(mesRef); }} />
+            onElegir={(v) => { set((d) => { d.titulo.destino = v; }); saltar(mesRef); }} />
         </div>
         <div style={{ flex:"1 1 130px", position:"relative" }}>
           <Label hint="por clic">Mes</Label>
@@ -237,8 +308,9 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
       </div>
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", gap:10, alignItems:"flex-start" }}>
         <span style={{ flex:1 }}>
-          Mes y año se eligen por clic para que todas las cotizaciones salgan iguales. Solo se ofrecen {anios[0]} y {anios[1]}:
-          los vuelos no se ven más allá de once meses.
+          El destino admite cualquier texto: las ciudades del catálogo se sugieren, pero podés escribir el título que
+          quieras (“Caribe › Jamaica”). Mes y año se eligen por clic para que todas las cotizaciones salgan iguales:
+          solo se ofrecen {anios[0]} y {anios[1]}, los vuelos no se ven más allá de once meses.
         </span>
         <span style={{ display:"inline-flex", alignItems:"center", gap:5, whiteSpace:"nowrap", flexShrink:0 }}>
           <span className="kbd">↵</span> destino → mes → año → fecha</span>
@@ -1399,7 +1471,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             {/* el régimen va pegado al buscador: cada hotel el suyo */}
                             <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
                               <div style={{ flex:"1 1 200px", minWidth:0 }}>
-                                <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""}
+                                <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""} onToast={toast}
                                   onPick={(hh) => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
                                     d.opciones[i].hoteles[hi] = { ...prev, hotelId:hh.id, libre:"",
                                       regimen: prev.regimen || regimenDeTramo(hi) }; })}

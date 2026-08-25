@@ -248,9 +248,46 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   html, body { background:#fff !important; }
   .ctz .print-hoja, .ctz .print-hoja * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
   .ctz .print-hoja img { max-width:100% !important; }
+
+  /* ── dónde puede cortar el papel ──────────────────────────────────────
+     Tres promesas, y el resto que fluya:
+       · ninguna tarjeta partida al medio — vuelos, hoteles y opciones llevan
+         breakInside "avoid" en telefono.jsx y esta regla les suma el alias
+         viejo, que es el que entiende el motor de impresión;
+       · ningún título de sección al pie de una página sin lo que titula
+         (.sec-t y el renglón gris que va abajo, .sec-sub);
+       · ninguna línea suelta arriba ni abajo de un corte. */
+  .ctz .print-hoja { orphans:3; widows:3; }
   .ctz .print-hoja [style*="break-inside"] { page-break-inside:avoid; }
-  .ctz .print-hoja .sec-t { break-after:avoid; page-break-after:avoid; }
-  @page { margin:10mm; }
+  /* mismo alias para el "no cortes acá abajo": lo usa el header de cada opción,
+     que tiene que quedar pegado a su primer hotel */
+  .ctz .print-hoja [style*="break-after"] { page-break-after:avoid; }
+  .ctz .print-hoja .sec-t, .ctz .print-hoja .sec-sub { break-after:avoid; page-break-after:avoid; }
+  /* corte deliberado: lo pide la ficha cuando el contenido lo amerita — hoy,
+     una cotización sin vuelos, para que el cierre no se vaya solo a la hoja 2 */
+  .ctz .print-hoja [data-print-corte="pagina"] { break-before:page; page-break-before:always; }
+
+  /* Márgenes: 10 mm a los lados y arriba; 12 abajo, que es donde vive el pie. */
+  @page {
+    margin:10mm 10mm 12mm;
+    /* Chromium sí dibuja las cajas de margen del @page y sí resuelve
+       counter(page) y var() adentro (probado con preferCSSPageSize:true, que
+       es como imprime src/lib/pdf.ts). La variable --ctz-pie la escribe la
+       ficha con el número de la cotización; sin ella queda el respaldo.
+
+       OJO CON LA VERSIÓN: las margin boxes con counter(page) las dibuja
+       Chromium 131 o más nuevo. Producción imprime con el que instala
+       nixpacks.toml (137 hoy; la versión exacta queda en cada log
+       cotizador.pdf.ok). En un motor más viejo la regla no se aplica y el
+       PDF sale sin pie: sin numerar, pero entero — el contenido no se toca. */
+    @bottom-right {
+      content: var(--ctz-pie, "TravelOz") " · página " counter(page);
+      font-family:'DM Sans', sans-serif; font-size:7.5pt; color:#B0B4CD;
+    }
+  }
+  /* La primera hoja va sin pie: una cotización de una sola carilla no lleva
+     numeración de ningún tipo, y en las largas el pie arranca recién en la 2. */
+  @page :first { @bottom-right { content:""; } }
 }
 
 /* ── volver al panel: link discreto arriba del título del inicio ─────── */

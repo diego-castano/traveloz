@@ -42,6 +42,12 @@ import {
 } from "@/lib/presupuesto/derivados";
 import { urlDeToken } from "@/lib/presupuesto/links";
 import {
+  condicionesConHabiles,
+  horasHabilesEntre,
+  sumarHorasHabiles,
+  textoVencimiento,
+} from "@/lib/presupuesto/habiles";
+import {
   ErrorDeNegocio,
   NO_ENCONTRADA,
   cargarPropia,
@@ -89,8 +95,11 @@ const EVENTOS_MAX = 100;
 /** Cuántas aperturas del pasajero viajan con cada fila (las más recientes). */
 const APERTURAS_MAX = 20;
 
-/** Una hora en milisegundos. La vigencia se cuenta en horas en todos lados. */
-const HORA_MS = 3_600_000;
+// La vigencia se cuenta en HORAS HÁBILES: el sábado y el domingo no corren.
+// Todo el que necesite un vencimiento pasa por `sumarHorasHabiles`
+// (@/lib/presupuesto/habiles) — mandar una cotización el viernes a la tarde y
+// que venza el domingo, cuando nadie puede renovarla, era regalarle dos días
+// al olvido.
 
 /** Resultados del buscador de historial (el panel muestra pocos). */
 const HISTORIAL_MAX = 8;
@@ -433,10 +442,12 @@ function semillaAjuste(key: string): string {
 
 const AJUSTES_DEFAULT: AjustesCotizador = {
   plantillaMensaje: semillaAjuste("cotizador_plantilla_mensaje"),
-  condiciones: semillaAjuste("cotizador_condiciones")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean),
+  condiciones: condicionesConHabiles(
+    semillaAjuste("cotizador_condiciones")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean),
+  ),
   vigenciaDefault: Number(semillaAjuste("cotizador_vigencia_default")) || VIGENCIA_DEFAULT,
   emailCopia: semillaAjuste("cotizador_email_copia"),
   factorDefault: Number(semillaAjuste("cotizador_factor_default")) || FACTOR_DEFAULT,
@@ -540,10 +551,16 @@ function leerAjustes(rows: { key: string; value: string }[]): AjustesCotizador {
   const texto = (k: string) => (map.get(k) ?? "").trim();
   const numero = (k: string) => Number(texto(k).replace(",", "."));
 
-  const condiciones = texto("cotizador_condiciones")
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+  // `condicionesConHabiles` reescribe la línea del máster para que el
+  // `{vigencia}` que resuelve la ficha del pasajero termine diciendo "48 horas
+  // hábiles (no corren sábados ni domingos)". El texto guardado no se toca:
+  // la regla se agrega al leer, así el día que cambie no hay que migrar nada.
+  const condiciones = condicionesConHabiles(
+    texto("cotizador_condiciones")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean),
+  );
 
   // El factor divide al neto: fuera de (0, 1] el precio de venta sale mal
   // (0 regala el viaje, >1 lo vende por debajo del costo).
@@ -626,6 +643,106 @@ export async function listarPresupuestos(
       take: take ?? TAKE_DEFAULT,
     });
     return rows.map(aFila);
+  });
+}
+
+/**
+ * Los cuatro números del semáforo, sin traerse la grilla entera.
+ *
+ * Lo llama el botón "Cotizador" del shell del vendedor para el badge de "Para
+ * hoy", así que tiene que ser barato: seis columnas, las confirmadas por
+ * `count`. Los buckets son los mismos que dibuja `semaforo()` en el cliente
+ * (_mockup/data.js), con las horas contadas en hábiles:
+ *
+ *   rojas      vencida sin ninguna apertura — el pasajero nunca la vio
+ *   amarillas  enviada, sin abrir, +24 h hábiles — toca recordatorio
+ *   verdes     confirmada, o abierta y todavía vigente
+ *   borradores nunca salió
+ *
+ * No es una partición: una enviada de hace tres horas ("en ventana") y una
+ * vencida que el pasajero sí abrió no entran en ningún chip, porque no hay
+ * nada que hacer con ellas hoy.
+ *
+ * DÓNDE SE VE ESTO. El único consumidor es `VendedorShell`: el badge "Para
+ * hoy" del botón Cotizador, con rol VENDEDOR y por lo tanto con `scopeVendedor`
+ * acotado a lo propio. El ADMIN no ve este badge, y los chips que sí ve arriba
+ * del listado son otra cosa: los cuenta el cliente sobre las filas que trajo la
+ * grilla, o sea sobre lo filtrado en pantalla. Los dos números pueden no
+ * coincidir y está bien — responden preguntas distintas.
+ */
+export interface ResumenSemaforo {
+  rojas: number;
+  amarillas: number;
+  verdes: number;
+  borradores: number;
+  /** Lo que va en el badge: rojas + amarillas. */
+  paraHoy: number;
+}
+
+export async function resumenSemaforo(): Promise<Resultado<ResumenSemaforo>> {
+  return ejecutar("resumenSemaforo", async () => {
+    const s = await scopeVendedor();
+
+    /* Sin `take`. El badge cuenta lo que hay, no las 500 más recientes: un
+       vendedor con historia dejaba afuera justo las vencidas viejas, que son
+       las rojas que el chip existe para mostrar. Lo que abarata la query es
+       traer seis columnas y sacar las confirmadas de la lista — que son la
+       mayoría del archivo histórico y para el badge valen un solo número.
+
+       El estado manual pisa al de la base (mismo criterio que el filtro del
+       listado), así que las dos consultas lo miran primero: entre las dos
+       parten el universo en dos mitades sin superposición ni agujero. */
+    const PENDIENTES = ["BORRADOR", "ENVIADA", "ABIERTA", "VENCIDA"] as const;
+    const [rows, confirmadas] = await Promise.all([
+      prisma.presupuesto.findMany({
+        where: {
+          ...whereScope(s),
+          OR: [
+            { estadoManual: { in: [...PENDIENTES] } },
+            { estadoManual: null, estado: { in: [...PENDIENTES] } },
+          ],
+        },
+        select: {
+          estado: true,
+          estadoManual: true,
+          enviadaAt: true,
+          expiraAt: true,
+          confirmadaAt: true,
+          aperturas: true,
+        },
+      }),
+      prisma.presupuesto.count({
+        where: {
+          ...whereScope(s),
+          OR: [
+            { estadoManual: "CONFIRMADA" },
+            { estadoManual: null, estado: "CONFIRMADA" },
+          ],
+        },
+      }),
+    ]);
+
+    const ahora = new Date();
+    // Las verdes arrancan con las confirmadas, que ya vinieron contadas.
+    const res: ResumenSemaforo = {
+      rojas: 0, amarillas: 0, verdes: confirmadas, borradores: 0, paraHoy: 0,
+    };
+
+    for (const r of rows) {
+      const estado = estadoEfectivoDe(r);
+      if (estado === "BORRADOR") { res.borradores++; continue; }
+      // Una vencida que el pasajero SÍ abrió no es roja (la vio) ni verde (el
+      // link ya no abre): sale por el filtro de estado "Vencida", que existe
+      // desde siempre en la misma barra.
+      if (estado === "VENCIDA") {
+        if (r.aperturas === 0) res.rojas++;
+        continue;
+      }
+      if (r.aperturas > 0) { res.verdes++; continue; }
+      if (r.enviadaAt && horasHabilesEntre(r.enviadaAt, ahora) >= 24) res.amarillas++;
+    }
+    res.paraHoy = res.rojas + res.amarillas;
+    return res;
   });
 }
 
@@ -1086,10 +1203,17 @@ async function sellarEnvio(
      * 24h/48h/72h dejaba una "Enviada por whatsapp" por toque.
      */
     soloSiCambia?: boolean;
+    /**
+     * Vencimiento ya calculado. Lo pasa `enviarPorEmail`, que necesita la
+     * fecha ANTES de sellar (va escrita en el cuerpo del email): sin esto el
+     * email prometía un vencimiento y la base guardaba otro unos segundos
+     * después.
+     */
+    expiraAt?: Date;
   } = {},
 ): Promise<{ link: LinkEmitido; enviadaAt: Date; expiraAt: Date }> {
   const ahora = new Date();
-  const expira = new Date(ahora.getTime() + vigenciaHoras * HORA_MS);
+  const expira = opts.expiraAt ?? sumarHorasHabiles(ahora, vigenciaHoras);
 
   const arrancaRonda = row.estado === "BORRADOR" || row.estado === "VENCIDA" || !row.enviadaAt;
   // Una confirmada o una abierta no vuelven a "enviada" porque el vendedor
@@ -1113,7 +1237,7 @@ async function sellarEnvio(
     select: { enviadaAt: true, expiraAt: true },
   });
 
-  const detalle = `Vigencia ${vigenciaHoras} h · link /c/${link.token}${
+  const detalle = `Vigencia ${vigenciaHoras} h hábiles · vence el ${textoVencimiento(expira)} · link /c/${link.token}${
     opts.detalleExtra ? ` · ${opts.detalleExtra}` : ""
   }`;
 
@@ -1295,7 +1419,7 @@ export async function enviarPorEmail(
     const horas = acotarVigencia(
       parsedInput.data.vigenciaHoras ?? q.vigencia ?? row.vigenciaHoras,
     );
-    const expira = new Date(Date.now() + horas * HORA_MS);
+    const expira = sumarHorasHabiles(new Date(), horas);
 
     // El link se emite ANTES de armar el email porque el email lo lleva
     // adentro; el sellado del envío va después, solo si Resend lo aceptó.
@@ -1338,6 +1462,12 @@ export async function enviarPorEmail(
       q,
       url: link.url,
       vigenciaHoras: horas,
+      // La fecha concreta, no "48 horas": el pasajero no tiene por qué hacer
+      // la cuenta, y menos ahora que la cuenta salta el fin de semana.
+      expiraAt: expira,
+      // El recordatorio recuerda cuándo salió la primera: si la ronda arranca
+      // recién ahora, `enviadaAt` todavía está vacío y el email no la nombra.
+      enviadaAt: row.enviadaAt,
       esRecordatorio,
       saludo: q.mensajeAuto
         ? renderPlantillaServidor(
@@ -1374,6 +1504,7 @@ export async function enviarPorEmail(
     }
 
     await sellarEnvio(row, "email", horas, s.userId, {
+      expiraAt: expira,
       evento: esRecordatorio ? "recordatorio" : "enviada",
       tituloEvento: esRecordatorio
         ? `Recordatorio por email a ${para}`
@@ -1438,7 +1569,7 @@ export async function reactivarPresupuesto(
 
     const ahora = new Date();
     const horas = acotarVigencia(row.vigenciaHoras || VIGENCIA_DEFAULT);
-    const expira = new Date(ahora.getTime() + horas * 3_600_000);
+    const expira = sumarHorasHabiles(ahora, horas);
 
     // Ronda nueva: el link viejo se revoca y sale uno nuevo. Reactivar borra el
     // contador de aperturas, y si el token siguiera vivo las aperturas de la
@@ -1467,8 +1598,8 @@ export async function reactivarPresupuesto(
 
     await anotar(row.id, {
       tipo: "reactivada",
-      titulo: `Reactivada por ${horas} h`,
-      detalle: `Link nuevo /c/${link.token}`,
+      titulo: `Reactivada por ${horas} h hábiles`,
+      detalle: `Vence el ${textoVencimiento(expira)} · link nuevo /c/${link.token}`,
       actorId: s.userId,
     });
 
@@ -1499,7 +1630,7 @@ export async function extenderVigencia(
     // desde este momento, no `n` horas desde hace tres días.
     const ahora = new Date();
     const base = row.expiraAt && row.expiraAt > ahora ? row.expiraAt : ahora;
-    const expira = new Date(base.getTime() + n * 3_600_000);
+    const expira = sumarHorasHabiles(base, n);
 
     // `vigenciaHoras` es la ventana con la que se envía y con la que reactiva:
     // acumular acá la inflaba sola (48 + 48 + 48…) y una reactivación después
@@ -1523,8 +1654,8 @@ export async function extenderVigencia(
 
     await anotar(row.id, {
       tipo: "vigencia_extendida",
-      titulo: `Vigencia extendida ${n} h`,
-      detalle: `Link /c/${link.token}`,
+      titulo: `Vigencia extendida ${n} h hábiles`,
+      detalle: `Vence el ${textoVencimiento(expira)} · link /c/${link.token}`,
       actorId: s.userId,
     });
 

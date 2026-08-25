@@ -13,7 +13,10 @@ import {
   useAlojamientos,
   useServiceLoading,
   useServiceProgress,
+  useServiceDispatch,
 } from "@/components/providers/ServiceProvider";
+import { notifyServiceMutation } from "@/lib/services-broadcast";
+import { crearAlojamientoRapido } from "@/actions/alojamiento-rapido.actions";
 import {
   usePaises,
   useRegiones,
@@ -123,6 +126,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
   const paises = usePaises();
   const regiones = useRegiones();
   const regimenes = useRegimenes();
+  const serviceDispatch = useServiceDispatch();
 
   const cargandoPaquetes = usePackageLoading();
   const cargandoServicios = useServiceLoading();
@@ -160,6 +164,22 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
 
   const nombreCiudad = useCallback(
     (ciudadId) => ciudadPorId.get(ciudadId)?.nombre ?? "",
+    [ciudadPorId],
+  );
+
+  /* El camino inverso: del nombre que se ve en pantalla al id que pide la
+     base. `ciudades` es una lista de nombres —así la consumen el autocompletar
+     del editor y el buscador de hoteles— y el alta rápida necesita el id.
+     Si dos países tienen una ciudad con el mismo nombre gana la primera; el
+     alta rápida es para el hotel que el vendedor está mirando, no para
+     desambiguar geografía. */
+  const ciudadIdDeNombre = useCallback(
+    (nombre) => {
+      const buscado = norm(nombre || "");
+      if (!buscado) return null;
+      for (const c of ciudadPorId.values()) if (norm(c.nombre) === buscado) return c.id;
+      return null;
+    },
     [ciudadPorId],
   );
 
@@ -228,14 +248,21 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
   );
 
   /* Los libres se suman al final: el buscador los muestra con la píldora
-     "propio" y el vendedor los vuelve a elegir en la próxima cotización. */
-  const hoteles = useMemo(
-    () => [...hotelesCatalogo, ...libresRef.current],
-    // `tick` es el disparador de los libres y los favoritos: sin él la lista
-    // no se rearma cuando el vendedor escribe un hotel a mano.
+     "propio" y el vendedor los vuelve a elegir en la próxima cotización.
+     En el medio van los que se acaban de crear en el catálogo: el dispatch al
+     ServiceProvider ya los deja en `alojamientos`, pero este puente cubre el
+     tramo en que todavía no llegó el re-render (y el caso de que el provider
+     recargue desde el server y los pise). Se filtran por id contra el
+     catálogo para no listar el mismo hotel dos veces. */
+  const nuevosRef = useRef([]);
+  const hoteles = useMemo(() => {
+    const yaEstan = new Set(hotelesCatalogo.map((h) => h.id));
+    const nuevos = nuevosRef.current.filter((h) => !yaEstan.has(h.id));
+    return [...hotelesCatalogo, ...nuevos, ...libresRef.current];
+    // `tick` es el disparador de los libres, los nuevos y los favoritos: sin él
+    // la lista no se rearma cuando el vendedor escribe o crea un hotel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hotelesCatalogo, tick],
-  );
+  }, [hotelesCatalogo, tick]);
 
   const hotelPorId = useMemo(() => {
     const m = new Map();
@@ -267,6 +294,63 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
     setTick((t) => t + 1);
     return h;
   }, []);
+
+  /**
+   * Mete un `Alojamiento` recién creado en la lista en memoria y lo devuelve
+   * ya con la forma que consume el buscador ({ id, nombre, ciudad, cat, foto,
+   * seed }). No habla con el server: es el puente para que el hotel aparezca
+   * en el acto, sin esperar a que el provider re-renderice.
+   */
+  const agregarHotelAlCatalogo = useCallback(
+    (alojamiento) => {
+      if (!alojamiento?.id) return null;
+      const h = {
+        id: alojamiento.id,
+        nombre: alojamiento.nombre,
+        ciudad: alojamiento.ciudad?.nombre ?? nombreCiudad(alojamiento.ciudadId),
+        cat: alojamiento.categoria ?? 0,
+        foto: null,                       // recién creado: las fotos van por el ABM
+        seed: seedDe(alojamiento.id),
+      };
+      const resto = nuevosRef.current.filter((x) => x.id !== h.id);
+      nuevosRef.current = [...resto, h];
+      setTick((t) => t + 1);
+      return h;
+    },
+    [nombreCiudad],
+  );
+
+  /**
+   * Alta rápida de hotel desde el buscador del cotizador.
+   *
+   * Hace las tres cosas de una: lo crea en la base, lo publica en el
+   * `ServiceProvider` (y en las demás pestañas, por el canal de mutaciones) y
+   * lo suma a la lista en memoria. Devuelve el hotel en forma de catálogo para
+   * que el llamador lo seleccione en el slot como `hotelId` real.
+   *
+   * Vive acá y no en ui.jsx a propósito: la ficha del pasajero importa ui.jsx
+   * y se monta también en el link público, que no tiene ningún provider del
+   * panel. Si el alta colgara del buscador, ese bundle se llevaría el
+   * ServiceProvider entero.
+   *
+   * → { ok:true, hotel, existente } | { ok:false, error }
+   */
+  const crearHotelEnCatalogo = useCallback(
+    async ({ nombre, ciudad, ciudadId, cat }) => {
+      const id = ciudadId || ciudadIdDeNombre(ciudad);
+      if (!id) return { ok: false, error: "Elegí una ciudad del catálogo." };
+      const res = await crearAlojamientoRapido({
+        nombre: String(nombre || "").trim(),
+        ciudadId: id,
+        categoria: cat ? Number(cat) : null,
+      });
+      if (!res?.ok) return { ok: false, error: res?.error || "No pudimos crear el hotel." };
+      serviceDispatch({ type: "ADD_ALOJAMIENTO", payload: res.alojamiento });
+      notifyServiceMutation({ type: "ADD_ALOJAMIENTO", payload: res.alojamiento });
+      return { ok: true, hotel: agregarHotelAlCatalogo(res.alojamiento), existente: res.existente };
+    },
+    [ciudadIdDeNombre, serviceDispatch, agregarHotelAlCatalogo],
+  );
 
   const esFavorito = useCallback(
     (id) => favoritosRef.current.has(id),
@@ -646,6 +730,11 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       hotelById,
       hotelesCotizadosEn,
       registrarHotelLibre,
+      /* alta rápida de hotel: lo crea en la base, lo publica en el provider y
+         lo devuelve ya en forma de catálogo */
+      crearHotelEnCatalogo,
+      agregarHotelAlCatalogo,
+      ciudadIdDeNombre,
       esFavorito,
       toggleFavorito,
       aplicarFavoritos,
@@ -662,6 +751,9 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       hotelById,
       hotelesCotizadosEn,
       registrarHotelLibre,
+      crearHotelEnCatalogo,
+      agregarHotelAlCatalogo,
+      ciudadIdDeNombre,
       esFavorito,
       toggleFavorito,
       aplicarFavoritos,

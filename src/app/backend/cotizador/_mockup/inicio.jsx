@@ -8,12 +8,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
-  MESES, semaforo, horasDeVigencia, money, venta, limpiarPegado, detectarConsulta,
+  MESES, semaforo, horasHabilesDesdeEnvio, bucketSemaforo,
+  money, venta, limpiarPegado, detectarConsulta,
   ESTADOS, estadoEfectivo
 } from "./data";
 import { useCtz, useCatalogo, buscarVendedor } from "./contexto";
 import { Foto, Btn, Pill, ChipIA, Vacio } from "./ui";
 import { DrawerAnalytics } from "./drawer";
+import { TabAnalytics as TabAnalyticsAdmin } from "./analytics";
 import { fmtDuracion, fmtLectura } from "./adaptadores";
 import { SECCIONES } from "@/lib/presupuesto/secciones";
 import {
@@ -27,23 +29,29 @@ import {
 
 /* v2F · qué entra en la cola de hoy y por qué — misma regla en todos lados.
    El vencimiento sale de `expiraAt`, que es lo que guardó el server al marcar
-   la cotización como enviada. */
+   la cotización como enviada, y las horas se cuentan HÁBILES: el sábado y el
+   domingo no corren ni para la vigencia ni para el "+24 h sin abrir". Sin eso
+   la cola del lunes amanecía llena de recordatorios de un envío del viernes a
+   la tarde que nadie tuvo tiempo de mirar. */
 function calcularCola(base, hechos = {}) {
   return base.map((r) => {
     if (hechos[r.id]) return null;
     if (r.estado === "vencida") {
-      const restan = horasDeVigencia(r);
-      const venc = restan == null ? null : -restan;
+      /* cuánto hace que venció va en horas de calendario: "venció ayer" tiene
+         que seguir diciendo ayer aunque ayer haya sido domingo */
+      const t = r.expiraAt ? new Date(r.expiraAt).getTime() : NaN;
+      const venc = Number.isFinite(t) ? (Date.now() - t) / 3600000 : null;
       const motivo = venc == null ? "El link ya no está vigente"
         : venc < 24 ? "El link venció hoy"
         : venc < 48 ? "El link venció ayer"
         : `El link venció hace ${Math.round(venc / 24)} días`;
       return { r, tipo:"vencida", c:"#F43E55", tone:"coral", motivo };
     }
-    if (r.estado === "enviada" && r.aperturas === 0 && r.hEnvio != null && r.hEnvio >= 24) {
-      const d = Math.max(1, Math.round(r.hEnvio / 24));
+    const habiles = horasHabilesDesdeEnvio(r);
+    if (r.estado === "enviada" && r.aperturas === 0 && habiles != null && habiles >= 24) {
+      const d = Math.max(1, Math.round(habiles / 24));
       return { r, tipo:"recordatorio", c:"#E8A13C", tone:"amber",
-        motivo:`Hace ${d} ${d === 1 ? "día" : "días"} que no la abre` };
+        motivo:`Hace ${d} ${d === 1 ? "día hábil" : "días hábiles"} que no la abre` };
     }
     if (r.estado === "abierta" && r.aperturas > 0) {
       return { r, tipo:"seguimiento", c:"#2A9E8E", tone:"teal",
@@ -411,7 +419,8 @@ function Inicio({
     { id:"cotizar",     l:"Cotizar",     Icon:Ticket,      badge:base.length },
     { id:"seguimiento", l:"Seguimiento", Icon:ListChecks,  badge:badgeSeguimiento },
     { id:"plantillas",  l:"Plantillas",  Icon:Files,       badge:plantillas.length },
-    { id:"analytics",   l:"Analytics",   Icon:TrendingUp,  badge:tasaConfirmacion },
+    /* Analytics por vendedor: solo lo ve el administrador (pedido de Gero). */
+    ...(esAdmin ? [{ id:"analytics", l:"Analytics", Icon:TrendingUp, badge:tasaConfirmacion }] : []),
   ];
 
   return (
@@ -581,7 +590,7 @@ function Inicio({
           )}
 
           {/* ══ TAB ANALYTICS ══ */}
-          {tab === "analytics" && <TabAnalytics base={base} />}
+          {tab === "analytics" && esAdmin && <TabAnalyticsAdmin toast={toast} />}
 
           {/* ══ TAB PLANTILLAS ══ */}
           {tab === "plantillas" && (
@@ -898,7 +907,7 @@ function TabSeguimiento({ base, recargar, toast, onEditar, onDuplicar }) {
         <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
           <span className="sem-dot" style={{ background:"#2A9E8E", width:8, height:8 }} /> abierta
           <span className="sem-dot" style={{ background:"#45D4C0", width:8, height:8, marginLeft:7 }} /> en ventana
-          <span className="sem-dot" style={{ background:"#E8A13C", width:8, height:8, marginLeft:7 }} /> +24 h sin abrir
+          <span className="sem-dot" style={{ background:"#E8A13C", width:8, height:8, marginLeft:7 }} /> +24 h hábiles sin abrir
           <span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> link vencido
         </span>
       </div>
@@ -922,6 +931,7 @@ function ListadoContenido({
   const { vendedores, esAdmin } = useCtz();
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState("todas");
+  const [semFiltro, setSemFiltro] = useState("todas");     // chip del semáforo
   const [destFiltro, setDestFiltro] = useState("todos");  // v2F · filtro por destino
   const [mesFiltro, setMesFiltro] = useState("todos");    // v2F · filtro por mes de salida
   const [selId, setSelId] = useState(null);               // fila abierta en el drawer
@@ -941,6 +951,7 @@ function ListadoContenido({
   const filas = useMemo(() => {
     return conOv.filter((r) => {
       if (filtro !== "todas" && r.estado !== filtro) return false;
+      if (semFiltro !== "todas" && bucketSemaforo(r) !== semFiltro) return false;
       if (destFiltro !== "todos" && destinoBase(r.destino) !== destFiltro) return false;
       if (mesFiltro !== "todos" && mesDeDestino(r.destino) !== mesFiltro) return false;
       if (!q.trim()) return true;
@@ -949,7 +960,29 @@ function ListadoContenido({
         .filter(Boolean).join(" ").toLowerCase();
       return q.toLowerCase().split(/\s+/).every((t) => pajar.includes(t));
     });
-  }, [q, filtro, destFiltro, mesFiltro, conOv, vendedores]);
+  }, [q, filtro, semFiltro, destFiltro, mesFiltro, conOv, vendedores]);
+
+  /* Resumen del semáforo: los cuatro números que el vendedor mira antes que
+     la tabla. Salen de las MISMAS filas que están en pantalla (con el filtro
+     de vendedor del admin ya aplicado), así el chip nunca promete una fila que
+     la grilla no puede mostrar. El reparto lo decide `bucketSemaforo()`, el
+     mismo que usa `resumenSemaforo()` en el server para el badge del shell. */
+  const resumenSem = useMemo(() => {
+    const c = { roja:0, amarilla:0, verde:0, borrador:0 };
+    for (const r of conOv) { const b = bucketSemaforo(r); if (b) c[b] += 1; }
+    return c;
+  }, [conOv]);
+
+  const CHIPS_SEM = [
+    { k:"roja",     c:"#F43E55", l:"Vencidas sin abrir",       n:resumenSem.roja,
+      tip:"El link venció y el pasajero nunca lo abrió. Reactivá y reenviá." },
+    { k:"amarilla", c:"#E8A13C", l:"+24 h hábiles sin abrir",  n:resumenSem.amarilla,
+      tip:"Más de 24 h hábiles sin apertura (el fin de semana no cuenta). Va un recordatorio." },
+    { k:"verde",    c:"#2A9E8E", l:"Abiertas o confirmadas",   n:resumenSem.verde,
+      tip:"El pasajero la abrió, o ya confirmó. Buen momento para el seguimiento." },
+    { k:"borrador", c:"#B0B4CD", l:"Borradores",               n:resumenSem.borrador,
+      tip:"Todavía no salieron. El semáforo arranca cuando las compartas." },
+  ];
 
   useEffect(() => {
     if (!sel) return;
@@ -1007,6 +1040,29 @@ function ListadoContenido({
         )}
       </div>
 
+      {/* semáforo del listado: cuatro chips que filtran la grilla de abajo.
+          Tocar el que ya está activo lo apaga y vuelven todas. */}
+      <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
+        {CHIPS_SEM.map((ch) => (
+          <button key={ch.k} className={`chip ${semFiltro === ch.k ? "chip-on" : ""}`}
+            title={ch.tip} disabled={!ch.n && semFiltro !== ch.k}
+            onClick={() => setSemFiltro((v) => (v === ch.k ? "todas" : ch.k))}
+            style={{ opacity: ch.n || semFiltro === ch.k ? 1 : .45 }}>
+            <span className="sem-dot" style={{ background:ch.c, width:8, height:8 }} />
+            {ch.l}
+            <span className="mono" style={{ fontWeight:700, marginLeft:2 }}>{ch.n}</span>
+          </button>
+        ))}
+        {semFiltro !== "todas" && (
+          <button className="chip" onClick={() => setSemFiltro("todas")}>
+            <X size={11} /> Ver todas
+          </button>
+        )}
+        <span className="hint-desk" style={{ fontSize:10.5, color:"var(--n300)", marginLeft:"auto" }}>
+          la vigencia y el “+24 h” se cuentan en horas hábiles
+        </span>
+      </div>
+
       {/* tabla — la fila entera abre el drawer */}
       <div className="card" style={{ overflow:"visible" }}>
         <div className="tabla-head" style={{ display:"flex", alignItems:"center", gap:11, padding:"9px 14px",
@@ -1019,7 +1075,7 @@ function ListadoContenido({
           <span className="sem lbl" style={{ width:26, flexShrink:0, justifyContent:"center", cursor:"help" }}>
             Seg.
             <div className="tip"><b>Semáforo de seguimiento</b>
-              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h. Ámbar: +24 h sin abrir. Rojo: la vigencia se cumplió sin apertura.</div>
+              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h hábiles. Ámbar: +24 h hábiles sin abrir. Rojo: la vigencia se cumplió sin apertura. Las horas hábiles no cuentan sábados ni domingos.</div>
           </span>
           <span className="lbl" style={{ width:52, flexShrink:0, textAlign:"right" }}>Creada</span>
           <span style={{ width:13, flexShrink:0 }} />

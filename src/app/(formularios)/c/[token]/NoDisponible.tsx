@@ -43,7 +43,7 @@ export function CotizacionNoDisponible({
         </h1>
         <p className="mx-auto mt-3.5 max-w-md text-[15px] leading-relaxed text-white/90">
           {vencida
-            ? "Los precios de aéreos y hoteles cambian todos los días, así que los links tienen fecha de vencimiento. Pedile a tu asesor uno nuevo y lo tenés en minutos."
+            ? "Los precios de aéreos y hoteles cambian todos los días, así que los links tienen fecha de vencimiento. La vigencia se cuenta en horas hábiles: no corren sábados ni domingos. Pedile a tu asesor uno nuevo y lo tenés en minutos."
             : "No pudimos abrirla. Escribile a tu asesor y te la manda de nuevo."}
         </p>
       </section>
@@ -87,7 +87,7 @@ export function CotizacionNoDisponible({
         )}
 
         <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-neutral-400">
-          <Clock3 size={13} /> Los links de cotización valen unos pocos días.
+          <Clock3 size={13} /> Los links valen unas horas hábiles: el fin de semana no cuenta.
         </p>
       </div>
     </div>

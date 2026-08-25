@@ -7,6 +7,7 @@ import {
   MailCheck, Clock3 as Reloj, ExternalLink, Inbox
 } from "lucide-react";
 import { semaforo, fmtHace, money, ESTADOS } from "./data";
+import { horasHabilesEntre, textoVencimiento } from "@/lib/presupuesto/habiles";
 import { useCtz, buscarVendedor } from "./contexto";
 import { obtenerPresupuesto, emitirLink, datosDelPasajero } from "@/actions/presupuesto.actions";
 import { SECCIONES } from "@/lib/presupuesto/secciones";
@@ -123,14 +124,25 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
      teléfono un rato después, y el vendedor tiene que poder anotarlo */
   const puedeConfirmar = r.estado === "enviada" || r.estado === "abierta" || r.estado === "vencida";
   const apDet = r.apDet || [];
-  /* la vigencia y el vencimiento son los que guardó el server al marcarla enviada */
+  /* La vigencia y el vencimiento son los que guardó el server al marcarla
+     enviada. Lo que queda se cuenta en horas HÁBILES, igual que como se
+     calculó el vencimiento: un link emitido el viernes 15:00 con 48 h muestra
+     "quedan 48 h" el sábado entero, porque el sábado no descuenta nada. */
   const vigTotal = r.vigencia || 48;
   const vigResta = useMemo(() => {
     if (!r.expiraAt) return null;
     const t = new Date(r.expiraAt).getTime();
     if (!Number.isFinite(t)) return null;
-    return Math.max(0, Math.round((t - Date.now()) / 3600000));
+    return Math.max(0, Math.round(horasHabilesEntre(Date.now(), t)));
   }, [r.expiraAt]);
+  /* Vencido o no lo dice el reloj real —es lo que evalúa el server cuando el
+     pasajero abre el link—; las horas que quedan se cuentan en hábiles. */
+  const vigVencida = useMemo(() => {
+    const t = r.expiraAt ? new Date(r.expiraAt).getTime() : NaN;
+    return Number.isFinite(t) && t <= Date.now();
+  }, [r.expiraAt]);
+  /* "martes 26 de agosto a las 15:00": la fecha concreta al lado del reloj. */
+  const vigHasta = useMemo(() => (r.expiraAt ? textoVencimiento(r.expiraAt) : ""), [r.expiraAt]);
 
   /* Notas internas: se escriben acá y viajan al server 800 ms después de la
      última tecla. El texto local manda mientras se escribe, así el cursor no
@@ -249,20 +261,23 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                 <span className="lbl">Vigencia del link</span>
                 <span className="mono" style={{ marginLeft:"auto", fontSize:11, fontWeight:600,
-                  color: vigResta === 0 ? "var(--coral)" : "var(--n600)" }}>
-                  {vigResta === 0 ? "vencido" : `quedan ${vigResta} h de ${vigTotal}`}</span>
+                  color: vigVencida ? "var(--coral)" : "var(--n600)" }}>
+                  {vigVencida ? "vencido" : `quedan ${vigResta} h hábiles de ${vigTotal}`}</span>
                 {/* v2D · D3 · la vigencia se arregla acá mismo, sin volver a compartir */}
                 <button className="btn btn-g btn-xs" style={{ marginRight:-4 }}
-                  title="Correr el vencimiento 48 h hacia adelante"
+                  title="Correr el vencimiento 48 horas hábiles hacia adelante"
                   onClick={() => onExtender?.(r)}><Clock3 size={11} /> +48 h</button>
               </div>
               <div style={{ height:5, borderRadius:99, background:"var(--sunk-2)", overflow:"hidden" }}>
-                <div style={{ height:"100%", width:`${(vigResta / vigTotal) * 100}%`, borderRadius:99,
-                  background: vigResta === 0 ? "var(--coral)" : vigResta < 12 ? "#E8A13C" : "linear-gradient(90deg,#45D4C0,#2A9E8E)",
+                <div style={{ height:"100%", width:`${vigVencida ? 100 : (vigResta / vigTotal) * 100}%`, borderRadius:99,
+                  background: vigVencida ? "var(--coral)" : vigResta < 12 ? "#E8A13C" : "linear-gradient(90deg,#45D4C0,#2A9E8E)",
                   transition:"width .6s" }} />
               </div>
-              {vigResta === 0 && <div style={{ fontSize:10.5, color:"var(--coral)", marginTop:5 }}>
-                Con <strong>+48 h</strong> o con un recordatorio vuelve a estar activo.</div>}
+              {vigVencida
+                ? <div style={{ fontSize:10.5, color:"var(--coral)", marginTop:5 }}>
+                    Con <strong>+48 h</strong> o con un recordatorio vuelve a estar activo.</div>
+                : vigHasta && <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:5 }}>
+                    Abre hasta el <strong>{vigHasta}</strong> · las horas son hábiles, el fin de semana no descuenta.</div>}
             </div>
           )}
 
@@ -473,6 +488,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
       </div>
       {comp && contenido && <ModalCompartir q={contenido} presupuestoId={r.id} vendedor={r.vendedor}
         recordatorio={comp === "recordatorio"} tabInicial={comp === "datos" ? "datos" : undefined}
+        numero={r.num} enviadaAt={r.enviadaAt} expiraAt={r.expiraAt}
         toast={toast} onPedido={cargarDatos}
         onClose={() => setComp(null)} onEnviada={(d) => onRecordatorio?.(r, d)} />}
       {preview && contenido && (() => {

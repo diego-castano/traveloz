@@ -27,6 +27,7 @@ import { COTIZADOR_SETTINGS } from "@/lib/site-settings-bootstrap";
 import { parseContenido, VIGENCIA_DEFAULT } from "@/lib/presupuesto/schema";
 import { contenidoPublico } from "@/lib/presupuesto/publico";
 import { TOKEN_RE } from "@/lib/presupuesto/links";
+import { condicionesConVencimiento } from "@/lib/presupuesto/habiles";
 import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { CSS } from "@/app/backend/cotizador/_mockup/styles";
 import CotizacionPublica from "./CotizacionPublica";
@@ -66,19 +67,27 @@ function semilla(key: string): string {
  * Los dos ajustes que la ficha del pasajero necesita: las condiciones del pie
  * y la vigencia con la que se resuelve `{vigencia}` adentro de esas líneas.
  *
+ * Acá el `{vigencia}` no se resuelve en horas sino en fecha: el pasajero tiene
+ * el link abierto y su vencimiento concreto, así que la condición dice "válida
+ * hasta el martes 26 de agosto a las 15:00 (no corren sábados ni domingos)" en
+ * vez de mandarlo a contar 48 horas salteando el fin de semana.
+ *
  * Deliberadamente NO se reusa `getContextoCotizador`: esa action exige sesión
  * de vendedor y acá del otro lado hay un pasajero.
  */
-async function ajustesPublicos() {
+async function ajustesPublicos(expiraAt: Date | null) {
   const rows = await prisma.siteSetting.findMany({
     where: { key: { in: ["cotizador_condiciones", "cotizador_vigencia_default"] } },
     select: { key: true, value: true },
   });
   const map = new Map(rows.map((r) => [r.key, r.value]));
-  const crudo = (map.get("cotizador_condiciones") ?? semilla("cotizador_condiciones"))
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const crudo = condicionesConVencimiento(
+    (map.get("cotizador_condiciones") ?? semilla("cotizador_condiciones"))
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean),
+    expiraAt,
+  );
   const vig = Number(map.get("cotizador_vigencia_default") ?? semilla("cotizador_vigencia_default"));
 
   return {
@@ -228,7 +237,7 @@ export default async function CotizacionPublicaPage({
     codigos.length
       ? prisma.aeropuerto.findMany({ where: { codigo: { in: codigos } } })
       : Promise.resolve([]),
-    ajustesPublicos(),
+    ajustesPublicos(link.expiraAt),
   ]);
 
   // Misma forma que arma `useCatalogoCotizador()` en el panel: la ficha del

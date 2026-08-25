@@ -147,8 +147,69 @@ function SalidaPasajero({
     return m ? Number(m[1]) : ANIO_ACTUAL;
   }, [q.fechaSalida]);
 
+  /* ¿hay bloc de notas al pasajero? El HTML puede ser puro markup vacío. */
+  const hayNotas = !!(
+    (q.notasCliente || "").replace(/<[^>]*>/g, "").trim() ||
+    (q.notasCliente || "").includes("<img")
+  );
+
+  /* ── papel: dónde conviene cortar ─────────────────────────────────────
+     Sin itinerario de vuelos la hoja queda apenas por encima de una carilla
+     y el cierre —condiciones, formas de pago y firma— se va solo a la
+     segunda: media página de trámite y ni una línea de la cotización. Eso es
+     lo que el cliente marcó como "la segunda casi vacía".
+
+     Arrancando las opciones en hoja nueva el corte cae donde tiene sentido:
+     portada con el saludo y lo que incluye, y detalle con el precio, los
+     hoteles y la firma juntos. Pero el corte forzado solo mejora si las dos
+     carillas quedan razonablemente llenas, así que se pide las tres cosas:
+       · la hoja NO entra en una sola carilla (si entra, no se toca nada);
+       · lo que va después del corte SÍ entra en una (opciones + notas +
+         cierre): si no, el corte agrega una tercera página en vez de sacarla;
+       · la portada queda al menos a media carilla.
+
+     Las alturas son las medidas sobre el papel a 96 dpi, con los márgenes del
+     @page ya descontados. Es una estimación y no pretende ser exacta: solo
+     tiene que distinguir "entra" de "no entra". */
+  const cortarAntesDeOpciones = useMemo(() => {
+    if (!impresion || q.vuelos.length || !q.opciones.length) return false;
+    const PAGINA = 1039;                     // A4 menos margen de 10mm/12mm
+    const CIERRE = 476;                      // condiciones + formas de pago + firma
+    const portada = 402 + (q.servicios.length && !q.soloVuelos ? 152 : 0);
+    const porOpcion = 226 + 126 * Math.max(1, tramos.length);
+    const opciones = 45 + q.opciones.length * porOpcion + (q.opciones.length - 1) * 14;
+    const notas = hayNotas ? 90 : 0;
+    return (
+      portada + opciones + notas + CIERRE > PAGINA &&
+      opciones + notas + CIERRE <= PAGINA &&
+      portada >= PAGINA * 0.45
+    );
+  }, [impresion, q.vuelos.length, q.opciones.length, q.servicios.length, q.soloVuelos, tramos.length, hayNotas]);
+
+  /* Pie de las páginas 2+: lo dibuja `@page { @bottom-right }` en styles.js y
+     el número lo pone esta variable.
+
+     El valor se interpola dentro de un `<style>`, así que no alcanza con
+     escapar comillas: cualquier `</style>`, `;` o `}` que se cuele en el
+     número rompe la regla o, peor, cierra el bloque. En vez de escapar se
+     filtra por lista blanca — letras, números, espacio y los cuatro signos que
+     de verdad aparecen en un correlativo (COT-2026-0148) — y se corta a 40
+     caracteres. Un número que quede vacío después del filtro cae al respaldo. */
+  const piePagina = useMemo(() => {
+    const limpio = String(q.numero ?? "")
+      .replace(/[^A-Za-z0-9 ._·-]/g, "")
+      .slice(0, 40)
+      .trim();
+    return `"${limpio || "Cotización"} · TravelOz"`;
+  }, [q.numero]);
+
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", color:"#1A1A2E", background:"#fff", minHeight:"100%" }}>
+
+      {/* el número que lleva el pie de las páginas 2+ (ver @page en styles.js) */}
+      {impresion && (
+        <style dangerouslySetInnerHTML={{ __html: `:root{--ctz-pie:${piePagina};}` }} />
+      )}
 
       {/* ── encabezado de marca ── */}
       <div data-sec="encabezado" style={{ background:grad, padding: desk ? "34px 40px 26px" : "36px 20px 22px", color:"#fff",
@@ -394,9 +455,10 @@ function SalidaPasajero({
 
         {/* opciones — cards verticales, foto protagonista */}
         {q.opciones.length > 0 && !q.soloVuelos && (
-          <div ref={(el) => { anclas.current["b-alojamiento"] = el; }} data-sec="hoteles">
+          <div ref={(el) => { anclas.current["b-alojamiento"] = el; }} data-sec="hoteles"
+            data-print-corte={cortarAntesDeOpciones ? "pagina" : undefined}>
             <SecTitulo texto="Opciones de alojamiento" color={G.b} />
-            <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", margin:"-4px 0 12px" }}>
+            <div className="sec-sub" style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", margin:"-4px 0 12px" }}>
               {impresion
                 ? (varias ? "Las opciones cotizadas, una debajo de la otra." : "El detalle de hoteles y fechas.")
                 : varias
@@ -421,7 +483,13 @@ function SalidaPasajero({
               </div>
             )}
 
-            <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:24 }}>
+            {/* en papel la lista de opciones va en flujo normal y no en flex:
+                el motor de impresión parte una columna de bloques mucho mejor
+                que un contenedor flex, y acá las opciones tienen que poder
+                partirse entre hotel y hotel. El `gap` pasa a margen. */}
+            <div style={{ ...(impresion
+              ? { display:"block" }
+              : { display:"flex", flexDirection:"column", gap:14 }), marginBottom:24 }}>
               {visibles.map((o) => {
                 const oi = q.opciones.indexOf(o);
                 const on = impresion ? true : abierta === o.id;
@@ -439,11 +507,22 @@ function SalidaPasajero({
                   <div key={varias && !impresion ? "op-visible" : o.id} style={{ borderRadius:18, overflow:"hidden", background:"#fff",
                     border: on ? `1.5px solid ${G.b}55` : "1px solid rgba(17,17,36,.09)",
                     boxShadow: on ? `0 14px 34px -14px ${G.b}45` : "0 2px 6px rgba(17,17,36,.06)",
+                    /* En papel la opción NO viaja entera. Una opción de tres
+                       hoteles con foto pasa de los 700 px: pedir que no se parta
+                       la empuja a la hoja siguiente y deja media carilla en
+                       blanco. Lo que viaja junto son las piezas que se leen
+                       juntas — el header con su primer hotel, cada hotel, el
+                       bloque de tarifas — y el corte cae entre hotel y hotel,
+                       que es donde no molesta. */
+                    ...(impresion ? { marginBottom:14 } : null),
                     transition:"box-shadow .28s, border-color .28s, transform .28s" }}>
 
-                    {/* foto full-width con overlay — o, si están apagadas, header compacto */}
+                    {/* foto full-width con overlay — o, si están apagadas, header compacto.
+                        `break-after:avoid` lo pega a lo que sigue: el primer hotel del
+                        detalle. Un header al pie de la hoja, solo, no dice nada. */}
                     <button onClick={() => !impresion && setAbierta(on ? null : o.id)}
-                      style={{ width:"100%", textAlign:"left", display:"block", cursor: impresion ? "default" : "pointer" }}>
+                      style={{ width:"100%", textAlign:"left", display:"block", cursor: impresion ? "default" : "pointer",
+                        breakInside:"avoid", breakAfter:"avoid" }}>
                       {q.fotosHotel ? (
                         <Foto seed={H0?.seed ?? oi} url={H0?.foto} alt={H0?.nombre || ""} w="100%" h={fz(112, 150)} r={0}>
                           <span style={{ position:"absolute", top:10, left:10, display:"inline-flex", alignItems:"center",
@@ -549,7 +628,9 @@ function SalidaPasajero({
                           );
                         })}
                         {o.habitaciones?.length ? (
-                          <div>
+                          /* las tarifas son la unidad que cierra la opción: el título
+                             y las habitaciones caen juntos o pasan juntos de hoja */
+                          <div style={{ breakInside:"avoid" }}>
                             <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
                               color:"#8A8DB5", margin:"2px 0 8px" }}>Tarifas</div>
                             {o.habitaciones.map((hab, hi) => (
@@ -579,7 +660,7 @@ function SalidaPasajero({
                           </div>
                         ) : (
                           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                            padding:"12px 14px", borderRadius:13, background:grad, color:"#fff" }}>
+                            padding:"12px 14px", borderRadius:13, background:grad, color:"#fff", breakInside:"avoid" }}>
                             <span style={{ fontSize:fz(11.5, 12), fontWeight:600, opacity:.92 }}>Precio final por adulto</span>
                             <span style={{ fontSize:fz(19, 21), fontWeight:800, letterSpacing:"-.03em" }}><Odometro valor={precioOpcion(o)} /></span>
                           </div>
@@ -674,8 +755,20 @@ function SalidaPasajero({
           </div>
         )}
 
+        {/* ── cierre ───────────────────────────────────────────────────────
+            Notas, condiciones, formas de pago y firma.
+
+            El grupo NO viaja entero: las cuatro cosas juntas pasan los 470 px y
+            pedir que no se partan tira la mitad de una carilla a la basura. Lo
+            que sí viaja junto es cada pieza — condiciones, formas de pago con
+            su título, y firma con el cierre de marca —, y las notas quedan
+            partibles con su título pegado al primer párrafo (`SecTitulo` lleva
+            `break-after:avoid`). Así el corte cae entre bloques y la firma
+            nunca termina sola arriba de una hoja en blanco. */}
+        <div>
+
         {/* notas para el pasajero — bloc de HTML libre */}
-        {((q.notasCliente || "").replace(/<[^>]*>/g, "").trim() || (q.notasCliente || "").includes("<img")) && (
+        {hayNotas && (
           <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas">
             <SecTitulo texto="Notas" color={G.b} />
             <div style={{ fontSize:fz(12.5, 13), lineHeight:1.6, color:"#3D4066", marginBottom:22, overflowWrap:"anywhere" }}
@@ -695,7 +788,9 @@ function SalidaPasajero({
         </div>
         )}
 
-        {/* pago — logos reales del sitio público, en cajas uniformes */}
+        {/* pago — logos reales del sitio público, en cajas uniformes.
+            El título y las dos filas de logos son una sola unidad de lectura. */}
+        <div style={{ breakInside:"avoid" }}>
         <SecTitulo texto="Formas de pago" color={G.b} />
         <div data-sec="pago" style={{ marginBottom:22 }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
@@ -723,6 +818,7 @@ function SalidaPasajero({
             ))}
           </div>
         </div>
+        </div>{/* /formas de pago */}
 
         {/* firma + cierre: en papel viajan juntos */}
         <div data-sec="firma" style={{ breakInside:"avoid" }}>
@@ -769,6 +865,8 @@ function SalidaPasajero({
         <div style={{ textAlign:"center", marginTop:16 }}><Wordmark size={13} /></div>
         <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color:"#B0B4CD", marginTop:4 }}>{G.web}</div>
         </div>
+
+        </div>{/* /cierre: pago + firma */}
       </div>
     </div>
   );

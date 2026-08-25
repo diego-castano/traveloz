@@ -11,6 +11,40 @@ del catálogo, CRM).
 
 ---
 
+## 25 de agosto de 2026
+
+### Nuevo
+
+**Ajustes pedidos por Gero después de ver el cotizador funcionando.**
+
+- **Analytics por vendedor**, solo para administradores: creadas, enviadas,
+  tasa de apertura y de confirmación, monto confirmado, tiempo hasta la
+  primera apertura, lectura promedio, embudo por sección, dispositivos y
+  destinos, por vendedor y por semana, con rango de fechas y exportación a
+  CSV. Los vendedores no ven esta pestaña.
+- **La vigencia no corre los fines de semana.** Las 48 horas por defecto son
+  hábiles: una cotización mandada el viernes a las 15:00 vence el martes a
+  las 15:00. El email y la página del pasajero dicen la fecha y hora
+  concretas ("válida hasta el martes 25 de agosto a las 15:00") y el panel
+  muestra las horas hábiles que quedan.
+- **Semáforo en el listado.** Arriba de la grilla, cuatro chips que filtran:
+  vencidas sin abrir, más de 24 h hábiles sin abrir, abiertas o confirmadas,
+  borradores. El botón "Cotizador" de la vista de vendedor muestra cuántas
+  requieren acción hoy.
+- **Recordatorio con texto propio**: "te escribo por la cotización que te
+  mandé el martes 25, sigue disponible hasta el jueves 27 a las 15:00", en
+  WhatsApp y en email, sin repetir el mensaje inicial.
+- **Título de la cotización editable.** Se precarga desde el paquete ("Caribe
+  › Jamaica, Octubre 2026") y el vendedor lo puede reescribir libremente; el
+  autocompletado sugiere ciudades pero no obliga a elegir una.
+- **Hoteles nuevos desde el buscador.** Cuando el hotel no está en el
+  catálogo, además de escribirlo como texto libre, el vendedor puede crearlo
+  en el catálogo en el momento (nombre, ciudad, estrellas) y queda disponible
+  para todos.
+- **PDF sin páginas casi vacías.** La paginación se ajustó para las tres
+  formas típicas (corta, con vuelos, con varias opciones y notas): sin
+  títulos huérfanos, sin tarjetas partidas y con la firma siempre acompañada.
+
 ## 24 de agosto de 2026
 
 ### Nuevo

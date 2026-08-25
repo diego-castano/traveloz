@@ -48,14 +48,12 @@ import {
   renderizarPdfDeCotizacion,
 } from "@/lib/pdf";
 import type { CodigoErrorPdf, EtapaPdf } from "@/lib/pdf";
+import { sumarHorasHabiles } from "@/lib/presupuesto/habiles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const log = logger.child({ op: "cotizador.pdf" });
-
-/** Una hora en milisegundos, igual que en las actions. */
-const HORA_MS = 3_600_000;
 
 function error(
   mensaje: string,
@@ -103,11 +101,13 @@ export async function GET(
       token = vivo.token;
     } else {
       const horas = row.vigenciaHoras || 48;
+      // Horas hábiles, igual que las actions: el sábado y el domingo no
+      // corren para ningún link, tampoco para el que emite el PDF.
       const link = await emitirORenovar(
         row.id,
         "pdf",
         horas,
-        new Date(Date.now() + horas * HORA_MS),
+        sumarHorasHabiles(new Date(), horas),
       );
       token = link.token;
     }

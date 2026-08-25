@@ -796,19 +796,110 @@ export default function Cotizador({
 
   /* ?imprimir=demo · deja una cotización de ejemplo lista en la vista de impresión,
      así se prueba el PDF sin clickear nada. Espera a que el catálogo termine de
-     cargar: el primer paquete real es el que se precarga. */
+     cargar: el primer paquete real es el que se precarga.
+
+     `&variante=` elige cuánto papel ocupa, que es lo único que hace falta para
+     revisar la paginación del PDF:
+       corta  · el paquete pelado, sin itinerario de vuelos → 1 opción
+       media  · + PNR_DEMO (ida y vuelta)          ← default, lo de siempre
+       larga  · + 3 opciones con dos hoteles cada una y notas al cliente largas
+       larga3 · una sola opción con TRES hoteles, fotos encendidas y sin
+                vuelos: la opción arranca a media carilla y no entra entera,
+                que es como se ve si el corte cae entre hotel y hotel en vez
+                de tirar la opción completa a la hoja siguiente
+     Nada de esto toca la base: el borrador vive en memoria hasta que alguien
+     escriba encima. */
   const demoHecha = useRef(false);
   useEffect(() => {
     if (typeof window === "undefined" || demoHecha.current) return;
-    if (new URLSearchParams(window.location.search).get("imprimir") !== "demo") return;
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("imprimir") !== "demo") return;
     if (catalogo.cargando) return;
     demoHecha.current = true;
     const p0 = catalogo.paquetes[0];
     if (!p0) return;                       // sin paquetes activos no hay demo que mostrar
+    const variante = (qs.get("variante") || "media").toLowerCase();
     const q0 = desdePaquete(p0, ajustes, catalogo);
     q0.cliente.nombre = "Sonia";
-    q0.pnrRaw = PNR_DEMO;
-    q0.vuelos = parsePNR(PNR_DEMO, mapaAerolineas);
+
+    /* larga3 va sin vuelos a propósito: sin el itinerario, la opción arranca a
+       media carilla y NO entra entera, que es justo el caso que esa variante
+       existe para mirar. Con el PNR adelante la opción caería al tope de una
+       hoja nueva y no habría corte que revisar. */
+    if (variante !== "corta" && variante !== "larga3") {
+      q0.pnrRaw = PNR_DEMO;
+      q0.vuelos = parsePNR(PNR_DEMO, mapaAerolineas);
+    }
+
+    if (variante === "larga3") {
+      /* tres tramos, un solo juego de hoteles y las fotos prendidas: así la
+         única opción pasa de los 700 px y hay que ver dónde corta el papel */
+      const d0 = q0.destinos[0];
+      const noches = Math.max(1, Math.floor((Number(d0?.noches) || 9) / 3));
+      if (d0) d0.noches = noches;
+      const EXTRA = ["Punta Cana", "Bávaro"];
+      while (q0.destinos.length < 3) {
+        q0.destinos.push({ id:uid("dst"), ciudad: EXTRA[q0.destinos.length - 1] || "Miami",
+          noches, checkinManual:null, regimen: d0?.regimen || "" });
+      }
+      const HOTELES_3 = ["Riu Palace", "Meliá Caribe", "Bahía Príncipe"];
+      const base = q0.opciones[0];
+      if (base) {
+        base.hoteles = q0.destinos.map((d, i) => ({
+          hotelId:null, cat:5, libre:`${HOTELES_3[i % HOTELES_3.length]} ${d.ciudad}`,
+          regimen: base.hoteles[i]?.regimen || base.regimen || d.regimen || "",
+        }));
+        q0.opciones = [base];
+      }
+      q0.fotosHotel = true;
+    }
+
+    if (variante === "larga") {
+      /* dos destinos como mínimo: la variante larga existe para ver cómo cae
+         una opción con más de una tarjeta de hotel adentro */
+      if (q0.destinos.length < 2) {
+        const d0 = q0.destinos[0];
+        const noches = Math.max(1, Math.floor((Number(d0?.noches) || 6) / 2));
+        if (d0) d0.noches = noches;
+        q0.destinos.push({ id:uid("dst"), ciudad:"Punta Cana", noches,
+          checkinManual:null, regimen: d0?.regimen || "" });
+      }
+      const HOTELES_DEMO = ["Riu Palace", "Meliá Caribe", "Bahía Príncipe", "Iberostar Selection"];
+      const base = q0.opciones[0];
+      if (base) {
+        /* la opción base también necesita un hotel por destino: el paquete
+           trae uno solo y el segundo tramo quedaría en "A definir" */
+        q0.destinos.forEach((d, i) => {
+          if (base.hoteles[i]) return;
+          base.hoteles[i] = { hotelId:null, libre:`${HOTELES_DEMO[i % HOTELES_DEMO.length]} ${d.ciudad}`,
+            cat:5, regimen: base.regimen || d.regimen || "" };
+        });
+        q0.opciones = [base, ...[1, 2].map((k) => ({
+          ...base,
+          id: uid("op"),
+          nombre: `Opción ${k + 1}`,
+          hoteles: q0.destinos.map((d, i) => ({ hotelId:null, cat: 5 - k,
+            libre: `${HOTELES_DEMO[(i + k) % HOTELES_DEMO.length]} ${d.ciudad}`,
+            regimen: base.hoteles[i]?.regimen || base.regimen || "" })),
+          habitaciones: base.habitaciones.map((h) => ({
+            ...h, id: uid("hab"),
+            tarifas: h.tarifas.map((t) => ({ ...t, id: uid("tf"),
+              neto: Math.round((Number(t.neto) || 0) * (1 - k * 0.09)) })),
+          })),
+        }))];
+      }
+      q0.notasCliente =
+        "<div>Pasaporte con vigencia mínima de 6 meses al momento del viaje. " +
+        "Los menores que viajen con un solo progenitor necesitan autorización del otro, " +
+        "certificada por escribano.</div>" +
+        "<div><br></div>" +
+        "<div>Los horarios de vuelo los fija la aerolínea y pueden cambiar hasta 24 h antes " +
+        "de la salida. Te avisamos por WhatsApp apenas nos llega la notificación.</div>" +
+        "<div><br></div>" +
+        "<div>El check-in en los hoteles es a partir de las 15:00 y el check-out hasta las 12:00. " +
+        "Si el vuelo llega de madrugada podemos cotizarte la noche previa aparte.</div>";
+    }
+
     abrir(q0);
     setImprimir(true);
     /* eslint-disable-next-line react-hooks/exhaustive-deps */

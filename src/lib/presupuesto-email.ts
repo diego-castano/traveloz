@@ -18,6 +18,7 @@
 import { SITE_BASE_URL } from "@/lib/datos-email";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion } from "@/lib/presupuesto/derivados";
+import { REGLA_HABILES, textoDiaCorto, textoVencimiento } from "@/lib/presupuesto/habiles";
 import type { ContenidoPresupuesto } from "@/lib/presupuesto/schema";
 
 const ACCENT = "#F43E55";
@@ -235,8 +236,16 @@ export interface CotizacionEmailInput {
   vendedor: VendedorEmail;
   /** URL pública del link (`${SITE_BASE_URL}/c/<token>`). */
   url: string;
-  /** Horas de vigencia del link, para la nota del pie. */
+  /** Horas de vigencia del link, para la nota del pie. Son hábiles. */
   vigenciaHoras: number;
+  /**
+   * Cuándo deja de abrir el link, ya calculado en horas hábiles. El email
+   * escribe la fecha concreta: "48 horas" obliga al pasajero a hacer una
+   * cuenta que además saltea el fin de semana.
+   */
+  expiraAt?: Date | null;
+  /** Cuándo salió la primera de esta ronda. Solo lo usa el recordatorio. */
+  enviadaAt?: Date | null;
   /**
    * Saludo ya renderizado ({nombre} y {link} resueltos). Sale del mensaje
    * automático de la cotización o de la plantilla del máster.
@@ -287,6 +296,14 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
     ? `Tu cotización de ${destino} sigue disponible`
     : `Tu cotización de ${destino}`;
 
+  // La vigencia en fecha, no en horas. Si por lo que sea no llegó `expiraAt`
+  // (una plantilla vieja, un test), el texto vuelve a las horas de siempre.
+  const vence = input.expiraAt ? textoVencimiento(input.expiraAt) : "";
+  const salio = input.enviadaAt ? textoDiaCorto(input.enviadaAt) : "";
+  const notaVigencia = vence
+    ? `Está disponible hasta el ${vence} (${REGLA_HABILES})`
+    : `El link está disponible por ${vigenciaHoras} horas hábiles (${REGLA_HABILES})`;
+
   // El saludo del vendedor manda; si no cargó ninguno, uno neutro que no suena
   // a plantilla vacía.
   const saludoTxt = (input.saludo ?? "").trim();
@@ -296,21 +313,34 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
         .map((parr) => P(escapeHtml(parr).replace(/\n/g, "<br/>")))
         .join("")
     : P(
-        input.esRecordatorio
-          ? `Hola${nombre ? ` <strong>${escapeHtml(nombre)}</strong>` : ""}, te dejo de nuevo la cotización de <strong>${escapeHtml(
-              destino,
-            )}</strong> por si querés repasarla.`
-          : `Hola${nombre ? ` <strong>${escapeHtml(nombre)}</strong>` : ""}, te comparto la cotización de <strong>${escapeHtml(
-              destino,
-            )}</strong>.`,
+        `Hola${nombre ? ` <strong>${escapeHtml(nombre)}</strong>` : ""}, te comparto la cotización de <strong>${escapeHtml(
+          destino,
+        )}</strong>.`,
       );
 
-  const body = `
+  // El recordatorio tiene texto propio: no repite el email inicial (ni su
+  // resumen ni el mensaje automático del vendedor). Recuerda cuándo salió,
+  // hasta cuándo sirve y deja el botón. Tres líneas.
+  const recordatorioTxt = [
+    `Hola${nombre ? ` ${nombre}` : ""}, te escribo por la cotización${numero ? ` ${numero}` : ""} que te mandé${salio ? ` el ${salio}` : ""}.`,
+    vence ? `Sigue disponible hasta el ${vence}.` : "Sigue disponible.",
+    "Cualquier duda me decís.",
+  ].join(" ");
+
+  const body = input.esRecordatorio
+    ? `
+    ${P(escapeHtml(recordatorioTxt))}
+    <p style="margin:20px 0 0">${ctaButton(url, "Ver mi cotización")}</p>
+    ${PMUTED(`La vigencia se cuenta en horas hábiles: ${escapeHtml(REGLA_HABILES)}. Si se te vence igual, escribile a ${escapeHtml(
+      vendedor.nombre,
+    )} y te lo renueva.`)}
+    ${tarjetaVendedor(vendedor)}`
+    : `
     ${saludoHtml}
     ${tabla(resumen)}
     <p style="margin:20px 0 0">${ctaButton(url, "Ver mi cotización")}</p>
     ${PMUTED(
-      `Se abre desde el celular y desde la computadora. El link está disponible por ${vigenciaHoras} horas; si se te vence, escribile a ${escapeHtml(
+      `Se abre desde el celular y desde la computadora. ${escapeHtml(notaVigencia)}; si se te vence, escribile a ${escapeHtml(
         vendedor.nombre,
       )} y te lo renueva.`,
     )}
@@ -320,24 +350,35 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
   // que los otros dos asuntos.
   const subject = asunto(
     input.esRecordatorio
-      ? `Te dejo de nuevo tu cotización de ${destino}${numero ? ` · ${numero}` : ""}`
+      ? `Recordatorio · tu cotización${numero ? ` ${numero}` : ""} sigue disponible`
       : `Tu cotización de ${destino}${numero ? ` · ${numero}` : ""}`,
   );
 
-  const text = [
-    saludoTxt ||
-      `Hola${nombre ? ` ${nombre}` : ""}, te comparto la cotización de ${destino}.`,
-    "",
-    salida ? `Salida: ${salida}` : null,
-    noches > 0 ? `Noches: ${noches}` : null,
-    ...filasOpciones.map((f) => `${f.label}: ${f.value}`),
-    "",
-    `Ver la cotización: ${url}`,
-    `El link vale ${vigenciaHoras} horas.`,
-    "",
-    vendedor.nombre,
-    vendedor.email ?? "",
-  ]
+  const text = (
+    input.esRecordatorio
+      ? [
+          recordatorioTxt,
+          "",
+          `Ver la cotización: ${url}`,
+          "",
+          vendedor.nombre,
+          vendedor.email ?? "",
+        ]
+      : [
+          saludoTxt ||
+            `Hola${nombre ? ` ${nombre}` : ""}, te comparto la cotización de ${destino}.`,
+          "",
+          salida ? `Salida: ${salida}` : null,
+          noches > 0 ? `Noches: ${noches}` : null,
+          ...filasOpciones.map((f) => `${f.label}: ${f.value}`),
+          "",
+          `Ver la cotización: ${url}`,
+          `${notaVigencia}.`,
+          "",
+          vendedor.nombre,
+          vendedor.email ?? "",
+        ]
+  )
     .filter((l) => l !== null)
     .join("\n");
 

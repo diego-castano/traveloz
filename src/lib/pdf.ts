@@ -344,10 +344,23 @@ interface DetalleRender {
   tiempos: Partial<Record<EtapaPdf, number>>;
   /** Familias que el navegador terminó de cargar, para el log. */
   familias: string[] | null;
+  /**
+   * "HeadlessChrome/137.0.7151.55" — el motor que imprimió.
+   *
+   * Va al log de cada PDF porque la paginación depende de la versión: las
+   * margin boxes del `@page` con `counter(page)` (el pie con el número de
+   * página, en _mockup/styles.js) las dibuja Chromium 131 o más nuevo. Si
+   * mañana un PDF sale sin pie, esto dice en una línea si el contenedor se
+   * quedó atrás en vez de mandarnos a adivinar.
+   */
+  chromium: string | null;
 }
 
 function nuevoDetalle(): DetalleRender {
-  return { paso: "lanzar", status: null, urlFinal: null, tiempos: {}, familias: null };
+  return {
+    paso: "lanzar", status: null, urlFinal: null, tiempos: {},
+    familias: null, chromium: null,
+  };
 }
 
 async function abrirNavegador(): Promise<Browser> {
@@ -568,6 +581,9 @@ async function imprimir(
 ): Promise<Buffer> {
   const navegador = await abrirNavegador();
   try {
+    // La misma llamada que usa `saludPdf`: un CDP `Browser.getVersion`, gratis
+    // al lado de lo que cuesta el render. Si falla, el PDF sigue igual.
+    detalle.chromium = await navegador.version().catch(() => null);
     return await conTiempo(
       correr(navegador, url, requiereHoja, detalle),
       TOTAL_MS,
@@ -626,6 +642,7 @@ export async function renderizarPdfDeCotizacion({
       ms: Date.now() - arranque,
       bytes: buffer.length,
       status: detalle.status,
+      chromium: detalle.chromium,
       tiempos: detalle.tiempos,
       familias: detalle.familias,
     });

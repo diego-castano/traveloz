@@ -41,7 +41,7 @@ export default async function AjustesCotizadorPage() {
         <SettingsForm
           group="cotizador"
           title="Ajustes del cotizador"
-          blurb="Los textos y valores con los que arranca toda cotización nueva. En el mensaje, {nombre} se reemplaza por el nombre del cliente y {link} por el link de datos de pasajeros del vendedor; en las condiciones, {vigencia} es la cantidad de horas que vale el link. Las condiciones van una por línea. La foto, el teléfono y el link de cada vendedor se cargan en Perfiles."
+          blurb="Los textos y valores con los que arranca toda cotización nueva. En el mensaje, {nombre} se reemplaza por el nombre del cliente y {link} por el link de datos de pasajeros del vendedor; en las condiciones, {vigencia} es la cantidad de horas HÁBILES que vale el link (los sábados y domingos no cuentan; la ficha del pasajero muestra directamente la fecha de vencimiento). Las condiciones van una por línea. La foto, el teléfono y el link de cada vendedor se cargan en Perfiles."
         />
       </div>
     </WebEditProvider>

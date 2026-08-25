@@ -1,4 +1,5 @@
 import { Send, Eye, CheckCheck, PenLine, Clock3 } from "lucide-react";
+import { horasHabilesEntre, textoVencimiento } from "@/lib/presupuesto/habiles";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    VOCABULARIO Y HELPERS DEL COTIZADOR
@@ -100,13 +101,42 @@ function registrarVendedores(lista) {
   VENDEDORES_REG = Array.isArray(lista) ? lista : [];
 }
 
-/* Horas que le quedan de vida al link. Negativo = ya venció. null = nunca se
-   envió, así que el reloj todavía no arrancó. */
+/* Horas HÁBILES que le quedan de vida al link. Negativo = ya venció. null =
+   nunca se envió, así que el reloj todavía no arrancó.
+
+   Hábiles, no de reloj: el vencimiento lo calculó el server salteando sábados
+   y domingos (src/lib/presupuesto/habiles.ts) y la cuenta regresiva tiene que
+   contar igual. Si acá se restaran horas corridas, un link emitido el viernes
+   mostraría "quedan 9 h" el sábado a la mañana y seguiría abriendo el martes.
+ */
 function horasDeVigencia(r) {
   if (!r?.expiraAt) return null;
   const t = new Date(r.expiraAt).getTime();
   if (!Number.isFinite(t)) return null;
-  return (t - Date.now()) / 3600000;
+  const ahora = Date.now();
+  const habiles = horasHabilesEntre(ahora, t);
+  /* El SIGNO lo decide el reloj real, que es lo que mira el server cuando el
+     pasajero abre el link; lo hábil es cuánto queda. Sin esto, un link viejo
+     —emitido antes de esta regla, con vencimiento un domingo— aparecía como
+     vencido el sábado y sin embargo seguía abriendo. */
+  if (t > ahora) return Math.max(habiles, Number.EPSILON);
+  if (t < ahora) return Math.min(habiles, -Number.EPSILON);
+  return 0;
+}
+
+/* Horas hábiles desde que salió. Sirve para el "+24 h sin abrir": un envío del
+   viernes a las 18:00 no está "hace 40 h" el domingo, está hace 6 h hábiles. */
+function horasHabilesDesdeEnvio(r) {
+  if (r?.hEnvioHabil != null) return r.hEnvioHabil;
+  if (!r?.enviadaAt) return r?.hEnvio ?? null;
+  const t = new Date(r.enviadaAt).getTime();
+  if (!Number.isFinite(t)) return r?.hEnvio ?? null;
+  return horasHabilesEntre(t, Date.now());
+}
+
+/* "vence el martes 26 de agosto a las 15:00" para la fila que ya tiene link. */
+function textoDeVencimiento(r) {
+  return r?.expiraAt ? textoVencimiento(r.expiraAt) : "";
 }
 
 /* Semáforo de seguimiento: cuánto hace que se envió, si el pasajero la abrió y
@@ -126,11 +156,33 @@ function semaforo(r) {
   const restan = horasDeVigencia(r);
   if (restan != null && restan <= 0) return { c:"#F43E55", l:"Link vencido",
     d:"La vigencia se cumplió y nadie la abrió. Reactivalo y reenviá, o llamá al pasajero." };
-  if (r.hEnvio < 24)             return { c:"#45D4C0", l:"En ventana",
-    d:"Enviada hace menos de 24 h y todavía sin abrir. Normal — la mayoría se abre el mismo día." };
+  const desdeEnvio = horasHabilesDesdeEnvio(r);
+  if (desdeEnvio != null && desdeEnvio < 24) return { c:"#45D4C0", l:"En ventana",
+    d:"Enviada hace menos de 24 h hábiles y todavía sin abrir. Normal — la mayoría se abre el mismo día." };
   return { c:"#E8A13C", l:"Sin abrir +24 h",
-    d:"Pasaron más de 24 h sin apertura. Conviene un recordatorio corto por WhatsApp." };
+    d:"Pasaron más de 24 h hábiles sin apertura (el fin de semana no cuenta). Conviene un recordatorio corto por WhatsApp." };
 }
+/* En qué chip del resumen cae una fila. Mismo reparto que `resumenSemaforo()`
+   en presupuesto.actions.ts — si esto y aquello se separan, el badge del shell
+   dice un número y la pantalla muestra otro.
+
+     roja      vencida y el pasajero nunca la abrió
+     amarilla  enviada, sin abrir, +24 h HÁBILES
+     verde     confirmada, o abierta con el link todavía vivo
+     borrador  nunca salió
+
+   Devuelve null para lo que no pide nada hoy: la enviada de hace tres horas y
+   la vencida que el pasajero sí llegó a abrir. */
+function bucketSemaforo(r) {
+  const est = estadoEfectivo(r);
+  if (est === "borrador")   return "borrador";
+  if (est === "confirmada") return "verde";
+  if (est === "vencida")    return r.aperturas > 0 ? null : "roja";
+  if (r.aperturas > 0)      return "verde";
+  const desde = horasHabilesDesdeEnvio(r);
+  return desde != null && desde >= 24 ? "amarilla" : null;
+}
+
 function fmtHace(h) { if (h == null) return "—"; if (h <= 0) return "recién";
   return h < 24 ? `hace ${h} h` : `hace ${Math.round(h / 24)} d`; }
 
@@ -498,6 +550,7 @@ export {
   serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion,
   SUG_ALL, PNR_DEMO,
   registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,
+  horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,
   uid, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   fechaDeVuelo, itinerarioMasCompleto,
