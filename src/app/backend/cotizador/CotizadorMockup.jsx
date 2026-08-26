@@ -1294,17 +1294,9 @@ export default function Cotizador({
                 <span title="Las notas internas no aparecen acá" style={{ display:"grid", placeItems:"center",
                   width:20, height:20, borderRadius:7, background:"rgba(244,62,85,.12)", color:"var(--ink-coral)" }}>
                   <Lock size={10} /></span>
-                <div style={{ marginLeft:"auto", display:"flex", gap:3, padding:3, background:"var(--sunk)", borderRadius:9 }}>
-                  <button title="Vista celular" style={{ width:26, height:24, borderRadius:7, display:"grid", placeItems:"center",
-                    background:"var(--pop)", color:"var(--ink)", boxShadow:"0 1px 3px rgba(26,26,46,.12)" }}>
-                    <Smartphone size={12} /></button>
-                  <button title="Ver en tablet" onClick={() => setPrev("tab")}
-                    style={{ width:26, height:24, borderRadius:7, display:"grid", placeItems:"center", color:"var(--n400)" }}>
-                    <Smartphone size={14} style={{ transform:"rotate(90deg)" }} /></button>
-                  <button title="Ver en escritorio" onClick={() => setPrev("desk")}
-                    style={{ width:26, height:24, borderRadius:7, display:"grid", placeItems:"center", color:"var(--n400)" }}>
-                    <Monitor size={12} /></button>
-                </div>
+                {/* 26/08 · el selector celular/tablet/escritorio que vivía acá era un
+                    resto del previsualizador del mockup ("me olvidé de cortarlo", Gero
+                    lo vio y se sacó). La previa completa sigue en "Vista previa". */}
               </div>
               <div className="phone ed-phone">
                 <div className="phone-scr" ref={phoneScroll}>
