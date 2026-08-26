@@ -12,6 +12,10 @@
 //     es LO SUYO - el preview ?vista=vendedor no espía la bandeja de otro.
 //   • MARKETING no entra a ninguna de estas actions: ve paquetes, no datos
 //     personales de pasajeros ni tarjetas.
+//   • Los errores que el vendedor tiene que leer vuelven como
+//     { ok: false, message }, nunca como excepción: en producción Next
+//     enmascara el mensaje de una server action que tira y el usuario termina
+//     viendo "An error occurred in the Server Components render…".
 //   • payload / iv / tag de DatosPagoCifrado NUNCA salen de este módulo. Los
 //     selects son explícitos justamente para que un `include` distraído no
 //     los arrastre. La revelación con segundo factor la construye otro módulo.
@@ -26,6 +30,7 @@ import { logger } from "@/lib/logger";
 import { sendEmail } from "@/lib/email";
 import { parseRespuestas, type Respuesta } from "@/lib/cotizador-form";
 import { DATOS_FROM, SITE_BASE_URL, solicitudDatosEmail } from "@/lib/datos-email";
+import { slugUnicoParaUsuario } from "@/lib/slug-usuario";
 import type { TipoFormularioDato } from "@prisma/client";
 
 const log = logger.child({ module: "datos-vendedor.actions" });
@@ -76,6 +81,76 @@ async function scopeVendedor(vendedorId?: string): Promise<{
     isAdmin,
   };
 }
+
+/** Falla de negocio que la UI muestra tal cual. Nunca viaja como excepción. */
+export interface DatosError {
+  ok: false;
+  message: string;
+}
+
+/**
+ * Igual que scopeVendedor pero devolviendo el error en vez de tirarlo. En
+ * producción Next enmascara el mensaje de una excepción de server action
+ * ("An error occurred in the Server Components render…"), así que todo lo que
+ * el vendedor tiene que poder leer vuelve como valor.
+ */
+async function scopeSuave(vendedorId?: string): Promise<
+  | { ok: true; sessionUserId: string; targetId: string; isAdmin: boolean }
+  | DatosError
+> {
+  try {
+    const scope = await scopeVendedor(vendedorId);
+    return { ok: true, ...scope };
+  } catch (err) {
+    const message =
+      err instanceof Error && err.message ? err.message : "No pudimos verificar tu sesión.";
+    return { ok: false, message };
+  }
+}
+
+/**
+ * Slug del link personal, generándolo y guardándolo si el usuario todavía no
+ * tiene (los creados desde Perfiles nacían sin slug). Devuelve null solo si
+ * del nombre no sale ningún slug utilizable.
+ */
+async function asegurarSlug(user: {
+  id: string;
+  name: string;
+  slug: string | null;
+}): Promise<string | null> {
+  if (user.slug) return user.slug;
+
+  const candidato = await slugUnicoParaUsuario(user.name, {
+    excluirId: user.id,
+    fallback: "vendedor",
+  });
+  if (!candidato) {
+    log.warn("datos.slug.sin-candidato", { userId: user.id });
+    return null;
+  }
+
+  try {
+    const actualizado = await prisma.user.update({
+      where: { id: user.id },
+      data: { slug: candidato },
+      select: { slug: true },
+    });
+    log.info("datos.slug.autocurado", { userId: user.id, slug: candidato });
+    return actualizado.slug;
+  } catch (err) {
+    // Carrera contra otro request (el slug es unique): si mientras tanto ya
+    // quedó puesto, ese sirve igual.
+    log.error(`datos.slug.autocurar failed (${user.id})`, err);
+    const fresco = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { slug: true },
+    });
+    return fresco?.slug ?? null;
+  }
+}
+
+const SIN_SLUG =
+  "No pudimos armar tu link personal. Pedile a un administrador que te lo genere desde Perfiles.";
 
 // ---------------------------------------------------------------------------
 // Contadores (mismo patrón que getLeadCounts)
@@ -353,6 +428,7 @@ export async function getMisPagos(vendedorId?: string): Promise<PagoResumen[]> {
 // ---------------------------------------------------------------------------
 
 export interface MiLink {
+  ok: true;
   tipo: TipoFormularioDato;
   url: string;
   /** PNG en data-URL. Se genera en el server para no meter qrcode en el bundle. */
@@ -360,24 +436,40 @@ export interface MiLink {
   linkActivo: boolean;
 }
 
+/**
+ * Link personal + QR del vendedor. NUNCA tira: todo lo que puede salir mal
+ * vuelve como { ok: false, message } y el modal lo muestra con "Reintentar".
+ *
+ * Si el usuario todavía no tiene slug (los creados desde Perfiles antes del
+ * fix), se lo genera y se lo guarda acá mismo en vez de mandarlo a pedirle el
+ * favor a un admin.
+ */
 export async function getMiLink(
   tipo: TipoFormularioDato,
   vendedorId?: string,
-): Promise<MiLink> {
-  const { targetId } = await scopeVendedor(vendedorId);
-  const user = await prisma.user.findUnique({
-    where: { id: targetId },
-    select: { slug: true, linkActivo: true },
-  });
-  if (!user?.slug) {
-    throw new Error(
-      "Todavía no tenés un link personal. Pedile a un administrador que te genere el link.",
-    );
-  }
+): Promise<MiLink | DatosError> {
+  const scope = await scopeSuave(vendedorId);
+  if (!scope.ok) return scope;
 
-  const url = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${user.slug}`;
-  const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 320 });
-  return { tipo, url, qrDataUrl, linkActivo: user.linkActivo };
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: scope.targetId },
+      select: { id: true, name: true, slug: true, linkActivo: true },
+    });
+    if (!user) {
+      return { ok: false, message: "No encontramos tu usuario. Volvé a iniciar sesión." };
+    }
+
+    const slug = await asegurarSlug(user);
+    if (!slug) return { ok: false, message: SIN_SLUG };
+
+    const url = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${slug}`;
+    const qrDataUrl = await QRCode.toDataURL(url, { margin: 1, width: 320 });
+    return { ok: true, tipo, url, qrDataUrl, linkActivo: user.linkActivo };
+  } catch (err) {
+    log.error("datos.link.armar failed", err);
+    return { ok: false, message: "No pudimos armar tu link. Probá de nuevo en un rato." };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -410,7 +502,9 @@ export async function crearSolicitud(input: {
   destino?: string;
   referencia?: string;
 }): Promise<SolicitudResult> {
-  const { sessionUserId } = await scopeVendedor();
+  const scope = await scopeSuave();
+  if (!scope.ok) return scope;
+  const { sessionUserId } = scope;
 
   const parsed = solicitudSchema.safeParse(input);
   if (!parsed.success) {
@@ -425,14 +519,21 @@ export async function crearSolicitud(input: {
   // a quien le escribió.
   const vendedor = await prisma.user.findUnique({
     where: { id: sessionUserId },
-    select: { name: true, email: true, slug: true, linkActivo: true, fotoUrl: true, whatsapp: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      slug: true,
+      linkActivo: true,
+      fotoUrl: true,
+      whatsapp: true,
+    },
   });
-  if (!vendedor?.slug) {
-    return {
-      ok: false,
-      message: "Todavía no tenés un link personal. Pedile a un administrador que te genere el link.",
-    };
+  if (!vendedor) {
+    return { ok: false, message: "No encontramos tu usuario. Volvé a iniciar sesión." };
   }
+  const slug = await asegurarSlug(vendedor);
+  if (!slug) return { ok: false, message: SIN_SLUG };
   if (!vendedor.linkActivo) {
     return {
       ok: false,
@@ -471,7 +572,7 @@ export async function crearSolicitud(input: {
     select: { id: true },
   });
 
-  const link = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${vendedor.slug}?s=${token}`;
+  const link = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${slug}?s=${token}`;
   try {
     const tmpl = solicitudDatosEmail({
       tipo,
@@ -554,6 +655,7 @@ export async function getMisSolicitudes(
 // ---------------------------------------------------------------------------
 
 export interface PreviewSolicitud {
+  ok: true;
   subject: string;
   html: string;
   /** El link de ejemplo no sirve: el token real se genera recién al enviar. */
@@ -569,20 +671,21 @@ export interface PreviewSolicitud {
 export async function previewSolicitudEmail(
   tipo: TipoFormularioDato,
   input?: { destinatarioNombre?: string; destino?: string; referencia?: string },
-): Promise<PreviewSolicitud> {
-  const { sessionUserId } = await scopeVendedor();
+): Promise<PreviewSolicitud | DatosError> {
+  const scope = await scopeSuave();
+  if (!scope.ok) return scope;
 
   const vendedor = await prisma.user.findUnique({
-    where: { id: sessionUserId },
-    select: { name: true, slug: true, fotoUrl: true, whatsapp: true },
+    where: { id: scope.sessionUserId },
+    select: { id: true, name: true, slug: true, fotoUrl: true, whatsapp: true },
   });
-  if (!vendedor?.slug) {
-    throw new Error(
-      "Todavía no tenés un link personal. Pedile a un administrador que te genere el link.",
-    );
+  if (!vendedor) {
+    return { ok: false, message: "No encontramos tu usuario. Volvé a iniciar sesión." };
   }
+  const slug = await asegurarSlug(vendedor);
+  if (!slug) return { ok: false, message: SIN_SLUG };
 
-  const link = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${vendedor.slug}?s=ejemplo`;
+  const link = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${slug}?s=ejemplo`;
   const tmpl = solicitudDatosEmail({
     tipo,
     vendedor: { nombre: vendedor.name, fotoUrl: vendedor.fotoUrl, whatsapp: vendedor.whatsapp },
@@ -593,6 +696,7 @@ export async function previewSolicitudEmail(
   });
 
   return {
+    ok: true,
     subject: tmpl.subject,
     html: tmpl.html,
     nota: "El link de este preview es de ejemplo: el token real se genera recién al enviar.",

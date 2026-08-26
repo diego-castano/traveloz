@@ -17,7 +17,7 @@ import {
 } from "@/lib/email";
 import { isPinInUse } from "./auth.actions";
 import QRCode from "qrcode";
-import { normalizeSlug } from "@/lib/cotizador";
+import { slugUnicoParaUsuario } from "@/lib/slug-usuario";
 import { SITE_BASE_URL } from "@/lib/datos-email";
 
 const log = logger.child({ module: "user.actions" });
@@ -131,6 +131,28 @@ export async function createUser(data: {
         createdAt: true, updatedAt: true, lockedUntil: true,
       },
     });
+
+    // Link personal desde el minuto cero: ADMIN y VENDEDOR usan
+    // /datos-de-pasajeros/<slug> y /datos-de-pago/<slug>. Sin esto el usuario
+    // nuevo entraba al panel sin slug y el modal de "Datos de pasajeros"
+    // reventaba. linkActivo ya viene en true por default del modelo.
+    // Si la generación falla, el alta sigue en pie: el admin tiene el botón
+    // "Generar link" para arreglarlo, y getMiLink se autocura al abrirlo.
+    if (created.role === "ADMIN" || created.role === "VENDEDOR") {
+      try {
+        const slug = await slugUnicoParaUsuario(created.name, {
+          excluirId: created.id,
+          fallback: "vendedor",
+        });
+        if (slug) {
+          await prisma.user.update({ where: { id: created.id }, data: { slug } });
+        } else {
+          log.warn("createUser: nombre sin slug utilizable", { userId: created.id });
+        }
+      } catch (err) {
+        log.error("createUser: no se pudo asignar el slug", err);
+      }
+    }
 
     await logAudit({
       action: "user.create",
@@ -782,10 +804,8 @@ export async function setLinkActivo(id: string, activo: boolean) {
  * ambos casos el slug viejo (si había) deja de resolver: nunca se recicla,
  * así que la UI debe confirmar antes de llamar esto.
  *
- * Usa normalizeSlug de cotizador.ts (mismo criterio de limpieza de texto) pero
- * NO valida contra RESERVED_SLUGS: esas reservas son de los landings de
- * cotizador en la raíz del sitio, un namespace distinto al de
- * /datos-de-pasajeros/<slug> y /datos-de-pago/<slug>.
+ * La generación vive en slugUnicoParaUsuario (src/lib/slug-usuario.ts), el
+ * mismo helper que usan el alta de usuarios y el self-heal de getMiLink.
  */
 export async function regenerarSlug(id: string) {
   const actor = await requireAdmin();
@@ -797,13 +817,12 @@ export async function regenerarSlug(id: string) {
   });
   if (!existing) throw new Error("Usuario no encontrado.");
 
-  const base = normalizeSlug(existing.name) || "vendedor";
-  let candidate = base;
-  let suffix = 2;
-  // eslint-disable-next-line no-await-in-loop -- colisiones son raras, el loop corta apenas encuentra un slug libre
-  while (await prisma.user.findFirst({ where: { slug: candidate, id: { not: id } } })) {
-    candidate = `${base}-${suffix}`;
-    suffix += 1;
+  const candidate = await slugUnicoParaUsuario(existing.name, {
+    excluirId: id,
+    fallback: "vendedor",
+  });
+  if (!candidate) {
+    return { ok: false as const, error: "No se pudo armar un link con ese nombre." };
   }
 
   try {

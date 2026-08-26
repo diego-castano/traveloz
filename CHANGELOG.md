@@ -35,6 +35,13 @@ WhatsApp sin abrir Compartir.
 
 ### Arreglado
 
+- **Un vendedor creado desde Perfiles no podía abrir "Datos de pasajeros" ni
+  "Datos de tarjeta"**: veía "An error occurred in the Server Components
+  render". El alta no le generaba el link personal (slug) y el modal fallaba
+  al pedirlo. Ahora el link se genera al crear el usuario y, si a alguno le
+  faltara, se genera solo al abrir el modal. Los avisos de negocio de ese
+  módulo (sin link, tope diario de solicitudes, email inválido) vuelven como
+  mensajes legibles en vez de errores enmascarados.
 - La vista de impresión de demo (`?imprimir=demo`) dejaba borradores en el
   seguimiento cada vez que se usaba para generar un PDF de prueba. Ya no
   guarda nada.

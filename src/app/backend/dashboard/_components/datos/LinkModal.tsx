@@ -9,7 +9,7 @@
 // data-URL que arma el server (la lib `qrcode` nunca entra al bundle).
 // ---------------------------------------------------------------------------
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Check,
@@ -102,6 +102,27 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // Contador de pedidos del link: la respuesta que llega tarde (modal cerrado,
+  // solapa cambiada, "Reintentar" apretado dos veces) se descarta sola.
+  const pedidoLink = useRef(0);
+
+  const cargarLink = useCallback(() => {
+    const pedido = pedidoLink.current + 1;
+    pedidoLink.current = pedido;
+    setLink(null);
+    setLinkError(null);
+    getMiLink(tipo)
+      .then((r) => {
+        if (pedidoLink.current !== pedido) return;
+        if (r.ok) setLink(r);
+        else setLinkError(r.message);
+      })
+      .catch(() => {
+        if (pedidoLink.current !== pedido) return;
+        setLinkError("No pudimos armar tu link. Probá de nuevo en un rato.");
+      });
+  }, [tipo]);
+
   const cargarSolicitudes = useCallback(() => {
     getMisSolicitudes(tipo)
       .then(setSolicitudes)
@@ -116,7 +137,10 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
       destino: form.destino,
       referencia: form.referencia,
     })
-      .then((p) => setPreview(p))
+      .then((p) => {
+        if (p.ok) setPreview(p);
+        else setPreviewError(p.message);
+      })
       .catch((err: unknown) => {
         setPreviewError(
           err instanceof Error ? err.message : "No pudimos armar la vista previa.",
@@ -137,27 +161,21 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
   useEffect(() => {
     if (!open) return;
     let vivo = true;
-    setLink(null);
-    setLinkError(null);
     setSolicitudes(null);
     setPreviewOpen(false);
     setPreview(null);
     setPreviewError(null);
-    getMiLink(tipo)
-      .then((l) => {
-        if (vivo) setLink(l);
-      })
-      .catch((err: unknown) => {
-        if (vivo) setLinkError(err instanceof Error ? err.message : "No pudimos armar tu link.");
-      });
+    cargarLink();
     cargarSolicitudes();
     void listarPresupuestos({ take: 20 }).then((res) => {
       if (vivo && res.ok) setCotizaciones(res.data);
     });
     return () => {
       vivo = false;
+      // Descarta la respuesta en vuelo del link al cerrar el modal.
+      pedidoLink.current += 1;
     };
-  }, [open, tipo, cargarSolicitudes]);
+  }, [open, tipo, cargarLink, cargarSolicitudes]);
 
   // Escribir (o elegir) un número de cotización trae el destino de arrastre.
   function setReferencia(valor: string) {
@@ -224,8 +242,17 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
       />
       <ModalBody>
         {linkError ? (
-          <div className="rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-            {linkError}
+          <div className="space-y-3 rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-[13px] text-amber-800">{linkError}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              leftIcon={<RefreshCw size={13} />}
+              onClick={() => cargarLink()}
+            >
+              Reintentar
+            </Button>
           </div>
         ) : (
           <Tabs defaultValue="link" layoutId={`linkmodal-${tipo}`}>
