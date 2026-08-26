@@ -40,6 +40,14 @@ del catálogo, CRM).
   (vuelos nocturnos). "Agregar habitación" vive solo dentro de cada opción y
   replica la habitación en las demás. El selector de personas llega a 5 y
   después "Más…" editable.
+- **PDF con membrete.** El logo oficial va centrado arriba, sobre el blanco
+  de la hoja, con el número de cotización a la izquierda; abajo una banda de
+  marca más baja con el título y los datos del viaje. Itinerario con etiquetas
+  Ida/Vuelta y la espera como una línea discreta; opciones con el precio
+  protagonista y cada hotel en su fila; condiciones a dos columnas; logos de
+  pago sin recuadros; firma sobre blanco; pie "TravelOz · Cotización COT-… ·
+  Página N". La misma cotización de tres opciones pasa de 4 a 3 hojas. La
+  página web del pasajero no cambia.
 - **PDF.** Cada tramo de vuelo (aerolínea, ruta y espera) y cada opción de
   alojamiento van enteros; el itinerario se reparte entre páginas solo en
   las escalas, así la primera hoja no queda vacía. El título de la
