@@ -69,6 +69,12 @@ del catálogo, CRM).
 
 ### Arreglado
 
+- **La aerolínea ya no viaja en "Tu viaje incluye" al cotizar desde un paquete
+  web.** El catálogo armaba la línea de aéreo como "Copa Airlines · Montevideo -
+  Cancún - Montevideo". La agencia cotiza el aéreo por ruta y se reserva cambiar
+  de compañía manteniendo el precio, así que la línea queda solo con la ruta —
+  lo mismo que muestra la ficha pública del paquete. Las cotizaciones ya
+  guardadas conservan el texto que tenían; se corrige editando la línea.
 - **No se podía escribir "@" en el email del cliente** desde Mac con teclado
   español: el atajo Alt+número para saltar de bloque se comía Option+2.
   Los atajos ya no actúan mientras se escribe en un campo.

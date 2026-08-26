@@ -532,10 +532,14 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
          está vacío se cae al nombre del servicio del ABM. */
       const servicios = [];
 
+      /* La línea de aéreo va SIN aerolínea. La agencia cotiza el aéreo por
+         ruta y se reserva cambiar de compañía manteniendo el precio; con la
+         aerolínea escrita en "Tu viaje incluye" quedaba atada (Gero, 26/08).
+         Es la misma línea que muestra la ficha pública del paquete
+         (`textoDisplay ?? ruta`); los espacios dobles del ABM se colapsan. */
       for (const pa of asigAereos) {
         const a = aereoPorId.get(pa.aereoId);
-        const nombre = a ? [a.aerolinea, a.ruta].filter(Boolean).join(" · ") : "";
-        const texto = (pa.textoDisplay || nombre).trim();
+        const texto = String(pa.textoDisplay || a?.ruta || "").replace(/\s+/g, " ").trim();
         if (texto) servicios.push({ cat: "aereo", texto });
       }
 
