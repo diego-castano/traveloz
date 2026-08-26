@@ -73,6 +73,16 @@ export interface SendEmailInput {
    * Una fecha en el pasado la rechaza Resend — el caller valida que sea futura.
    */
   scheduledAt?: string | Date;
+  /**
+   * El cuerpo lleva datos que no pueden terminar en un log. Hoy lo usa un
+   * solo call site — `datosPagoAdmEmail`, el único email del sistema que
+   * viaja con el número de tarjeta y el CVV adentro.
+   *
+   * Con esto en true, la rama sin RESEND_API_KEY NO imprime el preview: sin
+   * la marca, un entorno sin key escupiría el PAN completo a stdout. Sobre el
+   * envío real no cambia nada (Resend recibe el mismo cuerpo de siempre).
+   */
+  sensible?: boolean;
 }
 
 export interface SendEmailResult {
@@ -114,7 +124,20 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
 
   // No Resend key yet — log a clear preview so the developer (or the admin
   // testing the flow locally) can copy any one-time link out of the console.
+  //
+  // Salvo que el email sea `sensible`: ahí el preview queda afuera y solo se
+  // anota que hubo un envío. Ese cuerpo lleva PAN y CVV, y stdout no es lugar
+  // para eso ni en local.
   if (!apiKey) {
+    if (input.sensible) {
+      log.warn("email.stub", {
+        reason: "RESEND_API_KEY not set — email sensible, sin preview",
+        to: input.to,
+        subject: input.subject,
+        sensible: true,
+      });
+      return { delivered: false, provider: "console" };
+    }
     log.warn("email.stub", {
       reason: "RESEND_API_KEY not set — printing email to console",
       to: input.to,

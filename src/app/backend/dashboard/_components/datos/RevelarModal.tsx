@@ -23,6 +23,7 @@ import {
   Copy,
   CreditCard,
   Eye,
+  History,
   KeyRound,
   ShieldAlert,
 } from "lucide-react";
@@ -36,6 +37,7 @@ import {
   type DatosRevelados,
   type PagoMetaView,
 } from "@/actions/datos-boveda.actions";
+import { getAccesosPago, type AccesoPago } from "@/actions/datos-vendedor.actions";
 
 interface RevelarModalProps {
   /** id del registro a abrir. `null` mantiene el modal cerrado. */
@@ -75,6 +77,8 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
   const [error, setError] = useState<string | null>(null);
   const [verificando, setVerificando] = useState(false);
   const [datos, setDatos] = useState<DatosRevelados | null>(null);
+  // Quién abrió esta tarjeta antes. Sale del AuditLog, no tiene nada sensible.
+  const [accesos, setAccesos] = useState<AccesoPago[]>([]);
 
   const reset = useCallback(() => {
     setMeta(null);
@@ -83,6 +87,7 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
     setCredencial("");
     setError(null);
     setVerificando(false);
+    setAccesos([]);
     // Lo primero que se suelta al cerrar: los datos en claro.
     setDatos(null);
   }, []);
@@ -99,6 +104,7 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
     let vivo = true;
     setMeta(null);
     setMetaError(null);
+    setAccesos([]);
     getPagoMeta(pagoId)
       .then((m) => {
         if (!vivo) return;
@@ -108,6 +114,11 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
       .catch(() => {
         if (vivo) setMetaError("No pudimos leer el registro. Probá de nuevo.");
       });
+    // Historial de aperturas. Es una lectura aparte y best-effort: si falla,
+    // el modal sigue funcionando sin la lista.
+    void getAccesosPago(pagoId).then((a) => {
+      if (vivo) setAccesos(a);
+    });
     return () => {
       vivo = false;
     };
@@ -126,6 +137,8 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
         setCredencial("");
         setPaso("revelado");
         onRevelado?.();
+        // Esta apertura ya quedó auditada del lado del server: la traemos.
+        void getAccesosPago(pagoId).then(setAccesos);
       } else {
         setError(r.message);
       }
@@ -173,10 +186,17 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
           <div className="space-y-4">
             {/* Cabecera de la tarjeta: se mantiene visible en los tres pasos. */}
             <div className="rounded-[12px] border border-hairline bg-[#FBFAFF] px-4 py-3">
-              <p className="text-[14px] font-bold text-neutral-900">{meta.titular}</p>
+              {/* El nombre grande es el del PASAJERO; el titular va abajo solo
+                  cuando es otra persona. */}
+              <p className="text-[14px] font-bold text-neutral-900">{meta.nombre}</p>
               <p className="mt-0.5 font-mono text-[12.5px] tabular-nums text-neutral-500">
                 {meta.emisor ?? "Tarjeta"} •••• {meta.ultimos4}
               </p>
+              {meta.pasajeroNombre && meta.titular.trim() !== meta.pasajeroNombre.trim() && (
+                <p className="mt-0.5 text-[11.5px] text-neutral-500">
+                  Titular de la tarjeta: {meta.titular}
+                </p>
+              )}
               <p className="mt-1.5 text-[11.5px] text-neutral-400">
                 {quedan
                   ? `Se borra en ${quedan}.`
@@ -245,6 +265,8 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
             ) : datos ? (
               <DatosCard datos={datos} onCopiar={(t, d) => toast("success", t, d)} />
             ) : null}
+
+            <AccesosLista accesos={accesos} />
           </div>
         )}
       </ModalBody>
@@ -280,6 +302,53 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
         </ModalFooter>
       )}
     </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Historial de aperturas
+//
+// "Gero abrió la tarjeta el 26/08 10:39". Sale del AuditLog por targetId, así
+// que muestra lo mismo que quedó registrado - incluidos los intentos fallidos
+// de credencial, que son justamente los que interesa ver.
+// ---------------------------------------------------------------------------
+
+const accesoFecha = new Intl.DateTimeFormat("es-UY", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "America/Montevideo",
+});
+
+export function AccesosLista({
+  accesos,
+  titulo = "Accesos",
+}: {
+  accesos: AccesoPago[];
+  titulo?: string;
+}) {
+  if (accesos.length === 0) return null;
+  return (
+    <div className="rounded-[12px] border border-hairline bg-white px-4 py-3">
+      <p className="mb-2 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-wider text-neutral-400">
+        <History size={12} /> {titulo}
+      </p>
+      <ul className="space-y-1">
+        {accesos.map((a) => (
+          <li key={a.id} className="text-[12px] leading-relaxed text-neutral-600">
+            <span className="font-semibold text-neutral-800">{a.quien}</span>{" "}
+            {a.fallido ? (
+              <span className="text-amber-700">
+                falló al abrir la tarjeta el {accesoFecha.format(new Date(a.createdAt))}
+              </span>
+            ) : (
+              <>abrió la tarjeta el {accesoFecha.format(new Date(a.createdAt))}</>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

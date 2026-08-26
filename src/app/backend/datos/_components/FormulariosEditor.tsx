@@ -35,20 +35,22 @@ import type { TipoFormularioDato } from "@prisma/client";
  */
 const CAMPOS_BASE: Record<TipoFormularioDato, string[]> = {
   PASAJEROS: [
-    "Nombres y apellidos",
+    "Nombre y apellido (un solo campo)",
+    "Documento de viaje (cédula o pasaporte)",
     "Fecha de nacimiento",
-    "Documento + foto del documento",
-    "Pasaporte + foto (opcional)",
-    "Email y teléfono",
-    "Dirección, ciudad y país",
-    "Destino y referencia del viaje",
+    "Email",
+    "Teléfono",
+    "Foto del documento (opcional)",
+    "Archivo adicional (opcional)",
     "Facturación con RUT (opcional)",
   ],
   PAGO: [
-    "Titular y su documento",
+    "Nombre y apellido del pasajero",
+    "Documento del pasajero",
+    "Titular de la tarjeta y su documento",
     "Número de tarjeta",
     "Vencimiento y código de seguridad",
-    "Cuotas",
+    "Cuotas (1 a 6)",
     "Autorización de uso",
   ],
 };

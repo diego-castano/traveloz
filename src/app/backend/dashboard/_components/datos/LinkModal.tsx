@@ -7,6 +7,10 @@
 //
 // El link y el QR se piden recién al abrir el modal: el QR es un PNG en
 // data-URL que arma el server (la lib `qrcode` nunca entra al bundle).
+//
+// En la variante PAGO el CTA va en VIOLETA y no en el rojo/teal del Button
+// primario: la tarjeta es el trámite más delicado del panel y el color tiene
+// que transmitir seguridad, no alarma (pedido del cliente, 26/08/2026).
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -66,8 +70,19 @@ const COPY: Record<
     titulo: "Datos de tarjeta",
     descripcion: "Tu link seguro para recibir los datos de pago.",
     ayudaForm:
-      "Así lo ve el pasajero: los datos de la tarjeta viajan cifrados y se borran solos a las 72 horas.",
+      "Así lo ve el pasajero: los datos de la tarjeta viajan cifrados y se borran solos a las 96 horas.",
   },
+};
+
+/**
+ * Violeta de marca (brand-violet-600/700) para el CTA de la pantalla de
+ * tarjeta. Va inline porque el Button primario trae su gradiente clay por
+ * `style` y una clase de Tailwind no lo pisaría.
+ */
+const CTA_VIOLETA: React.CSSProperties = {
+  background: "linear-gradient(145deg, #8B5CF6 0%, #6C2BD9 100%)",
+  boxShadow:
+    "6px 6px 16px rgba(108,43,217,0.22), -3px -3px 10px rgba(139,92,246,0.28), inset 0 1px 0 rgba(255,255,255,0.3)",
 };
 
 const CHIP_ESTADO: Record<SolicitudResumen["estado"], { label: string; clase: string }> = {
@@ -376,6 +391,7 @@ export function LinkModal({ tipo, open, onOpenChange }: LinkModalProps) {
                   loading={enviando}
                   leftIcon={<Send size={14} />}
                   className="w-full"
+                  style={tipo === "PAGO" ? CTA_VIOLETA : undefined}
                 >
                   Enviar el formulario
                 </Button>

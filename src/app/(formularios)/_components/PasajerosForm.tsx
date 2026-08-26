@@ -3,12 +3,15 @@
 // ---------------------------------------------------------------------------
 // Formulario público de datos de pasajeros.
 //
+// Cinco campos por pasajero, todos obligatorios: nombre y apellido (UNO solo),
+// documento de viaje, fecha de nacimiento, email y teléfono. Los adjuntos son
+// los dos opcionales y NINGUNO bloquea el envío (cliente, 26/08/2026).
+//
 // Bloques repetibles: "Pasajero 1", "Pasajero 2", … Un bloque SOLO se puede
-// plegar cuando está completo (usamos el checkValidity() nativo de cada input
-// más el adjunto obligatorio). Esa regla no es cosmética: si dejáramos plegar
-// un bloque incompleto, el navegador intentaría enfocar un campo requerido que
-// está a altura cero y la validación nativa se rompe con
-// "invalid form control is not focusable".
+// plegar cuando está completo (usamos el checkValidity() nativo de cada
+// input). Esa regla no es cosmética: si dejáramos plegar un bloque incompleto,
+// el navegador intentaría enfocar un campo requerido que está a altura cero y
+// la validación nativa se rompe con "invalid form control is not focusable".
 //
 // Los campos van con el índice adelante (p0__nombres, p1__nombres, …) y el
 // índice sale de la POSICIÓN en el array. Los bloques están keyeados por un id
@@ -41,6 +44,8 @@ interface Slot {
   id: string;
 }
 
+// `pasaporte` es el nombre histórico de la columna (pasaporteArchivoUrl); en
+// la UI es "Adjuntar archivo" · el archivo adicional opcional.
 type Adjuntos = { documento: Adjunto | null; pasaporte: Adjunto | null };
 
 /** id local para keyear los bloques. No viaja al server. */
@@ -115,9 +120,12 @@ export function PasajerosForm({
     setAdjuntos((prev) => ({ ...prev, [id]: { ...adj(id), [campo]: valor } }));
   }
 
-  /** ¿Todos los controles del bloque pasan la validación nativa + el adjunto? */
+  /**
+   * ¿Todos los controles del bloque pasan la validación nativa? Los adjuntos
+   * NO entran: desde el 26/08/2026 son opcionales y no frenan ni el pliegue ni
+   * el envío.
+   */
   function bloqueCompleto(id: string): boolean {
-    if (!adj(id).documento) return false;
     const el = formRef.current?.querySelector<HTMLElement>(`[data-bloque="${id}"]`);
     if (!el) return false;
     const controles = Array.from(
@@ -158,11 +166,6 @@ export function PasajerosForm({
     setResumen(({ [id]: _r, ...resto }) => resto);
   }
 
-  // Gate del botón: sin documento adjunto no hay envío posible (el input
-  // hidden con la key no puede llevar `required` sin romper el foco nativo).
-  const sinDocumento = slots.findIndex((s) => !adj(s.id).documento);
-  const faltaDocumento = sinDocumento !== -1;
-
   if (state?.ok) {
     return (
       <Exito
@@ -177,29 +180,13 @@ export function PasajerosForm({
       <Honeypot />
       <input type="hidden" name="cantidadPasajeros" value={slots.length} />
 
-      {/* ── Datos del viaje ─────────────────────────────────────────────── */}
-      <section className="space-y-3.5">
-        <Seccion>El viaje</Seccion>
-        <Campo
-          name="destino"
-          label="Destino"
-          requerido
-          required
-          maxLength={160}
-          defaultValue={destinoInicial ?? ""}
-          placeholder="¿A dónde viajan?"
-        />
-        <Campo
-          name="referencia"
-          label="Referencia de la reserva"
-          ayuda="Si tu asesor te pasó un número o nombre de expediente, ponelo acá."
-          maxLength={160}
-          defaultValue={referenciaInicial ?? ""}
-          placeholder="Opcional"
-        />
-      </section>
-
-      <Separador />
+      {/* El viaje ya no se le pregunta al pasajero: el vendedor sabe de quién
+          es su link. Si la solicitud (?s=token) traía destino o referencia,
+          viajan ocultos para que el envío quede igual de atado que antes. */}
+      {destinoInicial && <input type="hidden" name="destino" value={destinoInicial} />}
+      {referenciaInicial && (
+        <input type="hidden" name="referencia" value={referenciaInicial} />
+      )}
 
       {/* ── Pasajeros ───────────────────────────────────────────────────── */}
       <section className="space-y-2.5">
@@ -274,7 +261,7 @@ export function PasajerosForm({
 
                 {avisoPliegue === slot.id && abierto && (
                   <p className="px-3 pb-2.5 text-[11.5px] leading-snug text-neutral-500">
-                    Completá los datos y el documento para poder plegar este pasajero.
+                    Completá los datos de este pasajero para poder plegarlo.
                   </p>
                 )}
 
@@ -286,49 +273,44 @@ export function PasajerosForm({
                   transition={{ duration: 0.25, ease: "easeOut" }}
                 >
                   <div className="space-y-3.5 border-t border-neutral-900/[0.06] px-3 py-3.5 sm:px-4 sm:py-4">
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
-                      <Campo
-                        name={`${p}nombres`}
-                        label="Nombres"
-                        requerido
-                        required
-                        maxLength={100}
-                        autoComplete="given-name"
-                        ayuda="Tal cual figura en el documento."
-                        onChange={(e) => {
-                          // El value se captura ANTES del updater: React puede
-                          // ejecutarlo despues de que el evento terminó y ahí
-                          // currentTarget ya es null (crash con autofill).
-                          const v = e.currentTarget.value;
-                          setResumen((r) => ({ ...r, [slot.id]: v }));
-                        }}
-                      />
-                      <Campo
-                        name={`${p}apellidos`}
-                        label="Apellidos"
-                        requerido
-                        required
-                        maxLength={100}
-                        autoComplete="family-name"
-                      />
-                    </div>
+                    {/* Un solo campo de nombre: a 390 px dos columnas para
+                        "nombres" y "apellidos" partían el nombre en dos cajas
+                        angostas y la gente escribía todo en la primera. */}
+                    <Campo
+                      name={`${p}nombres`}
+                      label="Nombre y apellido"
+                      requerido
+                      required
+                      maxLength={200}
+                      autoComplete="name"
+                      ayuda="Tal cual figura en el documento de viaje."
+                      onChange={(e) => {
+                        // El value se captura ANTES del updater: React puede
+                        // ejecutarlo despues de que el evento terminó y ahí
+                        // currentTarget ya es null (crash con autofill).
+                        const v = e.currentTarget.value;
+                        setResumen((r) => ({ ...r, [slot.id]: v }));
+                      }}
+                    />
 
                     <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <Campo
                         name={`${p}documento`}
-                        label="Documento"
+                        label="Documento de viaje"
                         requerido
                         required
                         maxLength={40}
-                        inputMode="numeric"
-                        placeholder="Cédula o DNI"
+                        ayuda="Cédula o pasaporte."
                       />
                       <div>
-                        <Label htmlFor={`${p}fechaNacimiento`}>Fecha de nacimiento</Label>
+                        <Label requerido htmlFor={`${p}fechaNacimiento`}>
+                          Fecha de nacimiento
+                        </Label>
                         <input
                           id={`${p}fechaNacimiento`}
                           name={`${p}fechaNacimiento`}
                           type="date"
+                          required
                           max={new Date().toISOString().slice(0, 10)}
                           min="1900-01-01"
                           className={inputClass}
@@ -360,45 +342,15 @@ export function PasajerosForm({
                       />
                     </div>
 
-                    <Campo
-                      name={`${p}pasaporte`}
-                      label="Pasaporte"
-                      maxLength={40}
-                      placeholder="Opcional"
-                      ayuda="Si el viaje lo requiere, cargalo junto con el número."
-                    />
-
-                    <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
-                      <Campo
-                        name={`${p}ciudad`}
-                        label="Ciudad"
-                        maxLength={120}
-                        placeholder="Opcional"
-                        autoComplete="address-level2"
-                      />
-                      <Campo
-                        name={`${p}pais`}
-                        label="País"
-                        maxLength={60}
-                        defaultValue="UY"
-                        autoComplete="country"
-                      />
-                    </div>
-
-                    <Campo
-                      name={`${p}direccion`}
-                      label="Dirección"
-                      maxLength={200}
-                      placeholder="Opcional"
-                      autoComplete="street-address"
-                    />
-
+                    {/* Los dos adjuntos son opcionales y ninguno frena el
+                        envío: si el pasajero no tiene la foto a mano, manda
+                        igual y el vendedor se la pide después. */}
                     <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                       <AdjuntoField
                         name={`${p}documentoKey`}
                         label="Foto del documento"
-                        requerido
-                        ayuda="JPG, PNG o PDF."
+                        cta="Subir foto"
+                        ayuda="Opcional · JPG, PNG o PDF."
                         slug={slug}
                         lote={lote}
                         accept={accept}
@@ -408,8 +360,8 @@ export function PasajerosForm({
                       />
                       <AdjuntoField
                         name={`${p}pasaporteKey`}
-                        label="Foto del pasaporte"
-                        ayuda="Solo si el viaje lo requiere."
+                        label="Adjuntar archivo"
+                        ayuda="Opcional · cualquier otro documento del viaje."
                         slug={slug}
                         lote={lote}
                         accept={accept}
@@ -517,14 +469,10 @@ export function PasajerosForm({
 
       <div className="space-y-2.5">
         {state && !state.ok && <ErrorMsg>{state.message}</ErrorMsg>}
-        {faltaDocumento && (
-          // Ayuda, no alarma: dice qué falta para habilitar el botón y se va.
-          <p className="text-center text-[12px] leading-snug text-neutral-500">
-            Falta adjuntar la foto del documento del pasajero {sinDocumento + 1}.
-          </p>
-        )}
 
-        <SubmitButton disabled={faltaDocumento || !lote}>Enviar los datos</SubmitButton>
+        {/* El único gate que queda es el lote (se genera al montar): sin él la
+            key del bucket no valida. Los adjuntos ya no bloquean nada. */}
+        <SubmitButton disabled={!lote}>Enviar los datos</SubmitButton>
 
         <p className="flex items-center justify-center gap-1.5 text-center text-[11.5px] leading-snug text-neutral-400">
           <UserRound className="h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />

@@ -6,7 +6,7 @@
 //   getVendedorPublico(slug)  → la tarjeta del asesor que ve el pasajero.
 //   getSolicitud(token)       → precarga cuando el link vino por email (?s=).
 //   submitEnvioPasajeros(...) → EnvioPasajeros + N PasajeroDato + aviso.
-//   submitDatosPago(...)      → DatosPagoCifrado (bóveda 72 h) + aviso.
+//   submitDatosPago(...)      → DatosPagoCifrado (bóveda 96 h) + aviso.
 //
 // Reglas que no se negocian:
 //   • Los adjuntos NO viajan por acá: el cliente los sube antes a
@@ -35,6 +35,7 @@ import {
   type PasajeroInput,
 } from "@/lib/datos-form";
 import {
+  HORAS_BOVEDA,
   bovedaDisponible,
   cifrar,
   detectarEmisor,
@@ -59,9 +60,6 @@ const log = logger.child({ module: "datos-publico.actions" });
 // construya la pantalla real haya un solo lugar que tocar.
 const ADMIN_ENVIOS_PATH = "/backend/datos/pasajeros";
 const ADMIN_PAGOS_PATH = "/backend/datos/pagos";
-
-/** Vida de la bóveda de pago. Pasado esto, el barrido borra el payload. */
-const HORAS_BOVEDA = 72;
 
 export type FormResult = { ok: boolean; message: string };
 
@@ -239,17 +237,21 @@ export async function submitEnvioPasajeros(
         return { ok: false, message: `Pasajero ${i + 1}: ${extras.message}` };
       }
       pasajeros.push({
+        // "Nombre y apellido" es UN campo: entra entero en `nombres` y
+        // `apellidos` queda vacío (contrato del 26/08/2026, ver datos-form.ts).
         nombres: campo(formData, `${p}nombres`) ?? "",
-        apellidos: campo(formData, `${p}apellidos`) ?? "",
+        apellidos: "",
         fechaNacimiento: campo(formData, `${p}fechaNacimiento`),
         documento: campo(formData, `${p}documento`) ?? "",
-        pasaporte: campo(formData, `${p}pasaporte`),
+        // El formulario dejó de pedir pasaporte, dirección, ciudad y país.
+        pasaporte: null,
         email: campo(formData, `${p}email`) ?? "",
         telefono: campo(formData, `${p}telefono`) ?? "",
-        direccion: campo(formData, `${p}direccion`),
-        pais: campo(formData, `${p}pais`) ?? "UY",
-        ciudad: campo(formData, `${p}ciudad`),
-        documentoKey: campo(formData, `${p}documentoKey`) ?? "",
+        direccion: null,
+        pais: null,
+        ciudad: null,
+        // Los dos adjuntos son opcionales: ninguno bloquea el envío.
+        documentoKey: campo(formData, `${p}documentoKey`),
         pasaporteKey: campo(formData, `${p}pasaporteKey`),
         respuestas: extras.respuestas,
       });
@@ -257,7 +259,8 @@ export async function submitEnvioPasajeros(
 
     const quiereFactura = campo(formData, "quiereFactura") === "si";
     const entrada: EnvioPasajerosInput = {
-      destino: campo(formData, "destino") ?? "",
+      // Ocultos: solo vienen si el link traía la precarga de una solicitud.
+      destino: campo(formData, "destino"),
       referencia: campo(formData, "referencia"),
       factura: quiereFactura
         ? {
@@ -307,7 +310,7 @@ export async function submitEnvioPasajeros(
             direccion: p.direccion,
             pais: p.pais,
             ciudad: p.ciudad,
-            documentoArchivoUrl: `/api/image/${p.documentoKey}`,
+            documentoArchivoUrl: p.documentoKey ? `/api/image/${p.documentoKey}` : null,
             pasaporteArchivoUrl: p.pasaporteKey ? `/api/image/${p.pasaporteKey}` : null,
             respuestas: p.respuestas as unknown as object[],
           })),
@@ -348,9 +351,21 @@ export async function submitEnvioPasajeros(
         pais: p.pais,
         ciudad: p.ciudad,
         adjuntos: [
-          { label: "Documento", url: `${SITE_BASE_URL}/api/image/${p.documentoKey}` },
+          ...(p.documentoKey
+            ? [
+                {
+                  label: "Foto del documento",
+                  url: `${SITE_BASE_URL}/api/image/${p.documentoKey}`,
+                },
+              ]
+            : []),
           ...(p.pasaporteKey
-            ? [{ label: "Pasaporte", url: `${SITE_BASE_URL}/api/image/${p.pasaporteKey}` }]
+            ? [
+                {
+                  label: "Archivo adicional",
+                  url: `${SITE_BASE_URL}/api/image/${p.pasaporteKey}`,
+                },
+              ]
             : []),
         ],
         respuestas: p.respuestas.map((r: Respuesta) => ({ etiqueta: r.etiqueta, valor: r.valor })),
@@ -425,6 +440,8 @@ export async function submitDatosPago(
     if (!extras.ok) return { ok: false, message: extras.message };
 
     const parsed = datosPagoSchema.safeParse({
+      pasajeroNombre: campo(formData, "pasajeroNombre") ?? "",
+      pasajeroDocumento: campo(formData, "pasajeroDocumento") ?? "",
       titular: campo(formData, "titular") ?? "",
       documentoTitular: campo(formData, "documentoTitular") ?? "",
       numero: campo(formData, "numero") ?? "",
@@ -446,8 +463,11 @@ export async function submitDatosPago(
       return { ok: false, message: "La tarjeta figura como vencida. Revisá el MM/AA." };
     }
 
-    // Lo único que queda legible: titular, emisor y últimos 4. Se derivan
-    // ANTES de cifrar; después de esta línea el número no existe en claro.
+    // Lo único que queda legible: pasajero, titular, emisor y últimos 4. El
+    // pasajero va en claro a propósito (es la identidad del registro en el
+    // listado, la bandeja y los asuntos de los avisos); nada de la tarjeta.
+    // Los derivados se calculan ANTES de cifrar; después de esta línea el
+    // número no existe en claro.
     const emisor = detectarEmisor(datos.numero);
     const cola = ultimos4De(datos.numero);
     const sobre = cifrar({
@@ -467,6 +487,8 @@ export async function submitDatosPago(
         vendedorId: vendedor.id,
         vendedorEmail: vendedor.email,
         solicitudId: solicitud?.id ?? null,
+        pasajeroNombre: datos.pasajeroNombre,
+        pasajeroDocumento: datos.pasajeroDocumento,
         titular: datos.titular,
         emisor,
         ultimos4: cola,
@@ -491,10 +513,14 @@ export async function submitDatosPago(
 
     log.info("datos.pago.ok", { pagoId: registro.id, vendedorId: vendedor.id });
 
-    // Aviso inmediato. El email NO lleva número ni CVV: solo titular, emisor,
-    // últimos 4 y el link al panel.
+    // Aviso inmediato. El email NO lleva número ni CVV: solo pasajero,
+    // titular, emisor, últimos 4 y el link al panel. (El único email que lleva
+    // la tarjeta entera es el de Administración, que dispara el vendedor a
+    // mano desde el panel: ver enviarPagoAAdm en datos-vendedor.actions.ts.)
     const avisoOpts = {
       vendedorNombre: vendedor.name,
+      pasajeroNombre: datos.pasajeroNombre,
+      pasajeroDocumento: datos.pasajeroDocumento,
       titular: datos.titular,
       emisor,
       ultimos4: cola,
@@ -521,7 +547,7 @@ export async function submitDatosPago(
     // el id devuelto para poder cancelarlo cuando el vendedor abra la bóveda
     // (ver revelarPago en datos-boveda.actions.ts).
     //
-    // El `if` de fecha futura es redundante con HORAS_BOVEDA = 72, pero queda
+    // El `if` de fecha futura es redundante con HORAS_BOVEDA = 96, pero queda
     // por si esa constante baja de 24: agendar en el pasado lo rechaza Resend
     // con un 422 y perderíamos el recordatorio sin enterarnos.
     //
@@ -529,7 +555,13 @@ export async function submitDatosPago(
     // console) y el campo queda en null, que es exactamente lo que espera la
     // cancelación. Nada de esto puede hacer fallar el envío del pasajero.
     try {
-      const recordarAt = new Date(expiraAt.getTime() - 24 * 60 * 60 * 1000);
+      // 24 h antes de la purga, pero nunca más allá de 71 h desde ahora: el
+      // `scheduled_at` de Resend admite hasta 72 h y con la bóveda de 96 h
+      // caía justo en el borde (y un rechazo se perdía en silencio).
+      const recordarAt = new Date(Math.min(
+        expiraAt.getTime() - 24 * 60 * 60 * 1000,
+        Date.now() + 71 * 60 * 60 * 1000,
+      ));
       if (recordarAt.getTime() > Date.now()) {
         const tmpl = recordatorioPagoEmail(avisoOpts);
         const res = await sendEmail({
@@ -544,6 +576,14 @@ export async function submitDatosPago(
           await prisma.datosPagoCifrado.update({
             where: { id: registro.id },
             data: { recordatorioResendId: res.id },
+          });
+        } else {
+          // Sin id no hay recordatorio agendado (Resend lo rechazó o no hay
+          // API key): que quede en el log en vez de perderse en silencio.
+          log.warn("datos.pago.recordatorio.sin_id", {
+            pagoId: registro.id,
+            provider: res.provider,
+            error: typeof res.error === "string" ? res.error.slice(0, 200) : undefined,
           });
         }
       }

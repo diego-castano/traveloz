@@ -3,20 +3,29 @@
 // ---------------------------------------------------------------------------
 // Registro de la bóveda de pagos (vista global del admin).
 //
-// La tabla NUNCA trae datos de tarjeta: titular, emisor, últimos 4 y fechas es
-// todo lo que sale del server (getPagosAdmin selecciona campo por campo). Ver
-// el número exige el segundo factor del RevelarModal, y esa apertura queda
-// auditada - la UI lo dice antes de que el operador haga clic.
+// La tabla NUNCA trae datos de tarjeta: pasajero, titular, emisor, últimos 4 y
+// fechas es todo lo que sale del server (getPagosAdmin selecciona campo por
+// campo). Ver el número exige el segundo factor del RevelarModal, y esa
+// apertura queda auditada - la UI lo dice antes de que el operador haga clic.
+//
+// "Enviar a ADM" es la otra puerta: manda los datos completos a la casilla de
+// Administración configurada en Web → Notificaciones. No pide PIN (decisión
+// del cliente) pero también queda auditado. El descifrado pasa entero en el
+// server: de acá solo salen el id y el número de file.
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CreditCard, ExternalLink, ShieldAlert } from "lucide-react";
+import { Building2, CreditCard, ExternalLink, Eye, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { RevelarModal } from "@/app/backend/dashboard/_components/datos/RevelarModal";
+import {
+  EnviarAdmModal,
+  type EnviarAdmTarget,
+} from "@/app/backend/dashboard/_components/datos/EnviarAdmModal";
 import {
   getFiltrosEnviosAdmin,
   getPagosAdmin,
@@ -64,6 +73,7 @@ export function PagosTabla() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
+  const [admTarget, setAdmTarget] = useState<EnviarAdmTarget | null>(null);
 
   useEffect(() => {
     getFiltrosEnviosAdmin()
@@ -117,7 +127,7 @@ export function PagosTabla() {
         <div>
           <h2 className="text-xl font-semibold text-neutral-900">Datos de pago</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Las tarjetas viven 72 horas cifradas y después se borran solas. Acá queda el
+            Las tarjetas viven 96 horas cifradas y después se borran solas. Acá queda el
             registro, aunque el dato ya no se pueda abrir.
           </p>
         </div>
@@ -145,26 +155,27 @@ export function PagosTabla() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50/60 text-left">
-              <Th>Titular</Th>
+              <Th>Pasajero</Th>
               <Th>Tarjeta</Th>
               <Th>Vendedor</Th>
               <Th>Recibida</Th>
               <Th>Estado</Th>
-              <Th className="w-[60px]" />
+              <Th>Administración</Th>
+              <Th className="w-[130px]" />
             </tr>
           </thead>
           <tbody>
             {cargando && !data ? (
               [0, 1, 2].map((i) => (
                 <tr key={i} className="border-b border-neutral-100 last:border-0">
-                  <td colSpan={6} className="px-4 py-3">
+                  <td colSpan={7} className="px-4 py-3">
                     <Skeleton height={22} rounded="sm" />
                   </td>
                 </tr>
               ))
             ) : (data?.rows.length ?? 0) === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-14 text-center">
+                <td colSpan={7} className="px-4 py-14 text-center">
                   <CreditCard className="mx-auto mb-2 h-6 w-6 text-neutral-300" />
                   <p className="text-[13px] text-neutral-500">
                     Todavía no cargó nadie sus datos de pago.
@@ -174,6 +185,7 @@ export function PagosTabla() {
             ) : (
               data!.rows.map((r) => {
                 const quedan = r.estado === "purgado" ? null : restante(r.expiraAt);
+                const vivo = r.estado !== "purgado";
                 return (
                   <tr
                     key={r.id}
@@ -181,7 +193,12 @@ export function PagosTabla() {
                     className="cursor-pointer border-b border-neutral-100 transition-colors last:border-0 hover:bg-violet-50/40"
                   >
                     <td className="px-4 py-3 text-[13px] font-medium text-neutral-900">
-                      {r.titular}
+                      {r.nombre}
+                      {r.pasajeroNombre && r.titular.trim() !== r.pasajeroNombre.trim() && (
+                        <span className="mt-0.5 block text-[11.5px] font-normal text-neutral-400">
+                          Titular: {r.titular}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-mono text-[12.5px] tabular-nums text-neutral-600">
                       {r.emisor ?? "Tarjeta"} •••• {r.ultimos4}
@@ -200,15 +217,64 @@ export function PagosTabla() {
                         {quedan ? `se borra en ${quedan}` : "ya no se puede abrir"}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      {r.enviadoAdmAt ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-emerald-700">
+                          <Building2 className="h-3 w-3 shrink-0" />
+                          {r.numeroFile ? `file ${r.numeroFile}` : "Enviado"}
+                          <span className="text-neutral-400">
+                            · {fechaCorta.format(new Date(r.enviadoAdmAt))}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-[11.5px] text-neutral-300">Sin enviar</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        href={`/backend/datos/pagos/${r.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        aria-label="Abrir en su página"
-                        className="inline-flex text-neutral-400 hover:text-violet-700"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Link>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {vivo && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAbierto(r.id);
+                              }}
+                              title="Ver los datos de la tarjeta"
+                              className="inline-flex items-center gap-1 rounded-[8px] border border-neutral-200 bg-white px-2 py-1 text-[11.5px] font-semibold text-violet-700 transition hover:border-violet-400 hover:bg-violet-50"
+                            >
+                              <Eye className="h-3 w-3" />
+                              Ver datos
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setAdmTarget({
+                                  id: r.id,
+                                  nombre: r.nombre,
+                                  ultimos4: r.ultimos4,
+                                  emisor: r.emisor,
+                                  numeroFile: r.numeroFile,
+                                });
+                              }}
+                              title="Mandarle los datos completos a Administración"
+                              className="inline-flex items-center gap-1 rounded-[8px] border border-neutral-200 bg-white px-2 py-1 text-[11.5px] font-semibold text-violet-700 transition hover:border-violet-400 hover:bg-violet-50"
+                            >
+                              <Building2 className="h-3 w-3" />
+                              Enviar a ADM
+                            </button>
+                          </>
+                        )}
+                        <Link
+                          href={`/backend/datos/pagos/${r.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="Abrir en su página"
+                          className="inline-flex text-neutral-400 hover:text-violet-700"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -235,6 +301,15 @@ export function PagosTabla() {
         }}
         // Tras revelar, el registro pasó a "Abierto": la tabla lo refleja.
         onRevelado={cargar}
+      />
+
+      <EnviarAdmModal
+        target={admTarget}
+        open={admTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setAdmTarget(null);
+        }}
+        onEnviado={cargar}
       />
     </div>
   );

@@ -63,3 +63,6 @@ pnpm-lock.yaml
 pnpm-workspace.yaml
 /iconostraveloz/
 WhatsApp Video *.mp4
+
+# Transcripciones de reuniones con el cliente (nunca al repo)
+*.srt

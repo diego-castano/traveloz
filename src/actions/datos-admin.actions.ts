@@ -32,6 +32,7 @@ import {
 } from "@/lib/cotizador-form";
 import { getFormularioDato, type FormularioDatoView } from "@/lib/datos-form";
 import { SITE_BASE_URL } from "@/lib/datos-email";
+import { nombreCompleto, nombrePago } from "@/lib/datos-nombre";
 import type { Prisma, TipoFormularioDato } from "@prisma/client";
 
 const log = logger.child({ module: "datos-admin.actions" });
@@ -260,7 +261,7 @@ export async function getEnviosAdmin(
         referencia: e.referencia,
         vistoAt: e.vistoAt,
         cantidad: e._count.pasajeros,
-        contacto: primero ? `${primero.nombres} ${primero.apellidos}`.trim() : "·",
+        contacto: primero ? nombreCompleto(primero) : "·",
         contactoEmail: primero?.email ?? "",
         vendedorId: e.vendedorId,
         vendedorNombre: nombres.get(e.vendedorId) ?? e.vendedorEmail,
@@ -411,6 +412,9 @@ export type EstadoPagoAdmin = "vivo" | "visto" | "purgado";
 
 export interface PagoAdminResumen {
   id: string;
+  /** Identidad del registro: el pasajero, o el titular en los viejos. */
+  nombre: string;
+  pasajeroNombre: string | null;
   titular: string;
   emisor: string | null;
   ultimos4: string;
@@ -422,6 +426,10 @@ export interface PagoAdminResumen {
   estado: EstadoPagoAdmin;
   vendedorId: string;
   vendedorNombre: string;
+  /** Envío a Administración. null mientras nadie lo haya mandado. */
+  numeroFile: string | null;
+  enviadoAdmAt: Date | null;
+  enviadoAdmPor: string | null;
 }
 
 export interface PagosAdminPage {
@@ -452,6 +460,7 @@ export async function getPagosAdmin(input?: {
       // Select explícito y sin payload/iv/tag. Jamás.
       select: {
         id: true,
+        pasajeroNombre: true,
         titular: true,
         emisor: true,
         ultimos4: true,
@@ -461,6 +470,9 @@ export async function getPagosAdmin(input?: {
         purgadoAt: true,
         vendedorId: true,
         vendedorEmail: true,
+        numeroFile: true,
+        enviadoAdmAt: true,
+        enviadoAdmPor: true,
       },
     }),
   ]);
@@ -474,6 +486,8 @@ export async function getPagosAdmin(input?: {
     pageSize: PAGE_SIZE,
     rows: filas.map((f) => ({
       id: f.id,
+      nombre: nombrePago(f),
+      pasajeroNombre: f.pasajeroNombre,
       titular: f.titular,
       emisor: f.emisor,
       ultimos4: f.ultimos4,
@@ -491,6 +505,9 @@ export async function getPagosAdmin(input?: {
             : "vivo",
       vendedorId: f.vendedorId,
       vendedorNombre: nombres.get(f.vendedorId) ?? f.vendedorEmail,
+      numeroFile: f.numeroFile,
+      enviadoAdmAt: f.enviadoAdmAt,
+      enviadoAdmPor: f.enviadoAdmPor,
     })),
   };
 }
@@ -658,18 +675,20 @@ export async function exportEnviosCsv(
     "Referencia",
     "Pasajeros en el envío",
     "Nº de pasajero",
-    "Nombres",
-    "Apellidos",
+    // Una sola columna de nombre: el formulario pide "Nombre y apellido"
+    // junto. Los envíos viejos se concatenan para que la planilla salga
+    // pareja. Las tres últimas ya no se piden y quedan vacías en los nuevos.
+    "Nombre y apellido",
     "Fecha de nacimiento",
-    "Documento",
+    "Documento de viaje",
     "Pasaporte",
     "Email",
     "Teléfono",
     "Dirección",
     "Ciudad",
     "País",
-    "Archivo del documento",
-    "Archivo del pasaporte",
+    "Foto del documento",
+    "Archivo adicional",
     "Factura RUT",
     "Factura razón social",
     "Factura email",
@@ -694,8 +713,7 @@ export async function exportEnviosCsv(
         e.referencia ?? "",
         e.pasajeros.length,
         p.orden + 1,
-        p.nombres,
-        p.apellidos,
+        nombreCompleto(p),
         p.fechaNacimiento ? soloFechaUY(p.fechaNacimiento) : "",
         p.documento,
         p.pasaporte ?? "",

@@ -61,6 +61,15 @@ export const NOTIFICACIONES_EMAIL_SETTINGS: SiteSettingBootstrapEntry[] = [
     group: "notificaciones",
     label: "Newsletter — emails que reciben cada nueva suscripción al newsletter",
   },
+  {
+    // Destino del botón "Enviar a ADM" de la bóveda de pagos. SIN default a
+    // propósito: vacío = el botón avisa que hay que configurarlo y no manda.
+    // Es la única casilla que recibe datos de tarjeta completos.
+    key: "notificaciones_email_adm",
+    value: "",
+    group: "notificaciones",
+    label: "Administración (envío de datos de tarjeta)",
+  },
 ];
 
 // ---------------------------------------------------------------------------

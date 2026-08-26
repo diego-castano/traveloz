@@ -217,34 +217,6 @@ export function textoHorasHabiles(horas: number): string {
 export const REGLA_HABILES = "no corren sábados ni domingos";
 
 /**
- * Igual que `condicionesConHabiles`, pero cuando ya existe un vencimiento de
- * verdad: la línea pasa a decir la fecha ("válida hasta el martes 26 de agosto
- * a las 15:00") en vez de una cantidad de horas que el pasajero tendría que
- * contar solo, salteando el fin de semana. Lo usa la página pública, que es la
- * única que tiene el `expiraAt` del link en la mano.
- */
-export function condicionesConVencimiento(
-  lineas: readonly string[] | null | undefined,
-  expiraAt: Date | number | string | null | undefined,
-): string[] {
-  const fecha = expiraAt ? textoVencimiento(expiraAt) : "";
-  if (!fecha) return condicionesConHabiles(lineas);
-
-  return (lineas ?? []).map((cruda) => {
-    const linea = String(cruda);
-    if (!linea.includes("{vigencia}")) return linea;
-    // "válida por {vigencia} horas" → "válida hasta el martes 26 de agosto…"
-    const conFecha = linea
-      .replace(/\bpor\s+\{vigencia\}\s*horas?(\s+hábiles)?/i, `hasta el ${fecha}`)
-      .replace(/\{vigencia\}\s*horas?(\s+hábiles)?/i, `hasta el ${fecha}`)
-      .replace(/\{vigencia\}/g, fecha);
-    return /sábado/i.test(conFecha)
-      ? conFecha
-      : conFecha.replace(/\.?\s*$/, ` (${REGLA_HABILES}).`);
-  });
-}
-
-/**
  * Las condiciones del pie las escribe el máster con `{vigencia}` adentro y el
  * marcador lo resuelve la ficha del pasajero (telefono.jsx) con el número de
  * horas. Acá la línea se reescribe ANTES para que ese reemplazo termine

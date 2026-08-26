@@ -28,6 +28,47 @@ const PAGO_BANCOS = [
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   EL PAPEL · medidas
+   Píxeles de CSS a 96 dpi, con los márgenes del `@page` ya descontados. Son
+   estimaciones: alcanza con que distingan "entra" de "no entra".
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Alto útil de una carilla A4 con los márgenes de `@page` (10mm/12mm). */
+const CARILLA = 1039;
+
+/** Piso de tipografía sobre papel: 12 px = 9 pt. El PDF se lee en el celular. */
+const PISO_PAPEL = 12;
+
+/** Arriba de esto una opción no entra en una carilla razonable y se parte. */
+const ALTO_MAX_OPCION = 900;
+
+/** Y con más hoteles que esto tampoco: no hay estimación que la salve. */
+const MAX_HOTELES_ENTEROS = 4;
+
+/**
+ * ¿El bloc de notas al pasajero tiene contenido de verdad?
+ *
+ * Sale de un contenteditable, así que lo "vacío" casi nunca es la cadena
+ * vacía: es `<div><br></div>`, un `<p>&nbsp;</p>` o el resto de un párrafo
+ * borrado. Sin esto la ficha dibuja el título "Notas" arriba de la nada, en
+ * pantalla y en el PDF.
+ *
+ * Cuenta como contenido: texto una vez sacado el markup y los espacios duros,
+ * o una imagen/tabla incrustada (el editor las admite).
+ */
+function hayNotasReales(html) {
+  const s = typeof html === "string" ? html : "";
+  if (!s) return false;
+  if (/<(img|table|hr)\b/i.test(s)) return true;
+  const texto = s
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .replace(/[\s\u00a0\u200b]+/g, " ")
+    .trim();
+  return texto.length > 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    SALIDA AL PASAJERO  ·  mobile-first
    Lo que se comparte por WhatsApp. Las notas internas NUNCA llegan acá.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -157,9 +198,14 @@ function SalidaPasajero({
      `fzp` es la variante con tercer valor para el papel: cuando la pantalla
      abrió una medida para que respire, el papel se queda con la de antes. Una
      carilla de más por documento es un costo real —el PDF se manda por mail—
-     y sobre papel nadie scrollea buscando aire. */
-  const fz = (cel, d) => desk ? d : cel;
-  const fzp = (cel, d, papel) => impresion ? papel : desk ? d : cel;
+     y sobre papel nadie scrollea buscando aire.
+
+     Sobre el papel las dos funciones aplican además el piso de PISO_PAPEL:
+     el PDF se lee en el celular y abajo de 9 pt no se lee. Los tres usos que
+     no son texto (los `size` de dos iconos del encabezado) ya están arriba
+     del piso, así que la cuenta no les cambia nada. */
+  const fz = (cel, d) => impresion ? Math.max(d, PISO_PAPEL) : desk ? d : cel;
+  const fzp = (cel, d, papel) => impresion ? Math.max(papel, PISO_PAPEL) : desk ? d : cel;
 
   /* mensaje automático: texto ya resuelto ({nombre}/{link}), listo para partir en párrafos */
   const mensajeAutoTxt = useMemo(
@@ -170,11 +216,15 @@ function SalidaPasajero({
     [q.mensajeAuto, q.cliente.nombre, V.linkDatos]
   );
 
-  /* condiciones del pie: las edita el máster; {vigencia} sale de la cotización */
-  const condiciones = useMemo(() => {
-    const horas = String(q.vigencia ?? ajustes.vigenciaDefault ?? 48);
-    return (ajustes.condiciones || []).map((l) => String(l).replace(/\{vigencia\}/g, horas));
-  }, [ajustes.condiciones, ajustes.vigenciaDefault, q.vigencia]);
+  /* Condiciones del pie: las edita el máster en /backend/cotizador/ajustes.
+     La línea de la vigencia —la que lleva `{vigencia}`— NO se dibuja acá: el
+     documento que el pasajero lee y el PDF que se guarda no llevan fecha de
+     vencimiento. La vigencia sigue viva donde importa: el link vence solo, el
+     email la dice y el listado del vendedor la muestra con su semáforo. */
+  const condiciones = useMemo(
+    () => (ajustes.condiciones || []).map((l) => String(l)).filter((l) => !/\{vigencia\}/.test(l)),
+    [ajustes.condiciones],
+  );
 
   /* nombre visible de una opción, el mismo fallback que usa el switcher */
   const nombreDe = (o) => String(o?.nombre || "").trim() || `Opción ${q.opciones.indexOf(o) + 1}`;
@@ -210,10 +260,7 @@ function SalidaPasajero({
   }, [q.fechaSalida]);
 
   /* ¿hay bloc de notas al pasajero? El HTML puede ser puro markup vacío. */
-  const hayNotas = !!(
-    (q.notasCliente || "").replace(/<[^>]*>/g, "").trim() ||
-    (q.notasCliente || "").includes("<img")
-  );
+  const hayNotas = hayNotasReales(q.notasCliente);
 
   /* ── papel: dónde conviene cortar ─────────────────────────────────────
      Sin itinerario de vuelos la hoja queda apenas por encima de una carilla
@@ -235,7 +282,7 @@ function SalidaPasajero({
      tiene que distinguir "entra" de "no entra". */
   const cortarAntesDeOpciones = useMemo(() => {
     if (!impresion || q.vuelos.length || !q.opciones.length) return false;
-    const PAGINA = 1039;                     // A4 menos margen de 10mm/12mm
+    const PAGINA = CARILLA;                  // A4 menos margen de 10mm/12mm
     const CIERRE = 476;                      // condiciones + formas de pago + firma
     const portada = 402 + (q.servicios.length && !q.soloVuelos ? 152 : 0);
     const porOpcion = 226 + 126 * Math.max(1, tramos.length);
@@ -247,6 +294,37 @@ function SalidaPasajero({
       portada >= PAGINA * 0.45
     );
   }, [impresion, q.vuelos.length, q.opciones.length, q.servicios.length, q.soloVuelos, tramos.length, hayNotas]);
+
+  /* ── papel: la opción viaja entera ────────────────────────────────────
+     La regla que pidió el cliente: una opción de alojamiento no se parte.
+     Header, hoteles, tarifas y cierre caen juntos aunque al pie de la hoja
+     anterior quede blanco — el blanco se perdona, una opción cortada al medio
+     no. La única excepción es la opción que no entra en una carilla útil: ahí
+     vuelve al esquema de antes, donde lo que viaja junto es cada pieza (el
+     header con su primer hotel, cada hotel, el bloque de tarifas) y el corte
+     cae entre hotel y hotel, que es donde menos molesta.
+
+     Estimación en píxeles de papel, con el piso de tipografía ya aplicado.
+     No pretende ser exacta: distingue "entra" de "no entra". */
+  const opcionEntera = useMemo(() => {
+    if (!impresion) return () => false;
+    const nH = Math.max(1, tramos.length);
+    return (o) => {
+      const hoteles = Math.max(nH, (o.hoteles || []).length || 1);
+      if (hoteles > MAX_HOTELES_ENTEROS) return false;
+      /* números medidos sobre el papel con el piso de 9 pt puesto: una opción
+         de un hotel sin foto mide 369 px, cada hotel más suma 133 y el header
+         con foto agrega ~98 sobre el compacto */
+      const cabecera = q.fotosHotel ? 150 : 52;
+      const resumen = 48;                                   // régimen + habitaciones
+      const fichas = hoteles * (q.fotosHotel ? 128 : 133);  // una tarjeta por tramo
+      const tarifas = o.habitaciones?.length
+        ? 26 + (o.habitaciones || []).reduce(
+            (a, h) => a + 42 + Math.max(1, (h.tarifas || []).length) * 34 + 10, 0)
+        : 48;                                               // respaldo: la franja de precio final
+      return cabecera + resumen + fichas + tarifas + 30 <= ALTO_MAX_OPCION;
+    };
+  }, [impresion, tramos.length, q.fotosHotel]);
 
   /* Pie de las páginas 2+: lo dibuja `@page { @bottom-right }` en styles.js y
      el número lo pone esta variable.
@@ -288,9 +366,20 @@ function SalidaPasajero({
           background:"radial-gradient(circle at 34% 30%, rgba(255,255,255,.16), rgba(255,255,255,0) 70%)" }} />
         <div style={{ maxWidth: desk ? 660 : "none", margin:"0 auto", position:"relative" }}>
           <div style={{ display:"flex", alignItems:"center", marginBottom:fzp(18, 22, 18) }}>
-            <div className="wm-pildora" style={{ background:"rgba(255,255,255,.95)", borderRadius:11, padding:"6px 12px",
-              boxShadow:"0 6px 18px -6px rgba(48,20,70,.45)" }}>
-              <Wordmark size={fz(17, 20)} />
+            {/* El logo del sitio, como imagen.
+                El wordmark de texto pinta "oz" con un degradado sobre el
+                glifo (`background-clip:text`) y eso es lo primero que se
+                rompe cuando el que imprime es el diálogo del navegador: el
+                relleno se va y quedan dos letras transparentes. Un PNG no
+                depende de nada de eso. Es el mismo archivo que usa el header
+                del sitio público. */}
+            <div className="wm-pildora" style={{ background:"rgba(255,255,255,.95)", borderRadius:11,
+              padding:"7px 12px 6px", boxShadow:"0 6px 18px -6px rgba(48,20,70,.45)", lineHeight:0 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/site/img/header-logo.webp" alt="TravelOz" width={1572} height={523}
+                loading="eager" decoding="async"
+                style={{ display:"block", width: fz(100, 110), height:"auto",
+                  WebkitPrintColorAdjust:"exact", printColorAdjust:"exact" }} />
             </div>
             <div className="mono" style={{ marginLeft:"auto", fontSize:fz(10, 11), opacity:.78, letterSpacing:".02em" }}>{q.numero}</div>
           </div>
@@ -409,14 +498,22 @@ function SalidaPasajero({
         {q.vuelos.length > 0 && (
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap>
             <SecTitulo texto="Itinerario de vuelos" />
-            <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom: q.soloVuelos ? 14 : 24 }}>
+            {/* En papel la lista va en flujo normal, no en flex: Chromium no
+                fragmenta bien un contenedor flex y ahí `break-inside:avoid`
+                deja de valer — es lo que partía una tarjeta de trayecto entre
+                dos hojas. El `gap` pasa a margen, igual que en las opciones. */}
+            <div style={{ ...(impresion
+              ? { display:"block" }
+              : { display:"flex", flexDirection:"column", gap:14 }), marginBottom: q.soloVuelos ? 14 : 24 }}>
               {trayectos.map((seg, ti) => {
                 const primero = seg[0];
                 const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
                 return (
+                  /* la tarjeta entera —cabecera, tramos y esperas— cae en una
+                     sola hoja: un trayecto partido al medio no se entiende */
                   <div key={ti} style={{ borderRadius:18, background:"#fff", overflow:"hidden", breakInside:"avoid",
                     ...(impresion
-                      ? { border:"1px solid rgba(17,17,36,.14)" }
+                      ? { border:"1px solid rgba(17,17,36,.14)", marginBottom: ti < trayectos.length - 1 ? 14 : 0 }
                       : { boxShadow:"0 1px 2px rgba(58,38,120,.05), 0 14px 30px -20px rgba(58,38,120,.35)" }) }}>
 
                     {/* cabecera del trayecto: pill de marca + fecha */}
@@ -590,14 +687,17 @@ function SalidaPasajero({
                             ? `inset 0 0 0 1px ${G.b}22, 0 2px 5px rgba(58,38,120,.07), 0 26px 52px -26px ${G.b}80`
                             : "inset 0 0 0 1px rgba(17,17,36,.055), 0 1px 2px rgba(58,38,120,.05), 0 12px 28px -20px rgba(58,38,120,.4)",
                         }),
-                    /* En papel la opción NO viaja entera. Una opción de tres
-                       hoteles con foto pasa de los 700 px: pedir que no se parta
-                       la empuja a la hoja siguiente y deja media carilla en
-                       blanco. Lo que viaja junto son las piezas que se leen
-                       juntas — el header con su primer hotel, cada hotel, el
-                       bloque de tarifas — y el corte cae entre hotel y hotel,
-                       que es donde no molesta. */
-                    ...(impresion ? { marginBottom:16 } : null) }}>
+                    /* En papel la opción viaja ENTERA: header, hoteles, tarifas
+                       y cierre en la misma hoja. Si al pie de la anterior queda
+                       blanco, queda blanco. La excepción es la opción que no
+                       entra en una carilla (más de cuatro hoteles, o fotos que
+                       la pasan de ~900 px): ahí se saca el `avoid` de la
+                       tarjeta y sigue valiendo el esquema por subpartes —header
+                       con su primer hotel, cada hotel, el bloque de tarifas—,
+                       que parte entre hotel y hotel. */
+                    ...(impresion
+                      ? { marginBottom:16, ...(opcionEntera(o) ? { breakInside:"avoid" } : null) }
+                      : null) }}>
 
                     {/* foto full-width con overlay — o, si están apagadas, header compacto.
                         `break-after:avoid` lo pega a lo que sigue: el primer hotel del
@@ -611,8 +711,8 @@ function SalidaPasajero({
                             gap:5, padding:"4px 11px", borderRadius:999, background:"rgba(255,255,255,.94)",
                             fontSize:fz(10.5, 11), fontWeight:800, color:"#1A1A2E",
                             boxShadow:"0 2px 8px rgba(0,0,0,.18)" }}>
-                            <span style={{ width:15, height:15, borderRadius:99, background:grad, color:"#fff",
-                              display:"grid", placeItems:"center", fontSize:9 }}>{oi + 1}</span>
+                            <span style={{ width:fzp(15, 15, 18), height:fzp(15, 15, 18), borderRadius:99, background:grad, color:"#fff",
+                              display:"grid", placeItems:"center", fontSize:fzp(9, 9, 12) }}>{oi + 1}</span>
                             {o.nombre}
                           </span>
                           <ChipPrecio valor={pv} late={animar && !impresion}
@@ -629,7 +729,7 @@ function SalidaPasajero({
                           background:"#fff", borderBottom:"1px solid rgba(17,17,36,.07)" }}>
                           <span style={{ display:"inline-flex", alignItems:"center", gap:7, minWidth:0, flex:1 }}>
                             <span style={{ width:20, height:20, borderRadius:99, background:grad, color:"#fff",
-                              display:"grid", placeItems:"center", fontSize:10, fontWeight:800, flexShrink:0 }}>{oi + 1}</span>
+                              display:"grid", placeItems:"center", fontSize:fzp(10, 10, 12), fontWeight:800, flexShrink:0 }}>{oi + 1}</span>
                             <span style={{ fontSize:fz(12.5, 13), fontWeight:700, whiteSpace:"nowrap",
                               overflow:"hidden", textOverflow:"ellipsis" }}>{o.nombre}</span>
                           </span>
@@ -1124,4 +1224,4 @@ function SecTitulo({ texto }) {
   );
 }
 
-export { SalidaPasajero, SecTitulo };
+export { SalidaPasajero, SecTitulo, hayNotasReales };

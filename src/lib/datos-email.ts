@@ -1,16 +1,25 @@
 // ---------------------------------------------------------------------------
 // Emails de los formularios de datos (pasajeros y pago).
 //
-// Cuatro plantillas:
+// Cinco plantillas:
 //   1. solicitudDatosEmail   → al pasajero: "completá tus datos acá".
 //   2. envioPasajerosEmail   → al vendedor: el grupo completo que llegó.
 //   3. avisoPagoEmail        → al vendedor: AVISO de que hay tarjeta cargada.
 //   4. recordatorioPagoEmail → al vendedor: le queda 1 día antes de la purga.
+//   5. datosPagoAdmEmail     → a Administración: la tarjeta COMPLETA.
 //
-// REGLA DURA de las plantillas de pago: el número de tarjeta, el CVV y el
-// documento del titular NUNCA salen por email. Solo viajan titular, emisor y
-// los últimos 4 - lo mismo que queda en claro en la DB. Para ver el resto hay
-// que entrar al panel con sesión.
+// REGLA DURA de las plantillas 1-4: el número de tarjeta, el CVV y el
+// documento del titular NUNCA salen por email. Solo viajan pasajero, titular,
+// emisor y los últimos 4 - lo mismo que queda en claro en la DB. Para ver el
+// resto hay que entrar al panel con sesión.
+//
+// La 5 es la ÚNICA excepción y es una decisión explícita del cliente
+// (26/08/2026): Administración no tiene usuario en el sistema y hoy recibe la
+// tarjeta a mano, por WhatsApp o reenviando el mail del vendedor. El botón
+// "Enviar a ADM" reemplaza ese reenvío manual por un envío auditado a una
+// casilla configurada en el panel. Se manda a un único destino
+// (notificaciones_email_adm) y queda asentado en AuditLog con quién, cuándo y
+// con qué número de file.
 //
 // El marco visual replica el `brandedLayout` de email.ts (que no está
 // exportado) siguiendo el mismo camino que cotizador-email.ts: HTML armado
@@ -20,6 +29,8 @@
 // ---------------------------------------------------------------------------
 
 import { telefonoWa } from "@/lib/telefono";
+import { TEXTO_HORAS_BOVEDA } from "@/lib/datos-constantes";
+import { nombrePago } from "@/lib/datos-nombre";
 
 const ACCENT = "#F43E55";
 const INK = "#23232b";
@@ -41,10 +52,33 @@ const SITE_LABEL = SITE_BASE_URL.replace(/^https?:\/\//, "");
 /** Remitente de los avisos. Subdominio verificado en Resend. */
 export const DATOS_FROM = "TravelOz <notificaciones@app.traveloz.com.uy>";
 
+/**
+ * Todo texto que entra a un `subject` pasa por acá.
+ *
+ * Un asunto es una cabecera SMTP de una sola línea: un \r o un \n metido en
+ * el número de file o en el nombre del pasajero es, en el peor caso, header
+ * injection, y en el mejor un asunto partido al medio. El corte a 120
+ * caracteres es lo que muestran Gmail y Outlook sin recortar con "…".
+ */
+export function asuntoSeguro(s: string | null | undefined): string {
+  return String(s ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .slice(0, 120)
+    .trim();
+}
+
 export interface Plantilla {
   subject: string;
   html: string;
   text: string;
+  /**
+   * El cuerpo no puede terminar en un log. Viaja con la plantilla (y no como
+   * memoria del call site) para que quien la mande no tenga que acordarse:
+   * hoy solo lo marca `datosPagoAdmEmail`, que es el único email del sistema
+   * con el número de tarjeta y el CVV adentro. `sendEmail` lo lee y silencia
+   * el preview de la rama sin RESEND_API_KEY.
+   */
+  sensible?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -216,7 +250,7 @@ export function solicitudDatosEmail(opts: {
     ${
       esPago
         ? PMUTED(
-            "El formulario es seguro: los datos de la tarjeta se guardan cifrados y se eliminan automáticamente a las 72 horas.",
+            `El formulario es seguro: los datos de la tarjeta se guardan cifrados y se eliminan automáticamente a las ${TEXTO_HORAS_BOVEDA}.`,
           )
         : PMUTED("Vas a necesitar el documento de cada pasajero a mano para adjuntarlo.")
     }
@@ -245,8 +279,10 @@ export function solicitudDatosEmail(opts: {
 // ---------------------------------------------------------------------------
 
 export interface PasajeroEmail {
+  /** "Nombre y apellido" completo en los envíos nuevos. */
   nombres: string;
-  apellidos: string;
+  /** "" en los nuevos; los viejos lo traen cargado. */
+  apellidos?: string | null;
   fechaNacimiento?: string | null;
   documento: string;
   pasaporte?: string | null;
@@ -260,10 +296,16 @@ export interface PasajeroEmail {
   respuestas: { etiqueta: string; valor: string }[];
 }
 
+/** Nombre visible del pasajero (un campo en los nuevos, dos en los viejos). */
+function nombreDe(p: PasajeroEmail): string {
+  return `${p.nombres} ${p.apellidos ?? ""}`.replace(/\s+/g, " ").trim();
+}
+
 export function envioPasajerosEmail(opts: {
   vendedorNombre: string;
   pasajeros: PasajeroEmail[];
-  destino: string;
+  /** Ya no se le pide al pasajero: llega solo si la solicitud lo traía. */
+  destino: string | null;
   referencia?: string | null;
   factura?: { rut: string; razonSocial: string; email: string; direccion?: string | null } | null;
   /** URL del envío en el panel. */
@@ -276,7 +318,8 @@ export function envioPasajerosEmail(opts: {
   const bloques = opts.pasajeros
     .map((p, i) => {
       const filas = fieldRows([
-        { label: "Documento", value: p.documento },
+        { label: "Documento de viaje", value: p.documento },
+        // Los envíos viejos pueden traerlo; los nuevos no lo piden.
         { label: "Pasaporte", value: p.pasaporte },
         { label: "Fecha de nacimiento", value: p.fechaNacimiento },
         { label: "Email", value: p.email },
@@ -299,7 +342,7 @@ export function envioPasajerosEmail(opts: {
           <tr><td style="padding:14px 16px 6px">
             <div style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:${MUTED};font-weight:600">Pasajero ${i + 1}</div>
             <div style="font-size:17px;font-weight:700;color:${INK};line-height:1.35;margin-top:2px">${escapeHtml(
-              `${p.nombres} ${p.apellidos}`,
+              nombreDe(p),
             )}</div>
           </td></tr>
           <tr><td style="padding:0 16px 8px">
@@ -341,14 +384,18 @@ export function envioPasajerosEmail(opts: {
     ${facturaHtml}
     <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Ver el envío en el panel", INK)}</p>`;
 
+  // Sin destino (el caso normal desde el 26/08/2026) el asunto se identifica
+  // por el titular del grupo, que es lo que el vendedor reconoce.
+  const referencia = opts.destino?.trim() || nombreDe(opts.pasajeros[0]!) || "nuevo envío";
+
   const text = [
-    `Datos de ${plural} · ${opts.destino}`,
+    `Datos de ${plural} · ${referencia}`,
     opts.referencia ? `Referencia: ${opts.referencia}` : "",
     opts.fecha ? `Recibido: ${opts.fecha}` : "",
     "",
     ...opts.pasajeros.flatMap((p, i) => [
-      `· Pasajero ${i + 1}: ${p.nombres} ${p.apellidos}`,
-      `  Documento: ${p.documento}`,
+      `· Pasajero ${i + 1}: ${nombreDe(p)}`,
+      `  Documento de viaje: ${p.documento}`,
       p.pasaporte ? `  Pasaporte: ${p.pasaporte}` : "",
       p.fechaNacimiento ? `  Nacimiento: ${p.fechaNacimiento}` : "",
       `  Email: ${p.email}`,
@@ -366,12 +413,12 @@ export function envioPasajerosEmail(opts: {
     .join("\n");
 
   return {
-    subject: `Datos de pasajeros · ${opts.destino} · ${plural}`,
+    subject: asuntoSeguro(`Datos de pasajeros · ${referencia} · ${plural}`),
     html: layout({
-      heading: `Datos de pasajeros · ${opts.destino}`,
+      heading: `Datos de pasajeros · ${referencia}`,
       kicker: "Nuevo envío",
       bodyHtml: body,
-      preheader: `${plural} para ${opts.destino}`,
+      preheader: `${plural} · ${referencia}`,
     }),
     text,
   };
@@ -384,6 +431,10 @@ export function envioPasajerosEmail(opts: {
 
 export interface AvisoPagoOpts {
   vendedorNombre: string;
+  /** Pasajero al que corresponde el pago. Es la identidad del registro. */
+  pasajeroNombre?: string | null;
+  pasajeroDocumento?: string | null;
+  /** Titular impreso en la tarjeta. Puede no ser el pasajero. */
   titular: string;
   emisor?: string | null;
   ultimos4: string;
@@ -397,7 +448,9 @@ export interface AvisoPagoOpts {
 function tarjetaBox(opts: AvisoPagoOpts): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f8fa;border-radius:12px;margin:6px 0 4px"><tr><td style="padding:8px 16px">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${fieldRows([
-      { label: "Titular", value: opts.titular },
+      { label: "Pasajero", value: opts.pasajeroNombre },
+      { label: "Documento del pasajero", value: opts.pasajeroDocumento },
+      { label: "Titular de la tarjeta", value: opts.titular },
       { label: "Tarjeta", value: `${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}` },
       { label: "Destino", value: opts.destino },
       { label: "Referencia", value: opts.referencia },
@@ -410,34 +463,38 @@ const SIN_DATOS_SENSIBLES =
   "Por seguridad, el número completo y el código de seguridad no viajan por email: se ven una sola vez dentro del panel, con tu sesión iniciada.";
 
 export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
+  // El registro se identifica por el PASAJERO. Los pagos viejos (sin
+  // pasajeroNombre) caen al titular, que era la identidad de antes.
+  const quien = nombrePago({ pasajeroNombre: opts.pasajeroNombre, titular: opts.titular });
   const body = `
-    ${P(`Hola <strong>${escapeHtml(opts.vendedorNombre)}</strong>, se cargaron datos de pago en tu link.`)}
+    ${P(`Hola <strong>${escapeHtml(opts.vendedorNombre)}</strong>, se cargaron datos de pago de <strong>${escapeHtml(quien)}</strong> en tu link.`)}
     ${tarjetaBox(opts)}
     ${P(
       `Los datos quedan disponibles hasta el <strong>${escapeHtml(
         fechaLarga(opts.expiraAt),
-      )}</strong> · 72 horas. Después se borran solos y no hay forma de recuperarlos.`,
+      )}</strong> · ${TEXTO_HORAS_BOVEDA}. Después se borran solos y no hay forma de recuperarlos.`,
     )}
     <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Abrir la bóveda")}</p>
     ${PMUTED(SIN_DATOS_SENSIBLES)}`;
 
   return {
-    subject: `Datos de pago cargados · ${opts.titular} · •••• ${opts.ultimos4}`,
+    subject: asuntoSeguro(`Datos de pago cargados · ${quien} · •••• ${opts.ultimos4}`),
     html: layout({
-      heading: "Tenés datos de pago para gestionar",
+      heading: `Datos de pago de ${quien}`,
       kicker: "Bóveda de pagos",
       bodyHtml: body,
-      preheader: `${opts.titular} · ${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}`,
+      preheader: `${quien} · ${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}`,
     }),
     text: [
       `Hola ${opts.vendedorNombre},`,
       "",
-      "Se cargaron datos de pago en tu link.",
-      `Titular: ${opts.titular}`,
+      `Se cargaron datos de pago de ${quien} en tu link.`,
+      opts.pasajeroNombre ? `Pasajero: ${opts.pasajeroNombre}` : "",
+      `Titular de la tarjeta: ${opts.titular}`,
       `Tarjeta: ${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}`,
       opts.destino ? `Destino: ${opts.destino}` : "",
       opts.referencia ? `Referencia: ${opts.referencia}` : "",
-      `Disponible hasta: ${fechaLarga(opts.expiraAt)} (72 horas).`,
+      `Disponible hasta: ${fechaLarga(opts.expiraAt)} (${TEXTO_HORAS_BOVEDA}).`,
       "",
       `Abrir la bóveda: ${opts.linkAdmin}`,
       "",
@@ -467,10 +524,12 @@ export function recordatorioPagoEmail(opts: AvisoPagoOpts): Plantilla {
     <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Abrir la bóveda")}</p>
     ${PMUTED(SIN_DATOS_SENSIBLES)}`;
 
+  const quien = nombrePago({ pasajeroNombre: opts.pasajeroNombre, titular: opts.titular });
+
   return {
-    subject: `Te queda 1 día · datos de pago de ${opts.titular} (•••• ${opts.ultimos4})`,
+    subject: asuntoSeguro(`Te queda 1 día · datos de pago de ${quien} (•••• ${opts.ultimos4})`),
     html: layout({
-      heading: "Estos datos de pago vencen mañana",
+      heading: `Los datos de pago de ${quien} vencen mañana`,
       kicker: "Bóveda de pagos",
       bodyHtml: body,
       preheader: `Vencen el ${fechaLarga(opts.expiraAt)}`,
@@ -478,14 +537,133 @@ export function recordatorioPagoEmail(opts: AvisoPagoOpts): Plantilla {
     text: [
       `Hola ${opts.vendedorNombre},`,
       "",
-      "Te queda 1 día para usar estos datos de pago.",
-      `Titular: ${opts.titular}`,
+      `Te queda 1 día para usar los datos de pago de ${quien}.`,
+      opts.pasajeroNombre ? `Pasajero: ${opts.pasajeroNombre}` : "",
+      `Titular de la tarjeta: ${opts.titular}`,
       `Tarjeta: ${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}`,
       `Se borran el ${fechaLarga(opts.expiraAt)}.`,
       "",
       `Abrir la bóveda: ${opts.linkAdmin}`,
       "",
       SIN_DATOS_SENSIBLES,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 5. Envío a Administración - la ÚNICA plantilla que lleva la tarjeta entera.
+//
+// Por qué acá sí van los datos completos, cuando la regla de las otras cuatro
+// es la contraria: las otras van al VENDEDOR, que tiene usuario y abre la
+// bóveda con su PIN; el email es solo un aviso con link. Administración no
+// tiene usuario en el sistema, y el flujo real de la agencia hoy es que el
+// vendedor le pasa la tarjeta a mano (WhatsApp, o reenviando el mail). Este
+// envío reemplaza ese reenvío manual: mismo contenido, una sola casilla
+// configurada por el admin, y auditado en AuditLog con quién y cuándo.
+//
+// Decisión del cliente del 26/08/2026. No se puede disparar sin sesión de
+// vendedor/admin con scope sobre el registro, y no borra la tarjeta: sigue
+// viva en la bóveda hasta que se cumplan las HORAS_BOVEDA.
+// ---------------------------------------------------------------------------
+
+export interface DatosPagoAdmOpts {
+  /** Número de expediente que tipea el vendedor. Va en el asunto. */
+  numeroFile: string;
+  /** Quién lo mandó (nombre y email del vendedor de la sesión). */
+  enviadoPorNombre: string;
+  enviadoPorEmail: string;
+  pasajeroNombre: string;
+  pasajeroDocumento?: string | null;
+  titular: string;
+  documentoTitular?: string | null;
+  emisor?: string | null;
+  ultimos4: string;
+  numero: string;
+  vencimiento: string;
+  cvv: string;
+  cuotas?: string | null;
+  destino?: string | null;
+  referencia?: string | null;
+  extras?: { etiqueta: string; valor: string }[];
+}
+
+/** El número agrupado de a 4 se lee y se tipea mucho mejor. */
+function agruparPan(numero: string): string {
+  const d = numero.replace(/\D/g, "");
+  return d.replace(/(.{4})/g, "$1 ").trim() || numero;
+}
+
+export function datosPagoAdmEmail(opts: DatosPagoAdmOpts): Plantilla {
+  const filas = fieldRows([
+    { label: "Nº de file", value: opts.numeroFile },
+    { label: "Pasajero", value: opts.pasajeroNombre },
+    { label: "Documento del pasajero", value: opts.pasajeroDocumento },
+    { label: "Destino", value: opts.destino },
+    { label: "Referencia", value: opts.referencia },
+  ]);
+
+  const tarjeta = fieldRows([
+    { label: "Titular de la tarjeta", value: opts.titular },
+    { label: "Documento del titular", value: opts.documentoTitular },
+    { label: "Tarjeta", value: opts.emisor ?? "Tarjeta" },
+    { label: "Número", value: agruparPan(opts.numero) },
+    { label: "Vencimiento", value: opts.vencimiento },
+    { label: "Código de seguridad", value: opts.cvv },
+    { label: "Cuotas", value: opts.cuotas },
+    ...(opts.extras ?? []).map((e) => ({ label: e.etiqueta, value: e.valor })),
+  ]);
+
+  const body = `
+    ${P(
+      `<strong>${escapeHtml(opts.enviadoPorNombre)}</strong> te manda los datos de pago del file <strong>${escapeHtml(
+        opts.numeroFile,
+      )}</strong>.`,
+    )}
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f8fa;border-radius:12px;margin:6px 0 14px"><tr><td style="padding:8px 16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${filas}</table>
+    </td></tr></table>
+    <div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:${MUTED};font-weight:600;margin:0 0 6px">Tarjeta</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e8ee;border-radius:12px"><tr><td style="padding:8px 16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${tarjeta}</table>
+    </td></tr></table>
+    ${PMUTED(
+      `Procesá el cobro y borrá este email cuando termines. Los datos también se eliminan solos de la bóveda a las ${TEXTO_HORAS_BOVEDA} de cargados. Cualquier duda, respondé y le llega a ${escapeHtml(
+        opts.enviadoPorEmail,
+      )}.`,
+    )}`;
+
+  return {
+    sensible: true,
+    subject: asuntoSeguro(`Datos de pago · file ${opts.numeroFile} · ${opts.pasajeroNombre}`),
+    html: layout({
+      heading: `Datos de pago · file ${opts.numeroFile}`,
+      kicker: "Administración",
+      bodyHtml: body,
+      preheader: `${opts.pasajeroNombre} · ${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}`,
+    }),
+    text: [
+      `${opts.enviadoPorNombre} te manda los datos de pago del file ${opts.numeroFile}.`,
+      "",
+      `Nº de file: ${opts.numeroFile}`,
+      `Pasajero: ${opts.pasajeroNombre}`,
+      opts.pasajeroDocumento ? `Documento del pasajero: ${opts.pasajeroDocumento}` : "",
+      opts.destino ? `Destino: ${opts.destino}` : "",
+      opts.referencia ? `Referencia: ${opts.referencia}` : "",
+      "",
+      "TARJETA",
+      `Titular: ${opts.titular}`,
+      opts.documentoTitular ? `Documento del titular: ${opts.documentoTitular}` : "",
+      `Tarjeta: ${opts.emisor ?? "Tarjeta"}`,
+      `Número: ${agruparPan(opts.numero)}`,
+      `Vencimiento: ${opts.vencimiento}`,
+      `Código de seguridad: ${opts.cvv}`,
+      opts.cuotas ? `Cuotas: ${opts.cuotas}` : "",
+      ...(opts.extras ?? []).map((e) => `${e.etiqueta}: ${e.valor}`),
+      "",
+      `Enviado por ${opts.enviadoPorNombre} (${opts.enviadoPorEmail}).`,
+      `Borrá este email cuando termines de procesar el cobro.`,
     ]
       .filter(Boolean)
       .join("\n"),

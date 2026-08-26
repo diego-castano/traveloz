@@ -154,10 +154,14 @@ export function VendedorShell({ children }: { children: ReactNode }) {
                   onClick={() => setLinkModal("PASAJEROS")}
                   icon={<Users size={14} strokeWidth={2.2} />}
                 />
+                {/* Violeta lleno, no rojo: la tarjeta es el trámite más
+                    delicado del panel y el color tiene que transmitir
+                    seguridad, no alarma (pedido del cliente, 26/08/2026). */}
                 <TopbarLinkButton
                   label="Datos de tarjeta"
                   onClick={() => setLinkModal("PAGO")}
                   icon={<CreditCard size={14} strokeWidth={2.2} />}
+                  tono="violeta"
                 />
               </>
             )}
@@ -317,10 +321,13 @@ function TopbarLinkButton({
   label,
   icon,
   onClick,
+  tono = "suave",
 }: {
   label: string;
   icon: ReactNode;
   onClick: () => void;
+  /** "violeta" = pill lleno del violeta de marca (brand-violet-600). */
+  tono?: "suave" | "violeta";
 }) {
   return (
     <motion.button
@@ -328,7 +335,11 @@ function TopbarLinkButton({
       onClick={onClick}
       aria-label={label}
       whileTap={{ scale: 0.97 }}
-      className="flex items-center gap-1.5 rounded-full border border-[#8B5CF6]/15 bg-[#F5F3FF]/70 px-2.5 py-1.5 text-[12px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6]/35 hover:bg-[#EDE9FE] sm:px-3"
+      className={
+        tono === "violeta"
+          ? "flex items-center gap-1.5 rounded-full border border-brand-violet-600 bg-brand-violet-600 px-2.5 py-1.5 text-[12px] font-semibold text-white shadow-[0_4px_12px_-6px_rgba(108,43,217,0.8)] transition hover:bg-brand-violet-700 sm:px-3"
+          : "flex items-center gap-1.5 rounded-full border border-[#8B5CF6]/15 bg-[#F5F3FF]/70 px-2.5 py-1.5 text-[12px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6]/35 hover:bg-[#EDE9FE] sm:px-3"
+      }
     >
       {icon}
       <span className="hidden sm:inline">{label}</span>

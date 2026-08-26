@@ -243,6 +243,11 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   body.ctz-imprimiendo .print-root, body.ctz-imprimiendo .print-root * { visibility:visible !important; }
   .ctz.imprimiendo > :not(.print-root) { display:none !important; }
   .ctz .print-tools { display:none !important; }
+  /* Chrome del previsualizador del vendedor: el selector celular/tablet/
+     escritorio, el teléfono de la columna derecha del editor y el marco de
+     navegador. Son andamios para mirar la ficha, no parte del documento: si
+     alguien imprime con la vista previa abierta, no salen. */
+  .ctz .ov, .ctz .phone-col, .ctz .browser-bar { display:none !important; }
   .ctz .print-root { position:static !important; overflow:visible !important; background:#fff !important; }
   .ctz .print-hoja { max-width:none; margin:0; border-radius:0; box-shadow:none; }
   html, body { background:#fff !important; }
@@ -282,7 +287,9 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
        PDF sale sin pie: sin numerar, pero entero — el contenido no se toca. */
     @bottom-right {
       content: var(--ctz-pie, "TravelOz") " · página " counter(page);
-      font-family:'DM Sans', sans-serif; font-size:7.5pt; color:#B0B4CD;
+      /* 9 pt es el piso de todo el documento: el PDF se abre en el celular y
+         abajo de eso no se lee. El pie no es la excepción. */
+      font-family:'DM Sans', sans-serif; font-size:9pt; color:#B0B4CD;
     }
   }
   /* La primera hoja va sin pie: una cotización de una sola carilla no lleva

@@ -30,6 +30,25 @@ function txt(v: unknown): string {
   return typeof v === "string" ? v : v === null || v === undefined ? "" : String(v);
 }
 
+/**
+ * HTML que no dice nada → cadena vacía.
+ *
+ * Cuenta como contenido el texto que queda al sacar las etiquetas y los
+ * espacios duros, o una imagen/tabla incrustada. Es la misma cuenta que hace
+ * `hayNotasReales` en la ficha (telefono.jsx): acá corta antes, así el bloc
+ * vacío ni siquiera cruza al navegador del pasajero.
+ */
+function soloMarcado(html: string): string {
+  if (!html) return "";
+  if (/<(img|table|hr)\b/i.test(html)) return html;
+  const texto = html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .replace(/[\s\u00a0\u200b]+/g, " ")
+    .trim();
+  return texto ? html : "";
+}
+
 function numOnulo(v: unknown): number | null {
   if (v === null || v === undefined || v === "") return null;
   const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
@@ -179,7 +198,12 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
     // HTML libre que escribe el vendedor. Se sanea también acá y no solo al
     // guardar: lo que ya está en la base viene de antes de que existiera el
     // saneo de la action.
-    notasCliente: sanitizarHtmlNotas(q.notasCliente),
+    //
+    // Un bloc vaciado en el editor no queda en "": queda en `<div><br></div>`
+    // o en un `<p>&nbsp;</p>`. Eso viaja igual y del otro lado dibuja el
+    // título "Notas" arriba de la nada, en pantalla y en el PDF. Lo que no
+    // tiene contenido sale como cadena vacía y no llega ni al payload.
+    notasCliente: soloMarcado(sanitizarHtmlNotas(q.notasCliente)),
 
     vigencia: q.vigencia ?? null,
 

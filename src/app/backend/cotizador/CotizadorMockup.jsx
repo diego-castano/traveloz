@@ -11,6 +11,7 @@ import { CSS_UI } from "./_mockup/styles-ui";
 import {
   ANIO_ACTUAL, registrarVendedores, uid, toISO, parseISO, ESTADOS,
   serviciosDefault, habitacionNueva, ventaTarifa, PNR_DEMO, parsePNR, FACTOR_DEFAULT,
+  REGIMEN_DETALLADO, REGIMEN_DETALLADO_TXT, esDetallado, regimenHeredable,
 } from "./_mockup/data";
 import { CotizadorCtx, indexarAeropuertos, indexarAerolineas } from "./_mockup/contexto";
 import { useCatalogoCotizador } from "./_mockup/catalogo";
@@ -92,10 +93,14 @@ function regimenCorto(r) {
   const t = String(r || "").trim(); const i = t.indexOf(" (");
   return i > 0 ? t.slice(0, i) : t;
 }
+/* "Régimen detallado" no es un régimen: es el aviso de que cada hotel lleva el
+   suyo. En la línea de servicios se lee "07 noches de alojamiento · según
+   régimen detallado". */
+const regimenServicio = (r) => (esDetallado(r) ? REGIMEN_DETALLADO_TXT : String(r || "").trim());
 function lineaNoches(destinos) {
   const ds = (destinos || []).filter(Boolean);
   if (!ds.length) return "07 noches de alojamiento";
-  const regs = [...new Set(ds.map((d) => (d.regimen || "").trim()).filter(Boolean))];
+  const regs = [...new Set(ds.map((d) => regimenServicio(d.regimen)).filter(Boolean))];
   if (ds.length === 1)
     return `${nn(ds[0].noches)} noches de alojamiento${regs.length ? ` · ${regs[0]}` : ""}`;
   /* todos con el mismo régimen: se nombra una sola vez al final */
@@ -105,7 +110,7 @@ function lineaNoches(destinos) {
   }
   /* regímenes mezclados: cada destino aclara el suyo */
   return ds.map((d) => {
-    const r = regimenCorto(d.regimen);
+    const r = regimenCorto(regimenServicio(d.regimen));
     return `${nn(d.noches)} noches en ${d.ciudad || "destino"}${r ? ` (${r})` : ""}`;
   }).join(" · ");
 }
@@ -167,11 +172,19 @@ function desdePaquete(p, ajustes, catalogo) {
     atarTitulo(q);
   }
 
-  /* El régimen de cada destino sale de la primera opción: es el hotel que el
-     operador dejó primero, y el vendedor lo cambia por tramo si hace falta. */
-  const reg0 = p.opciones[0]?.regimenes || [];
+  /* El régimen de cada destino: si todas las opciones coinciden, ese; si el
+     operador cargó hoteles con regímenes distintos (una opción con desayuno y
+     otra all inclusive), el encabezado arranca en "Régimen detallado" para no
+     mentir arriba ni pisar abajo. */
+  const regimenDeDestino = (i) => {
+    const vistos = [...new Set(p.opciones
+      .map((o) => String(o.regimenes?.[i] || "").trim())
+      .filter(Boolean))];
+    if (vistos.length === 0) return "";
+    return vistos.length === 1 ? vistos[0] : REGIMEN_DETALLADO;
+  };
   q.destinos = p.destinos.map((d, i) => ({ id:uid("dst"), ciudad:d.ciudad, noches:d.noches,
-    checkinManual:null, regimen: reg0[i] || "" }));
+    checkinManual:null, regimen: regimenDeDestino(i) }));
 
   /* Los servicios vienen de los que el paquete tiene asignados en el panel. La
      línea de alojamiento es la única calculada: sigue a las noches y al régimen
@@ -210,7 +223,9 @@ function desdePaquete(p, ajustes, catalogo) {
     { concepto:"Circuito", neto:n.circuitos },
   ].filter((x) => Number(x.neto) > 0).map((x) => ({ id:uid("nt"), ...x, neto:Math.round(x.neto) }));
 
-  q.notasCliente = "<div>Pasaporte con vigencia mínima de 6 meses al momento del viaje.</div>";
+  /* 26/08 · sin notas automáticas: el cliente no quiere texto que el vendedor no
+     escribió. La sección "Notas" solo se imprime si el vendedor cargó algo. */
+  q.notasCliente = "";
   return q;
 }
 
@@ -232,8 +247,9 @@ function desdeIA(det, ajustes, catalogo) {
   /* el teléfono queda cargado; quien llama completa el resto con lo que
      encuentre en el historial (`buscarEnHistorial`) */
   if (det.telefono) q.cliente.telefono = det.telefono;
-  /* v2E · los pax leídos quedan escritos en la cotización, no solo en el banner */
-  if (det.paxTxt) q.notasCliente += `<div>Cotización pensada para ${det.paxTxt}.</div>`;
+  /* v2E · los pax leídos quedaban escritos como nota al pasajero; desde el 26/08
+     no se generan notas automáticas (van al bloc interno, que no se comparte). */
+  if (det.paxTxt) q.notasLibres = `Cotización pensada para ${det.paxTxt}.`;
   q.ia = { consulta:det.texto, chips:det.chips, paquete: det.paquete ? det.paquete.nombre : null };
   return q;
 }
@@ -670,8 +686,10 @@ export default function Cotizador({
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaleta((v) => !v); }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && pantallaRef.current === "editor") {
         e.preventDefault(); setCompartir(true); }
-      /* v2B · Alt+1…Alt+N salta al bloque N (e.code aguanta el Alt raro de macOS) */
-      if (e.altKey && !e.metaKey && !e.ctrlKey && pantallaRef.current === "editor") {
+      /* v2B · Alt+1…Alt+N salta al bloque N (e.code aguanta el Alt raro de macOS).
+         Nunca mientras se escribe en un campo: en Mac con teclado español "@" es
+         Option+2 y el atajo se lo comía (bug reportado por Gero el 26/08). */
+      if (e.altKey && !e.metaKey && !e.ctrlKey && pantallaRef.current === "editor" && !enCampo()) {
         const ids = idsRef.current;
         const tope = Math.min(ids.length, 9);
         const n = new RegExp(`^Digit[1-${tope}]$`).test(e.code || "") ? Number(e.code.slice(5))
@@ -860,7 +878,7 @@ export default function Cotizador({
       if (base) {
         base.hoteles = q0.destinos.map((d, i) => ({
           hotelId:null, cat:5, libre:`${HOTELES_3[i % HOTELES_3.length]} ${d.ciudad}`,
-          regimen: base.hoteles[i]?.regimen || base.regimen || d.regimen || "",
+          regimen: base.hoteles[i]?.regimen || base.regimen || regimenHeredable(d.regimen, ""),
         }));
         q0.opciones = [base];
       }
@@ -885,7 +903,7 @@ export default function Cotizador({
         q0.destinos.forEach((d, i) => {
           if (base.hoteles[i]) return;
           base.hoteles[i] = { hotelId:null, libre:`${HOTELES_DEMO[i % HOTELES_DEMO.length]} ${d.ciudad}`,
-            cat:5, regimen: base.regimen || d.regimen || "" };
+            cat:5, regimen: base.regimen || regimenHeredable(d.regimen, "") };
         });
         q0.opciones = [base, ...[1, 2].map((k) => ({
           ...base,
@@ -1004,9 +1022,9 @@ export default function Cotizador({
         } else {
           d.opciones.push({ id:uid("op"), nombre:`Opción ${d.opciones.length + 1}`,
             hoteles:d.destinos.map((x) => ({ hotelId:null, libre:"", cat:0,
-              regimen: x.regimen || "Desayuno incluido" })),
-            regimen: d.destinos[0]?.regimen || "Desayuno incluido", factor:factorDefault,
-            habitaciones:[habitacionNueva("Doble", factorDefault)] });
+              regimen: regimenHeredable(x.regimen) })),
+            regimen: regimenHeredable(d.destinos[0]?.regimen), factor:factorDefault,
+            habitaciones:[{ ...habitacionNueva("Doble", factorDefault), grupo:uid("hg") }] });
         }
       }); irA("b-alojamiento"); } },
     { label:"Compartir cotización", grupo:"acción", Icon:Send, run:() => setCompartir(true) },

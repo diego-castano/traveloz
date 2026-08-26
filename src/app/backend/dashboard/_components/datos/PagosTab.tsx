@@ -11,14 +11,20 @@
 // El reloj de vencimiento se calcula en el cliente contra `expiraAt` y se
 // refresca cada minuto: si lo mandáramos formateado desde el server quedaría
 // congelado en el HTML hasta la próxima navegación.
+//
+// Cada registro se identifica por el PASAJERO, no por el titular de la
+// tarjeta (cliente, 26/08/2026): son distintos más veces de las que uno
+// esperaría, y el vendedor busca por quien viaja. Los registros viejos no
+// tienen pasajero cargado y caen al titular (ver `nombrePago`).
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { CreditCard, Eye, Lock, ShieldCheck } from "lucide-react";
+import { Building2, CreditCard, Eye, Lock, ShieldCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getMisPagos, type EstadoPago, type PagoResumen } from "@/actions/datos-vendedor.actions";
 import { RevelarModal } from "./RevelarModal";
+import { EnviarAdmModal, type EnviarAdmTarget } from "./EnviarAdmModal";
 
 const CHIP: Record<EstadoPago, { label: string; clase: string }> = {
   vivo: { label: "Sin abrir", clase: "bg-[#F1EEFF] text-[#8B5CF6]" },
@@ -36,6 +42,24 @@ function restante(expiraAt: Date, ahora: number): string | null {
   return `quedan ${horas} h`;
 }
 
+/** "hace 2 h" / "hace 15 min" / "el 24/08". Para el sello del envío a ADM. */
+function desde(d: Date, ahora: number): string {
+  const ms = ahora - new Date(d).getTime();
+  const minutos = Math.floor(ms / 60000);
+  if (minutos < 1) return "recién";
+  if (minutos < 60) return `hace ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  return `el ${fechaSolaCorta(d)}`;
+}
+
+const fechaSolaCorta = (d: Date) =>
+  new Intl.DateTimeFormat("es-UY", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "America/Montevideo",
+  }).format(new Date(d));
+
 const fechaCorta = (d: Date) =>
   new Intl.DateTimeFormat("es-UY", {
     day: "2-digit",
@@ -52,6 +76,9 @@ export function PagosTab() {
   // Registro que se está abriendo. Acá viaja SOLO el id: nada revelado pasa
   // por el estado de esta grilla.
   const [revelarId, setRevelarId] = useState<string | null>(null);
+  // Registro que se está mandando a Administración. Igual que arriba: solo el
+  // id y lo que ya está a la vista; nada descifrado pasa por este estado.
+  const [admTarget, setAdmTarget] = useState<EnviarAdmTarget | null>(null);
 
   const cargar = useCallback(() => {
     getMisPagos()
@@ -85,7 +112,7 @@ export function PagosTab() {
         <p className="text-[14px] font-semibold text-neutral-700">La bóveda está vacía</p>
         <p className="mt-1 max-w-[380px] text-[13px] text-neutral-500">
           Compartí tu link de datos de tarjeta para empezar. Lo que cargue el pasajero se guarda
-          cifrado y se borra solo a las 72 horas.
+          cifrado y se borra solo a las 96 horas.
         </p>
       </div>
     );
@@ -118,10 +145,17 @@ export function PagosTab() {
                 </span>
               </div>
 
-              <p className="truncate text-[14px] font-bold text-neutral-900">{p.titular}</p>
+              {/* El nombre grande es el del PASAJERO. Cuando el titular de la
+                  tarjeta es otro, se aclara abajo en chico. */}
+              <p className="truncate text-[14px] font-bold text-neutral-900">{p.nombre}</p>
               <p className="mt-0.5 font-mono text-[12.5px] tabular-nums text-neutral-500">
                 {p.emisor ?? "Tarjeta"} •••• {p.ultimos4}
               </p>
+              {p.pasajeroNombre && p.titular.trim() !== p.pasajeroNombre.trim() && (
+                <p className="mt-0.5 truncate text-[11px] text-neutral-400">
+                  Titular: {p.titular}
+                </p>
+              )}
 
               <div className="mt-3 flex items-center justify-between gap-2 border-t border-hairline pt-3">
                 <div className="min-w-0">
@@ -136,14 +170,33 @@ export function PagosTab() {
                 </div>
 
                 {!p.purgadoAt && quedan ? (
-                  <button
-                    type="button"
-                    onClick={() => setRevelarId(p.id)}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-[9px] border border-hairline bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6] hover:bg-[#F8F7FF]"
-                  >
-                    <Eye size={12} />
-                    Ver datos
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setRevelarId(p.id)}
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-[9px] border border-hairline bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6] hover:bg-[#F8F7FF]"
+                    >
+                      <Eye size={12} />
+                      Ver datos
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAdmTarget({
+                          id: p.id,
+                          nombre: p.nombre,
+                          ultimos4: p.ultimos4,
+                          emisor: p.emisor,
+                          numeroFile: p.numeroFile,
+                        })
+                      }
+                      title="Mandarle los datos completos a Administración"
+                      className="inline-flex shrink-0 items-center gap-1.5 rounded-[9px] border border-hairline bg-white px-2.5 py-1.5 text-[11.5px] font-semibold text-[#8B5CF6] transition hover:border-[#8B5CF6] hover:bg-[#F8F7FF]"
+                    >
+                      <Building2 size={12} />
+                      Enviar a ADM
+                    </button>
+                  </div>
                 ) : (
                   <span
                     className="inline-flex shrink-0 items-center gap-1.5 text-[11px] text-neutral-300"
@@ -154,6 +207,17 @@ export function PagosTab() {
                   </span>
                 )}
               </div>
+
+              {p.enviadoAdmAt && (
+                <p className="mt-2 flex items-center gap-1.5 border-t border-hairline pt-2 text-[11px] font-medium text-emerald-700">
+                  <Building2 size={11} className="shrink-0" />
+                  <span className="truncate">
+                    Enviado a ADM
+                    {p.numeroFile ? ` · file ${p.numeroFile}` : ""} ·{" "}
+                    {desde(p.enviadoAdmAt, ahora)}
+                  </span>
+                </p>
+              )}
             </motion.div>
           );
         })}
@@ -171,6 +235,17 @@ export function PagosTab() {
         // Revelar sella vistoAt en el server: recargamos para que el chip
         // pase de "Sin abrir" a "Visto".
         onRevelado={cargar}
+      />
+
+      <EnviarAdmModal
+        target={admTarget}
+        open={admTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setAdmTarget(null);
+        }}
+        // El envío sella numeroFile/enviadoAdmAt en el server: recargamos para
+        // que la fila muestre "Enviado a ADM · file …".
+        onEnviado={cargar}
       />
     </>
   );

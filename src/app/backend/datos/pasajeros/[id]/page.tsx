@@ -19,6 +19,7 @@ import { auth } from "@/lib/auth.config";
 import { getEnvioAdmin, marcarVistoAdmin } from "@/actions/datos-admin.actions";
 import { getMiEnvioDetalle } from "@/actions/datos-vendedor.actions";
 import { cotizacionesPorReferencia } from "@/actions/presupuesto.actions";
+import { nombreCompleto } from "@/lib/datos-nombre";
 import { EnvioDetalleView, type EnvioVista } from "../../_components/EnvioDetalleView";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +75,7 @@ export default async function EnvioPage({ params }: { params: { id: string } }) 
           </Link>
         )}
         <h1 className="mt-2 text-2xl font-bold text-neutral-900">
-          {titular ? `${titular.nombres} ${titular.apellidos}`.trim() : "Envío de pasajeros"}
+          {titular ? nombreCompleto(titular) : "Envío de pasajeros"}
         </h1>
         <p className="mt-0.5 text-sm text-neutral-500">
           {envio.pasajeros.length}{" "}

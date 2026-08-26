@@ -147,6 +147,8 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt(sort: Desc)])
+  // Historial de un objeto puntual (los accesos a una tarjeta de la bóveda).
+  @@index([targetType, targetId, createdAt(sort: Desc)])
 }
 
 model Paquete {
@@ -1133,7 +1135,7 @@ model IdCounter {
 // Datos de pasajeros y datos de pago — links personales por vendedor.
 // Cada vendedor tiene dos URLs públicas permanentes (por User.slug):
 //   /datos-de-pasajeros/<slug>  → EnvioPasajeros + PasajeroDato
-//   /datos-de-pago/<slug>       → DatosPagoCifrado (bóveda 72 h)
+//   /datos-de-pago/<slug>       → DatosPagoCifrado (bóveda 96 h)
 // ──────────────────────────────────────────────
 
 enum TipoFormularioDato {
@@ -1234,7 +1236,7 @@ model PasajeroDato {
 
 // Bóveda de datos de tarjeta. El payload (PAN, vencimiento, CVV, documento)
 // viaja cifrado AES-256-GCM con DATOS_PAGO_KEY; iv y tag por registro. A las
-// 72 h el barrido pone payload/iv/tag en null y sella purgadoAt — la fila
+// 96 h el barrido pone payload/iv/tag en null y sella purgadoAt — la fila
 // sobrevive como registro (titular, emisor, ultimos4, fechas). NUNCA se
 // loguea el cuerpo del request ni se persiste el número en claro.
 model DatosPagoCifrado {
@@ -1243,6 +1245,11 @@ model DatosPagoCifrado {
   vendedorEmail        String
   solicitudId          String?
   titular              String
+  // Pasajero al que corresponde el pago. Va EN CLARO (no entra al sobre
+  // cifrado): es el nombre con el que el vendedor y ADM identifican el
+  // registro, y muchas veces no coincide con el titular de la tarjeta.
+  pasajeroNombre       String?
+  pasajeroDocumento    String?
   emisor               String?
   ultimos4             String
   payload              Bytes?
@@ -1259,6 +1266,12 @@ model DatosPagoCifrado {
   expiraAt             DateTime
   vistoAt              DateTime?
   purgadoAt            DateTime?
+  // Envío a Administración: el vendedor manda los datos a la casilla de ADM
+  // con el número de file del expediente. No borra la tarjeta (sigue viva
+  // hasta expiraAt) y queda auditado en AuditLog.
+  numeroFile           String?
+  enviadoAdmAt         DateTime?
+  enviadoAdmPor        String?
 
   @@index([vendedorId, createdAt(sort: Desc)])
   @@index([expiraAt])

@@ -30,6 +30,7 @@ import {
   type EnvioResumen,
 } from "@/actions/datos-vendedor.actions";
 import { cotizacionesPorReferencia } from "@/actions/presupuesto.actions";
+import { nombreCompleto } from "@/lib/datos-nombre";
 
 const fechaHora = (d: Date) =>
   new Intl.DateTimeFormat("es-UY", {
@@ -140,7 +141,7 @@ export function PasajerosTab() {
                 Fecha
               </th>
               <th className="bg-[#FBFBFC] px-4 py-3 text-left text-[10.5px] font-semibold uppercase tracking-wider text-neutral-500">
-                Contacto
+                Nombre y apellido
               </th>
               <th className="bg-[#FBFBFC] px-4 py-3 text-center text-[10.5px] font-semibold uppercase tracking-wider text-neutral-500">
                 Pasajeros
@@ -344,16 +345,19 @@ function DetalleEnvio({ detalle }: { detalle: EnvioDetalle }) {
               Pasajero {i + 1}
             </span>
             <span className="text-[15px] font-bold text-neutral-900">
-              {p.nombres} {p.apellidos}
+              {nombreCompleto(p)}
             </span>
           </div>
 
+          {/* `Dato` no dibuja los valores vacíos: pasaporte, dirección,
+              ciudad y país solo aparecen en los envíos VIEJOS, que sí los
+              tienen cargados. Los nuevos ya no los piden. */}
           <dl className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-            <Dato label="Documento" valor={p.documento} />
-            <Dato label="Pasaporte" valor={p.pasaporte} />
+            <Dato label="Documento de viaje" valor={p.documento} />
             <Dato label="Nacimiento" valor={p.fechaNacimiento ? soloFecha(p.fechaNacimiento) : null} />
             <Dato label="Email" valor={p.email} />
             <Dato label="Teléfono" valor={p.telefono} />
+            <Dato label="Pasaporte" valor={p.pasaporte} />
             <Dato label="Dirección" valor={p.direccion} />
             <Dato label="Ciudad" valor={p.ciudad} />
             <Dato label="País" valor={p.pais} />
@@ -368,10 +372,10 @@ function DetalleEnvio({ detalle }: { detalle: EnvioDetalle }) {
                 <Paperclip size={11} /> Archivos
               </span>
               {p.documentoArchivoUrl && (
-                <Adjunto url={p.documentoArchivoUrl} label="Documento" />
+                <Adjunto url={p.documentoArchivoUrl} label="Foto del documento" />
               )}
               {p.pasaporteArchivoUrl && (
-                <Adjunto url={p.pasaporteArchivoUrl} label="Pasaporte" />
+                <Adjunto url={p.pasaporteArchivoUrl} label="Archivo adicional" />
               )}
             </div>
           )}

@@ -16,6 +16,14 @@
 
 import crypto from "node:crypto";
 
+/**
+ * Vida de la bóveda. El valor vive en `datos-constantes.ts`, que es un módulo
+ * puro: este archivo importa node:crypto y no entra en un bundle de cliente,
+ * así que las pantallas leen la constante de allá. Se re-exporta acá para no
+ * romper a quien ya la importaba desde el módulo de cifrado.
+ */
+export { HORAS_BOVEDA, TEXTO_HORAS_BOVEDA } from "@/lib/datos-constantes";
+
 const ALGORITMO = "aes-256-gcm";
 // GCM recomienda 96 bits de IV: es el tamaño para el que está especificado el
 // contador interno; usar 16 bytes obliga a un GHASH extra y no suma seguridad.

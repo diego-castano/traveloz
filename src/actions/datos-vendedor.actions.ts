@@ -24,12 +24,21 @@
 import { randomBytes } from "crypto";
 import QRCode from "qrcode";
 import { z } from "zod";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
+import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, type SendEmailResult } from "@/lib/email";
 import { parseRespuestas, type Respuesta } from "@/lib/cotizador-form";
-import { DATOS_FROM, SITE_BASE_URL, solicitudDatosEmail } from "@/lib/datos-email";
+import {
+  DATOS_FROM,
+  SITE_BASE_URL,
+  datosPagoAdmEmail,
+  solicitudDatosEmail,
+} from "@/lib/datos-email";
+import { descifrar } from "@/lib/datos-cifrado";
+import { nombreCompleto, nombrePago } from "@/lib/datos-nombre";
 import { slugUnicoParaUsuario } from "@/lib/slug-usuario";
 import type { TipoFormularioDato } from "@prisma/client";
 
@@ -245,7 +254,7 @@ export async function getMisEnvios(opts?: {
         referencia: e.referencia,
         vistoAt: e.vistoAt,
         cantidad: e._count.pasajeros,
-        contacto: primero ? `${primero.nombres} ${primero.apellidos}`.trim() : "·",
+        contacto: primero ? nombreCompleto(primero) : "·",
         contactoEmail: primero?.email ?? "",
       };
     }),
@@ -374,6 +383,9 @@ export type EstadoPago = "vivo" | "visto" | "purgado";
 
 export interface PagoResumen {
   id: string;
+  /** Con qué nombre se muestra: el pasajero, o el titular en los viejos. */
+  nombre: string;
+  pasajeroNombre: string | null;
   titular: string;
   emisor: string | null;
   ultimos4: string;
@@ -383,6 +395,10 @@ export interface PagoResumen {
   vistoAt: Date | null;
   purgadoAt: Date | null;
   estado: EstadoPago;
+  /** Envío a Administración: null mientras no se haya mandado. */
+  numeroFile: string | null;
+  enviadoAdmAt: Date | null;
+  enviadoAdmPor: string | null;
 }
 
 /**
@@ -400,6 +416,7 @@ export async function getMisPagos(vendedorId?: string): Promise<PagoResumen[]> {
     take: 100,
     select: {
       id: true,
+      pasajeroNombre: true,
       titular: true,
       emisor: true,
       ultimos4: true,
@@ -407,12 +424,16 @@ export async function getMisPagos(vendedorId?: string): Promise<PagoResumen[]> {
       expiraAt: true,
       vistoAt: true,
       purgadoAt: true,
+      numeroFile: true,
+      enviadoAdmAt: true,
+      enviadoAdmPor: true,
     },
   });
 
   const ahora = Date.now();
   return filas.map((f) => ({
     ...f,
+    nombre: nombrePago(f),
     // Una fila sin purgar pero vencida cuenta como purgada para la UI: el
     // barrido corre cada tanto y no queremos prometer datos que ya no sirven.
     estado: f.purgadoAt || f.expiraAt.getTime() <= ahora
@@ -701,4 +722,430 @@ export async function previewSolicitudEmail(
     html: tmpl.html,
     nota: "El link de este preview es de ejemplo: el token real se genera recién al enviar.",
   };
+}
+
+// ---------------------------------------------------------------------------
+// Accesos a una tarjeta (quién la abrió y cuándo)
+// ---------------------------------------------------------------------------
+
+export interface AccesoPago {
+  id: string;
+  /** Nombre del usuario; si ya no existe, el email que quedó en la fila. */
+  quien: string;
+  createdAt: Date;
+  /** true si el intento falló (credencial incorrecta, o el email que no salió). */
+  fallido: boolean;
+  /**
+   * Qué hizo: "revelar" es haber abierto la tarjeta en el panel, "adm" es
+   * haberla mandado a la casilla de Administración. Son dos hechos distintos
+   * y la lista los cuenta distinto.
+   */
+  tipo: "revelar" | "adm";
+  /** Número de file del envío a ADM. null en las aperturas. */
+  numeroFile: string | null;
+}
+
+/**
+ * Historial de aperturas de un registro de la bóveda, leído del AuditLog por
+ * `targetId`. Mismo alcance que la revelación: el vendedor dueño o un ADMIN.
+ *
+ * Se muestra en el RevelarModal y en la ficha admin del pago. Es la respuesta
+ * a "¿quién vio esta tarjeta?", que hasta ahora solo se podía contestar
+ * entrando a la tabla de auditoría.
+ */
+export async function getAccesosPago(pagoId: string): Promise<AccesoPago[]> {
+  try {
+    const ctx = await requireAuth();
+    if (!pagoId || pagoId.length > 60) return [];
+
+    // El scope se valida contra la fila, no contra el audit log: si el
+    // registro no es suyo (y no es admin), no devolvemos ni la existencia.
+    const row = await prisma.datosPagoCifrado.findUnique({
+      where: { id: pagoId },
+      select: { vendedorId: true },
+    });
+    if (!row) return [];
+    if (row.vendedorId !== ctx.userId && ctx.role !== "ADMIN") return [];
+
+    const filas = await prisma.auditLog.findMany({
+      where: {
+        targetType: "datosPagoCifrado",
+        targetId: pagoId,
+        // Los envíos a Administración entran acá igual que las aperturas:
+        // sacar la tarjeta del sistema por email es un acceso, y el que
+        // pregunta "¿quién vio esto?" quiere ver los dos.
+        action: {
+          in: [
+            "datos.pago.revelado",
+            "datos.pago.revelar.fail",
+            "datos.pago.enviar_adm",
+            "datos.pago.enviar_adm.fail",
+          ],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 25,
+      select: {
+        id: true,
+        action: true,
+        userId: true,
+        userEmail: true,
+        createdAt: true,
+        metadata: true,
+      },
+    });
+    if (filas.length === 0) return [];
+
+    const nombres = await nombresDeUsuarios(filas.map((f) => f.userId));
+    return filas.map((f): AccesoPago => ({
+      id: f.id,
+      quien: (f.userId ? nombres.get(f.userId) : null) ?? f.userEmail ?? "Usuario",
+      createdAt: f.createdAt,
+      fallido: f.action.endsWith(".fail"),
+      tipo: f.action.startsWith("datos.pago.enviar_adm") ? "adm" : "revelar",
+      numeroFile: fileDeMetadata(f.metadata),
+    }));
+  } catch (err) {
+    log.error("getAccesosPago failed", err);
+    return [];
+  }
+}
+
+/**
+ * `metadata.numeroFile` del AuditLog. La columna es Json, así que lo que sale
+ * de ahí es dato de afuera hasta que se lo mira: solo pasa un string corto.
+ */
+function fileDeMetadata(meta: unknown): string | null {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return null;
+  const v = (meta as Record<string, unknown>).numeroFile;
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t ? t.slice(0, 40) : null;
+}
+
+/** id → nombre, en una sola query. Los ids sueltos no tienen relación Prisma. */
+async function nombresDeUsuarios(ids: (string | null)[]): Promise<Map<string, string>> {
+  const unicos = Array.from(new Set(ids.filter((x): x is string => Boolean(x))));
+  if (unicos.length === 0) return new Map();
+  const users = await prisma.user.findMany({
+    where: { id: { in: unicos } },
+    select: { id: true, name: true },
+  });
+  return new Map(users.map((u) => [u.id, u.name]));
+}
+
+// ---------------------------------------------------------------------------
+// Enviar a Administración
+//
+// Es el único camino por el que una tarjeta completa sale del sistema por
+// email, y existe porque Administración NO tiene usuario en el panel: hoy el
+// vendedor le reenvía el mail o se la dicta por WhatsApp. Esto lo reemplaza
+// por un envío a una casilla configurada (SiteSetting notificaciones_email_adm)
+// que además queda auditado.
+//
+// Decisiones del cliente (26/08/2026):
+//   • NO pide PIN. La sesión del vendedor alcanza; el registro en AuditLog es
+//     la contrapartida.
+//   • NO borra ni acorta la tarjeta: sigue viva hasta expiraAt.
+//   • El número de file es obligatorio y va en el asunto: es la clave con la
+//     que Administración archiva el cobro.
+// ---------------------------------------------------------------------------
+
+/** Clave del SiteSetting con la casilla de Administración. */
+const SETTING_EMAIL_ADM = "notificaciones_email_adm";
+
+/**
+ * Un archivo "use server" solo puede exportar funciones async, así que este
+ * mensaje NO se exporta: viaja al cliente dentro del `message` del resultado.
+ */
+const MSG_ADM_SIN_CASILLA = "Configurá la casilla de ADM en Web → Notificaciones";
+
+/**
+ * Un email válido de verdad para la casilla de ADM. Corta el caso que importa:
+ * un pedazo de texto suelto en el setting que se colaba como destinatario.
+ */
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Tope de envíos a ADM por vendedor cada hora. Se cuenta contra el AuditLog. */
+const MAX_ADM_HORA = 20;
+
+/** Reintento del MISMO registro con el MISMO file: recién a los 10 minutos. */
+const COOLDOWN_ADM_MIN = 10;
+
+const enviarAdmSchema = z.object({
+  numeroFile: z
+    .string()
+    .trim()
+    .min(1, "Ingresá el número de file.")
+    .max(40, "El número de file no puede pasar de 40 caracteres.")
+    // El file va al asunto del email. Letras, números, espacios, punto,
+    // guion y barra alcanzan para cualquier nomenclatura de expediente; el
+    // resto queda afuera antes de llegar a una cabecera SMTP.
+    .regex(/^[\w\s./-]+$/, "El número de file tiene caracteres que no podemos usar.")
+    // `\s` de arriba incluye los saltos: el asunto es de UNA línea.
+    .refine((v) => !/[\r\n\t]/.test(v), "El número de file no puede tener saltos de línea."),
+});
+
+export interface EnviarAdmOk {
+  ok: true;
+  message: string;
+  /** Para que la fila muestre "Enviado a ADM · file 11000" sin recargar. */
+  numeroFile: string;
+  enviadoAdmAt: Date;
+  enviadoAdmPor: string;
+}
+
+export type EnviarAdmResult = EnviarAdmOk | DatosError;
+
+export async function enviarPagoAAdm(
+  id: string,
+  input: { numeroFile: string },
+): Promise<EnviarAdmResult> {
+  // Ninguna rama loguea el objeto descifrado. Al logger solo van ids.
+  try {
+    const scope = await scopeSuave();
+    if (!scope.ok) return scope;
+
+    const parsed = enviarAdmSchema.safeParse(input);
+    if (!parsed.success) {
+      return { ok: false, message: parsed.error.issues[0]?.message ?? "Revisá el número de file." };
+    }
+    const numeroFile = parsed.data.numeroFile;
+
+    if (!id || id.length > 60) {
+      return { ok: false, message: "No encontramos estos datos de pago." };
+    }
+
+    // ── Casilla de destino ────────────────────────────────────────────────
+    // Sin casilla no se manda nada: preferimos que el vendedor la configure
+    // antes que mandar una tarjeta a un destino por defecto.
+    const setting = await prisma.siteSetting.findUnique({
+      where: { key: SETTING_EMAIL_ADM },
+      select: { value: true },
+    });
+    // El validador del setting (key-validators.ts) acepta coma, punto y coma
+    // y espacios; acá se parte con el MISMO criterio. Partiendo solo por coma,
+    // una casilla escrita "adm@x.com; pagos@x.com" viajaba entera como un
+    // único destinatario que Resend rechaza. Se filtra por email y se dedup:
+    // ADM no necesita recibir la misma tarjeta dos veces.
+    const destinos = Array.from(
+      new Set(
+        (setting?.value ?? "")
+          .split(/[,;\s]+/)
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => RE_EMAIL.test(e)),
+      ),
+    );
+    if (destinos.length === 0) {
+      return { ok: false, message: MSG_ADM_SIN_CASILLA };
+    }
+
+    // ── El registro, con scope ────────────────────────────────────────────
+    const row = await prisma.datosPagoCifrado.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        vendedorId: true,
+        pasajeroNombre: true,
+        pasajeroDocumento: true,
+        titular: true,
+        emisor: true,
+        ultimos4: true,
+        payload: true,
+        iv: true,
+        tag: true,
+        expiraAt: true,
+        purgadoAt: true,
+        solicitudId: true,
+        numeroFile: true,
+        enviadoAdmAt: true,
+      },
+    });
+    if (!row) return { ok: false, message: "No encontramos estos datos de pago." };
+    if (row.vendedorId !== scope.sessionUserId && !scope.isAdmin) {
+      // Mismo mensaje que "no existe": no confirmamos un registro ajeno.
+      return { ok: false, message: "No encontramos estos datos de pago." };
+    }
+    if (row.purgadoAt !== null || row.expiraAt.getTime() < Date.now()) {
+      return { ok: false, message: "El dato ya fue eliminado." };
+    }
+    if (!row.payload || !row.iv || !row.tag) {
+      return { ok: false, message: "El dato ya fue eliminado." };
+    }
+
+    // ── Reenvío ───────────────────────────────────────────────────────────
+    // Mandar dos veces la misma tarjeta a ADM es mandar dos veces un PAN por
+    // email. Cambiar el número de file SÍ es un envío nuevo (se archiva en
+    // otro expediente); repetir el mismo file a los segundos es un doble clic
+    // o un "no me llegó" apurado, y ahí conviene esperar.
+    if (row.enviadoAdmAt && row.numeroFile === numeroFile) {
+      const minutos = (Date.now() - row.enviadoAdmAt.getTime()) / 60_000;
+      if (minutos < COOLDOWN_ADM_MIN) {
+        const n = Math.max(1, Math.floor(minutos));
+        return {
+          ok: false,
+          message: `Ya se envió hace ${n} ${n === 1 ? "minuto" : "minutos"}. Si Administración no lo recibió, esperá ${COOLDOWN_ADM_MIN} minutos y reintentá.`,
+        };
+      }
+    }
+
+    // Tope por vendedor y por hora, contado sobre los envíos que de verdad
+    // salieron (el `.fail` no gasta cupo). Mismo patrón que el rate de
+    // `crearSolicitud`: se cuenta en la DB, sin lib nueva.
+    const desdeUnaHora = new Date(Date.now() - 60 * 60 * 1000);
+    const enviadosUltimaHora = await prisma.auditLog.count({
+      where: {
+        action: "datos.pago.enviar_adm",
+        userId: scope.sessionUserId,
+        createdAt: { gte: desdeUnaHora },
+      },
+    });
+    if (enviadosUltimaHora >= MAX_ADM_HORA) {
+      return {
+        ok: false,
+        message: `Llegaste al tope de ${MAX_ADM_HORA} envíos a Administración por hora. Probá de nuevo más tarde.`,
+      };
+    }
+
+    // ── Quién manda ───────────────────────────────────────────────────────
+    const yo = await prisma.user.findUnique({
+      where: { id: scope.sessionUserId },
+      select: { name: true, email: true },
+    });
+    if (!yo) return { ok: false, message: "No encontramos tu usuario. Volvé a iniciar sesión." };
+
+    // ── Descifrado ────────────────────────────────────────────────────────
+    let claro;
+    try {
+      claro = descifrar({ payload: row.payload, iv: row.iv, tag: row.tag });
+    } catch (err) {
+      // Clave rotada o payload corrupto. El error de node:crypto no lleva
+      // plaintext, pero igual solo logueamos el id.
+      log.error("datos.pago.enviar_adm.descifrar failed", { pagoId: row.id });
+      void err;
+      return { ok: false, message: "No pudimos leer los datos de la tarjeta. Avisale al admin." };
+    }
+
+    // Contexto del viaje, si la tarjeta entró por una solicitud.
+    const solicitud = row.solicitudId
+      ? await prisma.solicitudDato.findUnique({
+          where: { id: row.solicitudId },
+          select: { destino: true, referencia: true },
+        })
+      : null;
+
+    const quien = nombrePago(row);
+
+    // ── Envío ─────────────────────────────────────────────────────────────
+    const tmpl = datosPagoAdmEmail({
+      numeroFile,
+      enviadoPorNombre: yo.name,
+      enviadoPorEmail: yo.email,
+      pasajeroNombre: quien,
+      pasajeroDocumento: row.pasajeroDocumento,
+      titular: row.titular,
+      documentoTitular: claro.documentoTitular,
+      emisor: row.emisor,
+      ultimos4: row.ultimos4,
+      numero: claro.numero,
+      vencimiento: claro.vencimiento,
+      cvv: claro.cvv,
+      cuotas: claro.cuotas,
+      destino: solicitud?.destino ?? null,
+      referencia: solicitud?.referencia ?? null,
+      extras: (claro.extras ?? []).map((e) => ({ etiqueta: e.etiqueta, valor: e.valor })),
+    });
+
+    // `sendEmail` NUNCA tira: devuelve `{ delivered:false, error }`. Si el email
+    // no salió, no se sella la fila ni se audita como enviado: la auditoría no
+    // puede decir que Administración recibió algo que Resend rechazó.
+    const envio = await sendEmail({
+      to: destinos,
+      from: DATOS_FROM,
+      // Administración responde y le llega al vendedor que lo mandó.
+      replyTo: yo.email,
+      subject: tmpl.subject,
+      html: tmpl.html,
+      text: tmpl.text,
+      // Lleva la tarjeta completa: sin preview en logs, nunca.
+      sensible: true,
+    });
+    if (!envio.delivered) {
+      log.error("datos.pago.enviar_adm.email failed", {
+        pagoId: row.id,
+        provider: envio.provider,
+        error: typeof envio.error === "string" ? envio.error.slice(0, 200) : undefined,
+      });
+      const metaFail = await requestMeta();
+      await logAudit({
+        action: "datos.pago.enviar_adm.fail",
+        userId: scope.sessionUserId,
+        userEmail: yo.email,
+        targetType: "datosPagoCifrado",
+        targetId: row.id,
+        ipAddress: metaFail.ip,
+        userAgent: metaFail.userAgent,
+        metadata: { pagoId: row.id, numeroFile, destinos: destinos.length, provider: envio.provider },
+      });
+      return {
+        ok: false,
+        message: "No pudimos mandar el email a Administración. Probá de nuevo en unos minutos.",
+      };
+    }
+
+    // ── Sello + auditoría ─────────────────────────────────────────────────
+    const enviadoAdmAt = new Date();
+    try {
+      await prisma.datosPagoCifrado.update({
+        where: { id: row.id },
+        data: { numeroFile, enviadoAdmAt, enviadoAdmPor: yo.name },
+      });
+    } catch (err) {
+      // El email ya salió: no lo desandamos por no poder sellar la fila.
+      log.error(`datos.pago.enviar_adm.sellar failed (pago ${row.id})`, err);
+    }
+
+    const meta = await requestMeta();
+    await logAudit({
+      action: "datos.pago.enviar_adm",
+      userId: scope.sessionUserId,
+      userEmail: yo.email,
+      targetType: "datosPagoCifrado",
+      targetId: row.id,
+      ipAddress: meta.ip,
+      userAgent: meta.userAgent,
+      // Solo el QUÉ: nada de la tarjeta entra a la metadata.
+      metadata: {
+        pagoId: row.id,
+        numeroFile,
+        destinos: destinos.length,
+        pasajero: quien,
+      },
+    });
+
+    log.info("datos.pago.enviar_adm.ok", { pagoId: row.id, destinos: destinos.length });
+
+    return {
+      ok: true,
+      message: "Los datos ya están en la casilla de Administración.",
+      numeroFile,
+      enviadoAdmAt,
+      enviadoAdmPor: yo.name,
+    };
+  } catch (err) {
+    log.error("enviarPagoAAdm failed", err);
+    return { ok: false, message: "No se pudo enviar. Intentá de nuevo." };
+  }
+}
+
+/** IP y user-agent del request, para la auditoría. Nunca rompe. */
+async function requestMeta(): Promise<{ ip: string | null; userAgent: string | null }> {
+  try {
+    const h = headers();
+    const fwd = h.get("x-forwarded-for");
+    const ip = fwd ? fwd.split(",")[0]!.trim() : h.get("x-real-ip");
+    return { ip: ip || null, userAgent: h.get("user-agent") };
+  } catch {
+    return { ip: null, userAgent: null };
+  }
 }

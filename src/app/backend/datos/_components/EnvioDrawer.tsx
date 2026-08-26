@@ -18,6 +18,7 @@ import {
   marcarVistoAdmin,
   type EnvioAdminDetalle,
 } from "@/actions/datos-admin.actions";
+import { nombreCompleto } from "@/lib/datos-nombre";
 import { EnvioDetalleView } from "./EnvioDetalleView";
 
 export function EnvioDrawer({
@@ -78,7 +79,7 @@ export function EnvioDrawer({
 
   const titulo = detalle
     ? detalle.pasajeros[0]
-      ? `${detalle.pasajeros[0].nombres} ${detalle.pasajeros[0].apellidos}`.trim()
+      ? nombreCompleto(detalle.pasajeros[0])
       : "Envío sin pasajeros"
     : "Cargando…";
 

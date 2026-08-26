@@ -2,10 +2,11 @@
 // Purga de la bóveda de datos de pago.
 //
 // La promesa que le hacemos al pasajero (y que dice el email de solicitud) es
-// que la tarjeta se borra sola a las 72 horas. Este módulo es quien cumple esa
-// promesa: pone en null los tres campos cifrados (payload / iv / tag) y sella
-// `purgadoAt`. La fila NO se borra - queda el rastro auditable (titular,
-// emisor, últimos 4, fechas) sin nada descifrable adentro.
+// que la tarjeta se borra sola a las HORAS_BOVEDA (hoy 96). Este módulo es
+// quien cumple esa promesa: pone en null los tres campos cifrados
+// (payload / iv / tag) y sella `purgadoAt`. La fila NO se borra - queda el
+// rastro auditable (pasajero, titular, emisor, últimos 4, fechas) sin nada
+// descifrable adentro.
 //
 // Se dispara por dos vías, y ninguna necesita cron externo obligatorio:
 //   1. POST /api/datos/purgar - sesión ADMIN o header x-purga-secret. Es la
@@ -63,6 +64,9 @@ export async function purgarBovedaVencida(): Promise<number> {
       payload: null,
       iv: null,
       tag: null,
+      // El documento del pasajero va en claro (fuera del sobre) y también es
+      // dato personal: se borra con la tarjeta. El nombre queda, identifica la fila.
+      pasajeroDocumento: null,
       purgadoAt: ahora,
     },
   });

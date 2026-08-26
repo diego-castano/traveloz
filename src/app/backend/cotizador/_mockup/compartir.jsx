@@ -577,7 +577,7 @@ function ModalCompartir({
                     toast={toast} onPedido={onPedido} copiar={copiar} copiado={copiado} />
                   <FilaLinkDatos
                     tipo="PAGO" Icon={CreditCard} titulo="Datos de tarjeta"
-                    ayuda="Los datos viajan cifrados y se borran solos a las 72 horas."
+                    ayuda="Los datos viajan cifrados y se borran solos a las 96 horas."
                     url={V.linkPago} tel={tel} nombre={nom} numero={q.numero}
                     emailCliente={q.cliente.email} presupuestoId={presupuestoId}
                     puedePedir={puedePedir} motivo={motivoPedido}

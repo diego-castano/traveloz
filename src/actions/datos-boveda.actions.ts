@@ -25,6 +25,7 @@ import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { cancelScheduledEmail } from "@/lib/email";
 import { descifrar } from "@/lib/datos-cifrado";
+import { nombrePago } from "@/lib/datos-nombre";
 import { barridoOportunista } from "@/lib/datos-purga";
 
 const log = logger.child({ module: "datos-boveda.actions" });
@@ -115,6 +116,11 @@ const revelarSchema = z.object({
 
 export interface PagoMetaView {
   id: string;
+  /** Identidad del registro: el pasajero, o el titular en los viejos. */
+  nombre: string;
+  pasajeroNombre: string | null;
+  pasajeroDocumento: string | null;
+  /** Titular impreso en la tarjeta. Puede no ser el pasajero. */
   titular: string;
   emisor: string | null;
   ultimos4: string;
@@ -125,6 +131,10 @@ export interface PagoMetaView {
   /** Estado derivado, para que la UI no repita la lógica de fechas. */
   estado: "DISPONIBLE" | "VISTO" | "PURGADO" | "VENCIDO";
   vendedorEmail: string;
+  /** Envío a Administración. null mientras nadie lo haya mandado. */
+  numeroFile: string | null;
+  enviadoAdmAt: Date | null;
+  enviadoAdmPor: string | null;
 }
 
 /**
@@ -144,6 +154,8 @@ export async function getPagoMeta(id: string): Promise<PagoMetaView | null> {
         id: true,
         vendedorId: true,
         vendedorEmail: true,
+        pasajeroNombre: true,
+        pasajeroDocumento: true,
         titular: true,
         emisor: true,
         ultimos4: true,
@@ -151,6 +163,9 @@ export async function getPagoMeta(id: string): Promise<PagoMetaView | null> {
         expiraAt: true,
         vistoAt: true,
         purgadoAt: true,
+        numeroFile: true,
+        enviadoAdmAt: true,
+        enviadoAdmPor: true,
       },
     });
     if (!row) return null;
@@ -167,6 +182,9 @@ export async function getPagoMeta(id: string): Promise<PagoMetaView | null> {
 
     return {
       id: row.id,
+      nombre: nombrePago(row),
+      pasajeroNombre: row.pasajeroNombre,
+      pasajeroDocumento: row.pasajeroDocumento,
       titular: row.titular,
       emisor: row.emisor,
       ultimos4: row.ultimos4,
@@ -176,6 +194,9 @@ export async function getPagoMeta(id: string): Promise<PagoMetaView | null> {
       purgadoAt: row.purgadoAt,
       estado,
       vendedorEmail: row.vendedorEmail,
+      numeroFile: row.numeroFile,
+      enviadoAdmAt: row.enviadoAdmAt,
+      enviadoAdmPor: row.enviadoAdmPor,
     };
   } catch (err) {
     log.error("getPagoMeta failed", err);

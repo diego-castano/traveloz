@@ -36,14 +36,45 @@ function fotoBg(seed = 0) {
 
 /* Orden y redacción exactos que pidió el cliente en la reunión */
 const REGIMENES = ["Solo alojamiento (sin comidas incluidas)","Desayuno incluido","Media pensión (sin bebidas)","Pensión completa (sin bebidas)","All Inclusive"];
+/* Valor especial del selector de arriba (el del destino), no un régimen real:
+   apaga la cascada hacia los hoteles y deja que cada uno lleve el suyo. Nunca
+   se imprime como régimen de un hotel; en la línea de servicios sale como
+   "según régimen detallado". */
+const REGIMEN_DETALLADO = "Régimen detallado";
+const REGIMEN_DETALLADO_TXT = "según régimen detallado";
+/* El selector del destino ofrece los cinco regímenes reales + el detallado.
+   El selector de cada hotel usa REGIMENES pelado. */
+const REGIMENES_DESTINO = [...REGIMENES, REGIMEN_DETALLADO];
+const esDetallado = (r) => String(r || "").trim() === REGIMEN_DETALLADO;
+/* Lo que baja a un hotel cuando el destino manda: el detallado no baja nada. */
+function regimenHeredable(r, porDefecto = "Desayuno incluido") {
+  const t = String(r || "").trim();
+  return !t || esDetallado(t) ? porDefecto : t;
+}
 const CABINAS = ["Cabina Turista","Cabina Premium Economy","Cabina Ejecutiva","Primera Clase"];
 const EQUIPAJES = [
   "Artículo personal",
   "Artículo personal + Carry-On",
   "Artículo personal + Carry-On + Equipaje de bodega",
 ];
-/* Hasta 15: el cliente también vende apartamentos */
-const OCUPACIONES = ["Single","Doble", ...Array.from({ length:13 }, (_, i) => `${i + 3} personas`)];
+/* La lista corta cubre el 95% de lo que se vende. Para 6 o más el selector se
+   convierte en un campo numérico ("Más…"): el cliente vende apartamentos, pero
+   no quiere scrollear trece opciones para llegar a la doble. Las cotizaciones
+   viejas guardaron el texto ("8 personas") y siguen leyéndose igual. */
+const OCUPACIONES = ["Single","Doble","3 personas","4 personas","5 personas"];
+const OCUPACION_MAS = "Más…";
+const PERSONAS_MIN = 6;
+const PERSONAS_MAX = 20;
+/* "8 personas" → 8. "Doble", "" o cualquier otra cosa → null. */
+function personasDeOcupacion(txt) {
+  const m = /^\s*(\d{1,2})\s*personas?\s*$/i.exec(String(txt || ""));
+  const n = m ? Number(m[1]) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+function ocupacionDePersonas(n) {
+  const v = clamp(Math.round(Number(n) || PERSONAS_MIN), PERSONAS_MIN, PERSONAS_MAX);
+  return `${v} personas`;
+}
 /* "los tres casilleros sí o sí": adulto, menor e infante — más la familiar */
 const TARIFA_TIPOS = ["Por adulto","Por menor","Por infante","Por familia","Otro"];
 
@@ -546,7 +577,9 @@ function estadoEfectivo(r) {
 
 export {
   MESES, MES_AB, ANIO_ACTUAL, PALETAS, fotoBg, REGIMENES, SUG, MODALIDADES,
-  CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS, FACTOR_DEFAULT,
+  REGIMEN_DETALLADO, REGIMEN_DETALLADO_TXT, REGIMENES_DESTINO, esDetallado, regimenHeredable,
+  CABINAS, EQUIPAJES, OCUPACIONES, OCUPACION_MAS, PERSONAS_MIN, PERSONAS_MAX,
+  personasDeOcupacion, ocupacionDePersonas, TARIFA_TIPOS, FACTOR_DEFAULT,
   serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion,
   SUG_ALL, PNR_DEMO,
   registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,

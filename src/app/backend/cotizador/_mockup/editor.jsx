@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import {
   MESES, ANIO_ACTUAL, REGIMENES, SUG, MODALIDADES, SUG_ALL,
-  CABINAS, EQUIPAJES, OCUPACIONES, TARIFA_TIPOS,
+  REGIMENES_DESTINO, REGIMEN_DETALLADO, esDetallado, regimenHeredable,
+  CABINAS, EQUIPAJES, OCUPACIONES, OCUPACION_MAS, PERSONAS_MIN, PERSONAS_MAX,
+  personasDeOcupacion, ocupacionDePersonas, TARIFA_TIPOS,
   PNR_DEMO, uid, clamp, toISO, parseISO, fmtCorto, money, venta,
   limpiarPegado, parsePNR, fechaDeVuelo, itinerarioMasCompleto,
   habitacionNueva, tarifaNueva, ventaTarifa,
@@ -66,7 +68,10 @@ function BloqueCliente({ q, set, refEl, onUsarBase }) {
     }, 300);
     return () => { vivo = false; clearTimeout(id); };
   }, [bq]);
-  /* "Usar datos": copia la ficha del cliente y deja la cotización como está. */
+  /* Clic en el resultado (o Enter): copia SOLO la ficha del cliente —nombre,
+     apellido, mail y teléfono— y deja la cotización como está. Arrastrar
+     hoteles, vuelos y opciones es la otra acción, la de abajo, y hay que
+     pedirla a propósito. */
   const usarDatos = (c) => {
     set((d) => { d.cliente = {
       nombre: c.clienteNombre || "", apellido: c.clienteApellido || "",
@@ -109,28 +114,36 @@ function BloqueCliente({ q, set, refEl, onUsarBase }) {
               const nom = [c.clienteNombre, c.clienteApellido].filter(Boolean).join(" ") || "Sin nombre";
               const ini = (c.clienteNombre?.[0] || "") + (c.clienteApellido?.[0] || "");
               return (
-                <div key={c.id} className="ac-i" style={{ cursor:"default", alignItems:"center" }}>
-                  <span style={{ width:24, height:24, borderRadius:99, flexShrink:0, display:"grid", placeItems:"center",
-                    background:"rgba(120,90,229,.12)", color:"var(--violet)", fontSize:9.5, fontWeight:800 }}>
-                    {ini || "?"}</span>
-                  <span style={{ flex:1, minWidth:0 }}>
-                    <b style={{ color:"var(--ink)" }}>{nom}</b>
-                    <span style={{ color:"var(--n400)", fontSize:11.5 }}> · {c.clienteEmail || c.clienteTelefono || "sin contacto"}</span>
-                    <span style={{ display:"block", fontSize:11, color:"var(--n400)" }}>
-                      <span className="mono">{c.numero}</span>
-                      {c.destino ? ` · ${c.destino}` : ""}
-                      {c.montoPrincipal ? ` · ${money(c.montoPrincipal)}` : ""}
+                <div key={c.id}>
+                  <div className="ac-i" style={{ cursor:"pointer", alignItems:"center" }} role="button"
+                    title="Traer nombre, apellido, email y teléfono de esta persona"
+                    onClick={() => usarDatos(c)}>
+                    <span style={{ width:24, height:24, borderRadius:99, flexShrink:0, display:"grid", placeItems:"center",
+                      background:"rgba(120,90,229,.12)", color:"var(--violet)", fontSize:9.5, fontWeight:800 }}>
+                      {ini || "?"}</span>
+                    <span style={{ flex:1, minWidth:0 }}>
+                      <b style={{ color:"var(--ink)" }}>{nom}</b>
+                      <span style={{ color:"var(--n400)", fontSize:11.5 }}> · {c.clienteEmail || c.clienteTelefono || "sin contacto"}</span>
+                      <span style={{ display:"block", fontSize:11, color:"var(--n400)" }}>
+                        <span className="mono">{c.numero}</span>
+                        {c.destino ? ` · ${c.destino}` : ""}
+                        {c.montoPrincipal ? ` · ${money(c.montoPrincipal)}` : ""}
+                      </span>
                     </span>
-                  </span>
-                  <Btn size="xs" style={{ flexShrink:0 }} onClick={() => usarDatos(c)}>
-                    <User size={11} /> Usar datos
-                  </Btn>
+                    <span style={{ display:"inline-flex", alignItems:"center", gap:5, flexShrink:0, fontSize:10.5,
+                      color:"var(--teal-3)", whiteSpace:"nowrap" }}>
+                      <User size={11} /> Traer datos
+                    </span>
+                  </div>
                   {onUsarBase && (
-                    <Btn size="xs" variant="v" style={{ flexShrink:0 }}
-                      title="Arrancar esta cotización con el contenido de esa"
-                      onClick={() => { onUsarBase(c); setBq(""); setBOpen(false); setRes([]); }}>
-                      <Copy size={11} /> Usar como base
-                    </Btn>
+                    <div style={{ padding:"0 11px 8px 41px" }}>
+                      <Btn size="xs" variant="g" data-base={c.id}
+                        title="Arranca una cotización NUEVA con todo el contenido de esa: hoteles, vuelos, opciones y precios"
+                        onClick={(e) => { e.stopPropagation();
+                          onUsarBase(c); setBq(""); setBOpen(false); setRes([]); }}>
+                        <Copy size={11} /> Copiar también hoteles, vuelos y opciones
+                      </Btn>
+                    </div>
                   )}
                 </div>
               );
@@ -138,7 +151,8 @@ function BloqueCliente({ q, set, refEl, onUsarBase }) {
             <div style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 11px", fontSize:10.5,
               color:"var(--n400)", borderTop:"1px solid var(--hair-soft)" }}>
               <Zap size={10} style={{ color:"var(--teal-2)", flexShrink:0 }} />
-              El teléfono matchea por dígitos: da igual si va con +598, con espacios o pelado.
+              Un clic trae solo nombre, apellido, email y teléfono. El teléfono matchea por dígitos:
+              da igual si va con +598, con espacios o pelado.
             </div>
           </div>
         )}
@@ -369,6 +383,37 @@ function SeccionDestinos({ q, set, tramos, toast }) {
   /* 7 noches por defecto: es el paquete estándar del 70-80% de las ventas */
   const filaNueva = () => ({ id:uid("dst"), ciudad:"", noches:7, regimen:"", checkinManual:null });
   const agregar = () => set((d) => { d.destinos.push(filaNueva()); });
+
+  /* ── La cascada del régimen: arriba gobierna abajo ─────────────────────
+     Cambiar el régimen de un destino lo baja a ESE tramo de TODAS las opciones
+     hoteleras. Al revés no: tocar el régimen del hotel de la opción 1 no mueve
+     el de arriba, y está bien —cada hotel puede tener el suyo—. Para ese caso
+     existe "Régimen detallado": no cascadea, cada hotel se edita a mano y la
+     línea de servicios dice "según régimen detallado". */
+  const cascadearRegimen = (i, v) => {
+    set((d) => {
+      d.destinos[i].regimen = v;
+      if (!v || esDetallado(v)) return;
+      (d.opciones || []).forEach((o) => {
+        const hs = o.hoteles || (o.hoteles = []);
+        while (hs.length <= i) hs.push({ hotelId:null, libre:"", cat:0, regimen:"" });
+        hs[i].regimen = v;
+      });
+    });
+    const n = (q.opciones || []).length;
+    if (esDetallado(v)) toast({ msg:"Régimen detallado: cada hotel lleva el suyo", tone:"ok" });
+    else if (v && n > 0) toast({ msg:`Régimen aplicado a ${n} ${n === 1 ? "opción" : "opciones"}`, tone:"ok" });
+  };
+
+  /* ¿los hoteles de este tramo dicen algo distinto de lo que dice arriba? */
+  const hotelesDivergen = (i) => {
+    const dd = q.destinos[i];
+    if (esDetallado(dd?.regimen)) return false;
+    const regs = [...new Set((q.opciones || [])
+      .map((o) => String(o.hoteles?.[i]?.regimen || "").trim()).filter(Boolean))];
+    if (regs.length > 1) return true;
+    return regs.length === 1 && !!dd?.regimen && regs[0] !== String(dd.regimen).trim();
+  };
   return (
     <div>
       {q.destinos.length === 0 ? (
@@ -406,17 +451,36 @@ function SeccionDestinos({ q, set, tramos, toast }) {
                   </div>
                 </div>
 
-                <select className="in" style={{ flex:"0 1 150px", height:34, fontSize:12 }} value={dd.regimen || ""}
-                  title="Régimen de este destino"
-                  onChange={(e) => set((d) => { d.destinos[i].regimen = e.target.value; })}>
+                <select className="in" data-regimen-destino={i} style={{ flex:"0 1 168px", height:34, fontSize:12 }}
+                  value={dd.regimen || ""}
+                  title="Régimen de este destino — baja a los hoteles de todas las opciones"
+                  onChange={(e) => cascadearRegimen(i, e.target.value)}>
                   <option value="">Régimen…</option>
-                  {REGIMENES.map((x) => <option key={x}>{x}</option>)}
+                  {REGIMENES_DESTINO.map((x) => <option key={x}>{x}</option>)}
                 </select>
 
-                {/* las fechas ya no se tocan acá: bajan solas de la fecha de salida */}
-                <span className="mono" style={{ fontSize:10.5, color:"var(--n400)", whiteSpace:"nowrap", flexShrink:0 }}>
-                  {t?.checkin ? <>{fmtCorto(t.checkin)} → {fmtCorto(t.checkout)}</> : "sin fecha de salida"}
-                </span>
+                {/* Check-in editable: el default baja de la fecha de salida, pero el
+                    vuelo que sale el 14 y llega el 15 arranca el hotel el 15. Editarlo
+                    recalcula el check-out; "Actualizar todo" lo devuelve al automático. */}
+                <div style={{ display:"flex", alignItems:"center", gap:5, flexShrink:0 }}>
+                  <span className="lbl" style={{ fontSize:9 }}>Check-in</span>
+                  <input className="in mono" type="date" data-checkin={i}
+                    style={{ height:34, width:126, fontSize:11, padding:"0 7px" }}
+                    title="Check-in de este destino. Por defecto sale de la fecha de salida; cambialo si el vuelo llega al día siguiente."
+                    value={t?.checkin || ""}
+                    onChange={(e) => { const v = e.target.value;
+                      set((d) => { d.destinos[i].checkinManual = v || null; }); }} />
+                  <span className="mono" data-checkout={i}
+                    style={{ fontSize:10.5, color:"var(--n400)", whiteSpace:"nowrap" }}>
+                    → {t?.checkout ? fmtCorto(t.checkout) : "—"}
+                  </span>
+                  {t?.manual && (
+                    <button className="btn btn-g btn-ico" style={{ width:24, height:24 }}
+                      title="Volver al check-in automático, el que baja de la fecha de salida"
+                      onClick={() => set((d) => { d.destinos[i].checkinManual = null; })}>
+                      <RefreshCw size={11} /></button>
+                  )}
+                </div>
 
                 <div style={{ display:"flex", gap:3, marginLeft:"auto", flexShrink:0 }}>
                   <button className="btn btn-g btn-ico" title="Quitar destino"
@@ -429,6 +493,17 @@ function SeccionDestinos({ q, set, tramos, toast }) {
                     <Plus size={13} />
                   </button>
                 </div>
+
+                {hotelesDivergen(i) && (
+                  <div style={{ flexBasis:"100%", display:"flex", alignItems:"center", gap:7, paddingLeft:28 }}>
+                    <AlertCircle size={11} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
+                    <span style={{ fontSize:10.5, color:"var(--ink-amber)" }}>
+                      Los hoteles de este tramo tienen otro régimen.
+                    </span>
+                    <button className="chip chip-mini" onClick={() => cascadearRegimen(i, REGIMEN_DETALLADO)}>
+                      Pasar a régimen detallado</button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -436,7 +511,8 @@ function SeccionDestinos({ q, set, tramos, toast }) {
       )}
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
         <Zap size={11} style={{ color:"var(--teal-2)" }} />
-        Las fechas se calculan solas desde la fecha de salida. El régimen de cada destino baja a los servicios y a las opciones hoteleras.
+        El check-in baja solo de la fecha de salida y podés pisarlo por destino: el check-out se recalcula.
+        El régimen baja a los servicios y a los hoteles de todas las opciones; con “Régimen detallado” cada hotel lleva el suyo.
       </div>
     </div>
   );
@@ -1323,6 +1399,58 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
   );
 }
 
+/* ── Ocupación: lista corta y "Más…" para el resto ──────────────────────
+   Single, Doble y de 3 a 5 personas cubren casi todo lo que se vende. "Más…"
+   convierte el selector en un campo numérico de 6 a 20 y la etiqueta pasa a
+   decir "N personas". Una cotización vieja guardada con "9 personas" abre
+   directo en modo numérico: el valor es el mismo texto de siempre. */
+function CampoOcupacion({ valor, onChange }) {
+  const n = personasDeOcupacion(valor);
+  const fueraDeLista = !OCUPACIONES.includes(valor) && n != null;
+  const [manual, setManual] = useState(fueraDeLista);
+  const [txt, setTxt] = useState(String(n ?? PERSONAS_MIN));
+  useEffect(() => { if (fueraDeLista) setManual(true); }, [fueraDeLista]);
+  /* si la réplica de otra opción devolvió la ocupación a la lista ("Doble"),
+     este campo tiene que volver con ella y no quedarse con un número viejo */
+  useEffect(() => { if (!fueraDeLista && OCUPACIONES.includes(valor)) setManual(false); }, [fueraDeLista, valor]);
+  useEffect(() => { if (n != null) setTxt(String(n)); }, [n]);
+
+  if (manual) {
+    const cerrar = () => { const v = ocupacionDePersonas(txt); setTxt(String(personasDeOcupacion(v))); onChange(v); };
+    /* el campo guarda dígitos pelados mientras se tipea ("1" camino a "12"):
+       la etiqueta lee ese número, no el texto "N personas" que todavía no es */
+    const enPantalla = Number(txt) > 0 ? Number(txt) : PERSONAS_MIN;
+    return (
+      <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+        <input className="in mono" data-personas inputMode="numeric"
+          style={{ height:34, width:58, textAlign:"right" }} value={txt}
+          title={`De ${PERSONAS_MIN} a ${PERSONAS_MAX} personas`}
+          onChange={(e) => { const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
+            setTxt(raw);
+            const v = Number(raw);
+            if (v >= PERSONAS_MIN && v <= PERSONAS_MAX) onChange(`${v} personas`); }}
+          onBlur={cerrar}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); cerrar(); e.currentTarget.blur(); } }} />
+        <span style={{ fontSize:11.5, color:"var(--n500)", whiteSpace:"nowrap" }}>
+          {enPantalla} personas</span>
+        <button className="btn btn-g btn-ico" style={{ width:26, height:26, marginLeft:"auto" }}
+          title="Volver a la lista" onClick={() => { setManual(false); onChange("Doble"); }}>
+          <X size={12} /></button>
+      </div>
+    );
+  }
+  return (
+    <select className="in" data-ocupacion style={{ height:34 }} value={valor || ""}
+      onChange={(e) => { const v = e.target.value;
+        if (v === OCUPACION_MAS) { setManual(true); onChange(ocupacionDePersonas(PERSONAS_MIN)); return; }
+        onChange(v); }}>
+      {valor && !OCUPACIONES.includes(valor) && <option key="actual">{valor}</option>}
+      {OCUPACIONES.map((x) => <option key={x}>{x}</option>)}
+      <option value={OCUPACION_MAS}>{OCUPACION_MAS}</option>
+    </select>
+  );
+}
+
 /* ── 8 · Opciones hoteleras ──────────────────────────────────────────── */
 function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
   const { hotelById, hotelesCotizadosEn, registrarHotelLibre } = useCatalogo();
@@ -1333,8 +1461,10 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
   const [over, setOver] = useState(null);
   const [armado, setArmado] = useState(null);
   const nombreRefs = useRef({});
-  /* el régimen del destino es solo el arranque: después cada hotel manda el suyo */
-  const regimenDeTramo = (hi) => q.destinos[hi]?.regimen || "Desayuno incluido";
+  /* el régimen del destino es solo el arranque: después cada hotel manda el suyo.
+     "Régimen detallado" no es un régimen, así que no baja: el hotel nuevo
+     arranca con el default y el vendedor lo elige. */
+  const regimenDeTramo = (hi) => regimenHeredable(q.destinos[hi]?.regimen);
 
   useEffect(() => { if (foco && nombreRefs.current[foco]) { nombreRefs.current[foco].focus(); nombreRefs.current[foco].select(); setFoco(null); } }, [foco, q.opciones.length]);
 
@@ -1357,8 +1487,8 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
         /* el régimen viaja con cada hotel: Madrid con desayuno, Barcelona solo alojamiento */
         d.opciones.push({ id, nombre:`Opción ${n}`,
           hoteles: d.destinos.map((x) => ({ hotelId:null, libre:"", cat:0,
-            regimen: x.regimen || "Desayuno incluido" })),
-          factor:factorDefault, habitaciones:[habitacionNueva("Doble", factorDefault)] });
+            regimen: regimenHeredable(x.regimen) })),
+          factor:factorDefault, habitaciones:[{ ...habitacionNueva("Doble", factorDefault), grupo:uid("hg") }] });
       }
     });
     setFoco(id);
@@ -1366,20 +1496,65 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
   };
   /* la segunda tarifa suele ser el menor, después el infante y la familiar */
   const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por infante" : n === 3 ? "Por familia" : "Por adulto");
-  /* "+ Habitación" clona la última: casi siempre cambia una sola cosa (la ocupación o un neto) */
+  /* ── Habitaciones: la misma en todas las opciones ──────────────────────
+     Una habitación no cambia entre opciones: cambia el hotel y cambia el
+     precio. Por eso "Agregar habitación" la crea en esta opción (clonando la
+     última, que es lo que el vendedor quiere el 90% de las veces) y la replica
+     en las demás con los netos en 0 — los precios se cargan por hotel. `grupo`
+     ata las réplicas: cambiar la ocupación o el tipo en una las mueve a todas.
+     Las habitaciones viejas, sin `grupo`, quedan sueltas como hasta ahora. */
+  const mismaHab = (h, ocupacion, tipo) =>
+    norm(h?.ocupacion || "") === norm(ocupacion || "") && norm(h?.tipo || "") === norm(tipo || "");
+  const tarifaEnCero = (t) => ({ id:uid("tf"), tipo:t?.tipo || "Por adulto", tipoLibre:t?.tipoLibre || "",
+    neto:0, venta:null, factor:factorDefault });
+  const replicaDe = (hab) => ({ id:uid("hab"), grupo:hab.grupo, ocupacion:hab.ocupacion, tipo:hab.tipo,
+    tarifas: (hab.tarifas || []).map(tarifaEnCero) });
+  /* cuántas opciones no tienen todavía esa ocupación + tipo (para el aviso) */
+  const faltantes = (i, ocupacion, tipo) => (q.opciones || [])
+    .filter((o, j) => j !== i && !(o.habitaciones || []).some((h) => mismaHab(h, ocupacion, tipo))).length;
+
   const agregarHabitacion = (i) => {
-    const clona = (q.opciones[i]?.habitaciones || []).length > 0;
+    const hsAct = q.opciones[i]?.habitaciones || [];
+    const ultAct = hsAct[hsAct.length - 1];
+    const ocupacion = ultAct?.ocupacion || "Doble";
+    const tipo = ultAct?.tipo ?? "Estándar";
+    const replicas = faltantes(i, ocupacion, tipo);
     set((d) => {
       const hs = d.opciones[i].habitaciones || (d.opciones[i].habitaciones = []);
       const ult = hs[hs.length - 1];
-      if (!ult) { hs.push(habitacionNueva("Doble", factorDefault)); return; }
-      const cp = JSON.parse(JSON.stringify(ult));
-      cp.id = uid("hab");
-      (cp.tarifas || []).forEach((tf) => { tf.id = uid("tf"); });
-      hs.push(cp);
+      const nueva = ult
+        ? { ...JSON.parse(JSON.stringify(ult)), id:uid("hab"), grupo:uid("hg") }
+        : { ...habitacionNueva("Doble", factorDefault), grupo:uid("hg") };
+      (nueva.tarifas || []).forEach((tf) => { tf.id = uid("tf"); });
+      hs.push(nueva);
+      d.opciones.forEach((o, j) => {
+        if (j === i) return;
+        const otras = o.habitaciones || (o.habitaciones = []);
+        if (otras.some((h) => h.grupo === nueva.grupo || mismaHab(h, nueva.ocupacion, nueva.tipo))) return;
+        otras.push(replicaDe(nueva));
+      });
     });
-    if (clona) toast({ msg:"Habitación agregada igual a la anterior — ajustá lo que cambie", tone:"ok" });
+    if (replicas > 0) {
+      toast({ msg:`Habitación agregada acá y en ${replicas} ${replicas === 1 ? "opción más" : "opciones más"} — los precios se cargan por hotel`, tone:"ok" });
+    } else if (hsAct.length > 0) {
+      toast({ msg:"Habitación agregada igual a la anterior — ajustá lo que cambie", tone:"ok" });
+    }
   };
+
+  /* La ocupación y el tipo viajan a las réplicas; el neto y la venta jamás. */
+  const editarHab = (i, hj, campo, valor) => set((d) => {
+    const hab = d.opciones[i].habitaciones[hj];
+    hab[campo] = valor;
+    if (!hab.grupo) return;
+    d.opciones.forEach((o, j) => {
+      if (j === i) return;
+      const hs = o.habitaciones || (o.habitaciones = []);
+      const gemela = hs.find((h) => h.grupo === hab.grupo);
+      if (gemela) { gemela[campo] = valor; return; }
+      if (hs.some((h) => mismaHab(h, hab.ocupacion, hab.tipo))) return;
+      hs.push(replicaDe(hab));
+    });
+  });
   /* el "+" de la cabecera: agrega una opción en las mismas condiciones que esta */
   const duplicar = (i) => {
     const src = q.opciones[i]; const id = uid("op");
@@ -1535,9 +1710,6 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                     <span className="lbl">Habitaciones</span>
                     {habs.length > 0 && <Pill tone="n">{habs.length}</Pill>}
                     <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
-                    <Btn size="xs" title="Agrega una habitación igual a la última — cambiá lo que difiera"
-                      onClick={() => agregarHabitacion(i)}>
-                      <Plus size={11} /> Agregar habitación</Btn>
                   </div>
 
                   {habs.length === 0 && (
@@ -1550,18 +1722,16 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                     <div key={hab.id} className="a-pop" style={{ border:"1px solid var(--hair-soft)", borderRadius:12,
                       padding:"12px", marginBottom:12, background:"var(--card-3)" }}>
                       <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-end" }}>
-                        <div style={{ flex:"1 1 140px" }}>
-                          <Label>Ocupación</Label>
-                          <select className="in" style={{ height:34 }} value={hab.ocupacion}
-                            onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].ocupacion = e.target.value; })}>
-                            {OCUPACIONES.map((x) => <option key={x}>{x}</option>)}
-                          </select>
+                        <div style={{ flex:"1 1 165px" }}>
+                          <Label hint={hab.grupo ? "igual en todas las opciones" : null}>Ocupación</Label>
+                          <CampoOcupacion valor={hab.ocupacion}
+                            onChange={(v) => editarHab(i, hj, "ocupacion", v)} />
                         </div>
                         <div style={{ flex:"2 1 190px" }}>
                           <Label hint="opcional">Tipo de habitación</Label>
                           <input className="in" style={{ height:34 }} value={hab.tipo || ""}
                             placeholder="Vista al mar, suite junior, apartamento…"
-                            onChange={(e) => set((d) => { d.opciones[i].habitaciones[hj].tipo = e.target.value; })} />
+                            onChange={(e) => editarHab(i, hj, "tipo", e.target.value)} />
                         </div>
                         <button className="btn btn-g btn-ico" style={{ width:34, height:34 }} title="Quitar habitación"
                           disabled={habs.length <= 1}
@@ -1635,15 +1805,15 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             const ts = d.opciones[i].habitaciones[hj].tarifas;
                             ts.push(tarifaNueva(tipoSiguiente(ts.length), factorDefault)); })}>
                             <Plus size={11} /> Tarifa</Btn>
-                          <Btn size="xs" style={{ marginLeft:"auto" }}
-                            title="Agrega una habitación igual a esta — cambiá lo que difiera"
-                            onClick={() => agregarHabitacion(i)}>
-                            <Plus size={11} /> Habitación</Btn>
                         </div>
                       </div>
                     </div>
                   ))}
 
+                  <Btn size="xs" data-agregar-hab={i}
+                    title="Agrega la habitación acá y en las demás opciones que todavía no la tengan — los precios se cargan por hotel"
+                    onClick={() => agregarHabitacion(i)}>
+                    <Plus size={11} /> Agregar habitación</Btn>
                 </div>
               </div>
             </React.Fragment>

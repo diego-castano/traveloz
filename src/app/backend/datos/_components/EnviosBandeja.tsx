@@ -209,7 +209,7 @@ export function EnviosBandeja() {
           <thead>
             <tr className="border-b border-neutral-200 bg-neutral-50/60 text-left">
               <Th>Fecha</Th>
-              <Th>Contacto</Th>
+              <Th>Nombre y apellido</Th>
               <Th className="text-center">Pax</Th>
               <Th>Vendedor</Th>
               <Th>Destino</Th>

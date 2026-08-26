@@ -3,14 +3,19 @@
 // ---------------------------------------------------------------------------
 // Formulario público de datos de pago.
 //
-// Un solo bloque, sin repetición. El número y el vencimiento se formatean en
-// vivo (grupos de 4 y MM/AA) porque tipear 16 dígitos corridos en un celular
-// es donde más se equivoca la gente.
+// Dos bloques: PASAJERO arriba (a nombre de quién es el pago) y TARJETA
+// abajo. El orden importa: el titular de la tarjeta muchas veces no es quien
+// viaja, y el vendedor y Administración buscan por el pasajero.
 //
-// Nada de lo que se escribe acá se guarda en claro: la server action cifra el
-// cuerpo con AES-256-GCM y solo persiste titular, emisor y últimos 4. El
-// microcopy de las 72 horas está a la vista a propósito - es la promesa que
-// hace que alguien se anime a cargar su tarjeta en un formulario web.
+// El número y el vencimiento se formatean en vivo (grupos de 4 y MM/AA)
+// porque tipear 16 dígitos corridos en un celular es donde más se equivoca la
+// gente.
+//
+// De la tarjeta no se guarda nada en claro: la server action cifra el cuerpo
+// con AES-256-GCM y solo persiste emisor y últimos 4. Sí quedan legibles el
+// pasajero y el titular, que son la identidad del registro. El microcopy de
+// las 96 horas está a la vista a propósito - es la promesa que hace que
+// alguien se anime a cargar su tarjeta en un formulario web.
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from "react";
@@ -48,11 +53,31 @@ function formatearNumero(raw: string): string {
   return d.replace(/(.{4})/g, "$1 ").trim();
 }
 
+/**
+ * Cuotas ofrecidas. Espejo de CUOTAS_OPCIONES en src/lib/datos-form.ts, que es
+ * quien valida del lado del server (ese módulo trae Prisma y no puede entrar
+ * a un bundle cliente). Si una lista cambia, la otra también.
+ */
+const CUOTAS = [1, 2, 3, 4, 5, 6];
+
 function formatearVencimiento(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 4);
   if (d.length <= 2) return d;
   return `${d.slice(0, 2)}/${d.slice(2)}`;
 }
+
+/**
+ * Este es el único formulario de datos que rompe el coral de marca: pide
+ * número de tarjeta, y el cliente no quiere ni un pixel de rojo cerca de eso
+ * ("transmite alarma"). Pisa acá las variables que ui.tsx expone
+ * (`--form-acento` / `--form-acento-sombra`, con fallback a coral) por el
+ * violeta del cotizador. PasajerosForm no las setea, así que sigue coral sin
+ * tocarlo.
+ */
+const acentoVars = {
+  "--form-acento": "#785AE5",
+  "--form-acento-sombra": "rgba(120,90,229,0.9)",
+} as React.CSSProperties;
 
 export function PagoForm({
   slug,
@@ -74,20 +99,47 @@ export function PagoForm({
 
   if (state?.ok) {
     return (
-      <Exito
-        titulo={state.message}
-        detalle="Por seguridad no guardamos una copia visible: si necesitás cambiar algo, escribile a tu asesor y te manda un link nuevo."
-      />
+      <div style={acentoVars}>
+        <Exito
+          titulo={state.message}
+          detalle="Por seguridad no guardamos una copia visible: si necesitás cambiar algo, escribile a tu asesor y te manda un link nuevo."
+        />
+      </div>
     );
   }
 
   return (
-    <form action={formAction} className="space-y-6 sm:space-y-7">
+    <form action={formAction} className="space-y-6 sm:space-y-7" style={acentoVars}>
       <Honeypot />
 
-      {/* ── Titular ─────────────────────────────────────────────────────── */}
+      {/* ── Pasajero ────────────────────────────────────────────────────── */}
       <section className="space-y-3.5">
-        <Seccion>Titular</Seccion>
+        <Seccion>Pasajero</Seccion>
+        <Campo
+          name="pasajeroNombre"
+          label="Nombre y apellido del pasajero"
+          requerido
+          required
+          maxLength={150}
+          autoComplete="name"
+          ayuda="A nombre de quién es el viaje que se está pagando."
+        />
+        <Campo
+          name="pasajeroDocumento"
+          label="Documento del pasajero"
+          requerido
+          required
+          maxLength={40}
+          ayuda="Cédula o pasaporte."
+        />
+      </section>
+
+      <Separador />
+
+      {/* ── Tarjeta ─────────────────────────────────────────────────────── */}
+      <section className="space-y-3.5">
+        <Seccion>Tarjeta</Seccion>
+
         <Campo
           name="titular"
           label="Titular de la tarjeta"
@@ -104,16 +156,8 @@ export function PagoForm({
           requerido
           required
           maxLength={40}
-          inputMode="numeric"
           placeholder="Cédula o DNI"
         />
-      </section>
-
-      <Separador />
-
-      {/* ── Tarjeta ─────────────────────────────────────────────────────── */}
-      <section className="space-y-3.5">
-        <Seccion>La tarjeta</Seccion>
 
         <div>
           <Label requerido htmlFor="numero">
@@ -175,10 +219,9 @@ export function PagoForm({
           <Label htmlFor="cuotas">Cuotas</Label>
           <select id="cuotas" name="cuotas" className={inputClass} defaultValue="">
             <option value="">Sin especificar</option>
-            <option value="1">1 pago</option>
-            {[2, 3, 6, 9, 12, 18, 24].map((n) => (
+            {CUOTAS.map((n) => (
               <option key={n} value={String(n)}>
-                {n} cuotas
+                {n === 1 ? "1 pago" : `${n} cuotas`}
               </option>
             ))}
           </select>
@@ -191,7 +234,7 @@ export function PagoForm({
 
       {/* ── Autorización + envío ────────────────────────────────────────── */}
       <div className="space-y-3.5">
-        <label className="flex cursor-pointer items-start gap-2.5 rounded-[12px] border border-neutral-900/[0.1] bg-neutral-50/70 px-3.5 py-3.5 transition-colors hover:border-neutral-900/20 has-[:checked]:border-[#F43E55]/60 has-[:checked]:bg-[#F43E55]/[0.035]">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-[12px] border border-neutral-900/[0.1] bg-neutral-50/70 px-3.5 py-3.5 transition-colors hover:border-neutral-900/20 has-[:checked]:border-[#785AE5]/60 has-[:checked]:bg-[#785AE5]/[0.035]">
           <input
             type="checkbox"
             name="autorizo"
@@ -217,11 +260,11 @@ export function PagoForm({
           <Lock className="mt-[2px] h-3.5 w-3.5 shrink-0 text-neutral-400" strokeWidth={1.6} />
           <div className="space-y-1">
             <p className="text-[12px] leading-relaxed text-neutral-600">
-              Los datos viajan cifrados y se eliminan automáticamente a las 72 horas.
+              Los datos viajan cifrados y se eliminan automáticamente a las 96 horas.
             </p>
             <p className="text-[11.5px] leading-relaxed text-neutral-400">
-              Tu asesor ve el número una sola vez, dentro del panel. Nunca viaja por email ni por
-              WhatsApp.
+              Tu asesor los ve una sola vez en el panel con su clave, y Administración de la
+              agencia los recibe para procesar el cobro. Cada acceso queda registrado.
             </p>
           </div>
         </div>

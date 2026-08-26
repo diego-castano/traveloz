@@ -14,10 +14,13 @@
 
 import { FileText, Paperclip, ReceiptText, UserRound } from "lucide-react";
 import type { Respuesta } from "@/lib/cotizador-form";
+import { nombreCompleto } from "@/lib/datos-nombre";
 
 export interface PasajeroVista {
   id: string;
+  /** "Nombre y apellido" completo en los envíos nuevos. */
   nombres: string;
+  /** "" en los nuevos; los viejos lo traen cargado. */
   apellidos: string;
   fechaNacimiento: Date | null;
   documento: string;
@@ -100,13 +103,15 @@ export function EnvioDetalleView({
               Pasajero {i + 1}
             </span>
             <span className="text-[15px] font-bold text-neutral-900">
-              {p.nombres} {p.apellidos}
+              {nombreCompleto(p)}
             </span>
           </div>
 
+          {/* `Dato` omite los vacíos: pasaporte, dirección, ciudad y país
+              solo salen en los envíos VIEJOS, que son los únicos que los
+              tienen cargados. El formulario dejó de pedirlos el 26/08/2026. */}
           <dl className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
-            <Dato label="Documento" valor={p.documento} />
-            <Dato label="Pasaporte" valor={p.pasaporte} />
+            <Dato label="Documento de viaje" valor={p.documento} />
             <Dato
               label="Nacimiento"
               valor={
@@ -115,6 +120,7 @@ export function EnvioDetalleView({
             />
             <Dato label="Email" valor={p.email} href={`mailto:${p.email}`} />
             <Dato label="Teléfono" valor={p.telefono} href={`tel:${p.telefono}`} />
+            <Dato label="Pasaporte" valor={p.pasaporte} />
             <Dato label="Dirección" valor={p.direccion} />
             <Dato label="Ciudad" valor={p.ciudad} />
             <Dato label="País" valor={p.pais} />
@@ -130,10 +136,10 @@ export function EnvioDetalleView({
                 <Paperclip className="h-3 w-3" /> Archivos
               </span>
               {p.documentoArchivoUrl && (
-                <Adjunto url={p.documentoArchivoUrl} label="Documento" />
+                <Adjunto url={p.documentoArchivoUrl} label="Foto del documento" />
               )}
               {p.pasaporteArchivoUrl && (
-                <Adjunto url={p.pasaporteArchivoUrl} label="Pasaporte" />
+                <Adjunto url={p.pasaporteArchivoUrl} label="Archivo adicional" />
               )}
             </div>
           )}

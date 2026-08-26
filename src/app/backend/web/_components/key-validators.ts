@@ -78,6 +78,8 @@ export const KEY_VALIDATORS: Record<string, Validator> = {
   notificaciones_email_paquete: optionalEmailListV,
   notificaciones_email_trabaja: optionalEmailListV,
   notificaciones_email_newsletter: optionalEmailListV,
+  // Casilla de Administración para el botón "Enviar a ADM" de la bóveda.
+  notificaciones_email_adm: optionalEmailListV,
 
   // Destinos CTA
   destinos_cta_link_href: internalOrExternalUrl,

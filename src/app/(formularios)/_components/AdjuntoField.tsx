@@ -35,6 +35,7 @@ export function AdjuntoField({
   label,
   ayuda,
   requerido,
+  cta = "Adjuntar archivo",
   slug,
   lote,
   accept,
@@ -46,6 +47,9 @@ export function AdjuntoField({
   label: string;
   ayuda?: string;
   requerido?: boolean;
+  /** Texto del botón vacío. Se separa del label para no repetirlo dos veces
+   *  cuando el campo YA se llama "Adjuntar archivo". */
+  cta?: string;
   slug: string;
   /** Agrupa los archivos de este envío dentro del bucket. */
   lote: string;
@@ -223,7 +227,7 @@ export function AdjuntoField({
             className="flex h-[46px] w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-neutral-900/20 bg-neutral-50/50 px-3 text-[13px] font-medium text-neutral-600 transition-colors hover:border-neutral-900/40 hover:bg-neutral-50 hover:text-neutral-900 sm:h-[42px] sm:text-[12.5px]"
           >
             <Paperclip className="h-3.5 w-3.5 text-neutral-400" strokeWidth={1.8} />
-            Adjuntar archivo
+            {cta}
           </motion.button>
         )}
       </AnimatePresence>

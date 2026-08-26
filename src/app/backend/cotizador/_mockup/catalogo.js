@@ -556,9 +556,19 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
          que siga al itinerario mientras el vendedor no la toque a mano. */
       servicios.push({ cat: "alojamiento", texto: "", auto: "noches" });
 
+      /* El seguro se guarda por PLAN ("Master", "Total", "Platinum"): es el
+         nombre comercial de la cobertura, no una línea de cotización. Cuando el
+         operador no escribió un `textoDisplay`, la línea salía como "Master"
+         pelado y el pasajero leía eso. Va con la categoría adelante:
+         "Seguro de asistencia al viajero · Master". Si el plan ya se nombra
+         solo (el operador escribió "Seguro de asistencia…"), no se repite. */
       for (const ps of asigSeguros) {
         const s = seguroPorId.get(ps.seguroId);
-        const texto = (ps.textoDisplay || s?.plan || "").trim();
+        const propio = String(ps.textoDisplay || "").trim();
+        const plan = String(s?.plan || "").trim();
+        const texto = propio || (plan
+          ? (/seguro|asistencia/i.test(plan) ? plan : `Seguro de asistencia al viajero · ${plan}`)
+          : "");
         if (texto) servicios.push({ cat: "seguro", texto });
       }
 

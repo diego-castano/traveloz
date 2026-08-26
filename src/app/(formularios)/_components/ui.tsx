@@ -14,7 +14,14 @@ import { useFormStatus } from "react-dom";
 import { Check } from "lucide-react";
 import { motion } from "motion/react";
 
-/** Acento de marca. Fijo, igual que en los landings de cotizador. */
+/**
+ * Acento de marca por default (coral, igual que en los landings de
+ * cotizador). Los componentes de acá abajo NO usan este valor directo: leen
+ * `var(--form-acento, ACENTO)` — y `var(--form-acento-sombra, …)` para las
+ * sombras — así un formulario puntual puede pisar el acento (ver PagoForm,
+ * que lo pisa a violeta) sin que el resto herede el cambio. Se mantiene
+ * exportado para no romper a quien ya importa ACENTO directamente.
+ */
 export const ACENTO = "#F43E55";
 
 /** Clase única de todos los controles. Ver formularios.css. */
@@ -35,8 +42,17 @@ export function Label({
       className="mb-[5px] block text-[12.5px] font-medium leading-tight text-neutral-600"
     >
       {children}
-      {/* El asterisco marca, no grita: rojo de marca al 55%. */}
-      {requerido && <span className="ml-0.5 text-[#F43E55]/[0.55]">*</span>}
+      {/* El asterisco marca, no grita: acento de marca al 55%. Va por style
+          (no clase Tailwind) porque el modificador de opacidad no puede
+          resolver un color que vive en una variable CSS. */}
+      {requerido && (
+        <span
+          className="ml-0.5"
+          style={{ color: "color-mix(in srgb, var(--form-acento, #F43E55) 55%, transparent)" }}
+        >
+          *
+        </span>
+      )}
     </label>
   );
 }
@@ -53,7 +69,11 @@ export function Ayuda({ children }: { children?: string }) {
 export function Seccion({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span aria-hidden className="h-3 w-[3px] rounded-full" style={{ background: ACENTO }} />
+      <span
+        aria-hidden
+        className="h-3 w-[3px] rounded-full"
+        style={{ background: "var(--form-acento, #F43E55)" }}
+      />
       <h2 className="text-[11.5px] font-bold uppercase tracking-[0.11em] text-neutral-500">
         {children}
       </h2>
@@ -128,10 +148,12 @@ export function SubmitButton({
       type="submit"
       disabled={bloqueado}
       style={{
-        background: ACENTO,
+        background: "var(--form-acento, #F43E55)",
         // Sombra teñida del propio botón: lo despega de la tarjeta sin el gris
         // sucio de una sombra neutra. Se apaga cuando está bloqueado.
-        boxShadow: bloqueado ? "none" : "0 8px 20px -10px rgba(244,62,85,0.85)",
+        boxShadow: bloqueado
+          ? "none"
+          : "0 8px 20px -10px var(--form-acento-sombra, rgba(244,62,85,0.85))",
       }}
       className="flex h-[50px] w-full items-center justify-center rounded-[12px] px-6 text-[15.5px] font-semibold tracking-[0.01em] text-white transition-all duration-150 hover:brightness-[1.06] active:translate-y-px active:brightness-95 disabled:cursor-not-allowed disabled:opacity-[0.55] sm:h-[46px] sm:text-[15px]"
     >
@@ -149,7 +171,10 @@ export function Exito({ titulo, detalle }: { titulo: string; detalle: string }) 
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 320, damping: 18 }}
         className="mb-4 flex h-14 w-14 items-center justify-center rounded-full"
-        style={{ background: ACENTO, boxShadow: "0 10px 24px -12px rgba(244,62,85,0.9)" }}
+        style={{
+          background: "var(--form-acento, #F43E55)",
+          boxShadow: "0 10px 24px -12px var(--form-acento-sombra, rgba(244,62,85,0.9))",
+        }}
       >
         <motion.span
           initial={{ scale: 0 }}

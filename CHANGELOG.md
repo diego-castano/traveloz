@@ -11,6 +11,48 @@ del catálogo, CRM).
 
 ---
 
+## 26 de agosto de 2026
+
+### Cambiado
+
+**Ronda de feedback del check-in en producción (Gero y Pablo, 26/08).**
+
+- **Formulario de datos de pasajeros, más corto y obligatorio.** Se va el
+  bloque de datos del viaje. Por pasajero quedan cinco campos obligatorios:
+  nombre y apellido (uno solo), documento de viaje (cédula o pasaporte),
+  fecha de nacimiento, email y teléfono. Ciudad, país y dirección solo se
+  piden en la factura con RUT. Un único "Foto del documento" y un "Adjuntar
+  archivo", los dos opcionales: sin foto también se puede enviar.
+- **Formulario de tarjeta reordenado.** Arriba el pasajero (nombre y
+  documento de quien viaja); abajo la tarjeta: titular tal cual figura,
+  número, vencimiento, código y cuotas de 1 a 6. Las tarjetas se listan por
+  el nombre del pasajero. El botón y el aviso de "Datos de tarjeta" pasan de
+  rojo a violeta.
+- **La bóveda guarda 96 horas** (antes 72) para cubrir el fin de semana.
+- **"Enviar a ADM"** al lado de "Ver datos": pide el número de file, manda
+  los datos a la casilla de administración (se configura en Web →
+  Notificaciones) y queda registrado quién lo envió y cuándo. Abrir "Ver
+  datos" también queda en el registro de accesos.
+- **Cotizador.** Elegir un cliente del historial carga solo sus datos, nunca
+  la cotización anterior. El régimen del encabezado cambia todos los hoteles,
+  y el modo "Régimen detallado" deja cada hotel a mano y escribe "según
+  régimen detallado" en servicios. Fecha de check-in editable por destino
+  (vuelos nocturnos). "Agregar habitación" vive solo dentro de cada opción y
+  replica la habitación en las demás. El selector de personas llega a 5 y
+  después "Más…" editable.
+- **PDF.** Cada trayecto de vuelo y cada opción de alojamiento van enteros,
+  sin partirse entre páginas. El logo del encabezado es la imagen del sitio,
+  que imprime bien en cualquier navegador. Las notas aparecen solo si hay
+  notas. Se quitó la línea de validez del PDF y de la página del pasajero.
+- El control de previsualización escritorio/celular que había quedado en la
+  página del pasajero se retiró.
+
+### Arreglado
+
+- **No se podía escribir "@" en el email del cliente** desde Mac con teclado
+  español: el atajo Alt+número para saltar de bloque se comía Option+2.
+  Los atajos ya no actúan mientras se escribe en un campo.
+
 ## 25 de agosto de 2026
 
 ### Cambiado
