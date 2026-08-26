@@ -1045,10 +1045,11 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   /* Ritmo del título de sección.
      Sobre el papel el título es Playfair: es la letra con la que la marca
      titula, y es lo que separa una sección de un renglón cualquiera en un
-     documento que por lo demás es todo DM Sans. El aire de arriba lo pone el
-     bloque anterior (24 px de margen), el de abajo son 8: el título queda
-     pegado a lo que titula, que es lo único que el corte de página tiene que
-     respetar. */
+     documento que por lo demás es todo DM Sans. El aire de ARRIBA lo pone
+     cada sección con las constantes AIRE_* de telefono.jsx (el margen del
+     bloque, no el del título: así una sección que no se dibuja no deja aire
+     doble); acá solo van los 8 de abajo, para que el título quede pegado a lo
+     que titula, que es lo único que el corte de página tiene que respetar. */
   .ctz .print-hoja .sec-t { margin:0 0 8px; break-inside:avoid; page-break-inside:avoid; }
   .ctz .print-hoja .sec-t-rule { width:24px; height:2px; margin-bottom:6px; }
   .ctz .print-hoja .sec-t-tx { font-family:'Playfair Display',Georgia,serif; font-size:15.5px;

@@ -48,6 +48,13 @@ del catálogo, CRM).
   pago sin recuadros; firma sobre blanco; pie "TravelOz · Cotización COT-… ·
   Página N". La misma cotización de tres opciones pasa de 4 a 3 hojas. La
   página web del pasajero no cambia.
+- **PDF con más aire.** Cada servicio de "Tu viaje incluye" va en su propia
+  ficha, con borde fino y fondo apenas tintado, en dos columnas. Los títulos
+  de sección (Itinerario de vuelos, Opciones de alojamiento, Notas,
+  Condiciones, Formas de pago) se separan del bloque anterior, que era lo que
+  hacía leer la hoja "toda pegada". Los cortes de página se recalibraron para
+  el alto nuevo; una cotización que ya venía justa puede ganar una hoja, con
+  el cierre entero en ella. La página web del pasajero no cambia.
 - **PDF.** Cada tramo de vuelo (aerolínea, ruta y espera) y cada opción de
   alojamiento van enteros; el itinerario se reparte entre páginas solo en
   las escalas, así la primera hoja no queda vacía. El título de la

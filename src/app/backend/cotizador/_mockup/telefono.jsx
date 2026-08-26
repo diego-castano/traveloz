@@ -46,6 +46,20 @@ const ALTO_MAX_OPCION = 900;
 /** Y con más hoteles que esto tampoco: no hay estimación que la salve. */
 const MAX_HOTELES_ENTEROS = 4;
 
+/* Aire antes de cada sección, SOLO en papel. En pantalla el ritmo lo sigue
+   dando el `marginBottom` del bloque anterior; el cliente leyó el PDF y lo que
+   marcó fue eso: "está todo muy pegado a nivel de PDF".
+
+   Los márgenes verticales colapsan con el del bloque de arriba, así que el
+   número es la separación final y no una suma: 32 sobre un bloque que ya
+   cerraba con 24 dan 32, no 56. Por eso mismo una sección que no se dibuja
+   —sin vuelos, sin notas— no deja aire doble: el margen se lo lleva la que
+   viene. */
+const AIRE_SEC = 32;      /* Itinerario, Opciones, Notas, Condiciones */
+const AIRE_SEC_1 = 24;    /* el primer título de la hoja, contra el saludo */
+const AIRE_PAGO = 28;     /* Condiciones → Formas de pago */
+const AIRE_FIRMA = 24;    /* la firma cierra el documento, no abre sección */
+
 /**
  * ¿El bloc de notas al pasajero tiene contenido de verdad?
  *
@@ -239,14 +253,17 @@ function SalidaPasajero({
   );
 
   /* ¿el pie del documento entra en media carilla? (ver el bloque de cierre)
-     Medido sobre el papel: condiciones ~30 px de título más 20 por renglón,
-     formas de pago 160 con sus dos filas de logos, y la firma con el cierre
-     de marca, 150. */
+     Remedido el 26/08 sobre la hoja real: condiciones son 40 px de título y
+     borde más 36 por ítem cuando van en dos columnas —una condición de hasta
+     95 caracteres ocupa dos renglones en la columna angosta— o 22 por ítem a
+     todo lo ancho; formas de pago 178 con su título y las dos filas de logos;
+     la firma 144. Entre bloque y bloque, el aire nuevo. */
   const cierreEntero = useMemo(() => {
     if (!impresion) return false;
-    const renglones = condicionesCortas ? Math.ceil(condiciones.length / 2) : condiciones.length;
-    const cond = condiciones.length ? 30 + renglones * 20 + 16 : 0;
-    return cond + 160 + 150 <= CARILLA / 2;
+    const cond = !condiciones.length ? 0
+      : condicionesCortas ? 40 + Math.ceil(condiciones.length / 2) * 36
+      : 40 + condiciones.length * 22;
+    return cond + AIRE_PAGO + 178 + AIRE_FIRMA + 144 <= CARILLA / 2;
   }, [impresion, condiciones.length, condicionesCortas]);
 
   /* nombre visible de una opción, el mismo fallback que usa el switcher */
@@ -302,23 +319,33 @@ function SalidaPasajero({
 
      Las alturas son las medidas sobre el papel a 96 dpi, con los márgenes del
      @page ya descontados. Es una estimación y no pretende ser exacta: solo
-     tiene que distinguir "entra" de "no entra". */
+     tiene que distinguir "entra" de "no entra".
+
+     Remedidas el 26/08 con el aire nuevo entre secciones: se renderiza la
+     hoja en modo print a 703 px de ancho (A4 menos los 12 mm por lado del
+     @page) y se leen los `getBoundingClientRect()` de cada `[data-sec]`. Con
+     estos números el modelo cae a menos de 2 px del alto real de la hoja en
+     las cinco variantes del harness. */
   const cortarAntesDeOpciones = useMemo(() => {
     if (!impresion || q.vuelos.length || !q.opciones.length) return false;
     const PAGINA = CARILLA;                  // A4 menos margen de 10mm/13mm
-    const CIERRE = 430;                      // condiciones + formas de pago + firma
-    /* membrete + banda + saludo, con el bloque de servicios si lo hay */
-    const portada = 386 + (q.servicios.length && !q.soloVuelos ? 130 : 0);
-    /* cabecera con el precio + una ficha de hotel por tramo + tarifas */
-    const porOpcion = 192 + 46 * Math.max(1, tramos.length);
-    const opciones = 45 + q.opciones.length * porOpcion + (q.opciones.length - 1) * 16;
-    const notas = hayNotas ? 90 : 0;
+    const CIERRE = AIRE_SEC + 490;           // condiciones + formas de pago + firma, con su aire
+    /* hasta donde arranca la sección de abajo: membrete + banda + saludo con
+       su aire (376) y, si hay servicios, las fichas con el suyo (24 + 155) */
+    const portada = 376 + (q.servicios.length && !q.soloVuelos ? AIRE_SEC_1 + 155 : 0);
+    /* cabecera con el precio + una ficha de hotel por tramo + tarifas, más el
+       margen que separa una opción de la siguiente; con foto de portada la
+       cabecera crece 110 */
+    const porOpcion = (q.fotosHotel ? 316 : 206) + 66 * Math.max(1, tramos.length);
+    const opciones = 45 + q.opciones.length * porOpcion;
+    const notas = hayNotas ? AIRE_SEC + 118 : 0;
     return (
       portada + opciones + notas + CIERRE > PAGINA &&
       opciones + notas + CIERRE <= PAGINA &&
       portada >= PAGINA * 0.45
     );
-  }, [impresion, q.vuelos.length, q.opciones.length, q.servicios.length, q.soloVuelos, tramos.length, hayNotas]);
+  }, [impresion, q.vuelos.length, q.opciones.length, q.servicios.length, q.soloVuelos, q.fotosHotel,
+      tramos.length, hayNotas]);
 
   /* ── papel: la opción viaja entera ────────────────────────────────────
      La regla que pidió el cliente: una opción de alojamiento no se parte.
@@ -538,18 +565,27 @@ function SalidaPasajero({
 
         {/* incluye */}
         {q.servicios.length > 0 && !q.soloVuelos && (
-          <div ref={(el) => { anclas.current["b-servicios"] = el; }} data-sec="servicios" data-ap>
+          <div ref={(el) => { anclas.current["b-servicios"] = el; }} data-sec="servicios" data-ap
+            style={impresion ? { marginTop:AIRE_SEC_1 } : undefined}>
             <SecTitulo texto="Tu viaje incluye" />
+            {/* `stretch` en papel: las dos fichas de una fila quedan a la misma
+                altura aunque un texto ocupe dos renglones y el otro uno. */}
             <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr",
-              gap: impresion ? "12px 24px" : "9px 18px", ...(impresion ? { alignItems:"start" } : null), marginBottom:24 }}>
+              gap: impresion ? "9px 10px" : "9px 18px",
+              ...(impresion ? { alignItems:"stretch" } : null), marginBottom:24 }}>
               {q.servicios.map((sv) => {
                 const C = CATS.find((c) => c.id === sv.categoria) || CATS[0];
                 return (
+                  /* En papel cada servicio es su propia ficha. Sueltos sobre el
+                     blanco, en dos columnas, el cliente los leyó como un párrafo
+                     corrido; con borde hairline y fondo apenas tintado se ven
+                     cuatro cosas incluidas, que es lo que dicen. */
                   <div key={sv.id} style={{ display:"flex", gap: impresion ? 10 : 11, alignItems:"flex-start",
-                    ...(impresion ? { breakInside:"avoid" } : null) }}>
+                    ...(impresion ? { breakInside:"avoid", padding:"10px 12px", borderRadius:11,
+                      border:"1px solid rgba(17,17,36,.09)", background:"#FBFBFE" } : null) }}>
                     <div style={{ width: impresion ? 26 : 30, height: impresion ? 26 : 30,
                       borderRadius: impresion ? 999 : 9, flexShrink:0, display:"grid", placeItems:"center",
-                      background:`${G.b}${impresion ? "0F" : "12"}`, color:G.b }}><C.Icon size={impresion ? 13 : 14} /></div>
+                      background:`${G.b}${impresion ? "14" : "12"}`, color:G.b }}><C.Icon size={impresion ? 13 : 14} /></div>
                     <div style={{ fontSize:fzp(13, 13.5, 12.5), lineHeight:1.5, paddingTop: impresion ? 4 : 5, fontWeight:500 }}>
                       {sv.texto}
                       {(sv.ciudad || sv.modalidad) && (
@@ -567,7 +603,8 @@ function SalidaPasajero({
 
         {/* itinerario — tarjetas por trayecto (Ida / Vuelta / Tramo N) */}
         {q.vuelos.length > 0 && (
-          <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap>
+          <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap
+            style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Itinerario de vuelos" />
             {/* En papel la lista va en flujo normal, no en flex: Chromium no
                 fragmenta bien un contenedor flex y ahí `break-inside:avoid`
@@ -699,7 +736,7 @@ function SalidaPasajero({
 
         {/* solo vuelos: precio final sin alojamiento */}
         {q.soloVuelos && (
-          <div data-ap>
+          <div data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Precio del vuelo" />
             <div style={{ borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.08)",
               marginBottom:24, overflow:"hidden" }}>
@@ -738,7 +775,8 @@ function SalidaPasajero({
         {/* opciones — cards verticales, foto protagonista */}
         {q.opciones.length > 0 && !q.soloVuelos && (
           <div ref={(el) => { anclas.current["b-alojamiento"] = el; }} data-sec="hoteles" data-ap
-            data-print-corte={cortarAntesDeOpciones ? "pagina" : undefined}>
+            data-print-corte={cortarAntesDeOpciones ? "pagina" : undefined}
+            style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Opciones de alojamiento" />
             <div className="sec-sub" style={{ fontSize:fz(12, 12.5), color:"#8A8DB5", margin:"-6px 0 14px",
               lineHeight:1.5 }}>
@@ -1135,7 +1173,8 @@ function SalidaPasajero({
 
         {/* notas para el pasajero — bloc de HTML libre */}
         {hayNotas && (
-          <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas" data-ap>
+          <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas" data-ap
+            style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Notas" />
             <div style={{ fontSize:fz(12.5, 13), lineHeight:1.6, color:"#3D4066", marginBottom:22, overflowWrap:"anywhere" }}
               dangerouslySetInnerHTML={{ __html: q.notasCliente }} />
@@ -1152,7 +1191,8 @@ function SalidaPasajero({
            cortas, en dos columnas — así el cierre no se come una carilla. */
         <div data-sec="condiciones" data-ap
           style={impresion
-            ? { borderTop:"1px solid rgba(17,17,36,.10)", padding:"12px 0 0", marginBottom:8, breakInside:"avoid" }
+            ? { borderTop:"1px solid rgba(17,17,36,.10)", padding:"12px 0 0", marginTop:AIRE_SEC,
+                marginBottom:8, breakInside:"avoid" }
             : { background:"rgba(17,17,36,.028)", borderRadius:"14px", padding:"15px 17px 16px",
                 marginBottom:20, breakInside:"avoid" }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
@@ -1167,7 +1207,7 @@ function SalidaPasajero({
 
         {/* pago — logos reales del sitio público, en cajas uniformes.
             El título y las dos filas de logos son una sola unidad de lectura. */}
-        <div data-ap style={{ breakInside:"avoid" }}>
+        <div data-ap style={{ breakInside:"avoid", ...(impresion ? { marginTop:AIRE_PAGO } : null) }}>
         <SecTitulo texto="Formas de pago" />
         <div data-sec="pago" style={{ marginBottom: impresion ? 8 : 22 }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
@@ -1207,7 +1247,7 @@ function SalidaPasajero({
         </div>{/* /formas de pago */}
 
         {/* firma + cierre: en papel viajan juntos */}
-        <div data-sec="firma" data-ap style={{ breakInside:"avoid" }}>
+        <div data-sec="firma" data-ap style={{ breakInside:"avoid", ...(impresion ? { marginTop:AIRE_FIRMA } : null) }}>
         <div className="firma-caja" style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 17px", borderRadius:17, breakInside:"avoid",
           border:"1px solid rgba(17,17,36,.085)",
           background:"linear-gradient(170deg,#fff 0%,#FAF9FE 100%)" }}>
