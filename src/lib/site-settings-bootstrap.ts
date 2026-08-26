@@ -104,7 +104,7 @@ Cotización válida por {vigencia} horas.`,
   },
   {
     key: "cotizador_vigencia_default",
-    value: "48",
+    value: "96",
     type: "text",
     group: "cotizador",
     label: "Vigencia por defecto del link, en horas",

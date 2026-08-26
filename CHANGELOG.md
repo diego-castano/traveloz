@@ -44,8 +44,15 @@ del catálogo, CRM).
   sin partirse entre páginas. El logo del encabezado es la imagen del sitio,
   que imprime bien en cualquier navegador. Las notas aparecen solo si hay
   notas. Se quitó la línea de validez del PDF y de la página del pasajero.
-- El control de previsualización escritorio/celular que había quedado en la
-  página del pasajero se retiró.
+- El selector celular/tablet/escritorio que había quedado en el panel "Lo que
+  ve el pasajero" del editor se retiró; "Vista previa" sigue abriendo la
+  previsualización completa.
+- **La vigencia por defecto de una cotización pasa a 96 horas hábiles** (antes
+  48). El modal de compartir ofrece 24 / 48 / 72 / 96 y el valor inicial se
+  edita en Ajustes. Las cotizaciones ya enviadas conservan su vigencia.
+- Confirmado con el cliente el circuito de tarjetas: el vendedor recibe solo
+  el aviso de que entró una tarjeta; los datos quedan en la bóveda del sistema
+  y salen a Administración con el número de file desde "Enviar a ADM".
 
 ### Arreglado
 

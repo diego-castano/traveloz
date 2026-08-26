@@ -78,7 +78,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
     let url = linkUrl;
     if (!url) {
       setCopiando(true);
-      const res = await emitirLink(r.id, { canal:"manual", vigenciaHoras: r.vigencia || 48 });
+      const res = await emitirLink(r.id, { canal:"manual", vigenciaHoras: r.vigencia || 96 });
       setCopiando(false);
       if (!res.ok) { toast?.({ msg:res.error, tone:"warn" }); return; }
       url = res.data.url;
@@ -128,7 +128,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
      enviada. Lo que queda se cuenta en horas HÁBILES, igual que como se
      calculó el vencimiento: un link emitido el viernes 15:00 con 48 h muestra
      "quedan 48 h" el sábado entero, porque el sábado no descuenta nada. */
-  const vigTotal = r.vigencia || 48;
+  const vigTotal = r.vigencia || 96;
   const vigResta = useMemo(() => {
     if (!r.expiraAt) return null;
     const t = new Date(r.expiraAt).getTime();

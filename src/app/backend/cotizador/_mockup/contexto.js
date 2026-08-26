@@ -51,7 +51,7 @@ export const CATALOGO_VACIO = {
 const AJUSTES_VACIO = {
   plantillaMensaje: "",
   condiciones: [],
-  vigenciaDefault: 48,
+  vigenciaDefault: 96,
   emailCopia: "",
   factorDefault: 0.88,
 };

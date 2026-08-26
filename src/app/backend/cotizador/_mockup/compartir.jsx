@@ -56,7 +56,7 @@ function ModalCompartir({
   );
   const [extras, setExtras] = useState("");
   const [marcando, setMarcando] = useState(false);
-  const [vig, setVig] = useState(q.vigencia ?? vigenciaDefault ?? 48);
+  const [vig, setVig] = useState(q.vigencia ?? vigenciaDefault ?? 96);
 
   /* el link público: se emite al entrar a WhatsApp o al tocar "Generar link" */
   const [link, setLink] = useState(null);
@@ -378,7 +378,7 @@ function ModalCompartir({
         <div style={{ display:"flex", alignItems:"center", gap:8, margin:"11px 17px 0", flexWrap:"wrap" }}>
           <span className="lbl">Vigencia</span>
           <div className="seg">
-            {[24, 48, 72].map((h) => (
+            {[24, 48, 72, 96].map((h) => (
               <button key={h} data-on={vig === h ? "1" : "0"}
                 onClick={() => { setVig(h); onVigencia?.(h); }}>{h}h</button>
             ))}

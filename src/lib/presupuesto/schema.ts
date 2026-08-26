@@ -19,7 +19,7 @@ import { z } from "zod";
 export const FACTOR_DEFAULT = 0.88;
 
 /** Vigencia por defecto del link, en horas. */
-export const VIGENCIA_DEFAULT = 48;
+export const VIGENCIA_DEFAULT = 96; // horas hábiles (decisión de Gero, 26/08)
 
 /** Vigencia mínima y máxima del link, en horas (30 días de tope). */
 export const VIGENCIA_MIN = 1;

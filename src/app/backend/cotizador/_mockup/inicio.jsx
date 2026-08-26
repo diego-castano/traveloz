@@ -713,7 +713,7 @@ function useAccionesFila({ recargar, toast, cerrarDrawer }) {
     pisar(r.id, { estado:"enviada", estadoManual:null, aperturas:0 });
     const res = await reactivarPresupuesto(r.id);
     if (!res.ok) return fallo(r.id, res.error);
-    toast?.({ msg:`Reactivada por ${r.vigencia || 48} h ✓`, tone:"ok" });
+    toast?.({ msg:`Reactivada por ${r.vigencia || 96} h ✓`, tone:"ok" });
     await refrescar();
   }, [pisar, fallo, toast, refrescar]);
 
@@ -1128,7 +1128,7 @@ function ListadoContenido({
               {/* v2 · A4 y A5 · lo más usado, sin abrir la cotización */}
               <div className="fila-acc" onClick={(e) => e.stopPropagation()}>
                 {r.estado === "vencida" && (
-                  <Btn size="xs" title="Generar un link nuevo y volver a dejarla vigente 48 h"
+                  <Btn size="xs" title="Generar un link nuevo y volver a dejarla vigente"
                     style={{ color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
                       borderColor:"rgba(59,191,173,.4)", fontWeight:700 }}
                     onClick={(e) => { e.stopPropagation(); acc.reactivar(r); }}>

@@ -80,7 +80,7 @@ function cotizacionVacia(ajustes) {
     notas: [],
     notasLibres: "",          /* v4 · bloc de notas interno, sin cápsulas ni autores */
     notasCliente: "",         /* v4 · campo libre HTML del pasajero, admite imágenes */
-    vigencia: ajustes?.vigenciaDefault || 48,
+    vigencia: ajustes?.vigenciaDefault || 96,
     opciones: [],
   };
 }
