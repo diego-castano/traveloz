@@ -232,8 +232,11 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .print-root { position:fixed; inset:0; z-index:210; background:var(--page); overflow-y:auto; }
 .print-tools { position:sticky; top:0; z-index:2; display:flex; gap:9px; align-items:center; flex-wrap:wrap;
   padding:11px 16px; background:var(--glass); backdrop-filter:blur(10px); border-bottom:1px solid var(--hair); }
+/* La hoja de la vista previa lleva el margen que en el papel pone @page: sin
+   él la banda de marca y el membrete tocaban el borde de la tarjeta y la
+   pantalla mostraba algo que el PDF no hace. En impresión se saca. */
 .print-hoja { max-width:800px; margin:20px auto 48px; background:#fff; border-radius:18px; overflow:hidden;
-  box-shadow:0 30px 70px -30px rgba(17,17,36,.4); }
+  padding:10px 30px 26px; box-shadow:0 30px 70px -30px rgba(17,17,36,.4); }
 @media print {
   /* El sidebar y la topbar del panel quedan afuera del .ctz. Los sacamos del
      flujo con .print-hidden (Tailwind print:hidden en AdminShell/VendedorShell)
@@ -249,7 +252,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
      alguien imprime con la vista previa abierta, no salen. */
   .ctz .ov, .ctz .phone-col, .ctz .browser-bar { display:none !important; }
   .ctz .print-root { position:static !important; overflow:visible !important; background:#fff !important; }
-  .ctz .print-hoja { max-width:none; margin:0; border-radius:0; box-shadow:none; }
+  .ctz .print-hoja { max-width:none; margin:0; padding:0; border-radius:0; box-shadow:none; }
   html, body { background:#fff !important; }
   .ctz .print-hoja, .ctz .print-hoja * { -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
   .ctz .print-hoja img { max-width:100% !important; }
@@ -272,9 +275,11 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
      una cotización sin vuelos, para que el cierre no se vaya solo a la hoja 2 */
   .ctz .print-hoja [data-print-corte="pagina"] { break-before:page; page-break-before:always; }
 
-  /* Márgenes: 10 mm a los lados y arriba; 12 abajo, que es donde vive el pie. */
+  /* Márgenes: 12 mm a los lados —el documento se alinea con la banda de marca
+     y adentro ya no hay otro margen—, 10 arriba y 13 abajo, que es donde vive
+     el pie. */
   @page {
-    margin:10mm 10mm 12mm;
+    margin:10mm 12mm 13mm;
     /* Chromium sí dibuja las cajas de margen del @page y sí resuelve
        counter(page) y var() adentro (probado con preferCSSPageSize:true, que
        es como imprime src/lib/pdf.ts). La variable --ctz-pie la escribe la
@@ -286,7 +291,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
        cotizador.pdf.ok). En un motor más viejo la regla no se aplica y el
        PDF sale sin pie: sin numerar, pero entero — el contenido no se toca. */
     @bottom-right {
-      content: var(--ctz-pie, "TravelOz") " · página " counter(page);
+      content: var(--ctz-pie, "TravelOz") " · Página " counter(page);
       /* 9 pt es el piso de todo el documento: el PDF se abre en el celular y
          abajo de eso no se lee. El pie no es la excepción. */
       font-family:'DM Sans', sans-serif; font-size:9pt; color:#B0B4CD;
@@ -1007,6 +1012,23 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz-pub .sec-t-tx { font-size:14.5px; }
 }
 
+/* ── membrete del papel ───────────────────────────────────────────────────
+   El logo oficial, centrado sobre el blanco de la hoja, con el número de la
+   cotización a un lado. Vive fuera del bloque de impresión a propósito: la
+   vista previa del panel dibuja el mismo marcado en pantalla y tiene que
+   verse igual que lo que va a salir. Solo lo pinta SalidaPasajero en modo
+   print, así que ninguna otra pantalla lo hereda. */
+.pr-mbr { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:16px;
+  padding:14px 2px 16px; }
+.pr-mbr-logo { display:block; width:120px; height:auto; margin:0 auto;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+.pr-mbr-num { font-size:12px; line-height:1.2; color:#8A8DB5; letter-spacing:.01em;
+  font-variant-numeric:tabular-nums; }
+
+/* condiciones a dos columnas cuando las líneas son cortas (solo papel) */
+.pr-2col { columns:2; column-gap:26px; }
+.pr-2col > li { break-inside:avoid; page-break-inside:avoid; }
+
 /* ── el papel ─────────────────────────────────────────────────────────────
    Mismo documento, otro soporte. Lo que cambia son tres cosas: el chrome de
    la página no existe, el ritmo vertical se abre (un título respira arriba y
@@ -1021,14 +1043,22 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   [data-animar="1"] [data-ap] { opacity:1 !important; transform:none !important; }
 
   /* Ritmo del título de sección.
-     En pantalla el título pesa 15 px y respira: es lo que ordena el scroll.
-     En papel el mismo peso costaba una carilla entera por documento, así que
-     acá baja a 13 y la regla se acorta. El aire de arriba lo pone el bloque
-     anterior (24 px de margen), el de abajo son 6: el título queda pegado a lo
-     que titula, que es lo único que el corte de página tiene que respetar. */
-  .ctz .print-hoja .sec-t { margin:0 0 6px; break-inside:avoid; page-break-inside:avoid; }
-  .ctz .print-hoja .sec-t-rule { width:22px; height:2px; margin-bottom:5px; }
-  .ctz .print-hoja .sec-t-tx { font-size:13px; line-height:1.2; letter-spacing:-.015em; }
+     Sobre el papel el título es Playfair: es la letra con la que la marca
+     titula, y es lo que separa una sección de un renglón cualquiera en un
+     documento que por lo demás es todo DM Sans. El aire de arriba lo pone el
+     bloque anterior (24 px de margen), el de abajo son 8: el título queda
+     pegado a lo que titula, que es lo único que el corte de página tiene que
+     respetar. */
+  .ctz .print-hoja .sec-t { margin:0 0 8px; break-inside:avoid; page-break-inside:avoid; }
+  .ctz .print-hoja .sec-t-rule { width:24px; height:2px; margin-bottom:6px; }
+  .ctz .print-hoja .sec-t-tx { font-family:'Playfair Display',Georgia,serif; font-size:15.5px;
+    font-weight:600; line-height:1.2; letter-spacing:-.012em; }
+  /* el renglón gris bajo el título de las opciones: sin caja y sin peso */
+  .ctz .print-hoja .sec-sub { margin:-4px 0 12px !important; }
+
+  /* las estrellas del hotel, en dorado suave: sobre papel el naranja fuerte
+     competía con el precio, que es lo que tiene que mirarse primero */
+  .ctz .print-hoja .lucide-star { fill:#D9A441 !important; color:#D9A441 !important; }
 
   /* tarifas: tabla, no tarjeta */
   .ctz .print-hoja .tar-box { background:#fff !important; border:none !important;
@@ -1041,8 +1071,8 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 
   /* la firma cierra el documento: el peso lo dan el marco y la foto, no el
      relleno — sobre papel cada milímetro se paga en páginas */
-  .ctz .print-hoja .firma-caja { padding:13px 15px !important;
-    border:1px solid rgba(17,17,36,.18) !important; }
+  .ctz .print-hoja .firma-caja { padding:13px 15px !important; background:#fff !important;
+    border:1px solid rgba(17,17,36,.14) !important; border-radius:14px !important; }
 }
 `;
 

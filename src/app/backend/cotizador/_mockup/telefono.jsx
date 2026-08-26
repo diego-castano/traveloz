@@ -34,8 +34,8 @@ const PAGO_BANCOS = [
    estimaciones: alcanza con que distingan "entra" de "no entra".
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/** Alto útil de una carilla A4 con los márgenes de `@page` (10mm/12mm). */
-const CARILLA = 1039;
+/** Alto útil de una carilla A4 con los márgenes de `@page` (10mm arriba, 13 abajo). */
+const CARILLA = 1035;
 
 /** Piso de tipografía sobre papel: 12 px = 9 pt. El PDF se lee en el celular. */
 const PISO_PAPEL = 12;
@@ -229,6 +229,26 @@ function SalidaPasajero({
     [ajustes.condiciones],
   );
 
+  /* Dos columnas en el papel solo si las líneas son cortas: con una condición
+     larga la columna angosta la parte en cinco renglones y se lee peor que a
+     todo lo ancho. Tres líneas es el mínimo para que la segunda columna no
+     quede con una sola. */
+  const condicionesCortas = useMemo(
+    () => condiciones.length >= 3 && condiciones.every((l) => l.length <= 95),
+    [condiciones],
+  );
+
+  /* ¿el pie del documento entra en media carilla? (ver el bloque de cierre)
+     Medido sobre el papel: condiciones ~30 px de título más 20 por renglón,
+     formas de pago 160 con sus dos filas de logos, y la firma con el cierre
+     de marca, 150. */
+  const cierreEntero = useMemo(() => {
+    if (!impresion) return false;
+    const renglones = condicionesCortas ? Math.ceil(condiciones.length / 2) : condiciones.length;
+    const cond = condiciones.length ? 30 + renglones * 20 + 16 : 0;
+    return cond + 160 + 150 <= CARILLA / 2;
+  }, [impresion, condiciones.length, condicionesCortas]);
+
   /* nombre visible de una opción, el mismo fallback que usa el switcher */
   const nombreDe = (o) => String(o?.nombre || "").trim() || `Opción ${q.opciones.indexOf(o) + 1}`;
 
@@ -285,11 +305,13 @@ function SalidaPasajero({
      tiene que distinguir "entra" de "no entra". */
   const cortarAntesDeOpciones = useMemo(() => {
     if (!impresion || q.vuelos.length || !q.opciones.length) return false;
-    const PAGINA = CARILLA;                  // A4 menos margen de 10mm/12mm
-    const CIERRE = 476;                      // condiciones + formas de pago + firma
-    const portada = 402 + (q.servicios.length && !q.soloVuelos ? 152 : 0);
-    const porOpcion = 226 + 126 * Math.max(1, tramos.length);
-    const opciones = 45 + q.opciones.length * porOpcion + (q.opciones.length - 1) * 14;
+    const PAGINA = CARILLA;                  // A4 menos margen de 10mm/13mm
+    const CIERRE = 430;                      // condiciones + formas de pago + firma
+    /* membrete + banda + saludo, con el bloque de servicios si lo hay */
+    const portada = 386 + (q.servicios.length && !q.soloVuelos ? 130 : 0);
+    /* cabecera con el precio + una ficha de hotel por tramo + tarifas */
+    const porOpcion = 192 + 46 * Math.max(1, tramos.length);
+    const opciones = 45 + q.opciones.length * porOpcion + (q.opciones.length - 1) * 16;
     const notas = hayNotas ? 90 : 0;
     return (
       portada + opciones + notas + CIERRE > PAGINA &&
@@ -316,16 +338,15 @@ function SalidaPasajero({
       const hoteles = Math.max(nH, (o.hoteles || []).length || 1);
       if (hoteles > MAX_HOTELES_ENTEROS) return false;
       /* números medidos sobre el papel con el piso de 9 pt puesto: una opción
-         de un hotel sin foto mide 369 px, cada hotel más suma 133 y el header
-         con foto agrega ~98 sobre el compacto */
-      const cabecera = q.fotosHotel ? 150 : 52;
-      const resumen = 48;                                   // régimen + habitaciones
-      const fichas = hoteles * (q.fotosHotel ? 128 : 133);  // una tarjeta por tramo
+         de un hotel sin foto mide 220 px, cada hotel más suma 46 (75 con la
+         foto) y la cabecera con foto agrega ~60 sobre la franja de precio */
+      const cabecera = q.fotosHotel ? 150 : 88;
+      const fichas = hoteles * (q.fotosHotel ? 75 : 46);    // una fila por tramo
       const tarifas = o.habitaciones?.length
         ? 26 + (o.habitaciones || []).reduce(
             (a, h) => a + 42 + Math.max(1, (h.tarifas || []).length) * 34 + 10, 0)
         : 48;                                               // respaldo: la franja de precio final
-      return cabecera + resumen + fichas + tarifas + 30 <= ALTO_MAX_OPCION;
+      return cabecera + fichas + tarifas + 30 <= ALTO_MAX_OPCION;
     };
   }, [impresion, tramos.length, q.fotosHotel]);
 
@@ -343,7 +364,7 @@ function SalidaPasajero({
       .replace(/[^A-Za-z0-9 ._·-]/g, "")
       .slice(0, 40)
       .trim();
-    return `"${limpio || "Cotización"} · TravelOz"`;
+    return limpio ? `"TravelOz · Cotización ${limpio}"` : `"TravelOz"`;
   }, [q.numero]);
 
   return (
@@ -354,8 +375,32 @@ function SalidaPasajero({
         <style dangerouslySetInnerHTML={{ __html: `:root{--ctz-pie:${piePagina};}` }} />
       )}
 
+      {/* ── membrete del papel ───────────────────────────────────────────
+          El logo va arriba, sobre el blanco de la hoja. Adentro de la banda
+          violeta necesitaba una píldora blanca de fondo y ese parche es lo
+          que el cliente marcó como "raro". Acá el documento arranca como un
+          membrete de agencia: número a la izquierda, logo centrado, aire.
+
+          La fecha de emisión no existe en `q` —`contenidoPublico` recorta el
+          contenido a lo que el pasajero necesita y ninguna fecha de alta
+          cruza—, así que el lado derecho queda vacío en vez de inventarse un
+          dato: el hueco sostiene el logo centrado sobre la hoja. */}
+      {impresion && (
+        <div className="pr-mbr">
+          {/* un borrador todavía sin numerar deja el lado vacío, no un rótulo
+              a medio escribir */}
+          <span className="pr-mbr-num mono">{q.numero ? `Cotización ${q.numero}` : ""}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="pr-mbr-logo" src="/site/img/header-logo.webp" alt="TravelOz"
+            width={1572} height={523} loading="eager" decoding="async" />
+          <span aria-hidden />
+        </div>
+      )}
+
       {/* ── encabezado de marca ── */}
-      <div data-sec="encabezado" data-ap style={{ background:gradHead, padding: impresion ? "33px 38px 25px" : desk ? "38px 40px 30px" : "36px 20px 24px", color:"#fff",
+      <div data-sec="encabezado" data-ap style={{ background:gradHead,
+        padding: impresion ? "20px 24px 21px" : desk ? "38px 40px 30px" : "36px 20px 24px", color:"#fff",
+        ...(impresion ? { borderRadius:16 } : null),
         position:"relative", overflow:"hidden" }}>
         {/* El grano va solo a pantalla. En el papel Chromium rasteriza el
             mosaico de ruido a la resolución de impresión y el PDF pasa de
@@ -365,9 +410,16 @@ function SalidaPasajero({
           <div aria-hidden style={{ position:"absolute", inset:0, backgroundImage:GRANO, opacity:.075,
             mixBlendMode:"overlay", pointerEvents:"none" }} />
         )}
-        <div aria-hidden style={{ position:"absolute", right:-46, top:-52, width:190, height:190, borderRadius:"50%",
-          background:"radial-gradient(circle at 34% 30%, rgba(255,255,255,.16), rgba(255,255,255,0) 70%)" }} />
+        {/* el halo de la esquina es para la banda alta de pantalla; sobre la
+            banda baja del papel queda como una mancha y se apaga */}
+        {!impresion && (
+          <div aria-hidden style={{ position:"absolute", right:-46, top:-52, width:190, height:190, borderRadius:"50%",
+            background:"radial-gradient(circle at 34% 30%, rgba(255,255,255,.16), rgba(255,255,255,0) 70%)" }} />
+        )}
         <div style={{ maxWidth: desk ? 660 : "none", margin:"0 auto", position:"relative" }}>
+          {/* En el papel la banda es solo marca: el logo y el número ya
+              salieron arriba, en el membrete. */}
+          {!impresion && (
           <div style={{ display:"flex", alignItems:"center", marginBottom:fzp(18, 22, 18) }}>
             {/* El logo del sitio, como imagen.
                 El wordmark de texto pinta "oz" con un degradado sobre el
@@ -386,26 +438,35 @@ function SalidaPasajero({
             </div>
             <div className="mono" style={{ marginLeft:"auto", fontSize:fz(10, 11), opacity:.78, letterSpacing:".02em" }}>{q.numero}</div>
           </div>
-          <div className="disp" style={{ fontSize:fzp(28, 37, 33), fontWeight:600, lineHeight:1.1, letterSpacing:"-.028em",
-            textWrap:"balance", maxWidth:"22ch", textShadow:"0 1px 20px rgba(60,20,80,.18)" }}>
+          )}
+          {/* En el papel la banda es baja y el título tiene todo el ancho de
+              la hoja: con 22ch un "Caribe › Jamaica, Noviembre 2026" se
+              partía en dos renglones y la banda crecía 30 px por nada. */}
+          <div className="disp" style={{ fontSize:fzp(28, 37, 26), fontWeight:600, lineHeight: impresion ? 1.12 : 1.1, letterSpacing:"-.028em",
+            textWrap:"balance", maxWidth: impresion ? "34ch" : "22ch", textShadow:"0 1px 20px rgba(60,20,80,.18)" }}>
             {titulo}
           </div>
-          <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginTop:13 }}>
+          <div style={{ display:"flex", gap: impresion ? 6 : 7, flexWrap: impresion ? "nowrap" : "wrap",
+            marginTop: impresion ? 10 : 13 }}>
             {q.fechaSalida && (
               <span style={{ display:"inline-flex", alignItems:"center", gap:6, fontSize:fz(11.5, 12.5),
-                background:"rgba(255,255,255,.22)", padding:"6px 12px", borderRadius:999, backdropFilter:"blur(6px)", fontWeight:600 }}>
+                whiteSpace: impresion ? "nowrap" : undefined,
+                background:"rgba(255,255,255,.22)", padding: impresion ? "4px 10px" : "6px 12px", borderRadius:999,
+                backdropFilter:"blur(6px)", fontWeight:600 }}>
                 <Calendar size={fz(11, 12)} /> {fmtLargo(q.fechaSalida)}
               </span>
             )}
             {totalNoches > 0 && (
               <span style={{ display:"inline-flex", alignItems:"center", gap:6, fontSize:fz(11.5, 12.5),
-                background:"rgba(255,255,255,.22)", padding:"6px 12px", borderRadius:999, fontWeight:600 }}>
+                whiteSpace: impresion ? "nowrap" : undefined,
+                background:"rgba(255,255,255,.22)", padding: impresion ? "4px 10px" : "6px 12px", borderRadius:999, fontWeight:600 }}>
                 <Bed size={fz(11, 12)} /> {totalNoches} noches
               </span>
             )}
             {tramos.map((t) => (
               <span key={t.id} style={{ display:"inline-flex", alignItems:"center", gap:5, fontSize:fz(11.5, 12.5),
-                background:"rgba(0,0,0,.18)", padding:"6px 12px", borderRadius:999 }}>
+                ...(impresion ? { whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" } : null),
+                background:"rgba(0,0,0,.18)", padding: impresion ? "4px 10px" : "6px 12px", borderRadius:999 }}>
                 {t.ciudad} · {t.noches}n
               </span>
             ))}
@@ -413,7 +474,11 @@ function SalidaPasajero({
         </div>
       </div>
 
-      <div style={{ padding: impresion ? "24px 38px 26px" : desk ? "30px 42px 40px" : "22px 20px 30px",
+      {/* El cuerpo del papel se alinea con los bordes de la banda: el margen
+          de la hoja lo pone `@page` (12 mm a los lados) y adentro no hace
+          falta otro. Antes había 38 px más de aire por lado y el documento
+          quedaba en una columna angosta con dos márgenes superpuestos. */}
+      <div style={{ padding: impresion ? "24px 2px 0" : desk ? "30px 42px 40px" : "22px 20px 30px",
         maxWidth: desk ? 748 : "none", margin:"0 auto" }}>
 
         {/* saludo — mensaje automático de la cotización, o el fallback fijo si no hay plantilla */}
@@ -475,14 +540,17 @@ function SalidaPasajero({
         {q.servicios.length > 0 && !q.soloVuelos && (
           <div ref={(el) => { anclas.current["b-servicios"] = el; }} data-sec="servicios" data-ap>
             <SecTitulo texto="Tu viaje incluye" />
-            <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr", gap:"9px 18px", marginBottom:24 }}>
+            <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr",
+              gap: impresion ? "12px 24px" : "9px 18px", ...(impresion ? { alignItems:"start" } : null), marginBottom:24 }}>
               {q.servicios.map((sv) => {
                 const C = CATS.find((c) => c.id === sv.categoria) || CATS[0];
                 return (
-                  <div key={sv.id} style={{ display:"flex", gap:11, alignItems:"flex-start" }}>
-                    <div style={{ width:30, height:30, borderRadius:9, flexShrink:0, display:"grid", placeItems:"center",
-                      background:`${G.b}12`, color:G.b }}><C.Icon size={14} /></div>
-                    <div style={{ fontSize:fz(13, 13.5), lineHeight:1.5, paddingTop:5, fontWeight:500 }}>
+                  <div key={sv.id} style={{ display:"flex", gap: impresion ? 10 : 11, alignItems:"flex-start",
+                    ...(impresion ? { breakInside:"avoid" } : null) }}>
+                    <div style={{ width: impresion ? 26 : 30, height: impresion ? 26 : 30,
+                      borderRadius: impresion ? 999 : 9, flexShrink:0, display:"grid", placeItems:"center",
+                      background:`${G.b}${impresion ? "0F" : "12"}`, color:G.b }}><C.Icon size={impresion ? 13 : 14} /></div>
+                    <div style={{ fontSize:fzp(13, 13.5, 12.5), lineHeight:1.5, paddingTop: impresion ? 4 : 5, fontWeight:500 }}>
                       {sv.texto}
                       {(sv.ciudad || sv.modalidad) && (
                         <div style={{ fontSize:fz(11, 11.5), color:"#8A8DB5", fontWeight:400 }}>
@@ -520,25 +588,32 @@ function SalidaPasajero({
                    corte cae entre tramos, nunca dentro de uno. La cabecera va
                    como barra arriba, con `break-after:avoid` para no quedar
                    sola al pie. En pantalla no cambia nada. */
-                const cajaPapel = { background:"#fff", border:"1px solid rgba(17,17,36,.14)",
-                  borderRadius:14, overflow:"hidden" };
+                const cajaPapel = { background:"#fff", border:"1px solid rgba(17,17,36,.10)",
+                  borderRadius:12, overflow:"hidden" };
                 return (
                   <div key={ti} style={impresion
-                    ? { marginBottom: ti < trayectos.length - 1 ? 14 : 0 }
+                    ? { marginBottom: ti < trayectos.length - 1 ? 16 : 0 }
                     : { borderRadius:18, background:"#fff", overflow:"hidden", breakInside:"avoid",
                         boxShadow:"0 1px 2px rgba(58,38,120,.05), 0 14px 30px -20px rgba(58,38,120,.35)" }}>
 
-                    {/* cabecera del trayecto: pill de marca + fecha */}
-                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                    {/* Cabecera del trayecto. En pantalla es la píldora de
+                        marca dentro de la tarjeta; en el papel se vuelve lo
+                        que es —una etiqueta— y deja de ser una barra con caja
+                        propia: IDA en violeta a la izquierda, la fecha en gris
+                        a la derecha, y las tarjetas de tramo abajo. */}
+                    <div style={{ display:"flex", alignItems: impresion ? "baseline" : "center", justifyContent:"space-between",
                       gap:10, flexWrap:"wrap",
                       ...(impresion
-                        ? { ...cajaPapel, padding:"10px 16px", marginBottom:7, breakInside:"avoid", breakAfter:"avoid" }
+                        ? { padding:"0 2px 6px", marginBottom:0, breakInside:"avoid", breakAfter:"avoid" }
                         : { padding:"14px 16px 0" }) }}>
-                      <span style={{ background:grad, color:"#fff", padding:"5px 11px", borderRadius:999,
-                        fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".12em", textTransform:"uppercase" }}>
+                      <span style={impresion
+                        ? { color:G.b, fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".14em",
+                            textTransform:"uppercase" }
+                        : { background:grad, color:"#fff", padding:"5px 11px", borderRadius:999,
+                            fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".12em", textTransform:"uppercase" }}>
                         {etiqueta}
                       </span>
-                      <span style={{ fontSize:fz(12.5, 13), fontWeight:600, color:"#6B6F99" }}>
+                      <span style={{ fontSize:fzp(12.5, 13, 12), fontWeight:600, color:"#6B6F99" }}>
                         {fechaTrayecto(primero, anioItinerario)}
                       </span>
                     </div>
@@ -549,9 +624,9 @@ function SalidaPasajero({
                       return (
                         <div key={s.id} style={impresion
                           ? { ...cajaPapel, breakInside:"avoid",
-                              marginBottom: si < seg.length - 1 ? 7 : 0 }
+                              marginBottom: si < seg.length - 1 ? 8 : 0 }
                           : undefined}>
-                          <div style={{ padding:"14px 16px 16px",
+                          <div style={{ padding: impresion ? (escala ? "13px 16px 12px" : "13px 16px 15px") : "14px 16px 16px",
                             borderTop: !impresion && si > 0 ? "1px solid rgba(17,17,36,.07)" : "none" }}>
 
                             {/* aerolínea y número de vuelo */}
@@ -585,17 +660,32 @@ function SalidaPasajero({
                             </div>
                           </div>
 
-                          {/* espera entre tramos */}
+                          {/* Espera entre tramos. En pantalla es una caja
+                              ámbar —ahí compite con nada—; en el papel una
+                              caja de color por cada escala pesaba más que el
+                              vuelo, así que baja a un renglón con el reloj y
+                              una línea fina arriba. */}
                           {escala && (
-                            <div style={{ display:"flex", alignItems:"center", gap:9, margin:"0 16px 15px",
-                              padding:"9px 13px", background:"#FBF3E6", border:"1px dashed #E3C892",
-                              borderRadius:12 }}>
-                              <Clock size={15} style={{ color:"#B8863A", flexShrink:0 }} />
-                              <span style={{ fontSize:fz(12, 12.5), color:"#8A6423", fontWeight:600,
-                                lineHeight:1.35, overflowWrap:"anywhere" }}>
-                                Espera de <b style={{ fontWeight:800, color:"#B8863A" }}>{escala}</b>
-                              </span>
-                            </div>
+                            impresion ? (
+                              <div style={{ display:"flex", alignItems:"center", gap:7, margin:"0 16px",
+                                padding:"8px 0 12px", borderTop:"1px solid rgba(17,17,36,.07)" }}>
+                                <Clock size={12} style={{ color:"#8A8DB5", flexShrink:0 }} />
+                                <span style={{ fontSize:fz(12, 12), color:"#6B6F99", fontWeight:500,
+                                  lineHeight:1.35, overflowWrap:"anywhere" }}>
+                                  Espera de <b style={{ fontWeight:700, color:"#3D4066" }}>{escala}</b> en el aeropuerto
+                                </span>
+                              </div>
+                            ) : (
+                              <div style={{ display:"flex", alignItems:"center", gap:9, margin:"0 16px 15px",
+                                padding:"9px 13px", background:"#FBF3E6", border:"1px dashed #E3C892",
+                                borderRadius:12 }}>
+                                <Clock size={15} style={{ color:"#B8863A", flexShrink:0 }} />
+                                <span style={{ fontSize:fz(12, 12.5), color:"#8A6423", fontWeight:600,
+                                  lineHeight:1.35, overflowWrap:"anywhere" }}>
+                                  Espera de <b style={{ fontWeight:800, color:"#B8863A" }}>{escala}</b>
+                                </span>
+                              </div>
+                            )
                           )}
                         </div>
                       );
@@ -682,7 +772,7 @@ function SalidaPasajero({
                 partirse entre hotel y hotel. El `gap` pasa a margen. */}
             <div style={{ ...(impresion
               ? { display:"block" }
-              : { display:"flex", flexDirection:"column", gap:14 }), marginBottom:24 }}>
+              : { display:"flex", flexDirection:"column", gap:14 }), marginBottom: impresion ? 8 : 24 }}>
               {visibles.map((o) => {
                 const oi = q.opciones.indexOf(o);
                 const on = impresion ? true : abierta === o.id;
@@ -697,9 +787,9 @@ function SalidaPasajero({
                 const regimenTxt = regimenesOpcion.length > 1 ? "Régimen según hotel" : (regimenesOpcion[0] || o.regimen);
                 return (
                   /* con switcher hay una sola card: la clave fija deja que el precio ruede al cambiar */
-                  <div key={varias && !impresion ? "op-visible" : o.id} className="op-card" style={{ borderRadius:20, overflow:"hidden", background:"#fff",
+                  <div key={varias && !impresion ? "op-visible" : o.id} className="op-card" style={{ borderRadius: impresion ? 14 : 20, overflow:"hidden", background:"#fff",
                     ...(impresion
-                      ? { border:"1px solid rgba(17,17,36,.14)" }
+                      ? { border:"1px solid rgba(17,17,36,.12)" }
                       : {
                           boxShadow: on
                             ? `inset 0 0 0 1px ${G.b}22, 0 2px 5px rgba(58,38,120,.07), 0 26px 52px -26px ${G.b}80`
@@ -724,7 +814,11 @@ function SalidaPasajero({
                       style={{ width:"100%", textAlign:"left", display:"block", cursor: impresion ? "default" : "pointer",
                         breakInside:"avoid", breakAfter:"avoid" }}>
                       {q.fotosHotel ? (
-                        <Foto seed={H0?.seed ?? oi} url={H0?.foto} alt={H0?.nombre || ""} w="100%" h={fz(112, 150)} r={0}>
+                        /* la foto de portada de la opción: en pantalla 150 px,
+                           en el papel 130 — con el precio encima sigue siendo
+                           la pieza más grande de la opción y esos 20 px son
+                           los que deciden si el cierre entra en la hoja */
+                        <Foto seed={H0?.seed ?? oi} url={H0?.foto} alt={H0?.nombre || ""} w="100%" h={fzp(112, 150, 130)} r={0}>
                           <span style={{ position:"absolute", top:10, left:10, display:"inline-flex", alignItems:"center",
                             gap:5, padding:"4px 11px", borderRadius:999, background:"rgba(255,255,255,.94)",
                             fontSize:fz(10.5, 11), fontWeight:800, color:"#1A1A2E",
@@ -743,25 +837,34 @@ function SalidaPasajero({
                           </ChipPrecio>
                         </Foto>
                       ) : (
-                        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"14px 16px 13px",
-                          background:"#fff", borderBottom:"1px solid rgba(17,17,36,.07)" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:10,
+                          padding: impresion ? "14px 16px 12px" : "14px 16px 13px",
+                          background:"#fff", borderBottom: impresion ? "none" : "1px solid rgba(17,17,36,.07)" }}>
                           <span style={{ display:"inline-flex", alignItems:"center", gap:7, minWidth:0, flex:1 }}>
-                            <span style={{ width:20, height:20, borderRadius:99, background:grad, color:"#fff",
+                            <span style={{ width: impresion ? 22 : 20, height: impresion ? 22 : 20, borderRadius:99, background:grad, color:"#fff",
                               display:"grid", placeItems:"center", fontSize:fzp(10, 10, 12), fontWeight:800, flexShrink:0 }}>{oi + 1}</span>
-                            <span style={{ fontSize:fz(12.5, 13), fontWeight:700, whiteSpace:"nowrap",
+                            <span style={{ fontSize:fzp(12.5, 13, 13), fontWeight:700, whiteSpace:"nowrap",
                               overflow:"hidden", textOverflow:"ellipsis" }}>{o.nombre}</span>
                           </span>
                           <ChipPrecio valor={pv} late={animar && !impresion}
                             style={{ textAlign:"right", flexShrink:0 }}>
-                            <span style={{ display:"block", fontSize:fz(19, 22), fontWeight:800, color:G.b,
+                            {/* En el papel el precio es el protagonista de la
+                                opción: 24 px en violeta, con la leyenda de a
+                                quién corresponde justo debajo. */}
+                            <span style={{ display:"block", fontSize:fzp(19, 22, 24), fontWeight:800, color:G.b,
                               letterSpacing:"-.035em", lineHeight:1.05 }}><Odometro valor={pv} /></span>
-                            <span style={{ display:"block", fontSize:fz(9, 9.5), color:"#6B6F99", fontWeight:600,
+                            <span style={{ display:"block", fontSize:fzp(9, 9.5, 12), color:"#6B6F99", fontWeight: impresion ? 500 : 600,
                               letterSpacing:".01em", marginTop:2 }}>{caption}</span>
                           </ChipPrecio>
                         </div>
                       )}
 
-                      {/* resumen bajo la foto */}
+                      {/* Resumen bajo la foto: régimen y ocupación.
+                          En el papel no va — el detalle está siempre abierto y
+                          cada hotel ya dice su régimen, y la ocupación la dice
+                          el encabezado de la tabla de tarifas. Repetirlo dos
+                          veces por opción era la mitad del ruido de la hoja. */}
+                      {!impresion && (
                       <div style={{ display:"flex", alignItems:"center", gap:9, padding:"11px 14px" }}>
                         <div style={{ minWidth:0, flex:1 }}>
                           {/* hoteles anidados (Santi): con el detalle abierto ya se listan uno por uno,
@@ -788,25 +891,71 @@ function SalidaPasajero({
                         </span>
                         )}
                       </div>
+                      )}
                     </button>
 
                     {/* detalle expandido */}
                     {on && (
-                      <div className="a-slide" style={{ padding:"0 14px 14px" }}>
+                      <div className="a-slide" style={{ padding: impresion ? "0 16px 14px" : "0 14px 14px" }}>
                         {(tramos.length ? tramos : [null]).map((t, i) => {
                           const h = o.hoteles?.[i] || {};
                           const H = hotelById(h.hotelId);
                           return (
-                            <div key={i} style={{ display:"flex", gap:12, padding:"12px", marginBottom:8,
-                              borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.06)",
-                              breakInside:"avoid" }}>
+                            /* En el papel el hotel deja de ser una tarjeta
+                               adentro de otra tarjeta: es una fila con una
+                               línea fina arriba, que es lo que separa dos
+                               hoteles de la misma opción. */
+                            <div key={i} className={impresion ? "pr-hot" : undefined}
+                              style={impresion
+                                ? { display:"flex", gap:12, padding: i === 0 ? "2px 0 10px" : "10px 0",
+                                    borderTop: i === 0 ? "none" : "1px solid rgba(17,17,36,.07)",
+                                    breakInside:"avoid" }
+                                : { display:"flex", gap:12, padding:"12px", marginBottom:8,
+                                    borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.06)",
+                                    breakInside:"avoid" }}>
                               {q.fotosHotel && <Foto seed={H?.seed ?? 99} url={H?.foto} alt={H?.nombre || ""} w={fz(58, 76)} h={fz(58, 62)} r={11} />}
                               <div style={{ minWidth:0, flex:1 }}>
-                                <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-                                  <span style={{ fontSize:fz(13, 13.5), fontWeight:700 }}>{h.libre || H?.nombre || "A definir"}</span>
-                                  {H && <Estrellas n={H.cat} size={10} />}
-                                  {!H && h.libre && (h.cat || 0) > 0 && <Estrellas n={h.cat} size={10} />}
+                                <div style={{ display:"flex", alignItems:"center", gap: impresion ? 7 : 6, flexWrap:"wrap" }}>
+                                  <span className={impresion ? "disp" : undefined}
+                                    style={{ fontSize:fzp(13, 13.5, 15), fontWeight: impresion ? 600 : 700,
+                                      letterSpacing: impresion ? "-.01em" : undefined }}>
+                                    {h.libre || H?.nombre || "A definir"}
+                                  </span>
+                                  {H && <Estrellas n={H.cat} size={impresion ? 9 : 10} />}
+                                  {!H && h.libre && (h.cat || 0) > 0 && <Estrellas n={h.cat} size={impresion ? 9 : 10} />}
                                 </div>
+                                {/* Papel: régimen, destino y fechas en un solo
+                                    renglón. En pantalla son tres filas con su
+                                    icono y una píldora para las fechas; sobre
+                                    la hoja esas tres filas por hotel eran
+                                    media carilla de aire y tres cajas más
+                                    adentro de la caja de la opción. */}
+                                {impresion ? (
+                                  <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap",
+                                    marginTop:4, fontSize:fz(11, 12), color:"#6B6F99", fontWeight:500 }}>
+                                    {(h.regimen || o.regimen) && (
+                                      <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
+                                        <Utensils size={11} style={{ color:G.b }} /> {h.regimen || o.regimen}
+                                      </span>
+                                    )}
+                                    {t && (
+                                      <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
+                                        <span style={{ color:"#C9CBE0" }}>·</span>
+                                        <MapPin size={11} style={{ color:G.b }} /> {t.ciudad} · {t.noches} {t.noches === 1 ? "noche" : "noches"}
+                                      </span>
+                                    )}
+                                    {t?.checkin && (
+                                      <span style={{ display:"inline-flex", alignItems:"center", gap:5 }}>
+                                        <span style={{ color:"#C9CBE0" }}>·</span>
+                                        <Calendar size={11} style={{ color:G.b }} />
+                                        <span className="mono" style={{ fontSize:12, color:"#3D4066", fontWeight:500 }}>
+                                          {fmtCorto(t.checkin)} → {fmtCorto(t.checkout)}
+                                        </span>
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <>
                                 {(h.regimen || o.regimen) && (
                                   <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:4,
                                     fontSize:fz(11, 11.5), color:"#6B6F99", fontWeight:600 }}>
@@ -827,6 +976,8 @@ function SalidaPasajero({
                                     <Calendar size={9} style={{ color:G.b }} /> {fmtCorto(t.checkin)} → {fmtCorto(t.checkout)}
                                   </div>
                                 )}
+                                  </>
+                                )}
                               </div>
                             </div>
                           );
@@ -836,7 +987,7 @@ function SalidaPasajero({
                              y las habitaciones caen juntos o pasan juntos de hoja */
                           <div style={{ breakInside:"avoid" }}>
                             <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".08em", textTransform:"uppercase",
-                              color:"#8A8DB5", margin:"4px 0 8px" }}>Tarifas</div>
+                              color:"#8A8DB5", margin: impresion ? "8px 0 6px" : "4px 0 8px" }}>Tarifas</div>
                             {o.habitaciones.map((hab, hi) => (
                               <div key={hab.id ?? hi} className="tar-box" style={{ borderRadius:13, background:"#FAFBFE",
                                 border:"1px solid rgba(17,17,36,.07)", overflow:"hidden",
@@ -966,13 +1117,20 @@ function SalidaPasajero({
         {/* ── cierre ───────────────────────────────────────────────────────
             Notas, condiciones, formas de pago y firma.
 
-            El grupo NO viaja entero: las cuatro cosas juntas pasan los 470 px y
-            pedir que no se partan tira la mitad de una carilla a la basura. Lo
-            que sí viaja junto es cada pieza — condiciones, formas de pago con
-            su título, y firma con el cierre de marca —, y las notas quedan
-            partibles con su título pegado al primer párrafo (`SecTitulo` lleva
-            `break-after:avoid`). Así el corte cae entre bloques y la firma
-            nunca termina sola arriba de una hoja en blanco. */}
+            Las notas quedan afuera del grupo y siguen siendo partibles, con su
+            título pegado al primer párrafo (`SecTitulo` lleva
+            `break-after:avoid`): pueden medir tres renglones o media carilla.
+
+            Las otras tres son el pie del documento y viajan juntas cuando la
+            estimación dice que entran en media carilla (`cierreEntero`).
+            Sueltas, el corte las repartía y la última hoja terminaba con la
+            firma sola arriba de una página en blanco — el mismo problema que
+            el cliente marcó como "la segunda casi vacía", corrido al final.
+            Juntas miden unos 430 px: si no entran al pie de la hoja pasan
+            enteras a la siguiente y esa última carilla queda a poco menos de
+            media página, que ya es una hoja con cuerpo. Con una lista de
+            condiciones larga la estimación se pasa y vuelve el esquema de
+            antes, bloque por bloque. */}
         <div>
 
         {/* notas para el pasajero — bloc de HTML libre */}
@@ -984,14 +1142,24 @@ function SalidaPasajero({
           </div>
         )}
 
+        {/* el pie del documento: condiciones + formas de pago + firma */}
+        <div style={impresion && cierreEntero ? { breakInside:"avoid" } : undefined}>
+
         {/* condiciones — si el máster las borró todas, el bloque no se dibuja */}
         {condiciones.length > 0 && (
-        <div data-sec="condiciones" data-ap style={{ background:"rgba(17,17,36,.028)", borderRadius:"14px", padding: impresion ? "12px 15px 13px" : "15px 17px 16px",
-          marginBottom: impresion ? 16 : 20, breakInside:"avoid" }}>
+        /* En el papel las condiciones dejan la caja gris: son letra chica de
+           cierre, no un bloque destacado. Quedan bajo una línea fina y, si son
+           cortas, en dos columnas — así el cierre no se come una carilla. */
+        <div data-sec="condiciones" data-ap
+          style={impresion
+            ? { borderTop:"1px solid rgba(17,17,36,.10)", padding:"12px 0 0", marginBottom:8, breakInside:"avoid" }
+            : { background:"rgba(17,17,36,.028)", borderRadius:"14px", padding:"15px 17px 16px",
+                marginBottom:20, breakInside:"avoid" }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Condiciones</div>
           {/* las escribe el máster en /backend/cotizador/ajustes, una por línea */}
-          <ul style={{ margin:0, paddingLeft:15, fontSize:fz(10.5, 11), lineHeight:1.65, color:"#6B6F99" }}>
+          <ul className={impresion && condicionesCortas ? "pr-2col" : undefined}
+            style={{ margin:0, paddingLeft:15, fontSize:fz(10.5, 11), lineHeight: impresion ? 1.6 : 1.65, color:"#6B6F99" }}>
             {condiciones.map((linea, i) => <li key={i}>{linea}</li>)}
           </ul>
         </div>
@@ -1001,28 +1169,37 @@ function SalidaPasajero({
             El título y las dos filas de logos son una sola unidad de lectura. */}
         <div data-ap style={{ breakInside:"avoid" }}>
         <SecTitulo texto="Formas de pago" />
-        <div data-sec="pago" style={{ marginBottom:22 }}>
+        <div data-sec="pago" style={{ marginBottom: impresion ? 8 : 22 }}>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Tarjetas de crédito</div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:14 }}>
+          <div style={{ display:"flex", flexWrap:"wrap", gap: impresion ? 10 : 8, marginBottom:14 }}>
             {PAGO_TARJETAS.map((l) => (
-              <div key={l.src} style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
-                width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
-                border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
+              /* En el papel el logo va suelto y a 40 px de alto: la cajita con
+                 borde y sombra alrededor de cada marca sumaba ocho bordes más
+                 a una hoja que ya tenía demasiados. */
+              <div key={l.src} style={impresion
+                ? { display:"inline-flex", alignItems:"center", justifyContent:"center", height:40 }
+                : { display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
+                    border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
                 <img src={l.src} alt={l.alt} loading="eager" decoding="async"
-                  style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", display:"block" }} />
+                  style={{ maxWidth:"100%", maxHeight:"100%", height: impresion ? "100%" : undefined,
+                    objectFit:"contain", display:"block" }} />
               </div>
             ))}
           </div>
           <div style={{ fontSize:fz(9.5, 10), fontWeight:700, letterSpacing:".07em", textTransform:"uppercase",
             color:"#8A8DB5", marginBottom:7 }}>Transferencia bancaria</div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+          <div style={{ display:"flex", flexWrap:"wrap", gap: impresion ? 10 : 8 }}>
             {PAGO_BANCOS.map((l) => (
-              <div key={l.src} style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
-                width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
-                border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
+              <div key={l.src} style={impresion
+                ? { display:"inline-flex", alignItems:"center", justifyContent:"center", height:40 }
+                : { display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
+                    border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
                 <img src={l.src} alt={l.alt} loading="eager" decoding="async"
-                  style={{ maxWidth:"100%", maxHeight:"100%", objectFit:"contain", display:"block" }} />
+                  style={{ maxWidth:"100%", maxHeight:"100%", height: impresion ? "100%" : undefined,
+                    objectFit:"contain", display:"block" }} />
               </div>
             ))}
           </div>
@@ -1049,7 +1226,10 @@ function SalidaPasajero({
             </div>
           )}
           <div style={{ minWidth:0, flex:1 }}>
-            <div style={{ fontSize:fz(14.5, 15.5), fontWeight:700, letterSpacing:"-.015em" }}>{V.nombre}</div>
+            <div className={impresion ? "disp" : undefined}
+              style={{ fontSize:fzp(14.5, 15.5, 15.5), fontWeight: impresion ? 600 : 700, letterSpacing:"-.015em" }}>
+              {V.nombre}
+            </div>
             <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", marginTop:1 }}>{V.cargo} · TravelOz</div>
             {telWa && (
               <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
@@ -1072,11 +1252,19 @@ function SalidaPasajero({
               color:"#128C7E", display:"grid", placeItems:"center", flexShrink:0 }}><Smartphone size={16} /></a>
           )}
         </div>
-        <div style={{ textAlign:"center", marginTop:16 }}><Wordmark size={13} /></div>
-        <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color:"#B0B4CD", marginTop:4 }}>{G.web}</div>
+        {/* Cierre. En pantalla firma el wordmark; en el papel el logo ya
+            está en el membrete y repetirlo abajo —encima con el "oz" pintado
+            por `background-clip:text`, que es lo primero que se rompe cuando
+            imprime el diálogo del navegador— no agrega nada. Queda la
+            dirección web, centrada. */}
+        {!impresion && <div style={{ textAlign:"center", marginTop:16 }}><Wordmark size={13} /></div>}
+        <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color: impresion ? "#8A8DB5" : "#B0B4CD",
+          letterSpacing: impresion ? ".02em" : undefined, marginTop: impresion ? 16 : 4 }}>{G.web}</div>
         </div>
 
-        </div>{/* /cierre: pago + firma */}
+        </div>{/* /pie: condiciones + pago + firma */}
+
+        </div>{/* /cierre: notas + pie */}
       </div>
     </div>
   );
