@@ -500,25 +500,37 @@ function SalidaPasajero({
             <SecTitulo texto="Itinerario de vuelos" />
             {/* En papel la lista va en flujo normal, no en flex: Chromium no
                 fragmenta bien un contenedor flex y ahí `break-inside:avoid`
-                deja de valer — es lo que partía una tarjeta de trayecto entre
-                dos hojas. El `gap` pasa a margen, igual que en las opciones. */}
+                deja de valer — es lo que partía las tarjetas del itinerario
+                entre dos hojas. El `gap` pasa a margen, como en las opciones. */}
             <div style={{ ...(impresion
               ? { display:"block" }
               : { display:"flex", flexDirection:"column", gap:14 }), marginBottom: q.soloVuelos ? 14 : 24 }}>
               {trayectos.map((seg, ti) => {
                 const primero = seg[0];
                 const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
+                /* Papel: el trayecto deja de ser UNA tarjeta indivisible. Un
+                   itinerario de dos tramos con espera no entra en lo que queda
+                   de hoja y se iba entero a la siguiente, dejando media página
+                   en blanco. Ahora el límite es el tramo: cada segmento (fila
+                   de aerolínea + los dos puntos de ruta + la espera que le
+                   sigue) es su propia tarjeta con `break-inside:avoid`, y el
+                   corte cae entre tramos, nunca dentro de uno. La cabecera va
+                   como barra arriba, con `break-after:avoid` para no quedar
+                   sola al pie. En pantalla no cambia nada. */
+                const cajaPapel = { background:"#fff", border:"1px solid rgba(17,17,36,.14)",
+                  borderRadius:14, overflow:"hidden" };
                 return (
-                  /* la tarjeta entera —cabecera, tramos y esperas— cae en una
-                     sola hoja: un trayecto partido al medio no se entiende */
-                  <div key={ti} style={{ borderRadius:18, background:"#fff", overflow:"hidden", breakInside:"avoid",
-                    ...(impresion
-                      ? { border:"1px solid rgba(17,17,36,.14)", marginBottom: ti < trayectos.length - 1 ? 14 : 0 }
-                      : { boxShadow:"0 1px 2px rgba(58,38,120,.05), 0 14px 30px -20px rgba(58,38,120,.35)" }) }}>
+                  <div key={ti} style={impresion
+                    ? { marginBottom: ti < trayectos.length - 1 ? 14 : 0 }
+                    : { borderRadius:18, background:"#fff", overflow:"hidden", breakInside:"avoid",
+                        boxShadow:"0 1px 2px rgba(58,38,120,.05), 0 14px 30px -20px rgba(58,38,120,.35)" }}>
 
                     {/* cabecera del trayecto: pill de marca + fecha */}
                     <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                      gap:10, flexWrap:"wrap", padding:"14px 16px 0" }}>
+                      gap:10, flexWrap:"wrap",
+                      ...(impresion
+                        ? { ...cajaPapel, padding:"10px 16px", marginBottom:7, breakInside:"avoid", breakAfter:"avoid" }
+                        : { padding:"14px 16px 0" }) }}>
                       <span style={{ background:grad, color:"#fff", padding:"5px 11px", borderRadius:999,
                         fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".12em", textTransform:"uppercase" }}>
                         {etiqueta}
@@ -532,9 +544,12 @@ function SalidaPasajero({
                       const escala = si < seg.length - 1 ? escalaTexto(s.llegada, seg[si + 1].salida) : null;
                       const cruzaMedianoche = String(s.llegada) < String(s.salida);
                       return (
-                        <div key={s.id}>
+                        <div key={s.id} style={impresion
+                          ? { ...cajaPapel, breakInside:"avoid",
+                              marginBottom: si < seg.length - 1 ? 7 : 0 }
+                          : undefined}>
                           <div style={{ padding:"14px 16px 16px",
-                            borderTop: si > 0 ? "1px solid rgba(17,17,36,.07)" : "none" }}>
+                            borderTop: !impresion && si > 0 ? "1px solid rgba(17,17,36,.07)" : "none" }}>
 
                             {/* aerolínea y número de vuelo */}
                             <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:13 }}>
@@ -1094,12 +1109,16 @@ function fechaTrayecto(v, anio) {
 
 /* un punto de la ruta vertical: ciudad + hora arriba, terminal abajo.
    La ciudad y el nombre de la terminal salen de la tabla Aeropuerto; un código
-   que no esté cargado se muestra tal cual, sin romper la ficha. */
+   que no esté cargado se muestra tal cual, sin romper la ficha.
+
+   Sin nombre en la tabla no se inventa ninguno: con MBJ el renglón decía
+   "MBJ — 11:18 hs / Aeropuerto MBJ (MBJ)". El subtítulo se omite y queda solo
+   la línea grande con el código, que al menos es dato real. */
 function PuntoRuta({ cod, hora, plus, coral, fz }) {
   const aeropuertos = useAeropuertos();
   const a = aeropuertos[cod];
   const ciudad = a?.ciudad || cod;
-  const terminal = a?.nombre ? `${a.nombre} (${cod})` : `Aeropuerto ${ciudad} (${cod})`;
+  const terminal = a?.nombre ? `${a.nombre} (${cod})` : "";
   return (
     <div>
       <div style={{ display:"flex", alignItems:"baseline", gap:6, flexWrap:"wrap" }}>
@@ -1111,10 +1130,12 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
           )}
         </span>
       </div>
-      <div style={{ fontSize:fz(12.5, 13), color:"#8A8DB5", fontWeight:500, marginTop:1,
-        lineHeight:1.35, overflowWrap:"anywhere" }}>
-        {terminal}
-      </div>
+      {terminal && (
+        <div style={{ fontSize:fz(12.5, 13), color:"#8A8DB5", fontWeight:500, marginTop:1,
+          lineHeight:1.35, overflowWrap:"anywhere" }}>
+          {terminal}
+        </div>
+      )}
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { CSS_UI } from "./_mockup/styles-ui";
 import {
   ANIO_ACTUAL, registrarVendedores, uid, toISO, parseISO, ESTADOS,
   serviciosDefault, habitacionNueva, ventaTarifa, PNR_DEMO, parsePNR, FACTOR_DEFAULT,
-  REGIMEN_DETALLADO, REGIMEN_DETALLADO_TXT, esDetallado, regimenHeredable,
+  REGIMEN_DETALLADO, REGIMEN_DETALLADO_TXT, esDetallado, regimenHeredable, destinoLimpio,
 } from "./_mockup/data";
 import { CotizadorCtx, indexarAeropuertos, indexarAerolineas } from "./_mockup/contexto";
 import { useCatalogoCotizador } from "./_mockup/catalogo";
@@ -162,7 +162,11 @@ function desdePaquete(p, ajustes, catalogo) {
   const q = cotizacionVacia(ajustes);
   const hotelById = catalogo?.hotelById || (() => undefined);
   q.origen = p.nombre;
-  q.titulo = { destino: p.destino || p.destinos[0]?.ciudad || "", mes: p.mes, anio: p.anio };
+  /* El panel guarda el destino como "Región › País › Ciudad"; cuando la ciudad
+     repite al país queda "Caribe › Jamaica › Jamaica". `destinoLimpio` colapsa
+     los segmentos repetidos y deja "Caribe › Jamaica", que es el formato que
+     pidió el cliente. Sigue siendo editable en el encabezado. */
+  q.titulo = { destino: destinoLimpio(p.destino) || p.destinos[0]?.ciudad || "", mes: p.mes, anio: p.anio };
 
   /* La fecha de salida la elige el vendedor. Solo se precarga cuando el paquete
      tiene período de viaje cargado y todavía no arrancó. */

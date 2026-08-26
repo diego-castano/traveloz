@@ -33,7 +33,7 @@ import {
   fechaAnclaPaquete,
 } from "@/lib/utils";
 import { proxyThumbUrl } from "@/components/lib/image-loader";
-import { norm, uid } from "./data";
+import { destinoLimpio, norm, uid } from "./data";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CATÁLOGO REAL DEL COTIZADOR
@@ -647,10 +647,12 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
         fechaViaje: p.viajeDesde ? String(p.viajeDesde).slice(0, 10) : null,
         foto: urlFoto ? proxyThumbUrl(urlFoto, THUMB_W) : null,
         seed: seedDe(p.id),
-        resumen: [p.destino, nochesTotales ? `${nochesTotales} noches` : ""]
+        /* "Caribe › Jamaica › Jamaica" se muestra como "Caribe › Jamaica": la
+           card del paquete y el título de la cotización dicen lo mismo. */
+        resumen: [destinoLimpio(p.destino), nochesTotales ? `${nochesTotales} noches` : ""]
           .filter(Boolean)
           .join(" · "),
-        destino: p.destino,
+        destino: destinoLimpio(p.destino),
         destinos,
         servicios,
         opciones,

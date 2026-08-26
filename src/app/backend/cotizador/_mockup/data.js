@@ -234,6 +234,24 @@ function addDays(iso, n) { const d = parseISO(iso); if (!d) return ""; d.setDate
 function fmtCorto(iso) { const d = parseISO(iso); return d ? `${d.getDate()} ${MES_AB[d.getMonth()]}` : "—"; }
 function fmtLargo(iso) { const d = parseISO(iso); return d ? `${d.getDate()} de ${MESES[d.getMonth()].toLowerCase()} de ${d.getFullYear()}` : "—"; }
 function money(n) { const v = Number(n); return "USD " + (Number.isFinite(v) ? Math.round(v) : 0).toLocaleString("es-UY"); }
+
+/* Breadcrumb de destino sin repeticiones: "Caribe › Jamaica › Jamaica"
+   → "Caribe › Jamaica". El panel arma el campo como Región › País › Ciudad, y
+   cuando la ciudad se llama igual que el país (Jamaica, Panamá, Singapur) el
+   título de la cotización salía con el nombre dos veces. Colapsa solo segmentos
+   consecutivos iguales —ignorando mayúsculas y acentos— y conserva el formato:
+   el vendedor sigue viendo "Región › País" y lo puede editar a mano.
+   Tolera el separador ">" que dejó alguna carga vieja. */
+function destinoLimpio(s) {
+  const partes = String(s ?? "").split(/[\u203a>]/).map((x) => x.trim()).filter(Boolean);
+  const limpio = [];
+  for (const parte of partes) {
+    const previo = limpio[limpio.length - 1];
+    if (previo === undefined || norm(previo) !== norm(parte)) limpio.push(parte);
+  }
+  return limpio.join(" › ");
+}
+
 /* Piso del markup si el máster todavía no cargó su factor. Mismo número que
    FACTOR_DEFAULT en src/lib/presupuesto/schema.ts: si se separan, el precio de
    la lista deja de coincidir con el del editor. */
@@ -585,7 +603,7 @@ export {
   registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,
   horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,
   uid, clamp, parseISO, toISO,
-  addDays, fmtCorto, fmtLargo, money, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
+  addDays, fmtCorto, fmtLargo, money, destinoLimpio, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   fechaDeVuelo, itinerarioMasCompleto,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,
