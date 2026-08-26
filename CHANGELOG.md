@@ -40,8 +40,13 @@ del catálogo, CRM).
   (vuelos nocturnos). "Agregar habitación" vive solo dentro de cada opción y
   replica la habitación en las demás. El selector de personas llega a 5 y
   después "Más…" editable.
-- **PDF.** Cada trayecto de vuelo y cada opción de alojamiento van enteros,
-  sin partirse entre páginas. El logo del encabezado es la imagen del sitio,
+- **PDF.** Cada tramo de vuelo (aerolínea, ruta y espera) y cada opción de
+  alojamiento van enteros; el itinerario se reparte entre páginas solo en
+  las escalas, así la primera hoja no queda vacía. El título de la
+  cotización ya no repite "Jamaica › Jamaica" cuando la ciudad se llama como
+  el país. Se sumaron 89 aeropuertos (Montego Bay, Kingston, Orlando, Nueva
+  York, Ámsterdam, Londres…) para que el itinerario muestre el nombre del
+  aeropuerto; si alguno no está, se muestra solo el código. El logo del encabezado es la imagen del sitio,
   que imprime bien en cualquier navegador. Las notas aparecen solo si hay
   notas. Se quitó la línea de validez del PDF y de la página del pasajero.
 - El selector celular/tablet/escritorio que había quedado en el panel "Lo que
