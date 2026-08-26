@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import {
   MESES, MES_AB, ANIO_ACTUAL,
-  fmtCorto, fmtLargo, money, precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg
+  fmtCorto, fmtLargo, money, precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg,
+  destinoLimpio,
 } from "./data";
 import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
@@ -179,7 +180,9 @@ function SalidaPasajero({
   ].join(", ");
   /* grano finísimo sobre el degradado: rompe el banding de la rampa */
   const GRANO = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E\")";
-  const titulo = [q.titulo.destino || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : null, q.titulo.anio]
+  /* destinoLimpio también acá: las cotizaciones guardadas antes del 26/08 traen
+     "Caribe › Jamaica › Jamaica" en el título y el pasajero no tiene por qué verlo */
+  const titulo = [destinoLimpio(q.titulo.destino) || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : null, q.titulo.anio]
     .filter(Boolean).join(", ").replace(/, (\w+), (\d{4})$/, ", $1 $2");
   const { vendedores } = useCtz();
   const ajustes = useAjustes();
