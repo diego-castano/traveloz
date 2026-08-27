@@ -308,11 +308,12 @@ function AlojamientoDetailForm({
   const precioColumns: InlineEditColumn<PrecioAlojamiento>[] = [
     {
       key: "periodoDesde",
+      // Sin ancho fijo: se queda con el espacio que sobra para que la tabla
+      // entre en la columna del formulario sin scroll horizontal.
       label: "Período",
-      width: "340px",
       render: (r) => (
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-medium text-neutral-900">
               {formatPeriodLabel(r.periodoDesde)} – {formatPeriodLabel(r.periodoHasta)}
             </span>
@@ -339,9 +340,11 @@ function AlojamientoDetailForm({
     },
     {
       key: "precioPorNoche",
-      label: "USD / noche",
+      // "USD/noche" sin espacios: en pantallas de 1280 el encabezado partia en
+      // dos lineas al entrar en modo edicion.
+      label: "USD/noche",
       align: "right",
-      width: "180px",
+      width: "124px",
       render: (r) => (
         <span className="font-mono text-[13px] font-semibold text-neutral-900">
           {formatCurrency(r.precioPorNoche)}
@@ -361,7 +364,7 @@ function AlojamientoDetailForm({
     {
       key: "regimenId",
       label: "Régimen",
-      width: "210px",
+      width: "184px",
       render: (r) => (r.regimenId ? regimenMap[r.regimenId] : null) ?? "—",
       editor: (r, update) => (
         <SearchableSelect
@@ -553,8 +556,8 @@ function AlojamientoDetailForm({
                   : undefined
             }
             addLabel="Agregar tarifa"
+            confirmLabel="Guardar tarifa"
             emptyMessage="No hay periodos de precio registrados"
-            className="min-w-[980px]"
           />
         </FormSection>
 

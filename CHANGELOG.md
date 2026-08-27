@@ -22,6 +22,14 @@ del catálogo, CRM).
   los activos con validez entre hoy y 14 días, ordenados por lo que vence
   antes, y cada uno con su pastilla "Vence 3 sep · en 6 días" (en rojo si
   vence hoy o mañana). El KPI "Por vencer (próximos 14 d)" también es link.
+- **La tabla "Precios por periodo" del hotel entra en la pantalla.** Tenía
+  un ancho mínimo de 980 px y en una laptop los botones de editar y eliminar
+  quedaban fuera de la vista, a la derecha; parecía que no se podía editar ni
+  borrar un período (aviso de Gero). Ahora la tabla se adapta al ancho, la
+  columna de acciones queda siempre a la vista y, al agregar o editar una
+  tarifa, la fila muestra botones "Guardar tarifa" y "Cancelar" en vez de un
+  ícono escondido. "Guardar Cambios" de arriba sigue guardando también la
+  tarifa pendiente. La tabla de precios de circuitos hereda el mismo arreglo.
 
 ## 26 de agosto de 2026
 
