@@ -24,6 +24,7 @@
 import type { ContenidoPresupuesto } from "./schema";
 import { precioOpcion, ventaTarifa } from "./derivados";
 import { sanitizarHtmlNotas } from "./sanitizar";
+import { destinoFinal } from "./destino";
 
 /** Texto plano tal cual está guardado (ya normalizado por el schema). */
 function txt(v: unknown): string {
@@ -143,7 +144,9 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
     numero: txt(q.numero),
 
     titulo: {
-      destino: txt(q.titulo?.destino),
+      // El pasajero ve solo el destino final; el camino "Región › País › Ciudad"
+      // es del panel y no cruza a la ficha (pedido del cliente, 26/08).
+      destino: destinoFinal(q.titulo?.destino),
       mes: q.titulo?.mes ?? null,
       anio: q.titulo?.anio ?? null,
     },

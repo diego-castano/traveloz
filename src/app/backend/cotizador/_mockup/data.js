@@ -1,5 +1,8 @@
 import { Send, Eye, CheckCheck, PenLine, Clock3 } from "lucide-react";
 import { horasHabilesEntre, textoVencimiento } from "@/lib/presupuesto/habiles";
+/* Una sola implementación del recorte de destino: la comparten el cotizador,
+   el email, la ficha pública y el espejo en columnas. */
+import { destinoFinal } from "@/lib/presupuesto/destino";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    VOCABULARIO Y HELPERS DEL COTIZADOR
@@ -238,10 +241,14 @@ function money(n) { const v = Number(n); return "USD " + (Number.isFinite(v) ? M
 /* Breadcrumb de destino sin repeticiones: "Caribe › Jamaica › Jamaica"
    → "Caribe › Jamaica". El panel arma el campo como Región › País › Ciudad, y
    cuando la ciudad se llama igual que el país (Jamaica, Panamá, Singapur) el
-   título de la cotización salía con el nombre dos veces. Colapsa solo segmentos
-   consecutivos iguales —ignorando mayúsculas y acentos— y conserva el formato:
-   el vendedor sigue viendo "Región › País" y lo puede editar a mano.
-   Tolera el separador ">" que dejó alguna carga vieja. */
+   camino salía con el nombre dos veces. Colapsa solo segmentos consecutivos
+   iguales —ignorando mayúsculas y acentos— y conserva el formato.
+   Tolera el separador ">" que dejó alguna carga vieja.
+
+   Desde el 26/08 lo usan solo las tarjetas de paquetes del inicio, que son
+   vista del vendedor y muestran el camino entero. El título de la cotización
+   pasa por `destinoFinal`: el cliente lo quiere con el destino final y nada
+   más. */
 function destinoLimpio(s) {
   const partes = String(s ?? "").split(/[\u203a>]/).map((x) => x.trim()).filter(Boolean);
   const limpio = [];
@@ -603,7 +610,7 @@ export {
   registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,
   horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,
   uid, clamp, parseISO, toISO,
-  addDays, fmtCorto, fmtLargo, money, destinoLimpio, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
+  addDays, fmtCorto, fmtLargo, money, destinoLimpio, destinoFinal, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   fechaDeVuelo, itinerarioMasCompleto,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,

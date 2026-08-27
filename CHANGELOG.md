@@ -48,6 +48,14 @@ del catálogo, CRM).
   pago sin recuadros; firma sobre blanco; pie "TravelOz · Cotización COT-… ·
   Página N". La misma cotización de tres opciones pasa de 4 a 3 hojas. La
   página web del pasajero no cambia.
+- **El título de la cotización lleva solo el destino final.** De "Caribe ›
+  Jamaica › Jamaica, Noviembre 2026" queda "Jamaica, Noviembre 2026"; de
+  "Brasil › Brasil › Salvador de Bahía" queda "Salvador de Bahía". Aplica en
+  la hoja del pasajero (link y PDF), el encabezado del editor, el texto de
+  WhatsApp, el email, el listado de seguimiento con su filtro de destinos y
+  analytics; las cotizaciones ya guardadas también se muestran así. Un título
+  escrito a mano por el vendedor no se toca. Las tarjetas de paquetes del
+  inicio conservan el camino completo.
 - **PDF con más aire.** Cada servicio de "Tu viaje incluye" va en su propia
   ficha, con borde fino y fondo apenas tintado, en dos columnas. Los títulos
   de sección (Itinerario de vuelos, Opciones de alojamiento, Notas,

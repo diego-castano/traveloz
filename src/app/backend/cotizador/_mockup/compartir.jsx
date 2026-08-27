@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Btn, Label } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
-import { precioOpcion, renderPlantilla } from "./data";
+import { precioOpcion, renderPlantilla, destinoFinal } from "./data";
 import { sumarHorasHabiles, textoVencimiento, textoDiaCorto } from "@/lib/presupuesto/habiles";
 import { useAjustes, useCtz, buscarVendedor } from "./contexto";
 import {
@@ -177,7 +177,8 @@ function ModalCompartir({
   }, [q.mensajeAuto, nom, V.linkDatos, V.nombre]);
 
   const base = useMemo(() => {
-    const destino = q.titulo?.destino || "tu viaje";
+    /* al pasajero se le nombra el destino final, no el camino del panel */
+    const destino = destinoFinal(q.titulo?.destino) || "tu viaje";
     /* El recordatorio tiene texto propio: recuerda cuándo salió y hasta cuándo
        sirve. Mandar de nuevo el mismo mensaje del primer envío hacía que el
        pasajero lo leyera como un copy-paste. */

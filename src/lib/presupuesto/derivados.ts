@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import { FACTOR_DEFAULT, type ContenidoPresupuesto } from "./schema";
+import { destinoFinal } from "./destino";
 
 /** Techo de la columna `montoPrincipal`: es un Int de Postgres. */
 const INT_MAX = 2_147_483_647;
@@ -169,8 +170,11 @@ export function columnasDesdeContenido(
   const telefono = limpio(contenido.cliente?.telefono);
   const digitos = telefono ? soloDigitos(telefono) : "";
   // El destino del encabezado manda; si está vacío, el primer destino cargado.
+  // La columna guarda solo el destino final ("Jamaica", no "Caribe › Jamaica"):
+  // es lo que se lee en el listado, los filtros y analytics (cliente, 26/08).
   const destino =
-    limpio(contenido.titulo?.destino) ?? limpio(contenido.destinos?.[0]?.ciudad);
+    limpio(destinoFinal(contenido.titulo?.destino)) ??
+    limpio(destinoFinal(contenido.destinos?.[0]?.ciudad));
   const fechaSalida = fechaDesdeISO(contenido.fechaSalida);
 
   // Con fecha de salida cargada, mes y año salen de ahí (es lo que hace

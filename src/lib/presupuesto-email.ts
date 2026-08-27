@@ -18,6 +18,7 @@
 import { SITE_BASE_URL } from "@/lib/datos-email";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion } from "@/lib/presupuesto/derivados";
+import { destinoFinal } from "@/lib/presupuesto/destino";
 import { REGLA_HABILES, textoDiaCorto, textoVencimiento } from "@/lib/presupuesto/habiles";
 import type { ContenidoPresupuesto } from "@/lib/presupuesto/schema";
 
@@ -262,7 +263,9 @@ export interface CotizacionEmailInput {
  */
 export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
   const { q, vendedor, url, vigenciaHoras } = input;
-  const destino = String(q.titulo?.destino ?? "").trim() || "tu viaje";
+  // Solo el destino final en el asunto y en la ficha: "Jamaica", no
+  // "Caribe › Jamaica" (pedido del cliente, 26/08).
+  const destino = destinoFinal(q.titulo?.destino) || "tu viaje";
   const nombre = String(q.cliente?.nombre ?? "").trim();
   const numero = String(q.numero ?? "").trim();
 
@@ -283,7 +286,7 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
   const precioVuelo = Number(q.precioVuelo?.adulto) || 0;
 
   const resumen = fieldRows([
-    { label: "Destino", value: String(q.titulo?.destino ?? "").trim() || null },
+    { label: "Destino", value: destinoFinal(q.titulo?.destino) || null },
     { label: "Salida", value: salida },
     { label: "Noches", value: noches > 0 ? String(noches) : null },
     ...(q.soloVuelos

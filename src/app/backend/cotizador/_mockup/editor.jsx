@@ -16,7 +16,7 @@ import {
   PNR_DEMO, uid, clamp, toISO, parseISO, fmtCorto, money, venta,
   limpiarPegado, parsePNR, fechaDeVuelo, itinerarioMasCompleto,
   habitacionNueva, tarifaNueva, ventaTarifa,
-  precioOpcion, norm
+  precioOpcion, norm, destinoFinal
 } from "./data";
 import { useCatalogo, useAjustes, useAerolineas } from "./contexto";
 import { uploadFile } from "@/components/lib/upload";
@@ -262,8 +262,12 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
     const ultimo = new Date(y, m + 1, 0).getDate();
     d.fechaSalida = toISO(new Date(y, m, Math.min(f.getDate(), ultimo)));
   };
-  const titulo = [q.titulo.destino || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : "Mes", q.titulo.anio || "Año"].join(" · ");
-  const previa = `${q.titulo.destino || "Destino"}, ${q.titulo.mes != null ? MESES[q.titulo.mes] : "Mes"} ${q.titulo.anio || ""}`.trim();
+  /* El encabezado y la vista previa muestran lo que va a leer el pasajero: solo
+     el destino final (pedido del cliente, 26/08). El input de abajo sigue con el
+     valor crudo —"Caribe › Jamaica"— para que el vendedor lo pueda editar. */
+  const destTitulo = destinoFinal(q.titulo.destino);
+  const titulo = [destTitulo || "Destino", q.titulo.mes != null ? MESES[q.titulo.mes] : "Mes", q.titulo.anio || "Año"].join(" · ");
+  const previa = `${destTitulo || "Destino"}, ${q.titulo.mes != null ? MESES[q.titulo.mes] : "Mes"} ${q.titulo.anio || ""}`.trim();
 
   return (
     <Block id="b-encabezado" forwardRef={refEl} icon={FileText} title="Encabezado"

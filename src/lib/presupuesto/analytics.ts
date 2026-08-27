@@ -19,6 +19,7 @@
 // ---------------------------------------------------------------------------
 
 import { SECCIONES, indiceSeccion } from "./secciones";
+import { destinoFinal } from "./destino";
 
 const HORA_MS = 3_600_000;
 const DIA_MS = 86_400_000;
@@ -234,9 +235,13 @@ export function semanaISO(d: Date): { clave: string; lunes: Date } {
  * "Punta Cana, Noviembre 2026" → "Punta Cana". El espejo `destino` guarda
  * destino + período pegados; agrupar por el string entero partiría el mismo
  * destino en un balde por mes.
+ *
+ * `destinoFinal` encima: las filas anteriores al 26/08 guardaron el camino
+ * entero ("Caribe › Jamaica") y las nuevas solo "Jamaica". Sin el recorte, el
+ * mismo destino salía en dos baldes del ranking.
  */
 function destinoBase(s: string | null): string {
-  return String(s ?? "").split(",")[0].trim();
+  return destinoFinal(String(s ?? "").split(",")[0]);
 }
 
 function nombreDe(usuarios: Map<string, string>, id: string): string {

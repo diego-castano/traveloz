@@ -1,4 +1,5 @@
 import { MESES } from "./data";
+import { destinoFinal } from "@/lib/presupuesto/destino";
 import { SECCIONES, indiceSeccion, labelSeccion } from "@/lib/presupuesto/secciones";
 import { horasHabilesEntre } from "@/lib/presupuesto/habiles";
 
@@ -61,9 +62,12 @@ function nombreCliente(fila) {
   return partes.join(" ").trim() || "Sin cliente";
 }
 
-/** "Punta Cana, Noviembre 2026" — el formato que ya parsean los filtros. */
+/** "Punta Cana, Noviembre 2026" — el formato que ya parsean los filtros.
+    `destinoFinal` acá cubre las filas guardadas antes del 26/08, que traen el
+    camino entero ("Brasil › Brasil › Salvador de Bahía") en la columna: la
+    fila, el filtro "Todos los destinos" y el buscador leen todos de acá. */
 function textoDestino(fila) {
-  const destino = (fila.destino || "").trim();
+  const destino = destinoFinal(fila.destino);
   const mes = fila.mes != null && MESES[fila.mes] ? MESES[fila.mes] : "";
   const anio = fila.anio ? String(fila.anio) : "";
   const cuando = [mes, anio].filter(Boolean).join(" ");
