@@ -11,6 +11,18 @@ del catálogo, CRM).
 
 ---
 
+## 27 de agosto de 2026
+
+### Arreglado
+
+- **"Paquetes por vencer" del dashboard ahora lleva a la lista de esos
+  paquetes.** El pill ya era un link, pero el listado ignoraba el parámetro y
+  mostraba todos los paquetes; parecía que no era clickeable (aviso de Gero).
+  Ahora abre el listado con la alerta "Por vencer (próximos 14 días)": solo
+  los activos con validez entre hoy y 14 días, ordenados por lo que vence
+  antes, y cada uno con su pastilla "Vence 3 sep · en 6 días" (en rojo si
+  vence hoy o mañana). El KPI "Por vencer (próximos 14 d)" también es link.
+
 ## 26 de agosto de 2026
 
 ### Cambiado

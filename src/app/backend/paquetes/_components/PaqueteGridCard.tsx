@@ -6,6 +6,7 @@ import { MapPin, Package as PackageIcon, ArrowRight } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { formatCurrency } from "@/lib/utils";
+import { VencimientoBadge } from "./VencimientoBadge";
 import type {
   Paquete,
   PaqueteFoto,
@@ -43,6 +44,11 @@ interface PaqueteGridCardProps {
   index: number;
   /** Total nights computed from PaqueteDestino. Falls back to paquete.noches if missing. */
   nochesTotales?: number;
+  /**
+   * Muestra la fecha de vencimiento debajo del título. Se enciende sólo cuando
+   * el listado llega con `?alerta=por-vencer` (pedido de Gero 27/08).
+   */
+  mostrarVencimiento?: boolean;
 }
 
 const estadoStyles = {
@@ -89,6 +95,7 @@ export function PaqueteGridCard({
   canSeePricing,
   index,
   nochesTotales,
+  mostrarVencimiento = false,
 }: PaqueteGridCardProps) {
   const cover = foto?.url;
   const estadoStyle = estadoStyles[paquete.estado] ?? estadoStyles.ACTIVO;
@@ -206,6 +213,12 @@ export function PaqueteGridCard({
                   </span>
                 )}
               </div>
+              {mostrarVencimiento && (
+                <VencimientoBadge
+                  validezHasta={paquete.validezHasta}
+                  className="mt-2"
+                />
+              )}
             </div>
 
             {canSeePricing.venta !== false && (

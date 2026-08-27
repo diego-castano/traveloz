@@ -60,7 +60,11 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import type { ColumnDef } from "@tanstack/react-table";
 import { usePaquetesQueryState } from "./searchParams";
-import { esPaqueteSinOpcionHotelera } from "@/app/backend/dashboard/_components/metrics";
+import {
+  esPaqueteSinOpcionHotelera,
+  paquetesProximosAVencer,
+} from "@/app/backend/dashboard/_components/metrics";
+import { VencimientoBadge } from "./_components/VencimientoBadge";
 import {
   usePaquetes,
   usePackageActions,
@@ -540,6 +544,17 @@ export default function PaquetesPage() {
       );
     }
 
+    // Alerta "por vencer" (?alerta=por-vencer, desde el KPI del dashboard):
+    // mismo criterio que el pill —ACTIVO con validezHasta entre hoy y hoy+14—
+    // y ordenado por fecha de vencimiento: lo que vence antes va primero.
+    if (alertaFilter === "por-vencer") {
+      return [...paquetesProximosAVencer(result)].sort((a, b) =>
+        (a.validezHasta ?? "")
+          .slice(0, 10)
+          .localeCompare((b.validezHasta ?? "").slice(0, 10)),
+      );
+    }
+
     return sortByRecency(result);
   }, [
     paquetes,
@@ -754,6 +769,15 @@ export default function PaquetesPage() {
         dimension: "Alerta",
         value: "Activos sin opción hotelera",
         color: "#EF4444",
+        onRemove: clearAlertaFilter,
+      });
+    }
+    if (alertaFilter === "por-vencer") {
+      chips.push({
+        key: "alerta:por-vencer",
+        dimension: "Alerta",
+        value: "Por vencer (próximos 14 días)",
+        color: "#E8913A",
         onRemove: clearAlertaFilter,
       });
     }
@@ -1236,6 +1260,7 @@ export default function PaquetesPage() {
               canSeePricing={canSeePricing}
               index={i}
               nochesTotales={nochesPorPaquete.get(paquete.id)}
+              mostrarVencimiento={alertaFilter === "por-vencer"}
             />
           ))}
           </motion.div>
@@ -1408,6 +1433,14 @@ export default function PaquetesPage() {
                             <MapPin size={10} strokeWidth={2} />
                             {destinoNombre}
                           </span>
+                        )}
+                        {/* Cuándo vence: sólo con la alerta activa, en una
+                            línea propia para no ensanchar la columna. */}
+                        {alertaFilter === "por-vencer" && (
+                          <VencimientoBadge
+                            validezHasta={paquete.validezHasta}
+                            className="mt-1 self-start"
+                          />
                         )}
                       </div>
                     </TableCell>

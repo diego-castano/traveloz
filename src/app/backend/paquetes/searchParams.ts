@@ -35,11 +35,14 @@ export const paquetesParsers = {
   ),
   /**
    * Alerta del dashboard que originó la navegación (p.ej. `?alerta=sin-opcion`
-   * desde el card "N paquetes sin opción hotelera"). Vacío = sin alerta activa.
+   * desde el card "N paquetes sin opción hotelera", o `?alerta=por-vencer`
+   * desde el KPI "Paquetes por Vencer"). Vacío = sin alerta activa.
    */
-  alerta: parseAsStringEnum<"sin-opcion" | "">(["sin-opcion", ""]).withDefault(
+  alerta: parseAsStringEnum<"sin-opcion" | "por-vencer" | "">([
+    "sin-opcion",
+    "por-vencer",
     "",
-  ),
+  ]).withDefault(""),
   /**
    * 1-based page number in the URL (`?page=2`), 0-based internally so the
    * existing `currentPage - 1` math stays unchanged. We expose `page` as the

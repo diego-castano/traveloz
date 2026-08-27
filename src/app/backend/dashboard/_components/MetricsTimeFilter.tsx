@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { TrendingUp, TrendingDown, Minus, Calendar, RefreshCw } from "lucide-react";
 import {
   getDashboardMetrics,
@@ -109,10 +110,12 @@ export function MetricsTimeFilter() {
             delta={data.delta.publicadosPct}
             previousValue={data.previous?.publicados}
           />
+          {/* Clickeable hacia el listado ya filtrado (pedido de Gero 27/08). */}
           <KpiCard
             label="Por vencer (próximos 14 d)"
             value={data.current.porVencer14d}
             tone={data.current.porVencer14d > 0 ? "warning" : "neutral"}
+            href="/backend/paquetes?alerta=por-vencer"
           />
         </div>
       )}
@@ -126,12 +129,15 @@ function KpiCard({
   delta,
   previousValue,
   tone = "neutral",
+  href,
 }: {
   label: string;
   value: number;
   delta?: number | null;
   previousValue?: number;
   tone?: "neutral" | "warning";
+  /** Cuando viene, la tarjeta se vuelve un link con la misma afordancia que el KpiPill. */
+  href?: string;
 }) {
   const isUp = (delta ?? 0) > 0;
   const isFlat = (delta ?? 0) === 0;
@@ -144,9 +150,13 @@ function KpiCard({
         ? "#10B981"
         : "#EF4444";
 
-  return (
+  const card = (
     <div
-      className="flex flex-col gap-1 rounded-[12px] border px-4 py-3.5"
+      className={`flex flex-col gap-1 rounded-[12px] border px-4 py-3.5${
+        href
+          ? " transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_24px_-12px_rgba(17,17,36,0.18)]"
+          : ""
+      }`}
       style={{
         borderColor: tone === "warning" ? "rgba(232,145,58,0.25)" : "rgba(17,17,36,0.07)",
         background: tone === "warning" ? "#FEF7EC" : "#FFFFFF",
@@ -176,4 +186,13 @@ function KpiCard({
       )}
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block">
+        {card}
+      </Link>
+    );
+  }
+  return card;
 }

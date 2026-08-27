@@ -481,7 +481,9 @@ export default function AdminDashboard() {
           label="Paquetes por Vencer"
           value={proximosAVencer.length}
           color="#E8913A"
-          href="/backend/paquetes?filter=porVencer"
+          // El listado lee `?alerta=...` (no `?filter=`): con esta URL el clic
+          // cae en los paquetes por vencer y no en el catálogo entero.
+          href="/backend/paquetes?alerta=por-vencer"
           tone="warning"
           delay={0.05}
         />
