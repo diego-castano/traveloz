@@ -13,6 +13,20 @@ del catálogo, CRM).
 
 ## 27 de agosto de 2026
 
+### Cambiado
+
+- **El seguro se cotiza como "Seguro de asistencia al viajero", sin plan.**
+  Al armar una cotización desde un paquete, la línea del seguro decía
+  "Seguro de asistencia al viajero · Master": el plan es un nombre interno
+  del operador. Si el paquete tiene un texto propio para el pasajero, se
+  respeta.
+
+### Operación
+
+- Se corrigieron a mano, desde el editor, las líneas de servicios de las
+  cotizaciones anteriores al cambio de aerolínea: COT-2026-0006, 0018 y 0026
+  (aéreo sin aerolínea) y COT-2026-0025 (seguro sin plan).
+
 ### Arreglado
 
 - **"Paquetes por vencer" del dashboard ahora lleva a la lista de esos
