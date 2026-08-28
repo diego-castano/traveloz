@@ -1136,4 +1136,46 @@ Turquía: Estambul, Capadocia
 
 ---
 
+## 19. MÓDULO: COTIZADOR DE VENDEDORES
+
+> Numeración: las secciones 12 a 18 ya estaban ocupadas cuando se agregaron
+> estos dos módulos. Van al final para no renumerar el documento entero.
+
+### 19.1 Propósito
+
+El vendedor arma la cotización de un viaje en `/backend/cotizador`, la comparte
+por WhatsApp o email con un link público de vigencia limitada, y sigue qué pasó
+con ella. La cotización vive en la base con número `COT-AAAA-NNNN`, PDF generado
+en el servidor, registro de aperturas del pasajero y confirmación desde el link.
+Un vendedor ve solo lo suyo; el administrador ve todo, tiene "Ver como" y
+analytics por vendedor.
+
+Entró a producción el 24 de agosto de 2026. Modelos nuevos: `Presupuesto`,
+`PresupuestoEvento`, `PresupuestoLink`, `PresupuestoApertura`,
+`PlantillaPresupuesto`, `HotelFavorito`, `Aeropuerto` y `Aerolinea`.
+
+**Especificación completa:** [modulos/cotizador.md](./modulos/cotizador.md)
+
+---
+
+## 20. MÓDULO: PASAJEROS Y PAGOS
+
+### 20.1 Propósito
+
+Cada vendedor tiene dos links públicos permanentes: uno para que el pasajero
+cargue los datos del grupo tal cual figuran en el documento de viaje, y otro
+para los datos de la tarjeta. Los datos de pasajeros llegan a la bandeja del
+vendedor y por email; los de tarjeta entran a una bóveda cifrada con AES-256-GCM
+que se borra sola a las 96 horas. El vendedor abre el registro con su PIN o su
+contraseña y lo manda a Administración con el número de file, con auditoría de
+cada acceso y de cada envío.
+
+Entró a producción el 17 de agosto de 2026. Modelos: `FormularioDato`,
+`SolicitudDato`, `EnvioPasajeros`, `PasajeroDato` y `DatosPagoCifrado`, más los
+campos `slug` y `linkActivo` en `User`.
+
+**Especificación completa:** [modulos/pasajeros-pagos.md](./modulos/pasajeros-pagos.md)
+
+---
+
 *Este documento es la fuente de verdad para la implementación del backend. Todo lo descrito aquí proviene de las reuniones con el cliente (25/02 y 05/03 de 2026) y las decisiones de arquitectura tomadas por Latitud Nómade. Si hay ambigüedad, consultar flujo.md y explicacion.md en este mismo proyecto.*

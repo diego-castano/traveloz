@@ -3,11 +3,24 @@
 Documento vivo. Lista todo lo que falta cerrar antes (o poco después) del
 go-live. Lo que ya quedó implementado se mueve al final, en "Hecho recientemente".
 
-Última actualización: **2026-06-10** — re-verificado item por item en la
-auditoría completa pre-producción
-([docs/auditorias/auditoria-2026-06-10.md](docs/auditorias/auditoria-2026-06-10.md)).
-Estado general: la funcionalidad operativa (paquetes, servicios, CMS, imágenes,
-frontend) está completa; los bloqueantes reales son los de seguridad (S1-S3, R1).
+Última actualización: **2026-08-27** — el sitio público corre en
+`traveloz.com.uy` con los leads entrando a Bitrix24, y el cotizador de
+vendedores y el módulo de Pasajeros y pagos ya están en producción.
+Queda el piloto con el equipo el 31/08: hasta ahí, lo que sigue abierto es
+entrega de credenciales, prueba del lector de itinerarios con PNR reales y dos
+temas de usuarios.
+
+---
+
+## 🟣 Cotizador y Pasajeros/pagos — pendientes al 27/08
+
+| # | Pendiente | Detalle |
+|---|---|---|
+| C1 | **Itinerarios reales de Gero para el lector de PNR** | El lector con Gemini quedó validado el 18/08 con dos formatos de Copa (Amadeus crudo y captura NDC). Falta pasarle los casos complejos: multitramo, escalas largas y códigos poco frecuentes. Sin eso no sabemos dónde se cae. |
+| C2 | **Entrega de credenciales al equipo** | [scripts/seed-usuarios-traveloz.ts](../scripts/seed-usuarios-traveloz.ts) dio de alta a las 26 personas con contraseña temporal según la regla acordada `Nombre1343` y `mustChangePassword` en true: el panel obliga a cambiarla en el primer ingreso. El script deja `credenciales-equipo-traveloz.csv` en la raíz del repo (ignorado por git). **Ese archivo se borra apenas se entregan las credenciales.** |
+| C3 | **Usuario QA** | El usuario de prueba (QA Vendedor Temporal) queda activo: es la cuenta con la que el equipo y nosotros probamos el cotizador y los formularios. Decisión de Diego del 27/08. El PIN no se documenta en ningún lado. |
+| C4 | **Rol de Amparo Schelotto** | Figura como ADMIN y cotiza como vendedora. Hay que decidir si va a VENDEDOR o si mantiene ADMIN con la vista comercial. No salió del seed: es un alta manual del 25/06/2026 desde Perfiles, con rol ADMIN desde el inicio. |
+| C5 | **Tarjeta rechazada: flujo manual** | Decisión del cliente en el check-in del 26/08. Cuando la tarjeta no pasa, el vendedor rehace el pedido a mano; no hay reintento automático ni aviso al pasajero desde el sistema. |
 
 ---
 
@@ -59,41 +72,6 @@ STORAGE_SECRET_ACCESS_KEY=
 - `NEXTAUTH_SECRET` — generar nuevo, descartar el actual
 - Password del usuario Postgres de Railway
 - `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` — generar par nuevo
-
----
-
-## 🔴 Bloqueante real — pendiente del cliente, no nuestro
-
-### Acceso al dominio + cuenta Resend para notificaciones
-
-**Por qué importa:** la infraestructura de envío de emails ya está hecha
-(`src/lib/email.ts`, Resend-ready, modo "console" cuando falta la API key).
-**Sin acceso al dominio**, no podemos:
-
-- Configurar el registro DNS de Resend (`MX`, `TXT`, `DKIM`, `SPF`) en
-  `traveloz.com.uy` que es lo que valida que somos quienes decimos ser.
-- Crear el sender `no-reply@traveloz.com.uy` ni el `ventas@traveloz.com.uy`
-  que recibe los leads.
-- Probar que el deliverability no caiga en spam.
-
-**Hasta que tengamos el dominio:** los 5 formularios públicos (newsletter,
-cotizar, contacto, work-with-us, corporativo) y la sección
-`/backend/notificaciones` siguen **guardando todo en DB pero no avisan a
-nadie por email**. El admin sigue viendo los leads en `/backend/leads/*`,
-pero nadie recibe un ping en su inbox.
-
-**Qué necesitamos del cliente:**
-- Acceso al panel del registrador del dominio (Antel, Datalogic, GoDaddy,
-  donde sea que esté `traveloz.com.uy`) para agregar registros DNS, o que el
-  cliente nos los agregue copiando los valores que le pasemos.
-- Decisión sobre el `from`: `no-reply@traveloz.com.uy` o algo más cálido tipo
-  `hola@traveloz.com.uy`.
-- Decisión sobre el destinatario interno: a qué cuenta(s) llegan los leads
-  nuevos. Recomiendo un alias tipo `ventas@traveloz.com.uy` que reenvíe a
-  Geronimo + a quien él decida (puede manejarse desde el registrador).
-
-**Estimación post-acceso:** ~3-4 hs implementar el wiring de las 6 notificaciones
-(5 forms + admin notifications) + 1 hs de pruebas reales con Resend.
 
 ---
 
@@ -201,8 +179,8 @@ deshabilitar export hasta que haya datos reales.
 
 | # | Issue | Estado |
 |---|---|---|
-| I1 | **No hay `.env.example`** documentando las ~20 envs. | Pendiente |
-| I2 | **No hay `Dockerfile` ni `railway.json` ni `engines.node` en package.json** — deploy depende de Nixpacks heurístico. Un cambio de versión Node lo rompe sin warning. | Pendiente |
+| I1 | **No hay `.env.example`** documentando las ~20 envs. | ✅ Hecho (11-jun, ampliado 24-ago con las envs del PDF y del lector de itinerarios). Faltan documentar ahí `DATOS_PAGO_KEY` y `PURGA_SECRET`. |
+| I2 | **No hay `Dockerfile` ni `railway.json` ni `engines.node` en package.json** — deploy depende de Nixpacks heurístico. Un cambio de versión Node lo rompe sin warning. | ✅ Hecho — `railway.json`, `engines` en `package.json` y `nixpacks.toml` (24-ago, para meter Chromium en la imagen) |
 | I3 | **Sin Sentry / Logtail / Better Stack** — errores van a stdout de Railway sin alerting ni grouping. | **POST-LAUNCH** (decisión del owner) — engancharlo cuando estemos en prod. |
 | I4 | **22 `console.*` en `src/` que deberían usar `src/lib/logger.ts`** — no quedan estructurados en agregadores. | Pendiente (menor) |
 | I5 | **`next lint` no corre** porque la config es interactiva — falta `.eslintrc.json` con `extends: next/core-web-vitals`. | Pendiente (menor) |
@@ -234,34 +212,51 @@ deshabilitar export hasta que haya datos reales.
 
 Lista de lo que ya cerramos en los últimos dos sprints.
 
+### Go-live y dominio (julio-agosto 2026)
+
+- **Dominio `traveloz.com.uy` en producción.** Era el bloqueante rojo de este
+  documento: sin acceso al registrador no había DNS de Resend ni sender propio.
+  Quedó resuelto. Los cinco formularios públicos avisan por email, el
+  administrador configura los destinatarios por formulario en
+  `/backend/web/notificaciones`, y las notificaciones del cotizador salen desde
+  `notificaciones@app.traveloz.com.uy`. El 5/08 una limpieza de la
+  configuración de correo borró los tres registros que autorizan el envío y los
+  correos dejaron de salir 22 horas: se repusieron los registros y se
+  reenviaron las 25 notificaciones pendientes, sin perder ninguna consulta.
+- **`app.traveloz.com.uy` redirige 301 al dominio real** (18-ago), y el panel
+  dejó de caer al dominio provisorio de Railway al vencerse la sesión (12-ago).
+- **Leads en Bitrix24** (29-jul): las consultas de paquete y el cotizador
+  general abren el negocio en la columna de entradas calientes. Regla de 24 h
+  encendida el 6-ago (`BITRIX_DEDUPE_HOURS=24`).
+
 ### Sprint UX/CMS (mejoras de edición del frontend desde el admin)
 
 - **Live preview lado a lado** en todo `/backend/web/*` con toolbar
   desktop/mobile, refresh manual, dev keys toggle, abrir en pestaña.
-  ([WebEditShell.tsx](src/app/backend/web/_components/WebEditShell.tsx))
+  ([WebEditShell.tsx](../src/app/backend/web/_components/WebEditShell.tsx))
 - **Autosave debounce 1.5s** + status pill (5 estados) + **diff panel** con
   "Antes/Después" y "Descartar". Mismo patrón en `SettingsForm` y
-  `CorporativoForm`. ([SettingsForm.tsx](src/app/backend/web/_components/SettingsForm.tsx))
+  `CorporativoForm`. ([SettingsForm.tsx](../src/app/backend/web/_components/SettingsForm.tsx))
 - **Validación zod-light** por key (URL, email, ruta interna o externa) que
   bloquea el autosave y muestra error inline.
-  ([key-validators.ts](src/app/backend/web/_components/key-validators.ts))
+  ([key-validators.ts](../src/app/backend/web/_components/key-validators.ts))
 - **Dev keys toggle global** (persistido en localStorage) que muestra/oculta
   las SiteSetting keys al lado de cada label.
 - **Hints de imagen** por key en `MediaPicker` (label arriba + warnings amber
   si el archivo no cumple dimensiones/peso). 20+ keys catalogadas.
-  ([media-hints.ts](src/app/backend/web/_components/media-hints.ts))
+  ([media-hints.ts](../src/app/backend/web/_components/media-hints.ts))
 
 ### Sprint SEO (27-may)
 
 - **`/sitemap.xml` autogenerado** desde DB en cada request (regiones +
   paquetes publicados + 9 rutas estáticas). 17 URLs servidas hoy.
-  ([sitemap.ts](src/app/sitemap.ts))
+  ([sitemap.ts](../src/app/sitemap.ts))
 - **`/robots.txt` editable desde CMS** — modo `open` / `maintenance` /
-  `custom`, con extra-disallow opcional. ([robots.ts](src/app/robots.ts),
-  [/backend/web/robots](src/app/backend/web/robots/page.tsx))
+  `custom`, con extra-disallow opcional. ([robots.ts](../src/app/robots.ts),
+  [/backend/web/robots](../src/app/backend/web/robots/page.tsx))
 - **Meta tags por ruta editables desde CMS** — nuevo grupo `seo` con
   ~22 keys (defaults + override por ruta) + helper `buildSeoMetadata`.
-  ([seo.ts](src/lib/seo.ts), [/backend/web/seo](src/app/backend/web/seo/page.tsx))
+  ([seo.ts](../src/lib/seo.ts), [/backend/web/seo](../src/app/backend/web/seo/page.tsx))
 - **`generateMetadata` en 11 rutas públicas** (home, destinos, about, contact,
   corporativo, cotizar, faq, terms, work-with-us, destinos/[region],
   destinos/[region]/[slug]) — todas con `metadataBase`, OG y Twitter card.

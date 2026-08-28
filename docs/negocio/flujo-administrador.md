@@ -40,12 +40,56 @@ Se definieron 3 roles en la reunión 2 (minuto 21:28 - 23:54):
 - **Puede:** Crear, editar, clonar, eliminar entidades. Publicar/despublicar paquetes. Gestionar usuarios. Configurar catálogos. Enviar notificaciones.
 - **Ve:** Neto + Markup + Precio de venta. Toda la información financiera.
 
+**Actualización agosto 2026.** Con el cotizador y el módulo de datos en
+producción, el administrador además:
+
+- Ve **todas las cotizaciones** de la marca y puede abrirlas, editarlas,
+  duplicarlas y borrarlas. El filtro **"Ver como"** le deja mirar el
+  seguimiento de un vendedor puntual.
+- Es el único que entra a **Analytics del cotizador**: embudo de lectura,
+  medianas de tiempo, destinos, dispositivos y desempeño por vendedor.
+- Edita los **ajustes del cotizador** en `/backend/cotizador/ajustes`: el
+  mensaje que acompaña cada cotización, las condiciones al pie, la vigencia por
+  defecto del link, la casilla que recibe copia y el factor inicial.
+- Tiene una **bandeja global de datos de pasajeros** en `/backend/datos`, con
+  búsqueda por pasajero, filtros por vendedor y destino, y export a CSV. Ve
+  también el registro completo de la bóveda de tarjetas.
+- Abre una tarjeta de la bóveda con su propio PIN o contraseña, como cualquier
+  vendedor, y queda registrado igual.
+- Configura la **casilla de Administración** que recibe los datos de tarjeta en
+  Web → Notificaciones. Nace vacía a propósito: sin dirección cargada, el botón
+  "Enviar a ADM" avisa que hay que configurarla y no manda nada.
+- Edita y publica los dos **formularios públicos** (pasajeros y pago) desde
+  `/backend/datos/formularios`.
+
 ### 3.2 Vendedor
 - **Cantidad:** 1 usuario compartido por marca (2 en total). Santiago explicó que tienen muchos vendedores y prefieren centralizar en un solo login compartido por marca para no gestionar usuarios individuales.
 - **Acceso:** Solo lectura. Módulo de paquetes únicamente.
 - **Puede:** Ver paquetes con su composición (aéreo, hotel, traslado, opciones hoteleras). Gerónimo lo describió como: "cuando le llega un lead de Playa del Carmen, el vendedor hace un clic y ve cómo está cotizado, con qué aéreo, qué traslados y qué opciones hoteleras".
 - **No puede:** Crear, editar, eliminar nada. No ve botones de acción.
 - **Ve:** Solo precio de venta. No ve neto ni markup.
+
+**Actualización agosto 2026.** El vendedor dejó de ser un usuario compartido de
+solo lectura: cada persona tiene su cuenta, porque las cotizaciones, los links
+personales y la bóveda son de alguien en concreto. Sobre el catálogo sigue sin
+poder editar nada; lo que cambió es que ahora tiene herramientas propias.
+
+- Botón **"Cotizador"** arriba en su vista, al lado de "Datos de pasajeros".
+  Arma cotizaciones, las comparte y les hace seguimiento.
+- Ve **solo sus cotizaciones**. El servidor aplica el corte en cada acción: no
+  puede abrir, editar ni borrar una ajena aunque conozca el número.
+- **"Mis links"**, en el inicio del cotizador y en el encabezado del editor:
+  sus dos links públicos permanentes, con copiar y con WhatsApp.
+- **Datos de pasajeros**: recibe por email y en su bandeja los datos que cargó
+  el pasajero, con los adjuntos.
+- **Datos de tarjeta**: recibe un aviso de que entró una tarjeta, sin el número
+  ni el código. Abre el registro en el panel con su PIN o su contraseña, ve el
+  número completo, y lo manda a Administración con el número de file. Cada
+  apertura y cada envío quedan registrados con su nombre y la hora.
+- Da de alta un hotel en el catálogo sin salir del editor, la única excepción a
+  "el vendedor no toca el catálogo".
+- Sigue sin ver netos ni markup en paquetes. Dentro de su cotización sí maneja
+  neto, venta y factor por tarifa: es su margen, no el del catálogo.
 
 ### 3.3 Marketing / Reporting (propuesta Latitud Nómade)
 - **Cantidad:** A definir. Santiago mostró interés en un rol intermedio.
@@ -387,6 +431,137 @@ Destinos de envío: `grupo_ventas_traveloz@...` y `grupo_ventas_destinoicono@...
 
 Gerónimo prefiere analizarlo más adelante: "lo vemos, ahí me cuesta visualizar qué podemos llegar a analizar".
 
+### 6.11 Cotizador
+
+Módulo nuevo de agosto de 2026. Detalle técnico en
+[arquitectura/modulos/cotizador.md](../arquitectura/modulos/cotizador.md).
+
+**Qué hace el vendedor**
+
+1. Entra por el botón "Cotizador" de su vista. Arranca de tres maneras: desde
+   un paquete del catálogo, desde una plantilla del equipo, o de cero pegando
+   la consulta del cliente.
+2. Si arranca desde un paquete, el sistema precarga destinos, noches,
+   servicios, régimen por hotel y una tarifa por adulto en base doble, con el
+   precio calculado con la misma fórmula que usa el panel de paquetes.
+3. Carga los vuelos. Puede pegar el código del GDS o una captura de la reserva:
+   el lector de itinerarios los interpreta y arma los tramos solo.
+4. Arma las opciones de alojamiento. Cada opción lleva sus hoteles, sus
+   habitaciones y sus tarifas, y cada tarifa lleva neto, venta y factor en la
+   misma fila. Agregar una habitación la replica en las demás opciones.
+5. Todo se guarda solo, un segundo y medio después de dejar de escribir. El
+   número `COT-2026-NNNN` se asigna en el primer guardado: abrir y cerrar sin
+   tocar nada no gasta número.
+6. Comparte. Elige la vigencia del link (24, 48, 72 o 96 horas) y manda por
+   WhatsApp o por email. El email sale con el PDF adjunto, con copia a la
+   casilla de la agencia y con respuesta al vendedor.
+
+**Qué recibe el pasajero**
+
+- Un link corto `traveloz.com.uy/c/xxxxxxxx` con la cotización armada para el
+  celular. Ve los precios de venta, el itinerario, las opciones de alojamiento,
+  las notas que le escribió el vendedor y las condiciones. **No ve netos, ni
+  factores, ni notas internas.** El título dice solo el destino final.
+- Un botón "Confirmar esta opción". Al tocarlo, la confirmación queda
+  registrada con fecha, IP y dispositivo, y vale como firma. Le aparecen
+  enseguida los dos botones para cargar sus datos y los de la tarjeta.
+- Un botón "Solicitar una revisión" si quiere cambios.
+- Si el link venció, un aviso con el WhatsApp del vendedor para pedir uno nuevo.
+
+**Los tiempos**
+
+La vigencia por defecto es de **96 horas hábiles**. Se cuentan en hora de
+Montevideo y **el fin de semana no corre**: una cotización mandada el viernes a
+las 15:00 vence el jueves siguiente a las 15:00, no el martes de madrugada. Se
+eligió así porque un link que muere el domingo, cuando nadie de la agencia puede
+renovarlo, era regalarle dos días al olvido. El administrador cambia el valor
+por defecto desde Ajustes, y el vendedor puede extender la vigencia de una
+cotización puntual o reactivarla si ya venció.
+
+**Qué ve el vendedor después**
+
+El listado de seguimiento con un semáforo por fila: en ventana, sin abrir hace
+más de 24 horas hábiles, abierta, confirmada, link vencido. El sistema registra
+cuántas veces la abrió el pasajero, desde qué dispositivo, cuánto tardó en
+abrirla, cuánto tiempo la leyó y hasta qué sección llegó. La cotización pasa
+sola a "Abierta".
+
+**Qué ve Administración**
+
+El administrador ve el listado de todas las cotizaciones, puede filtrar por
+vendedor con "Ver como", y tiene el tablero de Analytics con el embudo completo
+del período: cuántas se armaron, cuántas se enviaron, cuántas se abrieron,
+cuántas se confirmaron, el ticket promedio y el desempeño de cada vendedor.
+
+### 6.12 Datos de pasajeros y tarjetas
+
+Módulo nuevo de agosto de 2026. Detalle técnico en
+[arquitectura/modulos/pasajeros-pagos.md](../arquitectura/modulos/pasajeros-pagos.md).
+
+**Qué hace el vendedor**
+
+1. Tiene dos links propios y permanentes:
+   `traveloz.com.uy/datos-de-pasajeros/<su-nombre>` y
+   `traveloz.com.uy/datos-de-pago/<su-nombre>`. Los copia desde "Mis links" o
+   los manda por WhatsApp con un toque.
+2. Si prefiere, los pide por email desde el panel: la solicitud sale con el
+   nombre del pasajero, el destino y el número de cotización ya cargados. El
+   pedido de datos de pasajeros vale 7 días; el de tarjeta, 48 horas.
+3. Cuando el pasajero completa, le llega un email. Con los datos de pasajeros,
+   el email trae todo. Con la tarjeta, solo el aviso de que entró: el nombre del
+   pasajero, el titular, la marca y los últimos cuatro dígitos.
+
+**Qué recibe el pasajero**
+
+- **Formulario de pasajeros.** Por cada persona que viaja: nombre y apellido en
+  un solo campo, documento de viaje (cédula o pasaporte), fecha de nacimiento,
+  email y teléfono. Los cinco son obligatorios. Puede sumar la foto del
+  documento y un archivo adjunto, los dos opcionales. Si necesita factura con
+  RUT, marca la casilla y se abre ese bloque. Hasta 12 pasajeros por envío.
+- **Formulario de tarjeta.** Arriba, quién viaja: nombre y documento del
+  pasajero. Abajo, la tarjeta: titular tal cual figura, número, vencimiento,
+  código de seguridad y cuotas de 1 a 6. El formulario es violeta, no rojo,
+  porque el rojo cerca de una tarjeta transmite alarma.
+- Los dos formularios muestran la foto y el WhatsApp del asesor. El de tarjeta
+  además le dice que los datos se borran solos a las 96 horas.
+
+**Los tiempos**
+
+La bóveda guarda una tarjeta **96 horas** y después la borra sola. Se subió de
+72 a 96 el 26/08 para cubrir el fin de semana. Veinticuatro horas antes del
+borrado, el vendedor recibe un recordatorio automático; si ya abrió el registro,
+el recordatorio se cancela. Cuando se cumple el plazo, del registro quedan el
+nombre del pasajero, el titular, la marca y los últimos cuatro dígitos, y el
+resto desaparece.
+
+**Cómo se maneja una tarjeta**
+
+1. El vendedor entra a la solapa Pagos y ve las tarjetas vivas, cada una con el
+   nombre del pasajero y el reloj de las horas que quedan.
+2. "Ver datos" le pide su PIN o su contraseña y le muestra el número completo.
+   La apertura queda registrada con su nombre y la hora.
+3. "Enviar a ADM" le pide el número de file y manda los datos completos a la
+   casilla de Administración. Queda registrado quién lo envió, cuándo y con qué
+   file, y la fila pasa a mostrar "Enviado a ADM · file X · fecha".
+4. Enviar a ADM no borra la tarjeta: sigue viva hasta que se cumplen las 96
+   horas.
+
+**Qué ve Administración**
+
+El email a la casilla de Administración lleva la tarjeta completa, incluido el
+código de seguridad. Es lo que hoy hace el vendedor reenviando a mano; el botón
+reemplaza ese reenvío por un envío auditado a una única casilla. Es una decisión
+operativa de TravelOz tomada el 26/08 y conviene tenerla aceptada por escrito.
+
+Si Administración rechaza una tarjeta, avisa al vendedor y este reconfirma con
+el pasajero. Ese circuito queda fuera del sistema por decisión del cliente
+(27/08). El estado "aprobada" o "rechazada" no existe en la herramienta: lo que
+se ve es si la tarjeta se envió a ADM y con qué file.
+
+El administrador tiene además la bandeja global de datos de pasajeros, con
+búsqueda por nombre o documento del pasajero, filtros por vendedor y destino, y
+export a CSV.
+
 ---
 
 ## 7. Reglas de negocio críticas
@@ -438,6 +613,22 @@ TravelOz y DestinoIcono son la misma app, mismo diseño, mismo código. Los dato
 5. **Template exacto de notificaciones:** ¿Qué datos de cada paquete se incluyen en el email a vendedores?
 6. **Reportes iniciales:** ¿Cuáles se implementan en v1 y cuáles quedan para después?
 7. **Costo y propuesta de hosting:** Pendiente de enviar de Latitud Nómade a Gerónimo.
+
+### Abierto desde el check-in del 26/08/2026
+
+Acta completa en
+[especificaciones/cotizador-checkin-2026-08-26.md](../especificaciones/cotizador-checkin-2026-08-26.md).
+
+8. **Itinerarios reales para el lector de PNR.** Falta que Gero pase 3 o 4
+   itinerarios complejos (Europa a medida, Asia, escalas largas) para probar el
+   lector con volumen antes del piloto.
+9. **Credenciales al equipo.** Cuándo y cómo se reparten los accesos a los
+   vendedores. Hoy el módulo corre con el administrador y un usuario de prueba.
+10. **Rol de Amparo.** Qué permisos necesita y sobre qué módulos.
+11. **Aceptación por escrito del circuito de tarjetas.** El email a
+    Administración lleva la tarjeta completa con el código de seguridad. Es la
+    decisión operativa que tomó TravelOz el 26/08 y conviene que quede
+    confirmada de su lado.
 
 ---
 
