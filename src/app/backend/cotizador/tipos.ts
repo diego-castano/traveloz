@@ -34,6 +34,11 @@ export interface VendedorCotizador {
   linkPago: string | null;
   /** URL de la foto de perfil. `null` cae al avatar con iniciales. */
   foto: string | null;
+  /**
+   * URL de la firma de email en GIF (pedido del cliente 28/08). Con firma la
+   * hoja imprime la imagen tal cual; `null` cae a la firma HTML.
+   */
+  firma: string | null;
   rol: string;
 }
 
@@ -45,6 +50,7 @@ export interface UsuarioParaCotizador {
   role: string;
   slug: string | null;
   fotoUrl: string | null;
+  firmaUrl: string | null;
   telefono: string | null;
   whatsapp: string | null;
   cargo: string | null;
@@ -90,6 +96,7 @@ export function vendedorDesdeUsuario(
     // Mismo criterio que VendedorCard en los formularios públicos: la url del
     // storage se usa tal cual, sin proxy.
     foto: u.fotoUrl?.trim() || null,
+    firma: u.firmaUrl?.trim() || null,
     rol: u.role,
   };
 }

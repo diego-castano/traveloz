@@ -143,6 +143,7 @@ export default async function CotizacionPublicaPage({
               telefono: true,
               whatsapp: true,
               fotoUrl: true,
+              firmaUrl: true,
               slug: true,
               linkActivo: true,
             },
@@ -176,6 +177,9 @@ export default async function CotizacionPublicaPage({
     linkPago:
       u.slug && u.linkActivo ? `${SITE_BASE_URL}/datos-de-pago/${u.slug}` : null,
     foto: u.fotoUrl?.trim() || null,
+    // Firma de email en GIF: con ella la hoja cierra con la imagen tal cual
+    // (pedido del cliente 28/08).
+    firma: u.firmaUrl?.trim() || null,
     rol: "",
   };
 

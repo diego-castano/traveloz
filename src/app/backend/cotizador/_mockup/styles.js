@@ -1070,10 +1070,6 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz .print-hoja .tar-row { padding-left:0 !important; padding-right:0 !important; }
   .ctz .print-hoja .tar-sep { margin:0 !important; }
 
-  /* la firma cierra el documento: el peso lo dan el marco y la foto, no el
-     relleno — sobre papel cada milímetro se paga en páginas */
-  .ctz .print-hoja .firma-caja { padding:13px 15px !important; background:#fff !important;
-    border:1px solid rgba(17,17,36,.14) !important; border-radius:14px !important; }
 }
 `;
 

@@ -44,6 +44,12 @@ export interface UploadOptions {
   signal?: AbortSignal;
   /** Disable server WebP conversion when you absolutely need the original. */
   convertToWebp?: boolean;
+  /**
+   * Sube el archivo tal cual (`raw=1`): sin recorte, sin sharp, sin WebP. Solo
+   * GIF/PNG/JPEG y hasta 2 MB — lo usa la firma de email animada del vendedor,
+   * que perdería la animación al pasar por el pipeline normal.
+   */
+  raw?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +148,7 @@ export function uploadFile(
     form.append("file", file);
     if (options.folder) form.append("folder", options.folder);
     if (options.convertToWebp === false) form.append("convertToWebp", "false");
+    if (options.raw) form.append("raw", "1");
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/upload", true);

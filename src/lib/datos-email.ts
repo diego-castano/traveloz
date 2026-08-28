@@ -189,7 +189,10 @@ export function fechaLarga(d: Date): string {
 export interface VendedorPublico {
   nombre: string;
   fotoUrl?: string | null;
+  /** Firma institucional en GIF: si está, reemplaza a la tarjeta del asesor. */
+  firmaUrl?: string | null;
   whatsapp?: string | null;
+  email?: string | null;
 }
 
 export function solicitudDatosEmail(opts: {
@@ -213,7 +216,18 @@ export function solicitudDatosEmail(opts: {
   const wa = telefonoWa(opts.vendedor.whatsapp);
   const foto = opts.vendedor.fotoUrl?.trim();
   const fotoAbsoluta = foto?.startsWith("/") ? `${SITE_BASE_URL}${foto}` : foto;
-  const asesor = `
+
+  // Pedido del cliente 28/08: si el vendedor cargó su firma de email, el
+  // pasajero ve esa —la misma que le llega desde Gmail— en vez de la tarjeta.
+  const firma = opts.vendedor.firmaUrl?.trim();
+  const firmaAbsoluta = firma?.startsWith("/") ? `${SITE_BASE_URL}${firma}` : firma;
+
+  const asesor = firmaAbsoluta
+    ? `
+    <img src="${escapeHtml(firmaAbsoluta)}" width="560" style="width:100%;max-width:560px;height:auto;display:block;border:0;margin:6px 0 4px" alt="${escapeHtml(
+        opts.vendedor.nombre,
+      )}" />`
+    : `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f8fa;border-radius:12px;margin:6px 0 4px">
       <tr>
         ${
@@ -263,7 +277,10 @@ export function solicitudDatosEmail(opts: {
       `${opts.destinatarioNombre?.trim() ? `Hola ${opts.destinatarioNombre.trim()},` : "Hola,"}`,
       "",
       `Necesitamos ${que} para avanzar con tu reserva.`,
-      `Tu asesor: ${opts.vendedor.nombre}${wa ? ` · WhatsApp: https://wa.me/${wa}` : ""}`,
+      // Con firma la imagen no viaja al plano: el nombre lleva teléfono y email.
+      `Tu asesor: ${opts.vendedor.nombre}${wa ? ` · WhatsApp: https://wa.me/${wa}` : ""}${
+        firma && opts.vendedor.email ? ` · ${opts.vendedor.email}` : ""
+      }`,
       opts.destino ? `Destino: ${opts.destino}` : "",
       opts.referencia ? `Referencia: ${opts.referencia}` : "",
       "",

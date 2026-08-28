@@ -28,6 +28,11 @@ export async function POST(req: Request) {
   const folder = sanitiseFolder(form.get("folder") as string | null);
   const convertToWebp =
     (form.get("convertToWebp") as string | null)?.toLowerCase() !== "false";
+  // `raw=1` sube el archivo tal cual, sin sharp. Lo pide la firma de email del
+  // vendedor (GIF animado, pedido del cliente 28/08): el pipeline normal la
+  // convierte a WebP y se queda con un solo frame. El resto del panel no manda
+  // el campo y sigue igual que siempre.
+  const raw = (form.get("raw") as string | null) === "1";
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Archivo requerido" }, { status: 400 });
@@ -45,6 +50,7 @@ export async function POST(req: Request) {
       folder,
       filename: file.name,
       convertToWebp,
+      passthrough: raw,
       metadata: {
         uploader: String(session.user.email ?? session.user.id ?? "unknown"),
       },

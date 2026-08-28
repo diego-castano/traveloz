@@ -21,6 +21,8 @@ export interface AuthUser {
   // ── Identidad pública del vendedor (Fase 3 — vista comercial en Perfiles) ──
   slug?: string | null;
   fotoUrl?: string | null;
+  /** Firma de email en GIF (pedido del cliente 28/08). */
+  firmaUrl?: string | null;
   telefono?: string | null;
   whatsapp?: string | null;
   linkActivo?: boolean;

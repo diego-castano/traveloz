@@ -61,6 +61,7 @@ export async function getUsers() {
         // Identidad pública del vendedor (Fase 3 — vista Vendedores).
         slug: true,
         fotoUrl: true,
+        firmaUrl: true,
         telefono: true,
         whatsapp: true,
         linkActivo: true,
@@ -669,13 +670,20 @@ export async function setMyPin(input: { pin: string | null; currentPin?: string;
  */
 export async function updateVendedorPerfil(
   id: string,
-  data: { fotoUrl?: string | null; telefono?: string | null; whatsapp?: string | null },
+  data: {
+    fotoUrl?: string | null;
+    // La firma de email (GIF) se edita en la misma ficha que la foto.
+    firmaUrl?: string | null;
+    telefono?: string | null;
+    whatsapp?: string | null;
+  },
 ) {
   const actor = await requireAdmin();
   const { ip, userAgent } = await getRequestMeta();
 
   const schema = z.object({
     fotoUrl: z.string().max(500).nullable().optional(),
+    firmaUrl: z.string().max(500).nullable().optional(),
     telefono: z.string().max(40).nullable().optional(),
     whatsapp: z.string().max(40).nullable().optional(),
   });
@@ -692,10 +700,11 @@ export async function updateVendedorPerfil(
       where: { id },
       data: {
         ...(data.fotoUrl !== undefined ? { fotoUrl: norm(data.fotoUrl) } : {}),
+        ...(data.firmaUrl !== undefined ? { firmaUrl: norm(data.firmaUrl) } : {}),
         ...(data.telefono !== undefined ? { telefono: norm(data.telefono) } : {}),
         ...(data.whatsapp !== undefined ? { whatsapp: norm(data.whatsapp) } : {}),
       },
-      select: { id: true, fotoUrl: true, telefono: true, whatsapp: true },
+      select: { id: true, fotoUrl: true, firmaUrl: true, telefono: true, whatsapp: true },
     });
 
     const changed = Object.keys(data).filter((k) => (data as any)[k] !== undefined);

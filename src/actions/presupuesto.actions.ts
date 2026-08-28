@@ -460,6 +460,7 @@ export interface VendedorContexto {
   role: string;
   slug: string | null;
   fotoUrl: string | null;
+  firmaUrl: string | null;
   telefono: string | null;
   whatsapp: string | null;
   cargo: string | null;
@@ -490,6 +491,9 @@ const SELECT_VENDEDOR = {
   role: true,
   slug: true,
   fotoUrl: true,
+  // La firma de email viaja con el vendedor: la hoja del pasajero la imprime
+  // en lugar de la tarjeta (pedido del cliente 28/08).
+  firmaUrl: true,
   telefono: true,
   whatsapp: true,
   cargo: true,
@@ -1406,7 +1410,7 @@ export async function enviarPorEmail(
     const [vendedor, settings] = await Promise.all([
       prisma.user.findUnique({
         where: { id: row.vendedorId },
-        select: { name: true, email: true, cargo: true, telefono: true, whatsapp: true, fotoUrl: true, slug: true, linkActivo: true },
+        select: { name: true, email: true, cargo: true, telefono: true, whatsapp: true, fotoUrl: true, firmaUrl: true, slug: true, linkActivo: true },
       }),
       prisma.siteSetting.findMany({
         where: { key: { in: [...CLAVES_AJUSTES] } },
@@ -1484,6 +1488,9 @@ export async function enviarPorEmail(
         email: vendedor.email,
         tel: vendedor.whatsapp || vendedor.telefono,
         foto: vendedor.fotoUrl,
+        // Si la cargó, el email lleva la firma institucional en vez de la
+        // tarjeta armada a mano.
+        firma: vendedor.firmaUrl,
       },
     });
 

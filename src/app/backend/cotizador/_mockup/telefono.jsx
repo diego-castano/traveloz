@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2, Clock,
-  CreditCard, Lock
+  CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
 } from "lucide-react";
 import {
   MESES, MES_AB, ANIO_ACTUAL,
@@ -60,6 +60,39 @@ const AIRE_SEC_1 = 24;    /* el primer título de la hoja, contra el saludo */
 const AIRE_PAGO = 28;     /* Condiciones → Formas de pago */
 const AIRE_FIRMA = 24;    /* la firma cierra el documento, no abre sección */
 
+/* ── Firma del vendedor (pedido del cliente 28/08) ────────────────────────
+   Con `firma` cargada la hoja imprime el GIF institucional tal cual; sin ella
+   dibuja en HTML el mismo diseño (panel con degradado, óvalo con la foto,
+   nombre en violeta y dos columnas de datos).
+
+   Alturas sobre papel, para la estimación del corte. Medidas el 28/08 con el
+   harness, renderizando la hoja a 703 px (A4 menos los 12 mm por lado del
+   @page): el GIF de 1800×585 ocupa 227 px y el bloque `[data-sec="firma"]`
+   entero —imagen más el renglón de la web— cierra en 261; la firma HTML, con
+   su caja de 196, cierra en 230. */
+const ALTO_FIRMA_IMG = 261;
+const ALTO_FIRMA_HTML = 230;
+
+/** Alto de la caja de la firma HTML en papel y escritorio. */
+const CAJA_FIRMA = 196;
+
+/* Colores muestreados del GIF (Bianca Romano · Ventas, frame 46). */
+const FIRMA_COLOR = {
+  gradA: "#8C6DE3",   /* violeta, borde izquierdo del panel */
+  gradB: "#F7596C",   /* rosa, borde derecho del panel */
+  nombre: "#986FD9",  /* nombre y cargo */
+  icono: "#6C4CE2",   /* los iconitos de los datos */
+  texto: "#7A7A7A",   /* gris de los datos */
+  linea: "#E8DFF7",   /* separador entre las dos columnas */
+  fondo: "#FCFCFC",
+};
+
+/* Datos de la oficina. Van como constantes porque el contexto del cotizador
+   solo trae los ajustes `cotizador_*`: los `contacto_*` del sitio no llegan
+   hasta acá. El día que lleguen, salen de ahí sin tocar el marcado. */
+const OFICINA_TEL = "+598 2628 1717";
+const OFICINA_DIR = "Luis A. de Herrera 1343 Of. 301";
+
 /**
  * ¿El bloc de notas al pasajero tiene contenido de verdad?
  *
@@ -81,6 +114,140 @@ function hayNotasReales(html) {
     .replace(/[\s\u00a0\u200b]+/g, " ")
     .trim();
   return texto.length > 0;
+}
+
+/* ── Firma HTML del vendedor ───────────────────────────────────────────────
+   Lo que se dibuja cuando el vendedor todavía no cargó su GIF: el mismo diseño
+   de la firma institucional, en HTML, para que la hoja no cambie de idioma
+   visual según quién la mande (pedido del cliente 28/08).
+
+   Las tres redes van decorativas: el contexto del cotizador no trae las URLs
+   del footer (`footer_social_*`), y un link roto es peor que ninguno. */
+const FIRMA_REDES = [
+  [Instagram, "Instagram"],
+  [Facebook, "Facebook"],
+  [Linkedin, "LinkedIn"],
+];
+
+const FIRMA_GRAD = `linear-gradient(90deg, ${FIRMA_COLOR.gradA} 0%, ${FIRMA_COLOR.gradB} 100%)`;
+
+/** Una línea de dato: iconito violeta + texto gris, en un solo renglón. */
+function FirmaDato({ icono: Ico, texto, href, tam, iconoTam }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:tam, lineHeight:1.3, minWidth:0 }}>
+      <Ico size={iconoTam} color={FIRMA_COLOR.icono} strokeWidth={2} style={{ flexShrink:0 }} />
+      <span style={{ minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap",
+        color:FIRMA_COLOR.texto }}>
+        {href
+          ? <a href={href} target="_blank" rel="noreferrer"
+              style={{ color:FIRMA_COLOR.texto, textDecoration:"none" }}>{texto}</a>
+          : texto}
+      </span>
+    </div>
+  );
+}
+
+/** La foto del vendedor en redondo; sin foto, sus iniciales sobre el degradado. */
+function FirmaFoto({ v, d }) {
+  const anillo = Math.max(3, Math.round(d * 0.045));
+  const comun = { width:d, height:d, borderRadius:"50%", display:"block", flexShrink:0,
+    boxShadow:`0 0 0 ${anillo}px #fff` };
+  if (v.foto) {
+    /* eslint-disable-next-line @next/next/no-img-element */
+    return <img src={v.foto} alt="" style={{ ...comun, objectFit:"cover" }} />;
+  }
+  return (
+    <div style={{ ...comun, background:FIRMA_GRAD, display:"grid", placeItems:"center",
+      color:"#fff", fontWeight:800, fontSize:Math.round(d * 0.3), letterSpacing:".02em" }}>
+      {v.inicial}
+    </div>
+  );
+}
+
+function FirmaVendedor({ v, telWa, desk }) {
+  const datos = (tam, iconoTam) => ({
+    tel: telWa
+      ? <FirmaDato icono={Smartphone} texto={v.tel} href={`https://wa.me/${telWa}`} tam={tam} iconoTam={iconoTam} />
+      : null,
+    web: <FirmaDato icono={Globe} texto="traveloz.com.uy" href="https://traveloz.com.uy" tam={tam} iconoTam={iconoTam} />,
+    oficina: <FirmaDato icono={Phone} texto={OFICINA_TEL} tam={tam} iconoTam={iconoTam} />,
+    dir: <FirmaDato icono={MapPin} texto={OFICINA_DIR} tam={tam} iconoTam={iconoTam} />,
+  });
+
+  /* ── celular: el panel se apila arriba y los datos van en una columna ── */
+  if (!desk) {
+    const d = datos(12, 14);
+    return (
+      <div style={{ borderRadius:14, overflow:"hidden", breakInside:"avoid",
+        border:"1px solid rgba(17,17,36,.09)", background:FIRMA_COLOR.fondo }}>
+        <div style={{ height:88, background:FIRMA_GRAD, display:"flex", alignItems:"center",
+          justifyContent:"center", gap:24 }}>
+          {FIRMA_REDES.map(([Ico, nombre]) => (
+            <Ico key={nombre} size={19} color="#fff" strokeWidth={2.1} aria-hidden="true" />
+          ))}
+        </div>
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
+          marginTop:-36, padding:"0 14px 14px" }}>
+          <FirmaFoto v={v} d={72} />
+          <div style={{ marginTop:9, fontSize:15.5, fontWeight:800, letterSpacing:"-.02em",
+            color:FIRMA_COLOR.nombre, textAlign:"center" }}>{v.nombre}</div>
+          <div style={{ fontSize:12, color:FIRMA_COLOR.nombre, marginTop:2, textAlign:"center" }}>{v.cargo}</div>
+          <div style={{ alignSelf:"stretch", marginTop:13, paddingTop:12, display:"flex",
+            flexDirection:"column", gap:8, borderTop:`1px solid ${FIRMA_COLOR.linea}` }}>
+            {d.tel}{d.web}{d.oficina}{d.dir}
+          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/site/img/header-logo.webp" alt="TravelOz" loading="eager" decoding="async"
+            style={{ height:19, width:"auto", marginTop:14, display:"block" }} />
+        </div>
+      </div>
+    );
+  }
+
+  /* ── escritorio y papel: panel a la izquierda, datos a la derecha ──
+     El óvalo blanco se come parte del panel y la foto queda montada sobre el
+     borde, igual que en el GIF. El panel abre su propio contexto de apilado
+     (`zIndex:0`), así el óvalo nunca tapa el texto de la derecha. */
+  const d = datos(12.5, 14);
+  return (
+    <div style={{ position:"relative", display:"flex", alignItems:"stretch", height:CAJA_FIRMA,
+      overflow:"hidden", borderRadius:16, breakInside:"avoid",
+      border:"1px solid rgba(17,17,36,.09)", background:FIRMA_COLOR.fondo,
+      WebkitPrintColorAdjust:"exact", printColorAdjust:"exact" }}>
+      <div style={{ position:"relative", zIndex:0, width:"25%", flexShrink:0, background:FIRMA_GRAD }}>
+        <div style={{ position:"absolute", left:"34%", top:"4%", bottom:"4%", width:"165%",
+          background:FIRMA_COLOR.fondo, borderRadius:"50%" }} />
+        <div style={{ position:"absolute", left:"9%", top:"50%", transform:"translateY(-50%)", zIndex:2,
+          display:"flex", flexDirection:"column", alignItems:"center", gap:17 }}>
+          {FIRMA_REDES.map(([Ico, nombre]) => (
+            <Ico key={nombre} size={18} color="#fff" strokeWidth={2.1} aria-hidden="true" />
+          ))}
+        </div>
+        <div style={{ position:"absolute", left:"44%", top:"50%", transform:"translateY(-50%)", zIndex:1 }}>
+          <FirmaFoto v={v} d={Math.round(CAJA_FIRMA * 0.66)} />
+        </div>
+      </div>
+
+      <div style={{ position:"relative", zIndex:1, flex:1, minWidth:0, display:"flex",
+        flexDirection:"column", justifyContent:"center", padding:"0 22px 0 62px" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/site/img/header-logo.webp" alt="TravelOz" loading="eager" decoding="async"
+          style={{ position:"absolute", right:22, top:20, height:24, width:"auto", display:"block" }} />
+        <div style={{ fontSize:17, fontWeight:800, letterSpacing:"-.02em", lineHeight:1.15,
+          color:FIRMA_COLOR.nombre }}>{v.nombre}</div>
+        <div style={{ fontSize:13, color:FIRMA_COLOR.nombre, marginTop:3, lineHeight:1.2 }}>{v.cargo}</div>
+        <div style={{ display:"flex", alignItems:"stretch", gap:16, marginTop:22 }}>
+          <div style={{ flex:"1 1 46%", minWidth:0, display:"flex", flexDirection:"column", gap:9 }}>
+            {d.tel}{d.web}
+          </div>
+          <div style={{ width:1, flexShrink:0, background:FIRMA_COLOR.linea }} />
+          <div style={{ flex:"1 1 54%", minWidth:0, display:"flex", flexDirection:"column", gap:9 }}>
+            {d.oficina}{d.dir}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -253,19 +420,24 @@ function SalidaPasajero({
     [condiciones],
   );
 
+  /* Alto del bloque de firma sobre papel. Con el GIF cargado la imagen ocupa
+     su relación 1800:585 a 703 px de ancho; sin él, la firma HTML. */
+  const altoFirma = V.firma ? ALTO_FIRMA_IMG : ALTO_FIRMA_HTML;
+
   /* ¿el pie del documento entra en media carilla? (ver el bloque de cierre)
      Remedido el 26/08 sobre la hoja real: condiciones son 40 px de título y
      borde más 36 por ítem cuando van en dos columnas —una condición de hasta
      95 caracteres ocupa dos renglones en la columna angosta— o 22 por ítem a
-     todo lo ancho; formas de pago 178 con su título y las dos filas de logos;
-     la firma 144. Entre bloque y bloque, el aire nuevo. */
+     todo lo ancho; formas de pago 178 con su título y las dos filas de logos.
+     La firma la mide `altoFirma`: desde el 28/08 no siempre es la misma caja.
+     Entre bloque y bloque, el aire nuevo. */
   const cierreEntero = useMemo(() => {
     if (!impresion) return false;
     const cond = !condiciones.length ? 0
       : condicionesCortas ? 40 + Math.ceil(condiciones.length / 2) * 36
       : 40 + condiciones.length * 22;
-    return cond + AIRE_PAGO + 178 + AIRE_FIRMA + 144 <= CARILLA / 2;
-  }, [impresion, condiciones.length, condicionesCortas]);
+    return cond + AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma <= CARILLA / 2;
+  }, [impresion, condiciones.length, condicionesCortas, altoFirma]);
 
   /* nombre visible de una opción, el mismo fallback que usa el switcher */
   const nombreDe = (o) => String(o?.nombre || "").trim() || `Opción ${q.opciones.indexOf(o) + 1}`;
@@ -330,7 +502,7 @@ function SalidaPasajero({
   const cortarAntesDeOpciones = useMemo(() => {
     if (!impresion || q.vuelos.length || !q.opciones.length) return false;
     const PAGINA = CARILLA;                  // A4 menos margen de 10mm/13mm
-    const CIERRE = AIRE_SEC + 490;           // condiciones + formas de pago + firma, con su aire
+    const CIERRE = AIRE_SEC + 346 + altoFirma;  // condiciones + formas de pago + firma, con su aire
     /* hasta donde arranca la sección de abajo: membrete + banda + saludo con
        su aire (376) y, si hay servicios, las fichas con el suyo (24 + 155) */
     const portada = 376 + (q.servicios.length && !q.soloVuelos ? AIRE_SEC_1 + 155 : 0);
@@ -346,7 +518,7 @@ function SalidaPasajero({
       portada >= PAGINA * 0.45
     );
   }, [impresion, q.vuelos.length, q.opciones.length, q.servicios.length, q.soloVuelos, q.fotosHotel,
-      tramos.length, hayNotas]);
+      tramos.length, hayNotas, altoFirma]);
 
   /* ── papel: la opción viaja entera ────────────────────────────────────
      La regla que pidió el cliente: una opción de alojamiento no se parte.
@@ -1249,50 +1421,36 @@ function SalidaPasajero({
 
         {/* firma + cierre: en papel viajan juntos */}
         <div data-sec="firma" data-ap style={{ breakInside:"avoid", ...(impresion ? { marginTop:AIRE_FIRMA } : null) }}>
-        <div className="firma-caja" style={{ display:"flex", alignItems:"center", gap:14, padding:"16px 17px", borderRadius:17, breakInside:"avoid",
-          border:"1px solid rgba(17,17,36,.085)",
-          background:"linear-gradient(170deg,#fff 0%,#FAF9FE 100%)" }}>
-          {/* foto del vendedor, la que cargó en Perfiles. Sin foto, el degradado
-              con las iniciales encima. */}
-          {V.foto ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={V.foto} alt="" style={{ width:fzp(54, 54, 50), height:fzp(54, 54, 50), borderRadius:"50%", flexShrink:0,
-              objectFit:"cover", boxShadow:"0 0 0 3px rgba(120,90,229,.13), inset 0 0 0 2px rgba(255,255,255,.65)" }} />
-          ) : (
-            <div style={{ width:fzp(54, 54, 50), height:fzp(54, 54, 50), borderRadius:"50%", flexShrink:0, overflow:"hidden",
-              position:"relative", background:fotoBg(String(V.id || "").length + 20),
-              boxShadow:"0 0 0 3px rgba(120,90,229,.13), inset 0 0 0 2px rgba(255,255,255,.65)" }}>
-              <div style={{ position:"absolute", inset:0, display:"grid", placeItems:"center", color:"#fff",
-                fontWeight:700, fontSize:15, textShadow:"0 1px 6px rgba(0,0,0,.35)" }}>{V.inicial}</div>
-            </div>
-          )}
-          <div style={{ minWidth:0, flex:1 }}>
-            <div className={impresion ? "disp" : undefined}
-              style={{ fontSize:fzp(14.5, 15.5, 15.5), fontWeight: impresion ? 600 : 700, letterSpacing:"-.015em" }}>
-              {V.nombre}
-            </div>
-            <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", marginTop:1 }}>{V.cargo} · TravelOz</div>
-            {telWa && (
-              <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
-                title="Escribirle por WhatsApp" className="mono"
-                style={{ fontSize:fz(10.5, 11), color:"#6B6F99", marginTop:2, display:"block", textDecoration:"none" }}>
-                {V.tel}
-              </a>
+        {V.firma ? (
+          /* Firma cargada: manda la imagen, a todo el ancho y con su relación
+             1800:585. En papel va sola —el PDF sale de un Chromium headless con
+             la animación congelada y el frame 0 ya muestra la firma entera—; en
+             pantalla, abajo, el contacto clickeable, porque adentro de la
+             imagen no hay links. */
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={V.firma} alt={V.nombre} loading="eager" decoding="sync"
+              style={{ width:"100%", height:"auto", display:"block", borderRadius:14,
+                breakInside:"avoid" }} />
+            {!impresion && (telWa || V.email) && (
+              <div style={{ marginTop:8, textAlign:"center", fontSize:fz(10.5, 11) }}>
+                {telWa && (
+                  <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
+                    title="Escribirle por WhatsApp" className="mono"
+                    style={{ color:"#6B6F99", textDecoration:"none" }}>{V.tel}</a>
+                )}
+                {telWa && V.email && <span style={{ margin:"0 7px", color:"#C9CBDD" }}>·</span>}
+                {V.email && (
+                  <a href={`mailto:${V.email}`} className="mono"
+                    style={{ color:"#6B6F99", textDecoration:"underline",
+                      textDecorationColor:"rgba(107,111,153,.4)", textUnderlineOffset:2 }}>{V.email}</a>
+                )}
+              </div>
             )}
-            {V.email && (
-              <a href={`mailto:${V.email}`} className="mono"
-                style={{ fontSize:fz(9.5, 10), color:"#6B6F99", marginTop:2, display:"block",
-                  textDecoration:"underline", textDecorationColor:"rgba(107,111,153,.4)", textUnderlineOffset:2 }}>
-                {V.email}
-              </a>
-            )}
-          </div>
-          {telWa && (
-            <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
-              title="Escribirle por WhatsApp" style={{ width:34, height:34, borderRadius:11, background:"#25D36615",
-              color:"#128C7E", display:"grid", placeItems:"center", flexShrink:0 }}><Smartphone size={16} /></a>
-          )}
-        </div>
+          </>
+        ) : (
+          <FirmaVendedor v={V} telWa={telWa} desk={desk} />
+        )}
         {/* Cierre. En pantalla firma el wordmark; en el papel el logo ya
             está en el membrete y repetirlo abajo —encima con el "oz" pintado
             por `background-clip:text`, que es lo primero que se rompe cuando

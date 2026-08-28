@@ -11,6 +11,20 @@ del catálogo, CRM).
 
 ---
 
+## 28 de agosto de 2026
+
+### Nuevo
+
+- **Firma de email por vendedor.** En Perfiles, la ficha de cada vendedor
+  suma "Firma de email (GIF)": se sube el GIF animado que el equipo ya usa
+  en su correo, tal cual, sin recorte ni conversión. Con la firma cargada,
+  la cotización (link y PDF) y los emails que el vendedor manda al pasajero
+  (cotización, pedido de datos de pasajeros y de pago) cierran con esa
+  imagen a ancho completo. Sin firma cargada, el sistema arma una firma con
+  el mismo diseño del GIF: panel violeta a rosa con la foto del vendedor
+  (o sus iniciales), nombre, cargo, celular, web, teléfono de oficina,
+  dirección y el logo. Migración aditiva `20260828120000_user_firma_url`.
+
 ## 27 de agosto de 2026
 
 ### Cambiado

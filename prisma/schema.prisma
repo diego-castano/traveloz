@@ -110,6 +110,10 @@ model User {
   whatsapp             String?
   // Texto de la firma en la cotización ("Ejecutiva de ventas", "Líder técnico").
   cargo                String?
+  // Firma de email institucional (GIF animado 1800x585). Pedido del cliente
+  // 28/08: el vendedor la carga desde Perfiles y se usa tal cual en la hoja de
+  // la cotización y en los emails que le llegan al pasajero.
+  firmaUrl             String?
   // Interruptor del link público. Apagado → página de cortesía, no 404.
   linkActivo           Boolean   @default(true)
   // Primer ingreso con contraseña temporal (seed del equipo). El usuario

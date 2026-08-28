@@ -194,7 +194,12 @@ export function useUserActions() {
       // ── Fase 3: vista Vendedores ──
       updateVendedorPerfil: async (
         id: string,
-        data: { fotoUrl?: string | null; telefono?: string | null; whatsapp?: string | null },
+        data: {
+          fotoUrl?: string | null;
+          firmaUrl?: string | null;
+          telefono?: string | null;
+          whatsapp?: string | null;
+        },
       ) => {
         const result = await userActions.updateVendedorPerfil(id, data);
         if (!result.ok) throw new Error(result.error);

@@ -46,6 +46,19 @@ export const ALLOWED_DOCUMENT_MIMES = new Set([
   "application/pdf",
 ]);
 
+// ── Camino "tal cual" (passthrough) ────────────────────────────────────────
+// Pedido del cliente 28/08: la firma de email del vendedor es un GIF animado.
+// El pipeline de sharp la aplanaría a un WebP de un solo frame, así que hay un
+// camino que sube los bytes sin tocarlos. Es deliberadamente angosto: tres
+// formatos y 2 MB, porque lo único que lo usa hoy es esa firma.
+export const ALLOWED_RAW_MIMES = new Set([
+  "image/gif",
+  "image/png",
+  "image/jpeg",
+]);
+
+export const MAX_RAW_BYTES = 2 * 1024 * 1024;
+
 export interface PipelineOptions {
   /** Folder prefix in the bucket. Sanitised by the caller already. */
   folder: string;
@@ -55,6 +68,12 @@ export interface PipelineOptions {
   metadata?: Record<string, string>;
   /** When true (default) re-encodes images to WebP for ~30-60% smaller files. */
   convertToWebp?: boolean;
+  /**
+   * Sube el archivo byte a byte, sin sharp. Solo para GIF/PNG/JPEG y hasta
+   * MAX_RAW_BYTES. Existe por la firma animada del vendedor: pasarla por sharp
+   * la deja en un frame. Todo lo demás del panel sigue por el camino normal.
+   */
+  passthrough?: boolean;
 }
 
 export interface PipelineResult extends UploadResult {
@@ -106,6 +125,47 @@ export async function processAndUpload(
   // declared.type is informational at best.
   const isImage = ALLOWED_IMAGE_MIMES.has(realMime);
   const isVideo = ALLOWED_VIDEO_MIMES.has(realMime);
+
+  // Archivo tal cual: se valida contra su propia lista (más corta) y su propio
+  // tope antes de escribir, porque acá no hay re-encode que sanee nada.
+  if (opts.passthrough) {
+    if (!ALLOWED_RAW_MIMES.has(realMime)) {
+      throw new PipelineError(
+        `Sin procesar solo se aceptan GIF, PNG o JPEG (llegó ${realMime})`,
+        415,
+      );
+    }
+    if (buffer.byteLength > MAX_RAW_BYTES) {
+      throw new PipelineError(
+        `Archivo excede ${Math.round(MAX_RAW_BYTES / 1024 / 1024)} MB`,
+        413,
+      );
+    }
+    // El alto y el ancho son informativos: si sharp no puede leer el header
+    // (un GIF raro), se sube igual — los bytes son los que importan.
+    let dim: { width?: number; height?: number } = {};
+    try {
+      const meta = await sharp(buffer, { failOn: "none" }).metadata();
+      dim = { width: meta.width, height: meta.height };
+    } catch {
+      /* sin dimensiones */
+    }
+    const result = await uploadBuffer({
+      buffer,
+      contentType: realMime,
+      folder: opts.folder,
+      filename: opts.filename
+        ? opts.filename.replace(/\.[^.]+$/, "") + `.${extFor(realMime)}`
+        : undefined,
+      metadata: {
+        ...opts.metadata,
+        ...(dim.width ? { width: String(dim.width) } : {}),
+        ...(dim.height ? { height: String(dim.height) } : {}),
+        "original-mime": realMime,
+      },
+    });
+    return { ...result, ...dim, format: extFor(realMime) };
+  }
 
   if (isVideo) {
     // Video passes through unchanged — sharp can't transcode and we don't

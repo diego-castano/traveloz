@@ -9,14 +9,14 @@
 // tarjeta copia los links personales sin abrir la ficha: "Pasajeros", "Pago" y
 // "Ambos" (este último con etiquetas, listo para pegar en WhatsApp).
 //
-// La ficha edita TODO en un solo paso: foto, teléfono y whatsapp por
-// updateVendedorPerfil, y nombre/email/rol por updateUser (con sus
+// La ficha edita TODO en un solo paso: foto, firma de email, teléfono y
+// whatsapp por updateVendedorPerfil, y nombre/email/rol por updateUser (con sus
 // salvaguardas de usuario protegido y último admin). Ningún click de la ficha
 // descarta cambios sin confirmar: cerrar o saltar a otra pantalla con cambios
 // pendientes abre un aviso.
 // ---------------------------------------------------------------------------
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef, type ChangeEvent } from "react";
 import {
   Users,
   Phone,
@@ -31,6 +31,8 @@ import {
   Key,
   Hash,
   ExternalLink,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatusDot } from "@/components/ui/data/StatusDot";
@@ -39,6 +41,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Toggle } from "@/components/ui/Toggle";
 import { ImageUploader, type ImageItem } from "@/components/ui/ImageUploader";
+import { uploadFile } from "@/components/lib/upload";
 import { ModalHeader, ModalBody, ModalFooter, Modal } from "@/components/ui/Modal";
 import { Field, FieldGroup, FieldLabel, FieldError } from "@/components/ui/form/Field";
 import { DataTableToolbar } from "@/components/ui/data/DataTableToolbar";
@@ -403,6 +406,7 @@ function FichaVendedor({
   const [telefono, setTelefono] = useState(user.telefono ?? "");
   const [whatsapp, setWhatsapp] = useState(user.whatsapp ?? "");
   const [fotoUrl, setFotoUrl] = useState<string | null>(user.fotoUrl ?? null);
+  const [firmaUrl, setFirmaUrl] = useState<string | null>(user.firmaUrl ?? null);
   const [nombre, setNombre] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [rol, setRol] = useState<Role>(user.role);
@@ -413,6 +417,7 @@ function FichaVendedor({
   // guardó bien y la cuenta falló, la foto ya quedó firme y no se pierde.
   const [base, setBase] = useState({
     fotoUrl: user.fotoUrl ?? null,
+    firmaUrl: user.firmaUrl ?? null,
     telefono: user.telefono ?? "",
     whatsapp: user.whatsapp ?? "",
     nombre: user.name,
@@ -422,6 +427,7 @@ function FichaVendedor({
 
   const comercialSucio =
     fotoUrl !== base.fotoUrl ||
+    firmaUrl !== base.firmaUrl ||
     telefono.trim() !== base.telefono.trim() ||
     whatsapp.trim() !== base.whatsapp.trim();
 
@@ -490,8 +496,8 @@ function FichaVendedor({
     // usuario protegido), la foto recién cargada ya quedó guardada.
     if (comercialSucio) {
       try {
-        await updateVendedorPerfil(user.id, { fotoUrl, telefono, whatsapp });
-        setBase((b) => ({ ...b, fotoUrl, telefono, whatsapp }));
+        await updateVendedorPerfil(user.id, { fotoUrl, firmaUrl, telefono, whatsapp });
+        setBase((b) => ({ ...b, fotoUrl, firmaUrl, telefono, whatsapp }));
       } catch (err: any) {
         setGuardando(false);
         toast("error", "Error", err?.message ?? "No se pudo guardar el perfil");
@@ -636,6 +642,22 @@ function FichaVendedor({
               cropTitle="Recortar foto de perfil"
               folder={`vendedores/${user.id}`}
               enableBulkSelect={false}
+            />
+          </div>
+
+          {/* ── Firma de email (GIF) ──
+              Pedido del cliente 28/08: la firma institucional es un GIF
+              animado y tiene que subirse tal cual. Por eso no usa
+              ImageUploader (recorta y el server convierte a WebP, lo que deja
+              la animación en un solo frame): va por `raw`, sin recorte. */}
+          <div className="border-t border-hairline pt-5">
+            <p className="mb-2 text-label font-medium text-neutral-500">Firma de email (GIF)</p>
+            <FirmaUploader
+              url={firmaUrl}
+              nombre={user.name}
+              folder={`firmas/${user.id}`}
+              disabled={!canEdit}
+              onChange={setFirmaUrl}
             />
           </div>
 
@@ -885,6 +907,129 @@ function FichaVendedor({
         )}
       </ModalFooter>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FirmaUploader · sube el GIF de la firma sin tocarlo
+//
+// Input de archivo pelado (sin recorte, sin compresión del navegador) contra
+// /api/upload con `raw=1`. La URL queda en el estado de la ficha: recién se
+// persiste cuando el operador aprieta "Guardar cambios", igual que la foto.
+// Quitar no borra del bucket a propósito — el archivo queda huérfano y lo
+// levanta /api/files/gc-orphans, que es el patrón del repo.
+// ---------------------------------------------------------------------------
+
+/** Tope del camino `raw` del pipeline. Se avisa acá para no gastar la subida. */
+const FIRMA_MAX_BYTES = 2 * 1024 * 1024;
+const FIRMA_ACCEPT = "image/gif,image/png,image/jpeg";
+
+function FirmaUploader({
+  url,
+  nombre,
+  folder,
+  disabled,
+  onChange,
+}: {
+  url: string | null;
+  nombre: string;
+  folder: string;
+  disabled: boolean;
+  onChange: (url: string | null) => void;
+}) {
+  const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [subiendo, setSubiendo] = useState(false);
+
+  async function handleFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // El input se limpia siempre: si no, elegir el mismo archivo dos veces
+    // seguidas no dispara el change y parece que no pasó nada.
+    e.target.value = "";
+    if (!file) return;
+
+    if (!FIRMA_ACCEPT.split(",").includes(file.type)) {
+      toast("error", "Formato no admitido", "La firma tiene que ser GIF, PNG o JPG.");
+      return;
+    }
+    if (file.size > FIRMA_MAX_BYTES) {
+      toast("error", "Archivo muy grande", "La firma no puede pasar de 2 MB.");
+      return;
+    }
+
+    setSubiendo(true);
+    try {
+      const subido = await uploadFile(file, { folder, raw: true });
+      onChange(subido.url);
+      toast("success", "Firma cargada", "Acordate de guardar los cambios.");
+    } catch (err: any) {
+      toast("error", "No se pudo subir", err?.message ?? "Probá de nuevo.");
+    } finally {
+      setSubiendo(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <input
+        ref={inputRef}
+        id="firma-gif-input"
+        data-testid="firma-gif-input"
+        type="file"
+        accept={FIRMA_ACCEPT}
+        className="sr-only"
+        aria-label="Firma de email (GIF)"
+        disabled={disabled}
+        onChange={handleFile}
+      />
+
+      {url ? (
+        <div className="overflow-hidden rounded-[10px] border border-hairline bg-white">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={`Firma de email · ${nombre}`}
+            data-testid="firma-gif-preview"
+            className="block h-auto w-full"
+          />
+        </div>
+      ) : (
+        <div className="rounded-[10px] border border-dashed border-neutral-200 bg-neutral-50 p-4 text-center">
+          <p className="text-[12.5px] text-neutral-500">
+            Sin firma cargada. La cotización y los emails usan la firma de siempre.
+          </p>
+        </div>
+      )}
+
+      {!disabled && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            loading={subiendo}
+            leftIcon={<Upload className="h-3.5 w-3.5" />}
+            onClick={() => inputRef.current?.click()}
+          >
+            {url ? "Reemplazar firma" : "Subir firma"}
+          </Button>
+          {url && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              leftIcon={<Trash2 className="h-3.5 w-3.5" />}
+              onClick={() => onChange(null)}
+            >
+              Quitar firma
+            </Button>
+          )}
+          <span className="text-[11.5px] text-neutral-400">
+            GIF animado 1800 × 585, hasta 2 MB. Se sube tal cual, sin recortar.
+          </span>
+        </div>
+      )}
+    </div>
   );
 }
 

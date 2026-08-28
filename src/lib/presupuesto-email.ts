@@ -46,6 +46,11 @@ export interface VendedorEmail {
   email?: string | null;
   tel?: string | null;
   foto?: string | null;
+  /**
+   * Firma institucional en GIF (pedido del cliente 28/08). Si está cargada,
+   * reemplaza a la tarjeta: es la misma imagen que el vendedor usa en Gmail.
+   */
+  firma?: string | null;
 }
 
 const MESES = [
@@ -174,11 +179,25 @@ function layout(opts: {
 </html>`;
 }
 
-/** Firma del vendedor al pie del cuerpo. Es la misma tarjeta de datos-email. */
+/**
+ * Firma del vendedor al pie del cuerpo. Es la misma tarjeta de datos-email,
+ * salvo que el vendedor haya cargado su firma institucional: ahí va la imagen
+ * tal cual, a 560 px (el ancho del cuerpo del email).
+ */
 function tarjetaVendedor(v: VendedorEmail): string {
   const wa = telefonoWa(v.tel);
   const foto = v.foto?.trim();
   const fotoAbs = foto?.startsWith("/") ? `${SITE_BASE_URL}${foto}` : foto;
+
+  const firma = v.firma?.trim();
+  if (firma) {
+    const firmaAbs = firma.startsWith("/") ? `${SITE_BASE_URL}${firma}` : firma;
+    return `
+    <img src="${escapeHtml(firmaAbs)}" width="560" style="width:100%;max-width:560px;height:auto;display:block;border:0;margin:16px 0 4px" alt="${escapeHtml(
+      v.nombre,
+    )}" />`;
+  }
+
   return `
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f7f8fa;border-radius:12px;margin:16px 0 4px">
       <tr>
@@ -205,6 +224,17 @@ function tarjetaVendedor(v: VendedorEmail): string {
         </td>
       </tr>
     </table>`;
+}
+
+/**
+ * Cierre de la versión texto. Con firma cargada la imagen no viaja al plano,
+ * así que el nombre lleva teléfono y email para que el pasajero tenga por
+ * dónde contestar.
+ */
+function firmaTexto(v: VendedorEmail): string[] {
+  return v.firma?.trim()
+    ? [v.nombre, v.tel ?? "", v.email ?? ""]
+    : [v.nombre, v.email ?? ""];
 }
 
 /** "12 de marzo de 2027" a partir del ISO pelado que guarda el cotizador. */
@@ -364,8 +394,7 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
           "",
           `Ver la cotización: ${url}`,
           "",
-          vendedor.nombre,
-          vendedor.email ?? "",
+          ...firmaTexto(vendedor),
         ]
       : [
           saludoTxt ||
@@ -378,8 +407,7 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
           `Ver la cotización: ${url}`,
           `${notaVigencia}.`,
           "",
-          vendedor.nombre,
-          vendedor.email ?? "",
+          ...firmaTexto(vendedor),
         ]
   )
     .filter((l) => l !== null)

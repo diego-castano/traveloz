@@ -547,6 +547,8 @@ export async function crearSolicitud(input: {
       slug: true,
       linkActivo: true,
       fotoUrl: true,
+      // La firma de email va en el mail al pasajero (pedido del cliente 28/08).
+      firmaUrl: true,
       whatsapp: true,
     },
   });
@@ -597,7 +599,13 @@ export async function crearSolicitud(input: {
   try {
     const tmpl = solicitudDatosEmail({
       tipo,
-      vendedor: { nombre: vendedor.name, fotoUrl: vendedor.fotoUrl, whatsapp: vendedor.whatsapp },
+      vendedor: {
+        nombre: vendedor.name,
+        fotoUrl: vendedor.fotoUrl,
+        firmaUrl: vendedor.firmaUrl,
+        whatsapp: vendedor.whatsapp,
+        email: vendedor.email,
+      },
       link,
       destinatarioNombre: limpio(datos.nombre),
       destino: limpio(datos.destino),
@@ -698,7 +706,7 @@ export async function previewSolicitudEmail(
 
   const vendedor = await prisma.user.findUnique({
     where: { id: scope.sessionUserId },
-    select: { id: true, name: true, slug: true, fotoUrl: true, whatsapp: true },
+    select: { id: true, name: true, email: true, slug: true, fotoUrl: true, firmaUrl: true, whatsapp: true },
   });
   if (!vendedor) {
     return { ok: false, message: "No encontramos tu usuario. Volvé a iniciar sesión." };
@@ -709,7 +717,13 @@ export async function previewSolicitudEmail(
   const link = `${SITE_BASE_URL}${RUTA_PUBLICA[tipo]}/${slug}?s=ejemplo`;
   const tmpl = solicitudDatosEmail({
     tipo,
-    vendedor: { nombre: vendedor.name, fotoUrl: vendedor.fotoUrl, whatsapp: vendedor.whatsapp },
+    vendedor: {
+      nombre: vendedor.name,
+      fotoUrl: vendedor.fotoUrl,
+      firmaUrl: vendedor.firmaUrl,
+      whatsapp: vendedor.whatsapp,
+      email: vendedor.email,
+    },
     link,
     destinatarioNombre: limpio(input?.destinatarioNombre),
     destino: limpio(input?.destino),

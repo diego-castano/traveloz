@@ -66,3 +66,6 @@ WhatsApp Video *.mp4
 
 # Transcripciones de reuniones con el cliente (nunca al repo)
 *.srt
+
+# Firmas de email del equipo (GIF originales, se cargan por Perfiles)
+Firmas TravelOz 2026/
