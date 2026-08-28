@@ -114,6 +114,9 @@ model User {
   // 28/08: el vendedor la carga desde Perfiles y se usa tal cual en la hoja de
   // la cotización y en los emails que le llegan al pasajero.
   firmaUrl             String?
+  // Último frame de esa firma, en WebP. El PDF se imprime con Chromium y el GIF
+  // animado se congela en un frame cualquiera: el papel usa esta imagen fija.
+  firmaEstaticaUrl     String?
   // Interruptor del link público. Apagado → página de cortesía, no 404.
   linkActivo           Boolean   @default(true)
   // Primer ingreso con contraseña temporal (seed del equipo). El usuario

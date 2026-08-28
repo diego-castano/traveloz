@@ -461,6 +461,7 @@ export interface VendedorContexto {
   slug: string | null;
   fotoUrl: string | null;
   firmaUrl: string | null;
+  firmaEstaticaUrl: string | null;
   telefono: string | null;
   whatsapp: string | null;
   cargo: string | null;
@@ -492,8 +493,10 @@ const SELECT_VENDEDOR = {
   slug: true,
   fotoUrl: true,
   // La firma de email viaja con el vendedor: la hoja del pasajero la imprime
-  // en lugar de la tarjeta (pedido del cliente 28/08).
+  // en lugar de la tarjeta (pedido del cliente 28/08). El frame fijo lo usa el
+  // papel, porque el PDF congela el GIF donde le toca.
   firmaUrl: true,
+  firmaEstaticaUrl: true,
   telefono: true,
   whatsapp: true,
   cargo: true,

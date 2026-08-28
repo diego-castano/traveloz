@@ -80,6 +80,11 @@ export interface PipelineResult extends UploadResult {
   width?: number;
   height?: number;
   format?: string;
+  /**
+   * Copia fija de un GIF animado subido en modo `passthrough` (último frame en
+   * WebP, mismo folder, sufijo `-fijo.webp`). `undefined` para todo lo demás.
+   */
+  staticUrl?: string;
 }
 
 export class PipelineError extends Error {
@@ -144,19 +149,20 @@ export async function processAndUpload(
     // El alto y el ancho son informativos: si sharp no puede leer el header
     // (un GIF raro), se sube igual — los bytes son los que importan.
     let dim: { width?: number; height?: number } = {};
+    let paginas = 1;
     try {
       const meta = await sharp(buffer, { failOn: "none" }).metadata();
       dim = { width: meta.width, height: meta.height };
+      paginas = meta.pages ?? 1;
     } catch {
       /* sin dimensiones */
     }
+    const base = opts.filename?.replace(/\.[^.]+$/, "");
     const result = await uploadBuffer({
       buffer,
       contentType: realMime,
       folder: opts.folder,
-      filename: opts.filename
-        ? opts.filename.replace(/\.[^.]+$/, "") + `.${extFor(realMime)}`
-        : undefined,
+      filename: base ? `${base}.${extFor(realMime)}` : undefined,
       metadata: {
         ...opts.metadata,
         ...(dim.width ? { width: String(dim.width) } : {}),
@@ -164,7 +170,14 @@ export async function processAndUpload(
         "original-mime": realMime,
       },
     });
-    return { ...result, ...dim, format: extFor(realMime) };
+
+    const staticUrl = await subirFrameFijo(buffer, realMime, paginas, {
+      folder: opts.folder,
+      base,
+      metadata: opts.metadata,
+    });
+
+    return { ...result, ...dim, format: extFor(realMime), ...(staticUrl ? { staticUrl } : {}) };
   }
 
   if (isVideo) {
@@ -248,6 +261,44 @@ export async function processAndUpload(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Copia fija del último frame de un GIF animado.
+ *
+ * El PDF de la cotización lo imprime un Chromium headless y un GIF con loop
+ * infinito (estas firmas traen NETSCAPE Iterations 0 y de 42 a 222 frames) se
+ * congela en el frame que esté corriendo: en la cotización de Amparo la firma
+ * salió sin el logo. El último frame es la firma armada —lo que el GIF muestra
+ * el 99% del tiempo— así que ese es el que viaja al papel.
+ *
+ * Best-effort: si sharp no puede componerlo, la firma se sube igual y el papel
+ * cae al GIF, que es exactamente lo que pasaba antes.
+ */
+async function subirFrameFijo(
+  buffer: Buffer,
+  mime: string,
+  paginas: number,
+  opts: { folder: string; base?: string; metadata?: Record<string, string> },
+): Promise<string | undefined> {
+  if (mime !== "image/gif" || paginas < 2) return undefined;
+  try {
+    // `page` compone el frame con su disposal, no devuelve el delta pelado.
+    const fijo = await sharp(buffer, { page: paginas - 1, failOn: "none" })
+      .webp({ quality: 90 })
+      .toBuffer();
+    const subido = await uploadBuffer({
+      buffer: fijo,
+      contentType: "image/webp",
+      folder: opts.folder,
+      filename: opts.base ? `${opts.base}-fijo.webp` : "fijo.webp",
+      metadata: { ...opts.metadata, "original-mime": mime, "frame-fijo": String(paginas - 1) },
+    });
+    return subido.url;
+  } catch (err) {
+    console.error("[pipeline] no se pudo extraer el frame fijo del GIF:", err);
+    return undefined;
+  }
+}
 
 export function isAllowed(mime: string): boolean {
   return (

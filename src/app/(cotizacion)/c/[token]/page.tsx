@@ -144,6 +144,7 @@ export default async function CotizacionPublicaPage({
               whatsapp: true,
               fotoUrl: true,
               firmaUrl: true,
+              firmaEstaticaUrl: true,
               slug: true,
               linkActivo: true,
             },
@@ -180,6 +181,9 @@ export default async function CotizacionPublicaPage({
     // Firma de email en GIF: con ella la hoja cierra con la imagen tal cual
     // (pedido del cliente 28/08).
     firma: u.firmaUrl?.trim() || null,
+    // El PDF de esta misma página se imprime con el frame fijo: Chromium
+    // congela el GIF animado en el frame que esté corriendo.
+    firmaEstatica: u.firmaEstaticaUrl?.trim() || null,
     rol: "",
   };
 

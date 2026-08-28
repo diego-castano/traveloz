@@ -407,6 +407,10 @@ function FichaVendedor({
   const [whatsapp, setWhatsapp] = useState(user.whatsapp ?? "");
   const [fotoUrl, setFotoUrl] = useState<string | null>(user.fotoUrl ?? null);
   const [firmaUrl, setFirmaUrl] = useState<string | null>(user.firmaUrl ?? null);
+  // El frame fijo no se elige: lo genera la subida y sigue a la firma.
+  const [firmaEstaticaUrl, setFirmaEstaticaUrl] = useState<string | null>(
+    user.firmaEstaticaUrl ?? null,
+  );
   const [nombre, setNombre] = useState(user.name);
   const [email, setEmail] = useState(user.email);
   const [rol, setRol] = useState<Role>(user.role);
@@ -418,6 +422,7 @@ function FichaVendedor({
   const [base, setBase] = useState({
     fotoUrl: user.fotoUrl ?? null,
     firmaUrl: user.firmaUrl ?? null,
+    firmaEstaticaUrl: user.firmaEstaticaUrl ?? null,
     telefono: user.telefono ?? "",
     whatsapp: user.whatsapp ?? "",
     nombre: user.name,
@@ -428,6 +433,7 @@ function FichaVendedor({
   const comercialSucio =
     fotoUrl !== base.fotoUrl ||
     firmaUrl !== base.firmaUrl ||
+    firmaEstaticaUrl !== base.firmaEstaticaUrl ||
     telefono.trim() !== base.telefono.trim() ||
     whatsapp.trim() !== base.whatsapp.trim();
 
@@ -496,8 +502,10 @@ function FichaVendedor({
     // usuario protegido), la foto recién cargada ya quedó guardada.
     if (comercialSucio) {
       try {
-        await updateVendedorPerfil(user.id, { fotoUrl, firmaUrl, telefono, whatsapp });
-        setBase((b) => ({ ...b, fotoUrl, firmaUrl, telefono, whatsapp }));
+        await updateVendedorPerfil(user.id, {
+          fotoUrl, firmaUrl, firmaEstaticaUrl, telefono, whatsapp,
+        });
+        setBase((b) => ({ ...b, fotoUrl, firmaUrl, firmaEstaticaUrl, telefono, whatsapp }));
       } catch (err: any) {
         setGuardando(false);
         toast("error", "Error", err?.message ?? "No se pudo guardar el perfil");
@@ -657,7 +665,10 @@ function FichaVendedor({
               nombre={user.name}
               folder={`firmas/${user.id}`}
               disabled={!canEdit}
-              onChange={setFirmaUrl}
+              onChange={(nueva, fija) => {
+                setFirmaUrl(nueva);
+                setFirmaEstaticaUrl(fija);
+              }}
             />
           </div>
 
@@ -916,6 +927,10 @@ function FichaVendedor({
 // Input de archivo pelado (sin recorte, sin compresión del navegador) contra
 // /api/upload con `raw=1`. La URL queda en el estado de la ficha: recién se
 // persiste cuando el operador aprieta "Guardar cambios", igual que la foto.
+//
+// Con un GIF animado el server devuelve además `staticUrl` —el último frame en
+// WebP— y el uploader lo entrega junto con la firma: el PDF imprime ese, porque
+// Chromium congela el GIF en un frame cualquiera.
 // Quitar no borra del bucket a propósito — el archivo queda huérfano y lo
 // levanta /api/files/gc-orphans, que es el patrón del repo.
 // ---------------------------------------------------------------------------
@@ -935,7 +950,8 @@ function FirmaUploader({
   nombre: string;
   folder: string;
   disabled: boolean;
-  onChange: (url: string | null) => void;
+  /** `(firma, frameFijo)`. Los dos van juntos: se setean y se limpian a la vez. */
+  onChange: (url: string | null, estatica: string | null) => void;
 }) {
   const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -960,8 +976,14 @@ function FirmaUploader({
     setSubiendo(true);
     try {
       const subido = await uploadFile(file, { folder, raw: true });
-      onChange(subido.url);
-      toast("success", "Firma cargada", "Acordate de guardar los cambios.");
+      onChange(subido.url, subido.staticUrl ?? null);
+      toast(
+        "success",
+        "Firma cargada",
+        subido.staticUrl
+          ? "Se guardó también el frame fijo para el PDF. Acordate de guardar los cambios."
+          : "Acordate de guardar los cambios.",
+      );
     } catch (err: any) {
       toast("error", "No se pudo subir", err?.message ?? "Probá de nuevo.");
     } finally {
@@ -1019,7 +1041,7 @@ function FirmaUploader({
               variant="ghost"
               size="sm"
               leftIcon={<Trash2 className="h-3.5 w-3.5" />}
-              onClick={() => onChange(null)}
+              onClick={() => onChange(null, null)}
             >
               Quitar firma
             </Button>

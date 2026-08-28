@@ -39,6 +39,11 @@ export interface VendedorCotizador {
    * hoja imprime la imagen tal cual; `null` cae a la firma HTML.
    */
   firma: string | null;
+  /**
+   * Último frame de esa firma, en WebP. Lo usa SOLO el papel: el PDF sale de
+   * un Chromium headless que congela el GIF en un frame cualquiera.
+   */
+  firmaEstatica: string | null;
   rol: string;
 }
 
@@ -51,6 +56,7 @@ export interface UsuarioParaCotizador {
   slug: string | null;
   fotoUrl: string | null;
   firmaUrl: string | null;
+  firmaEstaticaUrl: string | null;
   telefono: string | null;
   whatsapp: string | null;
   cargo: string | null;
@@ -97,6 +103,7 @@ export function vendedorDesdeUsuario(
     // storage se usa tal cual, sin proxy.
     foto: u.fotoUrl?.trim() || null,
     firma: u.firmaUrl?.trim() || null,
+    firmaEstatica: u.firmaEstaticaUrl?.trim() || null,
     rol: u.role,
   };
 }

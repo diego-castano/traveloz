@@ -32,6 +32,11 @@ export interface UploadedFile {
   contentType?: string;
   width?: number;
   height?: number;
+  /**
+   * Solo en modo `raw` con un GIF animado: el último frame en WebP, ya subido.
+   * Lo usa la firma del vendedor, porque el PDF congela el GIF donde le toca.
+   */
+  staticUrl?: string;
 }
 
 /** 0..100 percentage during the upload. */

@@ -97,7 +97,7 @@ function useAerolineas() {
    muestra un guión en vez de romperse. */
 const VENDEDOR_VACIO = {
   id: null, nombre: "—", inicial: "—", cargo: "", tel: "", email: "",
-  linkDatos: null, linkPago: null, foto: null, firma: null, rol: "",
+  linkDatos: null, linkPago: null, foto: null, firma: null, firmaEstatica: null, rol: "",
 };
 
 function buscarVendedor(vendedores, id) {

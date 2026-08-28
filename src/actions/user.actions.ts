@@ -62,6 +62,7 @@ export async function getUsers() {
         slug: true,
         fotoUrl: true,
         firmaUrl: true,
+        firmaEstaticaUrl: true,
         telefono: true,
         whatsapp: true,
         linkActivo: true,
@@ -672,8 +673,10 @@ export async function updateVendedorPerfil(
   id: string,
   data: {
     fotoUrl?: string | null;
-    // La firma de email (GIF) se edita en la misma ficha que la foto.
+    // La firma de email (GIF) se edita en la misma ficha que la foto; el frame
+    // fijo lo genera la subida y viaja pegado a ella.
     firmaUrl?: string | null;
+    firmaEstaticaUrl?: string | null;
     telefono?: string | null;
     whatsapp?: string | null;
   },
@@ -684,6 +687,7 @@ export async function updateVendedorPerfil(
   const schema = z.object({
     fotoUrl: z.string().max(500).nullable().optional(),
     firmaUrl: z.string().max(500).nullable().optional(),
+    firmaEstaticaUrl: z.string().max(500).nullable().optional(),
     telefono: z.string().max(40).nullable().optional(),
     whatsapp: z.string().max(40).nullable().optional(),
   });
@@ -701,10 +705,16 @@ export async function updateVendedorPerfil(
       data: {
         ...(data.fotoUrl !== undefined ? { fotoUrl: norm(data.fotoUrl) } : {}),
         ...(data.firmaUrl !== undefined ? { firmaUrl: norm(data.firmaUrl) } : {}),
+        ...(data.firmaEstaticaUrl !== undefined
+          ? { firmaEstaticaUrl: norm(data.firmaEstaticaUrl) }
+          : {}),
         ...(data.telefono !== undefined ? { telefono: norm(data.telefono) } : {}),
         ...(data.whatsapp !== undefined ? { whatsapp: norm(data.whatsapp) } : {}),
       },
-      select: { id: true, fotoUrl: true, firmaUrl: true, telefono: true, whatsapp: true },
+      select: {
+        id: true, fotoUrl: true, firmaUrl: true, firmaEstaticaUrl: true,
+        telefono: true, whatsapp: true,
+      },
     });
 
     const changed = Object.keys(data).filter((k) => (data as any)[k] !== undefined);

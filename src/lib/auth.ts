@@ -23,6 +23,8 @@ export interface AuthUser {
   fotoUrl?: string | null;
   /** Firma de email en GIF (pedido del cliente 28/08). */
   firmaUrl?: string | null;
+  /** Último frame de esa firma, en WebP: es la que se imprime. */
+  firmaEstaticaUrl?: string | null;
   telefono?: string | null;
   whatsapp?: string | null;
   linkActivo?: boolean;

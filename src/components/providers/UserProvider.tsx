@@ -197,6 +197,7 @@ export function useUserActions() {
         data: {
           fotoUrl?: string | null;
           firmaUrl?: string | null;
+          firmaEstaticaUrl?: string | null;
           telefono?: string | null;
           whatsapp?: string | null;
         },

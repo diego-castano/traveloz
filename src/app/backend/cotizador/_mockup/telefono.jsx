@@ -424,20 +424,41 @@ function SalidaPasajero({
      su relación 1800:585 a 703 px de ancho; sin él, la firma HTML. */
   const altoFirma = V.firma ? ALTO_FIRMA_IMG : ALTO_FIRMA_HTML;
 
-  /* ¿el pie del documento entra en media carilla? (ver el bloque de cierre)
-     Remedido el 26/08 sobre la hoja real: condiciones son 40 px de título y
-     borde más 36 por ítem cuando van en dos columnas —una condición de hasta
-     95 caracteres ocupa dos renglones en la columna angosta— o 22 por ítem a
-     todo lo ancho; formas de pago 178 con su título y las dos filas de logos.
-     La firma la mide `altoFirma`: desde el 28/08 no siempre es la misma caja.
-     Entre bloque y bloque, el aire nuevo. */
+  /* Alto de las condiciones sobre papel: 40 px de título y borde más 36 por
+     ítem cuando van en dos columnas —una condición de hasta 95 caracteres ocupa
+     dos renglones en la columna angosta— o 22 por ítem a todo lo ancho. */
+  const altoCondiciones = useMemo(() => {
+    if (!condiciones.length) return 0;
+    return condicionesCortas
+      ? 40 + Math.ceil(condiciones.length / 2) * 36
+      : 40 + condiciones.length * 22;
+  }, [condiciones.length, condicionesCortas]);
+
+  /* ¿el pie del documento viaja entero? (ver el bloque de cierre)
+     Formas de pago son 178 con su título y las dos filas de logos; la firma la
+     mide `altoFirma`. Entre bloque y bloque, el aire nuevo.
+
+     El techo era media carilla. Con la firma nueva —230 px la HTML, 261 la
+     imagen— el pie de una cotización normal da 572-603 px y se pasaba por poco:
+     el grupo se soltaba, la firma no entraba al pie de la hoja y `breakInside`
+     la mandaba sola a una carilla en blanco. Es lo que apareció en producción
+     el 28/08 (COT-0026 y COT-0020). A 60% de la carilla el pie vuelve a viajar
+     entero y la última hoja cierra con condiciones, pago y firma; más que eso
+     ya no es "el pie", es media cotización empujada. */
   const cierreEntero = useMemo(() => {
     if (!impresion) return false;
-    const cond = !condiciones.length ? 0
-      : condicionesCortas ? 40 + Math.ceil(condiciones.length / 2) * 36
-      : 40 + condiciones.length * 22;
-    return cond + AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma <= CARILLA / 2;
-  }, [impresion, condiciones.length, condicionesCortas, altoFirma]);
+    return altoCondiciones + AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma <= CARILLA * 0.6;
+  }, [impresion, altoCondiciones, altoFirma]);
+
+  /* Red de contención del anterior: con una lista de condiciones larga el pie
+     entero no entra, pero pago y firma sí. Van juntas para que la última hoja
+     nunca sea la firma sola — que es exactamente lo que el cliente no quiere.
+     Con las alturas de hoy siempre da true; la cuenta queda escrita porque el
+     día que crezcan (más medios de pago, otra firma) tiene que apagarse sola. */
+  const pagoConFirma = useMemo(
+    () => impresion && AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma <= CARILLA / 2,
+    [impresion, altoFirma],
+  );
 
   /* nombre visible de una opción, el mismo fallback que usa el switcher */
   const nombreDe = (o) => String(o?.nombre || "").trim() || `Opción ${q.opciones.indexOf(o) + 1}`;
@@ -502,7 +523,10 @@ function SalidaPasajero({
   const cortarAntesDeOpciones = useMemo(() => {
     if (!impresion || q.vuelos.length || !q.opciones.length) return false;
     const PAGINA = CARILLA;                  // A4 menos margen de 10mm/13mm
-    const CIERRE = AIRE_SEC + 346 + altoFirma;  // condiciones + formas de pago + firma, con su aire
+    /* condiciones + formas de pago + firma, cada una con su aire. Se arma con
+       las mismas piezas que `cierreEntero` para que las dos estimaciones no se
+       vayan por caminos distintos el día que cambie una altura. */
+    const CIERRE = AIRE_SEC + altoCondiciones + AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma;
     /* hasta donde arranca la sección de abajo: membrete + banda + saludo con
        su aire (376) y, si hay servicios, las fichas con el suyo (24 + 155) */
     const portada = 376 + (q.servicios.length && !q.soloVuelos ? AIRE_SEC_1 + 155 : 0);
@@ -518,7 +542,7 @@ function SalidaPasajero({
       portada >= PAGINA * 0.45
     );
   }, [impresion, q.vuelos.length, q.opciones.length, q.servicios.length, q.soloVuelos, q.fotosHotel,
-      tramos.length, hayNotas, altoFirma]);
+      tramos.length, hayNotas, altoCondiciones, altoFirma]);
 
   /* ── papel: la opción viaja entera ────────────────────────────────────
      La regla que pidió el cliente: una opción de alojamiento no se parte.
@@ -1378,6 +1402,12 @@ function SalidaPasajero({
         </div>
         )}
 
+        {/* Pago y firma viajan juntas. Con el pie entero (`cierreEntero`) el
+            grupo de arriba ya lo garantiza; cuando las condiciones son largas y
+            ese grupo se suelta, este envoltorio evita el caso que el cliente no
+            quiere: una última hoja con la firma sola. */}
+        <div style={pagoConFirma ? { breakInside:"avoid" } : undefined}>
+
         {/* pago — logos reales del sitio público, en cajas uniformes.
             El título y las dos filas de logos son una sola unidad de lectura. */}
         <div data-ap style={{ breakInside:"avoid", ...(impresion ? { marginTop:AIRE_PAGO } : null) }}>
@@ -1423,13 +1453,17 @@ function SalidaPasajero({
         <div data-sec="firma" data-ap style={{ breakInside:"avoid", ...(impresion ? { marginTop:AIRE_FIRMA } : null) }}>
         {V.firma ? (
           /* Firma cargada: manda la imagen, a todo el ancho y con su relación
-             1800:585. En papel va sola —el PDF sale de un Chromium headless con
-             la animación congelada y el frame 0 ya muestra la firma entera—; en
-             pantalla, abajo, el contacto clickeable, porque adentro de la
+             1800:585. En pantalla va el GIF animado; en papel, el último frame
+             en WebP que dejó la subida. El PDF lo imprime un Chromium headless
+             y un GIF con loop infinito se congela en el frame que esté
+             corriendo: así salió la firma de Amparo sin el logo (28/08). Sin
+             frame fijo —firmas cargadas antes de este arreglo— cae al GIF.
+             Debajo, solo en pantalla, el contacto clickeable: adentro de la
              imagen no hay links. */
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={V.firma} alt={V.nombre} loading="eager" decoding="sync"
+            <img src={impresion ? (V.firmaEstatica || V.firma) : V.firma}
+              alt={V.nombre} loading="eager" decoding="sync"
               style={{ width:"100%", height:"auto", display:"block", borderRadius:14,
                 breakInside:"avoid" }} />
             {!impresion && (telWa || V.email) && (
@@ -1460,6 +1494,8 @@ function SalidaPasajero({
         <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color: impresion ? "#8A8DB5" : "#B0B4CD",
           letterSpacing: impresion ? ".02em" : undefined, marginTop: impresion ? 16 : 4 }}>{G.web}</div>
         </div>
+
+        </div>{/* /pago + firma */}
 
         </div>{/* /pie: condiciones + pago + firma */}
 

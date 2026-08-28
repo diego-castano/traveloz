@@ -24,6 +24,16 @@ del catálogo, CRM).
   el mismo diseño del GIF: panel violeta a rosa con la foto del vendedor
   (o sus iniciales), nombre, cargo, celular, web, teléfono de oficina,
   dirección y el logo. Migración aditiva `20260828120000_user_firma_url`.
+- **El PDF imprime la firma armada.** Los GIF del equipo animan en loop y
+  el PDF capturaba un frame cualquiera (una salió sin el logo). Al subir la
+  firma se guarda además su último frame como imagen fija y el PDF usa esa;
+  el link y los emails siguen con el GIF animado. Migración aditiva
+  `20260828150000_user_firma_estatica`.
+- **La firma no queda sola en una hoja.** Con la firma más alta, el cierre
+  se partía y la última hoja traía solo la firma. Ahora el cierre viaja
+  entero hasta el 60 % de la carilla y, si no entra, formas de pago y firma
+  van siempre juntas. Sin cambio en la cantidad de hojas de ninguna
+  cotización probada.
 
 ## 27 de agosto de 2026
 
