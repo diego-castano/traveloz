@@ -21,6 +21,7 @@ import {
   Users,
   Phone,
   MessageCircle,
+  PenLine,
   Link2,
   Copy,
   Check,
@@ -112,13 +113,21 @@ export function VendedoresView({
       .catch(() => setEnvioCounts({}));
   }, [getEnviosCountPorVendedor]);
 
+  // Pedido de Gero (29/08): que en el listado se vea quién no tiene la firma
+  // GIF cargada. Sin firma, la cotización y los emails salen con la firma
+  // HTML del sistema, que sigue el mismo diseño; el aviso es para que el
+  // admin sepa a quién falta pedírsela.
+  const [soloSinFirma, setSoloSinFirma] = useState(false);
+  const sinFirma = useMemo(() => users.filter((u) => !u.firmaUrl).length, [users]);
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return users;
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return users.filter(
-      (u) => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+      (u) =>
+        (!q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
+        (!soloSinFirma || !u.firmaUrl),
     );
-  }, [users, search]);
+  }, [users, search, soloSinFirma]);
 
   const cerrarFicha = useCallback(() => {
     setFichaSucia(false);
@@ -154,6 +163,28 @@ export function VendedoresView({
         }}
         className="mb-4"
       />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 text-[12.5px] text-neutral-500">
+        <span>
+          {users.length - sinFirma} con firma GIF · {sinFirma} sin firma
+        </span>
+        {sinFirma > 0 && (
+          <button
+            type="button"
+            onClick={() => setSoloSinFirma((v) => !v)}
+            aria-pressed={soloSinFirma}
+            className={
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold transition " +
+              (soloSinFirma
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-hairline bg-white text-neutral-600 hover:border-amber-300 hover:text-amber-800")
+            }
+          >
+            <PenLine className="h-3 w-3" />
+            {soloSinFirma ? "Mostrando solo sin firma" : "Ver solo sin firma"}
+          </button>
+        )}
+      </div>
 
       {filtered.length === 0 ? (
         <EmptyState
@@ -300,6 +331,21 @@ function VendedorCard({
             <MessageCircle className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
             {user.whatsapp || <span className="text-neutral-300">Sin WhatsApp</span>}
           </span>
+          {/* Firma de email: con GIF cargado o con la firma HTML del sistema. */}
+          {user.firmaUrl ? (
+            <span className="flex items-center gap-1.5">
+              <PenLine className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              <span className="text-emerald-700">Firma GIF cargada</span>
+            </span>
+          ) : (
+            <span
+              className="flex items-center gap-1.5"
+              title="La cotización y los emails salen con la firma HTML del sistema, con el mismo diseño"
+            >
+              <PenLine className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <span className="font-medium text-amber-700">Sin firma GIF · usa la firma HTML</span>
+            </span>
+          )}
         </div>
       </button>
 

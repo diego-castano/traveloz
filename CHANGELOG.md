@@ -11,6 +11,16 @@ del catálogo, CRM).
 
 ---
 
+## 29 de agosto de 2026
+
+### Cambiado
+
+- **El listado de vendedores dice quién no tiene firma.** Cada tarjeta muestra
+  "Firma GIF cargada" o "Sin firma GIF · usa la firma HTML", arriba un
+  contador (con firma / sin firma) y un botón "Ver solo sin firma" para
+  filtrar. Quien no tiene GIF sigue saliendo en la cotización y en los
+  emails con la firma HTML del sistema, con el mismo diseño.
+
 ## 28 de agosto de 2026
 
 ### Nuevo
