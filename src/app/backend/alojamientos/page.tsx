@@ -35,8 +35,10 @@ import { Badge } from "@/components/ui/Badge";
 import {
   useAlojamientos,
   useServiceActions,
+  useServiceDispatch,
   useServiceState,
 } from "@/components/providers/ServiceProvider";
+import { searchAlojamientos } from "@/actions/service.actions";
 import { usePaises } from "@/components/providers/CatalogProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useToast } from "@/components/ui/Toast";
@@ -261,20 +263,88 @@ export default function AlojamientosPage() {
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
     const q = norm(search.trim());
-    const base = q
-      ? alojamientos.filter((a) => {
-          const nombreMatch = norm(a.nombre).includes(q);
-          const ciudadMatch = norm(ciudadMap[a.ciudadId] ?? "").includes(q);
-          const paisMatch = norm(paisMap[a.paisId] ?? "").includes(q);
-          return nombreMatch || ciudadMatch || paisMatch;
-        })
-      : alojamientos;
-    return sortByRecency(base);
+    if (!q) return sortByRecency(alojamientos);
+
+    // Los que arrancan con lo tipeado van primero, después los que lo tienen al
+    // inicio de alguna palabra y recién al final los que lo llevan en el medio.
+    // Sin esto, buscar "sa" devolvía "Bahia Principe Explore TurqueSA" antes que
+    // "SAndos" o "SAn Giorgio". (Reporte de Amparo, 31/08.)
+    const qEscapada = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const inicioDePalabra = new RegExp(`(?:^|[^a-z0-9])${qEscapada}`);
+    const rangoNombre = (nombre: string): number => {
+      const n = norm(nombre);
+      if (n.startsWith(q)) return 0;
+      if (inicioDePalabra.test(n)) return 1;
+      if (n.includes(q)) return 2;
+      return -1;
+    };
+
+    const rangoPorId = new Map<string, number>();
+    const coinciden: Alojamiento[] = [];
+    for (const a of alojamientos) {
+      const rango = rangoNombre(a.nombre);
+      if (rango >= 0) {
+        rangoPorId.set(a.id, rango);
+        coinciden.push(a);
+        continue;
+      }
+      const ciudad = norm(ciudadMap[a.ciudadId] ?? "");
+      const pais = norm(paisMap[a.paisId] ?? "");
+      if (ciudad.includes(q) || pais.includes(q)) {
+        rangoPorId.set(a.id, 3);
+        coinciden.push(a);
+      }
+    }
+
+    // sort es estable, así que ordenar por rango sobre la lista ya ordenada por
+    // recencia conserva la recencia dentro de cada rango.
+    return sortByRecency(coinciden).sort(
+      (a, b) => (rangoPorId.get(a.id) ?? 9) - (rangoPorId.get(b.id) ?? 9),
+    );
   }, [alojamientos, search, ciudadMap, paisMap]);
 
   // search resets page inline through setSearch above; no extra effect needed.
 
   const hasSearch = Boolean(search.trim());
+
+  // Mientras la lista larga rehidrata (~4 s para 1200+ hoteles), el filtro local
+  // solo ve las primeras 10 filas. Durante esa ventana le preguntamos al server
+  // y sumamos lo que encuentra al estado compartido, así el filtro de arriba ya
+  // los tiene. Cuando la hidratación termina esto no corre más: filtrar en
+  // memoria es instantáneo. (Reporte de Amparo, 31/08.)
+  const dispatch = useServiceDispatch();
+  const [buscandoEnServidor, setBuscandoEnServidor] = useState(false);
+
+  useEffect(() => {
+    const q = search.trim();
+    if (!hydratingAlojamientos || q.length < 2) {
+      setBuscandoEnServidor(false);
+      return;
+    }
+    let cancelado = false;
+    setBuscandoEnServidor(true);
+    const timer = setTimeout(() => {
+      searchAlojamientos(activeBrandId, { q })
+        .then((res) => {
+          if (cancelado) return;
+          dispatch({
+            type: "MERGE_ALOJAMIENTOS",
+            payload: { alojamientos: res.alojamientos as any },
+          });
+        })
+        .catch((err) => {
+          console.error("Error buscando alojamientos:", err);
+        })
+        .finally(() => {
+          if (!cancelado) setBuscandoEnServidor(false);
+        });
+    }, 220);
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+    };
+  }, [search, hydratingAlojamientos, activeBrandId, dispatch]);
+
   const visibleTotalAlojamientos = hasSearch
     ? filteredAlojamientos.length
     : hydratingAlojamientos
@@ -290,7 +360,9 @@ export default function AlojamientosPage() {
     currentPage > 1 &&
     filteredAlojamientos.length < currentPage * ITEMS_PER_PAGE;
   const showPendingSearch =
-    hasSearch && hydratingAlojamientos && filteredAlojamientos.length === 0;
+    hasSearch &&
+    (buscandoEnServidor || hydratingAlojamientos) &&
+    filteredAlojamientos.length === 0;
 
   // Sortable columns for the alojamientos table.
   const sortColumns = useMemo<ColumnDef<Alojamiento>[]>(
@@ -327,7 +399,7 @@ export default function AlojamientosPage() {
 
   const hydrationMessage = hydratingAlojamientos
     ? hasSearch
-      ? "La búsqueda todavía está completando el listado. Algunos hoteles pueden aparecer en unos segundos."
+      ? `Buscando en los ${totalAlojamientos} hoteles del catálogo...`
       : `Mostrando la primera página mientras se cargan ${Math.max(
           totalAlojamientos - loadedAlojamientos,
           0,

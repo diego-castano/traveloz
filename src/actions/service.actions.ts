@@ -1070,6 +1070,49 @@ export async function getBaseAlojamientos(
   }
 }
 
+/**
+ * Busqueda de hoteles contra la base. El listado completo tarda ~4 s en hidratar
+ * (1200+ filas) y hasta entonces el filtro local solo ve las primeras 10: quien
+ * escribe rapido recibe cualquier cosa. Con esto la busqueda contesta bien desde
+ * el primer segundo. (Reporte de Amparo, 31/08.)
+ *
+ * Sin unstable_cache: la query lleva el texto tipeado, cachear una entrada por
+ * cadena solo ensucia. Va directo, con un take acotado.
+ */
+export async function searchAlojamientos(
+  requestedBrandId?: string,
+  options?: { q?: string; take?: number },
+) {
+  try {
+    const { brandId } = await requireAuth(requestedBrandId);
+    const q = (options?.q ?? "").trim();
+    if (q.length < 2) return { alojamientos: [] };
+    const take = Math.min(Math.max(options?.take ?? 80, 1), 200);
+
+    const alojamientos = await prisma.alojamiento.findMany({
+      where: {
+        brandId,
+        deletedAt: null,
+        OR: [
+          { nombre: { contains: q, mode: "insensitive" } },
+          { ciudad: { nombre: { contains: q, mode: "insensitive" } } },
+          { pais: { nombre: { contains: q, mode: "insensitive" } } },
+        ],
+      },
+      include: {
+        ciudad: { select: { id: true, nombre: true, paisId: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take,
+    });
+
+    return { alojamientos };
+  } catch (error) {
+    log.error("searching alojamientos", error);
+    throw new Error("No se pudieron buscar los alojamientos.");
+  }
+}
+
 async function fetchServiceSubEntitiesUncached(brandId: string) {
   const [
     preciosAereo,
