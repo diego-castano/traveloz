@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/form/InlineEditTable";
 import {
   useServiceState,
+  useServiceProgress,
   useServiceActions,
   useServiceLoading,
 } from "@/components/providers/ServiceProvider";
@@ -118,6 +119,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
   const precios = serviceState.preciosCircuito.filter(
     (p) => p.circuitoId === id,
   );
+  const { hydratingSubEntities } = useServiceProgress();
 
   // ---------------------------------------------------------------------------
   // Section 1 — Header form state
@@ -703,6 +705,7 @@ function CircuitoDetailForm({ circuito }: { circuito: Circuito }) {
             }
             addLabel="Agregar precio"
             emptyMessage="No hay periodos de precio definidos"
+            loading={hydratingSubEntities}
           />
         </FormSection>
       </FormSections>

@@ -7,7 +7,7 @@ import React, {
   useImperativeHandle,
   useRef,
 } from "react";
-import { Pencil, Trash2, Plus } from "lucide-react";
+import { Pencil, Trash2, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 
 /** Imperative handle so a parent can flush in-flight edit/add rows before
@@ -73,6 +73,11 @@ interface InlineEditTableProps<T> {
   /** Texto del boton primario que confirma la fila en edicion/alta. */
   confirmLabel?: string;
   emptyMessage?: string;
+  /** Las filas todavia estan en camino. Con la tabla vacia muestra "cargando"
+   *  en lugar del mensaje de vacio: anunciar "sin tarifas" cuando las tarifas
+   *  existen pero aun no llegaron asusta de gratis (reporte de Amparo, 28/08). */
+  loading?: boolean;
+  loadingMessage?: string;
   className?: string;
 }
 
@@ -94,6 +99,8 @@ function InlineEditTableInner<T extends object>(
     addLabel = "Agregar",
     confirmLabel = "Guardar",
     emptyMessage = "Sin datos",
+    loading = false,
+    loadingMessage = "Cargando tarifas...",
     className,
   }: InlineEditTableProps<T>,
   ref: React.Ref<InlineEditTableHandle>,
@@ -236,7 +243,17 @@ function InlineEditTableInner<T extends object>(
                   colSpan={columns.length + 1}
                   className="border-b border-hairline px-4 py-10 text-center text-[13px] text-neutral-400"
                 >
-                  {emptyMessage}
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2
+                        className="h-3.5 w-3.5 animate-spin"
+                        strokeWidth={2}
+                      />
+                      {loadingMessage}
+                    </span>
+                  ) : (
+                    emptyMessage
+                  )}
                 </td>
               </tr>
             )}

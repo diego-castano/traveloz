@@ -40,6 +40,9 @@ const SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
 interface ServiceState {
   loading: boolean;
   hydratingAlojamientos: boolean;
+  /** La ola 2 (precios, fotos, dias) sigue en vuelo. Las tablas de tarifas lo
+   *  miran para no anunciar "sin periodos" cuando todavia no llegaron. */
+  hydratingSubEntities: boolean;
   totalAlojamientos: number;
   aereos: Aereo[];
   preciosAereo: PrecioAereo[];
@@ -56,6 +59,7 @@ interface ServiceState {
 const initialState: ServiceState = {
   loading: true,
   hydratingAlojamientos: false,
+  hydratingSubEntities: false,
   totalAlojamientos: 0,
   aereos: [],
   preciosAereo: [],
@@ -80,12 +84,29 @@ type SubEntityPayload = {
   preciosCircuito: PrecioCircuito[];
 };
 
+type BaseEntitiesPayload = {
+  aereos: Aereo[];
+  alojamientos: Alojamiento[];
+  traslados: Traslado[];
+  seguros: Seguro[];
+  circuitos: Circuito[];
+  hydratingAlojamientos: boolean;
+  totalAlojamientos: number;
+};
+
 type ServiceAction =
   | { type: "SET_ALL"; payload: ServiceState }
+  | { type: "SET_BASE"; payload: BaseEntitiesPayload }
   | { type: "MERGE_SUB_ENTITIES"; payload: SubEntityPayload }
+  | { type: "SUB_ENTITIES_FAILED" }
   | {
-      type: "APPEND_ALOJAMIENTOS";
+      type: "SET_ALOJAMIENTOS";
       payload: { alojamientos: Alojamiento[]; totalAlojamientos: number };
+    }
+  | { type: "MERGE_ALOJAMIENTOS"; payload: { alojamientos: Alojamiento[] } }
+  | {
+      type: "ALOJAMIENTOS_HYDRATION_FAILED";
+      payload: { totalAlojamientos: number };
     }
   // Aereo (soft delete)
   | { type: "ADD_AEREO"; payload: Aereo }
@@ -146,10 +167,37 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
   switch (action.type) {
     case "SET_ALL":
       return action.payload;
+    // Ola 1: reemplaza las entidades base y deja intactas las sub-entidades.
+    // Antes era un SET_ALL sobre initialState, que vaciaba precios y fotos hasta
+    // que aterrizaba la ola 2: por eso un aereo o un hotel recien abierto decia
+    // "Sin periodos definidos" teniendo tarifas cargadas (reporte de Amparo,
+    // 28/08). Se repetia en cada refresco por foco de la pestana.
+    case "SET_BASE": {
+      const { alojamientos, ...base } = action.payload;
+      // Los hoteles llegan por tandas: la primera trae solo 10. Si ya teniamos
+      // la lista larga (cache de sesion o refresco por foco) la conservamos y
+      // dejamos que la ola 1b la reemplace entera; asi el listado no se encoge
+      // a 10 filas ni deja de encontrar hoteles mientras rehidrata.
+      const conservaLista = base.hydratingAlojamientos;
+      const merged = conservaLista
+        ? new Map(state.alojamientos.map((item) => [item.id, item]))
+        : new Map<string, Alojamiento>();
+      for (const alojamiento of alojamientos) merged.set(alojamiento.id, alojamiento);
+      return {
+        ...state,
+        ...base,
+        loading: false,
+        alojamientos: Array.from(merged.values()),
+      };
+    }
     case "MERGE_SUB_ENTITIES":
-      return { ...state, ...action.payload };
-    case "APPEND_ALOJAMIENTOS": {
-      const merged = new Map(state.alojamientos.map((item) => [item.id, item]));
+      return { ...state, ...action.payload, hydratingSubEntities: false };
+    case "SUB_ENTITIES_FAILED":
+      return { ...state, hydratingSubEntities: false };
+    // Ola 1b: la lista completa que manda el server es la verdad. Reemplaza en
+    // vez de mergear para que un hotel borrado no sobreviva en el estado local.
+    case "SET_ALOJAMIENTOS": {
+      const merged = new Map<string, Alojamiento>();
       for (const alojamiento of action.payload.alojamientos) {
         merged.set(alojamiento.id, alojamiento);
       }
@@ -159,6 +207,27 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
         totalAlojamientos: action.payload.totalAlojamientos,
         alojamientos: Array.from(merged.values()),
       };
+    }
+    // La ola 1b se cayo: se apaga la bandera pero se deja el estado como esta.
+    // Mejor la lista corta que ya se ve que vaciarla de golpe.
+    case "ALOJAMIENTOS_HYDRATION_FAILED":
+      return {
+        ...state,
+        hydratingAlojamientos: false,
+        totalAlojamientos: action.payload.totalAlojamientos,
+      };
+    // Resultados de una busqueda server-side mientras la lista rehidrata: se
+    // suman al estado para que el filtro local los encuentre. No toca banderas.
+    case "MERGE_ALOJAMIENTOS": {
+      if (action.payload.alojamientos.length === 0) return state;
+      const merged = new Map(state.alojamientos.map((item) => [item.id, item]));
+      let cambio = false;
+      for (const alojamiento of action.payload.alojamientos) {
+        if (!merged.has(alojamiento.id)) cambio = true;
+        merged.set(alojamiento.id, alojamiento);
+      }
+      if (!cambio) return state;
+      return { ...state, alojamientos: Array.from(merged.values()) };
     }
 
     // -- Aereo (soft delete) --
@@ -446,6 +515,7 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       payload: {
         ...baseline,
         loading: baseline.aereos.length === 0 && baseline.alojamientos.length === 0,
+        hydratingSubEntities: true,
       },
     });
 
@@ -459,10 +529,8 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         lastLoadRef.current = Date.now();
         dispatch({
-          type: "SET_ALL",
+          type: "SET_BASE",
           payload: {
-            ...initialState,
-            loading: false,
             hydratingAlojamientos:
               (base.totalAlojamientos ?? base.alojamientos.length) >
               base.alojamientos.length,
@@ -487,9 +555,12 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
           .then((remaining) => {
             if (cancelled) return;
             dispatch({
-              type: "APPEND_ALOJAMIENTOS",
+              type: "SET_ALOJAMIENTOS",
               payload: {
-                alojamientos: remaining.alojamientos as any,
+                alojamientos: [
+                  ...(base.alojamientos as any),
+                  ...(remaining.alojamientos as any),
+                ],
                 totalAlojamientos: remaining.total,
               },
             });
@@ -498,9 +569,8 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
             console.error("Error hydrating remaining alojamientos:", err);
             if (cancelled) return;
             dispatch({
-              type: "APPEND_ALOJAMIENTOS",
+              type: "ALOJAMIENTOS_HYDRATION_FAILED",
               payload: {
-                alojamientos: [],
                 totalAlojamientos:
                   base.totalAlojamientos ?? base.alojamientos.length,
               },
@@ -533,6 +603,8 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       .catch((err) => {
         console.error("Error fetching service sub-entities:", err);
         // Non-fatal: base records from wave 1 are already visible.
+        if (cancelled) return;
+        dispatch({ type: "SUB_ENTITIES_FAILED" });
       });
 
     return () => {
@@ -587,11 +659,13 @@ export function useServiceProgress() {
   return useMemo(
     () => ({
       hydratingAlojamientos: state.hydratingAlojamientos,
+      hydratingSubEntities: state.hydratingSubEntities,
       totalAlojamientos: state.totalAlojamientos,
       loadedAlojamientos: state.alojamientos.length,
     }),
     [
       state.hydratingAlojamientos,
+      state.hydratingSubEntities,
       state.totalAlojamientos,
       state.alojamientos.length,
     ],

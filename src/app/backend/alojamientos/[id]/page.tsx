@@ -116,6 +116,7 @@ function AlojamientoDetailForm({
   const router = useRouter();
   const { canEdit } = useAuth();
   const { toast } = useToast();
+  const { hydratingSubEntities } = useServiceProgress();
 
   // State and actions
   const serviceState = useServiceState();
@@ -558,6 +559,7 @@ function AlojamientoDetailForm({
             addLabel="Agregar tarifa"
             confirmLabel="Guardar tarifa"
             emptyMessage="No hay periodos de precio registrados"
+            loading={hydratingSubEntities}
           />
         </FormSection>
 

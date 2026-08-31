@@ -20,6 +20,7 @@ import {
 import { PriceImpactModal } from "@/components/ui/PriceImpactModal";
 import {
   useServiceState,
+  useServiceProgress,
   useServiceActions,
   useServiceLoading,
 } from "@/components/providers/ServiceProvider";
@@ -128,6 +129,7 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
 
   // -- Service state --
   const serviceState = useServiceState();
+  const { hydratingSubEntities } = useServiceProgress();
   const {
     updateAereo,
     createPrecioAereo,
@@ -482,6 +484,7 @@ function AereoDetailForm({ aereo }: { aereo: Aereo }) {
             }
             addLabel="Agregar tarifa"
             emptyMessage="Sin periodos definidos"
+            loading={hydratingSubEntities}
           />
         </FormSection>
       </FormSections>
