@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Service / Incluye icon registry — the designer's custom Traveloz icon set,
 // rendered in the brand violet (#a05ed3) so it matches the reference look
-// (html_inicial/destinos-detalle.html). Solid-fill SVGs (see traveloz-icons),
+// (docs/html_inicial/destinos-detalle.html). Solid-fill SVGs (see traveloz-icons),
 // one source of truth used by the Incluye module picker, the public package
 // page, and the catalog admin. Items store a short string `key`; this maps it
 // to a React SVG component.

@@ -87,7 +87,7 @@ export function nuevoId(): string {
 // estos campos (sin nombre/email, que son fijos). El cliente edita desde acá.
 // ---------------------------------------------------------------------------
 export function camposEstandar(): FormField[] {
-  // Espejo de los campos del formulario de referencia (html_inicial/cotizacion.html),
+  // Espejo de los campos del formulario de referencia (docs/html_inicial/cotizacion.html),
   // sin nombre/email (que son contacto fijo arriba de todo).
   return [
     { id: "telefono", tipo: "telefono", etiqueta: "Teléfono", requerido: true },

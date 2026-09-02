@@ -2,7 +2,7 @@
 // Public site footer — server component reading SiteSettings groups
 // "footer" (col 1 about/social, col 3 links) and "general" (col 2 contact data
 // reused across the site). Replica EXACTO el footer de 4 columnas de
-// html_inicial/index.html: sin barra de copyright, logos partner en una línea.
+// docs/html_inicial/index.html: sin barra de copyright, logos partner en una línea.
 //
 // Self-contained: el layout va con clases propias (.tvz-footer*) + Footer.css,
 // sin depender del grid de Bootstrap ni del reset global de site.css. Así el

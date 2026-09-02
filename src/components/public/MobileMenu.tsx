@@ -13,7 +13,7 @@ type Props = { items: Item[] };
  * <nav id="menu"> so on desktop the nav stays visible (CSS shows it >991px),
  * and on mobile the toggle controls drawer + body lock.
  *
- * Class behaviour 1:1 with html_inicial main.js mobile menu code:
+ * Class behaviour 1:1 with docs/html_inicial main.js mobile menu code:
  *   - #menu-toggle.active           → hamburger morphs into X
  *   - nav#menu.active               → drawer slides in from right
  *   - body.active                   → overflow:hidden

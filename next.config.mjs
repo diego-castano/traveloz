@@ -118,18 +118,21 @@ const nextConfig = {
         headers: securityHeaders,
       },
       {
-        // Restos estaticos que no son el sitio: la plantilla original
-        // (html_inicial), los mockups del panel y la presentacion del backend.
-        // Se sirven desde public/, asi que son URLs publicas de verdad y Google
-        // las tenia indexadas: aparecian entre los sitelinks de "traveloz" con
-        // titulos inventados ("Logo", "Nosotros Cotizacion Paquetes"), porque
-        // robots.txt le prohibia leerlas y solo conocia la URL.
+        // Restos estaticos que no son el sitio: los mockups del panel y la
+        // presentacion del backend. Se sirven desde public/, asi que son URLs
+        // publicas de verdad y Google las tenia indexadas: aparecian entre los
+        // sitelinks de "traveloz" con titulos inventados ("Logo", "Nosotros
+        // Cotizacion Paquetes"), porque robots.txt le prohibia leerlas y solo
+        // conocia la URL. (Reporte de Gero, 01/09.)
         //
         // Bloquear por robots era justamente el problema: sin poder rastrear la
         // pagina, Google nunca ve un noindex y la URL se queda en el indice.
         // Ahora se deja rastrear (ver robots.ts) y se responde noindex, que es
-        // lo unico que la saca. (Reporte de Gero, 01/09.)
-        source: "/:ruta(html_inicial|mockups|presentacion_traveloz)/:path*",
+        // lo unico que la saca.
+        //
+        // La plantilla original (html_inicial) no esta en esta lista porque ya
+        // no se sirve: se mudo a docs/ y responde 404.
+        source: "/:ruta(mockups|presentacion_traveloz)/:path*",
         headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
       },
       {

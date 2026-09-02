@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // FormasDePago — payment methods grid styled with the `payment-box` markup
-// from html_inicial/destinos-detalle.html. Renders two halves: credit cards
+// from docs/html_inicial/destinos-detalle.html. Renders two halves: credit cards
 // + bank transfers. The reference uses two copies of this block (desktop
 // alongside the content card, mobile below the sidebar form), so we expose
 // a `variant` prop to toggle the responsive visibility classes.

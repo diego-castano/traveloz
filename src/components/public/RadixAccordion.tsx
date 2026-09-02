@@ -7,7 +7,7 @@ import { sanitizeRichHtml } from "@/lib/sanitize-html";
 export type AccordionItem = {
   id: string;
   title: string;
-  /** Inner HTML for the body. Source is trusted (html_inicial copy / admin). */
+  /** Inner HTML for the body. Source is trusted (docs/html_inicial copy / admin). */
   bodyHtml: string;
   /** Ícono mostrado con el trigger cerrado (solo variant="alt"). */
   iconBlue?: string;
@@ -30,7 +30,7 @@ type Props = {
 };
 
 /**
- * Drop-in replacement for the Bootstrap accordion that html_inicial uses.
+ * Drop-in replacement for the Bootstrap accordion that docs/html_inicial uses.
  * Renders the same .accordion / .accordion-item / .accordion-button /
  * .accordion-collapse / .accordion-body class structure so the existing
  * site.css rules keep styling it; we only add/remove the `.collapsed`

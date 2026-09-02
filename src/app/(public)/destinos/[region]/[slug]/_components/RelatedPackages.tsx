@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // RelatedPackages — "Descubrí más destinos" slider at the bottom of a package
 // detail page. Ports the related-packages carousel from
-// html_inicial/destinos-detalle.html. Data-driven: receives published
+// docs/html_inicial/destinos-detalle.html. Data-driven: receives published
 // packages from the same region (resolved server-side).
 // ---------------------------------------------------------------------------
 

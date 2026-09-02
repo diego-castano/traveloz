@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------------------
    Estilos del footer público — portados 1:1 del template original
-   (html_inicial / site.css .footer-area). Van colocados con el componente para
+   (docs/html_inicial / site.css .footer-area). Van colocados con el componente para
    que el footer se vea idéntico en cualquier route group, incluido (landing),
    que NO carga site.css. Se usa un namespace propio (.tvz-footer ...) en vez de
    las clases de Bootstrap/template, así no depende del grid ni del reset global.

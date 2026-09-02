@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // FAQ topics — fuente de verdad del contenido de /faq.
-// Copiado COMPLETO de html_inicial/faq.html (las 6 pestañas del panel
+// Copiado COMPLETO de docs/html_inicial/faq.html (las 6 pestañas del panel
 // desktop, que traen el texto íntegro). Lo consume:
 //   - prisma/seed-fase9.ts        → carga inicial en DB nueva
 //   - prisma/fix-faq-textos.ts    → sincroniza el contenido en una DB existente

@@ -11,7 +11,7 @@ type Props = {
 };
 
 /**
- * Typewriter — 1:1 port of the html_inicial/main.js .anim-text effect.
+ * Typewriter — 1:1 port of the docs/html_inicial/main.js .anim-text effect.
  *
  * SSR / pre-hydration renders an EMPTY element with no `.anim-text` class,
  * so there is no lone blinking cursor before JS runs (the cursor comes from

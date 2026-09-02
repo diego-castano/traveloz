@@ -3,7 +3,7 @@
 //
 // Wraps every public route (/, /destinos, /about, /contact, /faq, /terms,
 // /work-with-us, /corporativo) with header, footer, modals, and the
-// Bootstrap + custom CSS stack ported from html_inicial/.
+// Bootstrap + custom CSS stack ported from docs/html_inicial/.
 //
 // CSS strategy: site.css is imported (Next bundles it into the (public) layout
 // chunk and ships it in <head>). All vendor CSS (Bootstrap, FontAwesome,

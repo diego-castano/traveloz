@@ -18,7 +18,7 @@ export function HomeCategorias({
   const slidesToShow = 3;
   // Embla desactiva el loop cuando el contenido entra entero en el viewport
   // (con slidesToShow=3 y exactamente 3 categorías, 3 x 33.3% = 100%, sin
-  // overflow). La referencia aprobada (html_inicial) resuelve esto duplicando
+  // overflow). La referencia aprobada (docs/html_inicial) resuelve esto duplicando
   // las slides x2 para forzar overflow y que loop + autoplay + dots funcionen.
   // Con 4+ categorías ya hay overflow natural, así que no duplicamos. Esto
   // infla los snaps de Embla (6 snaps para 3 categorías); los dots se

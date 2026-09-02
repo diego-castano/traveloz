@@ -6,7 +6,7 @@ import { cardImage, CARD_SIZES } from "@/lib/image-src";
 
 // ---------------------------------------------------------------------------
 // PackageCard — tarjeta del slider "Descubrí más destinos". Replica 1:1 el
-// markup .box-card de la referencia html_inicial/destinos-detalle.html para que
+// markup .box-card de la referencia docs/html_inicial/destinos-detalle.html para que
 // el CSS del template (site.css: .box-card, .box-card .title, .large-price…)
 // aplique sin estilos inline. Cuando el paquete no tiene foto cae a un
 // placeholder branded (no a una foto genérica de otro destino).

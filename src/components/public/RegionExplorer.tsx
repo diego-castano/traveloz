@@ -10,7 +10,7 @@ import { normalizarTexto } from "@/lib/normalizar-texto";
 
 // ---------------------------------------------------------------------------
 // RegionExplorer — listados de paquetes por región (/destinos/<region>).
-// Réplica 1:1 del shell de html_inicial/destination-listing.html: h1 centrado,
+// Réplica 1:1 del shell de docs/html_inicial/destination-listing.html: h1 centrado,
 // filter form con typeahead de ciudad + chips de temporada, sort dropdown
 // (Menor/Mayor precio), grid 4-up en xxl, 3-up en lg, 2-up en sm.
 //

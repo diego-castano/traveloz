@@ -12,7 +12,7 @@ type Props = {
 };
 
 /**
- * Styled file upload — same .file-up markup the html_inicial CSS expects,
+ * Styled file upload — same .file-up markup the docs/html_inicial CSS expects,
  * with React-driven label that swaps "Explorar" for the picked filename.
  */
 export function FileUploadField({

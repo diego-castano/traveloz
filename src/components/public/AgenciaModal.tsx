@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 // "Agencia Registrada" modal
 //
-// Markup port of <div id="agenciaModal"> from html_inicial/. Open/close logic
+// Markup port of <div id="agenciaModal"> from docs/html_inicial/. Open/close logic
 // uses a custom DOM event (`agencia-modal:open`) instead of the global
 // window.openAgenciaModal() function the original main.js exposed -- this
 // keeps the trigger declarative (data-agencia-modal-open on any anchor) and

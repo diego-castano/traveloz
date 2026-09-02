@@ -77,22 +77,35 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       {
         userAgent: "*",
         allow: "/",
+        // Regla de oro de esta lista: Disallow NO saca nada del buscador.
+        // Solo impide rastrear, y una URL que Google no puede leer se queda en
+        // el índice sin título ni descripción, imposible de corregir. Sirve
+        // para lo que nunca debe ser pedido; para lo que quiero FUERA del
+        // índice va noindex (meta o X-Robots-Tag) con el rastreo permitido, o
+        // directamente un 404.
+        //
+        // Por eso NO están acá:
+        //   /html_inicial   → la plantilla original se mudó a docs/, ya no se
+        //                     sirve: responde 404 y eso la saca del índice.
+        //   /mockups, /presentacion_traveloz → siguen sirviéndose, con
+        //                     X-Robots-Tag: noindex (ver next.config.mjs).
+        //   /cotizador      → es un 308 a /backend/cotizador. Bloqueado, Google
+        //                     no puede seguir el redirect y la URL vieja queda
+        //                     colgada para siempre.
         disallow: [
+          // El panel y la API: no son contenido, y detrás hay login. Acá el
+          // Disallow es lo correcto, no hay nada que sacar de ningún índice.
           "/backend",
           "/backend/",
           "/api/",
-          // /presentacion_traveloz, /html_inicial y /mockups NO van acá: son
-          // restos estáticos que Google ya tenía indexados y con Disallow no
-          // podía leer el noindex, así que se quedaban en el índice con un
-          // título inventado. Se dejan rastrear a propósito y responden
-          // X-Robots-Tag: noindex (ver headers en next.config.mjs), que es lo
-          // que efectivamente las saca del buscador.
-          // El cotizador se mudo a /backend/cotizador (ya cubierto por /backend).
-          // La vieja queda como 301 para los links que circularon: fuera del indice.
-          "/cotizador",
-          // Links personales de datos de pasajeros / pago y el link publico de
-          // cotizacion. Llevan datos de terceros (nombre, itinerario, precio):
-          // nunca en un indice, aunque las paginas ya salgan noindex.
+          // Links personales de datos de pasajeros / pago y el link público de
+          // cotización. Llevan datos de terceros (nombre, itinerario, precio).
+          // Las páginas ya salen con meta robots "noindex, nofollow, nocache",
+          // así que si alguna vez alguien comparte un link en público, Google
+          // lo rastrea y lo descarta. El Disallow queda como segunda barrera:
+          // los tokens no son adivinables, así que en la práctica nunca se
+          // piden. Si algún día aparece uno indexado como URL pelada, hay que
+          // sacar estas tres líneas para que Google pueda leer el noindex.
           "/datos-de-pasajeros",
           "/datos-de-pago",
           "/c",

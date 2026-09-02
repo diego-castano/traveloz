@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Fase 9 seed — populates DB with the formerly-hardcoded content from
-// html_inicial: FAQ topics, Terms sections, clientes corporativos, equipo,
+// docs/html_inicial: FAQ topics, Terms sections, clientes corporativos, equipo,
 // plus extra SiteSettings groups (about extras, cotizar).
 //
 // Idempotent — uses upsert/findFirst pattern so re-running is safe.
@@ -69,7 +69,7 @@ const COTIZAR_SETTINGS = [
 
 // FAQ topics viven en ./faq-topics.ts (compartido con prisma/fix-faq-textos.ts).
 
-// ─── Terms sections (original 14 from html_inicial/terms.html) ───────
+// ─── Terms sections (original 14 from docs/html_inicial/terms.html) ───────
 const TERM_SECTIONS = [
   {
     slug: "identificacion",

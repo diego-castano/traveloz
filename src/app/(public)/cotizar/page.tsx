@@ -22,7 +22,7 @@ export default async function CotizarPage() {
 
   return (
     <>
-      {/* Formulario — 1:1 con html_inicial/cotizacion.html: título + form dentro
+      {/* Formulario — 1:1 con docs/html_inicial/cotizacion.html: título + form dentro
           de un mismo `content-box style2 contact-form-wrapper`, así los inputs
           heredan el look translúcido (fondo transparente, borde blanco 2px,
           texto blanco) directo sobre el degradado, sin tarjeta blanca. */}

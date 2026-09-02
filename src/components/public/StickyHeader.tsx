@@ -7,11 +7,11 @@ import { usePathname } from "next/navigation";
  * Wraps the public Header. Adds .scrolled to the inner .header-area when
  * window.scrollY > 100, .hidden when scrolling down past 400px (hides on
  * scroll-down, shows on scroll-up). 1:1 with main.js sticky header logic
- * from html_inicial. Classes are applied to .header-area (not the wrapper)
+ * from docs/html_inicial. Classes are applied to .header-area (not the wrapper)
  * because the existing CSS targets .header-area.scrolled / .header-area.hidden.
  *
  * También decide acá la variante "header-dark" de /corporativo (logo blanco +
- * fondo oscuro, como html_inicial/corporativo.html). Este componente ya es
+ * fondo oscuro, como docs/html_inicial/corporativo.html). Este componente ya es
  * client y ya vive dentro del layout público compartido, así que usePathname()
  * es el lugar más simple y estable para detectar la ruta -- Header.tsx sigue
  * siendo server (fetch de regiones/settings) y no tiene acceso a la URL.

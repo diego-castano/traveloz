@@ -13,7 +13,7 @@ import { FormasDePago, type FormasDePagoData } from "./FormasDePago";
 
 // ---------------------------------------------------------------------------
 // PackageDetailView — public single-package layout that mirrors the reference
-// markup in html_inicial/destinos-detalle.html so site.css styles apply 1:1
+// markup in docs/html_inicial/destinos-detalle.html so site.css styles apply 1:1
 // (gradient-page-bg, content-box.style3, top-heading.stck, image-slider.style3,
 // box-tab-content.style1 with .nav-tabs, .text-box.style1, payment-box,
 // sidebar-form.sticky). Tabs are pure React state — no Bootstrap JS required.
@@ -275,7 +275,7 @@ const SCOPED_STYLES = `
     flex-shrink: 0;
   }
   /* Alojamientos — cada OPCIÓN es una tarjeta BLANCA (como la referencia
-     html_inicial/destinos-detalle.html), que agrupa sus hoteles. El orden por
+     docs/html_inicial/destinos-detalle.html), que agrupa sus hoteles. El orden por
      precio hace evidente que son opciones distintas, sin etiqueta "Opción N". */
   .pkg-detail .opcion-card.text-box.style1 {
     background: #fff;

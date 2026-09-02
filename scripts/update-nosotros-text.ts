@@ -1,7 +1,7 @@
 /**
  * update-nosotros-text.ts — Reemplaza el texto de la columna izquierda del
  * primer bloque de /about ("Quiénes somos") por el texto completo del mockup
- * (html_inicial/about.html). El texto que había era una versión resumida que
+ * (docs/html_inicial/about.html). El texto que había era una versión resumida que
  * dejaba mucho espacio vacío junto a la imagen.
  *
  * Uso: node --env-file=.env.local --import tsx scripts/update-nosotros-text.ts

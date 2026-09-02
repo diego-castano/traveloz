@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Fix puntual: sincroniza el contenido de los FaqTopic de la DB con el texto
-// COMPLETO de html_inicial/faq.html (ver prisma/faq-topics.ts).
+// COMPLETO de docs/html_inicial/faq.html (ver prisma/faq-topics.ts).
 //
 // Necesario porque seed-fase9 cargó versiones truncadas y su upsert usaba
 // update:{}, así que las filas existentes nunca se actualizaron. Es idempotente

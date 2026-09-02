@@ -25,7 +25,7 @@ export default async function CotizadorLandingPage({
   // configurable por landing a propósito.
   const color = "#F43E55";
 
-  // Fondo de la referencia de diseño (html_inicial/cotizacion.html): degradado
+  // Fondo de la referencia de diseño (docs/html_inicial/cotizacion.html): degradado
   // violeta → fucsia. El formulario queda en una tarjeta blanca encima.
   const pageBg = "linear-gradient(180deg, #7a5cd1 0%, #ad5285 100%)";
 

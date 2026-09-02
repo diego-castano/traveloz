@@ -25,7 +25,7 @@ function SubmitButton({ done }: { done: boolean }) {
 
 // ---------------------------------------------------------------------------
 // QuoteSidebar — right column form using the `sidebar-form sticky` markup
-// from html_inicial/destinos-detalle.html. Includes a large-price block at
+// from docs/html_inicial/destinos-detalle.html. Includes a large-price block at
 // the top, then the contact form with date picker, passenger counter and
 // contact-preference select. site.css already styles `.sidebar-form ul/li`,
 // `.large-price`, `.btns`, etc — we only need the right class names + tree.

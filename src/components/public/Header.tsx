@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Public site header.
 //
-// Markup is a 1:1 port of <header class="header-area"> from html_inicial/.
+// Markup is a 1:1 port of <header class="header-area"> from docs/html_inicial/.
 // Wrapped in <StickyHeader> for the scroll-based .scrolled/.hidden behavior.
 // The mainmenu + menu-toggle are rendered by <MobileMenu> (client island)
 // to drive the drawer state on mobile (CSS hides the same nav on desktop).
