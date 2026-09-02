@@ -931,6 +931,32 @@ function SalidaPasajero({
           </div>
         )}
 
+        {/* solo vuelos: cabina y equipaje.
+
+            En una cotización con alojamiento estos dos viajan dentro de la
+            ficha automática de "Tu viaje incluye" ("Aéreo ida y vuelta ·
+            Cabina Turista · Artículo personal"). Esa sección no se dibuja en
+            modo solo vuelo, así que el dato quedaba guardado en la cotización
+            y nunca llegaba al pasajero. (Reporte de Gero, 01/09.) */}
+        {q.soloVuelos && (q.cabina || q.equipaje) && (
+          <div data-ap style={{ marginBottom:24 }}>
+            <div style={{ display:"flex", gap: impresion ? 10 : 11, alignItems:"flex-start",
+              padding:"10px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
+              background:"#FBFBFE", ...(impresion ? { breakInside:"avoid" } : null) }}>
+              <div style={{ width: impresion ? 26 : 30, height: impresion ? 26 : 30,
+                borderRadius: impresion ? 999 : 9, flexShrink:0, display:"grid", placeItems:"center",
+                background:`${G.b}${impresion ? "14" : "12"}`, color:G.b }}>
+                {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
+                  return <C.Icon size={impresion ? 13 : 14} />; })()}
+              </div>
+              <div style={{ fontSize:fzp(13, 13.5, 12.5), lineHeight:1.5,
+                paddingTop: impresion ? 4 : 5, fontWeight:500 }}>
+                {[q.cabina, q.equipaje].filter(Boolean).join(" · ")}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* solo vuelos: precio final sin alojamiento */}
         {q.soloVuelos && (
           <div data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
