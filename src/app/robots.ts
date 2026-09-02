@@ -81,7 +81,12 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           "/backend",
           "/backend/",
           "/api/",
-          "/presentacion_traveloz",
+          // /presentacion_traveloz, /html_inicial y /mockups NO van acá: son
+          // restos estáticos que Google ya tenía indexados y con Disallow no
+          // podía leer el noindex, así que se quedaban en el índice con un
+          // título inventado. Se dejan rastrear a propósito y responden
+          // X-Robots-Tag: noindex (ver headers en next.config.mjs), que es lo
+          // que efectivamente las saca del buscador.
           // El cotizador se mudo a /backend/cotizador (ya cubierto por /backend).
           // La vieja queda como 301 para los links que circularon: fuera del indice.
           "/cotizador",
