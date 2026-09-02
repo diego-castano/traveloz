@@ -621,7 +621,11 @@ function DetailPanel({
               <Car size={10} /> Traslados
             </h5>
             {breakdown.traslados.map((t) => (
-              <TrasladoRow key={t.id} traslado={t} />
+              <TrasladoRow
+                key={t.id}
+                traslado={t}
+                proveedor={proveedorById.get(t.proveedorId ?? "")?.nombre ?? null}
+              />
             ))}
             <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-neutral-100 pt-1 text-[12px]">
               <span className="text-neutral-500">Neto traslado</span>
@@ -906,9 +910,19 @@ function AereoBlock({ line, multiple, index }: { line: AeroLine; multiple: boole
 // chip discreto con contador que despliega miniaturas y abre el mismo
 // ImageLightbox reutilizado en el bloque de itinerario aéreo. Sin imágenes,
 // el renglón queda idéntico al original (solo nombre · tipo · precio).
+//
+// El proveedor va en la misma línea: el vendedor necesita saber con quién se
+// contrata sin abrir el traslado en otra pestaña (pedido de Amparo, 01/09, con
+// el alquiler de auto de AgentCars).
 // ---------------------------------------------------------------------------
 
-function TrasladoRow({ traslado }: { traslado: Traslado }) {
+function TrasladoRow({
+  traslado,
+  proveedor,
+}: {
+  traslado: Traslado;
+  proveedor?: string | null;
+}) {
   const [showImages, setShowImages] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const imagenes = traslado.imagenes ?? [];
@@ -919,7 +933,11 @@ function TrasladoRow({ traslado }: { traslado: Traslado }) {
       <div className="flex items-baseline justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1 truncate text-neutral-600">
           <span className="truncate">
-            {traslado.nombre} <span className="text-neutral-400">· {traslado.tipo}</span>
+            {traslado.nombre}{" "}
+            <span className="text-neutral-400">
+              · {traslado.tipo}
+              {proveedor ? ` · ${proveedor}` : ""}
+            </span>
           </span>
           {hasImages && (
             <button
