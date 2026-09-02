@@ -411,8 +411,10 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
     const pool = base.length ? base : todos;
     const filtrados = !q.trim() ? pool
       : pool.filter((h) => {
-          const s = q.toLowerCase();
-          return h.nombre.toLowerCase().includes(s) || h.ciudad.toLowerCase().includes(s);
+          /* norm y no toLowerCase: nadie escribe las tildes en un buscador,
+             así que "buzios" tiene que encontrar "Búzios". (Gero, 02/09.) */
+          const s = norm(q.trim());
+          return norm(h.nombre).includes(s) || norm(h.ciudad).includes(s);
         });
     /* favoritos primero — cada vendedor tiene sus caballitos de batalla; ordenamiento estable */
     const ordenados = filtrados

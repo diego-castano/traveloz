@@ -10,7 +10,7 @@ import Link from "next/link";
 import {
   MESES, semaforo, horasHabilesDesdeEnvio, bucketSemaforo,
   money, venta, limpiarPegado, detectarConsulta,
-  ESTADOS, estadoEfectivo
+  ESTADOS, estadoEfectivo, norm
 } from "./data";
 import { useCtz, useCatalogo, buscarVendedor } from "./contexto";
 import { Foto, Btn, Pill, ChipIA, Vacio, SelectBuscable } from "./ui";
@@ -129,9 +129,11 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
   useEffect(() => { if (paso !== "menu") { const t = setTimeout(() => inp.current?.focus(), 80); return () => clearTimeout(t); } }, [paso]);
 
   /* ── segundo paso: paquetes de la web + plantillas propias, una sola lista buscable ── */
-  const b = busq.trim().toLowerCase();
-  const paquetes  = catalogo.paquetes.filter((p) => !b || `${p.nombre} ${p.resumen} ${p.destinos.map((d) => d.ciudad).join(" ")}`.toLowerCase().includes(b));
-  const plantis   = plantillas.filter((t) => !b || `${t.nombre} ${t.destino || ""} ${t.detalle || ""}`.toLowerCase().includes(b));
+  /* norm y no toLowerCase: nadie escribe las tildes en un buscador, así que
+     "buzios" tiene que traer "Búzios" igual que en la web. (Gero, 02/09.) */
+  const b = norm(busq.trim());
+  const paquetes  = catalogo.paquetes.filter((p) => !b || norm(`${p.nombre} ${p.resumen} ${p.destinos.map((d) => d.ciudad).join(" ")}`).includes(b));
+  const plantis   = plantillas.filter((t) => !b || norm(`${t.nombre} ${t.destino || ""} ${t.detalle || ""}`).includes(b));
   const CAB = { plantilla:{ t:"Desde un paquete o plantilla", ph:"Buscá entre paquetes de la web y tus plantillas…" } }[paso];
 
   return (
@@ -391,12 +393,12 @@ function Inicio({
   const [modalIA, setModalIA] = useState(false);
 
   const resultados = useMemo(() => {
-    const t = busq.trim().toLowerCase();
+    const t = norm(busq.trim());
     if (!t) return catalogo.paquetes.slice(0, 4);
     return catalogo.paquetes.filter((p) =>
-      p.nombre.toLowerCase().includes(t) ||
-      p.destinos.some((d) => d.ciudad.toLowerCase().includes(t)) ||
-      p.resumen.toLowerCase().includes(t)
+      norm(p.nombre).includes(t) ||
+      p.destinos.some((d) => norm(d.ciudad).includes(t)) ||
+      norm(p.resumen).includes(t)
     ).slice(0, 8);
   }, [busq, catalogo.paquetes]);
   const buscando = busq.trim().length > 0;
@@ -961,9 +963,9 @@ function ListadoContenido({
       if (mesFiltro !== "todos" && mesDeDestino(r.destino) !== mesFiltro) return false;
       if (!q.trim()) return true;
       const V = buscarVendedor(vendedores, r.vendedor);
-      const pajar = [r.num, r.cliente, r.destino, V.nombre, ESTADOS[r.estado]?.l, String(r.monto), semaforo(r).l]
-        .filter(Boolean).join(" ").toLowerCase();
-      return q.toLowerCase().split(/\s+/).every((t) => pajar.includes(t));
+      const pajar = norm([r.num, r.cliente, r.destino, V.nombre, ESTADOS[r.estado]?.l, String(r.monto), semaforo(r).l]
+        .filter(Boolean).join(" "));
+      return norm(q).split(/\s+/).every((t) => pajar.includes(t));
     });
   }, [q, filtro, semFiltro, destFiltro, mesFiltro, conOv, vendedores]);
 

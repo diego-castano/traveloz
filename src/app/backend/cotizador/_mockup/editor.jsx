@@ -1046,10 +1046,10 @@ function BloqueServicios({ q, set, refEl, toast }) {
 
   /* busqueda GLOBAL: en todas las categorias, no solo la activa */
   const acRes = useMemo(() => {
-    const t = txt.trim().toLowerCase();
+    const t = norm(txt.trim());
     const usados = new Set(q.servicios.map((x) => x.texto));
     if (!t) return SUG[cat].filter((x) => !usados.has(x)).slice(0, 5).map((texto) => ({ cat, texto }));
-    return SUG_ALL.filter((x) => !usados.has(x.texto) && x.texto.toLowerCase().includes(t)).slice(0, 6);
+    return SUG_ALL.filter((x) => !usados.has(x.texto) && norm(x.texto).includes(t)).slice(0, 6);
   }, [txt, cat, q.servicios]);
   useEffect(() => {
     const h = (e) => { if (acBox.current && !acBox.current.contains(e.target)) setAcOpen(false); };
@@ -2011,8 +2011,8 @@ function Paleta({ acciones, onClose }) {
   const [i, setI] = useState(0);
   const res = useMemo(() => {
     if (!q.trim()) return acciones;
-    const s = q.toLowerCase();
-    return acciones.filter((a) => a.label.toLowerCase().includes(s) || (a.grupo || "").toLowerCase().includes(s));
+    const s = norm(q);
+    return acciones.filter((a) => norm(a.label).includes(s) || norm(a.grupo || "").includes(s));
   }, [q, acciones]);
 
   useEffect(() => {
