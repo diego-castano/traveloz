@@ -10,6 +10,9 @@ import {
   Bus,
   ShieldCheck,
   Map,
+  MapPin,
+  Car,
+  MoreHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -62,18 +65,28 @@ import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 const PAGE_SIZE = 10;
 
+// Categorías de proveedor. Paseos, Autos y Otros los pidió el cliente el 01/09
+// para no tener que forzar la carga en una categoría que no corresponde; con
+// Paseos aparte, TRASLADOS pasa a llamarse solo "Traslados". Hoteles se
+// mantiene aunque no estaba en el pedido: hay proveedores cargados así.
 const SERVICE_FILTERS = [
-  { key: "TRASLADOS", label: "Traslados y paseos", icon: Bus },
+  { key: "TRASLADOS", label: "Traslados", icon: Bus },
+  { key: "PASEOS", label: "Paseos", icon: MapPin },
   { key: "SEGUROS", label: "Seguros", icon: ShieldCheck },
   { key: "CIRCUITOS", label: "Circuitos", icon: Map },
+  { key: "AUTOS", label: "Autos", icon: Car },
   { key: "HOTELES", label: "Hoteles", icon: Building2 },
+  { key: "OTROS", label: "Otros", icon: MoreHorizontal },
 ];
 
 const SERVICE_LABEL: Record<CategoriaServicio, string> = {
-  TRASLADOS: "Traslados y paseos",
+  TRASLADOS: "Traslados",
+  PASEOS: "Paseos",
   SEGUROS: "Seguros",
   CIRCUITOS: "Circuitos",
+  AUTOS: "Autos",
   HOTELES: "Hoteles",
+  OTROS: "Otros",
 };
 
 // ---------------------------------------------------------------------------
@@ -419,12 +432,10 @@ export default function ProveedoresPage() {
                       servicio: v as CategoriaServicio,
                     }))
                   }
-                  options={[
-                    { value: "TRASLADOS", label: "Traslados y paseos" },
-                    { value: "SEGUROS", label: "Seguros" },
-                    { value: "CIRCUITOS", label: "Circuitos" },
-                    { value: "HOTELES", label: "Hoteles" },
-                  ]}
+                  options={SERVICE_FILTERS.map((f) => ({
+                    value: f.key,
+                    label: f.label,
+                  }))}
                 />
               </Field>
               <Field>

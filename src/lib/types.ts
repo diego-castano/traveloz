@@ -21,7 +21,14 @@ export type TipoTraslado = 'REGULAR' | 'PRIVADO';
 /** Modalidad de armado del paquete. CLASICO = precio por opciones hoteleras;
  * CIRCUITO = todo incluido con precio único por persona cargado en el circuito. */
 export type ModalidadPaquete = 'CLASICO' | 'CIRCUITO';
-export type CategoriaServicio = 'TRASLADOS' | 'SEGUROS' | 'CIRCUITOS' | 'HOTELES';
+export type CategoriaServicio =
+  | 'TRASLADOS'
+  | 'PASEOS'
+  | 'SEGUROS'
+  | 'CIRCUITOS'
+  | 'AUTOS'
+  | 'HOTELES'
+  | 'OTROS';
 
 // ---------------------------------------------------------------------------
 // Primary Entities (14 interfaces)

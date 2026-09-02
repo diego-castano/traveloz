@@ -45,9 +45,12 @@ enum ModalidadPaquete {
 
 enum CategoriaServicio {
   TRASLADOS
+  PASEOS
   SEGUROS
   CIRCUITOS
+  AUTOS
   HOTELES
+  OTROS
 }
 
 enum Role {
