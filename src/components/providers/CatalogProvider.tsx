@@ -86,6 +86,7 @@ type CatalogAction =
         loading: boolean;
       };
     }
+  | { type: "GEOGRAPHY_FAILED" }
   | { type: "ADD_TEMPORADA"; payload: Temporada }
   | { type: "UPDATE_TEMPORADA"; payload: Temporada }
   | { type: "DELETE_TEMPORADA"; payload: string }
@@ -132,9 +133,15 @@ function catalogReducer(state: CatalogState, action: CatalogAction): CatalogStat
         regiones: action.payload.regiones,
         regimenes: action.payload.regimenes,
         proveedores: action.payload.proveedores,
-        paises: [],
-        ciudades: [],
+        // paises y ciudades NO se tocan acá. Llegan en la segunda ola y antes
+        // esta acción los vaciaba, así que entre una ola y la otra el selector
+        // de ciudad quedaba sin nada: al vendedor le decía "Nada con
+        // cartagena" con Cartagena cargada en el catálogo, y de paso fallaba
+        // el precargado de la ciudad del tramo, que consulta la misma lista.
+        // (Reporte de Gero, 02/09.)
       };
+    case "GEOGRAPHY_FAILED":
+      return { ...state, loading: false, hydratingGeography: false };
     case "MERGE_GEOGRAPHY":
       return {
         ...state,
@@ -364,10 +371,10 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
           .catch((err) => {
             console.error("Error fetching catalog geography:", err);
             if (cancelled) return;
-            dispatch({
-              type: "MERGE_GEOGRAPHY",
-              payload: { paises: [], ciudades: [], loading: false },
-            });
+            // Se apaga la bandera pero se conserva la geografía que hubiera
+            // (caché de sesión o carga anterior): una lista vieja sirve, una
+            // lista vacía tranca el alta de hoteles.
+            dispatch({ type: "GEOGRAPHY_FAILED" });
           });
       })
       .catch((err) => {

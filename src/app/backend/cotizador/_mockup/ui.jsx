@@ -556,6 +556,14 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
                 <SelectBuscable valor={alta.ciudad} opciones={ciudades} vacio="Ciudad…"
                   placeholder="Ciudad…" buscarPlaceholder="Buscar ciudad…"
                   onChange={(v) => setAlta((a) => ({ ...a, ciudad:v }))} />
+                {/* Arranque en frío: la geografía llega en una segunda tanda.
+                    Sin este aviso el desplegable dice "Nada con cartagena" y
+                    parece que la ciudad no existe. (Gero, 02/09.) */}
+                {ciudades.length === 0 && (
+                  <span style={{ fontSize:11, color:"var(--n400)" }}>
+                    Cargando ciudades… si el desplegable está vacío, esperá unos segundos.
+                  </span>
+                )}
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
                   <span style={{ fontSize:11.5, color:"var(--n400)" }}>Categoría</span>
                   <div style={{ display:"flex", alignItems:"center", gap:1 }}
