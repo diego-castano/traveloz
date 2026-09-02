@@ -54,6 +54,33 @@ export function resolveNochesTotales(p: {
   return 0;
 }
 
+/**
+ * Saca el año de la leyenda de Salidas.
+ *
+ * El cliente pidió mostrarla sin año: por disponibilidad de fechas nunca hay
+ * dos paquetes del mismo mes en años distintos, así que "Noviembre" ya es
+ * inequívoco y el año solo hace ruido. Se aplica al renderizar para que los
+ * paquetes cargados con año ("Octubre - Noviembre 2026") se vean bien sin
+ * tocarles el dato, y el autocompletado de la pestaña Datos ya no lo escribe.
+ *
+ * Saca cualquier token 20NN suelto y limpia lo que quede colgando:
+ *   "Octubre - Noviembre 2026"    → "Octubre - Noviembre"
+ *   "Octubre 2026 - Enero 2027"   → "Octubre - Enero"
+ *   "10 de Octubre 2026"          → "10 de Octubre"
+ *   "Consultar"                   → "Consultar"
+ */
+export function salidasSinAnio(texto: string | null | undefined): string | null {
+  if (!texto) return texto ?? null;
+  const limpio = texto
+    .replace(/\s*\b20\d{2}\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    // separador que quedó sin nada a un lado: "Octubre -" o "- Enero"
+    .replace(/\s*[-–—]\s*$/, "")
+    .replace(/^\s*[-–—]\s*/, "")
+    .trim();
+  return limpio || null;
+}
+
 // --- Concepto de noches para la tarjeta. El cliente pidió el formato
 // "07 Noches" (N mayúscula, cero a la izquierda si es un solo dígito), no
 // "7 noches". Se usa tanto en el resumen de la lista curada como en los
@@ -127,14 +154,52 @@ const EQUIPAJE_RE = /art[ií]culo\s*personal|valija|equipaje|mochila|carry[\s-]?
 // minúsculas contra el concepto ya resuelto.
 const BANDA_BAJA = new Set(["artículo personal", "equipaje"]);
 
+// --- Concepto directo por ícono del renglón curado.
+//
+// Cada ítem del "Incluye" trae el ícono que eligió el operador ("vuelo",
+// "bus", "seguro"...). Es una señal mucho más confiable que adivinar por el
+// texto: un renglón de vuelo escrito como "Montevideo - Cancun - Montevideo"
+// no dice "vuelo" en ninguna parte y caía al resumen genérico, que devolvía el
+// nombre de la ruta. Le pasaba a 19 paquetes publicados. (Reporte de Amparo,
+// 31/08.)
+//
+// Solo se mapean los íconos cuyo concepto es inequívoco. Alojamiento, equipaje,
+// traslado y excursión siguen leyendo el texto, porque ahí el texto distingue
+// cosas que el ícono no: "All inclusive" vs "07 Noches", "Artículo personal"
+// vs "Equipaje", "Alquiler de auto" vs "Traslados".
+//
+// El ícono "bus" queda afuera a propósito: en el catálogo real lo usan para
+// renglones que dicen "Traslados hacia y desde el circuito" o "Todos los
+// traslados y excursiones del itinerario", donde "Traslados" describe mejor
+// que "Bus".
+const CONCEPTO_POR_ICONO: Record<string, string> = {
+  vuelo: "Vuelos",
+  flight: "Vuelos", // alias heredado, ver ALIASES en ServiceIcon
+  tren: "Tren",
+  crucero: "Crucero",
+  seguro: "Seguros",
+  shield: "Seguros", // idem
+};
+
+// El ícono de crucero también se usa para ferries (ver iconForTrasladoTexto en
+// lib/incluye). Un ferry entre islas no es un crucero, así que cuando el texto
+// lo nombra dejamos que decida el texto.
+const FERRY_RE = /ferr(y|ys|ies|i|is)\b/i;
+
 // --- Resume un ítem curado del "Incluye" a un concepto corto de tarjeta.
 // El orden de los chequeos es la prioridad pedida por el cliente. Devuelve
 // null para conceptos que no aportan en la tarjeta (cupos, tasas, impuestos)
 // o cuyo texto no tiene ningún token con contenido tras filtrar (ver
 // resumenGenerico).
-function resumirConcepto(texto: string, nochesTotales: number): string | null {
+function resumirConcepto(
+  texto: string,
+  nochesTotales: number,
+  icono?: string | null,
+): string | null {
   const t = texto.trim();
   if (!t) return null;
+  const porIcono = icono ? CONCEPTO_POR_ICONO[icono] : undefined;
+  if (porIcono && !(porIcono === "Crucero" && FERRY_RE.test(t))) return porIcono;
   if (/vuelo|pasaje|a[eé]reo/i.test(t)) return "Vuelos";
   if (/\bbus\b|[oó]mnibus|buquebus/i.test(t)) return "Bus";
   // Traslado antes que noche/hotel: "Traslado Aeropuerto - Hotel" menciona
@@ -316,8 +381,8 @@ function bulletsAutomaticos(
 ): string[] {
   const items = parseIncluyeItems(textoIncluye);
   const curados = (items ?? [])
-    .map((it) => it.texto?.trim() ?? "")
-    .filter((t) => t.length > 0);
+    .map((it) => ({ texto: it.texto?.trim() ?? "", icono: it.icon }))
+    .filter((it) => it.texto.length > 0);
 
   const derivados = renglonesDeServicios(servicios, nochesTotales);
 
@@ -330,8 +395,8 @@ function bulletsAutomaticos(
   const altos: string[] = [];
   const bajos: string[] = [];
   const vistos = new Set<string>();
-  for (const texto of curados) {
-    const concepto = resumirConcepto(texto, nochesTotales);
+  for (const { texto, icono } of curados) {
+    const concepto = resumirConcepto(texto, nochesTotales, icono);
     if (!concepto) continue;
     const clave = concepto.toLowerCase();
     if (vistos.has(clave)) continue;

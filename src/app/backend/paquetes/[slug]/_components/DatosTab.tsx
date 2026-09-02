@@ -54,6 +54,7 @@ import {
   startOfLocalDay,
 } from "@/lib/date";
 import { bajaAutomatica, esBajaAutomatica } from "@/lib/paquete-baja";
+import { salidasSinAnio } from "@/lib/format-paquete";
 import {
   Star,
   ChevronDown,
@@ -72,8 +73,12 @@ import type { Paquete, EstadoPaquete, ModalidadPaquete } from "@/lib/types";
 // ---------------------------------------------------------------------------
 
 // Convierte el rango "Desde y hasta" en la leyenda de Salidas que ve el
-// cliente en el frontend. Ej: "Octubre - Noviembre 2026". Mismo año y mes →
-// "Octubre 2026"; años distintos → "Octubre 2026 - Enero 2027".
+// cliente en el frontend. Ej: "Octubre - Noviembre". Mismo mes → "Octubre".
+//
+// Sin año, a pedido del cliente: por disponibilidad de fechas nunca conviven
+// dos paquetes del mismo mes en años distintos, así que el año no desambigua
+// nada y ensucia el encabezado. Los paquetes viejos que lo tienen guardado se
+// muestran igual sin año (salidasSinAnio, en format-paquete).
 function formatSalidasFromRange(
   desde: Date | undefined,
   hasta: Date | undefined,
@@ -86,14 +91,7 @@ function formatSalidasFromRange(
     cap(new Intl.DateTimeFormat("es", { month: "long" }).format(dt));
   const mesDesde = mes(d);
   const mesHasta = mes(h);
-  const anioDesde = d.getFullYear();
-  const anioHasta = h.getFullYear();
-  if (anioDesde === anioHasta) {
-    return mesDesde === mesHasta
-      ? `${mesDesde} ${anioHasta}`
-      : `${mesDesde} - ${mesHasta} ${anioHasta}`;
-  }
-  return `${mesDesde} ${anioDesde} - ${mesHasta} ${anioHasta}`;
+  return mesDesde === mesHasta ? mesDesde : `${mesDesde} - ${mesHasta}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -348,7 +346,10 @@ export default function DatosTab({ paquete }: DatosTabProps) {
         parseStoredDate(paquete.viajeDesde),
         parseStoredDate(paquete.viajeHasta),
       );
-      return v !== auto;
+      // Se compara sin año: los paquetes cargados antes guardaron "Octubre -
+      // Noviembre 2026", que era el automático de entonces. Sin esto quedarían
+      // marcados como texto manual y no se refrescarían al mover las fechas.
+      return (salidasSinAnio(v) ?? "") !== (salidasSinAnio(auto) ?? "");
     })(),
   );
   const [temporadaId, setTemporadaId] = useState(paquete.temporadaId);

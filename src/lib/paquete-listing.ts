@@ -8,6 +8,7 @@
 import {
   resolveNochesTotales,
   buildCardBullets,
+  salidasSinAnio,
   type ServiciosPaquete,
 } from "@/lib/format-paquete";
 
@@ -104,7 +105,7 @@ export function projectPaqueteParaListado(
     titulo: p.titulo,
     destino: p.destino,
     noches: p.noches,
-    salidas: p.salidas,
+    salidas: salidasSinAnio(p.salidas),
     precioDesde: p.precioDesde,
     precioDesdeMoneda: p.precioDesdeMoneda,
     heroImage: p.heroImage,

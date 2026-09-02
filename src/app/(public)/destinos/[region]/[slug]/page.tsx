@@ -15,7 +15,11 @@ import { buildFormasDePagoData } from "./_components/FormasDePago";
 import { RelatedPackages } from "./_components/RelatedPackages";
 import { buildSeoMetadata } from "@/lib/seo";
 import { precioDesdeDePaquete } from "@/lib/precio-desde";
-import { resolveNochesTotales, buildCardBullets } from "@/lib/format-paquete";
+import {
+  resolveNochesTotales,
+  buildCardBullets,
+  salidasSinAnio,
+} from "@/lib/format-paquete";
 import { serviciosDelConteo } from "@/lib/paquete-listing";
 import { iconForTrasladoTexto } from "@/lib/incluye";
 
@@ -135,7 +139,7 @@ export default async function PackageDetailPage({
       titulo: p.titulo,
       destino: p.destino,
       noches: p.noches,
-      salidas: p.salidas,
+      salidas: salidasSinAnio(p.salidas),
       precioDesde: p.precioDesde,
       precioDesdeMoneda: p.precioDesdeMoneda,
       heroImage: p.heroImage,
@@ -281,7 +285,7 @@ export default async function PackageDetailPage({
           id: paquete.id,
           titulo: paquete.titulo,
           modalidad: paquete.modalidad,
-          salidas: paquete.salidas,
+          salidas: salidasSinAnio(paquete.salidas),
           noches: nochesTotalesPaquete,
           precioDesde: precioDesdeReal,
           precioDesdeMoneda: paquete.precioDesdeMoneda,
