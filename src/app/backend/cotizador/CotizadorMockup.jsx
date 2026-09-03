@@ -89,31 +89,90 @@ function cotizacionVacia(ajustes) {
 /* "15 noches de alojamiento" no le sirve a nadie cuando hay varias ciudades:
    el cliente quiere leer 03 noches en Madrid, 03 en Barcelona… */
 const nn = (n) => String(Number(n) || 0).padStart(2, "0");
-/* en el paréntesis va el régimen corto: "Solo alojamiento", no todo el paréntesis de adentro */
-function regimenCorto(r) {
-  const t = String(r || "").trim(); const i = t.indexOf(" (");
-  return i > 0 ? t.slice(0, i) : t;
-}
 /* "Régimen detallado" no es un régimen: es el aviso de que cada hotel lleva el
-   suyo. En la línea de servicios se lee "07 noches de alojamiento · según
+   suyo. En la línea de servicios se lee "07 noches de alojamiento, según
    régimen detallado". */
 const regimenServicio = (r) => (esDetallado(r) ? REGIMEN_DETALLADO_TXT : String(r || "").trim());
-function lineaNoches(destinos) {
+
+/* El régimen leído dentro de la línea del tramo: "…en Búzios, con desayuno".
+   La lista de regímenes es cerrada (REGIMENES en data.js), así que el mapeo es
+   explícito; un valor viejo que no esté en la tabla sale tal cual. */
+const FRASE_REGIMEN = {
+  "Solo alojamiento (sin comidas incluidas)": "sin comidas incluidas",
+  "Desayuno incluido": "con desayuno",
+  "Media pensión (sin bebidas)": "con media pensión (sin bebidas)",
+  "Pensión completa (sin bebidas)": "con pensión completa (sin bebidas)",
+  "All Inclusive": "con All Inclusive",
+};
+const fraseRegimen = (r) => { const t = regimenServicio(r); return t ? (FRASE_REGIMEN[t] || t) : ""; };
+const lineaTramo = (d) => {
+  const frase = fraseRegimen(d?.regimen);
+  return `${nn(d?.noches)} noches de alojamiento en ${d?.ciudad || "destino"}${frase ? `, ${frase}` : ""}`;
+};
+/* Con un solo destino la ciudad no se nombra: ya la dice el título. */
+const lineaSinCiudad = (d) => {
+  if (!d) return "07 noches de alojamiento";
+  const frase = fraseRegimen(d.regimen);
+  return `${nn(d.noches)} noches de alojamiento${frase ? `, ${frase}` : ""}`;
+};
+
+/* Una línea por ciudad cuando el viaje es combinado.
+
+   Las ciudades salían pegadas con " · " en un solo renglón y en el celular el
+   pasajero leía un chorizo del que no sacaba cuántas noches dormía en cada lado
+   (pedido de Gero). Con un solo destino la línea queda como estaba: la
+   ciudad ya la dice el título, repetirla no agrega nada. */
+function lineasAlojamiento(destinos) {
   const ds = (destinos || []).filter(Boolean);
-  if (!ds.length) return "07 noches de alojamiento";
-  const regs = [...new Set(ds.map((d) => regimenServicio(d.regimen)).filter(Boolean))];
-  if (ds.length === 1)
-    return `${nn(ds[0].noches)} noches de alojamiento${regs.length ? ` · ${regs[0]}` : ""}`;
-  /* todos con el mismo régimen: se nombra una sola vez al final */
-  if (regs.length <= 1) {
-    const txt = ds.map((d) => `${nn(d.noches)} noches en ${d.ciudad || "destino"}`).join(" · ");
-    return regs.length ? `${txt} · ${regs[0]}` : txt;
+  if (ds.length < 2) return [{ tramo: ds[0]?.id ?? null, texto: lineaSinCiudad(ds[0]) }];
+  return ds.map((d) => ({ tramo: d.id ?? null, texto: lineaTramo(d) }));
+}
+
+/* Deja las filas `auto:"noches"` en sincronía con el itinerario: una por
+   ciudad, donde ya estaban y en el orden del viaje.
+
+   Devuelve el MISMO array cuando no hay nada que cambiar. Es lo que sostiene
+   que abrir una cotización y abandonarla no gaste un número: si acá saliera un
+   array nuevo en cada render, el autosave vería un cambio que nadie hizo.
+
+   Dos cosas que manda el vendedor: si borró la fila automática no vuelve, y si
+   editó una a mano —pierde el flag `auto`— se respeta y su tramo no se
+   duplica. */
+function sincronizarAlojamiento(servicios, destinos) {
+  const filas = servicios || [];
+  const autos = filas.filter((s) => s.auto === "noches");
+  if (!autos.length) return filas;
+
+  const manuales = new Set(filas.filter((s) => s.auto !== "noches" && s.tramo).map((s) => s.tramo));
+  const deseadas = lineasAlojamiento(destinos).filter((l) => !l.tramo || !manuales.has(l.tramo));
+  const previas = new Map(autos.map((s) => [s.tramo ?? null, s]));
+  /* la fila que venía sin tramo (cotizaciones guardadas antes de este cambio, o
+     la de una cotización en blanco) sirve de base cuando hay una sola línea */
+  const sola = autos.length === 1 ? autos[0] : null;
+
+  const bloque = deseadas.map(({ tramo, texto }) => {
+    const previa = previas.get(tramo) ?? (deseadas.length === 1 ? sola : undefined);
+    if (!previa) {
+      return { id:uid("srv"), categoria:"alojamiento", texto, ciudad:null, modalidad:null,
+        auto:"noches", ...(tramo ? { tramo } : {}) };
+    }
+    if (previa.texto === texto && (previa.tramo ?? null) === tramo) return previa;
+    const fila = { ...previa, texto };
+    if (tramo) fila.tramo = tramo; else delete fila.tramo;
+    return fila;
+  });
+
+  const salida = [];
+  let puesto = false;
+  for (const s of filas) {
+    if (s.auto === "noches") {
+      if (!puesto) { salida.push(...bloque); puesto = true; }
+      continue;
+    }
+    salida.push(s);
   }
-  /* regímenes mezclados: cada destino aclara el suyo */
-  return ds.map((d) => {
-    const r = regimenCorto(regimenServicio(d.regimen));
-    return `${nn(d.noches)} noches en ${d.ciudad || "destino"}${r ? ` (${r})` : ""}`;
-  }).join(" · ");
+  const igual = salida.length === filas.length && salida.every((s, i) => s === filas[i]);
+  return igual ? filas : salida;
 }
 
 /* Clave de idempotencia del alta: una por cotización nueva. Si el autosave
@@ -196,13 +255,18 @@ function desdePaquete(p, ajustes, catalogo) {
   q.destinos = p.destinos.map((d, i) => ({ id:uid("dst"), ciudad:d.ciudad, noches:d.noches,
     checkinManual:null, regimen: regimenDeDestino(i) }));
 
-  /* Los servicios vienen de los que el paquete tiene asignados en el panel. La
-     línea de alojamiento es la única calculada: sigue a las noches y al régimen
-     del itinerario hasta que el vendedor la edita. */
-  q.servicios = p.servicios.map((s) => ({ id:uid("srv"), categoria:s.cat,
-    texto: s.auto === "noches" && !s.texto ? lineaNoches(q.destinos) : s.texto,
-    ciudad:s.ciudad ?? null, modalidad:s.modalidad ?? null,
-    ...(s.auto ? { auto:s.auto } : {}) }));
+  /* Los servicios vienen de los que el paquete tiene asignados en el panel. El
+     alojamiento es lo único calculado: una línea por ciudad, siguiendo las
+     noches y el régimen del itinerario hasta que el vendedor las edita. */
+  q.servicios = p.servicios.flatMap((s) => {
+    if (s.auto === "noches" && !s.texto) {
+      return lineasAlojamiento(q.destinos).map(({ tramo, texto }) => ({ id:uid("srv"), categoria:s.cat,
+        texto, ciudad:null, modalidad:null, auto:"noches", ...(tramo ? { tramo } : {}) }));
+    }
+    return [{ id:uid("srv"), categoria:s.cat, texto:s.texto,
+      ciudad:s.ciudad ?? null, modalidad:s.modalidad ?? null,
+      ...(s.auto ? { auto:s.auto } : {}) }];
+  });
 
   q.opciones = p.opciones.map((o) => {
     const tarifa = { id:uid("tf"), tipo:"Por adulto", tipoLibre:"", neto:o.neto, venta:null, factor:o.factor };
@@ -726,18 +790,14 @@ export default function Cotizador({
   /* ── los servicios marcados `auto` siguen a lo que se carga arriba.
         En cuanto el vendedor los edita a mano pierden el flag y quedan quietos. ── */
   useEffect(() => {
-    const txtNoches = lineaNoches(q.destinos);
     const txtAereo = (q.cabina || q.equipaje)
       ? "Aéreo ida y vuelta · " + [q.cabina, q.equipaje].filter(Boolean).join(" · ")
       : "Aéreo ida y vuelta con artículo personal y equipaje de mano";
-    const iN = q.servicios.findIndex((s) => s.auto === "noches");
-    const iA = q.servicios.findIndex((s) => s.auto === "aereo");
-    const cambiaN = iN >= 0 && q.servicios[iN].texto !== txtNoches;
-    const cambiaA = iA >= 0 && q.servicios[iA].texto !== txtAereo;
-    if (!cambiaN && !cambiaA) return;
+    const cambiaA = q.servicios.some((s) => s.auto === "aereo" && s.texto !== txtAereo);
+    const filas = sincronizarAlojamiento(q.servicios, q.destinos);
+    if (!cambiaA && filas === q.servicios) return;
     set((d) => {
-      if (cambiaN) d.servicios[iN].texto = txtNoches;
-      if (cambiaA) d.servicios[iA].texto = txtAereo;
+      d.servicios = filas.map((s) => (s.auto === "aereo" && s.texto !== txtAereo ? { ...s, texto:txtAereo } : s));
     });
   }, [tramos, q.destinos, q.servicios, q.cabina, q.equipaje, set]);
 
@@ -793,9 +853,15 @@ export default function Cotizador({
    * autosave recién dispara con el primer cambio real del vendedor y una
    * cotización que se abre y se abandona no gasta un número.
    */
-  const abrir = useCallback((nueva, {
+  const abrir = useCallback((entra, {
     id = null, origenTipo = null, origenRef: refOrigen = null, updatedAt = null,
   } = {}) => {
+    /* El itinerario se acomoda ACÁ y no en el efecto: lo que se abre queda
+       anotado como "ya guardado", así una cotización vieja —con las noches
+       todavía en un solo renglón— se ve partida por ciudad sin que el autosave
+       la reescriba por el solo hecho de abrirla. */
+    const servicios = sincronizarAlojamiento(entra?.servicios, entra?.destinos);
+    const nueva = servicios === entra?.servicios ? entra : { ...entra, servicios };
     clearTimeout(debounceRef.current);
     clearTimeout(reintentoRef.current);
     /* corta con lo anterior: un guardado en vuelo que vuelva después de esto

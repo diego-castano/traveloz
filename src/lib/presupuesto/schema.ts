@@ -176,6 +176,8 @@ export const servicioSchema = z.looseObject({
   modalidad: textoNulo.optional(),
   // Sigue a las noches / cabina hasta que el vendedor lo edita a mano.
   auto: textoNulo.optional(),
+  // Solo en las filas de alojamiento: el destino del itinerario que las genera.
+  tramo: textoNulo.optional(),
 });
 
 /** Costo fijo interno: no lo ve el pasajero. */
