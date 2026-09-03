@@ -19,6 +19,7 @@ import { DrawerAnalytics } from "./drawer";
 import { TabAnalytics as TabAnalyticsAdmin } from "./analytics";
 import { fmtDuracion, fmtLectura } from "./adaptadores";
 import { SECCIONES } from "@/lib/presupuesto/secciones";
+import { partirDestinoPeriodo } from "@/lib/presupuesto/destino";
 import {
   setEstadoManual, setNotasInternas, registrarConfirmacion, reactivarPresupuesto,
   extenderVigencia as extenderVigenciaAction, eliminarPresupuesto,
@@ -79,9 +80,11 @@ function etiquetaMes(p) {
   return p.mes != null ? `${MESES[p.mes].slice(0, 3)} ${p.anio}` : String(p.anio || "");
 }
 
-/* v2F · filtros de la tabla — "r.destino" llega como "Punta Cana, Noviembre 2026" */
-function destinoBase(s) { return String(s || "").split(",")[0].trim(); }
-function mesDeDestino(s) { return String(s || "").split(",")[1]?.trim().split(" ")[0] || ""; }
+/* v2F · filtros de la tabla — "r.destino" llega como "Punta Cana, Noviembre 2026".
+   El corte va por la última coma: los combinados traen comas en el destino
+   ("Roma, Florencia y Venecia, Marzo 2027"). */
+function destinoBase(s) { return partirDestinoPeriodo(s).destino; }
+function mesDeDestino(s) { return partirDestinoPeriodo(s).periodo.split(" ")[0] || ""; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    v2 · ENTRADA — cómo arranca una cotización

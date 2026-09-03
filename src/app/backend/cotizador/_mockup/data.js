@@ -259,6 +259,38 @@ function destinoLimpio(s) {
   return limpio.join(" › ");
 }
 
+/* Dos ciudades del catálogo llevan el régimen pegado al nombre ("Aruba solo
+   desayuno"). Es un dato para corregir en Catálogos; mientras siga así, al menos
+   que no viaje al título que lee el pasajero. Corta solo si el régimen está al
+   final y queda ciudad. */
+const COLA_REGIMEN =
+  /\s*[-–—·,]?\s*(solo desayuno|desayuno incluido|all inclusive|media pensi[oó]n|pensi[oó]n completa|solo alojamiento)\s*$/i;
+function ciudadLimpia(s) {
+  const t = String(s ?? "").trim();
+  return t.replace(COLA_REGIMEN, "").trim() || t;
+}
+
+/* Título de un combinado: "Río de Janeiro y Búzios".
+
+   El paquete guarda la geografía en una sola columna ("Brasil › Brasil › Río de
+   Janeiro"), así que un viaje de dos ciudades se anunciaba con una sola, y los
+   de varios países con el continente pelado ("África"). La combinación real la
+   sabe el itinerario: son los tramos.
+
+   Devuelve "" cuando no hay combinación que contar (un único destino) y cuando
+   son cuatro ciudades o más: ese renglón no entra en la tarjeta del pasajero, y
+   ahí sigue mandando la geografía. El respaldo lo elige quien llama. */
+const TITULO_MAX_CIUDADES = 3;
+function tituloDeDestinos(destinos) {
+  const ciudades = [];
+  for (const d of destinos || []) {
+    const c = ciudadLimpia(d?.ciudad);
+    if (c && !ciudades.some((x) => norm(x) === norm(c))) ciudades.push(c);
+  }
+  if (ciudades.length < 2 || ciudades.length > TITULO_MAX_CIUDADES) return "";
+  return `${ciudades.slice(0, -1).join(", ")} y ${ciudades[ciudades.length - 1]}`;
+}
+
 /* Piso del markup si el máster todavía no cargó su factor. Mismo número que
    FACTOR_DEFAULT en src/lib/presupuesto/schema.ts: si se separan, el precio de
    la lista deja de coincidir con el del editor. */
@@ -610,7 +642,7 @@ export {
   registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,
   horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,
   uid, clamp, parseISO, toISO,
-  addDays, fmtCorto, fmtLargo, money, destinoLimpio, destinoFinal, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
+  addDays, fmtCorto, fmtLargo, money, destinoLimpio, destinoFinal, ciudadLimpia, tituloDeDestinos, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   fechaDeVuelo, itinerarioMasCompleto,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,

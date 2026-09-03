@@ -12,6 +12,7 @@ import {
   ANIO_ACTUAL, registrarVendedores, uid, toISO, parseISO, ESTADOS,
   serviciosDefault, habitacionNueva, ventaTarifa, PNR_DEMO, parsePNR, FACTOR_DEFAULT,
   REGIMEN_DETALLADO, REGIMEN_DETALLADO_TXT, esDetallado, regimenHeredable, destinoFinal,
+  tituloDeDestinos,
 } from "./_mockup/data";
 import { CotizadorCtx, indexarAeropuertos, indexarAerolineas } from "./_mockup/contexto";
 import { useCatalogoCotizador } from "./_mockup/catalogo";
@@ -162,10 +163,16 @@ function desdePaquete(p, ajustes, catalogo) {
   const q = cotizacionVacia(ajustes);
   const hotelById = catalogo?.hotelById || (() => undefined);
   q.origen = p.nombre;
-  /* El panel guarda el destino como "Región › País › Ciudad". El cliente pidió
-     el 26/08 que el título lleve solo el destino final: de "Caribe › Jamaica ›
-     Jamaica" queda "Jamaica". Sigue siendo editable en el encabezado. */
-  q.titulo = { destino: destinoFinal(p.destino) || p.destinos[0]?.ciudad || "", mes: p.mes, anio: p.anio };
+  /* El título: primero la combinación de ciudades del itinerario ("Río de
+     Janeiro y Búzios"), que es el viaje que compró el pasajero. Si el paquete
+     tiene un solo destino —o cuatro o más, que no entran en la tarjeta— manda la
+     columna de geografía, con el destino final y nada más (pedido del 26/08): de
+     "Caribe › Jamaica › Jamaica" queda "Jamaica". Sigue editable en el
+     encabezado. */
+  q.titulo = {
+    destino: tituloDeDestinos(p.destinos) || destinoFinal(p.destino) || p.destinos[0]?.ciudad || "",
+    mes: p.mes, anio: p.anio,
+  };
 
   /* La fecha de salida la elige el vendedor. Solo se precarga cuando el paquete
      tiene período de viaje cargado y todavía no arrancó. */

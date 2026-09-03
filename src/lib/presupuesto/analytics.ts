@@ -19,7 +19,7 @@
 // ---------------------------------------------------------------------------
 
 import { SECCIONES, indiceSeccion } from "./secciones";
-import { destinoFinal } from "./destino";
+import { destinoFinal, partirDestinoPeriodo } from "./destino";
 
 const HORA_MS = 3_600_000;
 const DIA_MS = 86_400_000;
@@ -241,7 +241,7 @@ export function semanaISO(d: Date): { clave: string; lunes: Date } {
  * mismo destino salía en dos baldes del ranking.
  */
 function destinoBase(s: string | null): string {
-  return destinoFinal(String(s ?? "").split(",")[0]);
+  return destinoFinal(partirDestinoPeriodo(s).destino);
 }
 
 function nombreDe(usuarios: Map<string, string>, id: string): string {
