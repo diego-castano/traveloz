@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Itinerario en tabla · Mobile y desktop · TravelOz</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+
+<style>
+/* ── Tipografías, self-hosted ───────────────────────────────────────────
+   Los mismos .woff2 del cotizador. No van por fonts.googleapis.com: la CSP
+   del sitio es style-src 'self' y font-src 'self', así que una hoja de
+   gstatic se bloquea sin aviso y la página cae en la fuente del sistema. */
+@font-face {
+  font-family:'DM Sans'; font-style:normal; font-weight:400 700; font-display:swap;
+  src:url("/fonts/cotizador/dm-sans-v17-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family:'DM Sans'; font-style:normal; font-weight:400 700; font-display:swap;
+  src:url("/fonts/cotizador/dm-sans-v17-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family:'Playfair Display'; font-style:normal; font-weight:400 900; font-display:swap;
+  src:url("/fonts/cotizador/playfair-display-v40-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family:'Playfair Display'; font-style:normal; font-weight:400 900; font-display:swap;
+  src:url("/fonts/cotizador/playfair-display-v40-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family:'JetBrains Mono'; font-style:normal; font-weight:100 800; font-display:swap;
+  src:url("/fonts/cotizador/jetbrains-mono-v24-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family:'JetBrains Mono'; font-style:normal; font-weight:100 800; font-display:swap;
+  src:url("/fonts/cotizador/jetbrains-mono-v24-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* ── Tokens de la página ────────────────────────────────────────────── */
+:root {
+  --ink: #111124; --ink-2: #3D4066; --ink-3: #6B6F99; --ink-4: #8A8DB5;
+  --page: #F2F3F8; --card: #FFFFFF; --sunk: #E7E9F3;
+  --hair: rgba(17,17,36,.10); --hair-2: rgba(17,17,36,.06);
+  --coral: #F43E55; --violet: #785AE5; --teal: #2A9E8E;
+  --shadow: 0 1px 2px rgba(17,17,36,.05), 0 12px 28px -18px rgba(17,17,36,.28);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #E9E9F4; --ink-2: #BCBDD6; --ink-3: #8F91B5; --ink-4: #6F7196;
+    --page: #0C0C16; --card: #16162A; --sunk: #1E1E36;
+    --hair: rgba(255,255,255,.10); --hair-2: rgba(255,255,255,.06);
+    --coral: #FF6E7E; --violet: #A18DF3; --teal: #45D4C0;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 34px -20px rgba(0,0,0,.8);
+  }
+}
+
+/* ── Tokens de la FICHA. Son los del cotizador, tal cual (styles.js .ctz).
+      No siguen el tema del visitante: la ficha del pasajero es clara y se
+      imprime en papel blanco. ────────────────────────────────────────── */
+.ficha {
+  --f-coral: #F43E55; --f-violet: #785AE5; --f-violet-ink: #5B3FBF;
+  --f-teal: #2A9E8E;
+  --f-ink: #1A1A2E; --f-n600: #3D4066; --f-n500: #6B6F99;
+  --f-n400: #8A8DB5; --f-n300: #B0B4CD;
+  --f-card: #FFFFFF; --f-tile: #F5F6FA;
+  --f-hair: rgba(17,17,36,.09); --f-hair-soft: rgba(17,17,36,.055);
+  --f-violet-wash: rgba(120,90,229,.045);
+  --f-amber-ink: #8A5A16; --f-amber-bg: #FBF3E6; --f-amber-line: #E3C892;
+  background: var(--f-card); color: var(--f-ink);
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0; background: var(--page); color: var(--ink);
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 22px 80px; }
+.prose { max-width: 62ch; }
+
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font-family: "Playfair Display", Georgia, serif; font-weight: 700; font-size: clamp(38px, 6vw, 60px); line-height: 1.03; letter-spacing: -.022em; }
+h2 { font-family: "Playfair Display", Georgia, serif; font-weight: 600; font-size: clamp(24px, 3vw, 31px); line-height: 1.14; letter-spacing: -.015em; }
+h3 { font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -.008em; }
+p { margin: 0; }
+
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: var(--ink-4); }
+.mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+.hero { padding: 62px 0 38px; display: flex; flex-direction: column; gap: 20px; }
+.hero .lede { font-size: 19px; line-height: 1.55; color: var(--ink-2); max-width: 60ch; }
+.hero .lede b { color: var(--ink); font-weight: 700; }
+.fuente { display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 6px; font-size: 12.5px; color: var(--ink-4); }
+.fuente b { color: var(--ink-3); font-weight: 500; }
+
+hr.regla { border: 0; border-top: 1px solid var(--hair); margin: 0; }
+section { padding-top: 54px; display: flex; flex-direction: column; gap: 22px; }
+.cabezal { display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Maquetas ───────────────────────────────────────────────────────── */
+/* La maqueta de escritorio necesita sus 748 px de columna más los márgenes:
+   apretada al lado del celular quedaba en 520 y las ciudades salían MÁS
+   angostas que en el celular, que es exactamente lo contrario de lo que hay
+   que mostrar. Van lado a lado solo cuando las dos entran de verdad. */
+.zona-ancha { margin-inline: min(0px, calc((100% - min(1560px, 100vw - 44px)) / 2)); }
+.maquetas { display: grid; gap: 44px 30px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 1300px) {
+  .maquetas { grid-template-columns: 408px minmax(800px, 1fr); }
+}
+.maqueta { display: flex; flex-direction: column; gap: 13px; min-width: 0; }
+.maqueta > header { display: flex; flex-direction: column; gap: 4px; }
+.maqueta .qué { display: flex; align-items: baseline; gap: 9px; }
+.maqueta .medida { font-family: "JetBrains Mono", monospace; font-size: 11.5px; font-weight: 600; color: var(--ink-4); }
+.maqueta > header p { font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
+
+/* el celular */
+.tel { width: 408px; max-width: 100%; border-radius: 30px; padding: 9px; background: linear-gradient(160deg, #2A2B44, #14141F); box-shadow: 0 2px 4px rgba(17,17,36,.25), 0 26px 50px -26px rgba(17,17,36,.6); }
+.tel .visor { height: 660px; overflow-y: auto; border-radius: 22px; scrollbar-width: none; }
+.tel .visor::-webkit-scrollbar { display: none; }
+
+/* la ventana de escritorio */
+.mac { border-radius: 14px; overflow: hidden; border: 1px solid var(--hair); box-shadow: 0 2px 4px rgba(17,17,36,.16), 0 26px 50px -26px rgba(17,17,36,.5); background: #E9EAF2; }
+.mac .barra { display: flex; align-items: center; gap: 7px; padding: 10px 13px; background: linear-gradient(180deg, #F4F5F9, #E9EAF2); border-bottom: 1px solid rgba(17,17,36,.09); }
+.mac .luz { width: 10px; height: 10px; border-radius: 50%; }
+.mac .url { margin-left: 10px; padding: 3px 12px; border-radius: 99px; background: #fff; border: 1px solid rgba(17,17,36,.08); font-family: "JetBrains Mono", monospace; font-size: 10.5px; color: #6B6F99; }
+.mac .visor { height: 660px; overflow-y: auto; scrollbar-width: none; }
+.mac .visor::-webkit-scrollbar { display: none; }
+
+/* ══════════════════════════════════════════════════════════════════════
+   LA FICHA — el itinerario en tabla, mobile y escritorio.
+
+   La misma estructura en los dos: hora a la izquierda, ciudades a la
+   derecha, la fecha como divisor. Lo único que cambia con el ancho es
+   dónde cae el aeropuerto y dónde cae el vuelo. Nada se mueve de lugar.
+   ══════════════════════════════════════════════════════════════════════ */
+.ficha { padding: 22px 16px 30px; }
+.ficha.esc { padding: 30px 26px 40px; }
+.ficha .col { max-width: 748px; margin: 0 auto; }
+
+/* marcador de sección: la barrita de marca del cotizador (.sec-t-rule) */
+.f-sec { margin: 0 0 14px; }
+.f-sec .rule { display: block; width: 26px; height: 2.5px; border-radius: 99px; margin-bottom: 9px; background: linear-gradient(90deg, var(--f-coral), var(--f-violet)); }
+.f-sec .tx { display: block; font-size: 15px; font-weight: 600; line-height: 1.25; letter-spacing: -.018em; color: var(--f-ink); }
+.ficha.esc .f-sec .tx { font-size: 17px; }
+
+/* IDA / VUELTA: banda con el lavado violeta y el filete de marca a la
+   izquierda. Es el mismo tratamiento que ya usa la ficha para destacar un
+   bloque (radio 4px de un lado, 14 del otro). */
+.f-tray {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  margin: 22px 0 2px; padding: 9px 13px;
+  background: var(--f-violet-wash); border-left: 2.5px solid var(--f-violet);
+  border-radius: 4px 12px 12px 4px;
+}
+.f-tray:first-of-type { margin-top: 0; }
+.f-tray .rumbo { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--f-violet-ink); }
+.f-tray .ruta { font-size: 13.5px; font-weight: 700; color: var(--f-ink); }
+.f-tray .cuando { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 11.5px; font-weight: 600; color: var(--f-n500); margin-left: auto; }
+
+/* La fecha ya no se repite en cada renglón: es un divisor, y aparece solo
+   cuando el día cambia. Así el salto de día se ve sin leer nada. */
+.f-dia { display: flex; align-items: center; gap: 10px; padding: 15px 0 9px; }
+.f-dia .txt { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--f-n400); white-space: nowrap; }
+.f-dia .linea { flex: 1; height: 1px; background: var(--f-hair-soft); }
+
+/* El renglón del tramo */
+.f-tramo { display: grid; grid-template-columns: 54px 1fr; column-gap: 13px; padding: 11px 0; border-top: 1px solid var(--f-hair-soft); }
+.f-tramo:first-of-type { border-top: 0; }
+.ficha.esc .f-tramo { grid-template-columns: 66px 1fr 200px; column-gap: 20px; padding: 14px 0; align-items: start; }
+
+/* columna de horas, con el filete de marca uniendo salida y llegada */
+.f-horas { display: grid; grid-template-columns: 1fr 3px; column-gap: 7px; row-gap: 2px; align-items: center; }
+.f-horas .h { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13.5px; font-weight: 600; line-height: 1.5; }
+.ficha.esc .f-horas .h { font-size: 15px; }
+.f-horas .sale { color: var(--f-ink); }
+.f-horas .llega { color: var(--f-n500); }
+.f-horas .filete { grid-column: 2; grid-row: 1 / 3; width: 3px; height: 100%; border-radius: 99px; background: linear-gradient(180deg, var(--f-coral), var(--f-violet)); }
+
+.f-par { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.f-pto { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 7px; line-height: 1.35; }
+.f-pto .ciudad { font-size: 14px; font-weight: 700; color: var(--f-ink); }
+.ficha.esc .f-pto .ciudad { font-size: 15.5px; }
+.f-pto .apto { font-size: 12px; font-weight: 500; color: var(--f-n500); }
+.ficha.esc .f-pto .apto { font-size: 12.5px; }
+.f-pto .mas { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700; color: var(--f-coral); padding: 1px 5px; border-radius: 99px; background: rgba(244,62,85,.09); }
+
+/* el vuelo: abajo en el celular, columna propia en escritorio */
+.f-vuelo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 5px; }
+.ficha.esc .f-vuelo { margin-top: 2px; justify-content: flex-end; text-align: right; }
+.f-vuelo .nro { font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600; color: var(--f-n600); padding: 2px 7px; border-radius: 7px; background: var(--f-tile); border: 1px solid var(--f-hair-soft); }
+.f-vuelo .opera { font-size: 11.5px; color: var(--f-n400); }
+
+/* Aviso. Ámbar, que es el color de advertencia que ya usa la ficha, no un
+   color de marca: la marca no puede querer decir «ojo con esto». */
+.f-aviso { display: flex; gap: 9px; align-items: flex-start; margin: 11px 0 3px; padding: 10px 13px; border-radius: 4px 12px 12px 4px; background: var(--f-amber-bg); border-left: 2.5px solid var(--f-amber-line); font-size: 12px; line-height: 1.45; color: var(--f-amber-ink); font-weight: 600; }
+.f-aviso b { font-weight: 800; }
+.ficha.esc .f-aviso { font-size: 12.5px; }
+
+/* varias opciones de vuelo, apiladas: sin pestañas, porque el PDF no tiene */
+.f-op { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin: 26px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--f-hair); }
+.f-op:first-of-type { margin-top: 4px; }
+.f-op .n { font-size: 14.5px; font-weight: 700; color: var(--f-violet-ink); }
+.f-op .cual { font-size: 12.5px; color: var(--f-n500); }
+.f-op .precio { margin-left: auto; font-family: "JetBrains Mono", monospace; font-size: 12.5px; font-weight: 600; color: var(--f-teal); }
+
+/* ── Controles ──────────────────────────────────────────────────────── */
+.controles { margin-bottom: 26px; display: flex; flex-wrap: wrap; gap: 12px 26px; align-items: center; padding: 13px 18px; background: var(--card); border: 1px solid var(--hair); border-radius: 14px; box-shadow: var(--shadow); }
+.grupo { display: flex; align-items: center; gap: 10px; }
+.grupo > .eyebrow { font-size: 10.5px; }
+.segm { display: flex; gap: 3px; padding: 3px; background: var(--sunk); border-radius: 10px; }
+.segm button { appearance: none; border: 0; cursor: pointer; padding: 5px 11px; border-radius: 7px; background: transparent; color: var(--ink-3); font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600; transition: background .16s, color .16s; }
+.segm button:hover { color: var(--ink); }
+.segm button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(17,17,36,.14); }
+.segm button:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.nota-ctrl { font-size: 12.5px; color: var(--ink-4); margin-left: auto; }
+
+/* ── Decisiones ─────────────────────────────────────────────────────── */
+.decisiones { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); }
+.decision { background: var(--card); border: 1px solid var(--hair); border-radius: 16px; padding: 19px 20px 17px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--shadow); }
+.decision .qué { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--violet); }
+.decision p { font-size: 14px; color: var(--ink-2); }
+.muestra { border-radius: 10px; padding: 12px 13px; background: #FFF; border: 1px solid var(--hair-2); }
+
+.tabla-envoltura { overflow-x: auto; border: 1px solid var(--hair); border-radius: 14px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+th, td { text-align: left; padding: 12px 16px; border-top: 1px solid var(--hair-2); vertical-align: top; }
+thead th { border-top: 0; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+tbody td { color: var(--ink-2); }
+tbody td:first-child { color: var(--ink); font-weight: 600; }
+
+.pendientes { display: flex; flex-direction: column; gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; }
+.pend { background: var(--card); padding: 15px 18px; display: flex; gap: 14px; align-items: baseline; }
+.pend .n { font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600; color: var(--ink-4); flex-shrink: 0; }
+.pend p { font-size: 14.5px; color: var(--ink-2); }
+.pend b { color: var(--ink); font-weight: 700; }
+
+footer { padding-top: 56px; font-size: 13px; color: var(--ink-4); }
+footer a { color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px 60px; }
+  .hero { padding: 40px 0 30px; }
+  .tel { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">TravelOz · Cotizador · Vista del pasajero</p>
+    <h1>Itinerario en tabla</h1>
+    <p class="lede">
+      La opción que eligió Gero, terminada y con los colores de la marca, en las dos pantallas
+      donde el pasajero la va a abrir: <b>el celular y la computadora</b>. Mismo itinerario real de
+      Bali, mismos datos, misma estructura. Lo único que cambia con el ancho es dónde cae el
+      aeropuerto y dónde cae el número de vuelo.
+    </p>
+    <div class="fuente">
+      <span><b>PNR</b> <span class="mono">RP/MVDUY2182</span></span>
+      <span><b>Celular</b> <span class="mono">390 px</span></span>
+      <span><b>Escritorio y PDF</b> <span class="mono">columna de 748 px</span></span>
+    </div>
+  </header>
+
+  <hr class="regla">
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Las dos pantallas</p>
+      <h2>Lo mismo, con más aire</h2>
+      <p class="prose" style="color:var(--ink-2)">
+        En escritorio no cambia el diseño, cambia el reparto: el aeropuerto sube al lado de la ciudad
+        y el vuelo se va a su propia columna a la derecha. Nada se muda de lugar entre una pantalla y
+        la otra, que es lo que hace que se sientan la misma cosa.
+      </p>
+    </div>
+
+    <div class="zona-ancha">
+    <div class="controles">
+      <div class="grupo">
+        <span class="eyebrow">Opciones de vuelo</span>
+        <div class="segm" id="ctrl-ops">
+          <button type="button" data-v="1" aria-pressed="true">1</button>
+          <button type="button" data-v="2" aria-pressed="false">2</button>
+          <button type="button" data-v="3" aria-pressed="false">3</button>
+        </div>
+      </div>
+      <p class="nota-ctrl">Con más de una, van apiladas: el PDF no tiene pestañas.</p>
+    </div>
+
+    <div class="maquetas">
+      <article class="maqueta">
+        <header>
+          <div class="qué"><h3>Celular</h3><span class="medida" id="med-tel">—</span></div>
+          <p>390 px. El aeropuerto va debajo de la ciudad y el vuelo cierra el renglón.</p>
+        </header>
+        <div class="tel"><div class="visor"><div class="ficha" id="ficha-tel"></div></div></div>
+      </article>
+
+      <article class="maqueta">
+        <header>
+          <div class="qué"><h3>Escritorio</h3><span class="medida" id="med-esc">—</span></div>
+          <p>Columna de 748 px centrada, igual que el resto de la ficha. Es también lo que sale impreso en el PDF.</p>
+        </header>
+        <div class="mac">
+          <div class="barra">
+            <span class="luz" style="background:#F45B5B"></span>
+            <span class="luz" style="background:#F5BE4F"></span>
+            <span class="luz" style="background:#5BC466"></span>
+            <span class="url">traveloz.com.uy/c/…</span>
+          </div>
+          <div class="visor"><div class="ficha esc" id="ficha-esc"></div></div>
+        </div>
+      </article>
+    </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Qué cambió respecto de la maqueta</p>
+      <h2>Cuatro decisiones</h2>
+    </div>
+    <div class="decisiones">
+
+      <article class="decision">
+        <p class="qué">Ida y vuelta</p>
+        <h3>Deja de ser un rótulo gris</h3>
+        <p>
+          Ahora es una banda con el lavado violeta y el filete de marca a la izquierda, el mismo
+          tratamiento que la ficha ya usa para destacar un bloque. Al lado del rumbo va la ruta
+          completa, y a la derecha las fechas del tramo.
+        </p>
+        <div class="muestra ficha" style="padding:13px">
+          <div class="f-tray" style="margin:0">
+            <span class="rumbo">Ida</span>
+            <span class="ruta">Montevideo a Bali</span>
+            <span class="cuando">1 → 3 nov</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="decision">
+        <p class="qué">Las fechas</p>
+        <h3>Pasan a ser divisores</h3>
+        <p>
+          Antes cada renglón repetía su fecha en gris chiquito. Ahora la fecha aparece una sola vez,
+          cuando el día cambia, y separa los tramos. El salto de día se ve sin leer: es el único
+          lugar donde el itinerario se corta.
+        </p>
+        <div class="muestra ficha" style="padding:13px">
+          <div class="f-dia" style="padding:0"><span class="txt">lun 2 nov</span><span class="linea"></span></div>
+        </div>
+      </article>
+
+      <article class="decision">
+        <p class="qué">Los colores</p>
+        <h3>El degradado une salida y llegada</h3>
+        <p>
+          El coral y el violeta de TravelOz hacen trabajo estructural, no decorativo: el filete que va
+          de una hora a la otra es el degradado de la marca, y baja del coral al violeta en el sentido
+          en que se lee el viaje.
+        </p>
+        <div class="muestra ficha" style="padding:13px">
+          <div class="f-tramo" style="border:0;padding:0">
+            <div class="f-horas">
+              <span class="h sale">01:05</span><span class="filete"></span><span class="h llega">05:25</span>
+            </div>
+            <div class="f-par">
+              <div class="f-pto"><span class="ciudad">Santiago de Chile</span><span class="apto">Pudahuel (SCL)</span></div>
+              <div class="f-pto"><span class="ciudad">Melbourne</span><span class="apto">Tullamarine (MEL)</span><span class="mas">+1 día</span></div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="decision">
+        <p class="qué">El aviso</p>
+        <h3>Ámbar, y no de marca</h3>
+        <p>
+          El cambio de aeropuerto queda en el ámbar de advertencia que la ficha ya usa. Los colores de
+          la marca no pueden querer decir «ojo con esto»: si el coral avisa de un problema, deja de
+          servir para todo lo demás.
+        </p>
+        <div class="muestra ficha" style="padding:13px">
+          <div class="f-aviso" style="margin:0">
+            <span aria-hidden="true">⚠</span>
+            <span>Llegás a <b>Avalon</b> y salís de <b>Tullamarine</b>.</span>
+          </div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">De dónde sale cada color</p>
+      <h2>Nada inventado</h2>
+      <p class="prose" style="color:var(--ink-2)">
+        Todos los valores salen del cotizador que ya está andando
+        (<span class="mono">_mockup/styles.js</span>), así que el itinerario no va a desentonar con el
+        resto de la ficha ni con el PDF.
+      </p>
+    </div>
+    <div class="tabla-envoltura">
+      <table>
+        <thead><tr><th>Dónde</th><th>Color</th><th>Token del cotizador</th></tr></thead>
+        <tbody>
+          <tr><td>Filete entre horas, barrita de sección</td><td><span class="mono">#F43E55 → #785AE5</span></td><td><span class="mono">--coral → --violet</span></td></tr>
+          <tr><td>Banda de Ida / Vuelta</td><td><span class="mono">rgba(120,90,229,.045)</span> y <span class="mono">#5B3FBF</span></td><td>el lavado violeta de la ficha y <span class="mono">--violet-ink</span></td></tr>
+          <tr><td>Ciudad</td><td><span class="mono">#1A1A2E</span></td><td><span class="mono">--ink</span></td></tr>
+          <tr><td>Aeropuerto, hora de llegada</td><td><span class="mono">#6B6F99</span></td><td><span class="mono">--n500</span></td></tr>
+          <tr><td>Fecha divisora</td><td><span class="mono">#8A8DB5</span></td><td><span class="mono">--n400</span></td></tr>
+          <tr><td>Aviso de cambio de aeropuerto</td><td><span class="mono">#8A5A16</span> sobre <span class="mono">#FBF3E6</span></td><td><span class="mono">--ink-amber</span></td></tr>
+          <tr><td>Precio de la opción</td><td><span class="mono">#2A9E8E</span></td><td><span class="mono">--teal-2</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Antes de llevarlo al cotizador</p>
+      <h2>Sigue faltando lo mismo</h2>
+    </div>
+    <div class="pendientes">
+      <div class="pend">
+        <span class="n">01</span>
+        <p><b>Leer la fecha de llegada del PNR.</b> Es lo que hace funcionar los divisores de fecha y el «+1 día». Hoy el parser guarda solo la salida y el «+1 día» se equivoca en dos de los seis tramos de este viaje.</p>
+      </div>
+      <div class="pend">
+        <span class="n">02</span>
+        <p><b>Cargar Avalon, Qantas y Jetstar en Catálogos.</b> Sin eso el renglón dice <span class="mono">AVV</span> pelado y «QF · QF 3934», que es justo lo que Gero no quiere.</p>
+      </div>
+      <div class="pend">
+        <span class="n">03</span>
+        <p><b>Confirmar quién escribe el aviso.</b> ¿Lo redacta el vendedor, o lo pone el sistema solo cuando detecta que se llega a un aeropuerto y se sale de otro?</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Maqueta para aprobar. Todavía no está en el cotizador.
+      La comparación de las cinco opciones queda en
+      <a href="/mockups/itinerario-vuelos.html">itinerario-vuelos</a>.
+    </p>
+  </footer>
+
+</div>
+
+<script>
+var APTO = {
+  MVD: { ciudad: "Montevideo",        apto: "Carrasco" },
+  SCL: { ciudad: "Santiago de Chile", apto: "Pudahuel" },
+  MEL: { ciudad: "Melbourne",         apto: "Tullamarine" },
+  DPS: { ciudad: "Bali",              apto: "Ngurah Rai" },
+  AVV: { ciudad: "Melbourne",         apto: "Avalon" }
+};
+
+/* Los seis tramos del PNR. `dia` es la fecha de SALIDA y `diaLlega` la de
+   llegada: son las dos que trae el PNR y las dos que el parser tiene que
+   guardar. De ahí salen los divisores y el «+1 día», sin adivinar nada
+   comparando horas. */
+var TRAMOS = [
+  { tray:0, n:"QF 3934", op:"LATAM",   o:"MVD", d:"SCL", s:"18:45", l:"21:15", dia:"dom 1 nov",  diaLlega:"dom 1 nov" },
+  { tray:0, n:"QF 3960", op:"LATAM",   o:"SCL", d:"MEL", s:"01:05", l:"05:25", dia:"lun 2 nov",  diaLlega:"mar 3 nov" },
+  { tray:0, n:"QF 5425", op:"Jetstar", o:"MEL", d:"DPS", s:"07:00", l:"10:00", dia:"mar 3 nov",  diaLlega:"mar 3 nov" },
+  { tray:1, n:"QF 5462", op:"Jetstar", o:"DPS", d:"AVV", s:"23:20", l:"07:55", dia:"lun 30 nov", diaLlega:"mar 1 dic" },
+  { tray:1, n:"QF 3961", op:"LATAM",   o:"MEL", d:"SCL", s:"12:30", l:"11:20", dia:"mar 1 dic",  diaLlega:"mar 1 dic" },
+  { tray:1, n:"QF 3932", op:"LATAM",   o:"SCL", d:"MVD", s:"15:35", l:"17:48", dia:"mar 1 dic",  diaLlega:"mar 1 dic" }
+];
+
+var TRAYECTOS = [
+  { rumbo:"Ida",    ruta:"Montevideo a Bali",    cuando:"1 → 3 nov" },
+  { rumbo:"Vuelta", ruta:"Bali a Montevideo",    cuando:"30 nov → 1 dic" }
+];
+
+/* El aviso vive entre dos tramos, no dentro de uno: se dibuja antes del tramo
+   cuyo índice se nombra acá. */
+var AVISO = {
+  4: 'Cambio de aeropuerto en Melbourne: llegás a <b>Avalon</b> y salís de <b>Tullamarine</b>. Son dos aeropuertos distintos, hay que cruzar la ciudad.'
+};
+
+var OPCIONES_VUELO = [
+  { cual: "la más conveniente", precio: "USD 2.480" },
+  { cual: "llega de día a Bali", precio: "+ USD 140" },
+  { cual: "una escala menos",    precio: "+ USD 310" }
+];
+
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function apto(cod) {
+  var a = APTO[cod];
+  return a ? { ciudad: a.ciudad, apto: a.apto + " (" + cod + ")" } : { ciudad: cod, apto: "" };
+}
+
+function punto(cod, mas) {
+  var a = apto(cod);
+  return '<div class="f-pto"><span class="ciudad">' + esc(a.ciudad) + "</span>"
+    + (a.apto ? '<span class="apto">' + esc(a.apto) + "</span>" : "")
+    + (mas ? '<span class="mas">+1 día</span>' : "") + "</div>";
+}
+
+function tramo(t, i, esEsc) {
+  var mas = t.diaLlega !== t.dia;
+  var vuelo = '<div class="f-vuelo"><span class="nro">' + esc(t.n) + "</span>"
+    + '<span class="opera">opera ' + esc(t.op) + "</span></div>";
+  return '<div class="f-tramo">'
+    + '<div class="f-horas"><span class="h sale">' + esc(t.s) + "</span>"
+    +   '<span class="filete"></span><span class="h llega">' + esc(t.l) + "</span></div>"
+    + '<div class="f-par">' + punto(t.o, false) + punto(t.d, mas)
+    +   (esEsc ? "" : vuelo) + "</div>"
+    + (esEsc ? vuelo : "")
+    + "</div>";
+}
+
+/* Un trayecto: la banda de rumbo, y adentro los tramos con un divisor de fecha
+   cada vez que cambia el día. */
+function trayecto(idx, esEsc) {
+  var tr = TRAYECTOS[idx];
+  var h = '<div class="f-tray"><span class="rumbo">' + esc(tr.rumbo) + "</span>"
+    + '<span class="ruta">' + esc(tr.ruta) + "</span>"
+    + '<span class="cuando mono">' + esc(tr.cuando) + "</span></div>";
+  var ultimoDia = null;
+  TRAMOS.forEach(function (t, i) {
+    if (t.tray !== idx) return;
+    if (t.dia !== ultimoDia) {
+      h += '<div class="f-dia"><span class="txt">' + esc(t.dia) + '</span><span class="linea"></span></div>';
+      ultimoDia = t.dia;
+    }
+    if (AVISO[i]) h += '<div class="f-aviso"><span aria-hidden="true">⚠</span><span>' + AVISO[i] + "</span></div>";
+    h += tramo(t, i, esEsc);
+  });
+  return h;
+}
+
+function ficha(esEsc, nOps) {
+  var h = '<div class="col"><div class="f-sec"><span class="rule"></span>'
+    + '<span class="tx">Itinerario de vuelos</span></div>';
+  for (var k = 0; k < nOps; k++) {
+    if (nOps > 1) {
+      var o = OPCIONES_VUELO[k];
+      h += '<div class="f-op"><span class="n">Opción ' + (k + 1) + "</span>"
+        + '<span class="cual">' + esc(o.cual) + "</span>"
+        + '<span class="precio mono">' + esc(o.precio) + "</span></div>";
+    }
+    h += trayecto(0, esEsc) + trayecto(1, esEsc);
+  }
+  return h + "</div>";
+}
+
+var nOps = 1;
+
+function pintar() {
+  document.getElementById("ficha-tel").innerHTML = ficha(false, nOps);
+  document.getElementById("ficha-esc").innerHTML = ficha(true, nOps);
+  medir();
+}
+
+function medir() {
+  [["tel", "ficha-tel"], ["esc", "ficha-esc"]].forEach(function (par) {
+    var el = document.getElementById(par[1]);
+    var alto = Math.round(el.getBoundingClientRect().height);
+    document.getElementById("med-" + par[0]).textContent = alto.toLocaleString("es-UY") + " px";
+  });
+}
+
+document.getElementById("ctrl-ops").addEventListener("click", function (e) {
+  var b = e.target.closest("button");
+  if (!b) return;
+  Array.prototype.forEach.call(this.querySelectorAll("button"), function (x) {
+    x.setAttribute("aria-pressed", String(x === b));
+  });
+  nOps = Number(b.dataset.v);
+  pintar();
+});
+
+pintar();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir);
+</script>
+</body>
+</html>
