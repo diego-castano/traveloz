@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Bali en seis tramos · Itinerario en mobile · TravelOz</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+
+<style>
+/* ── Tipografías, self-hosted ────────────────────────────────────────────
+   Los mismos .woff2 que usa el cotizador (public/fonts/cotizador). No van por
+   fonts.googleapis.com a propósito: la CSP del sitio es `style-src 'self'` y
+   `font-src 'self' data:`, así que una hoja de Google se bloquearía sin aviso
+   y la página caería en la tipografía del sistema.
+
+   Ojo con los signos: → y ✓ no están en estos subconjuntos y los dibuja la
+   fuente de respaldo. Es lo mismo que ya pasa en el cotizador. */
+@font-face {
+  font-family:'DM Sans'; font-style:normal; font-weight:400 700; font-display:swap;
+  src:url("/fonts/cotizador/dm-sans-v17-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family:'DM Sans'; font-style:normal; font-weight:400 700; font-display:swap;
+  src:url("/fonts/cotizador/dm-sans-v17-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family:'Playfair Display'; font-style:normal; font-weight:400 900; font-display:swap;
+  src:url("/fonts/cotizador/playfair-display-v40-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family:'Playfair Display'; font-style:normal; font-weight:400 900; font-display:swap;
+  src:url("/fonts/cotizador/playfair-display-v40-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+@font-face {
+  font-family:'JetBrains Mono'; font-style:normal; font-weight:100 800; font-display:swap;
+  src:url("/fonts/cotizador/jetbrains-mono-v24-latin.woff2") format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face {
+  font-family:'JetBrains Mono'; font-style:normal; font-weight:100 800; font-display:swap;
+  src:url("/fonts/cotizador/jetbrains-mono-v24-latin-ext.woff2") format("woff2");
+  unicode-range:U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* ── Tokens ─────────────────────────────────────────────────────────────
+   Paleta y tipografías del cotizador: marca coral→violeta, acción teal. */
+:root {
+  --ink:      #111124;
+  --ink-2:    #3D4066;
+  --ink-3:    #6B6F99;
+  --ink-4:    #8A8DB5;
+  --page:     #F2F3F8;
+  --card:     #FFFFFF;
+  --sunk:     #E7E9F3;
+  --hair:     rgba(17,17,36,.10);
+  --hair-2:   rgba(17,17,36,.06);
+  --coral:    #F43E55;
+  --violet:   #785AE5;
+  --teal:     #2A9E8E;
+  --shadow:   0 1px 2px rgba(17,17,36,.05), 0 12px 28px -18px rgba(17,17,36,.28);
+
+  /* La pantalla del celular no sigue el tema del visitante: es una maqueta de
+     un producto que es claro, y se pinta siempre con estos valores. */
+  --scr-ink:   #111124;
+  --scr-ink-2: #3D4066;
+  --scr-ink-3: #6B6F99;
+  --scr-ink-4: #8A8DB5;
+  --scr-bg:    #FFFFFF;
+  --scr-sunk:  #F5F6FA;
+  --scr-hair:  rgba(17,17,36,.09);
+  --scr-coral: #F43E55;
+  --scr-violet:#785AE5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink:    #E9E9F4;
+    --ink-2:  #BCBDD6;
+    --ink-3:  #8F91B5;
+    --ink-4:  #6F7196;
+    --page:   #0C0C16;
+    --card:   #16162A;
+    --sunk:   #1E1E36;
+    --hair:   rgba(255,255,255,.10);
+    --hair-2: rgba(255,255,255,.06);
+    --coral:  #FF6E7E;
+    --violet: #A18DF3;
+    --teal:   #45D4C0;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 34px -20px rgba(0,0,0,.8);
+  }
+}
+
+* { box-sizing: border-box; }
+
+/* `hidden` tiene que ganarle al display de la clase. La regla del navegador es
+   [hidden]{display:none} por selector de atributo, así que cualquier `.foco`
+   con display:flex la pisa y la opción E mostraba los seis tramos juntos. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 22px 80px; }
+.prose { max-width: 62ch; }
+
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 {
+  font-family: "Playfair Display", Georgia, serif; font-weight: 700;
+  font-size: clamp(38px, 6vw, 62px); line-height: 1.02; letter-spacing: -.022em;
+}
+h2 {
+  font-family: "Playfair Display", Georgia, serif; font-weight: 600;
+  font-size: clamp(24px, 3vw, 31px); line-height: 1.14; letter-spacing: -.015em;
+}
+h3 { font-size: 17px; font-weight: 700; line-height: 1.3; letter-spacing: -.008em; }
+p  { margin: 0; }
+
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: var(--ink-4); }
+.mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+
+/* ── Portada ───────────────────────────────────────────────── */
+.hero { padding: 62px 0 40px; display: flex; flex-direction: column; gap: 20px; }
+.hero .lede { font-size: 19px; line-height: 1.55; color: var(--ink-2); max-width: 60ch; }
+.hero .lede b { color: var(--ink); font-weight: 700; }
+.fuente { display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 6px; font-size: 12.5px; color: var(--ink-4); }
+.fuente span { display: flex; gap: 7px; align-items: baseline; }
+.fuente b { color: var(--ink-3); font-weight: 500; }
+
+hr.regla { border: 0; border-top: 1px solid var(--hair); margin: 0; }
+
+section { padding-top: 54px; display: flex; flex-direction: column; gap: 22px; }
+.cabezal { display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Listas de renglones ───────────────────────────────────── */
+.pedidos { display: grid; gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; }
+.pedido { display: grid; grid-template-columns: 62px 1fr; gap: 16px; align-items: baseline; background: var(--card); padding: 15px 18px; }
+.pedido .t { font-size: 12px; color: var(--ink-4); }
+.pedido p { font-size: 14.5px; color: var(--ink-2); }
+.pedido b { color: var(--ink); font-weight: 700; }
+
+/* ── Tarjetas ──────────────────────────────────────────────── */
+.tarjetas { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+.tarjeta {
+  background: var(--card); border: 1px solid var(--hair); border-radius: 16px;
+  padding: 20px 20px 18px; display: flex; flex-direction: column; gap: 11px; box-shadow: var(--shadow);
+}
+.tarjeta .marca { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--coral); }
+.tarjeta .marca.neutro { color: var(--violet); }
+.tarjeta p { font-size: 14px; color: var(--ink-2); }
+.prueba { background: var(--sunk); border-radius: 10px; padding: 11px 13px; font-size: 12.5px; line-height: 1.65; color: var(--ink-2); }
+.prueba .mal { color: var(--coral); font-weight: 600; }
+.prueba .bien { color: var(--teal); font-weight: 600; }
+.llevamos {
+  border-top: 1px solid var(--hair-2); padding-top: 11px; margin-top: auto;
+  font-size: 13px; color: var(--ink-3);
+}
+.llevamos b { color: var(--teal); font-weight: 700; }
+
+/* ── Banco de pruebas ──────────────────────────────────────── */
+.controles {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; flex-wrap: wrap; gap: 12px 26px; align-items: center;
+  padding: 13px 18px; margin-bottom: 4px;
+  background: var(--card); border: 1px solid var(--hair); border-radius: 14px; box-shadow: var(--shadow);
+}
+.grupo { display: flex; align-items: center; gap: 10px; }
+.grupo > .eyebrow { font-size: 10.5px; }
+.segm { display: flex; gap: 3px; padding: 3px; background: var(--sunk); border-radius: 10px; }
+.segm button {
+  appearance: none; border: 0; cursor: pointer; padding: 5px 11px; border-radius: 7px;
+  background: transparent; color: var(--ink-3);
+  font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600;
+  transition: background .16s, color .16s;
+}
+.segm button:hover { color: var(--ink); }
+.segm button[aria-pressed="true"] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(17,17,36,.14); }
+.segm button:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; }
+.nota-ctrl { font-size: 12.5px; color: var(--ink-4); }
+
+.comparador { display: flex; flex-wrap: wrap; gap: 7px 16px; align-items: center; margin-left: auto; }
+.cmp { display: flex; align-items: center; gap: 7px; }
+.cmp .l { font-family: "Playfair Display", serif; font-weight: 700; font-size: 15px; line-height: 1; color: var(--violet); }
+.cmp .b { width: 42px; height: 5px; border-radius: 3px; background: var(--sunk); overflow: hidden; }
+.cmp .b i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--violet)); transition: width .3s ease; }
+.cmp .px { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 11.5px; font-weight: 600; color: var(--ink-2); }
+
+.banco-zona { margin-inline: min(0px, calc((100% - min(1760px, 100vw - 44px)) / 2)); }
+.banco {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(calc(var(--ancho, 390px) + 18px), 100%), 1fr));
+  gap: 40px 26px; align-items: start; padding: 26px 0 12px;
+}
+.opcion { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: calc(var(--ancho, 390px) + 18px); justify-self: center; }
+.tel, .pantalla { width: 100%; }
+
+.rotulo { display: flex; flex-direction: column; gap: 5px; }
+.rotulo .linea { display: flex; align-items: baseline; gap: 9px; }
+.rotulo .letra { font-family: "Playfair Display", serif; font-size: 26px; font-weight: 700; line-height: 1; color: var(--violet); }
+.rotulo .quien { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--teal); }
+.rotulo p { font-size: 13.5px; color: var(--ink-3); line-height: 1.5; }
+
+.medida { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--ink-4); }
+.medida .cifra { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; color: var(--ink); }
+.barra { height: 5px; border-radius: 3px; background: var(--sunk); overflow: hidden; width: 100%; }
+.barra i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--violet)); transition: width .3s ease; }
+
+.tel {
+  border-radius: 30px; padding: 9px;
+  background: linear-gradient(160deg, #2A2B44, #14141F);
+  box-shadow: 0 2px 4px rgba(17,17,36,.25), 0 26px 50px -26px rgba(17,17,36,.6);
+}
+.pantalla { height: 700px; overflow-y: auto; border-radius: 22px; background: var(--scr-bg); color: var(--scr-ink); scrollbar-width: none; }
+.pantalla::-webkit-scrollbar { display: none; }
+.lienzo { padding: 18px 15px 30px; display: flex; flex-direction: column; gap: 16px; }
+
+.sec-tit { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: var(--scr-ink-4); }
+.sec-tit::after { content: ""; flex: 1; height: 1px; background: var(--scr-hair); }
+
+.op-tit { display: flex; align-items: baseline; gap: 8px; padding-top: 4px; font-size: 13px; font-weight: 700; color: var(--scr-violet); }
+.op-tit span { font-size: 11.5px; font-weight: 500; color: var(--scr-ink-4); }
+
+.tray-tit { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--scr-ink-3); }
+.tray-tit em { font-style: normal; font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12px; color: var(--scr-ink-4); }
+
+/* A · riel */
+.riel { display: grid; grid-template-columns: 58px 13px 1fr; column-gap: 10px; }
+.riel .hora { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; line-height: 1.35; padding-top: 1px; }
+.riel .hora .b { display: block; color: var(--scr-ink-4); font-weight: 400; }
+.riel .via { display: flex; flex-direction: column; align-items: center; }
+.riel .pto { width: 9px; height: 9px; border-radius: 50%; background: var(--scr-violet); margin-top: 5px; flex-shrink: 0; }
+.riel .pto.fin { background: var(--scr-coral); }
+.riel .tubo { width: 2px; flex: 1; margin: 4px 0; border-radius: 2px; background: linear-gradient(180deg, var(--scr-violet), var(--scr-coral)); }
+.riel .lugar { padding-bottom: 3px; }
+.riel .ciudad { font-size: 14.5px; font-weight: 700; line-height: 1.3; }
+.riel .apto { font-size: 12px; color: var(--scr-ink-3); line-height: 1.4; }
+.riel .vuelo { grid-column: 3; font-size: 11.5px; color: var(--scr-ink-3); line-height: 1.5; padding: 7px 0 9px; }
+.riel .vuelo b { font-family: "JetBrains Mono", monospace; font-weight: 600; color: var(--scr-ink-2); }
+.riel .dia { font-size: 11px; color: var(--scr-ink-4); }
+
+.aviso {
+  grid-column: 1 / -1; display: flex; gap: 9px; align-items: flex-start;
+  margin: 8px 0 10px; padding: 9px 12px; border-radius: 11px;
+  background: #FBF3E6; border: 1px dashed #E3C892;
+  font-size: 11.5px; line-height: 1.45; color: #8A6423; font-weight: 600;
+}
+.aviso b { color: #7A5518; font-weight: 800; }
+
+/* B · plegado */
+.plegado { border: 1px solid var(--scr-hair); border-radius: 15px; overflow: hidden; background: var(--scr-bg); }
+.plegado > summary { list-style: none; cursor: pointer; padding: 15px 16px; display: flex; flex-direction: column; gap: 9px; }
+.plegado > summary::-webkit-details-marker { display: none; }
+.plegado > summary:focus-visible { outline: 2px solid var(--scr-violet); outline-offset: -2px; }
+.pl-rumbo { font-size: 16px; font-weight: 700; line-height: 1.25; }
+.pl-fechas { display: flex; gap: 18px; flex-wrap: wrap; }
+.pl-fechas div { display: flex; flex-direction: column; }
+.pl-fechas .k { font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--scr-ink-4); }
+.pl-fechas .v { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; }
+.pl-fechas .v small { font-family: "DM Sans", sans-serif; font-size: 11.5px; font-weight: 500; color: var(--scr-ink-3); display: block; }
+.pl-pie { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--scr-ink-3); }
+.pl-pie .abrir { color: var(--scr-violet); font-weight: 700; }
+.plegado[open] .pl-pie .abrir::after { content: " \25B4"; }
+.plegado:not([open]) .pl-pie .abrir::after { content: " \25BE"; }
+.pl-cuerpo { padding: 4px 16px 16px; border-top: 1px solid var(--scr-hair); }
+
+/* C · renglones */
+.rengl { display: flex; flex-direction: column; }
+.rengl .fila { display: grid; grid-template-columns: 52px 1fr; column-gap: 12px; padding: 12px 0; border-top: 1px solid var(--scr-hair); }
+.rengl .fila:first-child { border-top: 0; }
+.rengl .horas { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; line-height: 1.7; }
+.rengl .horas .llg { color: var(--scr-ink-3); }
+.rengl .par { display: flex; flex-direction: column; gap: 2px; }
+.rengl .par .c { font-size: 13.5px; font-weight: 700; line-height: 1.35; }
+.rengl .par .c small { font-weight: 500; color: var(--scr-ink-3); font-size: 11.5px; }
+.rengl .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 5px; font-size: 11px; color: var(--scr-ink-4); }
+.rengl .meta b { font-family: "JetBrains Mono", monospace; font-weight: 600; color: var(--scr-ink-3); }
+.mas1 { color: var(--scr-coral); font-weight: 700; font-size: 10.5px; }
+
+/* D · hoy */
+.hoy-card { border: 1px solid var(--scr-hair); border-radius: 15px; overflow: hidden; }
+.hoy-tramo { padding: 14px 16px 16px; border-top: 1px solid var(--scr-hair); }
+.hoy-tramo:first-child { border-top: 0; }
+.hoy-cia { display: flex; align-items: center; gap: 8px; margin-bottom: 13px; }
+.hoy-cia .ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(140deg, var(--scr-coral), var(--scr-violet)); color: #fff; font-size: 12px; }
+.hoy-cia .n { font-size: 13.5px; font-weight: 700; }
+.hoy-cia .c { font-size: 13.5px; color: var(--scr-ink-3); }
+.hoy-ruta { display: flex; gap: 11px; }
+.hoy-via { display: flex; flex-direction: column; align-items: center; width: 11px; flex-shrink: 0; padding-top: 5px; }
+.hoy-via .p { width: 9px; height: 9px; border-radius: 50%; }
+.hoy-via .t { width: 2px; flex: 1; min-height: 34px; margin: 4px 0; border-radius: 2px; background: linear-gradient(180deg, var(--scr-violet), var(--scr-coral)); }
+.hoy-pto .l1 { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.hoy-pto .cd { font-size: 15px; font-weight: 700; line-height: 1.25; }
+.hoy-pto .hr { font-size: 12.5px; font-weight: 600; color: var(--scr-ink-3); }
+.hoy-pto .ap { font-size: 12.5px; color: var(--scr-ink-4); margin-top: 1px; }
+.hoy-esp { display: flex; align-items: center; gap: 9px; margin: 0 16px 15px; padding: 9px 13px; background: #FBF3E6; border: 1px dashed #E3C892; border-radius: 12px; font-size: 12px; color: #8A6423; font-weight: 600; }
+
+/* E · foco por tramo, a la American */
+.banderitas { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.banderitas::-webkit-scrollbar { display: none; }
+.banderitas button {
+  appearance: none; cursor: pointer; flex: 0 0 auto;
+  padding: 7px 10px; border-radius: 10px;
+  border: 1px solid var(--scr-hair); background: var(--scr-sunk); color: var(--scr-ink-3);
+  font-family: "JetBrains Mono", monospace; font-size: 11px; font-weight: 600;
+  transition: background .16s, color .16s, border-color .16s;
+}
+.banderitas button[aria-pressed="true"] {
+  background: linear-gradient(140deg, var(--scr-coral), var(--scr-violet));
+  border-color: transparent; color: #fff;
+}
+.banderitas button:focus-visible { outline: 2px solid var(--scr-violet); outline-offset: 2px; }
+.foco { border: 1px solid var(--scr-hair); border-radius: 15px; padding: 15px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.foco .cuenta { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--scr-ink-4); }
+.foco .pasos { display: flex; justify-content: space-between; gap: 10px; padding-top: 2px; }
+.foco .pasos button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font-family: "DM Sans", sans-serif; font-size: 12.5px; font-weight: 700; color: var(--scr-violet);
+  padding: 4px 2px;
+}
+.foco .pasos button[disabled] { color: var(--scr-ink-4); cursor: default; }
+.foco .pasos button:focus-visible { outline: 2px solid var(--scr-violet); outline-offset: 2px; }
+
+/* ── Cierre ────────────────────────────────────────────────── */
+.reco {
+  background: var(--card); border: 1px solid var(--hair); border-left: 3px solid var(--teal);
+  border-radius: 4px 16px 16px 4px; padding: 24px 26px;
+  display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow);
+}
+.reco h3 { font-size: 19px; }
+.reco p { color: var(--ink-2); font-size: 15px; }
+
+.tabla-envoltura { overflow-x: auto; border: 1px solid var(--hair); border-radius: 14px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 680px; font-size: 14px; }
+th, td { text-align: left; padding: 12px 16px; border-top: 1px solid var(--hair-2); vertical-align: top; }
+thead th { border-top: 0; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+tbody td { color: var(--ink-2); }
+tbody td:first-child { color: var(--ink); font-weight: 600; }
+td .si { color: var(--teal); font-weight: 700; }
+td .no { color: var(--coral); font-weight: 700; }
+
+.pendientes { display: flex; flex-direction: column; gap: 1px; background: var(--hair); border: 1px solid var(--hair); border-radius: 14px; overflow: hidden; }
+.pend { background: var(--card); padding: 15px 18px; display: flex; gap: 14px; align-items: baseline; }
+.pend .n { font-family: "JetBrains Mono", monospace; font-size: 12px; font-weight: 600; color: var(--ink-4); flex-shrink: 0; }
+.pend p { font-size: 14.5px; color: var(--ink-2); }
+.pend b { color: var(--ink); font-weight: 700; }
+
+footer { padding-top: 56px; font-size: 13px; color: var(--ink-4); display: flex; flex-direction: column; gap: 8px; }
+footer a { color: var(--ink-3); }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 640px) {
+  .wrap { padding: 0 16px 60px; }
+  .hero { padding: 40px 0 30px; }
+  .pedido { grid-template-columns: 1fr; gap: 4px; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="hero">
+    <p class="eyebrow">TravelOz · Cotizador · Vista del pasajero</p>
+    <h1>Bali en seis tramos</h1>
+    <p class="lede">
+      Cinco maneras de mostrar un itinerario largo en el celular, con el PNR real que mandaste:
+      <b>Montevideo → Bali y vuelta, seis tramos, dos escalas por lado, treinta días de diferencia</b>.
+      Todas muestran los mismos datos y el mismo viaje. Cambia cómo se leen y cuánto hay que scrollear.
+    </p>
+    <div class="fuente">
+      <span><b>Llamada</b> <span class="mono">3 set 2026</span></span>
+      <span><b>PNR</b> <span class="mono">RP/MVDUY2182</span></span>
+      <span><b>Ruta</b> <span class="mono">MVD·SCL·MEL·DPS / DPS·AVV·MEL·SCL·MVD</span></span>
+    </div>
+  </header>
+
+  <hr class="regla">
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Lo que pediste en la llamada</p>
+      <h2>Cinco reglas que todas las opciones respetan</h2>
+    </div>
+    <div class="pedidos">
+      <div class="pedido">
+        <span class="t mono">09:16</span>
+        <p><b>Que no haya que scrollear casi nada.</b> «Un itinerario de vuelo acotado en el que el pasajero no tenga que scrollear prácticamente nada, pero se vea la info que se precise».</p>
+      </div>
+      <div class="pedido">
+        <span class="t mono">10:14</span>
+        <p><b>Sin tiempo de espera y sin tipo de cabina.</b> La espera se deduce de las horas del tramo siguiente, así que ocupa lugar sin agregar nada. Las dos ya salieron de la ficha.</p>
+      </div>
+      <div class="pedido">
+        <span class="t mono">14:28</span>
+        <p><b>Vertical, nunca horizontal.</b> «Montevideo → Río de Janeiro no te entra, no hay chance». Origen arriba y destino abajo, uno encima del otro.</p>
+      </div>
+      <div class="pedido">
+        <span class="t mono">27:59</span>
+        <p><b>El nombre de la ciudad siempre, y el aeropuerto cuando hace falta.</b> «Hay gente que no sabe los códigos». Y una misma ciudad puede tener dos aeropuertos: este viaje es justo ese caso.</p>
+      </div>
+      <div class="pedido">
+        <span class="t mono">25:46</span>
+        <p><b>Varias opciones de vuelo, una abajo de la otra.</b> Sin pestañas: el PDF no las tiene, y ahí hay que imprimir todo apilado igual.</p>
+      </div>
+    </div>
+    <p class="prose" style="font-size:14px;color:var(--ink-3)">
+      Descartada la idea de acortar la ciudad a su primera palabra: vos mismo la frenaste en la llamada con
+      «Los Ángeles» → «Los» y «San Diego» → «San». Ninguna opción de acá recorta nombres.
+    </p>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Cómo lo resuelven los grandes</p>
+      <h2>Tres cosas que ya están inventadas</h2>
+      <p class="prose" style="color:var(--ink-2)">
+        Dijiste en la llamada que estábamos reinventando la rueda y que miráramos cómo lo hacen Copa y American.
+        Fui a ver. Estas tres las tomé prestadas.
+      </p>
+    </div>
+    <div class="tarjetas">
+
+      <article class="tarjeta">
+        <p class="marca neutro">Google Flights</p>
+        <h3>El «aviso» como categoría propia</h3>
+        <p>
+          Google no trata todos los datos por igual: separa una familia de <em>advisories</em> que marca aparte, con
+          filtro propio. Ahí adentro están el <b>cambio de aeropuerto</b>, el cambio de terminal y las conexiones
+          demasiado cortas.
+        </p>
+        <p class="llevamos">
+          <b>Lo que tomamos:</b> el cambio de aeropuerto no es un dato más del renglón, es un aviso.
+          Va destacado y en el medio del recorrido, no al pie.
+        </p>
+      </article>
+
+      <article class="tarjeta">
+        <p class="marca neutro">American Airlines</p>
+        <h3>Un tramo por vez, y el tiempo de caminata</h3>
+        <p>
+          El rediseño de 2026 pone la pantalla del viaje como centro y se pasa de un vuelo a otro con
+          <b>banderitas deslizables</b>, en vez de una lista larga. Para las conexiones agregaron una guía
+          hasta la próxima puerta con <b>estimación de cuánto se camina</b>.
+        </p>
+        <p class="llevamos">
+          <b>Lo que tomamos:</b> la opción E de abajo. Y la idea de fondo: al pasajero no le sirve
+          «espera 4 h 35», le sirve saber qué tiene que hacer en el medio.
+        </p>
+      </article>
+
+      <article class="tarjeta">
+        <p class="marca neutro">Apps de aerolínea en general</p>
+        <h3>La reserva se lee en vertical</h3>
+        <p>
+          En la pestaña de reservas todas usan la misma forma: los tramos uno abajo del otro, en vertical,
+          con la escala como parte del recorrido y no como una tarjeta suelta. El origen–destino horizontal
+          queda para la búsqueda, donde los nombres van cortos.
+        </p>
+        <p class="llevamos">
+          <b>Lo que tomamos:</b> confirma lo que ya habías pedido. Ninguna opción de acá pone
+          origen y destino lado a lado.
+        </p>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Antes del diseño</p>
+      <h2>Tres cosas que este PNR rompe hoy</h2>
+      <p class="prose" style="color:var(--ink-2)">
+        Pasé el itinerario por el parser que corre hoy en producción. Los seis tramos entran bien,
+        pero tres datos que el diseño necesita no llegan. Esto no es cuestión de gusto: hasta que se arregle,
+        ninguna de las opciones puede mostrarlos.
+      </p>
+    </div>
+    <div class="tarjetas">
+
+      <article class="tarjeta">
+        <p class="marca">La fecha de llegada se pierde</p>
+        <p>
+          El PNR trae dos fechas por tramo y el parser guarda solo la de salida. El «+1 día» se adivina
+          comparando horas, y en este viaje se equivoca en dos de los seis tramos: en los dos sentidos.
+        </p>
+        <div class="prueba mono">
+          SCL→MEL <b>01:05 → 05:25</b><br>
+          PNR: sale 02NOV, llega 03NOV<br>
+          hoy dice <span class="mal">mismo día</span> · real <span class="bien">+1 día</span>
+          <div style="height:9px"></div>
+          MEL→SCL <b>12:30 → 11:20</b><br>
+          PNR: sale 01DEC, llega 01DEC<br>
+          hoy dice <span class="mal">+1 día</span> · real <span class="bien">mismo día</span>
+        </div>
+        <p class="llevamos" style="color:var(--ink-3)">
+          El segundo cruza la línea de cambio de fecha y llega «antes» de salir. Ninguna regla sobre las horas
+          lo resuelve: la fecha hay que leerla del PNR, que ya la trae.
+        </p>
+      </article>
+
+      <article class="tarjeta">
+        <p class="marca">Avalon no está en el catálogo</p>
+        <p>
+          De los 107 aeropuertos cargados falta <span class="mono">AVV</span>. El tramo de vuelta aterriza ahí
+          y el pasajero lee tres letras sueltas, sin ciudad y sin nombre: exactamente lo que dijiste que no querés.
+        </p>
+        <div class="prueba mono">
+          MEL <span class="bien">Melbourne · Tullamarine</span><br>
+          DPS <span class="bien">Bali · Ngurah Rai</span><br>
+          AVV <span class="mal">— sin cargar —</span>
+        </div>
+        <p class="llevamos" style="color:var(--ink-3)">
+          Se carga desde Catálogos. Lo mismo con las aerolíneas: <span class="mono">QF</span> (Qantas) y
+          <span class="mono">JQ</span> (Jetstar) tampoco están, así que la ficha dice «QF · QF 3934».
+        </p>
+      </article>
+
+      <article class="tarjeta">
+        <p class="marca">El cambio de aeropuerto es invisible</p>
+        <p>
+          A la vuelta el pasajero aterriza en Melbourne <b>Avalon</b> y sale de Melbourne <b>Tullamarine</b>.
+          Son dos aeropuertos distintos y hay que cruzar la ciudad por tierra. Hoy la cotización no lo dice
+          en ningún lado.
+        </p>
+        <div class="prueba mono">
+          30 nov 23:20 DPS → <b>AVV</b> 07:55<br>
+          1 dic 12:30 <b>MEL</b> → SCL 11:20<br>
+          <span class="mal">4 h 35 entre medio, y no son en el mismo aeropuerto</span>
+        </div>
+        <p class="llevamos" style="color:var(--ink-3)">
+          Es el caso que vos mismo nombraste: «hay veces que en una misma ciudad hay 2 aeropuertos».
+          Todas las opciones de abajo lo marcan.
+        </p>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Banco de pruebas</p>
+      <h2>Las cinco opciones, mismo viaje</h2>
+      <p class="prose" style="color:var(--ink-2)">
+        Cada pantalla es un celular de verdad al ancho que elijas. Movés el ancho y la cantidad de
+        opciones de vuelo, y en la barra de arriba se actualiza cuánto mide cada una.
+      </p>
+    </div>
+
+    <div class="banco-zona">
+      <div class="controles">
+        <div class="grupo">
+          <span class="eyebrow">Ancho</span>
+          <div class="segm" id="ctrl-ancho">
+            <button type="button" data-v="375" aria-pressed="false">375</button>
+            <button type="button" data-v="390" aria-pressed="true">390</button>
+            <button type="button" data-v="430" aria-pressed="false">430</button>
+          </div>
+        </div>
+        <div class="grupo">
+          <span class="eyebrow">Opciones de vuelo</span>
+          <div class="segm" id="ctrl-ops">
+            <button type="button" data-v="1" aria-pressed="true">1</button>
+            <button type="button" data-v="2" aria-pressed="false">2</button>
+            <button type="button" data-v="3" aria-pressed="false">3</button>
+          </div>
+        </div>
+        <div class="comparador" id="comparador"></div>
+      </div>
+
+      <p class="nota-ctrl" style="margin-top:-6px">
+        La pantalla mide 700&nbsp;px de alto. Las columnas se acomodan al monitor:
+        cuatro en pantalla grande, dos en una notebook, una en el celular.
+      </p>
+
+      <div class="banco" id="banco"></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Comparación</p>
+      <h2>Qué gana y qué pierde cada una</h2>
+    </div>
+    <div class="tabla-envoltura">
+      <table>
+        <thead>
+          <tr><th>Opción</th><th>Idea</th><th>A favor</th><th>En contra</th><th>PDF</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A · Riel</td>
+            <td>Un riel por trayecto. Cada aeropuerto aparece una sola vez, con la hora que llega y la que sale.</td>
+            <td>Elimina la repetición: Santiago dejaba de estar dos veces. Se lee como un viaje, no como una lista de vuelos.</td>
+            <td>La escala pierde el recuadro propio; hay que mirar las dos horas del nodo.</td>
+            <td><span class="si">Igual</span></td>
+          </tr>
+          <tr>
+            <td>B · Plegado</td>
+            <td>Una tarjeta por trayecto, cerrada. Adentro, el riel de la A.</td>
+            <td>Cerrado entra todo el viaje sin scrollear, que es literalmente lo que pediste. El que quiere el detalle lo abre.</td>
+            <td>Esconde información: el pasajero apurado manda a reservar sin haber visto las escalas.</td>
+            <td><span class="si">Siempre abierto</span></td>
+          </tr>
+          <tr>
+            <td>C · Renglones</td>
+            <td>Un renglón por tramo, horas a la izquierda y ciudades a la derecha.</td>
+            <td>La más compacta con todo a la vista. Es lo que hacen las aerolíneas en su app.</td>
+            <td>Densa. A seis tramos se lee como una tabla de horarios, no como una propuesta de viaje.</td>
+            <td><span class="si">Igual</span></td>
+          </tr>
+          <tr>
+            <td>D · Hoy</td>
+            <td>Lo que hay en producción: una tarjeta por tramo con su propia ruta vertical.</td>
+            <td>Cada vuelo queda clarísimo por separado.</td>
+            <td>Repite cada aeropuerto de escala y suma la caja de espera que ya pediste sacar.</td>
+            <td><span class="no">Se va a tres carillas</span></td>
+          </tr>
+          <tr>
+            <td>E · Foco</td>
+            <td>Lo de American: banderitas arriba y un tramo por vez.</td>
+            <td>La pantalla más corta de todas, lejos. El tramo que mirás está enorme y clarísimo.</td>
+            <td>El pasajero tiene que tocar seis veces para ver su viaje, y muchos no lo van a hacer.</td>
+            <td><span class="no">Imprime los seis igual</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Mi voto</p>
+      <h2>A de base, B cuando hay más de una opción</h2>
+    </div>
+    <div class="reco">
+      <p>
+        La <b>A</b> resuelve el problema de fondo sin esconder nada: la mitad del largo de hoy sale de repetir
+        el aeropuerto de escala como llegada de un tramo y salida del siguiente. Un nodo por aeropuerto lo saca
+        de raíz, y de paso deja un lugar natural para el aviso del cambio de aeropuerto.
+      </p>
+      <p>
+        La <b>B</b> es la A con una tapa. Con una sola opción de vuelo no hace falta; con dos o tres, que es
+        cuando aparece el choclo, deja la comparación arriba y el detalle a un toque. Probá el control en
+        <span class="mono">3</span> y se ve la diferencia.
+      </p>
+      <p>
+        La <b>E</b> es la que mejor mide y la que peor sirve para esto. American la puede usar porque su pasajero
+        ya compró y vuelve a mirar el mismo viaje muchas veces. Acá el pasajero abre la cotización una vez y
+        decide: si tiene que tocar seis banderitas para saber por dónde pasa, no las toca. Además el PDF
+        imprime los seis tramos igual, así que el ahorro es solo de pantalla.
+      </p>
+      <p style="color:var(--ink-3);font-size:14px">
+        La <b>C</b> la dejo sobre la mesa por si Amparo y las chicas la prefieren para mandar por WhatsApp:
+        es la que menos ocupa con todo a la vista, pero se lee como un horario de aeropuerto.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Para arrancar</p>
+      <h2>Qué hay que decidir y qué hay que cargar</h2>
+    </div>
+    <div class="pendientes">
+      <div class="pend">
+        <span class="n">01</span>
+        <p><b>Elegir opción.</b> Con eso arranco el diseño fino y lo pruebo con un PNR de cinco o seis escalas, como quedamos.</p>
+      </div>
+      <div class="pend">
+        <span class="n">02</span>
+        <p><b>Leer la fecha de llegada del PNR.</b> Es un cambio en el parser, no en el diseño. Sin eso el «+1 día» sigue mintiendo en los vuelos largos, y ninguna opción puede decir «llega el martes 3».</p>
+      </div>
+      <div class="pend">
+        <span class="n">03</span>
+        <p><b>Cargar Avalon, Qantas y Jetstar en Catálogos.</b> Es carga de datos, la hacen ustedes desde el panel. Ojo que puede haber más códigos faltando: hoy hay 107 aeropuertos cargados.</p>
+      </div>
+      <div class="pend">
+        <span class="n">04</span>
+        <p><b>Confirmar el aviso de cambio de aeropuerto.</b> ¿Lo redacta el vendedor o lo pone el sistema solo cuando detecta que llega a un aeropuerto y sale de otro?</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cabezal">
+      <p class="eyebrow">Lo demás de la llamada</p>
+      <h2>Anotado, fuera de esta página</h2>
+    </div>
+    <div class="pendientes">
+      <div class="pend">
+        <span class="n">17:41</span>
+        <p><b>Opción de vuelo dentro de las notas.</b> Un botón «agregar vuelo» al lado del campo libre, con el itinerario abajo del texto. Una sola opción extra: si hay más, van por WhatsApp.</p>
+      </div>
+      <div class="pend">
+        <span class="n">24:53</span>
+        <p><b>Solo vuelo con más de un itinerario.</b> Opción 1, opción 2, apiladas. Depende de qué diseño salga de acá.</p>
+      </div>
+      <div class="pend">
+        <span class="n">21:51</span>
+        <p><b>PREX como forma de pago</b>, en transferencia y también en los paquetes de la web.</p>
+      </div>
+      <div class="pend">
+        <span class="n">23:27</span>
+        <p><b>Pie de la cotización:</b> sacar el logo repetido, dejar traveloz.com.uy sin subrayar y con la misma tipografía que el resto.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Datos del PNR <span class="mono">RP/MVDUY2182</span> y del catálogo de producción, leídos el 3 de setiembre de 2026.
+      Las pantallas son maquetas para decidir el diseño: todavía no están en el cotizador.
+    </p>
+    <p>
+      Referencias:
+      <a href="https://support.google.com/faqs/answer/2736487?hl=en">avisos y filtros de Google Flights</a> ·
+      <a href="https://www.futuretravelexperience.com/2026/05/american-airlines-reimagines-mobile-app-as-a-comprehensive-customer-centric-travel-companion/">rediseño de la app de American Airlines</a> ·
+      <a href="https://news.aa.com/news/news-details/2026/Americans-digital-upgrades-put-more-control-at-customers-fingertips-MKG-OTH-04/default.aspx">novedades digitales de American</a>
+    </p>
+  </footer>
+
+</div>
+
+<script>
+/* ── El viaje, tal como sale del PNR ──────────────────────── */
+var APTO = {
+  MVD: { ciudad: "Montevideo",        apto: "Carrasco" },
+  SCL: { ciudad: "Santiago de Chile", apto: "Pudahuel" },
+  MEL: { ciudad: "Melbourne",         apto: "Tullamarine" },
+  DPS: { ciudad: "Bali",              apto: "Ngurah Rai" },
+  AVV: { ciudad: "Melbourne",         apto: "Avalon" }
+};
+
+/* Un trayecto es una cadena de nodos. Cada nodo es un aeropuerto con la hora
+   a la que se llega y/o la hora a la que se sale: la escala no se repite. */
+var VIAJE = [
+  {
+    rumbo: "Ida", de: "Montevideo", a: "Bali",
+    sale: "18:45", saleDia: "dom 1 nov",
+    llega: "10:00", llegaDia: "mar 3 nov",
+    escalas: "Santiago de Chile y Melbourne",
+    nodos: [
+      { cod: "MVD", out: "18:45", dia: "dom 1 nov" },
+      { cod: "SCL", in: "21:15", out: "01:05", dia: "dom 1 → lun 2 nov" },
+      { cod: "MEL", in: "05:25", out: "07:00", dia: "mar 3 nov", mas: true },
+      { cod: "DPS", in: "10:00", dia: "mar 3 nov" }
+    ],
+    vuelos: [
+      { n: "QF 3934", op: "opera LATAM" },
+      { n: "QF 3960", op: "opera LATAM" },
+      { n: "QF 5425", op: "opera Jetstar" }
+    ],
+    cambio: null
+  },
+  {
+    rumbo: "Vuelta", de: "Bali", a: "Montevideo",
+    sale: "23:20", saleDia: "lun 30 nov",
+    llega: "17:48", llegaDia: "mar 1 dic",
+    escalas: "Melbourne y Santiago de Chile",
+    nodos: [
+      { cod: "DPS", out: "23:20", dia: "lun 30 nov" },
+      { cod: "AVV", in: "07:55", dia: "mar 1 dic", mas: true },
+      { cod: "MEL", out: "12:30", dia: "mar 1 dic" },
+      { cod: "SCL", in: "11:20", out: "15:35", dia: "mar 1 dic" },
+      { cod: "MVD", in: "17:48", dia: "mar 1 dic" }
+    ],
+    vuelos: [
+      { n: "QF 5462", op: "opera Jetstar" },
+      null,
+      { n: "QF 3961", op: "opera LATAM" },
+      { n: "QF 3932", op: "opera LATAM" }
+    ],
+    /* el aviso va después del nodo cuyo índice se nombra acá */
+    cambio: 1
+  }
+];
+
+/* los mismos tramos, planos, para las opciones C, D y E */
+var TRAMOS = [
+  { t: 0, n: "QF 3934", op: "LATAM",   o: "MVD", d: "SCL", s: "18:45", l: "21:15", dia: "dom 1 nov",  mas: false, esp: "3 h 50" },
+  { t: 0, n: "QF 3960", op: "LATAM",   o: "SCL", d: "MEL", s: "01:05", l: "05:25", dia: "lun 2 nov",  mas: true,  esp: "1 h 35" },
+  { t: 0, n: "QF 5425", op: "Jetstar", o: "MEL", d: "DPS", s: "07:00", l: "10:00", dia: "mar 3 nov",  mas: false, esp: null },
+  { t: 1, n: "QF 5462", op: "Jetstar", o: "DPS", d: "AVV", s: "23:20", l: "07:55", dia: "lun 30 nov", mas: true,  esp: null },
+  { t: 1, n: "QF 3961", op: "LATAM",   o: "MEL", d: "SCL", s: "12:30", l: "11:20", dia: "mar 1 dic",  mas: false, esp: "4 h 15" },
+  { t: 1, n: "QF 3932", op: "LATAM",   o: "SCL", d: "MVD", s: "15:35", l: "17:48", dia: "mar 1 dic",  mas: false, esp: null }
+];
+
+/* El aviso es un flex de dos hijos: el signo y el texto. El texto va envuelto
+   en su propio span o cada <b> se convierte en un ítem del flex y el renglón
+   se parte en columnas. */
+var AVISO_CAMBIO =
+  '<span aria-hidden="true">⚠</span><span>Cambio de aeropuerto en Melbourne: llegás a '
+  + "<b>Avalon</b> y salís de <b>Tullamarine</b>. Son dos aeropuertos distintos.</span>";
+
+var OPCIONES = [
+  { letra: "A", nombre: "Riel",      quien: "",                  cola: "Un nodo por aeropuerto, no uno por vuelo. La escala se lee de un lado y del otro en el mismo renglón." },
+  { letra: "B", nombre: "Plegado",   quien: "",                  cola: "El viaje entero cerrado y sin scroll. El detalle aparece al tocar, y en el PDF sale siempre abierto." },
+  { letra: "C", nombre: "Renglones", quien: "como las apps",     cola: "Un renglón por tramo. Lo más compacto con todo a la vista, al precio de leerse como una tabla." },
+  { letra: "D", nombre: "Hoy",       quien: "",                  cola: "Lo que está en producción, para comparar contra algo real y no contra un recuerdo." },
+  { letra: "E", nombre: "Foco",      quien: "como American",     cola: "Banderitas arriba y un tramo por vez. La pantalla más corta, al precio de seis toques." }
+];
+
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function nombreApto(cod) {
+  var a = APTO[cod];
+  return a ? { ciudad: a.ciudad, apto: a.apto + " (" + cod + ")" } : { ciudad: cod, apto: "" };
+}
+
+/* ── A · riel ─────────────────────────────────────────────── */
+function riel(tr) {
+  var h = '<div class="riel">';
+  tr.nodos.forEach(function (nd, i) {
+    var a = nombreApto(nd.cod);
+    var ultimo = i === tr.nodos.length - 1;
+    var horas = (nd.in && nd.out)
+      ? esc(nd.in) + '<span class="b">' + esc(nd.out) + "</span>"
+      : esc(nd.in || nd.out);
+    h += '<div class="hora mono">' + horas + "</div>";
+    h += '<div class="via"><span class="pto' + (ultimo ? " fin" : "") + '"></span>'
+       + (ultimo ? "" : '<span class="tubo"></span>') + "</div>";
+    h += '<div class="lugar"><div class="ciudad">' + esc(a.ciudad) + "</div>"
+       + (a.apto ? '<div class="apto">' + esc(a.apto) + "</div>" : "")
+       + '<div class="dia">' + esc(nd.dia) + (nd.mas ? ' <span class="mas1">+1 día</span>' : "") + "</div></div>";
+    var v = tr.vuelos[i];
+    if (v) h += '<div class="vuelo"><b>' + esc(v.n) + "</b> · " + esc(v.op) + "</div>";
+    if (tr.cambio === i) h += '<div class="aviso">' + AVISO_CAMBIO + "</div>";
+  });
+  return h + "</div>";
+}
+
+/* ── B · plegado ──────────────────────────────────────────── */
+function plegado(tr) {
+  return '<details class="plegado">'
+    + "<summary>"
+    +   '<div class="pl-rumbo">' + esc(tr.de) + " → " + esc(tr.a) + "</div>"
+    +   '<div class="pl-fechas">'
+    +     '<div><span class="k">Sale</span><span class="v mono">' + esc(tr.sale)
+    +       "<small>" + esc(tr.saleDia) + "</small></span></div>"
+    +     '<div><span class="k">Llega</span><span class="v mono">' + esc(tr.llega)
+    +       "<small>" + esc(tr.llegaDia) + "</small></span></div>"
+    +   "</div>"
+    +   '<div class="pl-pie"><span>2 escalas · ' + esc(tr.escalas) + '</span><span class="abrir">Ver tramos</span></div>'
+    + "</summary>"
+    + '<div class="pl-cuerpo">' + riel(tr) + "</div>"
+    + "</details>";
+}
+
+/* ── C · renglones ────────────────────────────────────────── */
+function renglones(idx) {
+  var h = '<div class="rengl">';
+  TRAMOS.filter(function (t) { return t.t === idx; }).forEach(function (t, i) {
+    var o = nombreApto(t.o), d = nombreApto(t.d);
+    h += '<div class="fila">'
+      +   '<div class="horas mono">' + esc(t.s) + '<br><span class="llg">' + esc(t.l) + "</span></div>"
+      +   '<div class="par">'
+      +     '<div class="c">' + esc(o.ciudad) + " <small>" + esc(o.apto) + "</small></div>"
+      +     '<div class="c">' + esc(d.ciudad) + " <small>" + esc(d.apto) + "</small>"
+      +       (t.mas ? ' <span class="mas1">+1 día</span>' : "") + "</div>"
+      +     '<div class="meta"><span>' + esc(t.dia) + "</span><b>" + esc(t.n) + "</b><span>opera "
+      +       esc(t.op) + "</span></div>"
+      +   "</div></div>";
+    if (idx === 1 && i === 0) h += '<div class="aviso" style="margin:10px 0">' + AVISO_CAMBIO + "</div>";
+  });
+  return h + "</div>";
+}
+
+/* ── D · lo que hay hoy ───────────────────────────────────── */
+function punto(a, hora, mas) {
+  return '<div class="hoy-pto"><div class="l1"><span class="cd">' + esc(a.ciudad) + "</span>"
+    + '<span class="hr">— ' + esc(hora) + " hs" + (mas ? ' <span class="mas1">+1 día</span>' : "") + "</span></div>"
+    + (a.apto ? '<div class="ap">' + esc(a.apto) + "</div>" : "") + "</div>";
+}
+function hoy(idx) {
+  var h = '<div class="hoy-card">';
+  TRAMOS.filter(function (t) { return t.t === idx; }).forEach(function (t) {
+    var o = nombreApto(t.o), d = nombreApto(t.d);
+    h += '<div class="hoy-tramo">'
+      +   '<div class="hoy-cia"><span class="ico">✈</span><span class="n">' + esc(t.op)
+      +     '</span><span class="c">· ' + esc(t.n) + "</span></div>"
+      +   '<div class="hoy-ruta"><div class="hoy-via">'
+      +     '<span class="p" style="background:var(--scr-violet)"></span><span class="t"></span>'
+      +     '<span class="p" style="background:var(--scr-coral)"></span></div>'
+      +     '<div style="flex:1;min-width:0">' + punto(o, t.s, false)
+      +       '<div style="margin-top:26px">' + punto(d, t.l, t.mas) + "</div></div>"
+      +   "</div></div>";
+    if (t.esp) h += '<div class="hoy-esp">Espera de <b style="margin-left:4px">' + esc(t.esp) + "</b></div>";
+  });
+  return h + "</div>";
+}
+
+/* ── E · foco por tramo, a la American ────────────────────── */
+function foco(marca) {
+  var chips = TRAMOS.map(function (t, i) {
+    return '<button type="button" data-foco="' + marca + '" data-i="' + i + '" aria-pressed="'
+      + (i === 0 ? "true" : "false") + '">' + esc(t.o) + "→" + esc(t.d) + "</button>";
+  }).join("");
+
+  var fichas = TRAMOS.map(function (t, i) {
+    var o = nombreApto(t.o), d = nombreApto(t.d);
+    var avisa = i === 4;   /* el tramo que sale de Tullamarine después de aterrizar en Avalon */
+    return '<div class="foco" data-ficha="' + marca + '" data-i="' + i + '"' + (i === 0 ? "" : " hidden") + ">"
+      + '<div class="cuenta">Tramo ' + (i + 1) + " de 6 · " + (t.t === 0 ? "Ida" : "Vuelta") + "</div>"
+      + '<div class="riel">'
+      +   '<div class="hora mono">' + esc(t.s) + "</div>"
+      +   '<div class="via"><span class="pto"></span><span class="tubo"></span></div>'
+      +   '<div class="lugar"><div class="ciudad">' + esc(o.ciudad) + "</div>"
+      +     '<div class="apto">' + esc(o.apto) + '</div><div class="dia">' + esc(t.dia) + "</div></div>"
+      +   '<div class="hora mono">' + esc(t.l) + "</div>"
+      +   '<div class="via"><span class="pto fin"></span></div>'
+      +   '<div class="lugar"><div class="ciudad">' + esc(d.ciudad) + "</div>"
+      +     '<div class="apto">' + esc(d.apto) + "</div>"
+      +     '<div class="dia">' + (t.mas ? '<span class="mas1">+1 día</span>' : esc(t.dia)) + "</div></div>"
+      + "</div>"
+      + (avisa ? '<div class="aviso" style="margin:0">' + AVISO_CAMBIO + "</div>" : "")
+      + '<div class="vuelo" style="padding:0"><b class="mono">' + esc(t.n) + "</b> · opera " + esc(t.op) + "</div>"
+      + '<div class="pasos"><button type="button" data-paso="' + marca + '" data-d="-1"'
+      +   (i === 0 ? " disabled" : "") + ">‹ Anterior</button>"
+      + '<button type="button" data-paso="' + marca + '" data-d="1"'
+      +   (i === 5 ? " disabled" : "") + ">Siguiente ›</button></div>"
+      + "</div>";
+  }).join("");
+
+  return '<div class="banderitas">' + chips + "</div>" + fichas;
+}
+
+/* ── armado ───────────────────────────────────────────────── */
+function bloque(letra, idx) {
+  var tr = VIAJE[idx];
+  if (letra === "A") return riel(tr);
+  if (letra === "B") return plegado(tr);
+  if (letra === "C") return renglones(idx);
+  return hoy(idx);
+}
+
+function pantalla(letra, nOps, id) {
+  var h = "";
+  for (var k = 0; k < nOps; k++) {
+    if (nOps > 1) {
+      h += '<div class="op-tit">Opción de vuelo ' + (k + 1)
+         + (k === 0 ? "<span>la más barata</span>" : "<span>+ USD " + (k * 140) + " por pasajero</span>") + "</div>";
+    }
+    if (letra === "E") {
+      h += foco(id + "-" + k);
+    } else {
+      VIAJE.forEach(function (tr, i) {
+        h += '<div class="tray-tit"><span>' + esc(tr.rumbo) + "</span><em>" + esc(tr.saleDia) + "</em></div>";
+        h += bloque(letra, i);
+      });
+    }
+  }
+  return '<div class="lienzo" id="lz-' + id + '"><div class="sec-tit">Itinerario de vuelos</div>' + h + "</div>";
+}
+
+var banco = document.getElementById("banco");
+var ancho = 390, nOps = 1;
+
+function pintar() {
+  banco.style.setProperty("--ancho", ancho + "px");
+  banco.innerHTML = OPCIONES.map(function (o) {
+    return '<article class="opcion">'
+      + '<div class="rotulo"><div class="linea"><span class="letra">' + o.letra + "</span>"
+      +   "<h3>" + esc(o.nombre) + "</h3>"
+      +   (o.quien ? '<span class="quien">' + esc(o.quien) + "</span>" : "")
+      +   '</div><p>' + esc(o.cola) + "</p></div>"
+      + '<div class="tel"><div class="pantalla" id="scr-' + o.letra + '">'
+      +   pantalla(o.letra, nOps, o.letra) + "</div></div>"
+      + '<div class="medida"><span class="cifra" id="med-' + o.letra + '">—</span>'
+      +   '<span id="pan-' + o.letra + '"></span></div>'
+      + '<div class="barra"><i id="bar-' + o.letra + '" style="width:0"></i></div>'
+      + "</article>";
+  }).join("");
+  medir();
+}
+
+function medir() {
+  var altos = OPCIONES.map(function (o) {
+    var el = document.getElementById("lz-" + o.letra);
+    return el ? Math.round(el.getBoundingClientRect().height) : 0;
+  });
+  var tope = Math.max.apply(null, altos.concat([1]));
+  OPCIONES.forEach(function (o, i) {
+    var alto = altos[i], pantallas = alto / 700;
+    document.getElementById("med-" + o.letra).textContent = alto.toLocaleString("es-UY") + " px";
+    document.getElementById("pan-" + o.letra).textContent =
+      pantallas <= 1.02 ? "entra sin scrollear" : pantallas.toFixed(1).replace(".", ",") + " pantallas";
+    document.getElementById("bar-" + o.letra).style.width = Math.round((alto / tope) * 100) + "%";
+  });
+  document.getElementById("comparador").innerHTML = OPCIONES.map(function (o, i) {
+    return '<span class="cmp"><span class="l">' + o.letra + "</span>"
+      + '<span class="b"><i style="width:' + Math.round((altos[i] / tope) * 100) + '%"></i></span>'
+      + '<span class="px">' + altos[i].toLocaleString("es-UY") + "</span></span>";
+  }).join("");
+}
+
+function segmento(id, alSoltar) {
+  var caja = document.getElementById(id);
+  caja.addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    Array.prototype.forEach.call(caja.querySelectorAll("button"), function (x) {
+      x.setAttribute("aria-pressed", String(x === b));
+    });
+    alSoltar(Number(b.dataset.v));
+  });
+}
+
+segmento("ctrl-ancho", function (v) { ancho = v; pintar(); });
+segmento("ctrl-ops", function (v) { nOps = v; pintar(); });
+
+/* La opción E: las banderitas y los pasos mueven qué tramo está a la vista.
+   Un solo listener en el banco, que se vuelve a pintar entero al cambiar los
+   controles de arriba. */
+function mostrarTramo(marca, i) {
+  Array.prototype.forEach.call(
+    banco.querySelectorAll('[data-ficha="' + marca + '"]'),
+    function (f) { f.hidden = Number(f.dataset.i) !== i; });
+  Array.prototype.forEach.call(
+    banco.querySelectorAll('[data-foco="' + marca + '"]'),
+    function (c) { c.setAttribute("aria-pressed", String(Number(c.dataset.i) === i)); });
+  medir();
+}
+banco.addEventListener("click", function (e) {
+  var chip = e.target.closest("[data-foco]");
+  if (chip) { mostrarTramo(chip.dataset.foco, Number(chip.dataset.i)); return; }
+  var paso = e.target.closest("[data-paso]");
+  if (!paso) return;
+  var marca = paso.dataset.paso;
+  var visible = banco.querySelector('[data-ficha="' + marca + '"]:not([hidden])');
+  var i = Number(visible.dataset.i) + Number(paso.dataset.d);
+  if (i >= 0 && i <= 5) mostrarTramo(marca, i);
+});
+
+/* abrir o cerrar una tarjeta de la B cambia el alto: hay que volver a medir */
+banco.addEventListener("toggle", medir, true);
+
+pintar();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir);
+</script>
+</body>
+</html>
