@@ -170,7 +170,7 @@ export function PasajerosForm({
     return (
       <Exito
         titulo={state.message}
-        detalle="Te va a llegar la confirmación por WhatsApp o email. Si necesitás corregir algo, escribile a tu asesor."
+        detalle="Tu asesor ya recibió el aviso y se comunica con vos. Si necesitás corregir algo, escribile directo."
       />
     );
   }

@@ -200,7 +200,7 @@ export async function getSolicitud(token: string): Promise<SolicitudView | null>
 // Envío de pasajeros
 // ---------------------------------------------------------------------------
 
-const EXITO_PASAJEROS = "¡Listo! Recibimos los datos y tu asesor ya está en tema.";
+const EXITO_PASAJEROS = "¡Listo! Recibimos tus datos y tu asesor ya está en el tema.";
 
 export async function submitEnvioPasajeros(
   slug: string,

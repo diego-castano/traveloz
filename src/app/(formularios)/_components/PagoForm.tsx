@@ -71,8 +71,10 @@ function formatearVencimiento(raw: string): string {
  * número de tarjeta, y el cliente no quiere ni un pixel de rojo cerca de eso
  * ("transmite alarma"). Pisa acá las variables que ui.tsx expone
  * (`--form-acento` / `--form-acento-sombra`, con fallback a coral) por el
- * violeta del cotizador. PasajerosForm no las setea, así que sigue coral sin
- * tocarlo.
+ * violeta del cotizador, y con eso viaja todo el formulario: campos y botón.
+ *
+ * La pantalla de éxito ya no las necesita —el tick va violeta por defecto en
+ * los dos formularios—, así que el pisado quedó solo para el form.
  */
 const acentoVars = {
   "--form-acento": "#785AE5",
@@ -99,12 +101,10 @@ export function PagoForm({
 
   if (state?.ok) {
     return (
-      <div style={acentoVars}>
-        <Exito
-          titulo={state.message}
-          detalle="Por seguridad no guardamos una copia visible: si necesitás cambiar algo, escribile a tu asesor y te manda un link nuevo."
-        />
-      </div>
+      <Exito
+        titulo={state.message}
+        detalle="Por seguridad no guardamos una copia visible: si necesitás cambiar algo, escribile a tu asesor y te manda un link nuevo."
+      />
     );
   }
 

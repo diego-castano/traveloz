@@ -162,7 +162,14 @@ export function SubmitButton({
   );
 }
 
-/** Pantalla de éxito inline: el formulario se reemplaza por el check. */
+/** Pantalla de éxito inline: el formulario se reemplaza por el check.
+ *
+ * El círculo del tick NO sigue a `--form-acento`: va violeta siempre. Un tilde
+ * rojo sobre un mensaje de "salió todo bien" se lee como un error, y encima
+ * dejaba las dos pantallas distintas —pago en violeta, pasajeros en coral—
+ * porque el acento se pisaba por formulario (pedido de Gero, 04/09). El token
+ * queda expuesto por si algún día hace falta pisarlo, pero el valor por
+ * defecto ya no es el color de alarma. */
 export function Exito({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
     <div className="flex flex-col items-center rounded-[14px] border border-emerald-200/70 bg-emerald-50/60 px-6 py-12 text-center">
@@ -172,8 +179,8 @@ export function Exito({ titulo, detalle }: { titulo: string; detalle: string }) 
         transition={{ type: "spring", stiffness: 320, damping: 18 }}
         className="mb-4 flex h-14 w-14 items-center justify-center rounded-full"
         style={{
-          background: "var(--form-acento, #F43E55)",
-          boxShadow: "0 10px 24px -12px var(--form-acento-sombra, rgba(244,62,85,0.9))",
+          background: "var(--form-exito, #785AE5)",
+          boxShadow: "0 10px 24px -12px var(--form-exito-sombra, rgba(120,90,229,0.9))",
         }}
       >
         <motion.span
