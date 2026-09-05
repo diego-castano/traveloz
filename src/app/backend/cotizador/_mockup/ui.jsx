@@ -391,7 +391,7 @@ function AutoCiudad({ value, onChange, onPick, placeholder, excluir = [], grande
  * toast del cotizador; sin él quedan escritos dentro del formulario, que es lo
  * que ve el vendedor de todas formas.
  */
-function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
+function BuscadorHotel({ ciudad, valor, onPick, onLibre, onVaciar, autoFocus, onToast }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
@@ -516,11 +516,33 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, autoFocus, onToast }) {
     <div ref={box} style={{ position:"relative" }}>
       <div style={{ position:"relative" }}>
         <Search size={14} style={{ position:"absolute", left:11, top:"50%", transform:"translateY(-50%)", color:"var(--n300)" }} />
-        <input className="in" style={{ paddingLeft:32 }} autoFocus={autoFocus}
+        <input className="in" style={{ paddingLeft:32, paddingRight: valor && onVaciar ? 32 : undefined }}
+          autoFocus={autoFocus}
           value={open ? q : (valor || "")} placeholder={ciudad ? `Buscar hotel en ${ciudad}…` : "Buscar hotel…"}
           onFocus={() => { setOpen(true); setQ(""); setIdx(0); }}
           onChange={(e) => { setQ(e.target.value); setIdx(0); setOpen(true); }}
           onKeyDown={key} />
+        {/* Vaciar el tramo. Hasta acá el buscador tenía dos salidas —elegir del
+            catálogo o escribir a mano— y ninguna dejaba el hotel sin nada. Al
+            duplicar una opción los hoteles venían con los del original y no
+            había forma de sacarlos: enfocar el campo lo mostraba en blanco,
+            pero eso era solo la búsqueda vacía, y al cerrar el panel volvía el
+            de antes. (Gero, 04/09.)
+
+            El `preventDefault` del mousedown es lo que evita que el input
+            pierda el foco antes de que corra el click. */}
+        {valor && onVaciar && (
+          <button type="button" tabIndex={-1} title="Quitar el hotel de este tramo"
+            aria-label="Quitar el hotel de este tramo"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => { onVaciar(); setQ(""); setOpen(false); }}
+            style={{ position:"absolute", right:7, top:"50%", transform:"translateY(-50%)",
+              width:21, height:21, padding:0, border:0, borderRadius:7, cursor:"pointer",
+              display:"grid", placeItems:"center",
+              background:"var(--sunk)", color:"var(--n500)" }}>
+            <X size={11} />
+          </button>
+        )}
       </div>
       {open && (
         <div className="a-slide" style={{ position:"absolute", top:"calc(100% + 5px)", left:0, right:0, zIndex:40,

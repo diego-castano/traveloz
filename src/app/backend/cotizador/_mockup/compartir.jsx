@@ -413,45 +413,28 @@ function ModalCompartir({
                   <Loader2 size={13} className="spin" /> Generando el link…
                 </div>
               )}
-              {!link && !generando && (
-                <Btn variant="p" style={{ width:"100%", height:40, marginBottom:11 }}
-                  disabled={!presupuestoId} onClick={() => generar("whatsapp")}>
-                  <Link2 size={14} /> Generar el link
-                </Btn>
-              )}
               {cajaLink}
 
-              <div style={{ padding:"12px 13px", borderRadius:12, background:"var(--wa-bg)",
-                border:"1px solid rgba(59,191,173,.28)", whiteSpace:"pre-wrap",
-                fontSize:12, lineHeight:1.6, color:"var(--wa-fg)", maxHeight:180, overflowY:"auto" }}>
-                {vistaMensaje}
-              </div>
+              {/* Dos pasos y nada más: generar y copiar. Antes acá abajo iba el
+                  mensaje armado en un cuadro, con "Abrir WhatsApp" y "Copiar
+                  mensaje". El vendedor ya escribe el saludo en su propio
+                  WhatsApp, así que era una pantalla larga para pegar una URL.
+                  (Gero, 04/09.)
 
-              <div style={{ display:"flex", gap:7, marginTop:12 }}>
-                {telWa ? (
-                  <Btn variant="p" style={{ flex:1, height:42 }} disabled={!presupuestoId || generando}
-                    onClick={abrirWhatsApp}>
-                    {generando
-                      ? <><Loader2 size={15} className="spin" /> Generando el link…</>
-                      : <><Smartphone size={15} /> Abrir WhatsApp</>}
-                  </Btn>
-                ) : (
-                  <Btn variant="p" style={{ flex:1, height:42 }} disabled={!presupuestoId || generando}
-                    onClick={copiarMensaje}>
-                    {copiado === "msg" ? <><Check size={15} /> Copiado</> : <><Copy size={15} /> Copiar mensaje</>}
-                  </Btn>
-                )}
-                {telWa && (
-                  <Btn style={{ height:42 }} disabled={!presupuestoId || generando}
-                    title="Copiar el mensaje al portapapeles" onClick={copiarMensaje}>
-                    {copiado === "msg" ? <Check size={14} /> : <Copy size={14} />}
-                  </Btn>
-                )}
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:10, fontSize:11.5, color:"var(--n400)" }}>
-                <Smartphone size={12} style={{ color:"var(--teal-2)" }} />
-                {tel ? `El pasajero está en ${tel}. El mensaje sale desde tu WhatsApp.` : "Sin teléfono cargado — copiá el mensaje y pegalo donde lo tengas."}
-              </div>
+                  El mensaje no se fue a ningún lado: sigue en el bloque
+                  "Mensaje al pasajero" del editor, encabeza el email y se
+                  imprime arriba de la ficha del pasajero. */}
+              <Btn variant="p" style={{ width:"100%", height:42, marginTop: link ? 12 : 0 }}
+                disabled={!presupuestoId || generando}
+                onClick={link ? copiarLink : () => generar("whatsapp")}>
+                {generando
+                  ? <><Loader2 size={15} className="spin" /> Generando el link…</>
+                  : link
+                    ? (copiado === "url"
+                        ? <><Check size={15} /> Link copiado</>
+                        : <><Copy size={15} /> Copiar el link</>)
+                    : <><Link2 size={15} /> Generar el link</>}
+              </Btn>
             </>
           )}
 

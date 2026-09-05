@@ -1683,7 +1683,14 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                                     set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
                                       d.opciones[i].hoteles[hi] = { ...prev, hotelId:null, libre:txt,
                                         cat: prev.cat || 0, regimen: prev.regimen || regimenDeTramo(hi) }; });
-                                  }} />
+                                  }}
+                                  /* El tramo queda sin hotel y sin estrellas, pero conserva el
+                                     régimen: ese lo manda el destino, no el alojamiento. Aguas
+                                     abajo el vacío ya estaba contemplado —la ficha y el PDF
+                                     dicen "A definir"— y el precio sale de las tarifas de la
+                                     habitación, así que no se mueve. */
+                                  onVaciar={() => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
+                                    d.opciones[i].hoteles[hi] = { ...prev, hotelId:null, libre:"", cat:0 }; })} />
                               </div>
                               <select className="in" style={{ flex:"0 1 190px", height:38, fontSize:12 }}
                                 title="Régimen de este hotel" value={h.regimen || ""}

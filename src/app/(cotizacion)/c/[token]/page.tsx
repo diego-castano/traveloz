@@ -26,6 +26,7 @@ import { SITE_BASE_URL } from "@/lib/datos-email";
 import { COTIZADOR_SETTINGS } from "@/lib/site-settings-bootstrap";
 import { parseContenido, VIGENCIA_DEFAULT } from "@/lib/presupuesto/schema";
 import { contenidoPublico } from "@/lib/presupuesto/publico";
+import { destinoFinal } from "@/lib/presupuesto/destino";
 import { TOKEN_RE } from "@/lib/presupuesto/links";
 import { proxyThumbUrl } from "@/components/lib/image-loader";
 import CotizacionPublica from "./CotizacionPublica";
@@ -37,12 +38,107 @@ const log = logger.child({ module: "c/[token]" });
 // el vendedor la reactivó hace un minuto, el pasajero la ve viva.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+const MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+/** "2026-10-01" → "1 de octubre de 2026". Se parsea a mano: `new Date` con una
+ *  fecha pelada la lee en UTC y en Montevideo devuelve el día anterior. */
+function fechaLarga(iso: unknown): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ""));
+  if (!m) return "";
+  const mes = MESES[Number(m[2]) - 1];
+  return mes ? `${Number(m[3])} de ${mes.toLowerCase()} de ${m[1]}` : "";
+}
+
+/** Lo que ve quien llega con un token que no existe, vencido o mal formado.
+ *  Es también el piso de la vista previa: nunca se muestra menos que esto. */
+const META_BASE: Metadata = {
   title: "Tu cotización · TravelOz",
+  description: "Tu propuesta de viaje, con el itinerario, los hoteles y el precio.",
   // Un link con el nombre, el destino y el precio de una persona no entra a
   // ningún buscador. Nunca.
   robots: { index: false, follow: false, nocache: true },
+  openGraph: {
+    type: "website",
+    siteName: "TravelOz",
+    title: "Tu cotización · TravelOz",
+    description: "Tu propuesta de viaje, con el itinerario, los hoteles y el precio.",
+    images: [{ url: "/og-cotizacion.png", width: 1200, height: 630, alt: "TravelOz" }],
+  },
+  twitter: { card: "summary_large_image", images: ["/og-cotizacion.png"] },
 };
+
+/**
+ * La vista previa del link, que es lo primero que ve el pasajero en WhatsApp.
+ *
+ * Antes salía "Tu cotización · TravelOz" con la descripción del panel
+ * ("Panel de administracion TravelOz", heredada del layout raíz) y el favicon
+ * de 192 px estirado. Ahora el título es el destino y el mes de ESTA
+ * cotización —lo mismo que dice el encabezado de la ficha— y la imagen es una
+ * pieza propia de 1200×630.
+ *
+ * Lo que NO entra acá: el nombre del pasajero ni el precio. La vista previa
+ * viaja en el chat y se reenvía sola; el destino y el mes ya son bastante.
+ *
+ * El límite por IP se consulta sin gastarlo (`peek`): la página es la que
+ * decide gastar turno, y si el cupo ya está agotado acá ni se consulta la base
+ * —si no, la metadata sería un oráculo para adivinar tokens por fuera del
+ * limitador.
+ */
+export async function generateMetadata(
+  { params }: { params: { token: string } },
+): Promise<Metadata> {
+  const token = String(params?.token ?? "").trim().toLowerCase();
+  if (!TOKEN_RE.test(token)) return META_BASE;
+  if (!peekFormRate(RATE_SCOPE, ipConfiableDeHeaders(headers())).allowed) return META_BASE;
+
+  try {
+    const link = await prisma.presupuestoLink.findUnique({
+      where: { token },
+      select: {
+        revocadoAt: true,
+        expiraAt: true,
+        presupuesto: { select: { contenido: true, deletedAt: true } },
+      },
+    });
+    if (!link || link.presupuesto.deletedAt || link.revocadoAt) return META_BASE;
+    if (link.expiraAt && link.expiraAt.getTime() < Date.now()) return META_BASE;
+
+    const leido = parseContenido(link.presupuesto.contenido);
+    if (!leido.ok) return META_BASE;
+    const q = leido.contenido;
+    const destino = destinoFinal(q?.titulo?.destino);
+    const mes = q?.titulo?.mes;
+    const anio = q?.titulo?.anio;
+    const cuando = [mes != null ? MESES[mes] : "", anio ? String(anio) : ""]
+      .filter(Boolean).join(" ");
+    const title = [destino, cuando].filter(Boolean).join(", ");
+    if (!title) return META_BASE;
+
+    const noches = (q?.destinos ?? []).reduce(
+      (a: number, d: { noches?: unknown }) => a + (Number(d?.noches) || 0), 0,
+    );
+    const salida = fechaLarga(q?.fechaSalida);
+    const detalle = [
+      noches > 0 ? `${noches} ${noches === 1 ? "noche" : "noches"}` : "",
+      salida ? `Salida ${salida}` : "",
+    ].filter(Boolean).join(" · ");
+    const description = detalle || String(META_BASE.description);
+
+    return {
+      ...META_BASE,
+      title,
+      description,
+      openGraph: { ...META_BASE.openGraph, title, description },
+    };
+  } catch {
+    // La vista previa nunca puede tumbar la página: ante cualquier problema
+    // se cae al piso y el pasajero abre el link igual.
+    return META_BASE;
+  }
+}
 
 /** Ancho de thumbnail que le pedimos al proxy de imágenes. Mismo que el panel. */
 const THUMB_W = 640;
