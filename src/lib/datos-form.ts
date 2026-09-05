@@ -241,7 +241,7 @@ const DEFAULTS: Record<TipoFormularioDato, { titulo: string; texto: string }> = 
   PAGO: {
     titulo: "Datos de pago",
     texto:
-      "Completá los datos de la tarjeta para que tu asesor pueda gestionar el pago. La información viaja cifrada y se elimina automáticamente a las 96 horas.",
+      "Completá los datos de la tarjeta para que tu asesor pueda gestionar el pago. La información viaja cifrada y se elimina automáticamente.",
   },
 };
 

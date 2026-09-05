@@ -260,7 +260,7 @@ export function PagoForm({
           <Lock className="mt-[2px] h-3.5 w-3.5 shrink-0 text-neutral-400" strokeWidth={1.6} />
           <div className="space-y-1">
             <p className="text-[12px] leading-relaxed text-neutral-600">
-              Los datos viajan cifrados y se eliminan automáticamente a las 96 horas.
+              Los datos viajan cifrados y se eliminan automáticamente.
             </p>
             <p className="text-[11.5px] leading-relaxed text-neutral-400">
               Tu asesor los ve una sola vez en el panel con su clave, y Administración de la

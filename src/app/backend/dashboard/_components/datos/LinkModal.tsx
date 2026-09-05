@@ -70,7 +70,7 @@ const COPY: Record<
     titulo: "Datos de tarjeta",
     descripcion: "Tu link seguro para recibir los datos de pago.",
     ayudaForm:
-      "Así lo ve el pasajero: los datos de la tarjeta viajan cifrados y se borran solos a las 96 horas.",
+      "Los datos de la tarjeta viajan cifrados y se borran solos a las 96 horas.",
   },
 };
 

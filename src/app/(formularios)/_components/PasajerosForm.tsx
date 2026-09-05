@@ -382,7 +382,7 @@ export function PasajerosForm({
         {slots.length >= avisoDesde && slots.length < maxPasajeros && (
           <p className="px-0.5 text-[11.5px] leading-relaxed text-neutral-500">
             Son muchos pasajeros para un solo envío. Si el grupo es más grande que{" "}
-            {maxPasajeros}, mandá los datos en varias tandas o coordinalo con tu asesor.
+            {maxPasajeros}, cargá los datos en varios envíos o coordinalo con tu asesor.
           </p>
         )}
 
@@ -397,7 +397,7 @@ export function PasajerosForm({
           </button>
         ) : (
           <p className="rounded-[12px] border border-neutral-900/[0.08] bg-neutral-50/70 px-3.5 py-3 text-[11.5px] leading-relaxed text-neutral-500">
-            Llegaste al máximo de {maxPasajeros} pasajeros por envío. Mandá estos y cargá el resto
+            Alcanzaste el máximo de {maxPasajeros} pasajeros por envío. Enviá estos datos y cargá el resto
             en un envío nuevo.
           </p>
         )}
@@ -476,7 +476,7 @@ export function PasajerosForm({
 
         <p className="flex items-center justify-center gap-1.5 text-center text-[11.5px] leading-snug text-neutral-400">
           <UserRound className="h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />
-          Tus datos van directo a tu asesor y se usan solo para emitir los servicios.
+          Los datos se envían directamente a tu asesor y se utilizan únicamente para emitir los servicios.
         </p>
       </div>
     </form>

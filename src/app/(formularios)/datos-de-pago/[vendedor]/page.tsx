@@ -43,7 +43,7 @@ export default async function DatosDePagoPage({
   const formulario = await getFormularioDato("PAGO");
   if (!formulario.publicado) {
     return (
-      <NoDisponible detalle="El formulario de datos de pago todavía no está habilitado. Escribile a tu asesor y coordinan el pago por otra vía." />
+      <NoDisponible detalle="El formulario de datos de pago todavía no está habilitado. Contactá a tu asesor para coordinar el pago por otra vía." />
     );
   }
 
@@ -51,7 +51,7 @@ export default async function DatosDePagoPage({
   // antes que tener una tarjeta legible en la base.
   if (!bovedaDisponible()) {
     return (
-      <NoDisponible detalle="El formulario de pago no está disponible en este momento. Escribile a tu asesor y coordinan el pago por otra vía." />
+      <NoDisponible detalle="El formulario de pago no está disponible en este momento. Contactá a tu asesor para coordinar el pago por otra vía." />
     );
   }
 

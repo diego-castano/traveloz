@@ -55,7 +55,7 @@ export default async function DatosDePasajerosPage({
   const formulario = await getFormularioDato("PASAJEROS");
   if (!formulario.publicado) {
     return (
-      <NoDisponible detalle="El formulario de datos de pasajeros todavía no está habilitado. Escribile a tu asesor y te avisa apenas esté listo." />
+      <NoDisponible detalle="El formulario de datos de pasajeros todavía no está habilitado. Contactá a tu asesor para más información." />
     );
   }
 
