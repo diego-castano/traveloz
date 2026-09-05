@@ -26,10 +26,11 @@ const PAGO_BANCOS = [
   { src:"/site/img/itau.png",       alt:"Itaú" },
   { src:"/site/img/bbva.png",       alt:"BBVA" },
   { src:"/site/img/banco.png",      alt:"Banco República" },
-  /* PREX todavía no tiene logo en public/site/img: va como texto, en la misma
-     caja que los demás. El día que llegue el PNG, esta línea pasa a
-     { src:"/site/img/prex.png", alt:"PREX" } y se dibuja como los otros. */
-  { texto:"PREX",                   alt:"PREX" },
+  /* El wordmark oficial, sacado del sitio corporativo de Prex. Va en SVG y no
+     en PNG como los demás porque así vino y así imprime mejor. El respaldo de
+     texto de la caja queda igual, para cualquier medio de pago que sumen sin
+     tener el logo a mano. */
+  { src:"/site/img/prex.svg",       alt:"Prex" },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════

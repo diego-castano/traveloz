@@ -41,10 +41,10 @@ const DEFAULT_DATA: FormasDePagoData = {
     { src: "/site/img/itau.png", alt: "Itaú" },
     { src: "/site/img/bbva.png", alt: "BBVA" },
     { src: "/site/img/banco.png", alt: "Banco República" },
-    // PREX todavía no tiene logo en public/site/img. Con `texto` la grilla lo
-    // dibuja igual; el día que llegue el PNG, esta entrada pasa a
-    // { src: "/site/img/prex.png", alt: "PREX" } acá y en /backend/web/pagos.
-    { texto: "PREX", alt: "PREX" },
+    // Wordmark oficial de Prex. El respaldo de `texto` de arriba queda para
+    // cualquier medio de pago que sumen desde /backend/web/pagos sin tener el
+    // logo a mano: así no queda una imagen rota en la grilla.
+    { src: "/site/img/prex.svg", alt: "Prex" },
   ],
 };
 
