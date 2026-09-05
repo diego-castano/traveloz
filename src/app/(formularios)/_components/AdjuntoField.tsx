@@ -105,7 +105,7 @@ export function AdjuntoField({
       setEstado({ fase: "subiendo", progreso: Math.round((e.loaded / e.total) * 100) });
     };
     xhr.onerror = () =>
-      setEstado({ fase: "error", message: "Se cortó la conexión. Probá de nuevo." });
+      setEstado({ fase: "error", message: "Se cortó la conexión. Intente nuevamente." });
     xhr.onload = () => {
       let body: { ok?: boolean; key?: string; message?: string } = {};
       try {
@@ -121,7 +121,7 @@ export function AdjuntoField({
       limpiarPreview();
       setEstado({
         fase: "error",
-        message: body.message ?? "No pudimos subir el archivo. Probá de nuevo.",
+        message: body.message ?? "No pudimos subir el archivo. Intente nuevamente.",
       });
     };
     setEstado({ fase: "subiendo", progreso: 0 });

@@ -263,7 +263,7 @@ export function PagoForm({
               Los datos viajan cifrados y se eliminan automáticamente.
             </p>
             <p className="text-[11.5px] leading-relaxed text-neutral-400">
-              Tu asesor los ve una sola vez en el panel con su clave, y Administración de la
+              Su asesor los ve una sola vez en el panel con su clave, y Administración de la
               agencia los recibe para procesar el cobro. Cada acceso queda registrado.
             </p>
           </div>

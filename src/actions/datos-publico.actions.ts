@@ -63,8 +63,8 @@ const ADMIN_PAGOS_PATH = "/backend/datos/pagos";
 
 export type FormResult = { ok: boolean; message: string };
 
-const ERROR_GENERICO = "No pudimos procesar el envío. Intentá nuevamente.";
-const RATE_MSG = "Se registraron varios envíos desde esta conexión. Aguardá unos minutos e intentá nuevamente.";
+const ERROR_GENERICO = "No pudimos procesar el envío. Intente nuevamente.";
+const RATE_MSG = "Se registraron varios envíos desde esta conexión. Aguarde unos minutos e intente nuevamente.";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -200,7 +200,7 @@ export async function getSolicitud(token: string): Promise<SolicitudView | null>
 // Envío de pasajeros
 // ---------------------------------------------------------------------------
 
-const EXITO_PASAJEROS = "¡Listo! Recibimos tus datos y tu asesor se pondrá en contacto a la brevedad.";
+const EXITO_PASAJEROS = "¡Listo! Recibimos sus datos y su asesor se pondrá en contacto a la brevedad.";
 
 export async function submitEnvioPasajeros(
   slug: string,
@@ -226,7 +226,7 @@ export async function submitEnvioPasajeros(
     // ── Armado del payload desde el FormData ────────────────────────────
     const cantidad = Number(campo(formData, "cantidadPasajeros") ?? "0");
     if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > MAX_PASAJEROS) {
-      return { ok: false, message: "Revisá la cantidad de pasajeros." };
+      return { ok: false, message: "Revise la cantidad de pasajeros." };
     }
 
     const pasajeros: PasajeroInput[] = [];
@@ -404,7 +404,7 @@ export async function submitEnvioPasajeros(
 // Datos de pago
 // ---------------------------------------------------------------------------
 
-const EXITO_PAGO = "¡Listo! Recibimos los datos. Tu asesor se pondrá en contacto a la brevedad.";
+const EXITO_PAGO = "¡Listo! Recibimos los datos. Su asesor se pondrá en contacto a la brevedad.";
 
 export async function submitDatosPago(
   slug: string,
@@ -424,7 +424,7 @@ export async function submitDatosPago(
       log.error("datos.pago.boveda-no-configurada", { slug });
       return {
         ok: false,
-        message: "El formulario de pago no está disponible en este momento. Contactá a tu asesor.",
+        message: "El formulario de pago no está disponible en este momento. Contacte a su asesor.",
       };
     }
 
@@ -457,10 +457,10 @@ export async function submitDatosPago(
     const datos = parsed.data;
 
     if (!luhnValido(datos.numero)) {
-      return { ok: false, message: "El número de tarjeta no es válido. Verificá los datos ingresados." };
+      return { ok: false, message: "El número de tarjeta no es válido. Verifique los datos ingresados." };
     }
     if (!vencimientoVigente(datos.vencimiento)) {
-      return { ok: false, message: "La tarjeta figura como vencida. Verificá la fecha de vencimiento." };
+      return { ok: false, message: "La tarjeta figura como vencida. Verifique la fecha de vencimiento." };
     }
 
     // Lo único que queda legible: pasajero, titular, emisor y últimos 4. El

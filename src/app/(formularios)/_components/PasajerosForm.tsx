@@ -170,7 +170,7 @@ export function PasajerosForm({
     return (
       <Exito
         titulo={state.message}
-        detalle="Tu asesor ya recibió el aviso y se pondrá en contacto a la brevedad."
+        detalle="Su asesor ya recibió el aviso y se pondrá en contacto a la brevedad."
       />
     );
   }
@@ -261,7 +261,7 @@ export function PasajerosForm({
 
                 {avisoPliegue === slot.id && abierto && (
                   <p className="px-3 pb-2.5 text-[11.5px] leading-snug text-neutral-500">
-                    Completá los datos de este pasajero para poder plegarlo.
+                    Complete los datos de este pasajero para poder plegarlo.
                   </p>
                 )}
 
@@ -382,7 +382,7 @@ export function PasajerosForm({
         {slots.length >= avisoDesde && slots.length < maxPasajeros && (
           <p className="px-0.5 text-[11.5px] leading-relaxed text-neutral-500">
             Son muchos pasajeros para un solo envío. Si el grupo es más grande que{" "}
-            {maxPasajeros}, cargá los datos en varios envíos o coordinalo con tu asesor.
+            {maxPasajeros}, cargue los datos en varios envíos o coordínelo con su asesor.
           </p>
         )}
 
@@ -397,7 +397,7 @@ export function PasajerosForm({
           </button>
         ) : (
           <p className="rounded-[12px] border border-neutral-900/[0.08] bg-neutral-50/70 px-3.5 py-3 text-[11.5px] leading-relaxed text-neutral-500">
-            Alcanzaste el máximo de {maxPasajeros} pasajeros por envío. Enviá estos datos y cargá el resto
+            Alcanzó el máximo de {maxPasajeros} pasajeros por envío. Envíe estos datos y cargue el resto
             en un envío nuevo.
           </p>
         )}
@@ -476,7 +476,7 @@ export function PasajerosForm({
 
         <p className="flex items-center justify-center gap-1.5 text-center text-[11.5px] leading-snug text-neutral-400">
           <UserRound className="h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />
-          Los datos se envían directamente a tu asesor y se utilizan únicamente para emitir los servicios.
+          Los datos se envían directamente a su asesor y se utilizan únicamente para emitir los servicios.
         </p>
       </div>
     </form>

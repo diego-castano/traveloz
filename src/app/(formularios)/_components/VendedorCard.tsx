@@ -43,7 +43,7 @@ export function VendedorCard({ vendedor }: { vendedor: VendedorPublicoView }) {
 
       <div className="min-w-0 flex-1">
         <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-neutral-400">
-          Tu asesor
+          Su asesor
         </p>
         <p className="mt-0.5 truncate text-[16px] font-semibold leading-tight text-neutral-900">
           {vendedor.nombre}

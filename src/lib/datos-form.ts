@@ -144,7 +144,7 @@ export const pasajeroSchema = z.object({
   fechaNacimiento: fechaNacimientoSchema,
   documento: textoReq(40, "Cada pasajero necesita su documento de viaje."),
   pasaporte: texto(40).nullable(),
-  email: z.email("Revisá el email de los pasajeros.").max(254),
+  email: z.email("Revise el email de los pasajeros.").max(254),
   telefono: textoReq(40, "Cada pasajero necesita un teléfono.").refine(
     (v) => (v.match(/\d/g) ?? []).length >= 8,
     "El teléfono tiene que tener al menos 8 dígitos.",
@@ -158,9 +158,9 @@ export const pasajeroSchema = z.object({
 });
 
 export const facturaSchema = z.object({
-  rut: textoReq(20, "Ingresá el RUT para la factura."),
-  razonSocial: textoReq(200, "Ingresá la razón social para la factura."),
-  email: z.email("Revisá el email de facturación.").max(254),
+  rut: textoReq(20, "Ingrese el RUT para la factura."),
+  razonSocial: textoReq(200, "Ingrese la razón social para la factura."),
+  email: z.email("Revise el email de facturación.").max(254),
   direccion: texto(200).nullable(),
 });
 
@@ -171,7 +171,7 @@ export const envioPasajerosSchema = z.object({
   factura: facturaSchema.nullable(),
   pasajeros: z
     .array(pasajeroSchema)
-    .min(1, "Cargá al menos un pasajero.")
+    .min(1, "Cargue al menos un pasajero.")
     .max(MAX_PASAJEROS, `No se pueden cargar más de ${MAX_PASAJEROS} pasajeros por envío.`),
 });
 
@@ -185,10 +185,10 @@ export const CUOTAS_OPCIONES = [1, 2, 3, 4, 5, 6] as const;
 export const datosPagoSchema = z.object({
   // El pasajero va PRIMERO y en claro: es con ese nombre que el vendedor y
   // Administración identifican el pago, no con el titular de la tarjeta.
-  pasajeroNombre: textoReq(150, "Ingresá el nombre y apellido del pasajero."),
-  pasajeroDocumento: textoReq(40, "Ingresá el documento del pasajero."),
-  titular: textoReq(150, "Ingresá el nombre del titular tal cual figura en la tarjeta."),
-  documentoTitular: textoReq(40, "Ingresá el documento del titular."),
+  pasajeroNombre: textoReq(150, "Ingrese el nombre y apellido del pasajero."),
+  pasajeroDocumento: textoReq(40, "Ingrese el documento del pasajero."),
+  titular: textoReq(150, "Ingrese el nombre del titular tal cual figura en la tarjeta."),
+  documentoTitular: textoReq(40, "Ingrese el documento del titular."),
   numero: z
     .string()
     .trim()
@@ -203,15 +203,15 @@ export const datosPagoSchema = z.object({
     .nullable()
     .refine(
       (v) => !v || CUOTAS_OPCIONES.some((n) => String(n) === v),
-      "Elegí entre 1 y 6 cuotas.",
+      "Elija entre 1 y 6 cuotas.",
     ),
-  autorizo: z.literal("si", { message: "Necesitamos tu autorización para usar la tarjeta." }),
+  autorizo: z.literal("si", { message: "Necesitamos su autorización para usar la tarjeta." }),
   respuestas: z.array(respuestaSchema).max(40),
 });
 
 /** Primer mensaje legible de un ZodError (zod v4 → `issues`, no `errors`). */
 export function primerError(err: z.ZodError): string {
-  return err.issues[0]?.message ?? "Revisá los datos ingresados.";
+  return err.issues[0]?.message ?? "Revise los datos ingresados.";
 }
 
 // ---------------------------------------------------------------------------
@@ -236,12 +236,12 @@ const DEFAULTS: Record<TipoFormularioDato, { titulo: string; texto: string }> = 
   PASAJEROS: {
     titulo: "Datos de pasajeros",
     texto:
-      "Para emitir tus servicios necesitamos los datos de cada persona que viaja, tal cual figuran en el documento. Cargalos una sola vez y tu asesor se encarga del resto.",
+      "Para emitir sus servicios necesitamos los datos de cada persona que viaja, tal cual figuran en el documento. Cárguelos una sola vez y su asesor se encarga del resto.",
   },
   PAGO: {
     titulo: "Datos de pago",
     texto:
-      "Completá los datos de la tarjeta para que tu asesor pueda gestionar el pago. La información viaja cifrada y se elimina automáticamente.",
+      "Complete los datos de la tarjeta para que su asesor pueda gestionar el pago. La información viaja cifrada y se elimina automáticamente.",
   },
 };
 
