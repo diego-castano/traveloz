@@ -11,7 +11,10 @@
 // ---------------------------------------------------------------------------
 
 export interface PagoLogo {
-  src: string;
+  /** Ruta del logo. Vacía cuando todavía no hay archivo: ahí se dibuja `texto`. */
+  src?: string;
+  /** Respaldo cuando no hay logo, para no dejar una imagen rota en la grilla. */
+  texto?: string;
   alt: string;
 }
 
@@ -38,6 +41,10 @@ const DEFAULT_DATA: FormasDePagoData = {
     { src: "/site/img/itau.png", alt: "Itaú" },
     { src: "/site/img/bbva.png", alt: "BBVA" },
     { src: "/site/img/banco.png", alt: "Banco República" },
+    // PREX todavía no tiene logo en public/site/img. Con `texto` la grilla lo
+    // dibuja igual; el día que llegue el PNG, esta entrada pasa a
+    // { src: "/site/img/prex.png", alt: "PREX" } acá y en /backend/web/pagos.
+    { texto: "PREX", alt: "PREX" },
   ],
 };
 
@@ -65,7 +72,9 @@ export function FormasDePago({
               {d.tarjetas.map((t) => (
                 <div className="col-lg-3 col-3" key={t.alt}>
                   <div className="payment-icon">
-                    <img src={t.src} alt={t.alt} loading="lazy" decoding="async" />
+                    {t.src
+                  ? <img src={t.src} alt={t.alt} loading="lazy" decoding="async" />
+                  : <span style={{ display: "grid", placeItems: "center", height: "100%", fontWeight: 800, letterSpacing: ".04em", color: "#3D4066" }}>{t.texto}</span>}
                   </div>
                 </div>
               ))}
@@ -77,7 +86,9 @@ export function FormasDePago({
               {d.bancos.map((b) => (
                 <div className="col-lg-3 col-3" key={b.alt}>
                   <div className="payment-icon">
-                    <img src={b.src} alt={b.alt} loading="lazy" decoding="async" />
+                    {b.src
+                  ? <img src={b.src} alt={b.alt} loading="lazy" decoding="async" />
+                  : <span style={{ display: "grid", placeItems: "center", height: "100%", fontWeight: 800, letterSpacing: ".04em", color: "#3D4066" }}>{b.texto}</span>}
                   </div>
                 </div>
               ))}

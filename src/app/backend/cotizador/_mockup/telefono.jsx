@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2,
   CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
@@ -11,7 +11,7 @@ import {
   destinoFinal, diasDeMas,
 } from "./data";
 import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
-import { Foto, CATS, Estrellas, Wordmark } from "./ui";
+import { Foto, CATS, Estrellas } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
 
 /* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
@@ -26,6 +26,10 @@ const PAGO_BANCOS = [
   { src:"/site/img/itau.png",       alt:"Itaú" },
   { src:"/site/img/bbva.png",       alt:"BBVA" },
   { src:"/site/img/banco.png",      alt:"Banco República" },
+  /* PREX todavía no tiene logo en public/site/img: va como texto, en la misma
+     caja que los demás. El día que llegue el PNG, esta línea pasa a
+     { src:"/site/img/prex.png", alt:"PREX" } y se dibuja como los otros. */
+  { texto:"PREX",                   alt:"PREX" },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -486,7 +490,16 @@ function SalidaPasajero({
   };
 
   /* itinerario agrupado en trayectos (Ida / Vuelta / Tramo N) */
-  const trayectos = useMemo(() => agruparTrayectos(q.vuelos), [q.vuelos]);
+  /* Dos códigos son la misma ciudad si el catálogo lo dice. Sin el aeropuerto
+     cargado no se adivina: se comparan solo códigos distintos con ciudad
+     conocida, así un AVV que falta en Catálogos no inventa un cambio. */
+  const aeropuertosFicha = useAeropuertos();
+  const mismaCiudad = useCallback((a, b) => {
+    const ca = aeropuertosFicha[a]?.ciudad;
+    const cb = aeropuertosFicha[b]?.ciudad;
+    return !!ca && !!cb && ca === cb;
+  }, [aeropuertosFicha]);
+  const trayectos = useMemo(() => agruparTrayectos(q.vuelos, mismaCiudad), [q.vuelos, mismaCiudad]);
   /* el PNR trae día y mes pero no el año: lo saca de la fecha de salida cargada */
   const anioItinerario = useMemo(() => {
     const m = String(q.fechaSalida || "").match(/^(\d{4})/);
@@ -1305,7 +1318,7 @@ function SalidaPasajero({
                     {n.nombre || "Otra opción de vuelo"}
                   </span>
                 </div>
-                {agruparTrayectos(n.vuelos).map((seg, ti, arr) => (
+                {agruparTrayectos(n.vuelos, mismaCiudad).map((seg, ti, arr) => (
                   <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
                     anio={anioItinerario} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
                 ))}
@@ -1371,14 +1384,20 @@ function SalidaPasajero({
             color:"#8A8DB5", marginBottom:7 }}>Transferencia bancaria</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap: impresion ? 10 : 8 }}>
             {PAGO_BANCOS.map((l) => (
-              <div key={l.src} style={impresion
-                ? { display:"inline-flex", alignItems:"center", justifyContent:"center", height:40 }
+              <div key={l.alt} style={impresion
+                ? { display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    height:40, ...(l.src ? null : { padding:"0 10px" }) }
                 : { display:"inline-flex", alignItems:"center", justifyContent:"center",
                     width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
                     border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
-                <img src={l.src} alt={l.alt} loading="eager" decoding="async"
-                  style={{ maxWidth:"100%", maxHeight:"100%", height: impresion ? "100%" : undefined,
-                    objectFit:"contain", display:"block" }} />
+                {l.src ? (
+                  <img src={l.src} alt={l.alt} loading="eager" decoding="async"
+                    style={{ maxWidth:"100%", maxHeight:"100%", height: impresion ? "100%" : undefined,
+                      objectFit:"contain", display:"block" }} />
+                ) : (
+                  <span style={{ fontSize:fz(12.5, 13.5), fontWeight:800, letterSpacing:".04em",
+                    color:"#3D4066" }}>{l.texto}</span>
+                )}
               </div>
             ))}
           </div>
@@ -1412,8 +1431,7 @@ function SalidaPasajero({
                 {telWa && V.email && <span style={{ margin:"0 7px", color:"#C9CBDD" }}>·</span>}
                 {V.email && (
                   <a href={`mailto:${V.email}`} className="mono"
-                    style={{ color:"#6B6F99", textDecoration:"underline",
-                      textDecorationColor:"rgba(107,111,153,.4)", textUnderlineOffset:2 }}>{V.email}</a>
+                    style={{ color:"#6B6F99", textDecoration:"none" }}>{V.email}</a>
                 )}
               </div>
             )}
@@ -1421,12 +1439,12 @@ function SalidaPasajero({
         ) : (
           <FirmaVendedor v={V} telWa={telWa} desk={desk} />
         )}
-        {/* Cierre. En pantalla firma el wordmark; en el papel el logo ya
-            está en el membrete y repetirlo abajo —encima con el "oz" pintado
-            por `background-clip:text`, que es lo primero que se rompe cuando
-            imprime el diálogo del navegador— no agrega nada. Queda la
-            dirección web, centrada. */}
-        {!impresion && <div style={{ textAlign:"center", marginTop:16 }}><Wordmark size={13} /></div>}
+        {/* Cierre. En el papel el logo ya está en el membrete. En pantalla
+            firmaba además un wordmark acá abajo, y el cliente lo marcó como
+            repetido: la firma del vendedor ya trae el logo, sea el GIF cargado
+            o la tarjeta de respaldo que muestra el header-logo. Se fue.
+            Queda la dirección web, centrada, sin subrayar y con la misma
+            tipografía que el resto. (Reunión del 3/9.) */}
         <div style={{ textAlign:"center", fontSize:fz(9.5, 10), color: impresion ? "#8A8DB5" : "#B0B4CD",
           letterSpacing: impresion ? ".02em" : undefined, marginTop: impresion ? 16 : 4 }}>{G.web}</div>
         </div>
@@ -1610,6 +1628,24 @@ function TrayectoTabla({ seg, ti, ultimo, anio, ancho, impresion, fz, fzp, G }) 
         if (dia) diaEnCurso = dia;
         return (
           <div key={s.id}>
+            {/* Cambio de aeropuerto. Va donde ocurre, en el medio del
+                recorrido, y en ámbar: es una advertencia, no un color de
+                marca. Si el coral avisara de un problema dejaría de servir
+                para todo lo demás. */}
+            {s.cambioDesde && (
+              <div style={{ display:"flex", gap:9, alignItems:"flex-start", margin:"12px 0 2px",
+                padding:"10px 13px", borderRadius:"4px 12px 12px 4px",
+                background:"#FBF3E6", borderLeft:"2.5px solid #E3C892",
+                fontSize:fzp(11.5, 12.5, 11.5), lineHeight:1.45, color:"#8A5A16", fontWeight:600,
+                breakInside:"avoid" }}>
+                <span aria-hidden="true">⚠</span>
+                <span>
+                  Cambio de aeropuerto en {lugar(s.origen).ciudad}: el vuelo anterior llega
+                  a {lugar(s.cambioDesde).apto || s.cambioDesde} y este sale
+                  de {lugar(s.origen).apto || s.origen}. Son dos aeropuertos distintos.
+                </span>
+              </div>
+            )}
             {/* La fecha dejó de repetirse en cada renglón: aparece cuando
                 cambia el día y corta el itinerario. Así el salto de día se ve
                 sin leer nada, porque es el único lugar donde la tabla se
@@ -1654,20 +1690,49 @@ function TrayectoTabla({ seg, ti, ultimo, anio, ancho, impresion, fz, fzp, G }) 
   );
 }
 
-/* agrupa los tramos del PNR en trayectos: un tramo abre uno nuevo si es el
-   primero, si su origen no es el destino del anterior, o si la fecha retrocede */
-function agruparTrayectos(vuelos) {
+/* Agrupa los tramos del PNR en trayectos: uno nuevo si es el primero, si su
+   origen no es el destino del anterior, o si la fecha retrocede o salta más de
+   un día (la vuelta suele salir semanas después).
+
+   La excepción es aterrizar en un aeropuerto y salir de OTRO de la misma
+   ciudad. Eso no es un viaje nuevo: es una escala con traslado por tierra, y
+   partirla en dos trayectos escondía justo el dato que el pasajero necesita.
+   Pasa de verdad —el PNR de Gero aterriza en Melbourne Avalon y sale de
+   Melbourne Tullamarine, con cuatro horas y media entre medio y ochenta
+   kilómetros de por medio— y hasta hoy la cotización no lo decía en ningún
+   lado. El tramo que sale del otro aeropuerto queda marcado con `cambioDesde`
+   para que la tabla dibuje el aviso.
+
+   `mismaCiudad` viene de afuera porque la ciudad sale del catálogo de
+   aeropuertos, que es un hook. Sin ese dato la función se comporta como antes. */
+/* Días entre las fechas de dos tramos.
+
+   Antes esto era `mes * 31 + dia`, y esa cuenta miente en el borde de cada
+   mes: del 30 de noviembre al 1 de diciembre da 2, no 1. Con eso una escala
+   que cruzaba de mes se partía en dos trayectos y la vuelta salía rotulada
+   "Tramo 3". Con fechas de verdad se termina; el año de referencia es
+   arbitrario porque solo importa la distancia. */
+function distanciaDias(a, b) {
+  if (a?.mes == null || a?.dia == null || b?.mes == null || b?.dia == null) return null;
+  const ANIO = 2001;
+  const desde = new Date(ANIO, a.mes, a.dia);
+  let hasta = new Date(ANIO, b.mes, b.dia);
+  /* diciembre → enero es el itinerario avanzando, no retrocediendo */
+  if (hasta < desde && a.mes === 11 && b.mes === 0) hasta = new Date(ANIO + 1, b.mes, b.dia);
+  return Math.round((hasta - desde) / 86400000);
+}
+
+function agruparTrayectos(vuelos, mismaCiudad) {
   const trayectos = [];
   let prev = null;
   for (const v of vuelos) {
-    const orden = v.mes * 31 + v.dia;
-    const prevOrden = prev ? prev.mes * 31 + prev.dia : null;
-    /* corta cuando se rompe la cadena de aeropuertos, la fecha retrocede,
-       o pasa más de un día entre tramos (la vuelta suele salir días después) */
-    const abreNuevo = !prev || v.origen !== prev.destino
-      || (prevOrden != null && (orden < prevOrden || orden - prevOrden > 1));
+    const dist = distanciaDias(prev, v);
+    const rompeFecha = dist != null && (dist < 0 || dist > 1);
+    const cambiaApto = !!prev && v.origen !== prev.destino && !rompeFecha
+      && typeof mismaCiudad === "function" && mismaCiudad(prev.destino, v.origen);
+    const abreNuevo = !prev || rompeFecha || (v.origen !== prev.destino && !cambiaApto);
     if (abreNuevo) trayectos.push([]);
-    trayectos[trayectos.length - 1].push(v);
+    trayectos[trayectos.length - 1].push(cambiaApto ? { ...v, cambioDesde: prev.destino } : v);
     prev = v;
   }
   return trayectos;
