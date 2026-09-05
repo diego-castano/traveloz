@@ -109,6 +109,9 @@ export interface ContenidoPublico {
     destino: string;
     salida: string;
     llegada: string;
+    /** Días entre salida y llegada: 0 el mismo día, 1 el siguiente. null si no
+     *  se sabe (cotización vieja o GDS que no imprime la fecha de llegada). */
+    masDias: number | null;
   }>;
   cabina: string | null;
   equipaje: string | null;
@@ -178,6 +181,7 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
       destino: txt(v?.destino),
       salida: txt(v?.salida),
       llegada: txt(v?.llegada),
+      masDias: v?.masDias ?? null,
     })),
     cabina: q.cabina ?? null,
     equipaje: q.equipaje ?? null,

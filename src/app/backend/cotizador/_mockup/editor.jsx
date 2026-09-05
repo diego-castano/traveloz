@@ -16,7 +16,7 @@ import {
   PNR_DEMO, uid, clamp, toISO, parseISO, fmtCorto, money, venta,
   limpiarPegado, parsePNR, fechaDeVuelo, itinerarioMasCompleto,
   habitacionNueva, tarifaNueva, ventaTarifa,
-  precioOpcion, norm, destinoFinal
+  precioOpcion, norm, destinoFinal, diasDeMas
 } from "./data";
 import { useCatalogo, useAjustes, useAerolineas } from "./contexto";
 import { uploadFile } from "@/components/lib/upload";
@@ -903,6 +903,27 @@ function BloqueVuelos({ q, set, refEl, toast }) {
                 onChange={(e) => set((d) => { d.vuelos[i].salida = e.target.value; })} />
               <input className="in mono" style={{ width:62, height:30, textAlign:"center" }} value={v.llegada}
                 onChange={(e) => set((d) => { d.vuelos[i].llegada = e.target.value; })} />
+              {/* Salto de día. Lo trae el PNR —ahora se guardan las dos fechas,
+                  no solo la de salida— y acá se puede corregir a mano para los
+                  vuelos cargados sin PNR. Cicla 0 → 1 → 2 → 0.
+
+                  Hace falta porque las horas solas mienten en los dos sentidos:
+                  un vuelo que sale 01:05 y llega 05:25 puede llegar al día
+                  siguiente, y uno que sale 12:30 y llega 11:20 puede llegar el
+                  mismo día si cruza la línea de cambio de fecha. */}
+              {(() => {
+                const dm = diasDeMas(v);
+                return (
+                  <button className="btn btn-g" style={{ width:46, height:30, flexShrink:0, fontSize:11,
+                    fontWeight:700, color: dm > 0 ? "var(--ink-coral)" : "var(--n400)" }}
+                    title={dm > 0
+                      ? `Llega ${dm} ${dm === 1 ? "día" : "días"} después de salir. Tocá para cambiarlo.`
+                      : "Llega el mismo día. Tocá si llega al día siguiente."}
+                    onClick={() => set((d) => { d.vuelos[i].masDias = (dm + 1) % 3; })}>
+                    {dm > 0 ? `+${dm}` : "mismo"}
+                  </button>
+                );
+              })()}
               <button className="btn btn-g btn-ico" onClick={() => { const cp = { ...v };
                 set((d) => { d.vuelos.splice(i, 1); });
                 toast({ msg:"Tramo eliminado", tone:"warn", undo:() => set((d) => { d.vuelos.splice(i, 0, cp); }) }); }}>

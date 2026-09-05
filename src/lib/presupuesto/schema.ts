@@ -158,6 +158,10 @@ export const vueloSchema = z.looseObject({
   destino: textoFlojo,
   salida: textoFlojo,
   llegada: textoFlojo,
+  // Días entre la salida y la llegada: 0 el mismo día, 1 el siguiente. Sale de
+  // las dos fechas del PNR. En null cuando no se sabe —cotizaciones viejas o
+  // un GDS que no imprime la segunda fecha— y ahí se cae a comparar las horas.
+  masDias: numeroFlojo.nullable().optional(),
 });
 
 export const destinoSchema = z.looseObject({

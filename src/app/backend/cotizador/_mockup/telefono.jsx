@@ -8,7 +8,7 @@ import {
 import {
   MESES, MES_AB, ANIO_ACTUAL,
   fmtCorto, fmtLargo, money, precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg,
-  destinoFinal,
+  destinoFinal, diasDeMas,
 } from "./data";
 import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
 import { Foto, CATS, Estrellas, Wordmark } from "./ui";
@@ -854,7 +854,7 @@ function SalidaPasajero({
 
                     {seg.map((s, si) => {
                       const escala = si < seg.length - 1 ? escalaTexto(s.llegada, seg[si + 1].salida) : null;
-                      const cruzaMedianoche = String(s.llegada) < String(s.salida);
+                      const masDias = diasDeMas(s);
                       return (
                         <div key={s.id} style={impresion
                           ? { ...cajaPapel, breakInside:"avoid",
@@ -888,7 +888,7 @@ function SalidaPasajero({
                                 <PuntoRuta cod={s.origen} hora={s.salida} fz={fz} />
                                 <div style={{ marginTop:26 }}>
                                   <PuntoRuta cod={s.destino} hora={s.llegada} fz={fz}
-                                    plus={cruzaMedianoche} coral={G.a} />
+                                    plus={masDias} coral={G.a} />
                                 </div>
                               </div>
                             </div>
@@ -1577,8 +1577,10 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
         <span style={{ fontSize:fz(15, 16), fontWeight:700, lineHeight:1.25, overflowWrap:"anywhere" }}>{ciudad}</span>
         <span style={{ fontSize:fz(12.5, 13), fontWeight:600, color:"#6B6F99", whiteSpace:"nowrap" }}>
           — {hora} hs
-          {plus && (
-            <span style={{ fontSize:fz(10, 10.5), fontWeight:700, color:coral, marginLeft:3 }}>+1 día</span>
+          {plus > 0 && (
+            <span style={{ fontSize:fz(10, 10.5), fontWeight:700, color:coral, marginLeft:3 }}>
+              +{plus} {plus === 1 ? "día" : "días"}
+            </span>
           )}
         </span>
       </div>

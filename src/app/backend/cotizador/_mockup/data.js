@@ -365,17 +365,57 @@ function limpiarPegado(txt) {
    Tolera las dos formas que llegan del GDS:
      LA1339 K 15OCT 4 MVDGRU HK2  0755 0940   (día de semana suelto)
      CM 284 Y 01OCT 4*MVDPTY DK1  0043 0608   (asterisco pegado al día, estado DK) */
+/* Cuántos días después de salir se llega: 0 el mismo día, 1 al siguiente.
+   Sale de las DOS fechas del PNR, no de comparar las horas.
+
+   La comparación de horas se equivocaba en los dos sentidos y en el mismo
+   viaje: un Santiago→Melbourne que sale 01:05 y llega 05:25 parece del mismo
+   día y son dos, y un Melbourne→Santiago que sale 12:30 y llega 11:20 parece
+   del día siguiente y llega el mismo, porque cruza la línea de cambio de
+   fecha. (PNR de Gero, 03/09.)
+
+   Con año de referencia fijo alcanza: solo importa la distancia entre las dos
+   fechas. El salto de año lo cubre el `if` —un 31DEC que llega 01JAN— y
+   cualquier resultado fuera de rango se descarta como dato roto. */
+function offsetDias(dia, mes, diaL, mesL) {
+  if (dia == null || mes == null || diaL == null || mesL == null) return null;
+  const ANIO = 2001;
+  const sale = new Date(ANIO, mes, dia);
+  let llega = new Date(ANIO, mesL, diaL);
+  if (llega < sale) llega = new Date(ANIO + 1, mesL, diaL);
+  const d = Math.round((llega - sale) / 86400000);
+  return d >= 0 && d <= 3 ? d : null;
+}
+
+/* Cuántos días después de salir llega un tramo, para mostrar.
+
+   Manda `masDias`, que sale de las dos fechas del PNR. Sin ese dato —una
+   cotización guardada antes de este cambio, o un GDS que no imprime la
+   segunda fecha— se cae a comparar las horas, que es lo que se hacía siempre:
+   acierta salvo cuando el vuelo cruza la línea de cambio de fecha.
+
+   Vive acá y no en cada pantalla: la ficha del pasajero, el PDF y el editor
+   tienen que decir el mismo número. */
+function diasDeMas(v) {
+  const n = Number(v?.masDias);
+  if (Number.isFinite(n) && n >= 0) return n;
+  return String(v?.llegada ?? "") < String(v?.salida ?? "") ? 1 : 0;
+}
+
 function parsePNR(raw, aerolineas = {}) {
   const out = [];
   const lineas = String(raw).split("\n");
-  const re = /([A-Z0-9]{2})\s*(\d{2,4})\s+([A-Z])?\s*(\d{2})([A-Z]{3})\s+\d?\*?\s*([A-Z]{3})([A-Z]{3})\s+[A-Z]{2}(\d+)?\s+(\d{4})\s+(\d{4})/;
+  /* La fecha de llegada va después de las dos horas y es opcional: no todos
+     los GDS la imprimen, y sin ella `masDias` queda en null. */
+  const re = /([A-Z0-9]{2})\s*(\d{2,4})\s+([A-Z])?\s*(\d{2})([A-Z]{3})\s+\d?\*?\s*([A-Z]{3})([A-Z]{3})\s+[A-Z]{2}(\d+)?\s+(\d{4})\s+(\d{4})(?:\s+(\d{2})([A-Z]{3}))?/;
   const MES3 = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11,
                  ENE:0, ABR:3, AGO:7, DIC:11 };
   for (const l of lineas) {
     const m = l.toUpperCase().match(re);
     if (!m) continue;
-    const [, cia, nro, , dd, mmm, org, dst, , hs, hl] = m;
+    const [, cia, nro, , dd, mmm, org, dst, , hs, hl, ddL, mmmL] = m;
     if (!(mmm in MES3)) continue;
+    const mesL = mmmL && mmmL in MES3 ? MES3[mmmL] : null;
     out.push({
       id: uid("vl"),
       cia, nro,
@@ -384,6 +424,7 @@ function parsePNR(raw, aerolineas = {}) {
       origen: org, destino: dst,
       salida: `${hs.slice(0, 2)}:${hs.slice(2)}`,
       llegada: `${hl.slice(0, 2)}:${hl.slice(2)}`,
+      masDias: offsetDias(Number(dd), MES3[mmm], ddL ? Number(ddL) : null, mesL),
     });
   }
   return out;
@@ -643,7 +684,7 @@ export {
   horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,
   uid, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, destinoLimpio, destinoFinal, ciudadLimpia, tituloDeDestinos, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
-  fechaDeVuelo, itinerarioMasCompleto,
+  fechaDeVuelo, itinerarioMasCompleto, offsetDias, diasDeMas,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,
   /* v2B */
