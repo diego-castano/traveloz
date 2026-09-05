@@ -803,130 +803,11 @@ function SalidaPasajero({
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Itinerario de vuelos" />
-            {/* En papel la lista va en flujo normal, no en flex: Chromium no
-                fragmenta bien un contenedor flex y ahí `break-inside:avoid`
-                deja de valer — es lo que partía las tarjetas del itinerario
-                entre dos hojas. El `gap` pasa a margen, como en las opciones. */}
-            <div style={{ ...(impresion
-              ? { display:"block" }
-              : { display:"flex", flexDirection:"column", gap:14 }), marginBottom: q.soloVuelos ? 14 : 24 }}>
-              {trayectos.map((seg, ti) => {
-                const primero = seg[0];
-                const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
-                /* Papel: el trayecto deja de ser UNA tarjeta indivisible. Un
-                   itinerario de dos tramos con espera no entra en lo que queda
-                   de hoja y se iba entero a la siguiente, dejando media página
-                   en blanco. Ahora el límite es el tramo: cada segmento (fila
-                   de aerolínea + los dos puntos de ruta + la espera que le
-                   sigue) es su propia tarjeta con `break-inside:avoid`, y el
-                   corte cae entre tramos, nunca dentro de uno. La cabecera va
-                   como barra arriba, con `break-after:avoid` para no quedar
-                   sola al pie. En pantalla no cambia nada. */
-                const cajaPapel = { background:"#fff", border:"1px solid rgba(17,17,36,.10)",
-                  borderRadius:12, overflow:"hidden" };
-                return (
-                  <div key={ti} style={impresion
-                    ? { marginBottom: ti < trayectos.length - 1 ? 16 : 0 }
-                    : { borderRadius:18, background:"#fff", overflow:"hidden", breakInside:"avoid",
-                        boxShadow:"0 1px 2px rgba(58,38,120,.05), 0 14px 30px -20px rgba(58,38,120,.35)" }}>
-
-                    {/* Cabecera del trayecto. En pantalla es la píldora de
-                        marca dentro de la tarjeta; en el papel se vuelve lo
-                        que es —una etiqueta— y deja de ser una barra con caja
-                        propia: IDA en violeta a la izquierda, la fecha en gris
-                        a la derecha, y las tarjetas de tramo abajo. */}
-                    <div style={{ display:"flex", alignItems: impresion ? "baseline" : "center", justifyContent:"space-between",
-                      gap:10, flexWrap:"wrap",
-                      ...(impresion
-                        ? { padding:"0 2px 6px", marginBottom:0, breakInside:"avoid", breakAfter:"avoid" }
-                        : { padding:"14px 16px 0" }) }}>
-                      <span style={impresion
-                        ? { color:G.b, fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".14em",
-                            textTransform:"uppercase" }
-                        : { background:grad, color:"#fff", padding:"5px 11px", borderRadius:999,
-                            fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".12em", textTransform:"uppercase" }}>
-                        {etiqueta}
-                      </span>
-                      <span style={{ fontSize:fzp(12.5, 13, 12), fontWeight:600, color:"#6B6F99" }}>
-                        {fechaTrayecto(primero, anioItinerario)}
-                      </span>
-                    </div>
-
-                    {seg.map((s, si) => {
-                      const escala = si < seg.length - 1 ? escalaTexto(s.llegada, seg[si + 1].salida) : null;
-                      const masDias = diasDeMas(s);
-                      return (
-                        <div key={s.id} style={impresion
-                          ? { ...cajaPapel, breakInside:"avoid",
-                              marginBottom: si < seg.length - 1 ? 8 : 0 }
-                          : undefined}>
-                          <div style={{ padding: impresion ? (escala ? "13px 16px 12px" : "13px 16px 15px") : "14px 16px 16px",
-                            borderTop: !impresion && si > 0 ? "1px solid rgba(17,17,36,.07)" : "none" }}>
-
-                            {/* aerolínea y número de vuelo */}
-                            <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:13 }}>
-                              <span style={{ width:26, height:26, borderRadius:8, background:grad,
-                                display:"grid", placeItems:"center", flexShrink:0 }}>
-                                <Plane size={13} color="#fff" />
-                              </span>
-                              <span style={{ fontSize:fz(13.5, 14.5), fontWeight:700 }}>{s.aerolinea}</span>
-                              <span style={{ fontSize:fz(13.5, 14.5), fontWeight:500, color:"#6B6F99" }}>
-                                · {s.cia} {s.nro}
-                              </span>
-                            </div>
-
-                            {/* ruta vertical: sale arriba, llega abajo */}
-                            <div style={{ display:"flex", gap:11 }}>
-                              <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
-                                width:11, flexShrink:0, paddingTop:5 }}>
-                                <span style={{ width:9, height:9, borderRadius:"50%", background:G.b, flexShrink:0 }} />
-                                <span style={{ width:2, flex:1, minHeight:34, margin:"4px 0", borderRadius:2,
-                                  background:`linear-gradient(180deg, ${G.b} 0%, ${G.a} 100%)` }} />
-                                <span style={{ width:9, height:9, borderRadius:"50%", background:G.a, flexShrink:0 }} />
-                              </div>
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <PuntoRuta cod={s.origen} hora={s.salida} fz={fz} />
-                                <div style={{ marginTop:26 }}>
-                                  <PuntoRuta cod={s.destino} hora={s.llegada} fz={fz}
-                                    plus={masDias} coral={G.a} />
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Espera entre tramos. En pantalla es una caja
-                              ámbar —ahí compite con nada—; en el papel una
-                              caja de color por cada escala pesaba más que el
-                              vuelo, así que baja a un renglón con el reloj y
-                              una línea fina arriba. */}
-                          {escala && (
-                            impresion ? (
-                              <div style={{ display:"flex", alignItems:"center", gap:7, margin:"0 16px",
-                                padding:"8px 0 12px", borderTop:"1px solid rgba(17,17,36,.07)" }}>
-                                <Clock size={12} style={{ color:"#8A8DB5", flexShrink:0 }} />
-                                <span style={{ fontSize:fz(12, 12), color:"#6B6F99", fontWeight:500,
-                                  lineHeight:1.35, overflowWrap:"anywhere" }}>
-                                  Espera de <b style={{ fontWeight:700, color:"#3D4066" }}>{escala}</b> en el aeropuerto
-                                </span>
-                              </div>
-                            ) : (
-                              <div style={{ display:"flex", alignItems:"center", gap:9, margin:"0 16px 15px",
-                                padding:"9px 13px", background:"#FBF3E6", border:"1px dashed #E3C892",
-                                borderRadius:12 }}>
-                                <Clock size={15} style={{ color:"#B8863A", flexShrink:0 }} />
-                                <span style={{ fontSize:fz(12, 12.5), color:"#8A6423", fontWeight:600,
-                                  lineHeight:1.35, overflowWrap:"anywhere" }}>
-                                  Espera de <b style={{ fontWeight:800, color:"#B8863A" }}>{escala}</b>
-                                </span>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
+            <div style={{ marginBottom: q.soloVuelos ? 14 : 24 }}>
+              {trayectos.map((seg, ti) => (
+                <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectos.length - 1}
+                  anio={anioItinerario} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+              ))}
             </div>
           </div>
         )}
@@ -1594,18 +1475,154 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
   );
 }
 
-function minutosDesde(hhmm) {
-  const [h, m] = String(hhmm || "").split(":").map(Number);
-  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
-}
+/* Un trayecto del itinerario, en tabla.
 
-/* diferencia entre la llegada de un tramo y la salida del siguiente; si da
-   negativa o irrazonable (cruce de medianoche mal calculado, etc.) se omite */
-function escalaTexto(llegada, salida) {
-  const d = minutosDesde(salida) - minutosDesde(llegada);
-  if (d <= 0 || d > 20 * 60) return null;
-  const h = Math.floor(d / 60), m = d % 60;
-  return h > 0 ? `${h} h${m > 0 ? ` ${m} min` : ""}` : `${m} min`;
+   Reemplaza a la tarjeta por tramo. Antes cada vuelo era una caja con su
+   propia ruta vertical, y el aeropuerto de escala figuraba dos veces —como
+   llegada de un tramo y como salida del siguiente—, así que un viaje de seis
+   tramos eran tres pantallas de scroll en el celular. Gero eligió esta forma
+   entre las cinco de /mockups/itinerario-vuelos.html (04/09) y la aprobó
+   terminada en /mockups/itinerario-tabla.html.
+
+   La misma estructura en las tres salidas: hora a la izquierda, ciudades a la
+   derecha, la fecha como divisor. Lo único que cambia con el ancho es dónde
+   cae el aeropuerto y dónde cae el vuelo; nada se muda de lugar, que es lo que
+   hace que celular, escritorio y PDF se sientan la misma pieza.
+
+   Lo que ya no está: la caja de espera entre tramos. Se deduce de las horas
+   del tramo siguiente, y Gero pidió sacarla en la llamada del 3/9. */
+function TrayectoTabla({ seg, ti, ultimo, anio, ancho, impresion, fz, fzp, G }) {
+  const aeropuertos = useAeropuertos();
+  /* Escritorio y papel reparten igual: el aeropuerto sube al lado de la ciudad
+     y el vuelo se va a su propia columna. */
+  const holgado = ancho || impresion;
+  const primero = seg[0];
+  const cierra = seg[seg.length - 1];
+  const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
+
+  /* Un código que no está en la tabla Aeropuerto no se inventa: sale tal cual
+     y sin subtítulo, igual que hacía PuntoRuta. El nombre corto de la terminal
+     le gana al largo, que en un renglón no entra. */
+  const lugar = (cod) => {
+    const a = aeropuertos[cod];
+    /* `terminal` ya viene corto donde está cargado. Donde no, se le saca el
+       "Aeropuerto de" al nombre: al lado de la ciudad ese prefijo se repite en
+       cada renglón y empuja el aeropuerto a una segunda línea. Si el recorte
+       deja la cadena vacía se usa el nombre entero, que es dato real. */
+    const largo = a?.terminal || a?.nombre || "";
+    const corto = largo.replace(/^aeropuerto\s+(internacional\s+)?(de\s+|del\s+)?/i, "").trim() || largo;
+    return { ciudad: a?.ciudad || cod, apto: corto ? `${corto} (${cod})` : "" };
+  };
+
+  const desde = lugar(primero.origen).ciudad;
+  const hasta = lugar(cierra.destino).ciudad;
+  const salida = fechaTrayecto(primero, anio);
+  const llegada = fechaTrayecto({ ...cierra, dia: cierra.dia + diasDeMas(cierra) }, anio);
+  const cuando = salida === llegada ? salida : `${salida} → ${llegada}`;
+
+  const Punto = ({ cod, mas }) => {
+    const l = lugar(cod);
+    return (
+      <div style={{ display:"flex", flexWrap:"wrap", alignItems:"baseline", gap:"2px 7px", lineHeight:1.35 }}>
+        <span style={{ fontSize:fzp(14, 15.5, 13.5), fontWeight:700, overflowWrap:"anywhere" }}>{l.ciudad}</span>
+        {l.apto && (
+          <span style={{ fontSize:fzp(12, 12.5, 11.5), fontWeight:500, color:"#6B6F99", overflowWrap:"anywhere" }}>
+            {l.apto}
+          </span>
+        )}
+        {mas > 0 && (
+          <span style={{ fontSize:fz(10, 10.5), fontWeight:700, color:G.a, padding:"1px 5px",
+            borderRadius:999, background:"rgba(244,62,85,.09)", whiteSpace:"nowrap" }}>
+            +{mas} {mas === 1 ? "día" : "días"}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const vuelo = (s) => (
+    <div style={{ display:"flex", flexWrap:"wrap", alignItems:"baseline", gap:"4px 8px",
+      ...(holgado ? { justifyContent:"flex-end", marginTop:2 } : { marginTop:5 }) }}>
+      <span className="mono" style={{ fontSize:fz(11, 11.5), fontWeight:600, color:"#3D4066",
+        padding:"2px 7px", borderRadius:7, background:"#F5F6FA", border:"1px solid rgba(17,17,36,.055)",
+        whiteSpace:"nowrap" }}>{s.cia} {s.nro}</span>
+      <span style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", overflowWrap:"anywhere" }}>
+        opera {s.aerolinea}
+      </span>
+    </div>
+  );
+
+  let diaEnCurso = null;
+
+  return (
+    <div style={{ marginBottom: ultimo ? 0 : (impresion ? 18 : 22) }}>
+      {/* Rumbo. La banda con el lavado violeta y el filete de marca es el
+          mismo tratamiento que la ficha ya usa para destacar un bloque. */}
+      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", gap:12,
+        flexWrap:"wrap", padding:"9px 13px", background:"rgba(120,90,229,.045)",
+        borderLeft:`2.5px solid ${G.b}`, borderRadius:"4px 12px 12px 4px",
+        breakInside:"avoid", breakAfter:"avoid" }}>
+        <span style={{ fontSize:fz(11, 12), fontWeight:700, letterSpacing:".14em",
+          textTransform:"uppercase", color:"#5B3FBF" }}>{etiqueta}</span>
+        <span style={{ fontSize:fzp(13, 14, 12.5), fontWeight:700, overflowWrap:"anywhere" }}>
+          {desde} a {hasta}
+        </span>
+        <span className="mono" style={{ fontSize:fz(11.5, 12), fontWeight:600, color:"#6B6F99",
+          marginLeft:"auto", whiteSpace:"nowrap" }}>{cuando}</span>
+      </div>
+
+      {seg.map((s, si) => {
+        const mas = diasDeMas(s);
+        const dia = fechaTrayecto(s, anio);
+        /* El primer tramo no lleva divisor: la fecha ya la dice la banda del
+           rumbo, y ponerla dos veces seguidas era ruido. Del segundo en
+           adelante el divisor marca el cambio de día, que es su trabajo. */
+        const abreDia = dia && dia !== diaEnCurso && si > 0;
+        if (dia) diaEnCurso = dia;
+        return (
+          <div key={s.id}>
+            {/* La fecha dejó de repetirse en cada renglón: aparece cuando
+                cambia el día y corta el itinerario. Así el salto de día se ve
+                sin leer nada, porque es el único lugar donde la tabla se
+                interrumpe. */}
+            {abreDia && (
+              <div style={{ display:"flex", alignItems:"center", gap:10, padding:"15px 0 9px",
+                breakInside:"avoid", breakAfter:"avoid" }}>
+                <span className="mono" style={{ fontSize:fz(10.5, 11), fontWeight:600, letterSpacing:".06em",
+                  textTransform:"uppercase", color:"#8A8DB5", whiteSpace:"nowrap" }}>{dia}</span>
+                <span style={{ flex:1, height:1, background:"rgba(17,17,36,.055)" }} />
+              </div>
+            )}
+            <div style={{ display:"grid", columnGap: holgado ? 20 : 13,
+              gridTemplateColumns: holgado ? "66px 1fr 190px" : "54px 1fr",
+              alignItems:"start", padding: holgado ? "14px 0" : "11px 0",
+              borderTop: si > 0 && !abreDia ? "1px solid rgba(17,17,36,.055)" : "none",
+              breakInside:"avoid" }}>
+              {/* El filete de marca es lo que une la hora de salida con la de
+                  llegada: baja del coral al violeta en el sentido en que se
+                  lee el viaje. */}
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 3px", columnGap:7, rowGap:2,
+                alignItems:"center" }}>
+                <span className="mono" style={{ fontSize:fzp(13.5, 15, 13), fontWeight:600, lineHeight:1.5 }}>
+                  {s.salida}
+                </span>
+                <span style={{ gridColumn:2, gridRow:"1 / 3", width:3, height:"100%", borderRadius:999,
+                  background:`linear-gradient(180deg, ${G.a} 0%, ${G.b} 100%)` }} />
+                <span className="mono" style={{ fontSize:fzp(13.5, 15, 13), fontWeight:600, lineHeight:1.5,
+                  color:"#6B6F99" }}>{s.llegada}</span>
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", gap:3, minWidth:0 }}>
+                <Punto cod={s.origen} mas={0} />
+                <Punto cod={s.destino} mas={mas} />
+                {!holgado && vuelo(s)}
+              </div>
+              {holgado && vuelo(s)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /* agrupa los tramos del PNR en trayectos: un tramo abre uno nuevo si es el
