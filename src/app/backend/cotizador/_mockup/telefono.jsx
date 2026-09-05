@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
-  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2, Clock,
+  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2,
   CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
 } from "lucide-react";
 import {
@@ -495,6 +495,13 @@ function SalidaPasajero({
 
   /* ¿hay bloc de notas al pasajero? El HTML puede ser puro markup vacío. */
   const hayNotas = hayNotasReales(q.notasCliente);
+  /* Itinerarios alternativos cargados en las notas. Casi siempre vacío: una
+     nota sin vuelos se dibuja igual que siempre, y una cotización sin notas ni
+     vuelos no dibuja la sección. */
+  const vuelosNota = useMemo(
+    () => (q.vuelosNota ?? []).filter((n) => (n?.vuelos ?? []).length > 0),
+    [q.vuelosNota],
+  );
 
   /* ── papel: dónde conviene cortar ─────────────────────────────────────
      Sin itinerario de vuelos la hoja queda apenas por encima de una carilla
@@ -1276,12 +1283,34 @@ function SalidaPasajero({
         <div>
 
         {/* notas para el pasajero — bloc de HTML libre */}
-        {hayNotas && (
+        {(hayNotas || vuelosNota.length > 0) && (
           <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Notas" />
-            <div style={{ fontSize:fz(12.5, 13), lineHeight:1.6, color:"#3D4066", marginBottom:22, overflowWrap:"anywhere" }}
-              dangerouslySetInnerHTML={{ __html: q.notasCliente }} />
+            {hayNotas && (
+              <div style={{ fontSize:fz(12.5, 13), lineHeight:1.6, color:"#3D4066",
+                marginBottom: vuelosNota.length ? 16 : 22, overflowWrap:"anywhere" }}
+                dangerouslySetInnerHTML={{ __html: q.notasCliente }} />
+            )}
+            {/* Los itinerarios alternativos van abajo del texto, con la misma
+                tabla que el de arriba: si el vendedor ofrece otro vuelo, el
+                pasajero lo lee igual que el principal y puede compararlos sin
+                cambiar de idioma visual. */}
+            {vuelosNota.map((n, ni) => (
+              <div key={n.id} style={{ marginBottom: ni === vuelosNota.length - 1 ? 22 : 18,
+                breakInside:"avoid" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:9 }}>
+                  <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
+                  <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, overflowWrap:"anywhere" }}>
+                    {n.nombre || "Otra opción de vuelo"}
+                  </span>
+                </div>
+                {agruparTrayectos(n.vuelos).map((seg, ti, arr) => (
+                  <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
+                    anio={anioItinerario} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+                ))}
+              </div>
+            ))}
           </div>
         )}
 

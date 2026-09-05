@@ -172,6 +172,15 @@ export const destinoSchema = z.looseObject({
   checkinManual: textoNulo.optional(),
 });
 
+/** Un itinerario de vuelo alternativo, adentro de las notas. Opcional: la
+ *  enorme mayoría de las cotizaciones no lleva ninguno. */
+export const vueloDeNotaSchema = z.looseObject({
+  id: textoFlojo,
+  nombre: textoFlojo.optional(),
+  pnrRaw: textoFlojo.optional(),
+  vuelos: z.array(vueloSchema).default([]),
+});
+
 export const servicioSchema = z.looseObject({
   id: textoFlojo,
   categoria: textoFlojo,
@@ -254,6 +263,10 @@ export const contenidoSchema = z.looseObject({
   notasCliente: textoFlojo
     .refine((s) => s.length <= NOTAS_MAX, { message: ERROR_NOTAS_LARGAS })
     .default(""),
+  // Itinerarios alternativos que salen abajo de las notas. Tope de dos: más de
+  // eso era justo el choclo que el cliente pidió evitar, y una tercera opción
+  // se manda por WhatsApp.
+  vuelosNota: z.array(vueloDeNotaSchema).max(2).default([]),
 
   vigencia: numeroFlojo
     .nullable()

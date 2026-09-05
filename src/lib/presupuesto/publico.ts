@@ -113,6 +113,17 @@ export interface ContenidoPublico {
      *  se sabe (cotización vieja o GDS que no imprime la fecha de llegada). */
     masDias: number | null;
   }>;
+  /** Itinerarios alternativos que van abajo de las notas. Casi siempre vacío. */
+  vuelosNota: Array<{
+    id: string;
+    nombre: string;
+    vuelos: Array<{
+      id: string; cia: string; nro: string; aerolinea: string;
+      dia: number | null; mes: number | null;
+      origen: string; destino: string; salida: string; llegada: string;
+      masDias: number | null;
+    }>;
+  }>;
   cabina: string | null;
   equipaje: string | null;
   destinos: Array<{
@@ -182,6 +193,26 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
       salida: txt(v?.salida),
       llegada: txt(v?.llegada),
       masDias: v?.masDias ?? null,
+    })),
+    /* El PNR crudo de cada alternativa NO cruza: es la pantalla del GDS, con
+       el localizador de la reserva adentro. Al pasajero le va el itinerario ya
+       leído, igual que con el de arriba. */
+    vuelosNota: (q.vuelosNota ?? []).slice(0, 2).map((n) => ({
+      id: txt(n?.id),
+      nombre: txt(n?.nombre),
+      vuelos: (n?.vuelos ?? []).map((v) => ({
+        id: txt(v?.id),
+        cia: txt(v?.cia),
+        nro: txt(v?.nro),
+        aerolinea: txt(v?.aerolinea),
+        dia: v?.dia ?? null,
+        mes: v?.mes ?? null,
+        origen: txt(v?.origen),
+        destino: txt(v?.destino),
+        salida: txt(v?.salida),
+        llegada: txt(v?.llegada),
+        masDias: v?.masDias ?? null,
+      })),
     })),
     cabina: q.cabina ?? null,
     equipaje: q.equipaje ?? null,

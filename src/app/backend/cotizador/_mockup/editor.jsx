@@ -1342,8 +1342,106 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
 }
 
 /* ── 7b · Notas — campo libre que SÍ sale en la cotización ───────────── */
+/* Tope de itinerarios alternativos en las notas.
+
+   Dos, no ilimitado. El cliente lo pidió así en la llamada del 3/9 y dio la
+   razón: "que tengan solo una opción, si quieren meter otra que se la manden
+   por WhatsApp, si no queda muy enchoclado la cotización". Dos deja lugar a la
+   alternativa que describieron las vendedoras —la del paquete y una más
+   cómoda— sin que la cotización se vaya a tres carillas. */
+const MAX_VUELOS_NOTA = 2;
+
+/* Un itinerario alternativo adentro de las notas.
+
+   Es el mismo gesto que el bloque de vuelos de arriba —pegar el PNR y
+   convertir— pero acotado: acá no entra el lector de IA ni la propuesta a
+   confirmar. Con el parser alcanza para el texto que sale del GDS, y si no
+   reconoce nada lo dice en vez de dejar al vendedor mirando una pantalla
+   quieta. */
+function FichaVueloNota({ nota, i, set, aerolineas, toast }) {
+  const tramos = nota.vuelos || [];
+
+  const enNota = (fn) => set((d) => { fn(d.vuelosNota[i]); });
+
+  const convertir = () => {
+    const crudo = nota.pnrRaw || "";
+    if (!crudo.trim()) return;
+    const v = parsePNR(crudo, aerolineas);
+    if (!v.length) {
+      toast({ msg:"No se reconoció ningún tramo en ese texto. Pegá el itinerario tal cual sale del GDS.",
+        tone:"warn", ms:5000 });
+      return;
+    }
+    enNota((n) => { n.vuelos = v; });
+    toast({ msg:`${v.length} ${v.length === 1 ? "tramo convertido" : "tramos convertidos"}`, tone:"ok" });
+  };
+
+  return (
+    <div style={{ border:"1px solid var(--hair)", borderRadius:13, padding:"11px 12px 12px",
+      background:"var(--card-3)", marginBottom:9 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
+        <span style={{ width:24, height:24, borderRadius:7, flexShrink:0, display:"grid", placeItems:"center",
+          background:"rgba(120,90,229,.11)", color:"var(--violet)" }}><Plane size={12} /></span>
+        <input className="in" style={{ flex:1, height:30, fontSize:12 }} value={nota.nombre || ""}
+          placeholder="Cómo se llama esta opción (ej. Llega de día)"
+          onChange={(e) => enNota((n) => { n.nombre = e.target.value; })} />
+        <button className="btn btn-g btn-ico" title="Quitar este itinerario"
+          onClick={() => { const cp = JSON.parse(JSON.stringify(nota));
+            set((d) => { d.vuelosNota.splice(i, 1); });
+            toast({ msg:"Itinerario quitado de las notas", tone:"warn",
+              undo:() => set((d) => { d.vuelosNota.splice(i, 0, cp); }) }); }}>
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      {tramos.length === 0 ? (
+        <>
+          <textarea className="in mono" rows={4} style={{ width:"100%", fontSize:11.5, lineHeight:1.5 }}
+            value={nota.pnrRaw || ""} placeholder="Pegá acá el itinerario tal cual sale del GDS…"
+            onChange={(e) => enNota((n) => { n.pnrRaw = e.target.value; })} />
+          <Btn variant="p" size="sm" style={{ marginTop:8 }}
+            disabled={!(nota.pnrRaw || "").trim()} onClick={convertir}>
+            Convertir itinerario
+          </Btn>
+        </>
+      ) : (
+        <>
+          {tramos.map((v, k) => {
+            const dm = diasDeMas(v);
+            return (
+              <div key={v.id} style={{ display:"flex", alignItems:"center", gap:7, fontSize:11.5,
+                padding:"6px 0", borderTop: k > 0 ? "1px solid var(--hair-soft)" : "none" }}>
+                <span className="mono" style={{ width:62, fontWeight:600, flexShrink:0 }}>{v.cia} {v.nro}</span>
+                <span className="mono" style={{ flexShrink:0 }}>{v.origen} → {v.destino}</span>
+                <span className="mono" style={{ color:"var(--n500)", flexShrink:0 }}>{v.salida}–{v.llegada}</span>
+                <button className="btn btn-g" style={{ height:24, fontSize:10, fontWeight:700, flexShrink:0,
+                  color: dm > 0 ? "var(--ink-coral)" : "var(--n400)" }}
+                  title="Días entre la salida y la llegada. Tocá para cambiarlo."
+                  onClick={() => enNota((n) => { n.vuelos[k].masDias = (dm + 1) % 3; })}>
+                  {dm > 0 ? `+${dm}` : "mismo"}
+                </button>
+                <button className="btn btn-g btn-ico" style={{ marginLeft:"auto", flexShrink:0 }}
+                  title="Quitar este tramo"
+                  onClick={() => enNota((n) => { n.vuelos.splice(k, 1); })}>
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            );
+          })}
+          <button className="btn btn-g" style={{ height:26, fontSize:11, marginTop:8 }}
+            onClick={() => enNota((n) => { n.vuelos = []; })}>
+            Pegar otro itinerario
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function BloqueNotasCliente({ q, set, refEl, toast }) {
   const ed = useRef(null);
+  const { aerolineas } = useCatalogo();
+  const lista = Array.isArray(q.vuelosNota) ? q.vuelosNota : [];
   const html = typeof q.notasCliente === "string" ? q.notasCliente : "";
 
   /* el editor sigue al estado, pero nunca mientras el vendedor está escribiendo adentro */
@@ -1419,6 +1517,34 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
         <ImageIcon size={11} style={{ color:"var(--teal-2)", flexShrink:0 }} />
         Sale tal cual en la cotización, con el diseño de la agencia. Pegá o soltá una imagen y se sube sola.
+      </div>
+
+      {/* Itinerarios de vuelo opcionales. Sin ninguno cargado no hay nada acá
+          abajo más que el botón, y la cotización sale exactamente como salía:
+          la enorme mayoría no lleva ninguno. */}
+      <div style={{ marginTop:14, paddingTop:13, borderTop:"1px solid var(--hair-soft)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap",
+          marginBottom: lista.length ? 11 : 0 }}>
+          <Plane size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
+          <span style={{ fontSize:12.5, fontWeight:700 }}>Otra opción de vuelo</span>
+          <span style={{ fontSize:11.5, color:"var(--n400)" }}>opcional · sale abajo del texto</span>
+          {lista.length < MAX_VUELOS_NOTA ? (
+            <Btn size="sm" style={{ marginLeft:"auto" }}
+              onClick={() => set((d) => {
+                if (!Array.isArray(d.vuelosNota)) d.vuelosNota = [];
+                d.vuelosNota.push({ id:uid("vn"), nombre:"", pnrRaw:"", vuelos:[] });
+              })}>
+              <Plus size={12} /> Agregar vuelo
+            </Btn>
+          ) : (
+            <span style={{ marginLeft:"auto", fontSize:11, color:"var(--n400)", textAlign:"right" }}>
+              Máximo dos. Si hace falta ofrecer otro, va por WhatsApp.
+            </span>
+          )}
+        </div>
+        {lista.map((n, i) => (
+          <FichaVueloNota key={n.id} nota={n} i={i} set={set} aerolineas={aerolineas} toast={toast} />
+        ))}
       </div>
     </Block>
   );

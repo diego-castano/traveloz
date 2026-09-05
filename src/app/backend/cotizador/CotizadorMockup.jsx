@@ -81,6 +81,9 @@ function cotizacionVacia(ajustes) {
     notas: [],
     notasLibres: "",          /* v4 · bloc de notas interno, sin cápsulas ni autores */
     notasCliente: "",         /* v4 · campo libre HTML del pasajero, admite imágenes */
+    /* Itinerarios de vuelo alternativos abajo de las notas. Opcional de punta
+       a punta: vacío, la sección de notas se ve exactamente como siempre. */
+    vuelosNota: [],
     vigencia: ajustes?.vigenciaDefault || 96,
     opciones: [],
   };
