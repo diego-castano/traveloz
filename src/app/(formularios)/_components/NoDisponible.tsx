@@ -12,7 +12,7 @@ import { getSiteSettings } from "@/lib/public-data";
 
 export async function NoDisponible({
   titulo = "Este enlace no está disponible",
-  detalle = "Puede que tu asesor lo haya pausado o que todavía no esté habilitado. Escribinos y lo resolvemos enseguida.",
+  detalle = "El enlace fue dado de baja o todavía no está habilitado. Para obtener uno nuevo, contactá a tu asesor o a la agencia.",
 }: {
   titulo?: string;
   detalle?: string;
@@ -61,7 +61,7 @@ export async function NoDisponible({
           )}
           {!email && !telefono && (
             <p className="text-neutral-500">
-              Escribile directamente a tu asesor por WhatsApp y te pasa un link nuevo.
+              Contactá a tu asesor por WhatsApp para recibir un enlace nuevo.
             </p>
           )}
         </div>

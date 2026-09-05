@@ -103,7 +103,7 @@ export function PagoForm({
     return (
       <Exito
         titulo={state.message}
-        detalle="Por seguridad no guardamos una copia visible: si necesitás cambiar algo, escribile a tu asesor y te manda un link nuevo."
+        detalle="Por seguridad no guardamos una copia visible: si necesita cambiar algo, su asesor puede enviar un nuevo link."
       />
     );
   }

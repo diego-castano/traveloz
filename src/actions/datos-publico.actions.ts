@@ -200,7 +200,7 @@ export async function getSolicitud(token: string): Promise<SolicitudView | null>
 // Envío de pasajeros
 // ---------------------------------------------------------------------------
 
-const EXITO_PASAJEROS = "¡Listo! Recibimos tus datos y tu asesor ya está en el tema.";
+const EXITO_PASAJEROS = "¡Listo! Recibimos tus datos y tu asesor se pondrá en contacto a la brevedad.";
 
 export async function submitEnvioPasajeros(
   slug: string,
@@ -404,7 +404,7 @@ export async function submitEnvioPasajeros(
 // Datos de pago
 // ---------------------------------------------------------------------------
 
-const EXITO_PAGO = "¡Listo! Recibimos los datos. Tu asesor te confirma el pago a la brevedad.";
+const EXITO_PAGO = "¡Listo! Recibimos los datos. Tu asesor se pondrá en contacto a la brevedad.";
 
 export async function submitDatosPago(
   slug: string,

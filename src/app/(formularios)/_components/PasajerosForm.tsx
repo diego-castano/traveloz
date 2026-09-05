@@ -170,7 +170,7 @@ export function PasajerosForm({
     return (
       <Exito
         titulo={state.message}
-        detalle="Tu asesor ya recibió el aviso y se comunica con vos. Si necesitás corregir algo, escribile directo."
+        detalle="Tu asesor ya recibió el aviso y se pondrá en contacto a la brevedad."
       />
     );
   }
