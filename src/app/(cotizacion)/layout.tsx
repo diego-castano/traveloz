@@ -7,9 +7,11 @@
 // página del sitio: es un documento dirigido a una persona. Todo lo que la
 // rodea tiene que desaparecer detrás de la hoja.
 //
-// Lo que queda: el wordmark chico arriba, la hoja, y un cierre discreto con
-// los datos de la agencia (los mismos del CMS que usa el footer público, sin
-// su maquetación). Fondo tintado con el violeta de marca, nada de gris puro.
+// Lo que queda: el wordmark chico arriba y la hoja. Nada más. Abajo había un
+// cierre con la dirección, el teléfono y el mail de la agencia, y el cliente
+// pidió sacarlo: esos datos ya están en la firma del vendedor, adentro de la
+// hoja, así que afuera solo repetían y ensuciaban el final. Fondo tintado con
+// el violeta de marca, nada de gris puro.
 //
 // El CSS del cotizador se inyecta acá y no en la página: así el chrome también
 // puede usar sus variables y el wordmark, y la pantalla de link vencido —que
@@ -18,7 +20,6 @@
 
 import type { ReactNode } from "react";
 import { CSS } from "@/app/backend/cotizador/_mockup/styles";
-import { getSiteSettings } from "@/lib/public-data";
 import { Wordmark } from "@/app/backend/cotizador/_mockup/ui";
 
 export const dynamic = "force-dynamic";
@@ -29,12 +30,7 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function CotizacionLayout({ children }: { children: ReactNode }) {
-  const general = await getSiteSettings("general");
-  const direccion = general.general_address?.trim() || "";
-  const telefono = general.general_phone?.trim() || "";
-  const email = general.general_email?.trim() || "";
-
+export default function CotizacionLayout({ children }: { children: ReactNode }) {
   return (
     <div className="ctz ctz-pub">
       {/* El CSS del cotizador entero: la ficha del pasajero depende de sus
@@ -48,21 +44,6 @@ export default async function CotizacionLayout({ children }: { children: ReactNo
       </header>
 
       <main className="ctz-pub-main">{children}</main>
-
-      <footer className="ctz-pub-pie" data-ctz-chrome>
-        <p className="ctz-pub-pie-l">
-          {[direccion, telefono].filter(Boolean).join(" · ")}
-        </p>
-        <p className="ctz-pub-pie-l">
-          {email && (
-            <a href={`mailto:${email}`}>{email}</a>
-          )}
-          {email && " · "}
-          <a href="https://traveloz.com.uy" target="_blank" rel="noreferrer">
-            traveloz.com.uy
-          </a>
-        </p>
-      </footer>
     </div>
   );
 }
