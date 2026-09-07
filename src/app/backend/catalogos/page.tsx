@@ -754,24 +754,25 @@ function RegionesPaisesTab() {
 
   async function handleSavePais(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!paisForm.nombre.trim() || !paisForm.regionId) return;
+    const nombre = paisForm.nombre.trim();
+    if (!nombre || !paisForm.regionId) return;
     try {
       if (editPais) {
         await updatePais({
           ...editPais,
-          nombre: paisForm.nombre,
+          nombre,
           codigo: paisForm.codigo,
           regionId: paisForm.regionId,
         });
-        toast("success", "País actualizado", `"${paisForm.nombre}" fue actualizado correctamente`);
+        toast("success", "País actualizado", `"${nombre}" fue actualizado correctamente`);
       } else {
         await createPais({
           brandId: activeBrandId,
-          nombre: paisForm.nombre,
+          nombre,
           codigo: paisForm.codigo,
           regionId: paisForm.regionId,
         });
-        toast("success", "País creado", `"${paisForm.nombre}" fue creado correctamente`);
+        toast("success", "País creado", `"${nombre}" fue creado correctamente`);
       }
       setPaisModalOpen(false);
     } catch (err) {

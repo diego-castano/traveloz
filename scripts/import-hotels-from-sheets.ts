@@ -21,6 +21,7 @@ import { assertSeedAllowed } from '../prisma/seed-guard';
 assertSeedAllowed('import-hotels-from-sheets');
 import { writeFileSync } from 'fs';
 import { generateSequentialId } from '../src/lib/sequential-id';
+import { ciudadKey } from '../src/lib/ciudad-nombre';
 
 const prisma = new PrismaClient();
 const BRAND_ID = 'brand-1';
@@ -208,15 +209,6 @@ function parseCSV(text: string): string[][] {
 
 function normalizeName(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-function normalizeForMatch(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function parseCategoria(raw: string): {
@@ -470,29 +462,36 @@ async function printReport(plan: ImportPlan): Promise<void> {
     where: { brandId: BRAND_ID },
     select: { id: true, nombre: true },
   });
-  const dbPaisByName = new Map(dbPaises.map((p) => [p.nombre, p.id]));
+  const dbPaisIdByKey = new Map(dbPaises.map((p) => [ciudadKey(p.nombre), p.id]));
   const paisesMissing: string[] = [];
   const sheetPaises = Array.from(new Set(plan.hotels.map((h) => h.pais)));
   for (const p of sheetPaises) {
-    if (!dbPaisByName.has(p)) paisesMissing.push(p);
+    if (!dbPaisIdByKey.has(ciudadKey(p))) paisesMissing.push(p);
   }
 
+  // Clave por paisId, no por nombre de país: dos países distintos pueden
+  // tener una ciudad con el mismo nombre, y matchear por nombre de país
+  // (string suelto) es lo que dejó cruzar geografía entre marcas en el
+  // import original. Acá persist() usa la misma clave.
   const dbCiudades = await prisma.ciudad.findMany({
     where: { pais: { brandId: BRAND_ID } },
-    select: { id: true, nombre: true, paisId: true, pais: { select: { nombre: true } } },
+    select: { id: true, nombre: true, paisId: true },
   });
   const dbByKey = new Map<string, string>();
   for (const c of dbCiudades) {
-    if (!c.pais) continue;
-    dbByKey.set(`${c.pais.nombre}|${normalizeForMatch(c.nombre)}`, c.id);
+    dbByKey.set(`${c.paisId}|${ciudadKey(c.nombre)}`, c.id);
   }
   const missing: Array<{ pais: string; ciudadNombre: string }> = [];
   const seen = new Set<string>();
   for (const h of plan.hotels) {
-    const key = `${h.pais}|${normalizeForMatch(h.ciudadNombre)}`;
+    const paisId = dbPaisIdByKey.get(ciudadKey(h.pais));
+    // Si el país todavía no existe no hay paisId para armar la clave real:
+    // se dedup por nombre de país + ciudad nada más (igual se va a crear
+    // el país entero en --confirm, así que no hay riesgo de cruce).
+    const key = paisId ? `${paisId}|${ciudadKey(h.ciudadNombre)}` : `missing:${h.pais}|${ciudadKey(h.ciudadNombre)}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    if (!dbByKey.has(key)) missing.push({ pais: h.pais, ciudadNombre: h.ciudadNombre });
+    if (!paisId || !dbByKey.has(key)) missing.push({ pais: h.pais, ciudadNombre: h.ciudadNombre });
   }
 
   if (paisesMissing.length > 0) {
@@ -505,7 +504,7 @@ async function printReport(plan: ImportPlan): Promise<void> {
   } else {
     console.log(`⚠️  ${missing.length} cities missing from DB — will be created on --confirm:`);
     for (const m of missing) {
-      const paisExists = dbPaisByName.has(m.pais) ? '' : ' (país missing too)';
+      const paisExists = dbPaisIdByKey.has(ciudadKey(m.pais)) ? '' : ' (país missing too)';
       console.log(`    - ${m.pais} / ${m.ciudadNombre}${paisExists}`);
     }
   }
@@ -545,10 +544,16 @@ const COUNTRY_TO_REGION: Record<string, string> = {
 async function persist(plan: ImportPlan): Promise<void> {
   console.log('🔄 Persisting to DB…');
 
-  // Load regions (brand-scoped via Region→Pais relationship would still need brand filter,
-  // but regions are shared across brands in this schema — no filter needed here).
-  const regions = await prisma.region.findMany({ select: { id: true, nombre: true } });
-  const regionIdByName = new Map(regions.map((r) => [r.nombre, r.id]));
+  // Regiones SCOPEADAS A BRAND_ID. Region también tiene brandId (y hay
+  // "Europa"/"Sudamérica"/etc. duplicadas por marca): sin este filtro el Map
+  // se queda con la fila de la última marca leída y un país nuevo de brand-1
+  // termina colgado de una región de otra marca (el mismo mecanismo que dejó
+  // a Países Bajos y Reino Unido bajo la Europa equivocada).
+  const regions = await prisma.region.findMany({
+    where: { brandId: BRAND_ID },
+    select: { id: true, nombre: true },
+  });
+  const regionIdByKey = new Map(regions.map((r) => [ciudadKey(r.nombre), r.id]));
 
   // Load paises by name — SCOPED TO BRAND_ID.
   // The multi-tenant schema allows duplicate país names across brands. Without this
@@ -559,47 +564,47 @@ async function persist(plan: ImportPlan): Promise<void> {
     where: { brandId: BRAND_ID },
     select: { id: true, nombre: true },
   });
-  const paisIdByName = new Map(paises.map((p) => [p.nombre, p.id]));
+  const paisIdByKey = new Map(paises.map((p) => [ciudadKey(p.nombre), p.id]));
 
   // Create missing países
   const sheetPaises = Array.from(new Set(plan.hotels.map((h) => h.pais)));
   let createdPaises = 0;
   for (const p of sheetPaises) {
-    if (paisIdByName.has(p)) continue;
+    if (paisIdByKey.has(ciudadKey(p))) continue;
     const regionName = COUNTRY_TO_REGION[p];
-    const regionId = regionName ? regionIdByName.get(regionName) : undefined;
+    const regionId = regionName ? regionIdByKey.get(ciudadKey(regionName)) : undefined;
     if (!regionId) {
       throw new Error(`Region not found for pais ${p} (expected "${regionName}")`);
     }
     const created = await prisma.pais.create({
       data: { brandId: BRAND_ID, nombre: p, regionId },
     });
-    paisIdByName.set(p, created.id);
+    paisIdByKey.set(ciudadKey(p), created.id);
     createdPaises++;
   }
   if (createdPaises > 0) console.log(`   ✓ ${createdPaises} países creados`);
 
-  // Load existing ciudades
+  // Load existing ciudades — clave por paisId, no por nombre de país (ver
+  // mismo comentario en el dry-run de arriba).
   const dbCiudades = await prisma.ciudad.findMany({
     where: { pais: { brandId: BRAND_ID } },
-    select: { id: true, nombre: true, paisId: true, pais: { select: { nombre: true } } },
+    select: { id: true, nombre: true, paisId: true },
   });
   const ciudadByKey = new Map<string, string>();
   for (const c of dbCiudades) {
-    if (!c.pais) continue;
-    ciudadByKey.set(`${c.pais.nombre}|${normalizeForMatch(c.nombre)}`, c.id);
+    ciudadByKey.set(`${c.paisId}|${ciudadKey(c.nombre)}`, c.id);
   }
 
   // Create missing ciudades (dedup via ciudadByKey; once we create, later iterations skip).
   let createdCiudades = 0;
   for (const h of plan.hotels) {
-    const key = `${h.pais}|${normalizeForMatch(h.ciudadNombre)}`;
-    if (ciudadByKey.has(key)) continue;
-
-    const paisId = paisIdByName.get(h.pais);
+    const paisId = paisIdByKey.get(ciudadKey(h.pais));
     if (!paisId) {
       throw new Error(`País not found in DB: ${h.pais}`);
     }
+    const key = `${paisId}|${ciudadKey(h.ciudadNombre)}`;
+    if (ciudadByKey.has(key)) continue;
+
     const created = await prisma.ciudad.create({
       data: { nombre: h.ciudadNombre, paisId },
     });
@@ -611,8 +616,8 @@ async function persist(plan: ImportPlan): Promise<void> {
   // Insert hotels
   let createdHotels = 0;
   for (const h of plan.hotels) {
-    const ciudadId = ciudadByKey.get(`${h.pais}|${normalizeForMatch(h.ciudadNombre)}`);
-    const paisId = paisIdByName.get(h.pais);
+    const paisId = paisIdByKey.get(ciudadKey(h.pais));
+    const ciudadId = paisId ? ciudadByKey.get(`${paisId}|${ciudadKey(h.ciudadNombre)}`) : undefined;
     if (!ciudadId || !paisId) {
       throw new Error(`Unresolved city/country for hotel: ${h.nombre} (${h.pais}/${h.ciudadNombre})`);
     }

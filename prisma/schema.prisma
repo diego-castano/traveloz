@@ -505,6 +505,9 @@ model Etiqueta {
   @@index([brandId])
 }
 
+/// Ver Pais y Ciudad: un futuro índice único parcial sobre (brandId,
+/// geo_key(nombre)) vive solo en SQL (Prisma no modela índices por
+/// expresión) — no lo borres si no aparece acá.
 model Region {
   id          String   @id @default(cuid())
   brandId     String
@@ -523,6 +526,9 @@ model Region {
   @@index([brandId])
 }
 
+/// Mismo aviso que Region: un futuro índice único parcial sobre (brandId,
+/// geo_key(nombre)), WHERE brandId = 'brand-1' porque brand-2 tiene países
+/// duplicados por nombre (ver diagnóstico geo). Vive en SQL, no en Prisma.
 model Pais {
   id        String   @id @default(cuid())
   brandId   String
@@ -541,6 +547,9 @@ model Pais {
   @@index([regionId])
 }
 
+/// Mismo aviso: un futuro índice único (paisId, geo_key(nombre)), global
+/// porque la marca ya va implícita en paisId. geo_key es el espejo SQL de
+/// ciudadKey (src/lib/ciudad-nombre.ts) y vive en SQL, no en Prisma.
 model Ciudad {
   id        String   @id @default(cuid())
   paisId    String

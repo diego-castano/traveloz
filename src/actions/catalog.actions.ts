@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
@@ -12,16 +13,6 @@ import {
   validarCiudadNombre,
 } from "@/lib/ciudad-nombre";
 const log = logger.child({ module: "catalog.actions" });
-
-/**
- * Errores de alta/edición de ciudad que SÍ tienen que llegarle al operador con
- * su texto original (nombre inválido, ciudad repetida). Todo lo demás se
- * loguea y sale como mensaje genérico, como el resto del archivo.
- *
- * No se exporta a propósito: en un módulo "use server" sólo pueden salir
- * funciones async.
- */
-class CiudadInvalidaError extends Error {}
 
 /** Global catalog-cache tag. Same rationale as services-global: lets every
  *  mutation invalidate without resolving brandId first. Catalogs are tiny
@@ -69,13 +60,13 @@ const RegimenSchema = z.object({
 });
 
 const RegionSchema = z.object({
-  nombre: z.string().min(1, "El nombre es requerido"),
+  nombre: z.string().trim().min(1, "El nombre es requerido"),
   slug: z.string().min(1, "El slug es requerido"),
   orden: z.number().int().optional(),
 });
 
 const PaisSchema = z.object({
-  nombre: z.string().min(1, "El nombre es requerido"),
+  nombre: z.string().trim().min(1, "El nombre es requerido"),
   codigo: z.string().optional(),
   regionId: z.string().nullable().optional(),
 });
@@ -96,18 +87,22 @@ const CiudadSchema = z.object({
   nombre: CiudadNombreSchema,
 });
 
+// updateCiudad NO acepta paisId: mover una ciudad de país es una operación
+// distinta (y peligrosa, cruza el árbol geográfico) que este endpoint no
+// ofrece. Con este schema, aunque el caller mande paisId por error, Zod lo
+// descarta.
+const UpdateCiudadSchema = z.object({ nombre: CiudadNombreSchema });
+
 /**
- * Traduce lo que salga del alta/edición de ciudad a un error mostrable.
- * Devuelve el error listo para `throw`.
+ * Mensaje mostrable para un error esperado (nombre inválido, P2002). Errores
+ * inesperados devuelven `null` y quedan para el `catch` de cada función, que
+ * los loguea y tira un genérico.
  */
-function errorDeCiudad(error: unknown, fallback: string): Error {
-  if (error instanceof CiudadInvalidaError) return error;
+function mensajeDeCatalogoInvalido(error: unknown): string | null {
   if (error instanceof z.ZodError) {
-    return new CiudadInvalidaError(
-      error.issues[0]?.message ?? "El nombre de la ciudad no es válido.",
-    );
+    return error.issues[0]?.message ?? "El nombre no es válido.";
   }
-  return new Error(fallback);
+  return null;
 }
 
 /**
@@ -127,6 +122,34 @@ async function ciudadRepetida(
   });
   const clave = ciudadKey(nombre);
   return hermanas.find((c) => ciudadKey(c.nombre) === clave)?.nombre ?? null;
+}
+
+/** Espejo de ciudadRepetida para Pais, siempre acotado a la marca. */
+async function paisRepetido(
+  brandId: string,
+  nombre: string,
+  ignorarId?: string,
+): Promise<string | null> {
+  const hermanos = await prisma.pais.findMany({
+    where: { brandId, ...(ignorarId ? { id: { not: ignorarId } } : {}) },
+    select: { nombre: true },
+  });
+  const clave = ciudadKey(nombre);
+  return hermanos.find((p) => ciudadKey(p.nombre) === clave)?.nombre ?? null;
+}
+
+/** Espejo de ciudadRepetida para Region, siempre acotado a la marca. */
+async function regionRepetida(
+  brandId: string,
+  nombre: string,
+  ignorarId?: string,
+): Promise<string | null> {
+  const hermanas = await prisma.region.findMany({
+    where: { brandId, ...(ignorarId ? { id: { not: ignorarId } } : {}) },
+    select: { nombre: true },
+  });
+  const clave = ciudadKey(nombre);
+  return hermanas.find((r) => ciudadKey(r.nombre) === clave)?.nombre ?? null;
 }
 
 const ProveedorSchema = z.object({
@@ -406,8 +429,21 @@ export async function createRegion(data: {
   try {
     const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = RegionSchema.parse(data);
-    const __res = await prisma.region.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
+
+    const repetida = await regionRepetida(brandId, parsed.nombre);
+    if (repetida) {
+      return { ok: false as const, message: `Ya existe la región «${repetida}».` };
+    }
+
+    const entity = await prisma.region.create({ data: { ...parsed, brandId } });
+    bustCatalogsCacheGlobal();
+    return { ok: true as const, entity };
   } catch (error) {
+    const mensaje = mensajeDeCatalogoInvalido(error);
+    if (mensaje) return { ok: false as const, message: mensaje };
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { ok: false as const, message: "Ya existe una región con ese nombre o slug." };
+    }
     log.error("creating region", error);
     throw new Error("No se pudo crear la región.");
   }
@@ -418,27 +454,48 @@ export async function updateRegion(
   data: { nombre?: string; slug?: string; orden?: number }
 ) {
   try {
-    await requireCanEdit();
+    const { brandId } = await requireCanEdit();
+
+    const actual = await prisma.region.findUnique({ where: { id }, select: { brandId: true } });
+    if (!actual) return { ok: false as const, message: "La región no existe." };
+    if (actual.brandId !== brandId) {
+      return { ok: false as const, message: "Esa región no pertenece a esta marca." };
+    }
+
     // Solo campos escalares: el caller manda el objeto Region enriquecido (con
     // `paises`, brandId, timestamps…) y Prisma rompe si le llega la relación
     // `paises`. El schema partial descarta todo lo que no sea nombre/slug/orden.
     const clean = RegionSchema.partial().parse(data);
+
+    if (clean.nombre) {
+      const repetida = await regionRepetida(brandId, clean.nombre, id);
+      if (repetida) {
+        return { ok: false as const, message: `Ya existe la región «${repetida}».` };
+      }
+    }
+
     log.info("updateRegion", { id, keys: Object.keys(clean) });
-    const __res = await prisma.region.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
+    const entity = await prisma.region.update({ where: { id }, data: clean });
+    bustCatalogsCacheGlobal();
+    return { ok: true as const, entity };
   } catch (error) {
+    const mensaje = mensajeDeCatalogoInvalido(error);
+    if (mensaje) return { ok: false as const, message: mensaje };
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { ok: false as const, message: "Ya existe una región con ese nombre o slug." };
+    }
     log.error("updating region", error);
-    // Incluimos el mensaje real para que el toast del cliente lo muestre y
-    // podamos diagnosticar (antes ocultaba todo tras un texto genérico).
-    throw new Error(
-      "No se pudo actualizar la región." +
-        (error instanceof Error ? ` (${error.message})` : ""),
-    );
+    throw new Error("No se pudo actualizar la región.");
   }
 }
 
 export async function deleteRegion(id: string) {
   try {
-    await requireCanEdit();
+    const { brandId } = await requireCanEdit();
+    const actual = await prisma.region.findUnique({ where: { id }, select: { brandId: true } });
+    if (!actual || actual.brandId !== brandId) {
+      throw new Error("Esa región no pertenece a esta marca.");
+    }
     const count = await prisma.pais.count({ where: { regionId: id } });
     if (count > 0) {
       throw new Error(
@@ -480,8 +537,31 @@ export async function createPais(data: {
   try {
     const { brandId } = await requireCanEdit(requestedBrandId);
     const parsed = PaisSchema.parse(data);
-    const __res = await prisma.pais.create({ data: { ...parsed, brandId } }); bustCatalogsCacheGlobal(); return __res;
+
+    if (parsed.regionId) {
+      const region = await prisma.region.findUnique({
+        where: { id: parsed.regionId },
+        select: { brandId: true },
+      });
+      if (!region || region.brandId !== brandId) {
+        return { ok: false as const, message: "Esa región no pertenece a esta marca." };
+      }
+    }
+
+    const repetido = await paisRepetido(brandId, parsed.nombre);
+    if (repetido) {
+      return { ok: false as const, message: `Ya existe el país «${repetido}».` };
+    }
+
+    const entity = await prisma.pais.create({ data: { ...parsed, brandId } });
+    bustCatalogsCacheGlobal();
+    return { ok: true as const, entity };
   } catch (error) {
+    const mensaje = mensajeDeCatalogoInvalido(error);
+    if (mensaje) return { ok: false as const, message: mensaje };
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { ok: false as const, message: "Ya existe un país con ese nombre." };
+    }
     log.error("creating pais", error);
     throw new Error("No se pudo crear el país.");
   }
@@ -492,12 +572,55 @@ export async function updatePais(
   data: { nombre?: string; codigo?: string; regionId?: string | null }
 ) {
   try {
-    await requireCanEdit();
+    const { brandId } = await requireCanEdit();
+
+    const actual = await prisma.pais.findUnique({
+      where: { id },
+      select: { brandId: true, regionId: true },
+    });
+    if (!actual) return { ok: false as const, message: "El país no existe." };
+    if (actual.brandId !== brandId) {
+      return { ok: false as const, message: "Ese país no pertenece a esta marca." };
+    }
+
     // Igual que updateRegion: descartamos campos extra (relación `ciudades`,
     // brandId, timestamps) para no romper el update de Prisma.
     const clean = PaisSchema.partial().parse(data);
-    const __res = await prisma.pais.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
+
+    // Solo validamos la marca de la región cuando el país efectivamente
+    // CAMBIA de región: si no, un país heredado con una región de otra marca
+    // (p.ej. colgando de Europa de brand-2) queda bloqueado para siempre,
+    // porque el form siempre reenvía el regionId actual.
+    if (
+      clean.regionId !== undefined &&
+      clean.regionId !== null &&
+      clean.regionId !== actual.regionId
+    ) {
+      const region = await prisma.region.findUnique({
+        where: { id: clean.regionId },
+        select: { brandId: true },
+      });
+      if (!region || region.brandId !== brandId) {
+        return { ok: false as const, message: "Esa región no pertenece a esta marca." };
+      }
+    }
+
+    if (clean.nombre) {
+      const repetido = await paisRepetido(brandId, clean.nombre, id);
+      if (repetido) {
+        return { ok: false as const, message: `Ya existe el país «${repetido}».` };
+      }
+    }
+
+    const entity = await prisma.pais.update({ where: { id }, data: clean });
+    bustCatalogsCacheGlobal();
+    return { ok: true as const, entity };
   } catch (error) {
+    const mensaje = mensajeDeCatalogoInvalido(error);
+    if (mensaje) return { ok: false as const, message: mensaje };
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { ok: false as const, message: "Ya existe un país con ese nombre." };
+    }
     log.error("updating pais", error);
     throw new Error("No se pudo actualizar el país.");
   }
@@ -505,11 +628,15 @@ export async function updatePais(
 
 export async function deletePais(id: string) {
   try {
-    await requireCanEdit();
+    const { brandId } = await requireCanEdit();
+    const actual = await prisma.pais.findUnique({ where: { id }, select: { brandId: true } });
+    if (!actual || actual.brandId !== brandId) {
+      throw new Error("Ese país no pertenece a esta marca.");
+    }
     const __res = await prisma.pais.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting pais", error);
-    throw new Error("No se pudo eliminar el país.");
+    throw error instanceof Error ? error : new Error("No se pudo eliminar el país.");
   }
 }
 
@@ -532,28 +659,36 @@ export async function getCiudades(paisId: string) {
 
 export async function createCiudad(data: { paisId: string; nombre: string }) {
   try {
-    await requireCanEdit();
+    const { brandId } = await requireCanEdit();
     const parsed = CiudadSchema.parse(data);
+
+    const pais = await prisma.pais.findUnique({
+      where: { id: parsed.paisId },
+      select: { brandId: true },
+    });
+    if (!pais || pais.brandId !== brandId) {
+      return { ok: false as const, message: "Ese país no pertenece a esta marca." };
+    }
 
     // Última barrera contra el catálogo basura. El panel ya confirma y avisa de
     // parecidas antes de llegar acá, pero el repetido exacto se corta igual del
     // lado del servidor: es el único punto por el que pasan los tres atajos.
     const repetida = await ciudadRepetida(parsed.paisId, parsed.nombre);
     if (repetida) {
-      throw new CiudadInvalidaError(
-        `Ese país ya tiene la ciudad «${repetida}».`,
-      );
+      return { ok: false as const, message: `Ese país ya tiene la ciudad «${repetida}».` };
     }
 
-    const __res = await prisma.ciudad.create({ data: parsed }); bustCatalogsCacheGlobal(); return __res;
+    const entity = await prisma.ciudad.create({ data: parsed });
+    bustCatalogsCacheGlobal();
+    return { ok: true as const, entity };
   } catch (error) {
-    const mostrable = errorDeCiudad(error, "No se pudo crear la ciudad.");
-    // Un nombre inválido o repetido es una decisión del sistema, no una falla:
-    // no va al log de errores o lo llenaríamos de ruido operativo.
-    if (!(mostrable instanceof CiudadInvalidaError)) {
-      log.error("creating ciudad", error);
+    const mensaje = mensajeDeCatalogoInvalido(error);
+    if (mensaje) return { ok: false as const, message: mensaje };
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { ok: false as const, message: "Ese país ya tiene esa ciudad." };
     }
-    throw mostrable;
+    log.error("creating ciudad", error);
+    throw new Error("No se pudo crear la ciudad.");
   }
 }
 
@@ -562,42 +697,54 @@ export async function updateCiudad(
   data: { nombre?: string }
 ) {
   try {
-    await requireCanEdit();
-    const clean = CiudadSchema.partial().parse(data);
+    const { brandId } = await requireCanEdit();
+    const clean = UpdateCiudadSchema.partial().parse(data);
+
+    const actual = await prisma.ciudad.findUnique({
+      where: { id },
+      select: { paisId: true, pais: { select: { brandId: true } } },
+    });
+    if (!actual) return { ok: false as const, message: "La ciudad no existe." };
+    if (actual.pais.brandId !== brandId) {
+      return { ok: false as const, message: "Esa ciudad no pertenece a esta marca." };
+    }
 
     // Renombrar tampoco puede dejar dos veces la misma ciudad en un país.
     if (clean.nombre) {
-      const actual = await prisma.ciudad.findUnique({
-        where: { id },
-        select: { paisId: true },
-      });
-      if (actual) {
-        const repetida = await ciudadRepetida(actual.paisId, clean.nombre, id);
-        if (repetida) {
-          throw new CiudadInvalidaError(
-            `Ese país ya tiene la ciudad «${repetida}».`,
-          );
-        }
+      const repetida = await ciudadRepetida(actual.paisId, clean.nombre, id);
+      if (repetida) {
+        return { ok: false as const, message: `Ese país ya tiene la ciudad «${repetida}».` };
       }
     }
 
-    const __res = await prisma.ciudad.update({ where: { id }, data: clean }); bustCatalogsCacheGlobal(); return __res;
+    const entity = await prisma.ciudad.update({ where: { id }, data: clean });
+    bustCatalogsCacheGlobal();
+    return { ok: true as const, entity };
   } catch (error) {
-    const mostrable = errorDeCiudad(error, "No se pudo actualizar la ciudad.");
-    if (!(mostrable instanceof CiudadInvalidaError)) {
-      log.error("updating ciudad", error);
+    const mensaje = mensajeDeCatalogoInvalido(error);
+    if (mensaje) return { ok: false as const, message: mensaje };
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { ok: false as const, message: "Ese país ya tiene esa ciudad." };
     }
-    throw mostrable;
+    log.error("updating ciudad", error);
+    throw new Error("No se pudo actualizar la ciudad.");
   }
 }
 
 export async function deleteCiudad(id: string) {
   try {
-    await requireCanEdit();
+    const { brandId } = await requireCanEdit();
+    const actual = await prisma.ciudad.findUnique({
+      where: { id },
+      select: { pais: { select: { brandId: true } } },
+    });
+    if (!actual || actual.pais.brandId !== brandId) {
+      throw new Error("Esa ciudad no pertenece a esta marca.");
+    }
     const __res = await prisma.ciudad.delete({ where: { id } }); bustCatalogsCacheGlobal(); return __res;
   } catch (error) {
     log.error("deleting ciudad", error);
-    throw new Error("No se pudo eliminar la ciudad.");
+    throw error instanceof Error ? error : new Error("No se pudo eliminar la ciudad.");
   }
 }
 

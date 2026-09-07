@@ -616,22 +616,29 @@ export function useCatalogActions() {
       createRegion: async (
         data: Omit<Region, "id" | "createdAt" | "updatedAt">,
       ) => {
-        const entity = await catalogActions.createRegion(data);
-        dispatch({ type: "ADD_REGION", payload: entity as unknown as Region });
-        return entity;
+        // createRegion/updateRegion/createPais/updatePais/createCiudad/
+        // updateCiudad devuelven { ok, entity | message } en vez de tirar:
+        // en producción Next redacta los mensajes de las excepciones de
+        // server action, así que el error viaja como dato y lo convertimos
+        // en throw acá, del lado del cliente, donde sí llega intacto al toast.
+        const res = await catalogActions.createRegion(data);
+        if (!res.ok) throw new Error(res.message);
+        dispatch({ type: "ADD_REGION", payload: res.entity as unknown as Region });
+        return res.entity;
       },
       updateRegion: async (entity: Region) => {
         // Mandamos SOLO los campos escalares: el `entity` viene enriquecido con
         // `paises` (relación) + fechas; pasar todo eso por la server action es
         // frágil (serialización + Prisma rompe con la relación). Extraemos lo
         // que se edita y nada más.
-        const updated = await catalogActions.updateRegion(entity.id, {
+        const res = await catalogActions.updateRegion(entity.id, {
           nombre: entity.nombre,
           slug: entity.slug,
           orden: entity.orden,
         });
-        dispatch({ type: "UPDATE_REGION", payload: updated as unknown as Region });
-        return updated;
+        if (!res.ok) throw new Error(res.message);
+        dispatch({ type: "UPDATE_REGION", payload: res.entity as unknown as Region });
+        return res.entity;
       },
       deleteRegion: async (id: string) => {
         await catalogActions.deleteRegion(id);
@@ -642,19 +649,21 @@ export function useCatalogActions() {
       createPais: async (
         data: Omit<Pais, "id" | "createdAt" | "updatedAt">,
       ) => {
-        const entity = await catalogActions.createPais(data);
-        dispatch({ type: "ADD_PAIS", payload: entity as unknown as Pais });
-        return entity;
+        const res = await catalogActions.createPais(data);
+        if (!res.ok) throw new Error(res.message);
+        dispatch({ type: "ADD_PAIS", payload: res.entity as unknown as Pais });
+        return res.entity;
       },
       updatePais: async (entity: Pais) => {
         // Solo escalares (ver updateRegion): el entity trae `ciudades` + fechas.
-        const updated = await catalogActions.updatePais(entity.id, {
+        const res = await catalogActions.updatePais(entity.id, {
           nombre: entity.nombre,
           codigo: entity.codigo,
           regionId: entity.regionId,
         });
-        dispatch({ type: "UPDATE_PAIS", payload: updated as unknown as Pais });
-        return updated;
+        if (!res.ok) throw new Error(res.message);
+        dispatch({ type: "UPDATE_PAIS", payload: res.entity as unknown as Pais });
+        return res.entity;
       },
       deletePais: async (id: string) => {
         await catalogActions.deletePais(id);
@@ -665,16 +674,18 @@ export function useCatalogActions() {
       createCiudad: async (
         data: Omit<Ciudad, "id" | "createdAt" | "updatedAt">,
       ) => {
-        const entity = await catalogActions.createCiudad(data);
-        dispatch({ type: "ADD_CIUDAD", payload: entity as unknown as Ciudad });
-        return entity;
+        const res = await catalogActions.createCiudad(data);
+        if (!res.ok) throw new Error(res.message);
+        dispatch({ type: "ADD_CIUDAD", payload: res.entity as unknown as Ciudad });
+        return res.entity;
       },
       updateCiudad: async (entity: Ciudad) => {
-        const updated = await catalogActions.updateCiudad(entity.id, {
+        const res = await catalogActions.updateCiudad(entity.id, {
           nombre: entity.nombre,
         });
-        dispatch({ type: "UPDATE_CIUDAD", payload: updated as unknown as Ciudad });
-        return updated;
+        if (!res.ok) throw new Error(res.message);
+        dispatch({ type: "UPDATE_CIUDAD", payload: res.entity as unknown as Ciudad });
+        return res.entity;
       },
       deleteCiudad: async (id: string) => {
         await catalogActions.deleteCiudad(id);

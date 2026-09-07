@@ -44,7 +44,11 @@ export async function updateRegionFrontend(
   id: string,
   data: { heroImage?: string | null; descripcion?: string | null },
 ) {
-  await requireCanEdit();
+  const { brandId } = await requireCanEdit();
+  const actual = await prisma.region.findUnique({ where: { id }, select: { brandId: true } });
+  if (!actual || actual.brandId !== brandId) {
+    throw new Error("Esa región no pertenece a esta marca.");
+  }
   const updated = await prisma.region.update({
     where: { id },
     data: {

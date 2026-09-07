@@ -9,18 +9,10 @@
 import { PrismaClient } from '@prisma/client';
 import { assertSeedAllowed } from '../prisma/seed-guard';
 assertSeedAllowed('fix-hotels-brand');
+import { ciudadKey } from '../src/lib/ciudad-nombre';
 
 const prisma = new PrismaClient();
 const BRAND_ID = 'brand-1';
-
-function normalizeForMatch(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
 
 // Regions mapping for creating missing brand-1 paises.
 const COUNTRY_TO_REGION: Record<string, string> = {
@@ -43,12 +35,16 @@ async function main() {
   });
   const paisByName = new Map<string, typeof brand1Paises[number]>();
   for (const p of brand1Paises) {
-    paisByName.set(normalizeForMatch(p.nombre), p);
+    paisByName.set(ciudadKey(p.nombre), p);
   }
 
-  // 2. Load regions for creating missing paises
-  const regions = await prisma.region.findMany();
-  const regionByName = new Map(regions.map((r) => [r.nombre, r.id]));
+  // 2. Load regions for creating missing paises — SCOPEADO A BRAND_ID. Region
+  // tiene brandId y hay "Europa"/"Sudamérica"/etc. duplicadas por marca; sin
+  // el filtro el Map se queda con la fila de otra marca y un país de brand-1
+  // termina colgado de esa región (el mecanismo que dejó a Países Bajos y
+  // Reino Unido bajo la Europa equivocada).
+  const regions = await prisma.region.findMany({ where: { brandId: BRAND_ID } });
+  const regionByName = new Map(regions.map((r) => [ciudadKey(r.nombre), r.id]));
 
   // 3. Load all brand-1 hotels with their current refs
   const hotels = await prisma.alojamiento.findMany({
@@ -80,7 +76,7 @@ async function main() {
     const oldCiudadName = h.ciudad?.nombre ?? null;
     if (!oldPaisName) continue;
 
-    let targetPais = paisByName.get(normalizeForMatch(oldPaisName));
+    let targetPais = paisByName.get(ciudadKey(oldPaisName));
     if (!targetPais) {
       paisesToCreate.set(oldPaisName, {
         nombre: oldPaisName,
@@ -90,8 +86,8 @@ async function main() {
 
     let targetCiudadId: string | null = null;
     if (oldCiudadName && targetPais) {
-      const nrm = normalizeForMatch(oldCiudadName);
-      const existing = targetPais.ciudades.find((c) => normalizeForMatch(c.nombre) === nrm);
+      const nrm = ciudadKey(oldCiudadName);
+      const existing = targetPais.ciudades.find((c) => ciudadKey(c.nombre) === nrm);
       if (existing) {
         targetCiudadId = existing.id;
       } else {
@@ -126,19 +122,19 @@ async function main() {
 
   // 5. Create missing brand-1 países
   for (const [name, { region }] of Array.from(paisesToCreate.entries())) {
-    const regionId = regionByName.get(region);
+    const regionId = regionByName.get(ciudadKey(region));
     if (!regionId) throw new Error(`Region not found: ${region}`);
     const created = await prisma.pais.create({
       data: { brandId: BRAND_ID, nombre: name, regionId },
     });
-    paisByName.set(normalizeForMatch(name), { ...created, ciudades: [] } as typeof brand1Paises[number]);
+    paisByName.set(ciudadKey(name), { ...created, ciudades: [] } as typeof brand1Paises[number]);
   }
   console.log(`  ✓ ${paisesToCreate.size} países created`);
 
   // 6. Create missing brand-1 ciudades
   let cityCount = 0;
   for (const [, { nombre, paisName }] of Array.from(ciudadesToCreate.entries())) {
-    const target = paisByName.get(normalizeForMatch(paisName));
+    const target = paisByName.get(ciudadKey(paisName));
     if (!target) throw new Error(`País not found: ${paisName}`);
     const created = await prisma.ciudad.create({
       data: { nombre, paisId: target.id },
@@ -154,9 +150,9 @@ async function main() {
       const hotel = hotels.find((h) => h.id === f.hotelId)!;
       const oldPaisName = (hotel.pais?.nombre ?? hotel.ciudad?.pais?.nombre)!;
       const oldCiudadName = hotel.ciudad?.nombre ?? null;
-      const target = paisByName.get(normalizeForMatch(oldPaisName))!;
+      const target = paisByName.get(ciudadKey(oldPaisName))!;
       const ciudad = oldCiudadName
-        ? target.ciudades.find((c) => normalizeForMatch(c.nombre) === normalizeForMatch(oldCiudadName))
+        ? target.ciudades.find((c) => ciudadKey(c.nombre) === ciudadKey(oldCiudadName))
         : null;
       await tx.alojamiento.update({
         where: { id: f.hotelId },

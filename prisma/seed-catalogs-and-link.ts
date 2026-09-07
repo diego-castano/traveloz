@@ -10,9 +10,11 @@
 import { PrismaClient } from '@prisma/client';
 import { assertSeedAllowed } from './seed-guard';
 assertSeedAllowed('seed-catalogs-and-link');
+import { ciudadKey } from '../src/lib/ciudad-nombre';
 
 const prisma = new PrismaClient();
 const CONFIRM = process.argv.includes('--confirm');
+const BRAND_ID = 'brand-1';
 
 // ---------------------------------------------------------------------------
 // Catalog definitions (exact names from user spec)
@@ -744,13 +746,23 @@ function inferTipoPaquete(titulo: string, destino: string): string {
 async function main() {
   console.log(`[seed-catalogs] Mode: ${CONFIRM ? 'CONFIRM (will write)' : 'DRY-RUN'}`);
 
-  // Discover brands
+  // Discover brands, pero solo tocamos la nuestra: este script itera un
+  // for-of sobre brandIds y escribe (upsert/create) con --confirm, así que
+  // dejarlo recorrer todas las marcas detectadas escribiría en brand-2 aunque
+  // el resto del archivo scopee cada find/create por `brandId` (variable del
+  // loop, no una constante fija) — el problema no es el `where`, es qué
+  // marcas entran al loop.
   const brandRows = await prisma.user.findMany({
     distinct: ['brandId'],
     select: { brandId: true },
   });
-  const brandIds = brandRows.map((r) => r.brandId);
-  console.log(`[seed-catalogs] Brands detected: ${brandIds.join(', ')}`);
+  const brandIdsDetectados = brandRows.map((r) => r.brandId);
+  const brandIds = brandIdsDetectados.filter((b) => b === BRAND_ID);
+  const omitidas = brandIdsDetectados.filter((b) => b !== BRAND_ID);
+  console.log(`[seed-catalogs] Brands detected: ${brandIdsDetectados.join(', ')}`);
+  if (omitidas.length > 0) {
+    console.log(`[seed-catalogs] Omitiendo marcas ajenas a ${BRAND_ID}: ${omitidas.join(', ')}`);
+  }
 
   // ---- STEP 1: Upsert catalogs per brand ----
   console.log('\n[step 1] Seeding catalogs for each brand...');
@@ -811,14 +823,18 @@ async function main() {
       }
     }
 
-    // Países + Ciudades
+    // Países + Ciudades — match por ciudadKey (sin tildes/mayúsculas/espacios),
+    // no por nombre exacto, y siempre acotado a `brandId` (loop var) o al
+    // paisId ya resuelto dentro de esa marca. Mismo criterio que
+    // import-hotels-from-sheets.ts y fix-hotels-brand.ts.
+    const paisesDeLaMarca = CONFIRM
+      ? await prisma.pais.findMany({ where: { brandId }, select: { id: true, nombre: true } })
+      : [];
     for (const [paisNombre, ciudades] of Object.entries(PAISES_CIUDADES)) {
       let paisId: string;
       if (CONFIRM) {
-        // Pais has no @@unique — use findFirst + create manually
-        const existing = await prisma.pais.findFirst({
-          where: { brandId, nombre: paisNombre },
-        });
+        // Pais has no @@unique — buscamos en memoria por ciudadKey y creamos si falta.
+        const existing = paisesDeLaMarca.find((p) => ciudadKey(p.nombre) === ciudadKey(paisNombre));
         if (existing) {
           paisId = existing.id;
         } else {
@@ -826,18 +842,20 @@ async function main() {
             data: { brandId, nombre: paisNombre },
           });
           paisId = created.id;
+          paisesDeLaMarca.push({ id: created.id, nombre: created.nombre });
         }
       } else {
         paisId = `dry-pais-${paisNombre}`;
       }
       paisMap[brandId][paisNombre] = paisId;
 
+      const ciudadesDelPais = CONFIRM
+        ? await prisma.ciudad.findMany({ where: { paisId }, select: { id: true, nombre: true } })
+        : [];
       for (const ciudadNombre of ciudades) {
         let ciudadId: string;
         if (CONFIRM) {
-          const existing = await prisma.ciudad.findFirst({
-            where: { paisId, nombre: ciudadNombre },
-          });
+          const existing = ciudadesDelPais.find((c) => ciudadKey(c.nombre) === ciudadKey(ciudadNombre));
           if (existing) {
             ciudadId = existing.id;
           } else {
@@ -845,6 +863,7 @@ async function main() {
               data: { paisId, nombre: ciudadNombre },
             });
             ciudadId = created.id;
+            ciudadesDelPais.push({ id: created.id, nombre: created.nombre });
           }
         } else {
           ciudadId = `dry-ciudad-${paisNombre}-${ciudadNombre}`;
@@ -864,6 +883,7 @@ async function main() {
   // First: compute location match for every paquete (so we can fall back to
   // parent-paquete location when a hotel/traslado name is unclear).
   const allPaquetes = await prisma.paquete.findMany({
+    where: { brandId: BRAND_ID },
     select: { id: true, titulo: true, destino: true, brandId: true },
   });
   const paqueteLocationMap = new Map<string, Match>();
@@ -913,6 +933,7 @@ async function main() {
 
   // Alojamientos — only process those without paisId (safe for re-runs)
   const alojamientos = await prisma.alojamiento.findMany({
+    where: { brandId: BRAND_ID },
     select: { id: true, nombre: true, brandId: true, paisId: true, ciudadId: true },
   });
   let aloAlreadyLinked = 0;
@@ -956,6 +977,7 @@ async function main() {
 
   // Traslados — only process those without paisId (safe for re-runs)
   const traslados = await prisma.traslado.findMany({
+    where: { brandId: BRAND_ID },
     select: { id: true, nombre: true, brandId: true, paisId: true },
   });
   let traAlreadyLinked = 0;
@@ -999,6 +1021,7 @@ async function main() {
 
   // Paquetes — set temporada (default Media) + tipo (inferred) + destino refinement
   const paquetes = await prisma.paquete.findMany({
+    where: { brandId: BRAND_ID },
     select: { id: true, titulo: true, destino: true, brandId: true, salidas: true },
   });
   let paqMatched = 0;
