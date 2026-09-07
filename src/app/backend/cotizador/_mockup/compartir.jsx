@@ -88,8 +88,17 @@ function ModalCompartir({
     }
     if (!q.vuelos.length)
       l.push({ k:"vue", t:"info", txt:"Sin vuelos cargados — la cotización sale sin ese bloque" });
+    /* El email tiene tres estados y el vendedor tiene que saber en cuál está
+       ANTES de apretar mandar: con el del cliente, con los extras como
+       destinatario, o sin nadie a quien mandarle. */
+    if (q.cliente.email)
+      l.push({ k:"mail", t:"ok", txt:`El email va a ${q.cliente.email}` });
+    else if (extras.split(/[,;]+/).some((e) => e.trim()))
+      l.push({ k:"mail", t:"info", txt:"Sin email del cliente — el email va a los otros destinatarios" });
+    else
+      l.push({ k:"mail", t:"warn", txt:"Sin email — cargalo o escribí un destinatario para mandar por email", ir:"b-cliente" });
     return l;
-  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom]);
+  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom, q.cliente.email, extras]);
   const todoListo = checks.every((c) => c.t === "ok");
 
   useEffect(() => {
@@ -246,6 +255,7 @@ function ModalCompartir({
   };
 
   /* ── el envío por email ───────────────────────────────────────────────── */
+  const hayExtras = extras.split(/[,;]+/).some((e) => e.trim());
   const mandarMail = async () => {
     if (enviandoMail) return;
     if (!presupuestoId) {
@@ -472,8 +482,14 @@ function ModalCompartir({
                   <input className="in" value={extras} placeholder="supervisor@…, operaciones@…"
                     onChange={(e) => setExtras(e.target.value)} />
 
+                  {/* Se habilita con el email del cliente O con al menos un
+                      destinatario extra. Antes exigía el del cliente, y como
+                      .btn no tenía estilo de deshabilitado el botón se veía
+                      igual de clickeable: el vendedor apretaba y no pasaba
+                      nada, sin error ni aviso. */}
                   <Btn variant="p" style={{ width:"100%", height:42, marginTop:13 }}
-                    disabled={enviandoMail || !presupuestoId || !q.cliente.email}
+                    disabled={enviandoMail || !presupuestoId || (!q.cliente.email && !hayExtras)}
+                    title={!q.cliente.email && !hayExtras ? "Cargá el email del cliente o escribí un destinatario" : undefined}
                     onClick={mandarMail}>
                     {enviandoMail
                       ? <><Loader2 size={15} className="spin" /> Enviando…</>

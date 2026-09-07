@@ -919,6 +919,13 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .sec-t-tx { display:block; font-size:15px; font-weight:600; line-height:1.25;
   letter-spacing:-.018em; color:var(--ink); }
 
+/* ── botón deshabilitado ───────────────────────────────────────────────────
+   .btn no tenía estilo para :disabled: un botón apagado se veía idéntico a uno
+   vivo, el vendedor apretaba y no pasaba nada. Solo .btn-ia y .btn-conf lo
+   tenían. Ahora se apaga de verdad, para todos. */
+.ctz .btn:disabled { opacity:.5; cursor:not-allowed; filter:saturate(.6); }
+.ctz .btn:disabled:hover { transform:none; box-shadow:none; }
+
 /* ── switcher de opciones: le faltaba todo lo que pasa antes del click ──── */
 .opt-seg > button { transition:background .2s, color .2s, box-shadow .2s, transform .14s cubic-bezier(.2,.8,.2,1); }
 .opt-seg > button:hover:not([data-on="1"]) { background:rgba(255,255,255,.6); color:var(--ink); }

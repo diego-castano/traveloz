@@ -1400,12 +1400,20 @@ export async function enviarPorEmail(
     if (!parsed.ok) fallar(parsed.error);
     const q = parsed.contenido;
 
-    const para = emailValido(q.cliente?.email);
-    if (!para) fallar("El cliente no tiene un email válido cargado.");
-
-    const extras = (parsedInput.data.extras ?? [])
+    /* Los "otros destinatarios" alcanzan para mandar. Antes eran solo copia y
+       sin email del cliente esto cortaba acá, ANTES de mirarlos: el vendedor
+       escribía su propia dirección en ese campo, apretaba mandar y no salía
+       nada a nadie. (Reporte del cliente, 07/09.) Si no hay email del cliente,
+       el primero de los extras pasa a ser el destinatario y el resto queda en
+       copia, igual que siempre. */
+    const extrasValidos = (parsedInput.data.extras ?? [])
       .map(emailValido)
-      .filter((e): e is string => !!e && e !== para);
+      .filter((e): e is string => !!e);
+    let para = emailValido(q.cliente?.email);
+    if (!para) para = extrasValidos.shift() ?? null;
+    if (!para) fallar("Cargá el email del cliente o escribí al menos un destinatario.");
+
+    const extras = extrasValidos.filter((e) => e !== para);
     if (extras.length > EXTRAS_MAX) {
       fallar(`No más de ${EXTRAS_MAX} destinatarios extra.`);
     }
