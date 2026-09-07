@@ -41,6 +41,7 @@ import {
   soloDigitos,
 } from "@/lib/presupuesto/derivados";
 import { urlDeToken } from "@/lib/presupuesto/links";
+import { patronGeoKey } from "@/lib/search-db";
 import {
   condicionesConHabiles,
   horasHabilesEntre,
@@ -625,16 +626,37 @@ export async function listarPresupuestos(
 
     const q = (texto ?? "").trim();
     if (q) {
-      const contiene = { contains: q, mode: "insensitive" as const };
       const digitos = soloDigitos(q);
+      // Ningún buscador del cliente distingue tildes: se compara contra
+      // geo_key(columna), el espejo SQL de ciudadKey. También suma nombre +
+      // apellido pegados para que "Juan Pérez" encuentre ambos campos.
+      const patron = patronGeoKey(q);
+      let or: Prisma.PresupuestoWhereInput[];
+      if (patron) {
+        const filas = await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM "Presupuesto"
+          WHERE public.geo_key(numero) LIKE ${patron}
+             OR public.geo_key(coalesce("clienteNombre", '')) LIKE ${patron}
+             OR public.geo_key(coalesce("clienteApellido", '')) LIKE ${patron}
+             OR public.geo_key(coalesce("clienteEmail", '')) LIKE ${patron}
+             OR public.geo_key(coalesce(destino, '')) LIKE ${patron}
+             OR public.geo_key(coalesce("clienteNombre", '') || coalesce("clienteApellido", '')) LIKE ${patron}
+        `;
+        or = [{ id: { in: filas.map((f) => f.id) } }];
+      } else {
+        const contiene = { contains: q, mode: "insensitive" as const };
+        or = [
+          { numero: contiene },
+          { clienteNombre: contiene },
+          { clienteApellido: contiene },
+          { clienteEmail: contiene },
+          { destino: contiene },
+        ];
+      }
       where.AND = [
         {
           OR: [
-            { numero: contiene },
-            { clienteNombre: contiene },
-            { clienteApellido: contiene },
-            { clienteEmail: contiene },
-            { destino: contiene },
+            ...or,
             ...(digitos.length >= 3
               ? [{ clienteTelefonoDigitos: { contains: digitos } }]
               : []),
@@ -1974,12 +1996,28 @@ export async function buscarEnHistorial(
     if (q.length < 3) return [];
 
     const digitos = soloDigitos(q);
-    const contiene = { contains: q, mode: "insensitive" as const };
-    const or: Prisma.PresupuestoWhereInput[] = [
-      { clienteNombre: contiene },
-      { clienteApellido: contiene },
-      { clienteEmail: contiene },
-    ];
+    // Ningún buscador del cliente distingue tildes: se compara contra
+    // geo_key(columna), el espejo SQL de ciudadKey. También suma nombre +
+    // apellido pegados para que "Juan Pérez" encuentre ambos campos.
+    const patron = patronGeoKey(q);
+    let or: Prisma.PresupuestoWhereInput[];
+    if (patron) {
+      const filas = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Presupuesto"
+        WHERE public.geo_key(coalesce("clienteNombre", '')) LIKE ${patron}
+           OR public.geo_key(coalesce("clienteApellido", '')) LIKE ${patron}
+           OR public.geo_key(coalesce("clienteEmail", '')) LIKE ${patron}
+           OR public.geo_key(coalesce("clienteNombre", '') || coalesce("clienteApellido", '')) LIKE ${patron}
+      `;
+      or = [{ id: { in: filas.map((f) => f.id) } }];
+    } else {
+      const contiene = { contains: q, mode: "insensitive" as const };
+      or = [
+        { clienteNombre: contiene },
+        { clienteApellido: contiene },
+        { clienteEmail: contiene },
+      ];
+    }
     if (digitos.length >= 3) {
       or.push({ clienteTelefonoDigitos: { contains: digitos } });
     }

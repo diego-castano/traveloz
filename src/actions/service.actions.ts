@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import { generateSequentialId } from "@/lib/sequential-id";
 import { logger } from "@/lib/logger";
+import { patronGeoKey } from "@/lib/search-db";
+import type { Prisma } from "@prisma/client";
 import {
   recomputeForAereo,
   recomputeForAlojamiento,
@@ -1089,16 +1091,31 @@ export async function searchAlojamientos(
     if (q.length < 2) return { alojamientos: [] };
     const take = Math.min(Math.max(options?.take ?? 80, 1), 200);
 
+    // Ningún buscador del cliente distingue tildes: se compara contra
+    // geo_key(columna), el espejo SQL de ciudadKey. Si el texto no deja nada
+    // buscable (patrón null) se cae al `contains` de siempre.
+    const patron = patronGeoKey(q);
+    const where: Prisma.AlojamientoWhereInput = { brandId, deletedAt: null };
+    if (patron) {
+      const filas = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT a.id FROM "Alojamiento" a
+        LEFT JOIN "Ciudad" c ON c.id = a."ciudadId"
+        LEFT JOIN "Pais" p ON p.id = a."paisId"
+        WHERE public.geo_key(a.nombre) LIKE ${patron}
+           OR public.geo_key(coalesce(c.nombre, '')) LIKE ${patron}
+           OR public.geo_key(coalesce(p.nombre, '')) LIKE ${patron}
+      `;
+      where.id = { in: filas.map((f) => f.id) };
+    } else {
+      where.OR = [
+        { nombre: { contains: q, mode: "insensitive" } },
+        { ciudad: { nombre: { contains: q, mode: "insensitive" } } },
+        { pais: { nombre: { contains: q, mode: "insensitive" } } },
+      ];
+    }
+
     const alojamientos = await prisma.alojamiento.findMany({
-      where: {
-        brandId,
-        deletedAt: null,
-        OR: [
-          { nombre: { contains: q, mode: "insensitive" } },
-          { ciudad: { nombre: { contains: q, mode: "insensitive" } } },
-          { pais: { nombre: { contains: q, mode: "insensitive" } } },
-        ],
-      },
+      where,
       include: {
         ciudad: { select: { id: true, nombre: true, paisId: true } },
       },

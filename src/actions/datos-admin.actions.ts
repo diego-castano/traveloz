@@ -33,6 +33,7 @@ import {
 import { getFormularioDato, type FormularioDatoView } from "@/lib/datos-form";
 import { SITE_BASE_URL } from "@/lib/datos-email";
 import { nombreCompleto, nombrePago } from "@/lib/datos-nombre";
+import { patronGeoKey } from "@/lib/search-db";
 import type { Prisma, TipoFormularioDato } from "@prisma/client";
 
 const log = logger.child({ module: "datos-admin.actions" });
@@ -167,23 +168,41 @@ const filtroSchema = z.object({
  * pasajero, no al envío". Por eso va con `pasajeros.some` - alcanza con que UN
  * pasajero del grupo matchee para que el envío entero aparezca en la tabla.
  */
-function whereEnvios(f: z.infer<typeof filtroSchema>): Prisma.EnvioPasajerosWhereInput {
+async function whereEnvios(
+  f: z.infer<typeof filtroSchema>,
+): Promise<Prisma.EnvioPasajerosWhereInput> {
   const where: Prisma.EnvioPasajerosWhereInput = {};
   if (f.vendedorId) where.vendedorId = f.vendedorId;
   if (f.destino) where.destino = f.destino;
 
   const q = (f.busqueda ?? "").trim();
   if (q.length > 0) {
-    where.pasajeros = {
-      some: {
-        OR: [
-          { nombres: { contains: q, mode: "insensitive" } },
-          { apellidos: { contains: q, mode: "insensitive" } },
-          { documento: { contains: q, mode: "insensitive" } },
-          { email: { contains: q, mode: "insensitive" } },
-        ],
-      },
-    };
+    // Ningún buscador del cliente distingue tildes: se compara contra
+    // geo_key(columna), el espejo SQL de ciudadKey. Si el texto no deja nada
+    // buscable (patrón null) se cae al `contains` de siempre.
+    const patron = patronGeoKey(q);
+    if (patron) {
+      const filas = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "PasajeroDato"
+        WHERE public.geo_key(nombres) LIKE ${patron}
+           OR public.geo_key(apellidos) LIKE ${patron}
+           OR public.geo_key(documento) LIKE ${patron}
+           OR public.geo_key(email) LIKE ${patron}
+           OR public.geo_key(nombres || apellidos) LIKE ${patron}
+      `;
+      where.pasajeros = { some: { id: { in: filas.map((fila) => fila.id) } } };
+    } else {
+      where.pasajeros = {
+        some: {
+          OR: [
+            { nombres: { contains: q, mode: "insensitive" } },
+            { apellidos: { contains: q, mode: "insensitive" } },
+            { documento: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+          ],
+        },
+      };
+    }
   }
   return where;
 }
@@ -218,7 +237,7 @@ export async function getEnviosAdmin(
   const parsed = filtroSchema.safeParse(input ?? {});
   const filtros = parsed.success ? parsed.data : {};
   const page = Math.max(1, filtros.page ?? 1);
-  const where = whereEnvios(filtros);
+  const where = await whereEnvios(filtros);
 
   const [total, filas] = await Promise.all([
     prisma.envioPasajeros.count({ where }),
@@ -607,7 +626,7 @@ export async function exportEnviosCsv(
 
   const parsed = filtroSchema.safeParse(input ?? {});
   const filtros = parsed.success ? parsed.data : {};
-  const where = whereEnvios(filtros);
+  const where = await whereEnvios(filtros);
 
   const envios = await prisma.envioPasajeros.findMany({
     where,

@@ -14,6 +14,7 @@ import {
 import { checkPaquetePublicable } from "@/lib/paquete-publicable";
 import { parseIncluyeItems, legacyTextToIncluye } from "@/lib/incluye";
 import { resolveSlugOnSave } from "@/lib/paquete-slug";
+import { patronGeoKey } from "@/lib/search-db";
 import type { EstadoPaquete, ModalidadPaquete, Prisma } from "@prisma/client";
 
 const log = logger.child({ module: "package.actions" });
@@ -161,20 +162,34 @@ export interface PaquetesFilter {
   porVencerDias?: number;
 }
 
-function buildPaqueteWhere(
+async function buildPaqueteWhere(
   brandId: string,
   filter: PaquetesFilter | undefined,
-): Prisma.PaqueteWhereInput {
+): Promise<Prisma.PaqueteWhereInput> {
   const where: Prisma.PaqueteWhereInput = { brandId, deletedAt: null };
   if (!filter) return where;
 
   if (filter.q && filter.q.trim()) {
     const q = filter.q.trim();
-    where.OR = [
-      { titulo: { contains: q, mode: "insensitive" } },
-      { destino: { contains: q, mode: "insensitive" } },
-      { descripcion: { contains: q, mode: "insensitive" } },
-    ];
+    // Ningún buscador del cliente distingue tildes: se compara contra
+    // geo_key(columna), el espejo SQL de ciudadKey. Si el texto no deja nada
+    // buscable (patrón null) se cae al `contains` de siempre.
+    const patron = patronGeoKey(q);
+    if (patron) {
+      const filas = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM "Paquete"
+        WHERE public.geo_key(titulo) LIKE ${patron}
+           OR public.geo_key(destino) LIKE ${patron}
+           OR public.geo_key(coalesce(descripcion, '')) LIKE ${patron}
+      `;
+      where.id = { in: filas.map((f) => f.id) };
+    } else {
+      where.OR = [
+        { titulo: { contains: q, mode: "insensitive" } },
+        { destino: { contains: q, mode: "insensitive" } },
+        { descripcion: { contains: q, mode: "insensitive" } },
+      ];
+    }
   }
   if (filter.estados && filter.estados.length > 0) {
     where.estado = { in: filter.estados };
@@ -225,7 +240,7 @@ async function fetchBasePackagesUncached(
     sortCreated: "asc" | "desc";
   },
 ) {
-  const where = buildPaqueteWhere(brandId, options.filter);
+  const where = await buildPaqueteWhere(brandId, options.filter);
   const [paquetes, total] = await prisma.$transaction([
     prisma.paquete.findMany({
       where,
