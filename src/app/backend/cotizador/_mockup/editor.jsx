@@ -1007,6 +1007,14 @@ function BloqueVuelos({ q, set, refEl, toast }) {
               Va directo en la cotización — sin hoteles ni servicios.
             </div>
           </div>
+
+          {/* Las demás opciones de vuelo. Van acá y no en las notas porque en
+              una cotización de solo vuelos las opciones SON la cotización: es
+              literalmente agregar otro itinerario, con su cabina, su equipaje y
+              su precio. Todo lo de arriba es la opción 1, así que estas
+              arrancan en la 2. */}
+          <div className="hairline" style={{ margin:"16px 0 12px" }} />
+          <ListaVuelosExtra q={q} set={set} toast={toast} aerolineas={aerolineas} numeradas />
         </>
       )}
 
@@ -1358,7 +1366,7 @@ const MAX_VUELOS_NOTA = 2;
    confirmar. Con el parser alcanza para el texto que sale del GDS, y si no
    reconoce nada lo dice en vez de dejar al vendedor mirando una pantalla
    quieta. */
-function FichaVueloNota({ nota, i, set, aerolineas, toast }) {
+function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
   const tramos = nota.vuelos || [];
 
   const enNota = (fn) => set((d) => { fn(d.vuelosNota[i]); });
@@ -1382,9 +1390,17 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast }) {
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
         <span style={{ width:24, height:24, borderRadius:7, flexShrink:0, display:"grid", placeItems:"center",
           background:"rgba(120,90,229,.11)", color:"var(--violet)" }}><Plane size={12} /></span>
-        <input className="in" style={{ flex:1, height:30, fontSize:12 }} value={nota.nombre || ""}
-          placeholder="Cómo se llama esta opción (ej. Llega de día)"
-          onChange={(e) => enNota((n) => { n.nombre = e.target.value; })} />
+        {/* En solo vuelos la opción se llama por su número y nada más: ahí las
+            opciones SON la cotización y el pasajero contesta "me quedo con la
+            2". En un paquete es una alternativa suelta al vuelo del paquete y
+            se la nombra a mano ("Llega de día"). */}
+        {numero ? (
+          <span style={{ flex:1, fontSize:13, fontWeight:700 }}>Opción {numero}</span>
+        ) : (
+          <input className="in" style={{ flex:1, height:30, fontSize:12 }} value={nota.nombre || ""}
+            placeholder="Cómo se llama esta opción (ej. Llega de día)"
+            onChange={(e) => enNota((n) => { n.nombre = e.target.value; })} />
+        )}
         <button className="btn btn-g btn-ico" title="Quitar este itinerario"
           onClick={() => { const cp = JSON.parse(JSON.stringify(nota));
             set((d) => { d.vuelosNota.splice(i, 1); });
@@ -1475,6 +1491,55 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast }) {
   );
 }
 
+/* La lista de itinerarios extra, que se dibuja en dos lugares distintos según
+   qué tipo de cotización es.
+
+   · Paquete: son ALTERNATIVAS al vuelo del paquete, viven arriba del texto de
+     las notas, llevan título libre y hay tope de dos —pedido de Gero, para que
+     la cotización no se haga un choclo; una tercera va por WhatsApp—.
+   · Solo vuelos: son LAS opciones de la cotización, viven en el módulo de
+     itinerario y van numeradas desde la 2, porque la 1 es la de arriba. Sin
+     tope: ahí el vendedor arma tantas como quiera comparar.
+
+   El array es el mismo (`q.vuelosNota`); lo único que cambia es dónde se
+   dibuja y cómo se rotula. */
+function ListaVuelosExtra({ q, set, toast, aerolineas, numeradas }) {
+  const lista = Array.isArray(q.vuelosNota) ? q.vuelosNota : [];
+  const tope = numeradas ? Infinity : MAX_VUELOS_NOTA;
+  const agregar = () => set((d) => {
+    if (!Array.isArray(d.vuelosNota)) d.vuelosNota = [];
+    d.vuelosNota.push({ id:uid("vn"), nombre:"", pnrRaw:"", vuelos:[] });
+  });
+
+  return (
+    <>
+      <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap",
+        marginBottom: lista.length ? 11 : 0 }}>
+        <Plane size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
+        <span style={{ fontSize:12.5, fontWeight:700 }}>
+          {numeradas ? "Más opciones de vuelo" : "Otra opción de vuelo"}
+        </span>
+        <span style={{ fontSize:11.5, color:"var(--n400)" }}>
+          {numeradas ? "cada una con su itinerario y su precio" : "opcional · sale abajo del texto"}
+        </span>
+        {lista.length < tope ? (
+          <Btn size="sm" style={{ marginLeft:"auto" }} onClick={agregar}>
+            <Plus size={12} /> Agregar vuelo
+          </Btn>
+        ) : (
+          <span style={{ marginLeft:"auto", fontSize:11, color:"var(--n400)", textAlign:"right" }}>
+            Máximo dos. Si hace falta ofrecer otro, va por WhatsApp.
+          </span>
+        )}
+      </div>
+      {lista.map((n, i) => (
+        <FichaVueloNota key={n.id} nota={n} i={i} set={set} aerolineas={aerolineas} toast={toast}
+          numero={numeradas ? i + 2 : null} />
+      ))}
+    </>
+  );
+}
+
 function BloqueNotasCliente({ q, set, refEl, toast }) {
   const ed = useRef(null);
   const { aerolineas } = useCatalogo();
@@ -1546,36 +1611,17 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
   return (
     <Block id="b-notascliente" forwardRef={refEl} icon={StickyNote} title="Notas"
       right={<Pill tone="teal"><Eye size={9} /> Sale en la cotización</Pill>}>
-      {/* Itinerarios de vuelo opcionales. Van ARRIBA del campo de texto: el
-          vendedor primero carga el vuelo alternativo y después escribe la nota
-          que lo explica —"con este llegan de día, son cien dólares más"—, que
-          es el orden en que lo piensa. Sin ninguno cargado acá no hay más que
-          el botón, y la cotización sale exactamente como salía: la enorme
-          mayoría no lleva ninguno. */}
-      <div style={{ marginBottom:14, paddingBottom:13, borderBottom:"1px solid var(--hair-soft)" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap",
-          marginBottom: lista.length ? 11 : 0 }}>
-          <Plane size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
-          <span style={{ fontSize:12.5, fontWeight:700 }}>Otra opción de vuelo</span>
-          <span style={{ fontSize:11.5, color:"var(--n400)" }}>opcional · sale abajo del texto</span>
-          {lista.length < MAX_VUELOS_NOTA ? (
-            <Btn size="sm" style={{ marginLeft:"auto" }}
-              onClick={() => set((d) => {
-                if (!Array.isArray(d.vuelosNota)) d.vuelosNota = [];
-                d.vuelosNota.push({ id:uid("vn"), nombre:"", pnrRaw:"", vuelos:[] });
-              })}>
-              <Plus size={12} /> Agregar vuelo
-            </Btn>
-          ) : (
-            <span style={{ marginLeft:"auto", fontSize:11, color:"var(--n400)", textAlign:"right" }}>
-              Máximo dos. Si hace falta ofrecer otro, va por WhatsApp.
-            </span>
-          )}
+      {/* Las alternativas van ARRIBA del campo de texto: el vendedor primero
+          carga el vuelo y después escribe la nota que lo explica —"con este
+          llegan de día, son cien dólares más"—, que es el orden en que lo
+          piensa. En una cotización de solo vuelos esto no va acá: las opciones
+          viven en el módulo de itinerario, que es de lo que trata esa
+          cotización. */}
+      {!q.soloVuelos && (
+        <div style={{ marginBottom:14, paddingBottom:13, borderBottom:"1px solid var(--hair-soft)" }}>
+          <ListaVuelosExtra q={q} set={set} toast={toast} aerolineas={aerolineas} numeradas={false} />
         </div>
-        {lista.map((n, i) => (
-          <FichaVueloNota key={n.id} nota={n} i={i} set={set} aerolineas={aerolineas} toast={toast} />
-        ))}
-      </div>
+      )}
       <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
         style={{ minHeight:140 }}
         data-ph="Escribí libre o pegá contenido: itinerarios, detalle de un circuito, condiciones… También imágenes."

@@ -516,6 +516,11 @@ function SalidaPasajero({
     () => (q.vuelosNota ?? []).filter((n) => (n?.vuelos ?? []).length > 0),
     [q.vuelosNota],
   );
+  /* El mismo array se dibuja en dos lugares distintos según qué cotización es.
+     En un paquete son alternativas y viven abajo de las notas; en una de solo
+     vuelos son LAS opciones y van en el itinerario, numeradas desde la 2. */
+  const opcionesDeVuelo = q.soloVuelos ? vuelosNota : [];
+  const alternativasEnNotas = q.soloVuelos ? [] : vuelosNota;
 
   /* ── papel: dónde conviene cortar ─────────────────────────────────────
      Sin itinerario de vuelos la hoja queda apenas por encima de una carilla
@@ -824,6 +829,15 @@ function SalidaPasajero({
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Itinerario de vuelos" />
+            {/* El "Opción 1" aparece solo si hay más opciones abajo. Con un
+                itinerario solo, numerarlo es ruido; con varias, no numerarlo
+                deja al pasajero contando desde una que nadie nombró. */}
+            {opcionesDeVuelo.length > 0 && (
+              <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:9 }}>
+                <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
+                <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700 }}>Opción 1</span>
+              </div>
+            )}
             <div style={{ marginBottom: q.soloVuelos ? 14 : 24 }}>
               {trayectos.map((seg, ti) => (
                 <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectos.length - 1}
@@ -894,6 +908,19 @@ function SalidaPasajero({
                 </>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Las demás opciones de vuelo, cada una con su itinerario, su cabina
+            y su precio. Van acá y no en las notas: en una cotización de solo
+            vuelos las opciones son la cotización. */}
+        {opcionesDeVuelo.length > 0 && (
+          <div data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
+            {opcionesDeVuelo.map((n, ni) => (
+              <VueloExtra key={n.id} n={n} numero={ni + 2} ultimo={ni === opcionesDeVuelo.length - 1}
+                anio={anioItinerario} desk={desk} impresion={impresion}
+                fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
+            ))}
           </div>
         )}
 
@@ -1297,75 +1324,23 @@ function SalidaPasajero({
         <div>
 
         {/* notas para el pasajero — bloc de HTML libre */}
-        {(hayNotas || vuelosNota.length > 0) && (
+        {(hayNotas || alternativasEnNotas.length > 0) && (
           <div ref={(el) => { anclas.current["b-notascliente"] = el; }} data-sec="notas" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Notas" />
             {hayNotas && (
               <div style={{ fontSize:fz(12.5, 13), lineHeight:1.6, color:"#3D4066",
-                marginBottom: vuelosNota.length ? 16 : 22, overflowWrap:"anywhere" }}
+                marginBottom: alternativasEnNotas.length ? 16 : 22, overflowWrap:"anywhere" }}
                 dangerouslySetInnerHTML={{ __html: q.notasCliente }} />
             )}
             {/* Los itinerarios alternativos van abajo del texto, con la misma
                 tabla que el de arriba: si el vendedor ofrece otro vuelo, el
                 pasajero lo lee igual que el principal y puede compararlos sin
                 cambiar de idioma visual. */}
-            {vuelosNota.map((n, ni) => (
-              <div key={n.id} style={{ marginBottom: ni === vuelosNota.length - 1 ? 22 : 18,
-                breakInside:"avoid" }}>
-                <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:9 }}>
-                  <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
-                  <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, overflowWrap:"anywhere" }}>
-                    {n.nombre || "Otra opción de vuelo"}
-                  </span>
-                </div>
-                {agruparTrayectos(n.vuelos, mismaCiudad).map((seg, ti, arr) => (
-                  <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
-                    anio={anioItinerario} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
-                ))}
-
-                {/* Cabina y equipaje de ESTA alternativa, con la misma caja que
-                    los del vuelo principal. */}
-                {(n.cabina || n.equipaje) && (
-                  <div style={{ display:"flex", gap:10, alignItems:"flex-start", marginTop:11,
-                    padding:"9px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
-                    background:"#FBFBFE", breakInside:"avoid" }}>
-                    <div style={{ width:26, height:26, borderRadius:9, flexShrink:0, display:"grid",
-                      placeItems:"center", background:`${G.b}12`, color:G.b }}>
-                      {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
-                        return <C.Icon size={13} />; })()}
-                    </div>
-                    <div style={{ fontSize:fzp(12.5, 13, 12), lineHeight:1.5, paddingTop:4, fontWeight:500 }}>
-                      {[n.cabina, n.equipaje].filter(Boolean).join(" · ")}
-                    </div>
-                  </div>
-                )}
-
-                {/* El precio es lo que convierte la alternativa en una decisión:
-                    sin él el pasajero ve otro horario y no sabe qué le cuesta. */}
-                {(() => {
-                  const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
-                    .filter(([k]) => Number(n.precio?.[k]) > 0);
-                  if (!filas.length) return null;
-                  return (
-                    <div style={{ borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.08)",
-                      marginTop:11, overflow:"hidden", breakInside:"avoid" }}>
-                      {filas.map(([k, rotulo], fi) => (
-                        <div key={k}>
-                          {fi > 0 && <div style={{ borderBottom:"1px solid rgba(17,17,36,.07)", margin:"0 14px" }} />}
-                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
-                            padding:"10px 14px" }}>
-                            <span style={{ fontSize:fz(12, 12.5), color:"#3D4066", fontWeight:600 }}>{rotulo}</span>
-                            <span className="mono" style={{ fontSize:fz(13.5, 14.5), fontWeight:700, color:"#1A1A2E" }}>
-                              {money(n.precio[k])}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
+            {alternativasEnNotas.map((n, ni) => (
+              <VueloExtra key={n.id} n={n} ultimo={ni === alternativasEnNotas.length - 1}
+                anio={anioItinerario} desk={desk} impresion={impresion}
+                fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
           </div>
         )}
@@ -1559,6 +1534,67 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
         <div style={{ fontSize:fz(12.5, 13), color:"#8A8DB5", fontWeight:500, marginTop:1,
           lineHeight:1.35, overflowWrap:"anywhere" }}>
           {terminal}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Un itinerario de vuelo extra, con todo lo suyo: tramos, cabina, equipaje y
+   precio.
+
+   En una cotización de paquete es una ALTERNATIVA al vuelo del paquete y se la
+   nombra a mano ("Llega de día"). En una de solo vuelos es una OPCIÓN más y
+   lleva número, porque ahí las opciones son la cotización y el pasajero
+   contesta "me quedo con la 2". Es la misma pieza: cambia el rótulo y dónde se
+   dibuja, no lo que muestra. */
+function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mismaCiudad }) {
+  const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
+    .filter(([k]) => Number(n.precio?.[k]) > 0);
+  return (
+    <div style={{ marginBottom: ultimo ? 22 : 18, breakInside:"avoid" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:9 }}>
+        <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
+        <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, overflowWrap:"anywhere" }}>
+          {numero ? `Opción ${numero}` : (n.nombre || "Otra opción de vuelo")}
+        </span>
+      </div>
+
+      {agruparTrayectos(n.vuelos, mismaCiudad).map((seg, ti, arr) => (
+        <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
+          anio={anio} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+      ))}
+
+      {(n.cabina || n.equipaje) && (
+        <div style={{ display:"flex", gap:10, alignItems:"flex-start", marginTop:11,
+          padding:"9px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
+          background:"#FBFBFE", breakInside:"avoid" }}>
+          <div style={{ width:26, height:26, borderRadius:9, flexShrink:0, display:"grid",
+            placeItems:"center", background:`${G.b}12`, color:G.b }}>
+            {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
+              return <C.Icon size={13} />; })()}
+          </div>
+          <div style={{ fontSize:fzp(12.5, 13, 12), lineHeight:1.5, paddingTop:4, fontWeight:500 }}>
+            {[n.cabina, n.equipaje].filter(Boolean).join(" · ")}
+          </div>
+        </div>
+      )}
+
+      {filas.length > 0 && (
+        <div style={{ borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.08)",
+          marginTop:11, overflow:"hidden", breakInside:"avoid" }}>
+          {filas.map(([k, rotulo], fi) => (
+            <div key={k}>
+              {fi > 0 && <div style={{ borderBottom:"1px solid rgba(17,17,36,.07)", margin:"0 14px" }} />}
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                padding:"10px 14px" }}>
+                <span style={{ fontSize:fz(12, 12.5), color:"#3D4066", fontWeight:600 }}>{rotulo}</span>
+                <span className="mono" style={{ fontSize:fz(13.5, 14.5), fontWeight:700, color:"#1A1A2E" }}>
+                  {money(n.precio[k])}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -272,10 +272,12 @@ export const contenidoSchema = z.looseObject({
   notasCliente: textoFlojo
     .refine((s) => s.length <= NOTAS_MAX, { message: ERROR_NOTAS_LARGAS })
     .default(""),
-  // Itinerarios alternativos que salen abajo de las notas. Tope de dos: más de
-  // eso era justo el choclo que el cliente pidió evitar, y una tercera opción
-  // se manda por WhatsApp.
-  vuelosNota: z.array(vueloDeNotaSchema).max(2).default([]),
+  // Itinerarios de vuelo extra. En una cotización de paquete son alternativas
+  // que salen abajo de las notas, con título libre y tope de dos. En una de
+  // solo vuelos son LAS opciones, numeradas y sin tope: ahí es la cotización.
+  // El tope vive en la pantalla de notas y no acá: si lo pusiera el schema,
+  // una cotización de solo vuelos con cinco opciones no se podría guardar.
+  vuelosNota: z.array(vueloDeNotaSchema).default([]),
 
   vigencia: numeroFlojo
     .nullable()
