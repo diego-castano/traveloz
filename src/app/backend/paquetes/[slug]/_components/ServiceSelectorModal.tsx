@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
+import { sinCupoInterno } from "@/lib/format-paquete";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
@@ -315,10 +316,13 @@ export default function ServiceSelectorModal({
   // -- Assign handlers --
   const handleAssignAereo = (aereo: Aereo) => {
     const nextOrden = services.aereos.length;
+    // Nace con el nombre público precargado y ya limpio de la referencia al
+    // cupo (ver sinCupoInterno): sin esto los 156 aéreos asignados quedaban
+    // sin nombre público hasta que un operador lo tipeaba a mano.
     assignAereo({
       paqueteId,
       aereoId: aereo.id,
-      textoDisplay: null,
+      textoDisplay: sinCupoInterno(aereo.ruta),
       orden: nextOrden,
     });
     toast("success", "Aereo agregado", `${aereo.ruta} asignado al paquete.`);
@@ -691,7 +695,10 @@ export default function ServiceSelectorModal({
                 await assignAereo({
                   paqueteId,
                   aereoId: created.id,
-                  textoDisplay: null,
+                  // Mismo criterio que al asignar uno existente: el nombre
+                  // público nace cargado y sin la referencia del cupo, así
+                  // ninguna asignación queda muda.
+                  textoDisplay: sinCupoInterno(created.ruta),
                   orden: nextOrden,
                 });
                 toast(

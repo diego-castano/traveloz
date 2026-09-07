@@ -40,7 +40,7 @@ import {
   Shield,
   MapIcon,
 } from "lucide-react";
-import type { Paquete } from "@/lib/types";
+import type { Paquete, PaqueteAereo } from "@/lib/types";
 import { fechaAnclaPaquete, formatCurrency, resolvePrecioAereoConMeta, resolvePrecioCircuitoConMeta } from "@/lib/utils";
 import { TarifaFallbackChip } from "@/components/ui/TarifaFallbackChip";
 import ServiceSelectorModal from "./ServiceSelectorModal";
@@ -78,6 +78,7 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     removeSeguro,
     removeCircuito,
     reorderAssignments,
+    updateAereoAssignment,
   } = usePackageActions();
   const { canEdit } = useAuth();
   const { toast } = useToast();
@@ -183,6 +184,22 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
     [aereoMap, trasladoMap, seguroMap, circuitoMap],
   );
 
+  // El "nombre público" de un aéreo es lo que ve el pasajero en la cotización
+  // y en "Qué incluye" de la web (distinto del nombre interno, que suele
+  // arrastrar la referencia al cupo con el mayorista). Mismo patrón que
+  // OpcionHotelera.textoDisplay en AlojamientosTab: guardado inmediato en
+  // cada cambio, vacío se persiste como null.
+  const handleUpdateAereoTextoDisplay = useCallback(
+    (assignment: PaqueteAereo, value: string) => {
+      const trimmed = value.trim();
+      updateAereoAssignment({
+        ...assignment,
+        textoDisplay: trimmed.length > 0 ? trimmed : null,
+      });
+    },
+    [updateAereoAssignment],
+  );
+
   // -- Drag and drop state --
   // Track the currently dragged row + the hover target so the UI shows a
   // ghosted source and a teal drop-zone outline. Without this, the only
@@ -261,8 +278,10 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
       case "aereos": {
         const aereo = aereoMap.get(assignment.aereoId as string);
         if (!aereo) return <span className="text-neutral-400">Aereo no encontrado</span>;
+        const pa = assignment as unknown as PaqueteAereo;
+        const textoDisplay = pa.textoDisplay ?? "";
         return (
-          <div className="flex flex-col">
+          <div className="flex flex-col gap-1">
             <span className="inline-flex items-center gap-2 text-[13.5px] font-medium text-neutral-800">
               <ServiceCode id={aereo.id} />
               {aereo.ruta}
@@ -270,6 +289,36 @@ export default function ServiciosTab({ paquete }: ServiciosTabProps) {
             <span className="text-[12px] text-neutral-500">
               {aereo.destino} &middot; {aereo.aerolinea}
             </span>
+            {canEdit ? (
+              <div className="mt-1">
+                <input
+                  type="text"
+                  value={textoDisplay}
+                  placeholder="Nombre público del vuelo"
+                  onChange={(e) =>
+                    handleUpdateAereoTextoDisplay(pa, e.target.value)
+                  }
+                  className={cn(
+                    "text-[12px] text-neutral-700 bg-transparent border-b w-full max-w-[420px] px-0 py-0.5 focus:outline-none transition-colors",
+                    textoDisplay.trim().length === 0
+                      ? "border-amber-300 focus:border-amber-500"
+                      : "border-transparent hover:border-neutral-200 focus:border-teal-400",
+                  )}
+                />
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Es lo que ve el pasajero en la cotización y en la web.
+                </p>
+                {textoDisplay.trim().length === 0 && (
+                  <p className="text-[11px] text-amber-600 mt-0.5">
+                    Sin nombre público sale el nombre interno del aéreo.
+                  </p>
+                )}
+              </div>
+            ) : textoDisplay ? (
+              <span className="text-[12px] text-neutral-500">
+                {textoDisplay}
+              </span>
+            ) : null}
           </div>
         );
       }
