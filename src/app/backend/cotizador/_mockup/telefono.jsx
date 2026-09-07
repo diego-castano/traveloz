@@ -1323,6 +1323,48 @@ function SalidaPasajero({
                   <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
                     anio={anioItinerario} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
                 ))}
+
+                {/* Cabina y equipaje de ESTA alternativa, con la misma caja que
+                    los del vuelo principal. */}
+                {(n.cabina || n.equipaje) && (
+                  <div style={{ display:"flex", gap:10, alignItems:"flex-start", marginTop:11,
+                    padding:"9px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
+                    background:"#FBFBFE", breakInside:"avoid" }}>
+                    <div style={{ width:26, height:26, borderRadius:9, flexShrink:0, display:"grid",
+                      placeItems:"center", background:`${G.b}12`, color:G.b }}>
+                      {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
+                        return <C.Icon size={13} />; })()}
+                    </div>
+                    <div style={{ fontSize:fzp(12.5, 13, 12), lineHeight:1.5, paddingTop:4, fontWeight:500 }}>
+                      {[n.cabina, n.equipaje].filter(Boolean).join(" · ")}
+                    </div>
+                  </div>
+                )}
+
+                {/* El precio es lo que convierte la alternativa en una decisión:
+                    sin él el pasajero ve otro horario y no sabe qué le cuesta. */}
+                {(() => {
+                  const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
+                    .filter(([k]) => Number(n.precio?.[k]) > 0);
+                  if (!filas.length) return null;
+                  return (
+                    <div style={{ borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.08)",
+                      marginTop:11, overflow:"hidden", breakInside:"avoid" }}>
+                      {filas.map(([k, rotulo], fi) => (
+                        <div key={k}>
+                          {fi > 0 && <div style={{ borderBottom:"1px solid rgba(17,17,36,.07)", margin:"0 14px" }} />}
+                          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between",
+                            padding:"10px 14px" }}>
+                            <span style={{ fontSize:fz(12, 12.5), color:"#3D4066", fontWeight:600 }}>{rotulo}</span>
+                            <span className="mono" style={{ fontSize:fz(13.5, 14.5), fontWeight:700, color:"#1A1A2E" }}>
+                              {money(n.precio[k])}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

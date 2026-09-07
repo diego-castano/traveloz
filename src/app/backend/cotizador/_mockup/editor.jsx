@@ -1428,7 +1428,44 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast }) {
               </div>
             );
           })}
-          <button className="btn btn-g" style={{ height:26, fontSize:11, marginTop:8 }}
+          {/* Una alternativa lleva lo mismo que el vuelo principal: sin cabina,
+              equipaje y precio no se puede comparar contra nada, que es
+              justamente para lo que existe. */}
+          <div className="hairline" style={{ margin:"11px 0 10px" }} />
+          <div style={{ marginBottom:9 }}>
+            <Label>Tipo de cabina</Label>
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+              {CABINAS.map((x) => (
+                <button key={x} className={`chip ${nota.cabina === x ? "chip-on" : ""}`}
+                  onClick={() => enNota((n) => { n.cabina = n.cabina === x ? null : x; })}>
+                  {nota.cabina === x ? <Check size={10} /> : <Plane size={10} />}{x}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom:10 }}>
+            <Label>Equipaje</Label>
+            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+              {EQUIPAJES.map((x) => (
+                <button key={x} className={`chip ${nota.equipaje === x ? "chip-on" : ""}`}
+                  onClick={() => enNota((n) => { n.equipaje = n.equipaje === x ? null : x; })}>
+                  {nota.equipaje === x ? <Check size={10} /> : <Luggage size={10} />}{x}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:9, flexWrap:"wrap", alignItems:"flex-end" }}>
+            {[["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]].map(([k, rot]) => (
+              <div key={k} style={{ width:104 }}>
+                <Label>{rot}</Label>
+                <input className="in mono" type="number" style={{ height:32, textAlign:"right" }}
+                  value={nota.precio?.[k] ?? ""}
+                  onChange={(e) => { const v = e.target.value;
+                    enNota((n) => { n.precio = { ...(n.precio || {}), [k]: v }; }); }} />
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-g" style={{ height:26, fontSize:11, marginTop:10 }}
             onClick={() => enNota((n) => { n.vuelos = []; })}>
             Pegar otro itinerario
           </button>
@@ -1509,20 +1546,13 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
   return (
     <Block id="b-notascliente" forwardRef={refEl} icon={StickyNote} title="Notas"
       right={<Pill tone="teal"><Eye size={9} /> Sale en la cotización</Pill>}>
-      <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
-        style={{ minHeight:140 }}
-        data-ph="Escribí libre o pegá contenido: itinerarios, detalle de un circuito, condiciones… También imágenes."
-        onInput={sync} onPaste={pegar} onDrop={soltar}
-        onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); }} />
-      <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
-        <ImageIcon size={11} style={{ color:"var(--teal-2)", flexShrink:0 }} />
-        Sale tal cual en la cotización, con el diseño de la agencia. Pegá o soltá una imagen y se sube sola.
-      </div>
-
-      {/* Itinerarios de vuelo opcionales. Sin ninguno cargado no hay nada acá
-          abajo más que el botón, y la cotización sale exactamente como salía:
-          la enorme mayoría no lleva ninguno. */}
-      <div style={{ marginTop:14, paddingTop:13, borderTop:"1px solid var(--hair-soft)" }}>
+      {/* Itinerarios de vuelo opcionales. Van ARRIBA del campo de texto: el
+          vendedor primero carga el vuelo alternativo y después escribe la nota
+          que lo explica —"con este llegan de día, son cien dólares más"—, que
+          es el orden en que lo piensa. Sin ninguno cargado acá no hay más que
+          el botón, y la cotización sale exactamente como salía: la enorme
+          mayoría no lleva ninguno. */}
+      <div style={{ marginBottom:14, paddingBottom:13, borderBottom:"1px solid var(--hair-soft)" }}>
         <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap",
           marginBottom: lista.length ? 11 : 0 }}>
           <Plane size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
@@ -1546,6 +1576,16 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
           <FichaVueloNota key={n.id} nota={n} i={i} set={set} aerolineas={aerolineas} toast={toast} />
         ))}
       </div>
+      <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
+        style={{ minHeight:140 }}
+        data-ph="Escribí libre o pegá contenido: itinerarios, detalle de un circuito, condiciones… También imágenes."
+        onInput={sync} onPaste={pegar} onDrop={soltar}
+        onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); }} />
+      <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
+        <ImageIcon size={11} style={{ color:"var(--teal-2)", flexShrink:0 }} />
+        Sale tal cual en la cotización, con el diseño de la agencia. Pegá o soltá una imagen y se sube sola.
+      </div>
+
     </Block>
   );
 }

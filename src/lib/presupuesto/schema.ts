@@ -179,6 +179,15 @@ export const vueloDeNotaSchema = z.looseObject({
   nombre: textoFlojo.optional(),
   pnrRaw: textoFlojo.optional(),
   vuelos: z.array(vueloSchema).default([]),
+  // Una alternativa lleva lo mismo que el vuelo principal: sin cabina,
+  // equipaje y precio no se puede comparar contra nada.
+  cabina: textoNulo.optional(),
+  equipaje: textoNulo.optional(),
+  precio: z.looseObject({
+    adulto: textoFlojo.optional(),
+    menor: textoFlojo.optional(),
+    infante: textoFlojo.optional(),
+  }).optional(),
 });
 
 export const servicioSchema = z.looseObject({

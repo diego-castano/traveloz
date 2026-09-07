@@ -117,6 +117,9 @@ export interface ContenidoPublico {
   vuelosNota: Array<{
     id: string;
     nombre: string;
+    cabina: string | null;
+    equipaje: string | null;
+    precio: { adulto: string; menor: string; infante: string };
     vuelos: Array<{
       id: string; cia: string; nro: string; aerolinea: string;
       dia: number | null; mes: number | null;
@@ -200,6 +203,13 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
     vuelosNota: (q.vuelosNota ?? []).slice(0, 2).map((n) => ({
       id: txt(n?.id),
       nombre: txt(n?.nombre),
+      cabina: n?.cabina ?? null,
+      equipaje: n?.equipaje ?? null,
+      precio: {
+        adulto: txt(n?.precio?.adulto),
+        menor: txt(n?.precio?.menor),
+        infante: txt(n?.precio?.infante),
+      },
       vuelos: (n?.vuelos ?? []).map((v) => ({
         id: txt(v?.id),
         cia: txt(v?.cia),
