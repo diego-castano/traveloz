@@ -17,6 +17,33 @@ import { parseIncluyeItems } from "@/lib/incluye";
 const NOCHES_TAIL_RE = /\s*[-–—]\s*\d+\s*noches?\s*$/i;
 
 /**
+ * Saca del nombre de un servicio la referencia interna al cupo.
+ *
+ * El operador escribe el cupo dentro del propio nombre del vuelo —"Vuelo
+ * Montevideo - Aruba - Montevideo (Cupo Verano Siur)", "… Montevideo Cupo ABT
+ * Vacaciones Setiembre"— y eso terminaba en la cotización que ve el pasajero.
+ * "Cupo Verano Siur" es el trato con el mayorista: no le dice nada a nadie de
+ * afuera y no tiene por qué salir.
+ *
+ * Corta desde la palabra "cupo" o "cupos" hasta el final, con o sin paréntesis,
+ * y colapsa los espacios dobles que deja el ABM. Si el recorte dejara la cadena
+ * vacía —un nombre que es SOLO la referencia— devuelve el original: mostrar el
+ * dato interno es feo, pero mostrar nada es peor.
+ *
+ * El arreglo de fondo es que el nombre público sea obligatorio al asignar el
+ * aéreo. Esto es la red por si igual se cuela.
+ */
+export function sinCupoInterno(texto: string | null | undefined): string {
+  const crudo = String(texto ?? "").replace(/\s+/g, " ").trim();
+  if (!crudo) return "";
+  const limpio = crudo
+    .replace(/\s*\(?\s*cupos?\b[\s\S]*$/i, "")
+    .replace(/[\s\-–—·,]+$/, "")
+    .trim();
+  return limpio || crudo;
+}
+
+/**
  * Saca el sufijo "- NN Noches" (o "N Noche" sin tilde) del final del título.
  * Tolera guiones (-), en-dash (–) y em-dash (—), y mayúsculas.
  * "Rio de Janeiro & Buzios - 07 Noches" → "Rio de Janeiro & Buzios"

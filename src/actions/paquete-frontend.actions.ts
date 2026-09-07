@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { sinCupoInterno } from "@/lib/format-paquete";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
@@ -523,7 +524,7 @@ export async function getSugerenciasIncluye(
   };
 
   for (const pa of paquete.aereos) {
-    push("vuelo", pa.textoDisplay ?? pa.aereo.ruta);
+    push("vuelo", sinCupoInterno(pa.textoDisplay ?? pa.aereo.ruta));
     // El equipaje es una propiedad del aéreo (no un servicio de catálogo): si el
     // aéreo lo trae cargado, lo agregamos como su propio renglón ("Carry on",
     // "1 valija 23kg", etc.) con el ícono de equipaje.

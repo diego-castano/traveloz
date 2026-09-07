@@ -34,6 +34,7 @@ import {
 } from "@/lib/utils";
 import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { destinoLimpio, norm, uid } from "./data";
+import { sinCupoInterno } from "@/lib/format-paquete";
 
 /* ═══════════════════════════════════════════════════════════════════════════
    CATÁLOGO REAL DEL COTIZADOR
@@ -539,7 +540,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
          (`textoDisplay ?? ruta`); los espacios dobles del ABM se colapsan. */
       for (const pa of asigAereos) {
         const a = aereoPorId.get(pa.aereoId);
-        const texto = String(pa.textoDisplay || a?.ruta || "").replace(/\s+/g, " ").trim();
+        const texto = sinCupoInterno(pa.textoDisplay || a?.ruta || "");
         if (texto) servicios.push({ cat: "aereo", texto });
       }
 
