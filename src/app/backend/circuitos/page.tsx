@@ -11,6 +11,7 @@ import {
   Eye,
   ChevronDown,
 } from "lucide-react";
+import { matchesSearch } from "@/lib/search";
 import { Button } from "@/components/ui/Button";
 import {
   DataTable,
@@ -111,7 +112,7 @@ export default function CircuitosPage() {
 
   const filteredCircuitos = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const base = q ? circuitos.filter((c) => c.nombre.toLowerCase().includes(q)) : circuitos;
+    const base = q ? circuitos.filter((c) => matchesSearch(q, c.nombre)) : circuitos;
     return sortByRecency(base);
   }, [circuitos, search]);
 

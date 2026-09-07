@@ -50,6 +50,7 @@ import { EmptyState } from "@/components/ui/data/EmptyState";
 import { useToast } from "@/components/ui/Toast";
 import { useUserActions } from "@/components/providers/UserProvider";
 import type { AuthUser, Role } from "@/lib/auth";
+import { matchesSearch } from "@/lib/search";
 
 // ---------------------------------------------------------------------------
 // Links públicos derivados del slug
@@ -121,10 +122,9 @@ export function VendedoresView({
   const sinFirma = useMemo(() => users.filter((u) => !u.firmaUrl).length, [users]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return users.filter(
       (u) =>
-        (!q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) &&
+        matchesSearch(search, u.name, u.email) &&
         (!soloSinFirma || !u.firmaUrl),
     );
   }, [users, search, soloSinFirma]);

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/Input";
+import { matchesSearch } from "@/lib/search";
 import type { ReactNode } from "react";
 
 export type Column<T> = {
@@ -48,12 +49,8 @@ export function LeadsTable<T>({
   const filtered = useMemo(() => {
     const base = filter ? rows.filter(filter) : rows;
     if (!q.trim() || !searchableFields) return base;
-    const needle = q.toLowerCase();
     return base.filter((r) =>
-      searchableFields.some((f) => {
-        const v = r[f];
-        return v != null && String(v).toLowerCase().includes(needle);
-      }),
+      matchesSearch(q, ...searchableFields.map((f) => r[f])),
     );
   }, [rows, q, searchableFields, filter]);
 

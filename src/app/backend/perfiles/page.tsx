@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Pencil, Trash2, ShieldCheck, Users, Key, Hash, Unlock, Lock } from "lucide-react";
 import { motion } from "motion/react";
 import { interactions } from "@/components/lib/animations";
+import { matchesSearch } from "@/lib/search";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -190,12 +191,7 @@ export default function PerfilesPage() {
   const filteredUsers = useMemo(() => {
     let result = users;
     if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q),
-      );
+      result = result.filter((u) => matchesSearch(search, u.name, u.email));
     }
     if (roleFilter) {
       result = result.filter((u) => u.role === roleFilter);

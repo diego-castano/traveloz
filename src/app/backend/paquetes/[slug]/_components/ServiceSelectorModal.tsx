@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { formatCurrency } from "@/lib/utils";
 import { sinCupoInterno } from "@/lib/format-paquete";
+import { matchesSearch } from "@/lib/search";
 import { Modal, ModalHeader, ModalBody } from "@/components/ui/Modal";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
@@ -270,11 +271,7 @@ export default function ServiceSelectorModal({
           return flightPais ? aereoPaisTokens.includes(flightPais) : false;
         })
         .filter(
-          (a) =>
-            !sq ||
-            a.ruta.toLowerCase().includes(sq) ||
-            a.destino.toLowerCase().includes(sq) ||
-            (a.aerolinea ?? "").toLowerCase().includes(sq),
+          (a) => !sq || matchesSearch(sq, a.ruta, a.destino, a.aerolinea),
         ),
     [aereos, assignedAereoIds, sq, hasAereoPaisFilter, aereoPaisTokens, paises],
   );
@@ -282,12 +279,7 @@ export default function ServiceSelectorModal({
     () =>
       traslados
         .filter((t) => !assignedTrasladoIds.has(t.id))
-        .filter(
-          (t) =>
-            !sq ||
-            t.nombre.toLowerCase().includes(sq) ||
-            t.tipo.toLowerCase().includes(sq),
-        ),
+        .filter((t) => !sq || matchesSearch(sq, t.nombre, t.tipo)),
     [traslados, assignedTrasladoIds, sq],
   );
   const availableSeguros = useMemo(
@@ -297,11 +289,7 @@ export default function ServiceSelectorModal({
         .filter((s) => {
           if (!sq) return true;
           const provNombre = proveedorMap.get(s.proveedorId ?? "") ?? "";
-          return (
-            s.plan.toLowerCase().includes(sq) ||
-            (s.cobertura ?? "").toLowerCase().includes(sq) ||
-            provNombre.toLowerCase().includes(sq)
-          );
+          return matchesSearch(sq, s.plan, s.cobertura, provNombre);
         }),
     [seguros, assignedSeguroIds, sq, proveedorMap],
   );
@@ -309,7 +297,7 @@ export default function ServiceSelectorModal({
     () =>
       circuitos
         .filter((c) => !assignedCircuitoIds.has(c.id))
-        .filter((c) => !sq || c.nombre.toLowerCase().includes(sq)),
+        .filter((c) => !sq || matchesSearch(sq, c.nombre)),
     [circuitos, assignedCircuitoIds, sq],
   );
 

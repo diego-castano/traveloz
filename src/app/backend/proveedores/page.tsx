@@ -57,6 +57,7 @@ import { useToast } from "@/components/ui/Toast";
 import { PageSkeleton } from "@/components/ui/Skeletons";
 import type { Proveedor, CategoriaServicio } from "@/lib/types";
 import { sortByRecency } from "@/lib/recency";
+import { matchesSearch } from "@/lib/search";
 import { RecentBadge } from "@/components/ui/data/RecentBadge";
 
 // ---------------------------------------------------------------------------
@@ -132,14 +133,8 @@ export default function ProveedoresPage() {
   const filteredProveedores = useMemo(() => {
     const filtered = proveedores.filter((p) => {
       if (filtroServicio && p.servicio !== filtroServicio) return false;
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        if (
-          !p.nombre.toLowerCase().includes(q) &&
-          !(p.email ?? "").toLowerCase().includes(q) &&
-          !(p.contacto ?? "").toLowerCase().includes(q)
-        )
-          return false;
+      if (search.trim() && !matchesSearch(search, p.nombre, p.email, p.contacto)) {
+        return false;
       }
       return true;
     });

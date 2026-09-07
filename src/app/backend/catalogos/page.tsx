@@ -17,6 +17,7 @@ import {
   Copy,
   ExternalLink,
 } from "lucide-react";
+import { matchesSearch } from "@/lib/search";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -157,7 +158,7 @@ function TemporadasTab() {
         activa: r.activa,
       })}
       isValid={(f) => !!String(f.nombre ?? "").trim()}
-      searchFilter={(r, q) => r.nombre.toLowerCase().includes(q)}
+      searchFilter={(r, q) => matchesSearch(q, r.nombre)}
       searchPlaceholder="Buscar temporada..."
       onCreate={async (form) => {
         await createTemporada({
@@ -265,7 +266,7 @@ function TiposPaqueteTab() {
         activo: r.activo,
       })}
       isValid={(f) => !!String(f.nombre ?? "").trim()}
-      searchFilter={(r, q) => r.nombre.toLowerCase().includes(q)}
+      searchFilter={(r, q) => matchesSearch(q, r.nombre)}
       searchPlaceholder="Buscar tipo de paquete..."
       onCreate={async (form) => {
         await createTipoPaquete({
@@ -358,9 +359,7 @@ function RegimenesTab() {
       isValid={(f) =>
         !!String(f.nombre ?? "").trim() && !!String(f.abrev ?? "").trim()
       }
-      searchFilter={(r, q) =>
-        r.nombre.toLowerCase().includes(q) || r.abrev.toLowerCase().includes(q)
-      }
+      searchFilter={(r, q) => matchesSearch(q, r.nombre, r.abrev)}
       searchPlaceholder="Buscar regimen..."
       onCreate={async (form) => {
         await createRegimen({
@@ -531,9 +530,7 @@ function EtiquetasTab() {
       isValid={(f) =>
         !!String(f.nombre ?? "").trim() && !!String(f.slug ?? "").trim()
       }
-      searchFilter={(r, q) =>
-        r.nombre.toLowerCase().includes(q) || r.slug.toLowerCase().includes(q)
-      }
+      searchFilter={(r, q) => matchesSearch(q, r.nombre, r.slug)}
       searchPlaceholder="Buscar etiqueta..."
       onCreate={async (form) => {
         await createEtiqueta({
@@ -651,14 +648,12 @@ function RegionesPaisesTab() {
     if (!q) return regiones;
     return regiones
       .map((r) => {
-        const regionHit = r.nombre.toLowerCase().includes(q);
+        const regionHit = matchesSearch(q, r.nombre);
         const paisesFiltered = r.paises
           .map((p) => {
-            const paisHit =
-              p.nombre.toLowerCase().includes(q) ||
-              (p.codigo ?? "").toLowerCase().includes(q);
+            const paisHit = matchesSearch(q, p.nombre, p.codigo);
             const ciudadesFiltered = p.ciudades.filter((c) =>
-              c.nombre.toLowerCase().includes(q),
+              matchesSearch(q, c.nombre),
             );
             if (regionHit || paisHit || ciudadesFiltered.length > 0) {
               return {
