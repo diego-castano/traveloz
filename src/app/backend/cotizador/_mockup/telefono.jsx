@@ -790,7 +790,7 @@ function SalidaPasajero({
         {q.servicios.length > 0 && !q.soloVuelos && (
           <div ref={(el) => { anclas.current["b-servicios"] = el; }} data-sec="servicios" data-ap
             style={impresion ? { marginTop:AIRE_SEC_1 } : undefined}>
-            <SecTitulo texto="Tu viaje incluye" />
+            <SecTitulo texto="El precio incluye" />
             {/* `stretch` en papel: las dos fichas de una fila quedan a la misma
                 altura aunque un texto ocupe dos renglones y el otro uno. */}
             <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr",
@@ -850,7 +850,7 @@ function SalidaPasajero({
         {/* solo vuelos: cabina y equipaje.
 
             En una cotización con alojamiento estos dos viajan dentro de la
-            ficha automática de "Tu viaje incluye" ("Aéreo ida y vuelta ·
+            ficha automática de "El precio incluye" ("Aéreo ida y vuelta ·
             Cabina Turista · Artículo personal"). Esa sección no se dibuja en
             modo solo vuelo, así que el dato quedaba guardado en la cotización
             y nunca llegaba al pasajero. (Reporte de Gero, 01/09.) */}

@@ -535,7 +535,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
 
       /* La línea de aéreo va SIN aerolínea. La agencia cotiza el aéreo por
          ruta y se reserva cambiar de compañía manteniendo el precio; con la
-         aerolínea escrita en "Tu viaje incluye" quedaba atada (Gero, 26/08).
+         aerolínea escrita en "El precio incluye" quedaba atada (Gero, 26/08).
          Es la misma línea que muestra la ficha pública del paquete
          (`textoDisplay ?? ruta`); los espacios dobles del ABM se colapsan. */
       for (const pa of asigAereos) {
