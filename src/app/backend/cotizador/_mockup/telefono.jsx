@@ -299,7 +299,6 @@ function SalidaPasajero({
 
   const [abierta, setAbierta] = useState(confirmadaInicial || q.opciones[0]?.id || null);
   const [confirmada, setConfirmada] = useState(confirmadaInicial || null);
-  const [revision, setRevision] = useState(null);
   /* acciones reales: mientras viaja la action los botones se bloquean y, si el
      server dice que no, el pasajero lee el motivo en vez de quedarse mirando */
   const [enviando, setEnviando] = useState(null);   /* "conf" | "rev" | null */
@@ -481,16 +480,6 @@ function SalidaPasajero({
     setConfirmada(o.id);
   };
 
-  const pedirRevision = async (o) => {
-    if (enviando) return;
-    setErrorAcc(null);
-    if (!onRevision) { setRevision(o.id); return; }
-    setEnviando("rev");
-    const r = await onRevision({ id: o.id, nombre: nombreDe(o) });
-    setEnviando(null);
-    if (r && r.ok === false) { setErrorAcc(r.error || "No pudimos avisarle. Probá de nuevo."); return; }
-    setRevision(o.id);
-  };
 
   /* itinerario agrupado en trayectos (Ida / Vuelta / Tramo N) */
   /* Dos códigos son la misma ciudad si el catálogo lo dice. Sin el aeropuerto
@@ -1308,21 +1297,6 @@ function SalidaPasajero({
                               lineHeight:1.5 }}>
                               Al confirmar aceptás esta cotización — vale como firma digital.
                             </div>
-                            {revision === o.id ? (
-                              <div className="a-pop" style={{ marginTop:8, padding:"9px 12px", borderRadius:11,
-                                background:"rgba(120,90,229,.08)", fontSize:fz(11, 11.5), color:"#5B3FBF",
-                                textAlign:"center", fontWeight:600 }}>
-                                Le avisamos a {V.nombre.split(" ")[0]} — te contacta para ajustar la cotización.
-                              </div>
-                            ) : (
-                              <button className="lnk-rev" onClick={() => pedirRevision(o)} disabled={!!enviando}
-                                style={{ display:"block", margin:"2px auto 0", minHeight:44, padding:"0 14px",
-                                  fontSize:fz(11.5, 11.5), fontWeight:700,
-                                  color:G.b, textDecoration:"underline", textUnderlineOffset:3,
-                                  opacity: enviando ? .65 : 1 }}>
-                                {enviando === "rev" ? "Avisando…" : "Solicitar una revisión"}
-                              </button>
-                            )}
                             {errorAcc && (
                               <div className="a-pop" style={{ marginTop:8, padding:"9px 12px", borderRadius:11,
                                 background:"rgba(244,62,85,.08)", fontSize:fz(11, 11.5), color:"#CC2030",
