@@ -887,7 +887,7 @@ function SalidaPasajero({
         {/* solo vuelos: cabina y equipaje.
 
             En una cotización con alojamiento estos dos viajan dentro de la
-            ficha automática de "El precio incluye" ("Aéreo ida y vuelta ·
+            ficha automática de "El precio incluye" ("Pasaje aéreo ida y vuelta ·
             Cabina Turista · Artículo personal"). Esa sección no se dibuja en
             modo solo vuelo, así que el dato quedaba guardado en la cotización
             y nunca llegaba al pasajero. (Reporte de Gero, 01/09.) */}

@@ -83,7 +83,7 @@ const TARIFA_TIPOS = ["Por adulto","Por menor","Por infante","Por familia","Otro
 
 /* Servicios habituales precargados por categoría */
 const SUG = {
-  aereo: ["Aéreo ida y vuelta con equipaje de mano","Aéreo ida y vuelta con valija en bodega 23kg","Equipaje de mano 10kg incluido","Tasas e impuestos incluidos"],
+  aereo: ["Pasaje aéreo ida y vuelta con equipaje de mano","Pasaje aéreo ida y vuelta con valija en bodega 23kg","Equipaje de mano 10kg incluido","Tasas e impuestos incluidos"],
   traslado: ["Traslado de llegada","Traslado de salida","Traslado llegada y salida","Traslado llegada, salida e interhotel"],
   alojamiento: ["Alojamiento en base doble","Impuestos hoteleros incluidos","Early check-in sujeto a disponibilidad"],
   vehiculo: ["Alquiler de auto categoría económica","Alquiler de auto categoría SUV","Seguro de cobertura total del vehículo"],
@@ -313,7 +313,7 @@ function margenPct(factor) { return Math.round((1 - Number(factor)) * 1000) / 10
    equipaje) hasta que el vendedor los edita a mano. */
 function serviciosDefault(noches = 7) {
   return [
-    { id:uid("srv"), categoria:"aereo",       texto:"Aéreo ida y vuelta con artículo personal y equipaje de mano", ciudad:null, modalidad:null, auto:"aereo" },
+    { id:uid("srv"), categoria:"aereo",       texto:"Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano", ciudad:null, modalidad:null, auto:"aereo" },
     { id:uid("srv"), categoria:"traslado",    texto:"Traslados de llegada y salida",           ciudad:null, modalidad:null },
     { id:uid("srv"), categoria:"alojamiento", texto:`${String(noches).padStart(2, "0")} noches de alojamiento`, ciudad:null, modalidad:null, auto:"noches" },
     { id:uid("srv"), categoria:"seguro",      texto:"Seguro de Asistencia al Viajero",         ciudad:null, modalidad:null },

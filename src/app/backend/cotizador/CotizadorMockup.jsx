@@ -798,8 +798,8 @@ export default function Cotizador({
         En cuanto el vendedor los edita a mano pierden el flag y quedan quietos. ── */
   useEffect(() => {
     const txtAereo = (q.cabina || q.equipaje)
-      ? "Aéreo ida y vuelta · " + [q.cabina, q.equipaje].filter(Boolean).join(" · ")
-      : "Aéreo ida y vuelta con artículo personal y equipaje de mano";
+      ? "Pasaje aéreo ida y vuelta · " + [q.cabina, q.equipaje].filter(Boolean).join(" · ")
+      : "Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano";
     const cambiaA = q.servicios.some((s) => s.auto === "aereo" && s.texto !== txtAereo);
     const filas = sincronizarAlojamiento(q.servicios, q.destinos);
     if (!cambiaA && filas === q.servicios) return;

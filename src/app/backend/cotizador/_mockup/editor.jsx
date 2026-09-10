@@ -726,8 +726,8 @@ function BloqueVuelos({ q, set, refEl, toast }) {
     if (iA < 0) return;
     const extra = [d.cabina, d.equipaje].filter(Boolean).join(" · ");
     d.servicios[iA].texto = extra
-      ? "Aéreo ida y vuelta · " + extra
-      : "Aéreo ida y vuelta con artículo personal y equipaje de mano";
+      ? "Pasaje aéreo ida y vuelta · " + extra
+      : "Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano";
     d.servicios[iA].auto = "aereo";
   };
   /* Ctrl+V con una captura en el portapapeles: la IA la lee igual que el texto */
