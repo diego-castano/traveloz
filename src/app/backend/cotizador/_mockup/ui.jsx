@@ -52,7 +52,7 @@ const CATS = [
   { id:"alojamiento", label:"Alojamiento", Icon:catIcon(ICONO_POR_CATEGORIA.alojamiento) },
   { id:"vehiculo",    label:"Vehículo",    Icon:catIcon(ICONO_POR_CATEGORIA.vehiculo) },
   { id:"seguro",      label:"Seguro",      Icon:catIcon(ICONO_POR_CATEGORIA.seguro) },
-  { id:"opcionales",  label:"Opcionales",  Icon:catIcon(ICONO_POR_CATEGORIA.opcionales) },
+  { id:"opcionales",  label:"Otros",       Icon:catIcon(ICONO_POR_CATEGORIA.opcionales) },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════

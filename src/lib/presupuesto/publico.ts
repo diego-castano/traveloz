@@ -144,6 +144,14 @@ export interface ContenidoPublico {
     modalidad: string | null;
     icono: string | null;
   }>;
+  /** Servicios NO incluidos en el precio, que el pasajero puede sumar a pedido. */
+  opcionales: Array<{
+    id: string;
+    texto: string;
+    icono: string | null;
+    precio: number | null;
+    porPersona: boolean;
+  }>;
   notasCliente: string;
   vigencia: number | null;
   cliente: { nombre: string };
@@ -236,14 +244,32 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
       checkinManual: d?.checkinManual ?? null,
     })),
 
-    servicios: (q.servicios ?? []).map((s) => ({
-      id: txt(s?.id),
-      categoria: txt(s?.categoria),
-      texto: txt(s?.texto),
-      ciudad: s?.ciudad ?? null,
-      modalidad: s?.modalidad ?? null,
-      icono: s?.icono ?? null,
-    })),
+    // Una fila sin texto es un renglón vacío que el vendedor dejó a medio
+    // cargar (o que el editor borra solo al perder el foco): nunca llega al
+    // pasajero.
+    servicios: (q.servicios ?? [])
+      .filter((s) => txt(s?.texto).trim())
+      .map((s) => ({
+        id: txt(s?.id),
+        categoria: txt(s?.categoria),
+        texto: txt(s?.texto),
+        ciudad: s?.ciudad ?? null,
+        modalidad: s?.modalidad ?? null,
+        icono: s?.icono ?? null,
+      })),
+
+    opcionales: (q.opcionales ?? [])
+      .filter((o) => txt(o?.texto).trim())
+      .map((o) => {
+        const precio = numOnulo(o?.precio);
+        return {
+          id: txt(o?.id),
+          texto: txt(o?.texto),
+          icono: o?.icono ?? null,
+          precio: precio === null ? null : Math.round(precio),
+          porPersona: o?.porPersona !== false,
+        };
+      }),
 
     // HTML libre que escribe el vendedor. Se sanea también acá y no solo al
     // guardar: lo que ya está en la base viene de antes de que existiera el

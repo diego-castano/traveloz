@@ -212,6 +212,17 @@ export const servicioSchema = z.looseObject({
   icono: iconoFlojo.optional(),
 });
 
+/** Servicio NO incluido en el precio, que el pasajero puede sumar a pedido.
+ *  Nunca entra en los totales de la cotización. */
+export const opcionalSchema = z.looseObject({
+  id: textoFlojo,
+  texto: textoFlojo,
+  icono: iconoFlojo.optional(),
+  // Mismo criterio que precioVuelo.adulto: string numérico, "" si no hay carga.
+  precio: textoFlojo,
+  porPersona: z.boolean().optional(),
+});
+
 /** Costo fijo interno: no lo ve el pasajero. */
 export const notaSchema = z.looseObject({
   id: textoFlojo,
@@ -273,6 +284,7 @@ export const contenidoSchema = z.looseObject({
 
   destinos: z.array(destinoSchema).default([]),
   servicios: z.array(servicioSchema).default([]),
+  opcionales: z.array(opcionalSchema).optional(),
 
   // Internos: costos fijos y bloc de notas del vendedor.
   notas: z.array(notaSchema).default([]),

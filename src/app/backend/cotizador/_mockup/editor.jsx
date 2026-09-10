@@ -1154,6 +1154,22 @@ function BloqueServicios({ q, set, refEl, toast }) {
     set((d) => { const [it] = d.servicios.splice(from, 1); d.servicios.splice(from < to ? to - 1 : to, 0, it); });
   };
 
+  /* El clic en una pestaña también agrega una fila vacía de esa categoría (pedido
+     del cliente): si ya hay una vacía de la misma categoría, se reutiliza esa en
+     vez de duplicar. Foco al input de la fila para escribir directo. */
+  const enfocarFila = (id) => requestAnimationFrame(() => {
+    document.querySelector(`[data-srv-id="${id}"]`)?.focus();
+  });
+  const clicPestana = (categoria) => {
+    setCat(categoria);
+    const vacia = q.servicios.find((s) => s.categoria === categoria && !s.texto.trim());
+    if (vacia) { enfocarFila(vacia.id); return; }
+    const id = uid("srv");
+    set((d) => { d.servicios.push({ id, categoria, texto:"",
+      ciudad: categoria === "traslado" ? "" : null, modalidad: categoria === "traslado" ? "Regular" : null }); });
+    enfocarFila(id);
+  };
+
   /* busqueda GLOBAL: en todas las categorias, no solo la activa */
   const acRes = useMemo(() => {
     const t = norm(txt.trim());
@@ -1174,7 +1190,7 @@ function BloqueServicios({ q, set, refEl, toast }) {
           const late = pulseCat && String(pulseCat).startsWith(c.id);
           return (
             <button key={c.id} className={`chip ${cat === c.id ? "chip-on" : ""} ${late ? "a-tada" : ""}`}
-              onClick={() => { setCat(c.id); requestAnimationFrame(() => inp.current?.focus()); }}>
+              onClick={() => clicPestana(c.id)}>
               <c.Icon size={12} />{c.label}
               {n > 0 && <span key={n} className="mono a-pulse" style={{ fontSize:10, opacity:.7 }}>{n}</span>}
             </button>
@@ -1242,6 +1258,16 @@ function BloqueServicios({ q, set, refEl, toast }) {
                   onDragStart={() => setDrag(i)}
                   onDragEnd={() => { mover(drag, over); setDrag(null); setOver(null); setArmado(null); }}
                   onDragOver={(e) => { e.preventDefault(); setOver(i); }}
+                  onBlur={(e) => {
+                    /* una fila vacía que pierde el foco del todo se borra sola: nunca
+                       llega a contenidoPublico, pero tampoco hace falta que quede
+                       ocupando lugar en el editor. */
+                    if (e.currentTarget.contains(e.relatedTarget)) return;
+                    /* el selector de ícono vive en un portal fuera de la fila: elegir
+                       ícono para una fila recién agregada no la tiene que borrar */
+                    if (e.relatedTarget?.closest?.(".ac-pop")) return;
+                    if (!(s.texto || "").trim()) set((d) => { d.servicios.splice(i, 1); });
+                  }}
                   className={drag === i ? "drag-on" : ""}
                   style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px", marginBottom:5,
                     background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11, transition:"box-shadow .16s" }}>
@@ -1251,7 +1277,7 @@ function BloqueServicios({ q, set, refEl, toast }) {
                     onElegir={(key) => set((d) => {
                       if (key) d.servicios[i].icono = key; else delete d.servicios[i].icono;
                     })} />
-                  <input className="in" style={{ flex:"1 1 140px", height:30, border:"1px solid transparent",
+                  <input className="in" data-srv-id={s.id} style={{ flex:"1 1 140px", height:30, border:"1px solid transparent",
                     background:"transparent", paddingLeft:2 }} value={s.texto}
                     onChange={(e) => set((d) => { d.servicios[i].texto = e.target.value;
                       delete d.servicios[i].auto; })} />
@@ -1291,6 +1317,56 @@ function BloqueServicios({ q, set, refEl, toast }) {
       <div style={{ fontSize:11, color:"var(--n400)", display:"flex", alignItems:"center", gap:6 }}>
         <GripVertical size={11} /> Arrastrá para reordenar, o usá las flechas. El orden es el que ve el pasajero.
       </div>
+    </Block>
+  );
+}
+
+/* ── 6b · Opcionales: NO suman al precio, el pasajero los agrega a pedido ── */
+function BloqueOpcionales({ q, set, refEl, toast }) {
+  const opcionales = Array.isArray(q.opcionales) ? q.opcionales : [];
+  const agregar = () => set((d) => {
+    if (!Array.isArray(d.opcionales)) d.opcionales = [];
+    d.opcionales.push({ id:uid("opc"), texto:"", precio:"", porPersona:true });
+  });
+  return (
+    <Block id="b-opcionales" forwardRef={refEl} icon={Star} title="Opcionales" count={opcionales.length || null}>
+      {opcionales.length === 0 && (
+        <div style={{ fontSize:12, color:"var(--n400)", marginBottom:11 }}>
+          Servicios que no entran en el precio y el pasajero puede sumar. Solo salen en la cotización si cargás alguno.
+        </div>
+      )}
+      {opcionales.length > 0 && (
+        <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:11 }}>
+          {opcionales.map((o, i) => (
+            <div key={o.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 9px",
+              background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11 }}>
+              <IconoServicioPicker servicio={{ categoria:"opcionales", texto:o.texto, icono:o.icono }}
+                onElegir={(key) => set((d) => {
+                  if (key) d.opcionales[i].icono = key; else delete d.opcionales[i].icono;
+                })} />
+              <input className="in" style={{ flex:"1 1 140px", height:30 }} value={o.texto}
+                placeholder="Ej. Excursión a Búzios"
+                onChange={(e) => set((d) => { d.opcionales[i].texto = e.target.value; })} />
+              <div style={{ display:"flex", alignItems:"center", gap:4, flexShrink:0 }}>
+                <span style={{ fontSize:11, color:"var(--n400)" }}>USD</span>
+                <input className="in mono" type="number" style={{ width:76, height:30, textAlign:"right" }}
+                  value={o.precio} placeholder="0"
+                  onChange={(e) => set((d) => { d.opcionales[i].precio = e.target.value; })} />
+              </div>
+              <button className={`chip chip-mini ${o.porPersona !== false ? "chip-on" : ""}`}
+                title="Precio por persona"
+                onClick={() => set((d) => { d.opcionales[i].porPersona = d.opcionales[i].porPersona === false; })}>
+                p/p
+              </button>
+              <button className="btn btn-g btn-ico" style={{ width:25, height:25, flexShrink:0 }}
+                onClick={() => { const cp = { ...o }; set((d) => { d.opcionales.splice(i, 1); });
+                  toast({ msg:"Opcional eliminado", tone:"warn", undo:() => set((d) => { d.opcionales.splice(i, 0, cp); }) }); }}>
+                <Trash2 size={12} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <Btn size="sm" onClick={agregar}><Plus size={13} /> Agregar opcional</Btn>
     </Block>
   );
 }
@@ -2380,6 +2456,7 @@ function Paleta({ acciones, onClose }) {
 
 export {
   BloqueCliente, BloqueEncabezado, SeccionDestinos, BloqueMensaje, BloqueVuelos, BloqueServicios,
+  BloqueOpcionales,
   NotasRail, BloqueNotasCliente, SeccionOpciones, BloqueAlojamiento, BannerIA, Paleta,
   /* v2B */
   BannerPasajero, HojaAtajos, ATAJOS, enterAvanza,

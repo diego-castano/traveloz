@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Plus, Send, ArrowLeft, Command, Zap, X,
   Smartphone, LayoutGrid, Loader2, CheckCheck, AlertCircle, Lock, Gauge, Ticket, Files, Monitor,
-  StickyNote, ListChecks, Eye, EyeOff, Keyboard
+  StickyNote, ListChecks, Eye, EyeOff, Keyboard, Star
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import { CSS_UI } from "./_mockup/styles-ui";
@@ -29,6 +29,7 @@ import { MisLinks } from "./_mockup/mis-links";
 import { SalidaPasajero } from "./_mockup/telefono";
 import {
   BloqueCliente, BloqueEncabezado, BloqueAlojamiento, BloqueMensaje, BloqueVuelos, BloqueServicios,
+  BloqueOpcionales,
   NotasRail, BloqueNotasCliente, BannerIA, Paleta, BannerPasajero, HojaAtajos
 } from "./_mockup/editor";
 import { Inicio } from "./_mockup/inicio";
@@ -86,6 +87,9 @@ function cotizacionVacia(ajustes) {
     vuelosNota: [],
     vigencia: ajustes?.vigenciaDefault || 96,
     opciones: [],
+    /* Servicios NO incluidos en el precio, que el pasajero puede sumar a
+       pedido. Nunca entran en los totales. */
+    opcionales: [],
   };
 }
 
@@ -430,7 +434,7 @@ export default function Cotizador({
      atajos Alt+N. En solo vuelos no hay servicios ni alojamiento. */
   const IDS_BLOQUES = q.soloVuelos
     ? ["b-cliente","b-mensaje","b-encabezado","b-vuelos","b-notascliente"]
-    : ["b-cliente","b-mensaje","b-encabezado","b-servicios","b-vuelos","b-alojamiento","b-notascliente"];
+    : ["b-cliente","b-mensaje","b-encabezado","b-servicios","b-opcionales","b-vuelos","b-alojamiento","b-notascliente"];
   /* el listener de teclado se registra una sola vez: lee el orden vigente por ref */
   const idsRef = useRef(IDS_BLOQUES);
   idsRef.current = IDS_BLOQUES;
@@ -810,6 +814,8 @@ export default function Cotizador({
     { id:"b-mensaje",    l:"Mensaje",     Icon:MessageSquare, ok: !!(q.mensajeAuto || "").trim() },
     { id:"b-encabezado", l:"Encabezado",  Icon:FileText,    ok: !!(q.titulo.destino && q.titulo.mes != null && q.fechaSalida) },
     { id:"b-servicios",  l:"Servicios",   Icon:LayoutGrid,  ok: q.servicios.length > 0 },
+    { id:"b-opcionales", l:"Opcionales",  Icon:Star,
+      ok: (q.opcionales || []).some((o) => (o.texto || "").trim()) },
     { id:"b-vuelos",     l:"Vuelos",      Icon:Plane,
       ok: q.soloVuelos ? (q.vuelos.length > 0 && !!Number(q.precioVuelo?.adulto)) : q.vuelos.length > 0 },
     { id:"b-alojamiento", l:"Alojamiento", Icon:Building2,  ok: q.destinos.length > 0 && q.opciones.length > 0 },
@@ -1349,6 +1355,7 @@ export default function Cotizador({
               <BloqueMensaje q={q} set={set} toast={toast} />
               <BloqueEncabezado q={q} set={set} tramos={tramos} hayManual={hayManual} onRepropagar={repropagar} />
               {!q.soloVuelos && <BloqueServicios q={q} set={set} toast={toast} />}
+              {!q.soloVuelos && <BloqueOpcionales q={q} set={set} toast={toast} />}
               <BloqueVuelos q={q} set={set} toast={toast} />
               {!q.soloVuelos && (
                 <BloqueAlojamiento q={q} set={set} tramos={tramos} toast={toast} vistaPasajero={vistaPasajero} />
