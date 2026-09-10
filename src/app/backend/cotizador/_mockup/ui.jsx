@@ -10,6 +10,8 @@ import {
   MESES, MES_AB, fotoBg, clamp, parseISO, toISO, addDays, norm,
 } from "./data";
 import { useCatalogo } from "./contexto";
+import { ServiceIcon } from "@/components/ui/ServiceIcon";
+import { ICONO_POR_CATEGORIA } from "@/lib/presupuesto/iconos";
 
 /* El recuadro de foto: si el paquete o el hotel tiene imagen cargada va la
    imagen recortada al mismo marco; si no, el gradiente por semilla de siempre. */
@@ -37,13 +39,20 @@ const IcoAuto = (p) => <TzIcon vb="0 0 64.74 45.83" {...p}><path d="M64.74,14.82
 const IcoEscudo = (p) => <TzIcon vb="0 0 64.53 75.8" {...p}><path d="M33.01,75.8h-1.47c-12.7-4.07-23.04-11.81-27.93-24.63-1.4-3.67-2.26-7.35-2.8-11.26C.15,35.09-.08,30.35.02,25.48l.17-7.7c.26-4.2,3.68-7.3,7.8-7.53,7.9-.44,14.79-3.07,20.51-8.52,2.41-2.3,5.14-2.3,7.55,0,5.7,5.43,12.63,8.1,20.49,8.52,4.52.24,7.86,3.76,7.9,8.28l.09,9.91c.04,3.94-.27,7.7-.81,11.59-.64,4.58-1.74,8.92-3.61,13.13-2.93,6.58-7.53,12.07-13.5,16.12-4.21,2.86-8.8,5.04-13.59,6.53ZM51.14,37.9c0-10.42-8.45-18.87-18.87-18.87s-18.87,8.45-18.87,18.87,8.45,18.87,18.87,18.87,18.87-8.45,18.87-18.87Z" /><path d="M46.7,37.9c0,7.97-6.46,14.43-14.43,14.43s-14.43-6.46-14.43-14.43,6.46-14.43,14.43-14.43,14.43,6.46,14.43,14.43ZM23.45,41.62l3.8,3.81c.94.94,2.32,1.02,3.29.05l10.34-10.35c.9-.9.75-2.34-.09-3.14s-2.22-.81-3.11.08l-8.75,8.75-2.3-2.31c-.9-.91-2.26-.96-3.16-.13s-.97,2.29-.02,3.24Z" /></TzIcon>;
 const IcoEstrella = (p) => <TzIcon vb="0 0 59.53 56.72" {...p}><path d="M29.78,48l-16,8.41c-.79.41-1.55.44-2.29-.06-.54-.36-1.05-1.12-.91-1.96l3.1-18.08L.75,23.71c-.63-.61-.91-1.32-.66-2.22.18-.65.78-1.33,1.67-1.46l18.07-2.62L27.98.88C28.3.23,29.14.01,29.71,0c.63-.01,1.51.19,1.85.89l8.14,16.51,17.86,2.59c.9.13,1.56.6,1.83,1.32.32.86.13,1.7-.53,2.34l-13,12.67,3.08,17.97c.15.85-.26,1.61-.82,2.02-.68.5-1.5.56-2.28.15l-16.06-8.45Z" /></TzIcon>;
 
+/* Ícono de cada pestaña: el mismo registro que la web pública (ServiceIcon),
+   así el editor se ve igual que la ficha del pasajero y el PDF. */
+function catIcon(key) {
+  function CatIcon(p) { return <ServiceIcon icon={key} {...p} />; }
+  return CatIcon;
+}
+
 const CATS = [
-  { id:"aereo",       label:"Aéreo",       Icon:IcoAvion },
-  { id:"traslado",    label:"Traslado",    Icon:IcoBus },
-  { id:"alojamiento", label:"Alojamiento", Icon:IcoCama },
-  { id:"vehiculo",    label:"Vehículo",    Icon:IcoAuto },
-  { id:"seguro",      label:"Seguro",      Icon:IcoEscudo },
-  { id:"opcionales",  label:"Opcionales",  Icon:IcoEstrella },
+  { id:"aereo",       label:"Aéreo",       Icon:catIcon(ICONO_POR_CATEGORIA.aereo) },
+  { id:"traslado",    label:"Traslado",    Icon:catIcon(ICONO_POR_CATEGORIA.traslado) },
+  { id:"alojamiento", label:"Alojamiento", Icon:catIcon(ICONO_POR_CATEGORIA.alojamiento) },
+  { id:"vehiculo",    label:"Vehículo",    Icon:catIcon(ICONO_POR_CATEGORIA.vehiculo) },
+  { id:"seguro",      label:"Seguro",      Icon:catIcon(ICONO_POR_CATEGORIA.seguro) },
+  { id:"opcionales",  label:"Opcionales",  Icon:catIcon(ICONO_POR_CATEGORIA.opcionales) },
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════

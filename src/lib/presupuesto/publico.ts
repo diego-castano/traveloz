@@ -142,6 +142,7 @@ export interface ContenidoPublico {
     texto: string;
     ciudad: string | null;
     modalidad: string | null;
+    icono: string | null;
   }>;
   notasCliente: string;
   vigencia: number | null;
@@ -241,6 +242,7 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
       texto: txt(s?.texto),
       ciudad: s?.ciudad ?? null,
       modalidad: s?.modalidad ?? null,
+      icono: s?.icono ?? null,
     })),
 
     // HTML libre que escribe el vendedor. Se sanea también acá y no solo al

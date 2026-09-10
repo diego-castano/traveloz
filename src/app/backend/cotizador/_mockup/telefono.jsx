@@ -13,6 +13,8 @@ import {
 import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
 import { Foto, CATS, Estrellas } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
+import { ServiceIcon } from "@/components/ui/ServiceIcon";
+import { resolverIcono } from "@/lib/presupuesto/iconos";
 
 /* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
 const PAGO_TARJETAS = [
@@ -797,7 +799,6 @@ function SalidaPasajero({
               gap: impresion ? "9px 10px" : "9px 18px",
               ...(impresion ? { alignItems:"stretch" } : null), marginBottom:24 }}>
               {q.servicios.map((sv) => {
-                const C = CATS.find((c) => c.id === sv.categoria) || CATS[0];
                 return (
                   /* En papel cada servicio es su propia ficha. Sueltos sobre el
                      blanco, en dos columnas, el cliente los leyó como un párrafo
@@ -808,7 +809,8 @@ function SalidaPasajero({
                       border:"1px solid rgba(17,17,36,.09)", background:"#FBFBFE" } : null) }}>
                     <div style={{ width: impresion ? 26 : 30, height: impresion ? 26 : 30,
                       borderRadius: impresion ? 999 : 9, flexShrink:0, display:"grid", placeItems:"center",
-                      background:`${G.b}${impresion ? "14" : "12"}`, color:G.b }}><C.Icon size={impresion ? 13 : 14} /></div>
+                      background:`${G.b}${impresion ? "14" : "12"}`, color:G.b }}>
+                      <ServiceIcon icon={resolverIcono(sv)} size={impresion ? 13 : 14} color={G.b} /></div>
                     <div style={{ fontSize:fzp(13, 13.5, 12.5), lineHeight:1.5, paddingTop: impresion ? 4 : 5, fontWeight:500 }}>
                       {sv.texto}
                       {(sv.ciudad || sv.modalidad) && (

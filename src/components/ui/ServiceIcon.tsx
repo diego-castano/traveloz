@@ -73,6 +73,9 @@ const BY_KEY: Record<string, IconComponent> = Object.fromEntries(
   ICON_OPTIONS.map((o) => [o.key, o.Icon]),
 );
 
+/** Claves válidas del registro, sin React — para validar `icono` desde TS puro. */
+export const ICON_KEYS: string[] = ICON_OPTIONS.map((o) => o.key);
+
 // Legacy keys still present in stored data / older catalog services. Keys that
 // no longer exist in ICON_OPTIONS (guia, salud, wifi, propinas, playa, ciudad,
 // naturaleza, fotos, asistencia, recibo, premium) intentionally fall through to

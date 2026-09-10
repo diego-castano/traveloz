@@ -25,6 +25,8 @@ import {
   Foto, CATS, Btn, Label, Pill, ChipIA, Estrellas, Block, Vacio, Calendario, AutoCiudad,
   BuscadorHotel, SelectBuscable
 } from "./ui";
+import { ServiceIcon, ICON_OPTIONS } from "@/components/ui/ServiceIcon";
+import { resolverIcono } from "@/lib/presupuesto/iconos";
 
 /* ── v2B · Enter pasa al campo siguiente del mismo bloque ────────────────
    Sin librerías: el contenedor marca [data-campos] y cada campo [data-campo]. */
@@ -1042,6 +1044,85 @@ function BloqueVuelos({ q, set, refEl, toast }) {
   );
 }
 
+/* ── Ícono de una línea de servicio — botón que abre un selector chico con
+   los 20 íconos del registro más "Automático" (borra `icono` y vuelve a
+   resolverse por categoría/texto). Anclado al botón, portal a `.ctz` igual
+   que SelectBuscable, cierra con clic afuera o Escape. ────────────────── */
+function IconoServicioPicker({ servicio, onElegir }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const refBtn = useRef(null);
+  const refPop = useRef(null);
+
+  const medir = () => {
+    const el = refBtn.current;
+    if (!el) return;
+    const w = 208;
+    const r = el.getBoundingClientRect();
+    const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - w - 8));
+    const abajo = window.innerHeight - r.bottom;
+    const haciaArriba = abajo < 260 && r.top > abajo;
+    setPos({
+      left, width: w,
+      top: haciaArriba ? null : Math.round(r.bottom + 6),
+      bottom: haciaArriba ? Math.round(window.innerHeight - r.top + 6) : null,
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const fuera = (e) => {
+      if (refBtn.current?.contains(e.target)) return;
+      if (refPop.current?.contains(e.target)) return;
+      setOpen(false);
+    };
+    const esc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", fuera);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("mousedown", fuera);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [open]);
+
+  const cont = open && typeof document !== "undefined"
+    ? (document.querySelector(".ctz") || document.body) : null;
+
+  return (
+    <>
+      <button type="button" ref={refBtn} title="Cambiar ícono"
+        style={{ width:24, height:24, borderRadius:7, flexShrink:0, display:"grid", placeItems:"center",
+          background:"rgba(120,90,229,.10)", color:"var(--violet)", border:"none", cursor:"pointer" }}
+        onClick={() => { if (open) { setOpen(false); return; } medir(); setOpen(true); }}>
+        <ServiceIcon icon={resolverIcono(servicio)} size={12} />
+      </button>
+      {open && pos && cont && createPortal(
+        <div ref={refPop} className="ac-pop a-slide"
+          style={{ position:"fixed", left:pos.left, width:pos.width,
+            top: pos.top ?? undefined, bottom: pos.bottom ?? undefined, padding:8, zIndex:60 }}>
+          <button type="button" className="ac-i" style={{ marginBottom:4 }}
+            onClick={() => { onElegir(null); setOpen(false); }}>
+            <span style={{ flex:1 }}>Automático</span>
+            {!servicio.icono && <Check size={12} />}
+          </button>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:4 }}>
+            {ICON_OPTIONS.map((o) => (
+              <button key={o.key} type="button" title={o.label}
+                style={{ width:32, height:32, borderRadius:8, display:"grid", placeItems:"center",
+                  background: servicio.icono === o.key ? "rgba(120,90,229,.18)" : "transparent",
+                  border:"1px solid var(--hair-soft)", cursor:"pointer" }}
+                onClick={() => { onElegir(o.key); setOpen(false); }}>
+                <ServiceIcon icon={o.key} size={14} />
+              </button>
+            ))}
+          </div>
+        </div>,
+        cont,
+      )}
+    </>
+  );
+}
+
 /* ── 6 · Servicios en cápsulas, reordenables ─────────────────────────── */
 function BloqueServicios({ q, set, refEl, toast }) {
   const { ciudades: CIUDADES } = useCatalogo();
@@ -1114,7 +1195,10 @@ function BloqueServicios({ q, set, refEl, toast }) {
               else if (e.key === "ArrowUp") { e.preventDefault(); setAcIdx((i) => clamp(i - 1, 0, acRes.length - 1)); }
               else if (e.key === "Tab" && acOpen && acRes[acIdx]) { e.preventDefault(); setTxt(acRes[acIdx].texto); }
               else if (e.key === "Enter") { e.preventDefault();
-                if (acOpen && acRes[acIdx]) agregar(acRes[acIdx].texto, acRes[acIdx].cat);
+                // Enter solo toma la sugerencia si contiene lo que el operador
+                // escribió; si no, agrega el texto libre tal cual lo tipeó.
+                const sug = acOpen && acRes[acIdx];
+                if (sug && norm(sug.texto).includes(norm(txt.trim()))) agregar(sug.texto, sug.cat);
                 else agregar();
                 setAcIdx(0); }
               else if (e.key === "Escape") setAcOpen(false);
@@ -1151,7 +1235,6 @@ function BloqueServicios({ q, set, refEl, toast }) {
         : (
         <div>
           {q.servicios.map((s, i) => {
-            const C = CATS.find((c) => c.id === s.categoria) || CATS[0];
             return (
               <React.Fragment key={s.id}>
                 {over === i && drag !== null && <div className="drop-line" />}
@@ -1164,8 +1247,10 @@ function BloqueServicios({ q, set, refEl, toast }) {
                     background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11, transition:"box-shadow .16s" }}>
                   <GripVertical size={14} style={{ color:"var(--n300)", cursor:"grab", flexShrink:0 }}
                     onMouseDown={() => setArmado(i)} onMouseUp={() => setArmado(null)} />
-                  <div style={{ width:24, height:24, borderRadius:7, flexShrink:0, display:"grid", placeItems:"center",
-                    background:"rgba(120,90,229,.10)", color:"var(--violet)" }}><C.Icon size={12} /></div>
+                  <IconoServicioPicker servicio={s}
+                    onElegir={(key) => set((d) => {
+                      if (key) d.servicios[i].icono = key; else delete d.servicios[i].icono;
+                    })} />
                   <input className="in" style={{ flex:"1 1 140px", height:30, border:"1px solid transparent",
                     background:"transparent", paddingLeft:2 }} value={s.texto}
                     onChange={(e) => set((d) => { d.servicios[i].texto = e.target.value;

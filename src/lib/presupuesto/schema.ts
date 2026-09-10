@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
+import { ICON_KEYS } from "@/components/ui/ServiceIcon";
 
 /** Factor de markup por defecto: venta = neto ÷ factor. */
 export const FACTOR_DEFAULT = 0.88;
@@ -190,6 +191,13 @@ export const vueloDeNotaSchema = z.looseObject({
   }).optional(),
 });
 
+/** Clave de ícono elegida a mano; una clave que no existe en el registro
+ *  (versión vieja, dedazo) se descarta y el ícono vuelve a ser automático. */
+const iconoFlojo = textoFlojo.transform((v) => {
+  const t = v.trim();
+  return t && ICON_KEYS.includes(t) ? t : undefined;
+});
+
 export const servicioSchema = z.looseObject({
   id: textoFlojo,
   categoria: textoFlojo,
@@ -200,6 +208,8 @@ export const servicioSchema = z.looseObject({
   auto: textoNulo.optional(),
   // Solo en las filas de alojamiento: el destino del itinerario que las genera.
   tramo: textoNulo.optional(),
+  // Ícono elegido a mano; sin esto se resuelve por categoría/texto al dibujar.
+  icono: iconoFlojo.optional(),
 });
 
 /** Costo fijo interno: no lo ve el pasajero. */
