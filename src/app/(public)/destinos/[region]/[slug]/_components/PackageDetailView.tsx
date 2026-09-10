@@ -567,6 +567,10 @@ function ItinerarioAccordion({ dias }: { dias: CircuitoDiaData[] }) {
               >
                 <span
                   style={{
+                    // El h3 de arriba hereda la serif del template (Rufina);
+                    // el título del día va en la misma letra que las pestañas
+                    // "Incluye" / "Itinerario" y el cuerpo (pedido del cliente).
+                    fontFamily: "'Clarika Geometric', sans-serif",
                     fontSize: 15,
                     fontWeight: 600,
                     lineHeight: "20px",
