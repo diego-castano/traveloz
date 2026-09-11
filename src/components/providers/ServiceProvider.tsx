@@ -43,6 +43,11 @@ interface ServiceState {
   /** La ola 2 (precios, fotos, dias) sigue en vuelo. Las tablas de tarifas lo
    *  miran para no anunciar "sin periodos" cuando todavia no llegaron. */
   hydratingSubEntities: boolean;
+  /** Alguna ola de relleno (1b hoteles, 2 precios) se cayó en esta carga. El
+   *  estado queda como estaba, pero el catálogo NO está entero: el cotizador
+   *  lo mira para no precargar una cotización con el precio sin alojamiento.
+   *  Se limpia al volver a hidratar (recarga o refresco por foco). */
+  hydrationFailed: boolean;
   totalAlojamientos: number;
   aereos: Aereo[];
   preciosAereo: PrecioAereo[];
@@ -60,6 +65,7 @@ const initialState: ServiceState = {
   loading: true,
   hydratingAlojamientos: false,
   hydratingSubEntities: false,
+  hydrationFailed: false,
   totalAlojamientos: 0,
   aereos: [],
   preciosAereo: [],
@@ -193,7 +199,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
     case "MERGE_SUB_ENTITIES":
       return { ...state, ...action.payload, hydratingSubEntities: false };
     case "SUB_ENTITIES_FAILED":
-      return { ...state, hydratingSubEntities: false };
+      return { ...state, hydratingSubEntities: false, hydrationFailed: true };
     // Ola 1b: la lista completa que manda el server es la verdad. Reemplaza en
     // vez de mergear para que un hotel borrado no sobreviva en el estado local.
     case "SET_ALOJAMIENTOS": {
@@ -214,6 +220,7 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
       return {
         ...state,
         hydratingAlojamientos: false,
+        hydrationFailed: true,
         totalAlojamientos: action.payload.totalAlojamientos,
       };
     // Resultados de una busqueda server-side mientras la lista rehidrata: se
@@ -515,7 +522,11 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       payload: {
         ...baseline,
         loading: baseline.aereos.length === 0 && baseline.alojamientos.length === 0,
-        hydratingSubEntities: true,
+        // Mismo criterio que `loading`: si la foto de sessionStorage ya trae los
+        // precios, la ola 2 que sale abajo solo revalida — y anunciarla como
+        // "todavía viajando" deja al cotizador esperando datos que ya tiene.
+        hydratingSubEntities: baseline.preciosAlojamiento.length === 0,
+        hydrationFailed: false,
       },
     });
 
@@ -660,12 +671,14 @@ export function useServiceProgress() {
     () => ({
       hydratingAlojamientos: state.hydratingAlojamientos,
       hydratingSubEntities: state.hydratingSubEntities,
+      hydrationFailed: state.hydrationFailed,
       totalAlojamientos: state.totalAlojamientos,
       loadedAlojamientos: state.alojamientos.length,
     }),
     [
       state.hydratingAlojamientos,
       state.hydratingSubEntities,
+      state.hydrationFailed,
       state.totalAlojamientos,
       state.alojamientos.length,
     ],

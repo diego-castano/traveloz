@@ -721,17 +721,49 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
     return filas;
   }, [regiones]);
 
-  /* ── estado de carga ────────────────────────────────────────────────── */
+  /* ── estado de carga ──────────────────────────────────────────────────
+     `cargando` es el esqueleto: se apaga apenas llega la ola 1 de cada
+     provider. NO alcanza para precargar una cotización desde un paquete.
+
+     Las dos olas por provider no traen lo mismo:
+       · paquetes  → ola 1: la fila `Paquete`.  ola 2: destinos, opciones
+         hoteleras y los hoteles de cada opción.
+       · servicios → ola 1: los primeros 10 alojamientos (de 1200+).
+         ola 1b: el resto.  ola 2: precios de alojamiento, fotos, días.
+
+     `desdePaquete` fotografía todo eso de una: el hotel de cada opción, sus
+     estrellas, su régimen y el neto. Lo que todavía no llegó no se completa
+     solo — queda escrito vacío en la cotización, con el precio sin la parte
+     del alojamiento. Por eso `listo` mira TAMBIÉN las olas de relleno: es la
+     única bandera que habilita la precarga. (Gero, 11/09: arrancó desde
+     "Barra da Tijuca | Verano 2027" y la cotización salió sin los hoteles de
+     las opciones.) */
   const cargando = cargandoPaquetes || cargandoServicios || cargandoCatalogo;
+  /* Una ola que SE CAYÓ también deja el catálogo incompleto, y ahí no hay
+     espera que valga: sin tarifas, la precarga escribía USD 24 donde iba
+     USD 1.317 (probado en local cortando la ola 2 de servicios). `fallo` deja
+     `listo` en false hasta la próxima hidratación —recarga o refresco por
+     foco—, y el buscador de paquetes lo dice en vez de girar para siempre. */
+  const fallo = !!(progresoPaquetes.hydrationFailed || progresoServicios.hydrationFailed);
+  const listo =
+    !cargando &&
+    !fallo &&
+    !progresoPaquetes.hydratingPaquetes &&
+    !progresoPaquetes.hydratingSubEntities &&
+    !progresoServicios.hydratingAlojamientos &&
+    !progresoServicios.hydratingSubEntities;
   const progreso = useMemo(() => {
+    if (fallo) return "No se pudo cargar el catálogo completo";
     if (progresoServicios.hydratingAlojamientos && progresoServicios.totalAlojamientos) {
       return `Hoteles ${progresoServicios.loadedAlojamientos}/${progresoServicios.totalAlojamientos}`;
     }
     if (progresoPaquetes.hydratingPaquetes && progresoPaquetes.totalPaquetes) {
       return `Paquetes ${progresoPaquetes.loadedPaquetes}/${progresoPaquetes.totalPaquetes}`;
     }
+    if (progresoServicios.hydratingSubEntities) return "Tarifas de los hoteles…";
+    if (progresoPaquetes.hydratingSubEntities) return "Opciones de los paquetes…";
     return cargando ? "Cargando catálogo…" : "";
-  }, [progresoServicios, progresoPaquetes, cargando]);
+  }, [progresoServicios, progresoPaquetes, cargando, fallo]);
 
   return useMemo(
     () => ({
@@ -753,6 +785,8 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       favoritos,
       regimenTexto,
       cargando,
+      listo,
+      fallo,
       progreso,
     }),
     [
@@ -772,6 +806,8 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       favoritos,
       regimenTexto,
       cargando,
+      listo,
+      fallo,
       progreso,
     ],
   );
