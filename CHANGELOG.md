@@ -45,6 +45,14 @@ del catálogo, CRM).
 
 ### Arreglado
 
+- **Catálogos dice dónde está el país que "ya existe".** Al crear
+  "Sudafrica" en África, el panel contestaba "Ya existe el país «Sudáfrica»"
+  y en África no aparecía: estaba cargado en otra región, o sin región —y un
+  país sin región no colgaba de ninguna rama del árbol, así que era invisible.
+  Ahora el mensaje dice en qué región está ("…en la región Asia. Editalo
+  desde ahí") y, debajo del árbol, un bloque "Países sin región" lista los
+  huérfanos con un botón "Asignar región" que abre el mismo editor de
+  siempre. (Reporte del cliente, 11/09.)
 - **La fecha de nacimiento del formulario de pasajeros, centrada en iPhone.**
   En Safari de iOS el valor ("11 set. 2026") quedaba pegado al borde de
   arriba del campo mientras los demás campos centran su texto. Ahora el
