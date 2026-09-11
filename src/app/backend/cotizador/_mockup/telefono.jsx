@@ -1449,17 +1449,22 @@ function SalidaPasajero({
               alt={V.nombre} loading="eager" decoding="sync"
               style={{ width:"100%", height:"auto", display:"block", borderRadius:14,
                 breakInside:"avoid" }} />
+            {/* Iban en monoespaciada y el email quedaba grande y "de código" al
+                lado de los datos del GIF. Gero (11/09): más sutil y con la misma
+                letra que el teléfono y la dirección. Misma tipografía y tono que
+                la línea de la web, justo abajo. */}
             {!impresion && (telWa || V.email) && (
-              <div style={{ marginTop:8, textAlign:"center", fontSize:fz(10.5, 11) }}>
+              <div style={{ marginTop:8, textAlign:"center", fontSize:fz(9.5, 10), color:"#8A8DB5",
+                letterSpacing:".01em" }}>
                 {telWa && (
                   <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
-                    title="Escribirle por WhatsApp" className="mono"
-                    style={{ color:"#6B6F99", textDecoration:"none" }}>{V.tel}</a>
+                    title="Escribirle por WhatsApp"
+                    style={{ color:"inherit", textDecoration:"none" }}>{V.tel}</a>
                 )}
                 {telWa && V.email && <span style={{ margin:"0 7px", color:"#C9CBDD" }}>·</span>}
                 {V.email && (
-                  <a href={`mailto:${V.email}`} className="mono"
-                    style={{ color:"#6B6F99", textDecoration:"none" }}>{V.email}</a>
+                  <a href={`mailto:${V.email}`}
+                    style={{ color:"inherit", textDecoration:"none" }}>{V.email}</a>
                 )}
               </div>
             )}

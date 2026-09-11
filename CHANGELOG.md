@@ -23,6 +23,12 @@ del catálogo, CRM).
 - **"Opcionales" va sin bajada.** Debajo del título decía "No están
   incluidos en el precio. Se suman a pedido."; se fue, en el link y en el
   PDF. Queda el título y la lista con sus precios. (Pedido de Gero, 11/09.)
+- **El email bajo la firma va más sutil.** Con firma GIF cargada, el link
+  del pasajero muestra debajo el celular y el email clickeables; salían en
+  letra monoespaciada y el email se veía grande, "de código". Ahora van en la
+  misma letra que el resto de la cotización, más chicos y en gris suave, para
+  todos los vendedores. El PDF no cambia (ahí la firma es solo la imagen).
+  (Pedido de Gero, 11/09.)
 
 ### Arreglado
 
