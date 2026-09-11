@@ -379,9 +379,7 @@ function SalidaPasajero({
   const telWa = telefonoWa(V.tel);
   const totalNoches = tramos.reduce((a, t) => a + t.noches, 0);
 
-  /* v2C · comparación: la opción 1 es la base, las demás muestran cuánto suben o bajan */
   const varias = q.opciones.length > 1;
-  const base = q.opciones[0] ? Math.round(precioOpcion(q.opciones[0])) : 0;
   const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
   const visibles = !q.opciones.length ? [] : impresion ? q.opciones : varias ? [elegida] : q.opciones;
 
@@ -815,14 +813,13 @@ function SalidaPasajero({
           </div>
         )}
 
-        {/* opcionales — NO incluidos en el precio, se suman a pedido */}
+        {/* opcionales — NO incluidos en el precio, se suman a pedido. La bajada
+            que lo decía ("No están incluidos en el precio. Se suman a pedido.")
+            se fue a pedido de Gero (11/09): el título alcanza. */}
         {(q.opcionales || []).some((o) => (o.texto || "").trim()) && (
           <div ref={(el) => { anclas.current["b-opcionales"] = el; }} data-sec="opcionales" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Opcionales" />
-            <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", marginBottom:10 }}>
-              No están incluidos en el precio. Se suman a pedido.
-            </div>
             <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr",
               gap: impresion ? "9px 10px" : "9px 18px",
               ...(impresion ? { alignItems:"stretch" } : null), marginBottom:24 }}>
@@ -965,7 +962,10 @@ function SalidaPasajero({
                 : "Tocá la opción para ver el detalle de hoteles y fechas."}
             </div>
 
-            {/* v2C · switcher del pasajero: precio de cada opción y diferencia contra la 1 */}
+            {/* v2C · switcher del pasajero: nombre y precio de cada opción.
+                Mostraba también la diferencia contra la opción 1 ("+USD 150"),
+                y un pasajero preguntó si eso había que sumarlo al precio.
+                Lectura razonable, así que se fue (Gero, 11/09). */}
             {varias && !impresion && (
               <div className="opt-seg" data-desk={desk ? "1" : "0"}>
                 {q.opciones.map((o, i) => {
@@ -975,7 +975,6 @@ function SalidaPasajero({
                       onClick={() => { setSel(o.id); setAbierta(o.id); }}>
                       <span className="opt-n">{tabNombre(o, i)}</span>
                       <span className="opt-p">{money(pv)}</span>
-                      {i > 0 && <span className="opt-d">{delta(pv, base)}</span>}
                     </button>
                   );
                 })}
@@ -1450,17 +1449,22 @@ function SalidaPasajero({
               alt={V.nombre} loading="eager" decoding="sync"
               style={{ width:"100%", height:"auto", display:"block", borderRadius:14,
                 breakInside:"avoid" }} />
+            {/* Iban en monoespaciada y el email quedaba grande y "de código" al
+                lado de los datos del GIF. Gero (11/09): más sutil y con la misma
+                letra que el teléfono y la dirección. Misma tipografía y tono que
+                la línea de la web, justo abajo. */}
             {!impresion && (telWa || V.email) && (
-              <div style={{ marginTop:8, textAlign:"center", fontSize:fz(10.5, 11) }}>
+              <div style={{ marginTop:8, textAlign:"center", fontSize:fz(9.5, 10), color:"#8A8DB5",
+                letterSpacing:".01em" }}>
                 {telWa && (
                   <a href={`https://wa.me/${telWa}`} target="_blank" rel="noreferrer"
-                    title="Escribirle por WhatsApp" className="mono"
-                    style={{ color:"#6B6F99", textDecoration:"none" }}>{V.tel}</a>
+                    title="Escribirle por WhatsApp"
+                    style={{ color:"inherit", textDecoration:"none" }}>{V.tel}</a>
                 )}
                 {telWa && V.email && <span style={{ margin:"0 7px", color:"#C9CBDD" }}>·</span>}
                 {V.email && (
-                  <a href={`mailto:${V.email}`} className="mono"
-                    style={{ color:"#6B6F99", textDecoration:"none" }}>{V.email}</a>
+                  <a href={`mailto:${V.email}`}
+                    style={{ color:"inherit", textDecoration:"none" }}>{V.email}</a>
                 )}
               </div>
             )}
@@ -1834,13 +1838,6 @@ function tabNombre(o, i) {
   if (!n) return `Opción ${i + 1}`;
   const corto = n.split("·")[0].trim();
   return corto.length > 2 ? corto : n;
-}
-
-/* diferencia contra la opción 1, ya redondeada */
-function delta(pv, base) {
-  const d = Math.round(pv) - base;
-  if (!d) return "mismo precio";
-  return `${d > 0 ? "+" : "−"}${money(Math.abs(d))}`;
 }
 
 /* El chip del precio late cuando el número cambia de verdad. El odómetro rueda

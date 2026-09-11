@@ -13,6 +13,23 @@ del catálogo, CRM).
 
 ## 11 de septiembre de 2026
 
+### Cambiado
+
+- **La ficha del pasajero ya no muestra la diferencia entre opciones.** Bajo
+  el precio de la opción 2 y la 3 decía "+USD 150", "+USD 520": cuánto suben
+  respecto de la opción 1. Un pasajero preguntó si eso había que sumarlo al
+  precio — lectura razonable, así que se fue. Cada pestaña muestra solo el
+  nombre y el precio final de la opción. (Pedido de Gero, 11/09.)
+- **"Opcionales" va sin bajada.** Debajo del título decía "No están
+  incluidos en el precio. Se suman a pedido."; se fue, en el link y en el
+  PDF. Queda el título y la lista con sus precios. (Pedido de Gero, 11/09.)
+- **El email bajo la firma va más sutil.** Con firma GIF cargada, el link
+  del pasajero muestra debajo el celular y el email clickeables; salían en
+  letra monoespaciada y el email se veía grande, "de código". Ahora van en la
+  misma letra que el resto de la cotización, más chicos y en gris suave, para
+  todos los vendedores. El PDF no cambia (ahí la firma es solo la imagen).
+  (Pedido de Gero, 11/09.)
+
 ### Arreglado
 
 - **Arrancar desde un paquete ya no pierde las opciones de hotel.** El
