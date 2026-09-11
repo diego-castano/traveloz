@@ -813,14 +813,13 @@ function SalidaPasajero({
           </div>
         )}
 
-        {/* opcionales — NO incluidos en el precio, se suman a pedido */}
+        {/* opcionales — NO incluidos en el precio, se suman a pedido. La bajada
+            que lo decía ("No están incluidos en el precio. Se suman a pedido.")
+            se fue a pedido de Gero (11/09): el título alcanza. */}
         {(q.opcionales || []).some((o) => (o.texto || "").trim()) && (
           <div ref={(el) => { anclas.current["b-opcionales"] = el; }} data-sec="opcionales" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto="Opcionales" />
-            <div style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", marginBottom:10 }}>
-              No están incluidos en el precio. Se suman a pedido.
-            </div>
             <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr",
               gap: impresion ? "9px 10px" : "9px 18px",
               ...(impresion ? { alignItems:"stretch" } : null), marginBottom:24 }}>

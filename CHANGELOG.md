@@ -20,6 +20,9 @@ del catálogo, CRM).
   respecto de la opción 1. Un pasajero preguntó si eso había que sumarlo al
   precio — lectura razonable, así que se fue. Cada pestaña muestra solo el
   nombre y el precio final de la opción. (Pedido de Gero, 11/09.)
+- **"Opcionales" va sin bajada.** Debajo del título decía "No están
+  incluidos en el precio. Se suman a pedido."; se fue, en el link y en el
+  PDF. Queda el título y la lista con sus precios. (Pedido de Gero, 11/09.)
 
 ### Arreglado
 
