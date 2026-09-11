@@ -57,6 +57,7 @@ import {
   useTiposPaquete,
   useEtiquetas,
   useRegiones,
+  usePaises,
   useRegimenes,
   useCatalogActions,
   useCatalogBaseLoading,
@@ -591,6 +592,15 @@ function RegionesPaisesTab() {
   const { toast } = useToast();
   const { confirmarCiudad, confirmarCiudadUI } = useConfirmarCiudad();
   const regiones = useRegiones();
+  // Un país sin región no cuelga de ninguna rama del árbol y era invisible: el
+  // 11/09 el cliente no encontraba «Sudáfrica», intentó crearlo y la guardia lo
+  // frenó. Acá se listan aparte, con el mismo botón de editar, para asignarles
+  // una región desde el modal.
+  const todosLosPaises = usePaises();
+  const paisesSinRegion = useMemo(
+    () => todosLosPaises.filter((p) => !p.regionId),
+    [todosLosPaises],
+  );
   const { hydratingGeography, loadedPaises, loadedCiudades } =
     useCatalogProgress();
   const {
@@ -673,6 +683,15 @@ function RegionesPaisesTab() {
       .filter(Boolean) as typeof regiones;
   }, [regiones, search]);
 
+  // Un nombre repetido no es "no se pudo guardar", es "ya está cargado": el
+  // título del cartel lo dice, y el detalle (que viene del server) dice dónde.
+  // (Reporte del cliente, 11/09: "Sudafrica" en África chocaba con «Sudáfrica»
+  // en otra región y el cartel parecía un error del sistema.)
+  function tituloDeError(err: unknown, generico: string): string {
+    const msg = err instanceof Error ? err.message : "";
+    return /^Ya existe/i.test(msg) ? "Ese nombre ya está cargado" : generico;
+  }
+
   // ---- Region handlers ----
 
   function handleOpenCreateRegion() {
@@ -710,7 +729,7 @@ function RegionesPaisesTab() {
       console.error("[handleSaveRegion] falló:", err);
       toast(
         "error",
-        "No se pudo guardar",
+        tituloDeError(err, "No se pudo guardar la región"),
         err instanceof Error ? err.message : "Intenta nuevamente",
       );
     }
@@ -778,7 +797,7 @@ function RegionesPaisesTab() {
     } catch (err) {
       toast(
         "error",
-        "No se pudo guardar",
+        tituloDeError(err, "No se pudo guardar el país"),
         err instanceof Error ? err.message : "Intenta nuevamente",
       );
     }
@@ -819,7 +838,7 @@ function RegionesPaisesTab() {
     } catch (err) {
       toast(
         "error",
-        "No se pudo agregar la ciudad",
+        tituloDeError(err, "No se pudo agregar la ciudad"),
         err instanceof Error ? err.message : "Intentá nuevamente",
       );
     }
@@ -835,7 +854,7 @@ function RegionesPaisesTab() {
     } catch (err) {
       toast(
         "error",
-        "No se pudo actualizar la ciudad",
+        tituloDeError(err, "No se pudo actualizar la ciudad"),
         err instanceof Error ? err.message : "Intentá nuevamente",
       );
     }
@@ -1199,6 +1218,47 @@ function RegionesPaisesTab() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Países sin región: fuera del árbol, pero editables (ver comentario en paisesSinRegion). */}
+      {paisesSinRegion.length > 0 && !search && (
+        <div className="mt-4 overflow-hidden rounded-[12px] border border-amber-200 bg-amber-50/40">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Globe className="h-4 w-4 shrink-0 text-amber-500" />
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] font-semibold text-neutral-900">
+                Países sin región ({paisesSinRegion.length})
+              </div>
+              <div className="text-[12px] text-neutral-500">
+                No aparecen en el árbol ni en la web hasta que se les asigne una región. Editalos para ubicarlos.
+              </div>
+            </div>
+          </div>
+          {paisesSinRegion.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-3 border-t border-amber-100 bg-white px-4 py-2.5 pl-11"
+            >
+              <div className="flex-1 min-w-0 text-[13px] text-neutral-800">
+                {p.nombre}
+                {p.codigo ? <span className="ml-2 text-[11px] text-neutral-400">{p.codigo}</span> : null}
+                <span className="ml-2 text-[11px] text-neutral-400">
+                  {p.ciudades.length} ciudad{p.ciudades.length === 1 ? "" : "es"}
+                </span>
+              </div>
+              {canEdit && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  leftIcon={<Pencil className="h-3 w-3" />}
+                  onClick={() => handleOpenEditPais(p)}
+                >
+                  Asignar región
+                </Button>
+              )}
+            </div>
+          ))}
         </div>
       )}
 

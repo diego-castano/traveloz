@@ -124,18 +124,34 @@ async function ciudadRepetida(
   return hermanas.find((c) => ciudadKey(c.nombre) === clave)?.nombre ?? null;
 }
 
-/** Espejo de ciudadRepetida para Pais, siempre acotado a la marca. */
+/**
+ * Espejo de ciudadRepetida para Pais, siempre acotado a la marca: un país es
+ * único en toda la marca, no dentro de su región.
+ *
+ * Devuelve el repetido CON su región, porque el mensaje tiene que decir dónde
+ * está: el 11/09 el cliente intentó crear "Sudafrica" en África y la guardia
+ * le dijo "ya existe «Sudáfrica»" a secas — y en África no lo veía, porque
+ * estaba en otra región (o sin región, que el árbol de Catálogos no mostraba).
+ */
 async function paisRepetido(
   brandId: string,
   nombre: string,
   ignorarId?: string,
-): Promise<string | null> {
+): Promise<{ nombre: string; region: string | null } | null> {
   const hermanos = await prisma.pais.findMany({
     where: { brandId, ...(ignorarId ? { id: { not: ignorarId } } : {}) },
-    select: { nombre: true },
+    select: { nombre: true, region: { select: { nombre: true } } },
   });
   const clave = ciudadKey(nombre);
-  return hermanos.find((p) => ciudadKey(p.nombre) === clave)?.nombre ?? null;
+  const igual = hermanos.find((p) => ciudadKey(p.nombre) === clave);
+  return igual ? { nombre: igual.nombre, region: igual.region?.nombre ?? null } : null;
+}
+
+/** "Ya existe el país «Sudáfrica» en la región África." — o dónde encontrarlo si no tiene región. */
+function mensajePaisRepetido(r: { nombre: string; region: string | null }): string {
+  return r.region
+    ? `Ya existe el país «${r.nombre}» en la región ${r.region}. Editalo desde ahí en vez de crearlo de nuevo.`
+    : `Ya existe el país «${r.nombre}», sin región asignada. Buscalo en "Países sin región" y asignale la región.`;
 }
 
 /** Espejo de ciudadRepetida para Region, siempre acotado a la marca. */
@@ -550,7 +566,7 @@ export async function createPais(data: {
 
     const repetido = await paisRepetido(brandId, parsed.nombre);
     if (repetido) {
-      return { ok: false as const, message: `Ya existe el país «${repetido}».` };
+      return { ok: false as const, message: mensajePaisRepetido(repetido) };
     }
 
     const entity = await prisma.pais.create({ data: { ...parsed, brandId } });
@@ -608,7 +624,7 @@ export async function updatePais(
     if (clean.nombre) {
       const repetido = await paisRepetido(brandId, clean.nombre, id);
       if (repetido) {
-        return { ok: false as const, message: `Ya existe el país «${repetido}».` };
+        return { ok: false as const, message: mensajePaisRepetido(repetido) };
       }
     }
 
