@@ -379,9 +379,7 @@ function SalidaPasajero({
   const telWa = telefonoWa(V.tel);
   const totalNoches = tramos.reduce((a, t) => a + t.noches, 0);
 
-  /* v2C · comparación: la opción 1 es la base, las demás muestran cuánto suben o bajan */
   const varias = q.opciones.length > 1;
-  const base = q.opciones[0] ? Math.round(precioOpcion(q.opciones[0])) : 0;
   const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
   const visibles = !q.opciones.length ? [] : impresion ? q.opciones : varias ? [elegida] : q.opciones;
 
@@ -965,7 +963,10 @@ function SalidaPasajero({
                 : "Tocá la opción para ver el detalle de hoteles y fechas."}
             </div>
 
-            {/* v2C · switcher del pasajero: precio de cada opción y diferencia contra la 1 */}
+            {/* v2C · switcher del pasajero: nombre y precio de cada opción.
+                Mostraba también la diferencia contra la opción 1 ("+USD 150"),
+                y un pasajero preguntó si eso había que sumarlo al precio.
+                Lectura razonable, así que se fue (Gero, 11/09). */}
             {varias && !impresion && (
               <div className="opt-seg" data-desk={desk ? "1" : "0"}>
                 {q.opciones.map((o, i) => {
@@ -975,7 +976,6 @@ function SalidaPasajero({
                       onClick={() => { setSel(o.id); setAbierta(o.id); }}>
                       <span className="opt-n">{tabNombre(o, i)}</span>
                       <span className="opt-p">{money(pv)}</span>
-                      {i > 0 && <span className="opt-d">{delta(pv, base)}</span>}
                     </button>
                   );
                 })}
@@ -1834,13 +1834,6 @@ function tabNombre(o, i) {
   if (!n) return `Opción ${i + 1}`;
   const corto = n.split("·")[0].trim();
   return corto.length > 2 ? corto : n;
-}
-
-/* diferencia contra la opción 1, ya redondeada */
-function delta(pv, base) {
-  const d = Math.round(pv) - base;
-  if (!d) return "mismo precio";
-  return `${d > 0 ? "+" : "−"}${money(Math.abs(d))}`;
 }
 
 /* El chip del precio late cuando el número cambia de verdad. El odómetro rueda

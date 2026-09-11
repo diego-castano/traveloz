@@ -581,11 +581,9 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .opt-n { font-size:10.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap; }
 .opt-p { font-size:13px; font-weight:800; letter-spacing:-.02em; white-space:nowrap; }
 .opt-seg > button[data-on="1"] .opt-p { color:#785AE5; }
-.opt-d { font-size:9.5px; font-weight:700; color:#8A8DB5; white-space:nowrap; }
 .opt-seg[data-desk="1"] > button { min-width:118px; padding:10px 14px 11px; }
 .opt-seg[data-desk="1"] .opt-n { font-size:11.5px; }
 .opt-seg[data-desk="1"] .opt-p { font-size:15px; }
-.opt-seg[data-desk="1"] .opt-d { font-size:10.5px; }
 
 /* ── odómetro del precio: solo ruedan los dígitos ────────────────────── */
 .odo { display:inline-flex; align-items:flex-end; font-variant-numeric:tabular-nums; }
