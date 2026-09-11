@@ -19,6 +19,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { checkFormRate, peekFormRate } from "@/lib/rate-limit";
 import { ipConfiableDeHeaders } from "@/lib/request-ip";
 import { logger } from "@/lib/logger";
@@ -104,7 +105,7 @@ export async function generateMetadata(
       },
     });
     if (!link || link.presupuesto.deletedAt || link.revocadoAt) return META_BASE;
-    if (link.expiraAt && link.expiraAt.getTime() < Date.now()) return META_BASE;
+    if (linkVencido(link.expiraAt)) return META_BASE;
 
     const leido = parseContenido(link.presupuesto.contenido);
     if (!leido.ok) return META_BASE;
@@ -283,9 +284,10 @@ export default async function CotizacionPublicaPage({
     rol: "",
   };
 
-  // Revocado o pasado de fecha: no es un 404, es una conversación que sigue.
-  if (link.revocadoAt || link.expiraAt.getTime() < Date.now()) {
-    return <CotizacionNoDisponible vendedor={vendedor} vencida />;
+  // Revocado —o vencido, cuando los links vencen (`LINKS_VENCEN`)—: no es un
+  // 404, es una conversación que sigue.
+  if (link.revocadoAt || linkVencido(link.expiraAt)) {
+    return <CotizacionNoDisponible vendedor={vendedor} vencida={linkVencido(link.expiraAt)} />;
   }
 
   const parsed = parseContenido(link.presupuesto.contenido);

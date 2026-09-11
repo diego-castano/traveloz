@@ -37,7 +37,9 @@ export function CotizacionNoDisponible({
   // wa.me sin código de país no abre ningún chat: lo agrega el helper.
   const wa = telefonoWa(vendedor.tel);
   const texto = encodeURIComponent(
-    `Hola ${primerNombre}, se me venció el link de la cotización. ¿Me la podés volver a mandar?`,
+    vencida
+      ? `Hola ${primerNombre}, se me venció el link de la cotización. ¿Me la podés volver a mandar?`
+      : `Hola ${primerNombre}, no me abre el link de la cotización. ¿Me la podés volver a mandar?`,
   );
   const href = wa ? `https://wa.me/${wa}?text=${texto}` : `mailto:${vendedor.email}`;
 
@@ -71,9 +73,12 @@ export function CotizacionNoDisponible({
           {wa ? "Pedirle una cotización nueva" : "Escribirle por email"}
         </a>
 
-        <p className="cv-nota">
-          <Clock3 size={13} /> Los links valen unas horas hábiles: el fin de semana no cuenta.
-        </p>
+        {/* La nota de las horas hábiles solo tiene sentido si los links vencen. */}
+        {vencida && (
+          <p className="cv-nota">
+            <Clock3 size={13} /> Los links valen unas horas hábiles: el fin de semana no cuenta.
+          </p>
+        )}
       </section>
     </div>
   );

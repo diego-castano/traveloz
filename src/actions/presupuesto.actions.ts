@@ -21,6 +21,7 @@
 import { z } from "zod";
 import type { EstadoPresupuesto, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { COTIZADOR_SETTINGS } from "@/lib/site-settings-bootstrap";
@@ -319,7 +320,8 @@ function estadoEfectivoDe(r: {
   if (r.estadoManual) return r.estadoManual;
   if (r.estado === "CONFIRMADA" || r.confirmadaAt) return r.estado;
   if (r.estado !== "ENVIADA" && r.estado !== "ABIERTA") return r.estado;
-  if (r.expiraAt && r.expiraAt.getTime() < Date.now()) return "VENCIDA";
+  // Con `LINKS_VENCEN` apagado nunca da VENCIDA: la manual sigue valiendo.
+  if (linkVencido(r.expiraAt)) return "VENCIDA";
   return r.estado;
 }
 
@@ -338,7 +340,7 @@ function aFila(r: FilaCruda): FilaPresupuesto {
           vigenciaHoras: vivo.vigenciaHoras,
           emitidoAt: vivo.emitidoAt,
           expiraAt: vivo.expiraAt,
-          vencido: vivo.expiraAt.getTime() < Date.now(),
+          vencido: linkVencido(vivo.expiraAt),
         }
       : null,
     aperturasDet: vivo?.aperturas ?? [],

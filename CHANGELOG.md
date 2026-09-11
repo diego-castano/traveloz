@@ -15,6 +15,19 @@ del catálogo, CRM).
 
 ### Cambiado
 
+- **Los links de cotización ya no vencen.** Un pasajero entró a su
+  cotización y se encontró con "Esta cotización venció". Gero pidió sacar los
+  vencimientos: la cotización es una conversación con su asesor y el sistema
+  no tiene que cortarla. Ahora el link público abre siempre —también los que
+  ya habían vencido, sin reenviar nada—, el estado "Vencida" dejó de
+  calcularse solo (una enviada sigue Enviada o Abierta hasta que se confirma o
+  se cambia a mano), y desaparecen la vigencia del modal de compartir, la
+  barra "Vigencia del link" del detalle, la chip "Vencidas sin abrir" del
+  seguimiento y la nota de horas hábiles en el email y en la ficha. Marcar
+  una cotización como "Vencida" a mano sigue siendo posible. Es un
+  interruptor único en el código (`LINKS_VENCEN`): si algún día quieren
+  volver a tener vencimiento, se prende y todo vuelve, sin migrar nada.
+
 - **La ficha del pasajero ya no muestra la diferencia entre opciones.** Bajo
   el precio de la opción 2 y la 3 decía "+USD 150", "+USD 520": cuánto suben
   respecto de la opción 1. Un pasajero preguntó si eso había que sumarlo al

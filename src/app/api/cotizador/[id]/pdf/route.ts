@@ -33,6 +33,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
+import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import {
   ErrorDeNegocio,
   cargarPropia,
@@ -97,7 +98,7 @@ export async function GET(
     numero = row.numero;
 
     const vivo = await linkVivo(row.id);
-    if (vivo && vivo.expiraAt.getTime() > Date.now()) {
+    if (vivo && !linkVencido(vivo.expiraAt)) {
       token = vivo.token;
     } else {
       const horas = row.vigenciaHoras || 48;

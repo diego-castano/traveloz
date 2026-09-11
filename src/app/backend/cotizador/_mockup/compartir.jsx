@@ -10,6 +10,7 @@ import { Btn, Label } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion, renderPlantilla, destinoFinal } from "./data";
 import { sumarHorasHabiles, textoVencimiento, textoDiaCorto } from "@/lib/presupuesto/habiles";
+import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { useAjustes, useCtz, buscarVendedor } from "./contexto";
 import {
   marcarEnviada, emitirLink, enviarPorEmail, pedirDatosDelPasajero,
@@ -165,6 +166,7 @@ function ModalCompartir({
   /* Hasta cuándo abre el link: el del link vivo si ya se emitió, y si no el que
      va a quedar con la vigencia elegida. Horas hábiles, como en el server. */
   const venceTxt = useMemo(() => {
+    if (!LINKS_VENCEN) return "";          // sin vencimiento no hay fecha que contar
     const delLink = link?.expiraAt ?? expiraAt;
     const t = delLink ? new Date(delLink).getTime() : NaN;
     if (Number.isFinite(t) && t > Date.now()) return textoVencimiento(t);
@@ -220,7 +222,7 @@ function ModalCompartir({
   const abrirWhatsApp = async () => {
     if (generando) return;
     const listo = (url) => {
-      toast?.({ msg:`Se abrió WhatsApp — el link abre hasta el ${venceTxt}`, tone:"ok" });
+      toast?.({ msg: venceTxt ? `Se abrió WhatsApp — el link abre hasta el ${venceTxt}` : "Se abrió WhatsApp — el link ya está vivo", tone:"ok" });
       onClose();
       return url;
     };
@@ -278,7 +280,7 @@ function ModalCompartir({
       msg: r.data.entregado
         ? `Email enviado a ${r.data.destinatarios[0]}${
             r.data.pdfAdjunto ? " con el PDF adjunto" : " (sin PDF adjunto)"
-          } — abre hasta el ${venceTxt}`
+          }${venceTxt ? ` — abre hasta el ${venceTxt}` : ""}`
         : "Email preparado (sin proveedor configurado): el link ya está vivo",
       tone: r.data.entregado ? "ok" : "warn",
     });
@@ -309,7 +311,7 @@ function ModalCompartir({
     setMarcando(false);
     if (!r.ok) { toast?.({ msg:r.error, tone:"warn" }); return; }
     onEnviada?.(r.data);
-    toast?.({ msg:`Marcada como enviada — abre hasta el ${venceTxt}`, tone:"ok" });
+    toast?.({ msg: venceTxt ? `Marcada como enviada — abre hasta el ${venceTxt}` : "Marcada como enviada", tone:"ok" });
     onClose();
   };
 
@@ -386,7 +388,10 @@ function ModalCompartir({
           </div>
         )}
 
-        <div style={{ display:"flex", alignItems:"center", gap:8, margin:"11px 17px 0", flexWrap:"wrap" }}>
+        {/* El selector de vigencia solo existe si los links vencen (Gero, 11/09:
+            los sacó). Las horas se siguen mandando al server, que las guarda
+            en `expiraAt` sin mirarlas. */}
+        {LINKS_VENCEN && <div style={{ display:"flex", alignItems:"center", gap:8, margin:"11px 17px 0", flexWrap:"wrap" }}>
           <span className="lbl">Vigencia</span>
           <div className="seg">
             {[24, 48, 72, 96].map((h) => (
@@ -397,7 +402,7 @@ function ModalCompartir({
           <span style={{ fontSize:10.5, color:"var(--n400)" }}>
             horas hábiles: no corren sábados ni domingos{venceTxt ? ` — vence el ${venceTxt}` : ""}. Después el link muestra “cotización vencida” y se puede reactivar
           </span>
-        </div>
+        </div>}
 
         <div style={{ display:"flex", gap:5, padding:"11px 17px 0" }}>
           {TABS.map(([k, l, I]) => (
@@ -596,7 +601,7 @@ function ModalCompartir({
             </button>
             <div style={{ fontSize:10.5, color:"var(--n300)", marginTop:5, lineHeight:1.5 }}>
               {presupuestoId
-                ? `Sella el envío y arranca la vigencia de ${vig} h hábiles, sin abrir nada.`
+                ? (LINKS_VENCEN ? `Sella el envío y arranca la vigencia de ${vig} h hábiles, sin abrir nada.` : "Sella el envío sin abrir nada.")
                 : "Todavía no está guardada: escribí algo y el autoguardado la crea."}
             </div>
           </div>
