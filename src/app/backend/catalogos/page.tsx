@@ -683,6 +683,15 @@ function RegionesPaisesTab() {
       .filter(Boolean) as typeof regiones;
   }, [regiones, search]);
 
+  // Un nombre repetido no es "no se pudo guardar", es "ya está cargado": el
+  // título del cartel lo dice, y el detalle (que viene del server) dice dónde.
+  // (Reporte del cliente, 11/09: "Sudafrica" en África chocaba con «Sudáfrica»
+  // en otra región y el cartel parecía un error del sistema.)
+  function tituloDeError(err: unknown, generico: string): string {
+    const msg = err instanceof Error ? err.message : "";
+    return /^Ya existe/i.test(msg) ? "Ese nombre ya está cargado" : generico;
+  }
+
   // ---- Region handlers ----
 
   function handleOpenCreateRegion() {
@@ -720,7 +729,7 @@ function RegionesPaisesTab() {
       console.error("[handleSaveRegion] falló:", err);
       toast(
         "error",
-        "No se pudo guardar",
+        tituloDeError(err, "No se pudo guardar la región"),
         err instanceof Error ? err.message : "Intenta nuevamente",
       );
     }
@@ -788,7 +797,7 @@ function RegionesPaisesTab() {
     } catch (err) {
       toast(
         "error",
-        "No se pudo guardar",
+        tituloDeError(err, "No se pudo guardar el país"),
         err instanceof Error ? err.message : "Intenta nuevamente",
       );
     }
@@ -829,7 +838,7 @@ function RegionesPaisesTab() {
     } catch (err) {
       toast(
         "error",
-        "No se pudo agregar la ciudad",
+        tituloDeError(err, "No se pudo agregar la ciudad"),
         err instanceof Error ? err.message : "Intentá nuevamente",
       );
     }
@@ -845,7 +854,7 @@ function RegionesPaisesTab() {
     } catch (err) {
       toast(
         "error",
-        "No se pudo actualizar la ciudad",
+        tituloDeError(err, "No se pudo actualizar la ciudad"),
         err instanceof Error ? err.message : "Intentá nuevamente",
       );
     }
