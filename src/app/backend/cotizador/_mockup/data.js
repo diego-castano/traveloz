@@ -1,5 +1,6 @@
 import { Send, Eye, CheckCheck, PenLine, Clock3 } from "lucide-react";
 import { horasHabilesEntre, textoVencimiento } from "@/lib/presupuesto/habiles";
+import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 /* Una sola implementación del recorte de destino: la comparten el cotizador,
    el email, la ficha pública y el espejo en columnas. */
 import { destinoFinal } from "@/lib/presupuesto/destino";
@@ -144,7 +145,9 @@ function registrarVendedores(lista) {
    mostraría "quedan 9 h" el sábado a la mañana y seguiría abriendo el martes.
  */
 function horasDeVigencia(r) {
-  if (!r?.expiraAt) return null;
+  /* Sin vencimiento no hay cuenta regresiva: null apaga el "Link vencido" del
+     semáforo y la "Vencida" automática de `estadoEfectivo`. */
+  if (!LINKS_VENCEN || !r?.expiraAt) return null;
   const t = new Date(r.expiraAt).getTime();
   if (!Number.isFinite(t)) return null;
   const ahora = Date.now();
@@ -170,7 +173,7 @@ function horasHabilesDesdeEnvio(r) {
 
 /* "vence el martes 26 de agosto a las 15:00" para la fila que ya tiene link. */
 function textoDeVencimiento(r) {
-  return r?.expiraAt ? textoVencimiento(r.expiraAt) : "";
+  return LINKS_VENCEN && r?.expiraAt ? textoVencimiento(r.expiraAt) : "";
 }
 
 /* Semáforo de seguimiento: cuánto hace que se envió, si el pasajero la abrió y

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { semaforo, fmtHace, money, ESTADOS } from "./data";
 import { horasHabilesEntre, textoVencimiento } from "@/lib/presupuesto/habiles";
+import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { useCtz, buscarVendedor } from "./contexto";
 import { obtenerPresupuesto, emitirLink, datosDelPasajero } from "@/actions/presupuesto.actions";
 import { SECCIONES } from "@/lib/presupuesto/secciones";
@@ -130,7 +131,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
      "quedan 48 h" el sábado entero, porque el sábado no descuenta nada. */
   const vigTotal = r.vigencia || 96;
   const vigResta = useMemo(() => {
-    if (!r.expiraAt) return null;
+    /* sin vencimiento el bloque "Vigencia del link" no se dibuja */
+    if (!LINKS_VENCEN || !r.expiraAt) return null;
     const t = new Date(r.expiraAt).getTime();
     if (!Number.isFinite(t)) return null;
     return Math.max(0, Math.round(horasHabilesEntre(Date.now(), t)));
@@ -213,7 +215,9 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               )}
               <div style={{ fontSize:10, color:"var(--n400)", padding:"6px 9px 3px", lineHeight:1.45,
                 borderTop:"1px solid var(--hair-soft)", marginTop:4 }}>
-                El estado se calcula solo (la vigencia lo pasa a Vencida), pero acá lo pisás a mano para el seguimiento.
+                {LINKS_VENCEN
+                  ? "El estado se calcula solo (la vigencia lo pasa a Vencida), pero acá lo pisás a mano para el seguimiento."
+                  : "El estado se calcula solo con los envíos y las aperturas; acá lo pisás a mano para el seguimiento."}
               </div>
             </div>
           )}

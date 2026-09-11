@@ -21,6 +21,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { logger } from "@/lib/logger";
 import { checkAperturaRate } from "@/lib/rate-limit";
 import {
@@ -64,8 +65,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 429 });
   }
 
-  // Link vivo: existe, sin revocar, dentro de la vigencia y con la cotización
-  // sin borrar. Es la misma puerta que la página pública.
+  // Link vivo: existe, sin revocar, con la cotización sin borrar y —si los
+  // links vencen— dentro de la vigencia. Es la misma puerta que la página
+  // pública.
   const link = await prisma.presupuestoLink.findUnique({
     where: { token },
     select: {
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
     !link ||
     link.revocadoAt ||
     link.presupuesto.deletedAt ||
-    link.expiraAt.getTime() < Date.now()
+    linkVencido(link.expiraAt)
   ) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }

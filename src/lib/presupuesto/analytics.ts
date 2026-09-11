@@ -19,6 +19,7 @@
 // ---------------------------------------------------------------------------
 
 import { SECCIONES, indiceSeccion } from "./secciones";
+import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { destinoFinal, partirDestinoPeriodo } from "./destino";
 
 const HORA_MS = 3_600_000;
@@ -216,7 +217,7 @@ export function estadoEfectivoAnalytics(f: {
   if (f.estadoManual) return f.estadoManual;
   if (f.estado === "CONFIRMADA" || f.confirmadaAt) return f.estado;
   if (f.estado !== "ENVIADA" && f.estado !== "ABIERTA") return f.estado;
-  if (f.expiraAt && f.expiraAt.getTime() < ahora) return "VENCIDA";
+  if (linkVencido(f.expiraAt, ahora)) return "VENCIDA";
   return f.estado;
 }
 

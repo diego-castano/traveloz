@@ -13,6 +13,7 @@ import {
   ESTADOS, estadoEfectivo, norm
 } from "./data";
 import { useCtz, useCatalogo, buscarVendedor } from "./contexto";
+import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { Foto, Btn, Pill, ChipIA, Vacio, SelectBuscable } from "./ui";
 import { MisLinks } from "./mis-links";
 import { DrawerAnalytics } from "./drawer";
@@ -989,7 +990,7 @@ function TabSeguimiento({ base, recargar, toast, onEditar, onDuplicar }) {
           <span className="sem-dot" style={{ background:"#2A9E8E", width:8, height:8 }} /> abierta
           <span className="sem-dot" style={{ background:"#45D4C0", width:8, height:8, marginLeft:7 }} /> en ventana
           <span className="sem-dot" style={{ background:"#E8A13C", width:8, height:8, marginLeft:7 }} /> +24 h hábiles sin abrir
-          <span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> link vencido
+          {LINKS_VENCEN && <><span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> link vencido</>}
         </span>
       </div>
 
@@ -1055,8 +1056,9 @@ function ListadoContenido({
   }, [conOv]);
 
   const CHIPS_SEM = [
-    { k:"roja",     c:"#F43E55", l:"Vencidas sin abrir",       n:resumenSem.roja,
-      tip:"El link venció y el pasajero nunca lo abrió. Reactivá y reenviá." },
+    /* la chip roja solo existe mientras los links vencen */
+    ...(LINKS_VENCEN ? [{ k:"roja", c:"#F43E55", l:"Vencidas sin abrir", n:resumenSem.roja,
+      tip:"El link venció y el pasajero nunca lo abrió. Reactivá y reenviá." }] : []),
     { k:"amarilla", c:"#E8A13C", l:"+24 h hábiles sin abrir",  n:resumenSem.amarilla,
       tip:"Más de 24 h hábiles sin apertura (el fin de semana no cuenta). Va un recordatorio." },
     { k:"verde",    c:"#2A9E8E", l:"Abiertas o confirmadas",   n:resumenSem.verde,
@@ -1137,7 +1139,7 @@ function ListadoContenido({
           </button>
         )}
         <span className="hint-desk" style={{ fontSize:10.5, color:"var(--n300)", marginLeft:"auto" }}>
-          la vigencia y el “+24 h” se cuentan en horas hábiles
+          {LINKS_VENCEN ? "la vigencia y el “+24 h” se cuentan en horas hábiles" : "el “+24 h” se cuenta en horas hábiles"}
         </span>
       </div>
 
@@ -1153,7 +1155,7 @@ function ListadoContenido({
           <span className="sem lbl" style={{ width:26, flexShrink:0, justifyContent:"center", cursor:"help" }}>
             Seg.
             <div className="tip"><b>Semáforo de seguimiento</b>
-              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h hábiles. Ámbar: +24 h hábiles sin abrir. Rojo: la vigencia se cumplió sin apertura. Las horas hábiles no cuentan sábados ni domingos.</div>
+              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h hábiles. Ámbar: +24 h hábiles sin abrir.{LINKS_VENCEN ? " Rojo: la vigencia se cumplió sin apertura." : ""} Las horas hábiles no cuentan sábados ni domingos.</div>
           </span>
           <span className="lbl" style={{ width:52, flexShrink:0, textAlign:"right" }}>Creada</span>
           <span style={{ width:13, flexShrink:0 }} />

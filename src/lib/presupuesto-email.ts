@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 import { SITE_BASE_URL } from "@/lib/datos-email";
+import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion } from "@/lib/presupuesto/derivados";
 import { destinoFinal } from "@/lib/presupuesto/destino";
@@ -331,11 +332,14 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
 
   // La vigencia en fecha, no en horas. Si por lo que sea no llegó `expiraAt`
   // (una plantilla vieja, un test), el texto vuelve a las horas de siempre.
-  const vence = input.expiraAt ? textoVencimiento(input.expiraAt) : "";
+  // Con `LINKS_VENCEN` apagado no hay fecha que anunciar.
+  const vence = LINKS_VENCEN && input.expiraAt ? textoVencimiento(input.expiraAt) : "";
   const salio = input.enviadaAt ? textoDiaCorto(input.enviadaAt) : "";
-  const notaVigencia = vence
-    ? `Está disponible hasta el ${vence} (${REGLA_HABILES})`
-    : `El link está disponible por ${vigenciaHoras} horas hábiles (${REGLA_HABILES})`;
+  const notaVigencia = !LINKS_VENCEN
+    ? "Queda disponible para que la veas cuando quieras"
+    : vence
+      ? `Está disponible hasta el ${vence} (${REGLA_HABILES})`
+      : `El link está disponible por ${vigenciaHoras} horas hábiles (${REGLA_HABILES})`;
 
   // El saludo del vendedor manda; si no cargó ninguno, uno neutro que no suena
   // a plantilla vacía.
@@ -373,9 +377,13 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
     ${tabla(resumen)}
     <p style="margin:20px 0 0">${ctaButton(url, "Ver mi cotización")}</p>
     ${PMUTED(
-      `Se abre desde el celular y desde la computadora. ${escapeHtml(notaVigencia)}; si se te vence, escribile a ${escapeHtml(
-        vendedor.nombre,
-      )} y te lo renueva.`,
+      LINKS_VENCEN
+        ? `Se abre desde el celular y desde la computadora. ${escapeHtml(notaVigencia)}; si se te vence, escribile a ${escapeHtml(
+            vendedor.nombre,
+          )} y te lo renueva.`
+        : `Se abre desde el celular y desde la computadora. ${escapeHtml(notaVigencia)}; cualquier duda, escribile a ${escapeHtml(
+            vendedor.nombre,
+          )}.`,
     )}
     ${tarjetaVendedor(vendedor)}`;
 

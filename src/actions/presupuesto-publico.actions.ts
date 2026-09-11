@@ -20,6 +20,7 @@
 
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
+import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { logger } from "@/lib/logger";
 import { checkFormRate } from "@/lib/rate-limit";
 import { ipConfiableDeHeaders } from "@/lib/request-ip";
@@ -148,7 +149,7 @@ async function resolverLink(
   const link = await buscarLink(token);
   if (!link || link.presupuesto.deletedAt) return { ok: false, error: NO_VALE };
   if (link.revocadoAt) return { ok: false, error: NO_VALE };
-  if (link.expiraAt.getTime() < Date.now()) return { ok: false, error: NO_VALE };
+  if (linkVencido(link.expiraAt)) return { ok: false, error: NO_VALE };
 
   return { ok: true, link };
 }
