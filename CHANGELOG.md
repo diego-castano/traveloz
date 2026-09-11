@@ -32,6 +32,14 @@ del catálogo, CRM).
 
 ### Arreglado
 
+- **La fecha de nacimiento del formulario de pasajeros, centrada en iPhone.**
+  En Safari de iOS el valor ("11 set. 2026") quedaba pegado al borde de
+  arriba del campo mientras los demás campos centran su texto. Ahora el
+  campo de fecha centra el valor igual que el resto; en Chrome y Android no
+  cambia nada. (Reporte de Gero, 11/09.)
+
+### Arreglado
+
 - **Arrancar desde un paquete ya no pierde las opciones de hotel.** El
   cotizador precarga el paquete de una sola foto: los hoteles de cada opción,
   sus estrellas, su régimen y el neto. Pero el catálogo entra por partes —
