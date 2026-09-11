@@ -27,6 +27,8 @@ export const CATALOGO_VACIO = {
      hoteles que faltan, sus tarifas y las opciones de cada paquete. Es lo que
      mira el cotizador antes de precargar desde un paquete. */
   listo: false,
+  /* Una ola de carga se cayó: `listo` no va a prenderse hasta recargar. */
+  fallo: false,
   progreso: "Cargando catálogo…",
 };
 

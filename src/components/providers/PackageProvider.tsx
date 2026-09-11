@@ -45,6 +45,9 @@ interface PackageState {
    *  cotizador lo mira antes de precargar una cotización desde un paquete: sin
    *  esas tres tablas el paquete parece no tener ni itinerario ni opciones. */
   hydratingSubEntities: boolean;
+  /** La ola 2 se cayó en esta carga: hay paquetes pero sin destinos ni
+   *  opciones. Mismo criterio que en ServiceProvider. */
+  hydrationFailed: boolean;
   totalPaquetes: number;
   paquetes: Paquete[];
   paqueteAereos: PaqueteAereo[];
@@ -63,6 +66,7 @@ const initialState: PackageState = {
   loading: true,
   hydratingPaquetes: false,
   hydratingSubEntities: false,
+  hydrationFailed: false,
   totalPaquetes: 0,
   paquetes: [],
   paqueteAereos: [],
@@ -190,7 +194,7 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
     case "MERGE_SUB_ENTITIES":
       return { ...state, ...action.payload, hydratingSubEntities: false };
     case "SUB_ENTITIES_FAILED":
-      return { ...state, hydratingSubEntities: false };
+      return { ...state, hydratingSubEntities: false, hydrationFailed: true };
     case "APPEND_PAQUETES": {
       const merged = new Map(state.paquetes.map((item) => [item.id, item]));
       for (const paquete of action.payload.paquetes) {
@@ -635,6 +639,7 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
         // Mismo criterio que `loading`: con una foto de sessionStorage completa
         // las sub-entidades YA están; la ola 2 que sale abajo solo revalida.
         hydratingSubEntities: baseline.opcionesHoteleras.length === 0,
+        hydrationFailed: false,
       },
     });
 
@@ -773,12 +778,14 @@ export function usePackageProgress() {
     () => ({
       hydratingPaquetes: state.hydratingPaquetes,
       hydratingSubEntities: state.hydratingSubEntities,
+      hydrationFailed: state.hydrationFailed,
       totalPaquetes: state.totalPaquetes,
       loadedPaquetes: state.paquetes.length,
     }),
     [
       state.hydratingPaquetes,
       state.hydratingSubEntities,
+      state.hydrationFailed,
       state.totalPaquetes,
       state.paquetes.length,
     ],

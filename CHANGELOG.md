@@ -28,6 +28,13 @@ del catálogo, CRM).
   lo habitual, no hay espera alguna). El "desde" de cada tarjeta tampoco se
   muestra hasta que las tarifas están, para no anunciar un precio de menos.
   (Reportado por Gero el 11/09 sobre "Barra da Tijuca | Verano 2027".)
+- **Si el catálogo no termina de cargar, el cotizador lo dice en vez de
+  cotizar mal.** Probando lo anterior apareció el caso peor: si la carga de
+  tarifas se corta (un error de red, por ejemplo), arrancar desde un paquete
+  escribía USD 24 donde iba USD 1.317, sin ningún aviso. Ahora el buscador de
+  paquetes avisa "No se pudo cargar el catálogo completo — recargá la página"
+  y no deja precargar desde un paquete hasta recargar. En blanco, solo vuelos
+  y plantillas siguen andando normal.
 
 ## 29 de agosto de 2026
 

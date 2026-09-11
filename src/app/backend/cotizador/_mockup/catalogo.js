@@ -739,13 +739,21 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
      "Barra da Tijuca | Verano 2027" y la cotización salió sin los hoteles de
      las opciones.) */
   const cargando = cargandoPaquetes || cargandoServicios || cargandoCatalogo;
+  /* Una ola que SE CAYÓ también deja el catálogo incompleto, y ahí no hay
+     espera que valga: sin tarifas, la precarga escribía USD 24 donde iba
+     USD 1.317 (probado en local cortando la ola 2 de servicios). `fallo` deja
+     `listo` en false hasta la próxima hidratación —recarga o refresco por
+     foco—, y el buscador de paquetes lo dice en vez de girar para siempre. */
+  const fallo = !!(progresoPaquetes.hydrationFailed || progresoServicios.hydrationFailed);
   const listo =
     !cargando &&
+    !fallo &&
     !progresoPaquetes.hydratingPaquetes &&
     !progresoPaquetes.hydratingSubEntities &&
     !progresoServicios.hydratingAlojamientos &&
     !progresoServicios.hydratingSubEntities;
   const progreso = useMemo(() => {
+    if (fallo) return "No se pudo cargar el catálogo completo";
     if (progresoServicios.hydratingAlojamientos && progresoServicios.totalAlojamientos) {
       return `Hoteles ${progresoServicios.loadedAlojamientos}/${progresoServicios.totalAlojamientos}`;
     }
@@ -755,7 +763,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
     if (progresoServicios.hydratingSubEntities) return "Tarifas de los hoteles…";
     if (progresoPaquetes.hydratingSubEntities) return "Opciones de los paquetes…";
     return cargando ? "Cargando catálogo…" : "";
-  }, [progresoServicios, progresoPaquetes, cargando]);
+  }, [progresoServicios, progresoPaquetes, cargando, fallo]);
 
   return useMemo(
     () => ({
@@ -778,6 +786,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       regimenTexto,
       cargando,
       listo,
+      fallo,
       progreso,
     }),
     [
@@ -798,6 +807,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       regimenTexto,
       cargando,
       listo,
+      fallo,
       progreso,
     ],
   );

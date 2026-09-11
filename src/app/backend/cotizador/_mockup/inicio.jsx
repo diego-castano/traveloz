@@ -204,7 +204,14 @@ function ModalNueva({ plantillas, esperando, onClose, onBlanco, onPaquete, onPla
                   las opciones de cada paquete todavía están viajando—. Justo ahí
                   es cuando hace falta: elegir en esa ventana daba una cotización
                   sin las opciones de hotel. Ahora sigue a `listo`. */}
-              {!catalogo.listo && (
+              {catalogo.fallo ? (
+                <div style={{ display:"flex", alignItems:"center", gap:8, padding:"18px 8px",
+                  fontSize:12.5, color:"var(--ink-amber)" }}>
+                  <X size={14} />
+                  No se pudo cargar el catálogo completo — recargá la página para arrancar desde un paquete.
+                  En blanco, solo vuelos y plantillas siguen andando.
+                </div>
+              ) : !catalogo.listo && (
                 <div style={{ display:"flex", alignItems:"center", gap:8, padding:"18px 8px",
                   fontSize:12.5, color:"var(--n400)" }}>
                   <Loader2 size={14} className="spin" />
@@ -420,10 +427,16 @@ function Inicio({
 
   const pedirPaquete = useCallback((p) => {
     if (catalogo.listo) { setModalNueva(false); onPaquete(p); return; }
+    /* con una ola caída no hay nada que esperar: lo que falta no va a llegar
+       hasta recargar, y precargar así escribe el precio sin el alojamiento */
+    if (catalogo.fallo) {
+      toast({ msg:"No se pudo cargar el catálogo completo — recargá la página para arrancar desde un paquete", tone:"warn" });
+      return;
+    }
     /* el mismo clic otra vez cancela la espera: nadie queda atado a un paquete
        que eligió sin querer mientras el catálogo terminaba de cargar */
     setEsperando((prev) => (prev === p.id ? null : p.id));
-  }, [catalogo.listo, onPaquete]);
+  }, [catalogo.listo, catalogo.fallo, onPaquete, toast]);
 
   useEffect(() => {
     if (!esperando || !catalogo.listo) return;
@@ -563,7 +576,9 @@ function Inicio({
                 <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)", display:"inline-flex", alignItems:"center", gap:5 }}>
                   {catalogo.listo
                     ? <><Zap size={10} style={{ color:"var(--teal-2)" }} /> precarga todo: destinos, servicios, opciones, fotos</>
-                    : <><Loader2 size={10} className="spin" style={{ color:"var(--violet)" }} /> {catalogo.progreso || "Cargando catálogo…"}</>}
+                    : catalogo.fallo
+                      ? <><X size={10} /> {catalogo.progreso} — recargá la página</>
+                      : <><Loader2 size={10} className="spin" style={{ color:"var(--violet)" }} /> {catalogo.progreso || "Cargando catálogo…"}</>}
                 </span>
               </div>
 
