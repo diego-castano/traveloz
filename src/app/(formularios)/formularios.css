@@ -159,9 +159,22 @@
   height: var(--fx-alto);
   padding-top: 0;
   padding-bottom: 0;
+  /* Con altura fija y display:block, Safari iOS pegaba el valor al borde de
+     arriba (Gero, 11/09: "11 set. 2026" flotando en la mitad superior del
+     campo). WebKit trata el editor de fecha como un hijo del input: en flex
+     lo centra en el eje vertical. Chrome y Firefox ignoran display en un
+     input, así que para ellos no cambia nada. El line-height es la red de
+     seguridad para los WebKit que no aplican el flex. */
+  display: flex;
+  align-items: center;
+  line-height: calc(var(--fx-alto) - 2px);
 }
 .formularios-root input[type="date"].fx-input::-webkit-date-and-time-value {
   text-align: left;
+  /* Sin esto, iOS deja el valor con altura cero cuando el campo está vacío
+     y el campo se ve aplastado. */
+  min-height: 22px;
+  line-height: 22px;
 }
 .formularios-root input[type="date"].fx-input::-webkit-calendar-picker-indicator {
   opacity: 0.45;
