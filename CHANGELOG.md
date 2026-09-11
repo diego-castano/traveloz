@@ -11,6 +11,24 @@ del catálogo, CRM).
 
 ---
 
+## 11 de septiembre de 2026
+
+### Arreglado
+
+- **Arrancar desde un paquete ya no pierde las opciones de hotel.** El
+  cotizador precarga el paquete de una sola foto: los hoteles de cada opción,
+  sus estrellas, su régimen y el neto. Pero el catálogo entra por partes —
+  primero 10 hoteles de más de 1200, después el resto, y recién al final las
+  tarifas—, y la pantalla se daba por lista antes de tiempo. Quien elegía un
+  paquete en esos segundos se llevaba una cotización con las opciones vacías:
+  sin hotel, sin estrellas, sin régimen y con el precio sin la parte del
+  alojamiento. Y eso quedaba escrito, no se completaba solo. Ahora el buscador
+  de paquetes avisa mientras carga y el clic queda en cola: la cotización se
+  abre sola apenas el catálogo está entero (con el catálogo ya cargado, que es
+  lo habitual, no hay espera alguna). El "desde" de cada tarjeta tampoco se
+  muestra hasta que las tarifas están, para no anunciar un precio de menos.
+  (Reportado por Gero el 11/09 sobre "Barra da Tijuca | Verano 2027".)
+
 ## 29 de agosto de 2026
 
 ### Cambiado

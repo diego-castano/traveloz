@@ -721,8 +721,30 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
     return filas;
   }, [regiones]);
 
-  /* ── estado de carga ────────────────────────────────────────────────── */
+  /* ── estado de carga ──────────────────────────────────────────────────
+     `cargando` es el esqueleto: se apaga apenas llega la ola 1 de cada
+     provider. NO alcanza para precargar una cotización desde un paquete.
+
+     Las dos olas por provider no traen lo mismo:
+       · paquetes  → ola 1: la fila `Paquete`.  ola 2: destinos, opciones
+         hoteleras y los hoteles de cada opción.
+       · servicios → ola 1: los primeros 10 alojamientos (de 1200+).
+         ola 1b: el resto.  ola 2: precios de alojamiento, fotos, días.
+
+     `desdePaquete` fotografía todo eso de una: el hotel de cada opción, sus
+     estrellas, su régimen y el neto. Lo que todavía no llegó no se completa
+     solo — queda escrito vacío en la cotización, con el precio sin la parte
+     del alojamiento. Por eso `listo` mira TAMBIÉN las olas de relleno: es la
+     única bandera que habilita la precarga. (Gero, 11/09: arrancó desde
+     "Barra da Tijuca | Verano 2027" y la cotización salió sin los hoteles de
+     las opciones.) */
   const cargando = cargandoPaquetes || cargandoServicios || cargandoCatalogo;
+  const listo =
+    !cargando &&
+    !progresoPaquetes.hydratingPaquetes &&
+    !progresoPaquetes.hydratingSubEntities &&
+    !progresoServicios.hydratingAlojamientos &&
+    !progresoServicios.hydratingSubEntities;
   const progreso = useMemo(() => {
     if (progresoServicios.hydratingAlojamientos && progresoServicios.totalAlojamientos) {
       return `Hoteles ${progresoServicios.loadedAlojamientos}/${progresoServicios.totalAlojamientos}`;
@@ -730,6 +752,8 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
     if (progresoPaquetes.hydratingPaquetes && progresoPaquetes.totalPaquetes) {
       return `Paquetes ${progresoPaquetes.loadedPaquetes}/${progresoPaquetes.totalPaquetes}`;
     }
+    if (progresoServicios.hydratingSubEntities) return "Tarifas de los hoteles…";
+    if (progresoPaquetes.hydratingSubEntities) return "Opciones de los paquetes…";
     return cargando ? "Cargando catálogo…" : "";
   }, [progresoServicios, progresoPaquetes, cargando]);
 
@@ -753,6 +777,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       favoritos,
       regimenTexto,
       cargando,
+      listo,
       progreso,
     }),
     [
@@ -772,6 +797,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       favoritos,
       regimenTexto,
       cargando,
+      listo,
       progreso,
     ],
   );

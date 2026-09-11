@@ -931,7 +931,9 @@ export default function Cotizador({
     if (typeof window === "undefined" || demoHecha.current) return;
     const qs = new URLSearchParams(window.location.search);
     if (qs.get("imprimir") !== "demo") return;
-    if (catalogo.cargando) return;
+    /* `listo` y no `!cargando`: con la ola 1 sola el paquete todavía no tiene
+       ni opciones ni hoteles, y la demo saldría sin nada que paginar. */
+    if (!catalogo.listo) return;
     demoHecha.current = true;
     const p0 = catalogo.paquetes[0];
     if (!p0) return;                       // sin paquetes activos no hay demo que mostrar

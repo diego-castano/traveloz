@@ -41,6 +41,10 @@ const SESSION_CACHE_TTL_MS = 30 * 60 * 1000;
 interface PackageState {
   loading: boolean;
   hydratingPaquetes: boolean;
+  /** La ola 2 (destinos, opciones hoteleras y sus hoteles) sigue en vuelo. El
+   *  cotizador lo mira antes de precargar una cotización desde un paquete: sin
+   *  esas tres tablas el paquete parece no tener ni itinerario ni opciones. */
+  hydratingSubEntities: boolean;
   totalPaquetes: number;
   paquetes: Paquete[];
   paqueteAereos: PaqueteAereo[];
@@ -58,6 +62,7 @@ interface PackageState {
 const initialState: PackageState = {
   loading: true,
   hydratingPaquetes: false,
+  hydratingSubEntities: false,
   totalPaquetes: 0,
   paquetes: [],
   paqueteAereos: [],
@@ -109,6 +114,7 @@ type PackageSubPayload = {
 type PackageAction =
   | { type: "SET_ALL"; payload: PackageState }
   | { type: "MERGE_SUB_ENTITIES"; payload: PackageSubPayload }
+  | { type: "SUB_ENTITIES_FAILED" }
   | {
       type: "APPEND_PAQUETES";
       payload: { paquetes: Paquete[]; totalPaquetes: number };
@@ -182,7 +188,9 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
     case "SET_ALL":
       return action.payload;
     case "MERGE_SUB_ENTITIES":
-      return { ...state, ...action.payload };
+      return { ...state, ...action.payload, hydratingSubEntities: false };
+    case "SUB_ENTITIES_FAILED":
+      return { ...state, hydratingSubEntities: false };
     case "APPEND_PAQUETES": {
       const merged = new Map(state.paquetes.map((item) => [item.id, item]));
       for (const paquete of action.payload.paquetes) {
@@ -624,6 +632,9 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
         ...baseline,
         loading: baseline.paquetes.length === 0,
         hydratingPaquetes: baseline.paquetes.length > 0,
+        // Mismo criterio que `loading`: con una foto de sessionStorage completa
+        // las sub-entidades YA están; la ola 2 que sale abajo solo revalida.
+        hydratingSubEntities: baseline.opcionesHoteleras.length === 0,
       },
     });
 
@@ -703,6 +714,8 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
       .catch((err) => {
         console.error("Error fetching package sub-entities:", err);
         // Non-fatal: base paquetes list from wave 1 is already visible.
+        if (cancelled) return;
+        dispatch({ type: "SUB_ENTITIES_FAILED" });
       });
 
     return () => { cancelled = true; };
@@ -759,10 +772,16 @@ export function usePackageProgress() {
   return useMemo(
     () => ({
       hydratingPaquetes: state.hydratingPaquetes,
+      hydratingSubEntities: state.hydratingSubEntities,
       totalPaquetes: state.totalPaquetes,
       loadedPaquetes: state.paquetes.length,
     }),
-    [state.hydratingPaquetes, state.totalPaquetes, state.paquetes.length],
+    [
+      state.hydratingPaquetes,
+      state.hydratingSubEntities,
+      state.totalPaquetes,
+      state.paquetes.length,
+    ],
   );
 }
 

@@ -515,7 +515,10 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
       payload: {
         ...baseline,
         loading: baseline.aereos.length === 0 && baseline.alojamientos.length === 0,
-        hydratingSubEntities: true,
+        // Mismo criterio que `loading`: si la foto de sessionStorage ya trae los
+        // precios, la ola 2 que sale abajo solo revalida — y anunciarla como
+        // "todavía viajando" deja al cotizador esperando datos que ya tiene.
+        hydratingSubEntities: baseline.preciosAlojamiento.length === 0,
       },
     });
 

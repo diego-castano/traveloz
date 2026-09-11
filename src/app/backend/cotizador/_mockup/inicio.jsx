@@ -91,7 +91,7 @@ function mesDeDestino(s) { return partirDestinoPeriodo(s).periodo.split(" ")[0] 
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── A1 · modal "¿Cómo arrancamos?" — cuatro caminos, teclas 1 a 4 ────── */
-function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onIA, onVuelos }) {
+function ModalNueva({ plantillas, esperando, onClose, onBlanco, onPaquete, onPlantilla, onIA, onVuelos }) {
   const catalogo = useCatalogo();
   const [paso, setPaso] = useState("menu");     // menu | plantilla
   const [busq, setBusq] = useState("");
@@ -199,10 +199,18 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
             </div>
 
             <div style={{ maxHeight:330, overflowY:"auto", margin:"0 -4px" }}>
-              {catalogo.cargando && paquetes.length === 0 && (
+              {/* El aviso miraba `paquetes.length === 0`, así que se apagaba con la
+                  ola 1 —cuando la lista ya se ve pero los hoteles, sus tarifas y
+                  las opciones de cada paquete todavía están viajando—. Justo ahí
+                  es cuando hace falta: elegir en esa ventana daba una cotización
+                  sin las opciones de hotel. Ahora sigue a `listo`. */}
+              {!catalogo.listo && (
                 <div style={{ display:"flex", alignItems:"center", gap:8, padding:"18px 8px",
                   fontSize:12.5, color:"var(--n400)" }}>
-                  <Loader2 size={14} className="spin" /> Cargando catálogo…
+                  <Loader2 size={14} className="spin" />
+                  {esperando
+                    ? "Terminando de cargar el catálogo — la cotización se abre sola"
+                    : "Cargando catálogo…"}
                   {catalogo.progreso ? ` ${catalogo.progreso}` : ""}
                 </div>
               )}
@@ -218,7 +226,9 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
                           {p.destinos.map((d) => `${d.ciudad} · ${d.noches}n`).join("   ·   ")}</div>
                       </div>
                       <Pill tone="violet" style={{ flexShrink:0 }}>{etiquetaMes(p)}</Pill>
-                      <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />
+                      {esperando === p.id
+                        ? <Loader2 size={13} className="spin" style={{ color:"var(--violet)", flexShrink:0 }} />
+                        : <ChevronRight size={13} style={{ color:"var(--n300)", flexShrink:0 }} />}
                     </button>
                   ))}
                 </>
@@ -243,7 +253,7 @@ function ModalNueva({ plantillas, onClose, onBlanco, onPaquete, onPlantilla, onI
                 </>
               )}
 
-              {!catalogo.cargando && !paquetes.length && !plantis.length && (
+              {catalogo.listo && !paquetes.length && !plantis.length && (
                 <div style={{ padding:"22px 6px" }}>
                   <Vacio icon={Search} titulo={`Nada para “${busq.trim()}”`} accion="Probá con otra palabra, o arrancá en blanco" />
                 </div>
@@ -395,6 +405,37 @@ function Inicio({
   const [modalNueva, setModalNueva] = useState(false);
   const [modalIA, setModalIA] = useState(false);
 
+  /* ── precarga desde un paquete: el clic espera al catálogo ─────────────
+     El catálogo entra en olas (primero 10 hoteles de 1200+, después el resto
+     y recién al final sus tarifas) y `desdePaquete` fotografía lo que hay en
+     ese instante. Clickear antes de tiempo daba una cotización con las
+     opciones sin hotel, sin estrellas, sin régimen y con el neto sin la parte
+     del alojamiento — y eso queda escrito, no se completa solo.
+
+     En vez de apagar la lista, el clic queda EN COLA: la cotización se abre
+     sola apenas el catálogo está entero. Con el catálogo ya caliente —el caso
+     normal— no hay espera de ningún tipo. (Gero, 11/09: arrancó desde "Barra
+     da Tijuca | Verano 2027" y salió sin las opciones de hotel.) */
+  const [esperando, setEsperando] = useState(null);   // id del paquete en cola
+
+  const pedirPaquete = useCallback((p) => {
+    if (catalogo.listo) { setModalNueva(false); onPaquete(p); return; }
+    /* el mismo clic otra vez cancela la espera: nadie queda atado a un paquete
+       que eligió sin querer mientras el catálogo terminaba de cargar */
+    setEsperando((prev) => (prev === p.id ? null : p.id));
+  }, [catalogo.listo, onPaquete]);
+
+  useEffect(() => {
+    if (!esperando || !catalogo.listo) return;
+    /* el objeto del paquete se rearma con cada ola: hay que volver a buscarlo
+       por id para llevarse la versión completa, no la que se clickeó */
+    const p = catalogo.paquetes.find((x) => x.id === esperando);
+    setEsperando(null);
+    if (!p) return;
+    setModalNueva(false);
+    onPaquete(p);
+  }, [esperando, catalogo.listo, catalogo.paquetes, onPaquete]);
+
   const resultados = useMemo(() => {
     const t = norm(busq.trim());
     if (!t) return catalogo.paquetes.slice(0, 4);
@@ -520,14 +561,17 @@ function Inicio({
                 <span className="lbl">{buscando ? `${resultados.length} resultado${resultados.length === 1 ? "" : "s"}` : "Plantillas de la web · últimos publicados"}</span>
                 <div style={{ flex:1, height:1, background:"var(--hair-soft)" }} />
                 <span className="hint-desk" style={{ fontSize:11, color:"var(--n300)", display:"inline-flex", alignItems:"center", gap:5 }}>
-                  <Zap size={10} style={{ color:"var(--teal-2)" }} /> precarga todo: destinos, servicios, opciones, fotos</span>
+                  {catalogo.listo
+                    ? <><Zap size={10} style={{ color:"var(--teal-2)" }} /> precarga todo: destinos, servicios, opciones, fotos</>
+                    : <><Loader2 size={10} className="spin" style={{ color:"var(--violet)" }} /> {catalogo.progreso || "Cargando catálogo…"}</>}
+                </span>
               </div>
 
               <div key={busq} className="pq-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(226px,1fr))", gap:12 }}>
                 {resultados.map((p, i) => {
                   const desde = p.opciones.length ? Math.min(...p.opciones.map((o) => venta(o.neto, o.factor))) : null;
                   return (
-                  <button key={p.id} onClick={() => onPaquete(p)} className="a-pop"
+                  <button key={p.id} onClick={() => pedirPaquete(p)} className="a-pop"
                     style={{ padding:0, overflow:"hidden", textAlign:"left", animationDelay:`${i * .05}s`,
                       background:"var(--card)", border:"1px solid var(--hair-soft)", borderRadius:16,
                       boxShadow:"0 1px 2px rgba(26,26,46,.04)",
@@ -552,10 +596,21 @@ function Inicio({
                         ))}
                       </div>
                       <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                        <span style={{ fontSize:12, fontWeight:700, color:"var(--teal-3)", display:"inline-flex",
-                          alignItems:"center", gap:5 }}>Armar cotización <ChevronRight size={13} /></span>
-                        {desde && <span className="mono" style={{ marginLeft:"auto", fontSize:10.5, color:"var(--n400)" }}>
-                          desde {money(desde)}</span>}
+                        {esperando === p.id ? (
+                          <span style={{ fontSize:12, fontWeight:700, color:"var(--violet)", display:"inline-flex",
+                            alignItems:"center", gap:5 }}>
+                            <Loader2 size={13} className="spin" /> Terminando de cargar…</span>
+                        ) : (
+                          <span style={{ fontSize:12, fontWeight:700, color:"var(--teal-3)", display:"inline-flex",
+                            alignItems:"center", gap:5 }}>Armar cotización <ChevronRight size={13} /></span>
+                        )}
+                        {/* el "desde" sale de las tarifas de los hoteles: mientras el
+                            catálogo se hidrata el número está incompleto, y un precio
+                            de menos en pantalla es peor que ningún precio */}
+                        {catalogo.listo && desde ? (
+                          <span className="mono" style={{ marginLeft:"auto", fontSize:10.5, color:"var(--n400)" }}>
+                            desde {money(desde)}</span>
+                        ) : null}
                       </div>
                     </div>
                   </button>
@@ -568,7 +623,7 @@ function Inicio({
                     {catalogo.progreso ? <span className="mono" style={{ fontSize:11 }}>{catalogo.progreso}</span> : null}
                   </div>
                 )}
-                {!catalogo.cargando && buscando && resultados.length === 0 && (
+                {catalogo.listo && buscando && resultados.length === 0 && (
                   <div className="a-fade pq-vacio" style={{ gridColumn:"1/-1", textAlign:"center", padding:"26px 0" }}>
                     <Search size={20} style={{ color:"var(--n300)", marginBottom:8 }} />
                     <div style={{ fontSize:13.5, fontWeight:600, color:"var(--n600)" }}>No hay paquetes para “{busq.trim()}”</div>
@@ -679,9 +734,10 @@ function Inicio({
       {modalNueva && (
         <ModalNueva
           plantillas={plantillas}
-          onClose={() => setModalNueva(false)}
+          onClose={() => { setEsperando(null); setModalNueva(false); }}
           onBlanco={() => { setModalNueva(false); onBlanco(); }}
-          onPaquete={(p) => { setModalNueva(false); onPaquete(p); }}
+          onPaquete={pedirPaquete}
+          esperando={esperando}
           onPlantilla={(t) => { setModalNueva(false); onPlantilla(t); }}
           onIA={() => { setModalNueva(false); setModalIA(true); }}
           onVuelos={() => { setModalNueva(false); onSoloVuelos(); }} />
