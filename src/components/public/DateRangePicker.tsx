@@ -8,6 +8,14 @@ import { useFloatingCtaSuppress } from "./useFloatingCtaSuppress";
 import "react-day-picker/dist/style.css";
 
 type Props = {
+  /**
+   * Obligatorio (pedido de Amparo, 14/09: entraban leads sin fecha). El
+   * campo visible deja de ser readOnly —un readOnly nunca es inválido para
+   * el navegador— y pasa a `required`; el tipeo se bloquea a mano, así la
+   * fecha solo sale del calendario y el navegador frena el envío si está
+   * vacía. El server lo vuelve a chequear.
+   */
+  required?: boolean;
   /** Hidden form fields written as ISO strings */
   nameFrom?: string;
   nameTo?: string;
@@ -31,6 +39,7 @@ export function DateRangePicker({
   nameTo = "fechaHasta",
   placeholder = "Seleccioná las fechas",
   variant = "default",
+  required = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<DateRange | undefined>();
@@ -97,12 +106,15 @@ export function DateRangePicker({
     }
   };
 
+  // Sin fechas el valor va vacío y el placeholder lo pone el atributo: si el
+  // texto del placeholder viajara como valor, `required` no tendría nada que
+  // frenar.
   const display =
     range?.from && range?.to
       ? `${format(range.from, "dd MMM yyyy", { locale: es })} - ${format(range.to, "dd MMM yyyy", { locale: es })}`
       : range?.from
         ? `${format(range.from, "dd MMM yyyy", { locale: es })} - …`
-        : placeholder;
+        : "";
 
   return (
     <div
@@ -122,11 +134,20 @@ export function DateRangePicker({
       />
       <input
         type="text"
-        readOnly
         value={display}
+        onChange={() => {}}
+        onKeyDown={(e) => {
+          // el valor solo sale del calendario; Tab/Shift/Escape siguen libres
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); return; }
+          if (e.key.length === 1 || e.key === "Backspace" || e.key === "Delete") e.preventDefault();
+        }}
         onClick={() => (open ? close() : setOpen(true))}
         placeholder={placeholder}
         className="date-range-display"
+        inputMode="none"
+        autoComplete="off"
+        required={required}
+        aria-required={required || undefined}
       />
       {open && (
         <div className="date-range-popup">

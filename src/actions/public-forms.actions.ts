@@ -710,6 +710,16 @@ export async function submitQuoteForm(
     });
     if (!parsed.success) return zodError(parsed.error);
     const data = parsed.data;
+
+    // La fecha de viaje es obligatoria (pedido de Amparo, 14/09): entraban
+    // leads al CRM sin fecha y el equipo no podía cotizarlos. El navegador ya
+    // la exige en los dos formularios; acá se vuelve a chequear porque el
+    // `required` del cliente se puede saltar.
+    const fechaDesde = date(formData, "fechaDesde");
+    if (!fechaDesde) {
+      return { ok: false, message: "Elegí la fecha de viaje." };
+    }
+
     const atrib = leerAtribucion();
     const pauta = resumenPauta(atrib?.first, atrib?.last);
 
@@ -757,7 +767,7 @@ export async function submitQuoteForm(
         email: data.email ?? "",
         telefono: data.telefono,
         paisCodigo: data.paisCodigo,
-        fechaDesde: date(formData, "fechaDesde"),
+        fechaDesde,
         fechaHasta: date(formData, "fechaHasta"),
         adultos: m("adultos"),
         ninos: m("ninos"),
