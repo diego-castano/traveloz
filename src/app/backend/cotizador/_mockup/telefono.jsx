@@ -1558,22 +1558,38 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
 /* Un itinerario de vuelo extra, con todo lo suyo: tramos, cabina, equipaje y
    precio.
 
-   En una cotización de paquete es una ALTERNATIVA al vuelo del paquete y se la
-   nombra a mano ("Llega de día"). En una de solo vuelos es una OPCIÓN más y
-   lleva número, porque ahí las opciones son la cotización y el pasajero
-   contesta "me quedo con la 2". Es la misma pieza: cambia el rótulo y dónde se
-   dibuja, no lo que muestra. */
+   En una cotización de paquete es una ALTERNATIVA al vuelo del paquete: lleva
+   el rótulo fijo "Opción alternativa de vuelo" —palabras de Gero (14/09), que
+   prefirió eso a "Otra opción de vuelo"— y debajo el título que el vendedor
+   escribió en el cotizador, tal cual ("Pasajes aéreos con la aerolínea Copa
+   Airlines – según itinerario"). Antes el título ocupaba el lugar del rótulo,
+   y sin título la alternativa salía con un genérico que no decía nada del
+   vuelo. En una de solo vuelos es una OPCIÓN más y lleva número, porque ahí
+   las opciones son la cotización y el pasajero contesta "me quedo con la 2".
+   Es la misma pieza: cambia el rótulo y dónde se dibuja, no lo que muestra. */
 function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mismaCiudad }) {
   const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
     .filter(([k]) => Number(n.precio?.[k]) > 0);
+  /* el título va literal: es lo que el vendedor escribió, sin recortes */
+  const titulo = numero ? "" : String(n.nombre ?? "").trim();
   return (
     <div style={{ marginBottom: ultimo ? 22 : 18, breakInside:"avoid" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:9 }}>
+      {/* Sin `flexWrap`: con un título largo el renglón se partía y el avión
+          quedaba solo arriba, como un renglón vacío. El rótulo es corto y el
+          título tiene su propio renglón abajo. */}
+      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom: titulo ? 4 : 9 }}>
         <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
-        <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, overflowWrap:"anywhere" }}>
-          {numero ? `Opción ${numero}` : (n.nombre || "Otra opción de vuelo")}
+        <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, minWidth:0,
+          color: numero ? undefined : "#5B3FBF" }}>
+          {numero ? `Opción ${numero}` : "Opción alternativa de vuelo"}
         </span>
       </div>
+      {titulo && (
+        <div style={{ fontSize:fzp(13, 14, 12.5), fontWeight:700, lineHeight:1.35,
+          marginBottom:9, overflowWrap:"anywhere" }}>
+          {titulo}
+        </div>
+      )}
 
       {agruparTrayectos(n.vuelos, mismaCiudad).map((seg, ti, arr) => (
         <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}

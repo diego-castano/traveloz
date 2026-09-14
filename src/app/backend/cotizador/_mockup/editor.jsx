@@ -1554,12 +1554,13 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
         {/* En solo vuelos la opción se llama por su número y nada más: ahí las
             opciones SON la cotización y el pasajero contesta "me quedo con la
             2". En un paquete es una alternativa suelta al vuelo del paquete y
-            se la nombra a mano ("Llega de día"). */}
+            lleva título: en la ficha sale bajo el rótulo "Opción alternativa
+            de vuelo", tal cual se escribe acá (pedido de Gero, 14/09). */}
         {numero ? (
           <span style={{ flex:1, fontSize:13, fontWeight:700 }}>Opción {numero}</span>
         ) : (
           <input className="in" style={{ flex:1, height:30, fontSize:12 }} value={nota.nombre || ""}
-            placeholder="Cómo se llama esta opción (ej. Llega de día)"
+            placeholder="Título que ve el pasajero (ej. Pasajes aéreos con Copa Airlines – según itinerario)"
             onChange={(e) => enNota((n) => { n.nombre = e.target.value; })} />
         )}
         <button className="btn btn-g btn-ico" title="Quitar este itinerario"
@@ -1656,8 +1657,9 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
    qué tipo de cotización es.
 
    · Paquete: son ALTERNATIVAS al vuelo del paquete, viven arriba del texto de
-     las notas, llevan título libre y hay tope de dos —pedido de Gero, para que
-     la cotización no se haga un choclo; una tercera va por WhatsApp—.
+     las notas, llevan título libre —que la ficha muestra literal, bajo el
+     rótulo "Opción alternativa de vuelo"— y hay tope de dos —pedido de Gero,
+     para que la cotización no se haga un choclo; una tercera va por WhatsApp—.
    · Solo vuelos: son LAS opciones de la cotización, viven en el módulo de
      itinerario y van numeradas desde la 2, porque la 1 es la de arriba. Sin
      tope: ahí el vendedor arma tantas como quiera comparar.
@@ -1678,10 +1680,10 @@ function ListaVuelosExtra({ q, set, toast, aerolineas, numeradas }) {
         marginBottom: lista.length ? 11 : 0 }}>
         <Plane size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
         <span style={{ fontSize:12.5, fontWeight:700 }}>
-          {numeradas ? "Más opciones de vuelo" : "Otra opción de vuelo"}
+          {numeradas ? "Más opciones de vuelo" : "Opción alternativa de vuelo"}
         </span>
         <span style={{ fontSize:11.5, color:"var(--n400)" }}>
-          {numeradas ? "cada una con su itinerario y su precio" : "opcional · sale abajo del texto"}
+          {numeradas ? "cada una con su itinerario y su precio" : "opcional · sale abajo del texto, con su título"}
         </span>
         {lista.length < tope ? (
           <Btn size="sm" style={{ marginLeft:"auto" }} onClick={agregar}>

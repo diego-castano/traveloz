@@ -40,6 +40,16 @@ del catálogo, CRM).
 
 ### Cambiado
 
+- **Las alternativas de vuelo salen con su rótulo y con su título.** En la
+  ficha del pasajero, cada vuelo alternativo que va en las notas dice ahora
+  "Opción alternativa de vuelo" (Gero lo prefirió a "Otra opción de vuelo")
+  y, debajo, el título tal cual lo escribió el vendedor en el cotizador
+  ("Pasajes aéreos con la aerolínea Copa Airlines – según itinerario").
+  Antes el título ocupaba el lugar del rótulo y, si no se escribía ninguno,
+  la alternativa salía con un genérico que no decía nada del vuelo. En el
+  cotizador, la sección de las notas también pasa a llamarse "Opción
+  alternativa de vuelo" y el campo del título dice para qué es. Aplica al
+  link y al PDF. (Pedido de Gero, 14/09.)
 - **La fecha de viaje es obligatoria para pedir cotización.** En la ficha
   del paquete ("Contactate con nosotros") y en /cotizar el campo decía
   "Fecha de viaje*" pero no frenaba nada: entraban leads al CRM sin fecha y
