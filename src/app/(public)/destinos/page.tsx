@@ -57,6 +57,7 @@ export default async function DestinosPage({
                     noches: p.noches,
                     destinos: p.destinos,
                     circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+                    modalidad: p.modalidad,
                   });
                   const cardData = {
                     ...p,

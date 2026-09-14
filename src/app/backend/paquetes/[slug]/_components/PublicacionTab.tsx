@@ -678,6 +678,7 @@ export function PublicacionTab({ paqueteId }: { paqueteId: string }) {
             noches: data.noches,
             destinos: data.destinos,
             circuitoNoches: data.circuitos[0]?.circuito?.noches ?? null,
+            modalidad: data.modalidad,
           })
         : 0,
     [data],

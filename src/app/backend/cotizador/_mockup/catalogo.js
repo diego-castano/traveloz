@@ -480,13 +480,12 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
          si acá ordenáramos por `orden` y el motor no, los seguros sin
          diasCobertura podrían caer en otra duración y el neto no cerraría. */
       const primerCircuito = (circuitosPorPaquete.get(p.id) ?? [])[0];
-      /* El motor entra en la rama del circuito solo cuando NO hay opciones
-         hoteleras (recompute-prices.ts: `if (opciones.length === 0)` y recién
-         adentro mira la modalidad). Mirando solo la modalidad, un paquete
-         CIRCUITO con opciones cargadas tomaba las noches del circuito para los
-         seguros y el desglose del vendedor no cerraba contra el neto real. */
-      const opcionesDelPaquete = opcionesPorPaquete.get(p.id) ?? [];
-      const esCircuito = p.modalidad === "CIRCUITO" && opcionesDelPaquete.length === 0;
+      /* Desde el 14/09 la modalidad CIRCUITO manda en todos lados (motor,
+         web y panel): las opciones hoteleras que un circuito arrastre de
+         antes no cuentan ni para el precio ni para las noches. Acá se
+         ignoran igual, así el vendedor cotiza lo mismo que se publica. */
+      const esCircuito = p.modalidad === "CIRCUITO";
+      const opcionesDelPaquete = esCircuito ? [] : (opcionesPorPaquete.get(p.id) ?? []);
       const nochesSeguro = esCircuito
         ? circuitoPorId.get(primerCircuito?.circuitoId)?.noches ?? p.noches ?? nochesTotales
         : nochesTotales;

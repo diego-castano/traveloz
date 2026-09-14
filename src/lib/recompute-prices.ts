@@ -256,11 +256,17 @@ export async function recomputePaqueteOpciones(
   );
 
   // ─── Compute per-opcion prices and persist them ───────────────────────
-  if (opciones.length === 0) {
-    // Modalidad CIRCUITO: sin opciones hoteleras, el precio se deriva de los
-    // costos fijos (circuito por persona vigente + aéreos + traslados + seguros)
-    // y del markup del paquete. Persistimos netoCalculado / precioVenta /
-    // precioDesde para que el público lea el precio sin depender de opciones.
+  // Modalidad CIRCUITO manda sobre las opciones hoteleras: si el paquete
+  // arrastra opciones de antes (invisibles en la pestaña Alojamientos, que en
+  // un circuito no las muestra), igual se cotiza como circuito. Antes la
+  // rama de abajo solo se tomaba con CERO opciones y una opción vieja
+  // decidía el precio publicado (Amparo, 14/09: "Turquía & Madrid" a 2.307
+  // con el panel en 2.162). Misma regla que precio-desde.ts y utils.ts.
+  if (paquete.modalidad === "CIRCUITO" || opciones.length === 0) {
+    // Modalidad CIRCUITO: el precio se deriva de los costos fijos (circuito
+    // por persona vigente + aéreos + traslados + seguros) y del markup del
+    // paquete. Persistimos netoCalculado / precioVenta / precioDesde para que
+    // el público lea el precio sin depender de opciones.
     if (paquete.modalidad === "CIRCUITO") {
       // Duración de referencia para seguros sin diasCobertura: la del circuito
       // asignado (fuente de verdad en esta modalidad), fallback a paquete.noches.

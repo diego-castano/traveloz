@@ -70,7 +70,16 @@ export function resolveNochesTotales(p: {
   noches?: number | null;
   destinos?: { noches: number | null }[] | null;
   circuitoNoches?: number | null;
+  /**
+   * En modalidad CIRCUITO la duración es la del circuito, aunque el paquete
+   * arrastre destinos con noches de antes (Amparo, 14/09: "Turquía & Madrid",
+   * circuito de 12 noches, publicaba "03 Noches" por un destino viejo).
+   */
+  modalidad?: string | null;
 }): number {
+  if (p.modalidad === "CIRCUITO" && p.circuitoNoches && p.circuitoNoches > 0) {
+    return p.circuitoNoches;
+  }
   const sumaDestinos = (p.destinos ?? []).reduce(
     (sum, d) => sum + (d.noches || 0),
     0,

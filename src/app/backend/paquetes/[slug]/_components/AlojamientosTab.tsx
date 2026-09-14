@@ -517,6 +517,52 @@ export default function AlojamientosTab({ paquete }: AlojamientosTabProps) {
           </a>
           , debajo del campo Destino.
         </p>
+        {/* Opciones hoteleras que quedaron de cuando el paquete era CLASICO.
+            Esta tarjeta las tapaba y el operador no podía verlas ni borrarlas,
+            y hasta el 14/09 la web y el motor las tomaban para el precio
+            (Amparo: "Turquía & Madrid" publicaba 2.307 con el panel en 2.162).
+            Ya no cuentan para nada; acá se listan para limpiarlas. */}
+        {opciones.length > 0 && (
+          <div className="mx-auto mt-5 max-w-md rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-left">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <div className="text-[13px] leading-relaxed text-neutral-700">
+                <strong>
+                  {opciones.length === 1
+                    ? "Quedó una opción hotelera cargada"
+                    : `Quedaron ${opciones.length} opciones hoteleras cargadas`}
+                </strong>{" "}
+                de antes de pasar este paquete a circuito. No cuentan para el
+                precio ni para las noches, pero conviene borrarlas para que no
+                confundan.
+              </div>
+            </div>
+            <ul className="mt-3 space-y-1.5">
+              {opciones.map((op) => (
+                <li
+                  key={op.id}
+                  className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-[13px]"
+                >
+                  <span className="flex-1 truncate text-neutral-800">{op.nombre}</span>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="text-[12px] font-medium text-red-600 hover:underline"
+                      onClick={() => {
+                        if (!window.confirm(`¿Eliminar la opción «${op.nombre}»? No se puede deshacer.`)) return;
+                        void deleteOpcionHotelera(op.id).catch(() =>
+                          toast("error", "No se pudo eliminar", "Intenta nuevamente"),
+                        );
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   }
