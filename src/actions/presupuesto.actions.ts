@@ -1377,6 +1377,13 @@ const enviarEmailSchema = z.object({
   extras: z.array(z.string()).max(20).optional(),
   /** Recordatorio: mismo email, otro asunto y otro evento. */
   esRecordatorio: z.boolean().optional(),
+  /**
+   * No mandarle al pasajero (14/09, pedido del equipo): el link ya se lo
+   * pasaron por WhatsApp y el email es solo el registro en la casilla de
+   * copia. El email del cliente se ignora para este envío; el destinatario
+   * pasa a ser el primer extra, o la casilla de copia de Ajustes.
+   */
+  sinCliente: z.boolean().optional(),
 });
 
 export interface EnvioEmailResumen extends LinkEmitido {
@@ -1433,14 +1440,7 @@ export async function enviarPorEmail(
     const extrasValidos = (parsedInput.data.extras ?? [])
       .map(emailValido)
       .filter((e): e is string => !!e);
-    let para = emailValido(q.cliente?.email);
-    if (!para) para = extrasValidos.shift() ?? null;
-    if (!para) fallar("Cargá el email del cliente o escribí al menos un destinatario.");
-
-    const extras = extrasValidos.filter((e) => e !== para);
-    if (extras.length > EXTRAS_MAX) {
-      fallar(`No más de ${EXTRAS_MAX} destinatarios extra.`);
-    }
+    const sinCliente = parsedInput.data.sinCliente === true;
 
     const [vendedor, settings] = await Promise.all([
       prisma.user.findUnique({
@@ -1454,6 +1454,27 @@ export async function enviarPorEmail(
     ]);
     if (!vendedor) fallar(NO_ENCONTRADA);
     const ajustes = leerAjustes(settings);
+
+    /* A quién va: el cliente, salvo que el vendedor lo haya sacado para este
+       envío (`sinCliente`); si no, el primer extra; y si tampoco, la casilla
+       de copia de Ajustes —que es exactamente el caso "solo a cotizaciones@
+       como registro, al pasajero le paso el link por WhatsApp". */
+    const copiaMaster = emailValido(ajustes.emailCopia);
+    let para = sinCliente ? null : emailValido(q.cliente?.email);
+    if (!para) para = extrasValidos.shift() ?? null;
+    if (!para) para = copiaMaster;
+    if (!para) {
+      fallar(
+        sinCliente
+          ? "Sin el pasajero no hay a quién mandarle: escribí un destinatario o configurá la casilla de copia en Ajustes."
+          : "Cargá el email del cliente o escribí al menos un destinatario.",
+      );
+    }
+
+    const extras = extrasValidos.filter((e) => e !== para);
+    if (extras.length > EXTRAS_MAX) {
+      fallar(`No más de ${EXTRAS_MAX} destinatarios extra.`);
+    }
 
     const horas = acotarVigencia(
       parsedInput.data.vigenciaHoras ?? q.vigencia ?? row.vigenciaHoras,
@@ -1492,7 +1513,6 @@ export async function enviarPorEmail(
         process.env.COTIZADOR_PDF_OFF === "1" ? "APAGADO" : "SIN_CHROMIUM";
     }
 
-    const copiaMaster = emailValido(ajustes.emailCopia);
     const copias = Array.from(
       new Set([...(copiaMaster ? [copiaMaster] : []), ...extras]),
     ).filter((c) => c !== para);
@@ -1548,9 +1568,9 @@ export async function enviarPorEmail(
     await sellarEnvio(row, "email", horas, s.userId, {
       expiraAt: expira,
       evento: esRecordatorio ? "recordatorio" : "enviada",
-      tituloEvento: esRecordatorio
-        ? `Recordatorio por email a ${para}`
-        : `Enviada por email a ${para}`,
+      tituloEvento: `${esRecordatorio ? "Recordatorio por email a" : "Enviada por email a"} ${para}${
+        sinCliente ? " · sin el pasajero" : ""
+      }`,
       detalleExtra: motivoSinPdf
         ? `sin PDF adjunto: ${motivoSinPdf}`
         : "con PDF adjunto",

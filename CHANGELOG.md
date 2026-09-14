@@ -13,6 +13,17 @@ del catálogo, CRM).
 
 ## 14 de septiembre de 2026
 
+### Nuevo
+
+- **Mandar la cotización por email sin el pasajero.** En Compartir › Email,
+  el campo "Para" traía el email de la ficha del pasajero y no se podía
+  sacar; cuando el link ya se le pasó por WhatsApp y el email es solo el
+  registro en cotizaciones@, había que borrar el email de la ficha (pedido
+  del equipo, 14/09). Ahora el campo tiene una cruz: la cotización sale a la
+  casilla de copia de Ajustes (y a los otros destinatarios, si hay), y el
+  email del pasajero queda en la ficha para la próxima. Se puede deshacer
+  antes de mandar, y el historial anota "· sin el pasajero".
+
 ### Arreglado
 
 - **Un circuito publica el precio y las noches del circuito, siempre.**

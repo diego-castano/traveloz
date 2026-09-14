@@ -65,6 +65,11 @@ function ModalCompartir({
   const [errLink, setErrLink] = useState(null);
   const [enviandoMail, setEnviandoMail] = useState(false);
   const [mailListo, setMailListo] = useState(null);
+  /* Sacar al pasajero de ESTE envío (14/09, pedido del equipo): el link ya se
+     lo mandaron por WhatsApp y el email es el registro en cotizaciones@. No
+     toca la ficha del cliente: su email queda cargado para la próxima. */
+  const [sinCliente, setSinCliente] = useState(false);
+  const clienteVa = !!q.cliente.email && !sinCliente;
   const [copiado, setCopiado] = useState(null);
 
   /* v2C · pre-flight: cuenta lo que falta, nunca frena el envío */
@@ -92,14 +97,18 @@ function ModalCompartir({
     /* El email tiene tres estados y el vendedor tiene que saber en cuál está
        ANTES de apretar mandar: con el del cliente, con los extras como
        destinatario, o sin nadie a quien mandarle. */
-    if (q.cliente.email)
+    if (clienteVa)
       l.push({ k:"mail", t:"ok", txt:`El email va a ${q.cliente.email}` });
+    else if (sinCliente && emailCopia)
+      l.push({ k:"mail", t:"info", txt:`Sin el pasajero — el email va solo a ${emailCopia}${extras.trim() ? " y a los otros destinatarios" : ""}` });
     else if (extras.split(/[,;]+/).some((e) => e.trim()))
       l.push({ k:"mail", t:"info", txt:"Sin email del cliente — el email va a los otros destinatarios" });
+    else if (emailCopia)
+      l.push({ k:"mail", t:"info", txt:`Sin email del cliente — el email va solo a ${emailCopia}` });
     else
       l.push({ k:"mail", t:"warn", txt:"Sin email — cargalo o escribí un destinatario para mandar por email", ir:"b-cliente" });
     return l;
-  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom, q.cliente.email, extras]);
+  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom, q.cliente.email, extras, clienteVa, sinCliente, emailCopia]);
   const todoListo = checks.every((c) => c.t === "ok");
 
   useEffect(() => {
@@ -270,6 +279,7 @@ function ModalCompartir({
       vigenciaHoras: vig,
       extras: lista,
       esRecordatorio: recordatorio,
+      sinCliente,
     });
     setEnviandoMail(false);
     if (!r.ok) { setErrLink(r.error); return; }
@@ -474,7 +484,28 @@ function ModalCompartir({
                   <Label>Para</Label>
                   <div className="in" style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10 }}>
                     <Mail size={13} style={{ color:"var(--n300)" }} />
-                    <span style={{ fontSize:13 }}>{q.cliente.email || <span style={{ color:"var(--n300)" }}>Sin email cargado</span>}</span>
+                    {clienteVa ? (
+                      <>
+                        <span style={{ fontSize:13, flex:1, minWidth:0, overflow:"hidden", textOverflow:"ellipsis" }}>{q.cliente.email}</span>
+                        {/* la cruz saca al pasajero de este envío nomás: su email sigue en la ficha */}
+                        <button type="button" className="btn btn-g btn-ico" style={{ width:24, height:24, flexShrink:0 }}
+                          title="No mandarle al pasajero — el email va solo a la casilla de copia y a los otros destinatarios"
+                          aria-label="No mandarle al pasajero"
+                          onClick={() => setSinCliente(true)}><X size={12} /></button>
+                      </>
+                    ) : sinCliente ? (
+                      <>
+                        <span style={{ fontSize:13, flex:1, color:"var(--n400)" }}>
+                          Sin el pasajero · va a {emailCopia || "los otros destinatarios"}
+                        </span>
+                        <button type="button" style={{ fontSize:11.5, fontWeight:600, color:"var(--violet)", flexShrink:0 }}
+                          onClick={() => setSinCliente(false)}>Deshacer</button>
+                      </>
+                    ) : (
+                      <span style={{ fontSize:13, color:"var(--n300)" }}>
+                        Sin email cargado{emailCopia ? ` · va solo a ${emailCopia}` : ""}
+                      </span>
+                    )}
                   </div>
                   <Label>Copia</Label>
                   <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
@@ -492,9 +523,11 @@ function ModalCompartir({
                       .btn no tenía estilo de deshabilitado el botón se veía
                       igual de clickeable: el vendedor apretaba y no pasaba
                       nada, sin error ni aviso. */}
+                  {/* Con la casilla de copia configurada siempre hay a quién mandarle:
+                      es el envío "solo a cotizaciones@" del equipo (14/09). */}
                   <Btn variant="p" style={{ width:"100%", height:42, marginTop:13 }}
-                    disabled={enviandoMail || !presupuestoId || (!q.cliente.email && !hayExtras)}
-                    title={!q.cliente.email && !hayExtras ? "Cargá el email del cliente o escribí un destinatario" : undefined}
+                    disabled={enviandoMail || !presupuestoId || (!clienteVa && !hayExtras && !emailCopia)}
+                    title={!clienteVa && !hayExtras && !emailCopia ? "Cargá el email del cliente o escribí un destinatario" : undefined}
                     onClick={mandarMail}>
                     {enviandoMail
                       ? <><Loader2 size={15} className="spin" /> Enviando…</>
