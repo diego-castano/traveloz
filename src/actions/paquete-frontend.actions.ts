@@ -100,6 +100,7 @@ export async function getPaqueteFrontendData(paqueteId: string) {
       // circuito asignado: la vista previa las resuelve con
       // resolveNochesTotales, igual que el sitio público.
       noches: true,
+      modalidad: true,
       destinos: { select: { noches: true } },
       circuitos: { select: { circuito: { select: { noches: true } } } },
       // Servicios reales del paquete: la vista previa de los renglones usa los

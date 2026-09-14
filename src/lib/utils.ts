@@ -380,7 +380,9 @@ export function computePaquetePrecios(
 
   const paqueteOpciones = opciones.filter((o) => o.paqueteId === paquete.id);
 
-  if (paqueteOpciones.length === 0) {
+  // CIRCUITO manda aunque queden opciones hoteleras cargadas de antes: misma
+  // regla que precio-desde.ts y recompute-prices.ts (Amparo, 14/09).
+  if (paquete.modalidad === 'CIRCUITO' || paqueteOpciones.length === 0) {
     // Modalidad CIRCUITO: el precio NO depende de opciones hoteleras. El neto son
     // los costos fijos (circuito por persona vigente + aéreos + traslados +
     // seguros) y la venta se deriva del markup del paquete (factor divisor,
@@ -624,7 +626,8 @@ export function computePaquetePreciosIndexed(
 
   const paqueteOpciones = index.opcionesByPaqueteId.get(paquete.id) ?? [];
 
-  if (paqueteOpciones.length === 0) {
+  // CIRCUITO manda aunque queden opciones hoteleras (ver computePaquetePrecios).
+  if (paquete.modalidad === 'CIRCUITO' || paqueteOpciones.length === 0) {
     if (paquete.modalidad === 'CIRCUITO') {
       const nochesCircuito =
         assignedCircuitos[0]?.circuito.noches ?? paquete.noches ?? nochesTotales;

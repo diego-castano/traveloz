@@ -46,6 +46,7 @@ export async function generateMetadata({
         noches: p.noches,
         destinos: p.destinos,
         circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+        modalidad: p.modalidad,
       })
     : 0;
   return buildSeoMetadata("default", {
@@ -132,6 +133,7 @@ export default async function PackageDetailPage({
       noches: p.noches,
       destinos: p.destinos,
       circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+      modalidad: p.modalidad,
     });
     return {
       id: p.id,
@@ -247,6 +249,7 @@ export default async function PackageDetailPage({
     noches: paquete.noches,
     destinos: paquete.destinos,
     circuitoNoches: paquete.circuitos[0]?.circuito?.noches ?? null,
+    modalidad: paquete.modalidad,
   });
 
   // Itinerario estructurado día a día: solo aplica a modalidad CIRCUITO, y

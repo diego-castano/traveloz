@@ -40,6 +40,8 @@ export type PaqueteRawParaListado = {
   titulo: string;
   destino: string;
   noches: number;
+  /** CLASICO | CIRCUITO. En circuito, las noches son las del circuito. */
+  modalidad?: string | null;
   salidas: string | null;
   precioDesde: number | null;
   precioDesdeMoneda: string | null;
@@ -95,6 +97,7 @@ export function projectPaqueteParaListado(
     noches: p.noches,
     destinos: p.destinos,
     circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+    modalidad: p.modalidad,
   });
   const destinosFuente = opts.regionId
     ? p.destinos.filter((d) => d.ciudad?.pais?.regionId === opts.regionId)

@@ -13,6 +13,31 @@ del catálogo, CRM).
 
 ## 14 de septiembre de 2026
 
+### Nuevo
+
+- **Mandar la cotización por email sin el pasajero.** En Compartir › Email,
+  el campo "Para" traía el email de la ficha del pasajero y no se podía
+  sacar; cuando el link ya se le pasó por WhatsApp y el email es solo el
+  registro en cotizaciones@, había que borrar el email de la ficha (pedido
+  del equipo, 14/09). Ahora el campo tiene una cruz: la cotización sale a la
+  casilla de copia de Ajustes (y a los otros destinatarios, si hay), y el
+  email del pasajero queda en la ficha para la próxima. Se puede deshacer
+  antes de mandar, y el historial anota "· sin el pasajero".
+
+### Arreglado
+
+- **Un circuito publica el precio y las noches del circuito, siempre.**
+  "Turquía & Madrid - 12 Noches" decía USD 2.162 en el panel (markup 15 %)
+  pero la web publicaba 2.307 y "03 Noches" (reporte de Amparo, 14/09). El
+  paquete arrastraba una opción hotelera y un destino de cuando era clásico,
+  invisibles en la pestaña Alojamientos (en circuito no los muestra), y la
+  web y el motor de precios los tomaban antes que la modalidad: el precio
+  salía de esa opción vieja con su propio factor, y las noches de ese
+  destino. Ahora la modalidad CIRCUITO manda en todos lados —web, motor,
+  panel, cotizador—: costos fijos / markup del paquete y las noches del
+  circuito, aunque queden opciones de antes. Y la pestaña Alojamientos de un
+  circuito avisa si quedaron opciones cargadas y deja borrarlas.
+
 ### Cambiado
 
 - **La fecha de viaje es obligatoria para pedir cotización.** En la ficha

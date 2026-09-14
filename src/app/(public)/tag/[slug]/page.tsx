@@ -89,6 +89,7 @@ export default async function TagPage({
                 noches: p.noches,
                 destinos: p.destinos,
                 circuitoNoches: p.circuitos[0]?.circuito?.noches ?? null,
+                modalidad: p.modalidad,
               });
               const cardData = {
                 ...p,

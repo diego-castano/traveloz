@@ -16,6 +16,11 @@
 // MOSTRAR. Toda superficie que muestre el precio pasa por acá.
 //
 // La regla, en el mismo orden en que la aplica la pestaña Precios:
+//   0. Modalidad CIRCUITO → costos fijos vigentes / markup del paquete, SIEMPRE,
+//      aunque el paquete arrastre opciones hoteleras de antes. La pestaña
+//      Precios ya ignoraba las opciones en un circuito; acá se miraban primero
+//      y por eso "Turquía & Madrid" publicaba 2.307 (una opción vieja con su
+//      propio factor) mientras el panel decía 2.162 (Amparo, 14/09).
 //   1. Con opciones hoteleras → la más barata, con la venta de cada opción
 //      CALCULADA EN VIVO: (costos fijos + alojamiento de la opción) / factor,
 //      la misma cuenta que hace la pestaña Precios.
@@ -86,7 +91,8 @@ export interface PrecioDesdeResuelto {
  * publica la web, sin recalcularlos por su cuenta.
  */
 export function resolverPrecioDesde(input: PrecioDesdeInput): PrecioDesdeResuelto {
-  const ventas = input.ventasOpciones.filter((v) => v > 0);
+  // En un circuito las opciones hoteleras no cuentan: ver regla 0 arriba.
+  const ventas = input.modalidad === "CIRCUITO" ? [] : input.ventasOpciones.filter((v) => v > 0);
   if (ventas.length > 0) {
     return {
       precioDesde: Math.min(...ventas),
