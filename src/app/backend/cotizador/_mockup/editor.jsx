@@ -1901,13 +1901,22 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
      precio. Por eso "Agregar habitación" la crea en esta opción (clonando la
      última, que es lo que el vendedor quiere el 90% de las veces) y la replica
      en las demás con los netos en 0 — los precios se cargan por hotel. `grupo`
-     ata las réplicas: cambiar la ocupación o el tipo en una las mueve a todas.
+     ata las réplicas: cambiar la OCUPACIÓN en una las mueve a todas, porque es
+     la misma gente en los dos hoteles.
+
+     El TIPO, en cambio, se queda en su opción. Es el nombre que le pone el
+     hotel a esa habitación —"premium" en el Riu no es la "premium" del
+     Iberostar— y viajaba con las réplicas: escribirlo en la opción 2 lo
+     pisaba en la 1 (reporte de Gero, 14/09).
+
      Las habitaciones viejas, sin `grupo`, quedan sueltas como hasta ahora. */
   const mismaHab = (h, ocupacion, tipo) =>
     norm(h?.ocupacion || "") === norm(ocupacion || "") && norm(h?.tipo || "") === norm(tipo || "");
   const tarifaEnCero = (t) => ({ id:uid("tf"), tipo:t?.tipo || "Por adulto", tipoLibre:t?.tipoLibre || "",
     neto:0, venta:null, factor:factorDefault });
-  const replicaDe = (hab) => ({ id:uid("hab"), grupo:hab.grupo, ocupacion:hab.ocupacion, tipo:hab.tipo,
+  /* La réplica lleva la ocupación, no el tipo: el nombre de la habitación lo
+     pone cada hotel y el vendedor lo escribe cuando lo tiene. */
+  const replicaDe = (hab) => ({ id:uid("hab"), grupo:hab.grupo, ocupacion:hab.ocupacion, tipo:"",
     tarifas: (hab.tarifas || []).map(tarifaEnCero) });
   /* cuántas opciones no tienen todavía esa ocupación + tipo (para el aviso) */
   const faltantes = (i, ocupacion, tipo) => (q.opciones || [])
@@ -1941,11 +1950,12 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
     }
   };
 
-  /* La ocupación y el tipo viajan a las réplicas; el neto y la venta jamás. */
+  /* Solo la ocupación viaja a las réplicas. El tipo de habitación, el neto y
+     la venta son de cada opción: dependen del hotel que se esté cotizando. */
   const editarHab = (i, hj, campo, valor) => set((d) => {
     const hab = d.opciones[i].habitaciones[hj];
     hab[campo] = valor;
-    if (!hab.grupo) return;
+    if (campo !== "ocupacion" || !hab.grupo) return;
     d.opciones.forEach((o, j) => {
       if (j === i) return;
       const hs = o.habitaciones || (o.habitaciones = []);
@@ -2157,7 +2167,9 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             onChange={(v) => editarHab(i, hj, "ocupacion", v)} />
                         </div>
                         <div style={{ flex:"2 1 190px" }}>
-                          <Label hint="opcional">Tipo de habitación</Label>
+                          <Label hint={q.opciones.length > 1 ? "opcional · solo de esta opción" : "opcional"}>
+                            Tipo de habitación
+                          </Label>
                           <input className="in" style={{ height:34 }} value={hab.tipo || ""}
                             placeholder="Vista al mar, suite junior, apartamento…"
                             onChange={(e) => editarHab(i, hj, "tipo", e.target.value)} />

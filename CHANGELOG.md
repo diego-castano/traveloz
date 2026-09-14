@@ -26,6 +26,14 @@ del catálogo, CRM).
 
 ### Arreglado
 
+- **El tipo de habitación es de cada opción.** Escribir "premium" en la
+  habitación de la opción 2 lo escribía también en la opción 1 (reporte de
+  Gero, 14/09). Las habitaciones viajan entre opciones para no cargarlas dos
+  veces, y el tipo viajaba con ellas; pero el tipo es el nombre que le pone
+  cada hotel a esa habitación, y la "premium" del Riu no es la del
+  Iberostar. Ahora la ocupación se sigue copiando entre opciones —es la
+  misma gente— y el tipo se queda donde se escribe. El campo lo aclara
+  cuando hay más de una opción.
 - **Un circuito publica el precio y las noches del circuito, siempre.**
   "Turquía & Madrid - 12 Noches" decía USD 2.162 en el panel (markup 15 %)
   pero la web publicaba 2.307 y "03 Noches" (reporte de Amparo, 14/09). El
