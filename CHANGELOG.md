@@ -50,6 +50,14 @@ del catálogo, CRM).
   cotizador, la sección de las notas también pasa a llamarse "Opción
   alternativa de vuelo" y el campo del título dice para qué es. Aplica al
   link y al PDF. (Pedido de Gero, 14/09.)
+- **La cabina y la franquicia de la alternativa van arriba del itinerario.**
+  Se cargan abajo de los tramos en el cotizador y salían también abajo en la
+  ficha: el pasajero recorría toda la tabla de vuelos y recién al final leía
+  con qué equipaje viaja. Ahora salen arriba, entre el título y el primer
+  tramo, igual que en la opción principal del paquete (donde van en "El
+  precio incluye"). En las cotizaciones de solo vuelos las opciones
+  numeradas no cambian: ahí siguen abajo, como en su opción 1. (Pedido de
+  Gero, 14/09.)
 - **La fecha de viaje es obligatoria para pedir cotización.** En la ficha
   del paquete ("Contactate con nosotros") y en /cotizar el campo decía
   "Fecha de viaje*" pero no frenaba nada: entraban leads al CRM sin fecha y

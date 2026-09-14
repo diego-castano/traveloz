@@ -1572,6 +1572,27 @@ function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mism
     .filter(([k]) => Number(n.precio?.[k]) > 0);
   /* el título va literal: es lo que el vendedor escribió, sin recortes */
   const titulo = numero ? "" : String(n.nombre ?? "").trim();
+  /* Cabina y franquicia. En la alternativa de un paquete van ARRIBA del
+     itinerario, como en la opción principal —ahí salen en "El precio incluye",
+     antes de los vuelos—: abajo el pasajero recorría toda la tabla y recién al
+     final leía con qué equipaje viaja (pedido de Gero, 14/09). En una
+     cotización de solo vuelos la opción numerada las sigue mostrando abajo,
+     que es donde las muestra la opción 1 de esa misma cotización. */
+  const fichaCabina = (n.cabina || n.equipaje) ? (
+    <div style={{ display:"flex", gap:10, alignItems:"flex-start",
+      ...(numero ? { marginTop:11 } : { marginBottom:11 }),
+      padding:"9px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
+      background:"#FBFBFE", breakInside:"avoid", breakAfter: numero ? undefined : "avoid" }}>
+      <div style={{ width:26, height:26, borderRadius:9, flexShrink:0, display:"grid",
+        placeItems:"center", background:`${G.b}12`, color:G.b }}>
+        {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
+          return <C.Icon size={13} />; })()}
+      </div>
+      <div style={{ fontSize:fzp(12.5, 13, 12), lineHeight:1.5, paddingTop:4, fontWeight:500 }}>
+        {[n.cabina, n.equipaje].filter(Boolean).join(" · ")}
+      </div>
+    </div>
+  ) : null;
   return (
     <div style={{ marginBottom: ultimo ? 22 : 18, breakInside:"avoid" }}>
       {/* Sin `flexWrap`: con un título largo el renglón se partía y el avión
@@ -1591,25 +1612,14 @@ function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mism
         </div>
       )}
 
+      {!numero && fichaCabina}
+
       {agruparTrayectos(n.vuelos, mismaCiudad).map((seg, ti, arr) => (
         <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
           anio={anio} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
       ))}
 
-      {(n.cabina || n.equipaje) && (
-        <div style={{ display:"flex", gap:10, alignItems:"flex-start", marginTop:11,
-          padding:"9px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
-          background:"#FBFBFE", breakInside:"avoid" }}>
-          <div style={{ width:26, height:26, borderRadius:9, flexShrink:0, display:"grid",
-            placeItems:"center", background:`${G.b}12`, color:G.b }}>
-            {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
-              return <C.Icon size={13} />; })()}
-          </div>
-          <div style={{ fontSize:fzp(12.5, 13, 12), lineHeight:1.5, paddingTop:4, fontWeight:500 }}>
-            {[n.cabina, n.equipaje].filter(Boolean).join(" · ")}
-          </div>
-        </div>
-      )}
+      {numero ? fichaCabina : null}
 
       {filas.length > 0 && (
         <div style={{ borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.08)",
