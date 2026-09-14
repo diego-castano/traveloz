@@ -21,7 +21,7 @@
 import { z } from "zod";
 import type { EstadoPresupuesto, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { linkVencido } from "@/lib/presupuesto/vencimiento";
+import { LINKS_VENCEN, linkVencido } from "@/lib/presupuesto/vencimiento";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { COTIZADOR_SETTINGS } from "@/lib/site-settings-bootstrap";
@@ -1268,9 +1268,11 @@ async function sellarEnvio(
     select: { enviadaAt: true, expiraAt: true },
   });
 
-  const detalle = `Vigencia ${vigenciaHoras} h hábiles · vence el ${textoVencimiento(expira)} · link /c/${link.token}${
-    opts.detalleExtra ? ` · ${opts.detalleExtra}` : ""
-  }`;
+  // Con los links sin vencimiento (LINKS_VENCEN apagado) la bitácora no habla
+  // de vigencia: el dato se sigue guardando, pero no significa nada.
+  const detalle = `${
+    LINKS_VENCEN ? `Vigencia ${vigenciaHoras} h hábiles · vence el ${textoVencimiento(expira)} · ` : ""
+  }link /c/${link.token}${opts.detalleExtra ? ` · ${opts.detalleExtra}` : ""}`;
 
   if (!opts.soloSiCambia) {
     await anotar(row.id, {
