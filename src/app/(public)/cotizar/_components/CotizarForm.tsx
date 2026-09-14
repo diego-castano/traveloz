@@ -53,12 +53,13 @@ export function CotizarForm() {
           />
         </li>
         <li className="col-sm-12">
-          <label htmlFor="q_dates">Fechas</label>
+          <label htmlFor="q_dates">Fechas*</label>
           <DateRangePicker
             nameFrom="fechaDesde"
             nameTo="fechaHasta"
-            placeholder="Fechas del viaje"
+            placeholder="Fechas del viaje *"
             variant="onGradient"
+            required
           />
         </li>
         <li className="col-sm-12">

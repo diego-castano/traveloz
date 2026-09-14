@@ -11,6 +11,18 @@ del catálogo, CRM).
 
 ---
 
+## 14 de septiembre de 2026
+
+### Cambiado
+
+- **La fecha de viaje es obligatoria para pedir cotización.** En la ficha
+  del paquete ("Contactate con nosotros") y en /cotizar el campo decía
+  "Fecha de viaje*" pero no frenaba nada: entraban leads al CRM sin fecha y
+  el equipo no podía cotizarlos (reporte de Amparo, 14/09). Ahora el
+  navegador no deja enviar sin elegirla en el calendario y el servidor la
+  vuelve a exigir ("Elegí la fecha de viaje."), así que ningún lead llega
+  sin fecha aunque alguien saltee el control del navegador.
+
 ## 11 de septiembre de 2026
 
 ### Cambiado

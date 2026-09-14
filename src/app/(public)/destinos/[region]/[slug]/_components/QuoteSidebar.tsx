@@ -108,7 +108,8 @@ export function QuoteSidebar({
             <DateRangePicker
               nameFrom="fechaDesde"
               nameTo="fechaHasta"
-              placeholder="Fecha de viaje"
+              placeholder="Fecha de viaje *"
+              required
             />
           </li>
           <li>
