@@ -15,6 +15,16 @@ del catálogo, CRM).
 
 ### Nuevo
 
+- **Negrita en el mensaje al pasajero y en las notas.** Pedido de Gero
+  (14/09): los dos campos libres del cotizador no tenían forma de destacar
+  una palabra. Las notas ahora llevan un botón de negrita arriba del campo
+  (y ⌘B / Ctrl+B), y salen así en el link y en el PDF. El mensaje al
+  pasajero sigue siendo texto plano —el mismo texto va por WhatsApp, por
+  email y a la ficha— así que la negrita se marca con *asteriscos*, la misma
+  marca que usa WhatsApp: el botón envuelve lo que esté seleccionado y lo
+  desenvuelve si se aprieta de nuevo. Lo que quede entre asteriscos sale en
+  negrita en la cotización, en el PDF y en el email, y WhatsApp lo pinta
+  solo. Un asterisco suelto ("Hotel 4*") no cambia nada.
 - **Mandar la cotización por email sin el pasajero.** En Compartir › Email,
   el campo "Para" traía el email de la ficha del pasajero y no se podía
   sacar; cuando el link ya se le pasó por WhatsApp y el email es solo el

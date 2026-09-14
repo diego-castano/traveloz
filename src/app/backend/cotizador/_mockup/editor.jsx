@@ -6,7 +6,7 @@ import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon, MapPin
+  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon, MapPin, Bold
 } from "lucide-react";
 import {
   MESES, ANIO_ACTUAL, REGIMENES, SUG, MODALIDADES, SUG_ALL,
@@ -529,19 +529,75 @@ function SeccionDestinos({ q, set, tramos, toast }) {
 function BloqueMensaje({ q, set, refEl }) {
   /* v4 · un solo texto: el mensaje automático. Si el vendedor quiere decir algo
      más, lo escribe acá mismo — el cliente pidió eliminar el editor aparte. */
+  const ta = useRef(null);
+
+  /* ── Negrita ──────────────────────────────────────────────────────────
+     Pedido de Gero (14/09). El campo sigue siendo texto plano —el mismo
+     mensaje sale por WhatsApp, por email y en la ficha, y el máster escribe
+     la plantilla en Ajustes—, así que la negrita se marca con *asteriscos*,
+     igual que en WhatsApp: ahí la pinta la app y acá la pintamos nosotros.
+
+     El botón envuelve lo seleccionado y lo desenvuelve si ya estaba marcado.
+     Sin selección, deja los dos asteriscos y el cursor en el medio. */
+  const negrita = () => {
+    const el = ta.current; if (!el) return;
+    const txt = String(q.mensajeAuto || "");
+    const a = el.selectionStart ?? txt.length;
+    const b = el.selectionEnd ?? a;
+    const sel = txt.slice(a, b);
+    /* Marcado de dos maneras: con los asteriscos adentro de la selección
+       (*así*) o justo afuera, que es como queda el texto después de apretar
+       el botón una vez. Las dos tienen que destapar, o el segundo click
+       terminaba escribiendo **la seña**. */
+    const adentro = sel.length > 2 && sel.startsWith("*") && sel.endsWith("*");
+    const afuera = !adentro && !!sel && txt[a - 1] === "*" && txt[b] === "*";
+    /* la selección del navegador suele venir con el espacio de al lado */
+    const izq = sel.length - sel.trimStart().length;
+    const der = sel.length - sel.trimEnd().length;
+    const nucleo = sel.trim();
+
+    let nuevo; let desde; let hasta;
+    if (adentro) {
+      const limpio = sel.slice(1, -1);
+      nuevo = txt.slice(0, a) + limpio + txt.slice(b);
+      desde = a; hasta = a + limpio.length;
+    } else if (afuera) {
+      nuevo = txt.slice(0, a - 1) + sel + txt.slice(b + 1);
+      desde = a - 1; hasta = desde + sel.length;
+    } else if (nucleo) {
+      const puesto = `${sel.slice(0, izq)}*${nucleo}*${der ? sel.slice(-der) : ""}`;
+      nuevo = txt.slice(0, a) + puesto + txt.slice(b);
+      desde = a + izq + 1; hasta = desde + nucleo.length;
+    } else {
+      nuevo = `${txt.slice(0, a)}**${txt.slice(b)}`;
+      desde = a + 1; hasta = desde;
+    }
+    set((d) => { d.mensajeAuto = nuevo; });
+    /* el valor lo repinta React; recién después vuelve la selección */
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(desde, hasta); });
+  };
+
   return (
     <Block id="b-mensaje" forwardRef={refEl} icon={MessageSquare} title="Mensaje al pasajero"
       right={<Pill tone="violet">Editable</Pill>}>
       <Label hint="se completa solo con el nombre y el link del vendedor">Mensaje automático</Label>
-      <textarea className="in" rows={7} value={q.mensajeAuto || ""}
-        style={{ lineHeight:1.6, fontSize:12.5, resize:"vertical" }}
+      <div className="wys-bar">
+        <button className="btn btn-g wys-b" title="Negrita (⌘B) — marca con *asteriscos*" aria-label="Negrita"
+          onMouseDown={(e) => e.preventDefault()} onClick={negrita}>
+          <Bold size={13} />
+        </button>
+      </div>
+      <textarea ref={ta} className="in" rows={7} value={q.mensajeAuto || ""}
+        style={{ lineHeight:1.6, fontSize:12.5, resize:"vertical", borderRadius:"0 0 11px 11px" }}
         placeholder="Hola {nombre}, de acuerdo a lo conversado te comparto la cotización…"
+        onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") { e.preventDefault(); negrita(); } }}
         onChange={(e) => set((d) => { d.mensajeAuto = e.target.value; })} />
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, lineHeight:1.55 }}>
         <span className="mono">{"{nombre}"}</span> toma el nombre del cliente y{" "}
         <span className="mono">{"{link}"}</span> el link de datos de pasajeros del vendedor.
         Si necesitás agregar algo, escribilo acá mismo: este texto sale arriba del detalle.
-        El máster define el texto por defecto en Ajustes.
+        Lo que va entre <span className="mono">*asteriscos*</span> sale en <b>negrita</b> — en la
+        cotización, en el email y en WhatsApp. El máster define el texto por defecto en Ajustes.
       </div>
     </Block>
   );
@@ -1718,6 +1774,20 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
 
   const sync = () => { const el = ed.current; if (el) set((d) => { d.notasCliente = el.innerHTML; }); };
 
+  /* ── Negrita ──────────────────────────────────────────────────────────
+     Pedido de Gero (14/09). El atajo del sistema (⌘B / Ctrl+B) ya escribía
+     negrita en este campo, pero sin botón nadie lo sabía. `styleWithCSS` en
+     false para que el navegador escriba <b> y no un <span style>: el
+     sanitizador del servidor tira los estilos y la negrita se perdía en el
+     camino a la ficha. */
+  const negrita = () => {
+    const el = ed.current; if (!el) return;
+    el.focus();
+    try { document.execCommand("styleWithCSS", false, false); } catch { /* Safari viejo */ }
+    document.execCommand("bold");
+    sync();
+  };
+
   /* ── Imágenes: al bucket, nunca adentro del HTML ──────────────────────
      Pegar una captura la inlineaba en base64 y una sola foto de celular
      sumaba dos o tres megas al JSON de la cotización: el autosave rebotaba
@@ -1785,10 +1855,20 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
           <ListaVuelosExtra q={q} set={set} toast={toast} aerolineas={aerolineas} numeradas={false} />
         </div>
       )}
+      {/* La barra va pegada arriba del campo: `.wys` ya redondea solo abajo
+          porque nació con ella. `onMouseDown` con preventDefault para que el
+          click no le saque el foco al texto y la selección siga viva. */}
+      <div className="wys-bar">
+        <button className="btn btn-g wys-b" title="Negrita (⌘B)" aria-label="Negrita"
+          onMouseDown={(e) => e.preventDefault()} onClick={negrita}>
+          <Bold size={13} />
+        </button>
+      </div>
       <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
         style={{ minHeight:140 }}
         data-ph="Escribí libre o pegá contenido: itinerarios, detalle de un circuito, condiciones… También imágenes."
         onInput={sync} onPaste={pegar} onDrop={soltar}
+        onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") { e.preventDefault(); negrita(); } }}
         onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); }} />
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
         <ImageIcon size={11} style={{ color:"var(--teal-2)", flexShrink:0 }} />

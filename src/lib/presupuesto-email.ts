@@ -20,6 +20,7 @@ import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion } from "@/lib/presupuesto/derivados";
 import { destinoFinal } from "@/lib/presupuesto/destino";
+import { negritasEnHtml, sinMarcasDeNegrita } from "@/lib/presupuesto/negrita";
 import { REGLA_HABILES, textoDiaCorto, textoVencimiento } from "@/lib/presupuesto/habiles";
 import type { ContenidoPresupuesto } from "@/lib/presupuesto/schema";
 
@@ -347,7 +348,9 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
   const saludoHtml = saludoTxt
     ? saludoTxt
         .split(/\n{2,}/)
-        .map((parr) => P(escapeHtml(parr).replace(/\n/g, "<br/>")))
+        // *asteriscos* = negrita, igual que en WhatsApp y que en la ficha del
+        // pasajero: el vendedor escribe el mensaje una sola vez.
+        .map((parr) => P(negritasEnHtml(escapeHtml(parr)).replace(/\n/g, "<br/>")))
         .join("")
     : P(
         `Hola${nombre ? ` <strong>${escapeHtml(nombre)}</strong>` : ""}, te comparto la cotización de <strong>${escapeHtml(
@@ -405,7 +408,9 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
           ...firmaTexto(vendedor),
         ]
       : [
-          saludoTxt ||
+          // En la versión de texto plano las marcas se sacan: ahí no hay
+          // negrita que pintar y los asteriscos sueltos son ruido.
+          sinMarcasDeNegrita(saludoTxt) ||
             `Hola${nombre ? ` ${nombre}` : ""}, te comparto la cotización de ${destino}.`,
           "",
           salida ? `Salida: ${salida}` : null,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Fragment, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2,
   CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
@@ -15,6 +15,7 @@ import { Foto, CATS, Estrellas } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { resolverIcono } from "@/lib/presupuesto/iconos";
+import { partirNegritas } from "@/lib/presupuesto/negrita";
 
 /* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
 const PAGO_TARJETAS = [
@@ -748,7 +749,14 @@ function SalidaPasajero({
                       letterSpacing: primera ? "-.012em" : "-.004em",
                       textWrap:"pretty",
                       color: primera ? "#1A1A2E" : "#3D4066" }}>
-                      {t}
+                      {/* *asteriscos* = negrita, la misma marca que WhatsApp: el
+                          vendedor la escribe una vez y el texto sale destacado en
+                          el chat, en la ficha y en el email. (Pedido de Gero, 14/09.) */}
+                      {partirNegritas(t).map((trozo, ti) => (
+                        trozo.fuerte
+                          ? <b key={ti} style={{ fontWeight:700, color:"#1A1A2E" }}>{trozo.texto}</b>
+                          : <Fragment key={ti}>{trozo.texto}</Fragment>
+                      ))}
                     </p>
                   );
                 })}
