@@ -105,6 +105,8 @@ export interface ContenidoPublico {
     aerolinea: string;
     dia: number | null;
     mes: number | null;
+    /** Fecha ISO del tramo, cuando la lectura con IA la trajo. null si no. */
+    fecha: string | null;
     origen: string;
     destino: string;
     salida: string;
@@ -122,7 +124,7 @@ export interface ContenidoPublico {
     precio: { adulto: string; menor: string; infante: string };
     vuelos: Array<{
       id: string; cia: string; nro: string; aerolinea: string;
-      dia: number | null; mes: number | null;
+      dia: number | null; mes: number | null; fecha: string | null;
       origen: string; destino: string; salida: string; llegada: string;
       masDias: number | null;
     }>;
@@ -200,6 +202,7 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
       aerolinea: txt(v?.aerolinea),
       dia: v?.dia ?? null,
       mes: v?.mes ?? null,
+      fecha: typeof v?.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.fecha) ? v.fecha : null,
       origen: txt(v?.origen),
       destino: txt(v?.destino),
       salida: txt(v?.salida),
@@ -226,6 +229,7 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
         aerolinea: txt(v?.aerolinea),
         dia: v?.dia ?? null,
         mes: v?.mes ?? null,
+        fecha: typeof v?.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.fecha) ? v.fecha : null,
         origen: txt(v?.origen),
         destino: txt(v?.destino),
         salida: txt(v?.salida),

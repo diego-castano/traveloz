@@ -6,9 +6,9 @@ import {
   CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
 } from "lucide-react";
 import {
-  MESES, MES_AB, ANIO_ACTUAL,
+  MESES, MES_AB,
   fmtCorto, fmtLargo, money, precioOpcion, ventaTarifa, etiquetaTarifa, renderPlantilla, fotoBg,
-  destinoFinal, diasDeMas,
+  destinoFinal, diasDeMas, conFechas,
 } from "./data";
 import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
 import { Foto, CATS, Estrellas } from "./ui";
@@ -490,12 +490,12 @@ function SalidaPasajero({
     const cb = aeropuertosFicha[b]?.ciudad;
     return !!ca && !!cb && ca === cb;
   }, [aeropuertosFicha]);
-  const trayectos = useMemo(() => agruparTrayectos(q.vuelos, mismaCiudad), [q.vuelos, mismaCiudad]);
-  /* el PNR trae día y mes pero no el año: lo saca de la fecha de salida cargada */
-  const anioItinerario = useMemo(() => {
-    const m = String(q.fechaSalida || "").match(/^(\d{4})/);
-    return m ? Number(m[1]) : ANIO_ACTUAL;
-  }, [q.fechaSalida]);
+  /* el PNR trae día y mes pero no el año: `conFechas` lo saca de la fecha de
+     salida cargada, tramo a tramo (ver comentario en data.js). */
+  const trayectos = useMemo(
+    () => agruparTrayectos(conFechas(q.vuelos, q.fechaSalida), mismaCiudad),
+    [q.vuelos, q.fechaSalida, mismaCiudad]
+  );
 
   /* ¿hay bloc de notas al pasajero? El HTML puede ser puro markup vacío. */
   const hayNotas = hayNotasReales(q.notasCliente);
@@ -872,7 +872,7 @@ function SalidaPasajero({
             <div style={{ marginBottom: q.soloVuelos ? 14 : 24 }}>
               {trayectos.map((seg, ti) => (
                 <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectos.length - 1}
-                  anio={anioItinerario} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+                  ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
               ))}
             </div>
           </div>
@@ -949,7 +949,7 @@ function SalidaPasajero({
           <div data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             {opcionesDeVuelo.map((n, ni) => (
               <VueloExtra key={n.id} n={n} numero={ni + 2} ultimo={ni === opcionesDeVuelo.length - 1}
-                anio={anioItinerario} desk={desk} impresion={impresion}
+                fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
                 fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
           </div>
@@ -1357,7 +1357,7 @@ function SalidaPasajero({
                 cambiar de idioma visual. */}
             {alternativasEnNotas.map((n, ni) => (
               <VueloExtra key={n.id} n={n} ultimo={ni === alternativasEnNotas.length - 1}
-                anio={anioItinerario} desk={desk} impresion={impresion}
+                fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
                 fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
           </div>
@@ -1518,14 +1518,15 @@ function saludoSinNombre(txt) {
     .replace(/^(\s*¡Hola! [¿¡]?)([a-záéíóúüñ])/u, (m, cab, c) => cab + c.toLocaleUpperCase("es"));
 }
 
-/* "Jueves 01 Oct" — el PNR no trae el año, se lo pasa quien renderiza */
+/* "Jueves 01 Oct" — recibe la fecha real ya resuelta por `conFechas`, con su
+   año correcto tramo a tramo (ver comentario en data.js). */
 const DIAS_SEMANA = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-function fechaTrayecto(v, anio) {
-  if (!v) return "";
-  const ab = MES_AB[v.mes] || "";
+function fechaTrayecto(f) {
+  if (!(f instanceof Date) || isNaN(f)) return "";
+  const ab = MES_AB[f.getMonth()] || "";
   const mes3 = ab ? ab[0].toUpperCase() + ab.slice(1) : "";
-  const dia = DIAS_SEMANA[new Date(anio, v.mes, v.dia).getDay()];
-  return `${dia} ${String(v.dia).padStart(2, "0")} ${mes3}`.trim();
+  const dia = DIAS_SEMANA[f.getDay()];
+  return `${dia} ${String(f.getDate()).padStart(2, "0")} ${mes3}`.trim();
 }
 
 /* un punto de la ruta vertical: ciudad + hora arriba, terminal abajo.
@@ -1575,7 +1576,7 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
    vuelo. En una de solo vuelos es una OPCIÓN más y lleva número, porque ahí
    las opciones son la cotización y el pasajero contesta "me quedo con la 2".
    Es la misma pieza: cambia el rótulo y dónde se dibuja, no lo que muestra. */
-function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mismaCiudad }) {
+function VueloExtra({ n, numero, ultimo, fechaSalida, desk, impresion, fz, fzp, G, mismaCiudad }) {
   const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
     .filter(([k]) => Number(n.precio?.[k]) > 0);
   /* el título va literal: es lo que el vendedor escribió, sin recortes */
@@ -1622,9 +1623,9 @@ function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mism
 
       {!numero && fichaCabina}
 
-      {agruparTrayectos(n.vuelos, mismaCiudad).map((seg, ti, arr) => (
+      {agruparTrayectos(conFechas(n.vuelos, fechaSalida), mismaCiudad).map((seg, ti, arr) => (
         <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
-          anio={anio} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+          ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
       ))}
 
       {numero ? fichaCabina : null}
@@ -1666,7 +1667,7 @@ function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mism
 
    Lo que ya no está: la caja de espera entre tramos. Se deduce de las horas
    del tramo siguiente, y Gero pidió sacarla en la llamada del 3/9. */
-function TrayectoTabla({ seg, ti, ultimo, anio, ancho, impresion, fz, fzp, G }) {
+function TrayectoTabla({ seg, ti, ultimo, ancho, impresion, fz, fzp, G }) {
   const aeropuertos = useAeropuertos();
   /* Escritorio y papel reparten igual: el aeropuerto sube al lado de la ciudad
      y el vuelo se va a su propia columna. */
@@ -1691,8 +1692,12 @@ function TrayectoTabla({ seg, ti, ultimo, anio, ancho, impresion, fz, fzp, G }) 
 
   const desde = lugar(primero.origen).ciudad;
   const hasta = lugar(cierra.destino).ciudad;
-  const salida = fechaTrayecto(primero, anio);
-  const llegada = fechaTrayecto({ ...cierra, dia: cierra.dia + diasDeMas(cierra) }, anio);
+  const salida = fechaTrayecto(primero.fechaReal);
+  const llegada = fechaTrayecto(
+    cierra.fechaReal
+      ? new Date(cierra.fechaReal.getFullYear(), cierra.fechaReal.getMonth(), cierra.fechaReal.getDate() + diasDeMas(cierra))
+      : null
+  );
   const cuando = salida === llegada ? salida : `${salida} → ${llegada}`;
 
   const Punto = ({ cod, mas }) => {
@@ -1748,7 +1753,7 @@ function TrayectoTabla({ seg, ti, ultimo, anio, ancho, impresion, fz, fzp, G }) 
 
       {seg.map((s, si) => {
         const mas = diasDeMas(s);
-        const dia = fechaTrayecto(s, anio);
+        const dia = fechaTrayecto(s.fechaReal);
         /* El primer tramo no lleva divisor: la fecha ya la dice la banda del
            rumbo, y ponerla dos veces seguidas era ruido. Del segundo en
            adelante el divisor marca el cambio de día, que es su trabajo. */

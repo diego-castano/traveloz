@@ -400,8 +400,13 @@ function offsetDias(dia, mes, diaL, mesL) {
    Vive acá y no en cada pantalla: la ficha del pasajero, el PDF y el editor
    tienen que decir el mismo número. */
 function diasDeMas(v) {
-  const n = Number(v?.masDias);
-  if (Number.isFinite(n) && n >= 0) return n;
+  /* `masDias: null` es "no se sabe", no cero: Number(null) da 0 y dejaba sin
+     "+1 día" a los tramos que la lectura con IA guarda sin ese dato. */
+  const crudo = v?.masDias;
+  if (crudo !== null && crudo !== undefined && crudo !== "") {
+    const n = Number(crudo);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
   return String(v?.llegada ?? "") < String(v?.salida ?? "") ? 1 : 0;
 }
 
@@ -451,6 +456,49 @@ function fechaDeVuelo(v) {
   if (!Number.isFinite(dia) || !Number.isFinite(mes)) return "";
   const anio = mes >= new Date().getMonth() ? ANIO_ACTUAL : ANIO_ACTUAL + 1;
   return toISO(new Date(anio, mes, dia));
+}
+
+/* Fecha real de la salida de cada tramo. El PNR imprime "30APR" sin año:
+   1. manda la `fecha` ISO del tramo si coincide con su día y mes (la lectura
+      con IA la guarda);
+   2. si no, el primer tramo toma el año que lo deja más cerca de la fecha de
+      salida del encabezado, o la próxima ocurrencia si no hay fecha de salida;
+   3. cada tramo siguiente arranca con el año del anterior y pasa al siguiente
+      si su día y mes quedan más de dos días antes (diciembre, enero).
+   Fechas locales a medianoche: el día y el mes que se muestran son los mismos
+   en el servidor y en el navegador. */
+function fechaLocalDeISO(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getMonth() === Number(m[2]) - 1 ? d : null;
+}
+
+function conFechas(vuelos, fechaSalida) {
+  const base = fechaLocalDeISO(fechaSalida);
+  let prev = null;
+  return (Array.isArray(vuelos) ? vuelos : []).map((v) => {
+    const dia = Number(v?.dia), mes = Number(v?.mes);
+    const valido = Number.isInteger(dia) && Number.isInteger(mes) && mes >= 0 && mes <= 11 && dia >= 1 && dia <= 31;
+    let f = fechaLocalDeISO(v?.fecha);
+    if (f && valido && (f.getMonth() !== mes || f.getDate() !== dia)) f = null;
+    if (!f && valido) {
+      if (prev) {
+        f = new Date(prev.getFullYear(), mes, dia);
+        if (f < new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 2)) {
+          f = new Date(prev.getFullYear() + 1, mes, dia);
+        }
+      } else if (base) {
+        const y = base.getFullYear();
+        f = [y - 1, y, y + 1].map((a) => new Date(a, mes, dia))
+          .reduce((mejor, c) => (Math.abs(c - base) < Math.abs(mejor - base) ? c : mejor));
+      } else {
+        f = fechaLocalDeISO(fechaDeVuelo({ dia, mes }));
+      }
+    }
+    if (f) prev = f;
+    return { ...v, fechaReal: f };
+  });
 }
 
 /* ¿La lectura de la IA le gana a la del parser local? Gana si encontró más
@@ -687,7 +735,7 @@ export {
   horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,
   uid, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, destinoLimpio, destinoFinal, ciudadLimpia, tituloDeDestinos, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
-  fechaDeVuelo, itinerarioMasCompleto, offsetDias, diasDeMas,
+  fechaDeVuelo, conFechas, itinerarioMasCompleto, offsetDias, diasDeMas,
   NUM_PAL, numPal, palabraEn, detectarMes, detectarPax, detectarNoches, detectarPaquetes, detectarTelefono,
   detectarDestino, detectarCliente, etiquetaPax, detectarConsulta, ESTADOS, estadoEfectivo,
   /* v2B */
