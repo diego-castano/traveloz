@@ -1976,20 +1976,16 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
   };
   /* la segunda tarifa suele ser el menor, después el infante y la familiar */
   const tipoSiguiente = (n) => (n === 1 ? "Por menor" : n === 2 ? "Por infante" : n === 3 ? "Por familia" : "Por adulto");
-  /* ── Habitaciones: la misma en todas las opciones ──────────────────────
-     Una habitación no cambia entre opciones: cambia el hotel y cambia el
-     precio. Por eso "Agregar habitación" la crea en esta opción (clonando la
-     última, que es lo que el vendedor quiere el 90% de las veces) y la replica
-     en las demás con los netos en 0 — los precios se cargan por hotel. `grupo`
-     ata las réplicas: cambiar la OCUPACIÓN en una las mueve a todas, porque es
-     la misma gente en los dos hoteles.
+  /* ── Habitaciones: se copian al agregarlas, se editan por opción ────────
+     "Agregar habitación" la crea en esta opción (clonando la última, que es
+     lo que el vendedor quiere el 90% de las veces) y la replica en las demás
+     con los netos en 0: los precios se cargan por hotel. `grupo` ata la
+     habitación con sus réplicas solo para no duplicarla al agregar.
 
-     El TIPO, en cambio, se queda en su opción. Es el nombre que le pone el
-     hotel a esa habitación —"premium" en el Riu no es la "premium" del
-     Iberostar— y viajaba con las réplicas: escribirlo en la opción 2 lo
-     pisaba en la 1 (reporte de Gero, 14/09).
-
-     Las habitaciones viejas, sin `grupo`, quedan sueltas como hasta ahora. */
+     Después cada opción es dueña de su habitación. El 14/09 el tipo dejó de
+     viajar ("premium" en el Riu no es la "premium" del Iberostar) y el 15/09
+     la ocupación también: una opción puede ser para 2 y otra para 4, y
+     cambiar la ocupación en la opción 2 pisaba la de la 1 (reportes de Gero). */
   const mismaHab = (h, ocupacion, tipo) =>
     norm(h?.ocupacion || "") === norm(ocupacion || "") && norm(h?.tipo || "") === norm(tipo || "");
   const tarifaEnCero = (t) => ({ id:uid("tf"), tipo:t?.tipo || "Por adulto", tipoLibre:t?.tipoLibre || "",
@@ -2030,20 +2026,10 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
     }
   };
 
-  /* Solo la ocupación viaja a las réplicas. El tipo de habitación, el neto y
-     la venta son de cada opción: dependen del hotel que se esté cotizando. */
+  /* Ocupación, tipo, neto y venta son de cada opción: editar una habitación
+     no toca sus réplicas en las demás. */
   const editarHab = (i, hj, campo, valor) => set((d) => {
-    const hab = d.opciones[i].habitaciones[hj];
-    hab[campo] = valor;
-    if (campo !== "ocupacion" || !hab.grupo) return;
-    d.opciones.forEach((o, j) => {
-      if (j === i) return;
-      const hs = o.habitaciones || (o.habitaciones = []);
-      const gemela = hs.find((h) => h.grupo === hab.grupo);
-      if (gemela) { gemela[campo] = valor; return; }
-      if (hs.some((h) => mismaHab(h, hab.ocupacion, hab.tipo))) return;
-      hs.push(replicaDe(hab));
-    });
+    d.opciones[i].habitaciones[hj][campo] = valor;
   });
   /* el "+" de la cabecera: agrega una opción en las mismas condiciones que esta */
   const duplicar = (i) => {
@@ -2242,7 +2228,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                       padding:"12px", marginBottom:12, background:"var(--card-3)" }}>
                       <div style={{ display:"flex", gap:8, flexWrap:"wrap", alignItems:"flex-end" }}>
                         <div style={{ flex:"1 1 165px" }}>
-                          <Label hint={hab.grupo ? "igual en todas las opciones" : null}>Ocupación</Label>
+                          <Label hint={q.opciones.length > 1 ? "solo de esta opción" : null}>Ocupación</Label>
                           <CampoOcupacion valor={hab.ocupacion}
                             onChange={(v) => editarHab(i, hj, "ocupacion", v)} />
                         </div>
