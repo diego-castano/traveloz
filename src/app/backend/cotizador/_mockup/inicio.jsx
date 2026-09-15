@@ -1044,7 +1044,7 @@ function ListadoContenido({
     });
   }, [q, filtro, semFiltro, destFiltro, mesFiltro, conOv, vendedores]);
 
-  /* Resumen del semáforo: los cuatro números que el vendedor mira antes que
+  /* Resumen del semáforo: los números que el vendedor mira antes que
      la tabla. Salen de las MISMAS filas que están en pantalla (con el filtro
      de vendedor del admin ya aplicado), así el chip nunca promete una fila que
      la grilla no puede mostrar. El reparto lo decide `bucketSemaforo()`, el
@@ -1055,12 +1055,12 @@ function ListadoContenido({
     return c;
   }, [conOv]);
 
+  /* Sin chip de "+24 h hábiles sin abrir": el cliente no lo usa (15/09). La
+     fila sigue marcándose en ámbar en la columna de seguimiento. */
   const CHIPS_SEM = [
     /* la chip roja solo existe mientras los links vencen */
     ...(LINKS_VENCEN ? [{ k:"roja", c:"#F43E55", l:"Vencidas sin abrir", n:resumenSem.roja,
       tip:"El link venció y el pasajero nunca lo abrió. Reactivá y reenviá." }] : []),
-    { k:"amarilla", c:"#E8A13C", l:"+24 h hábiles sin abrir",  n:resumenSem.amarilla,
-      tip:"Más de 24 h hábiles sin apertura (el fin de semana no cuenta). Va un recordatorio." },
     { k:"verde",    c:"#2A9E8E", l:"Abiertas o confirmadas",   n:resumenSem.verde,
       tip:"El pasajero la abrió, o ya confirmó. Buen momento para el seguimiento." },
     { k:"borrador", c:"#B0B4CD", l:"Borradores",               n:resumenSem.borrador,
@@ -1120,7 +1120,7 @@ function ListadoContenido({
         )}
       </div>
 
-      {/* semáforo del listado: cuatro chips que filtran la grilla de abajo.
+      {/* semáforo del listado: chips que filtran la grilla de abajo.
           Tocar el que ya está activo lo apaga y vuelven todas. */}
       <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
         {CHIPS_SEM.map((ch) => (
