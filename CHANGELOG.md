@@ -15,6 +15,16 @@ del catálogo, CRM).
 
 ### Nuevo
 
+- **Negrita en el mensaje al pasajero y en las notas.** Pedido de Gero
+  (14/09): los dos campos libres del cotizador no tenían forma de destacar
+  una palabra. Las notas ahora llevan un botón de negrita arriba del campo
+  (y ⌘B / Ctrl+B), y salen así en el link y en el PDF. El mensaje al
+  pasajero sigue siendo texto plano —el mismo texto va por WhatsApp, por
+  email y a la ficha— así que la negrita se marca con *asteriscos*, la misma
+  marca que usa WhatsApp: el botón envuelve lo que esté seleccionado y lo
+  desenvuelve si se aprieta de nuevo. Lo que quede entre asteriscos sale en
+  negrita en la cotización, en el PDF y en el email, y WhatsApp lo pinta
+  solo. Un asterisco suelto ("Hotel 4*") no cambia nada.
 - **Mandar la cotización por email sin el pasajero.** En Compartir › Email,
   el campo "Para" traía el email de la ficha del pasajero y no se podía
   sacar; cuando el link ya se le pasó por WhatsApp y el email es solo el
@@ -26,6 +36,14 @@ del catálogo, CRM).
 
 ### Arreglado
 
+- **El tipo de habitación es de cada opción.** Escribir "premium" en la
+  habitación de la opción 2 lo escribía también en la opción 1 (reporte de
+  Gero, 14/09). Las habitaciones viajan entre opciones para no cargarlas dos
+  veces, y el tipo viajaba con ellas; pero el tipo es el nombre que le pone
+  cada hotel a esa habitación, y la "premium" del Riu no es la del
+  Iberostar. Ahora la ocupación se sigue copiando entre opciones —es la
+  misma gente— y el tipo se queda donde se escribe. El campo lo aclara
+  cuando hay más de una opción.
 - **Un circuito publica el precio y las noches del circuito, siempre.**
   "Turquía & Madrid - 12 Noches" decía USD 2.162 en el panel (markup 15 %)
   pero la web publicaba 2.307 y "03 Noches" (reporte de Amparo, 14/09). El
@@ -40,6 +58,24 @@ del catálogo, CRM).
 
 ### Cambiado
 
+- **Las alternativas de vuelo salen con su rótulo y con su título.** En la
+  ficha del pasajero, cada vuelo alternativo que va en las notas dice ahora
+  "Opción alternativa de vuelo" (Gero lo prefirió a "Otra opción de vuelo")
+  y, debajo, el título tal cual lo escribió el vendedor en el cotizador
+  ("Pasajes aéreos con la aerolínea Copa Airlines – según itinerario").
+  Antes el título ocupaba el lugar del rótulo y, si no se escribía ninguno,
+  la alternativa salía con un genérico que no decía nada del vuelo. En el
+  cotizador, la sección de las notas también pasa a llamarse "Opción
+  alternativa de vuelo" y el campo del título dice para qué es. Aplica al
+  link y al PDF. (Pedido de Gero, 14/09.)
+- **La cabina y la franquicia de la alternativa van arriba del itinerario.**
+  Se cargan abajo de los tramos en el cotizador y salían también abajo en la
+  ficha: el pasajero recorría toda la tabla de vuelos y recién al final leía
+  con qué equipaje viaja. Ahora salen arriba, entre el título y el primer
+  tramo, igual que en la opción principal del paquete (donde van en "El
+  precio incluye"). En las cotizaciones de solo vuelos las opciones
+  numeradas no cambian: ahí siguen abajo, como en su opción 1. (Pedido de
+  Gero, 14/09.)
 - **La fecha de viaje es obligatoria para pedir cotización.** En la ficha
   del paquete ("Contactate con nosotros") y en /cotizar el campo decía
   "Fecha de viaje*" pero no frenaba nada: entraban leads al CRM sin fecha y

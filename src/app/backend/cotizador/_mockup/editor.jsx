@@ -6,7 +6,7 @@ import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon, MapPin
+  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon, MapPin, Bold
 } from "lucide-react";
 import {
   MESES, ANIO_ACTUAL, REGIMENES, SUG, MODALIDADES, SUG_ALL,
@@ -529,19 +529,75 @@ function SeccionDestinos({ q, set, tramos, toast }) {
 function BloqueMensaje({ q, set, refEl }) {
   /* v4 · un solo texto: el mensaje automático. Si el vendedor quiere decir algo
      más, lo escribe acá mismo — el cliente pidió eliminar el editor aparte. */
+  const ta = useRef(null);
+
+  /* ── Negrita ──────────────────────────────────────────────────────────
+     Pedido de Gero (14/09). El campo sigue siendo texto plano —el mismo
+     mensaje sale por WhatsApp, por email y en la ficha, y el máster escribe
+     la plantilla en Ajustes—, así que la negrita se marca con *asteriscos*,
+     igual que en WhatsApp: ahí la pinta la app y acá la pintamos nosotros.
+
+     El botón envuelve lo seleccionado y lo desenvuelve si ya estaba marcado.
+     Sin selección, deja los dos asteriscos y el cursor en el medio. */
+  const negrita = () => {
+    const el = ta.current; if (!el) return;
+    const txt = String(q.mensajeAuto || "");
+    const a = el.selectionStart ?? txt.length;
+    const b = el.selectionEnd ?? a;
+    const sel = txt.slice(a, b);
+    /* Marcado de dos maneras: con los asteriscos adentro de la selección
+       (*así*) o justo afuera, que es como queda el texto después de apretar
+       el botón una vez. Las dos tienen que destapar, o el segundo click
+       terminaba escribiendo **la seña**. */
+    const adentro = sel.length > 2 && sel.startsWith("*") && sel.endsWith("*");
+    const afuera = !adentro && !!sel && txt[a - 1] === "*" && txt[b] === "*";
+    /* la selección del navegador suele venir con el espacio de al lado */
+    const izq = sel.length - sel.trimStart().length;
+    const der = sel.length - sel.trimEnd().length;
+    const nucleo = sel.trim();
+
+    let nuevo; let desde; let hasta;
+    if (adentro) {
+      const limpio = sel.slice(1, -1);
+      nuevo = txt.slice(0, a) + limpio + txt.slice(b);
+      desde = a; hasta = a + limpio.length;
+    } else if (afuera) {
+      nuevo = txt.slice(0, a - 1) + sel + txt.slice(b + 1);
+      desde = a - 1; hasta = desde + sel.length;
+    } else if (nucleo) {
+      const puesto = `${sel.slice(0, izq)}*${nucleo}*${der ? sel.slice(-der) : ""}`;
+      nuevo = txt.slice(0, a) + puesto + txt.slice(b);
+      desde = a + izq + 1; hasta = desde + nucleo.length;
+    } else {
+      nuevo = `${txt.slice(0, a)}**${txt.slice(b)}`;
+      desde = a + 1; hasta = desde;
+    }
+    set((d) => { d.mensajeAuto = nuevo; });
+    /* el valor lo repinta React; recién después vuelve la selección */
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(desde, hasta); });
+  };
+
   return (
     <Block id="b-mensaje" forwardRef={refEl} icon={MessageSquare} title="Mensaje al pasajero"
       right={<Pill tone="violet">Editable</Pill>}>
       <Label hint="se completa solo con el nombre y el link del vendedor">Mensaje automático</Label>
-      <textarea className="in" rows={7} value={q.mensajeAuto || ""}
-        style={{ lineHeight:1.6, fontSize:12.5, resize:"vertical" }}
+      <div className="wys-bar">
+        <button className="btn btn-g wys-b" title="Negrita (⌘B) — marca con *asteriscos*" aria-label="Negrita"
+          onMouseDown={(e) => e.preventDefault()} onClick={negrita}>
+          <Bold size={13} />
+        </button>
+      </div>
+      <textarea ref={ta} className="in" rows={7} value={q.mensajeAuto || ""}
+        style={{ lineHeight:1.6, fontSize:12.5, resize:"vertical", borderRadius:"0 0 11px 11px" }}
         placeholder="Hola {nombre}, de acuerdo a lo conversado te comparto la cotización…"
+        onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") { e.preventDefault(); negrita(); } }}
         onChange={(e) => set((d) => { d.mensajeAuto = e.target.value; })} />
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, lineHeight:1.55 }}>
         <span className="mono">{"{nombre}"}</span> toma el nombre del cliente y{" "}
         <span className="mono">{"{link}"}</span> el link de datos de pasajeros del vendedor.
         Si necesitás agregar algo, escribilo acá mismo: este texto sale arriba del detalle.
-        El máster define el texto por defecto en Ajustes.
+        Lo que va entre <span className="mono">*asteriscos*</span> sale en <b>negrita</b> — en la
+        cotización, en el email y en WhatsApp. El máster define el texto por defecto en Ajustes.
       </div>
     </Block>
   );
@@ -1554,12 +1610,13 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
         {/* En solo vuelos la opción se llama por su número y nada más: ahí las
             opciones SON la cotización y el pasajero contesta "me quedo con la
             2". En un paquete es una alternativa suelta al vuelo del paquete y
-            se la nombra a mano ("Llega de día"). */}
+            lleva título: en la ficha sale bajo el rótulo "Opción alternativa
+            de vuelo", tal cual se escribe acá (pedido de Gero, 14/09). */}
         {numero ? (
           <span style={{ flex:1, fontSize:13, fontWeight:700 }}>Opción {numero}</span>
         ) : (
           <input className="in" style={{ flex:1, height:30, fontSize:12 }} value={nota.nombre || ""}
-            placeholder="Cómo se llama esta opción (ej. Llega de día)"
+            placeholder="Título que ve el pasajero (ej. Pasajes aéreos con Copa Airlines – según itinerario)"
             onChange={(e) => enNota((n) => { n.nombre = e.target.value; })} />
         )}
         <button className="btn btn-g btn-ico" title="Quitar este itinerario"
@@ -1656,8 +1713,9 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
    qué tipo de cotización es.
 
    · Paquete: son ALTERNATIVAS al vuelo del paquete, viven arriba del texto de
-     las notas, llevan título libre y hay tope de dos —pedido de Gero, para que
-     la cotización no se haga un choclo; una tercera va por WhatsApp—.
+     las notas, llevan título libre —que la ficha muestra literal, bajo el
+     rótulo "Opción alternativa de vuelo"— y hay tope de dos —pedido de Gero,
+     para que la cotización no se haga un choclo; una tercera va por WhatsApp—.
    · Solo vuelos: son LAS opciones de la cotización, viven en el módulo de
      itinerario y van numeradas desde la 2, porque la 1 es la de arriba. Sin
      tope: ahí el vendedor arma tantas como quiera comparar.
@@ -1678,10 +1736,10 @@ function ListaVuelosExtra({ q, set, toast, aerolineas, numeradas }) {
         marginBottom: lista.length ? 11 : 0 }}>
         <Plane size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
         <span style={{ fontSize:12.5, fontWeight:700 }}>
-          {numeradas ? "Más opciones de vuelo" : "Otra opción de vuelo"}
+          {numeradas ? "Más opciones de vuelo" : "Opción alternativa de vuelo"}
         </span>
         <span style={{ fontSize:11.5, color:"var(--n400)" }}>
-          {numeradas ? "cada una con su itinerario y su precio" : "opcional · sale abajo del texto"}
+          {numeradas ? "cada una con su itinerario y su precio" : "opcional · sale abajo del texto, con su título"}
         </span>
         {lista.length < tope ? (
           <Btn size="sm" style={{ marginLeft:"auto" }} onClick={agregar}>
@@ -1715,6 +1773,20 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
   }, [html]);
 
   const sync = () => { const el = ed.current; if (el) set((d) => { d.notasCliente = el.innerHTML; }); };
+
+  /* ── Negrita ──────────────────────────────────────────────────────────
+     Pedido de Gero (14/09). El atajo del sistema (⌘B / Ctrl+B) ya escribía
+     negrita en este campo, pero sin botón nadie lo sabía. `styleWithCSS` en
+     false para que el navegador escriba <b> y no un <span style>: el
+     sanitizador del servidor tira los estilos y la negrita se perdía en el
+     camino a la ficha. */
+  const negrita = () => {
+    const el = ed.current; if (!el) return;
+    el.focus();
+    try { document.execCommand("styleWithCSS", false, false); } catch { /* Safari viejo */ }
+    document.execCommand("bold");
+    sync();
+  };
 
   /* ── Imágenes: al bucket, nunca adentro del HTML ──────────────────────
      Pegar una captura la inlineaba en base64 y una sola foto de celular
@@ -1783,10 +1855,20 @@ function BloqueNotasCliente({ q, set, refEl, toast }) {
           <ListaVuelosExtra q={q} set={set} toast={toast} aerolineas={aerolineas} numeradas={false} />
         </div>
       )}
+      {/* La barra va pegada arriba del campo: `.wys` ya redondea solo abajo
+          porque nació con ella. `onMouseDown` con preventDefault para que el
+          click no le saque el foco al texto y la selección siga viva. */}
+      <div className="wys-bar">
+        <button className="btn btn-g wys-b" title="Negrita (⌘B)" aria-label="Negrita"
+          onMouseDown={(e) => e.preventDefault()} onClick={negrita}>
+          <Bold size={13} />
+        </button>
+      </div>
       <div ref={ed} className="wys" contentEditable suppressContentEditableWarning
         style={{ minHeight:140 }}
         data-ph="Escribí libre o pegá contenido: itinerarios, detalle de un circuito, condiciones… También imágenes."
         onInput={sync} onPaste={pegar} onDrop={soltar}
+        onKeyDown={(e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") { e.preventDefault(); negrita(); } }}
         onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); }} />
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6 }}>
         <ImageIcon size={11} style={{ color:"var(--teal-2)", flexShrink:0 }} />
@@ -1899,13 +1981,22 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
      precio. Por eso "Agregar habitación" la crea en esta opción (clonando la
      última, que es lo que el vendedor quiere el 90% de las veces) y la replica
      en las demás con los netos en 0 — los precios se cargan por hotel. `grupo`
-     ata las réplicas: cambiar la ocupación o el tipo en una las mueve a todas.
+     ata las réplicas: cambiar la OCUPACIÓN en una las mueve a todas, porque es
+     la misma gente en los dos hoteles.
+
+     El TIPO, en cambio, se queda en su opción. Es el nombre que le pone el
+     hotel a esa habitación —"premium" en el Riu no es la "premium" del
+     Iberostar— y viajaba con las réplicas: escribirlo en la opción 2 lo
+     pisaba en la 1 (reporte de Gero, 14/09).
+
      Las habitaciones viejas, sin `grupo`, quedan sueltas como hasta ahora. */
   const mismaHab = (h, ocupacion, tipo) =>
     norm(h?.ocupacion || "") === norm(ocupacion || "") && norm(h?.tipo || "") === norm(tipo || "");
   const tarifaEnCero = (t) => ({ id:uid("tf"), tipo:t?.tipo || "Por adulto", tipoLibre:t?.tipoLibre || "",
     neto:0, venta:null, factor:factorDefault });
-  const replicaDe = (hab) => ({ id:uid("hab"), grupo:hab.grupo, ocupacion:hab.ocupacion, tipo:hab.tipo,
+  /* La réplica lleva la ocupación, no el tipo: el nombre de la habitación lo
+     pone cada hotel y el vendedor lo escribe cuando lo tiene. */
+  const replicaDe = (hab) => ({ id:uid("hab"), grupo:hab.grupo, ocupacion:hab.ocupacion, tipo:"",
     tarifas: (hab.tarifas || []).map(tarifaEnCero) });
   /* cuántas opciones no tienen todavía esa ocupación + tipo (para el aviso) */
   const faltantes = (i, ocupacion, tipo) => (q.opciones || [])
@@ -1939,11 +2030,12 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
     }
   };
 
-  /* La ocupación y el tipo viajan a las réplicas; el neto y la venta jamás. */
+  /* Solo la ocupación viaja a las réplicas. El tipo de habitación, el neto y
+     la venta son de cada opción: dependen del hotel que se esté cotizando. */
   const editarHab = (i, hj, campo, valor) => set((d) => {
     const hab = d.opciones[i].habitaciones[hj];
     hab[campo] = valor;
-    if (!hab.grupo) return;
+    if (campo !== "ocupacion" || !hab.grupo) return;
     d.opciones.forEach((o, j) => {
       if (j === i) return;
       const hs = o.habitaciones || (o.habitaciones = []);
@@ -2155,7 +2247,9 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             onChange={(v) => editarHab(i, hj, "ocupacion", v)} />
                         </div>
                         <div style={{ flex:"2 1 190px" }}>
-                          <Label hint="opcional">Tipo de habitación</Label>
+                          <Label hint={q.opciones.length > 1 ? "opcional · solo de esta opción" : "opcional"}>
+                            Tipo de habitación
+                          </Label>
                           <input className="in" style={{ height:34 }} value={hab.tipo || ""}
                             placeholder="Vista al mar, suite junior, apartamento…"
                             onChange={(e) => editarHab(i, hj, "tipo", e.target.value)} />

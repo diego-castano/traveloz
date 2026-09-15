@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { Fragment, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2,
   CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
@@ -15,6 +15,7 @@ import { Foto, CATS, Estrellas } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { resolverIcono } from "@/lib/presupuesto/iconos";
+import { partirNegritas } from "@/lib/presupuesto/negrita";
 
 /* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
 const PAGO_TARJETAS = [
@@ -748,7 +749,14 @@ function SalidaPasajero({
                       letterSpacing: primera ? "-.012em" : "-.004em",
                       textWrap:"pretty",
                       color: primera ? "#1A1A2E" : "#3D4066" }}>
-                      {t}
+                      {/* *asteriscos* = negrita, la misma marca que WhatsApp: el
+                          vendedor la escribe una vez y el texto sale destacado en
+                          el chat, en la ficha y en el email. (Pedido de Gero, 14/09.) */}
+                      {partirNegritas(t).map((trozo, ti) => (
+                        trozo.fuerte
+                          ? <b key={ti} style={{ fontWeight:700, color:"#1A1A2E" }}>{trozo.texto}</b>
+                          : <Fragment key={ti}>{trozo.texto}</Fragment>
+                      ))}
                     </p>
                   );
                 })}
@@ -1558,42 +1566,68 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
 /* Un itinerario de vuelo extra, con todo lo suyo: tramos, cabina, equipaje y
    precio.
 
-   En una cotización de paquete es una ALTERNATIVA al vuelo del paquete y se la
-   nombra a mano ("Llega de día"). En una de solo vuelos es una OPCIÓN más y
-   lleva número, porque ahí las opciones son la cotización y el pasajero
-   contesta "me quedo con la 2". Es la misma pieza: cambia el rótulo y dónde se
-   dibuja, no lo que muestra. */
+   En una cotización de paquete es una ALTERNATIVA al vuelo del paquete: lleva
+   el rótulo fijo "Opción alternativa de vuelo" —palabras de Gero (14/09), que
+   prefirió eso a "Otra opción de vuelo"— y debajo el título que el vendedor
+   escribió en el cotizador, tal cual ("Pasajes aéreos con la aerolínea Copa
+   Airlines – según itinerario"). Antes el título ocupaba el lugar del rótulo,
+   y sin título la alternativa salía con un genérico que no decía nada del
+   vuelo. En una de solo vuelos es una OPCIÓN más y lleva número, porque ahí
+   las opciones son la cotización y el pasajero contesta "me quedo con la 2".
+   Es la misma pieza: cambia el rótulo y dónde se dibuja, no lo que muestra. */
 function VueloExtra({ n, numero, ultimo, anio, desk, impresion, fz, fzp, G, mismaCiudad }) {
   const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
     .filter(([k]) => Number(n.precio?.[k]) > 0);
+  /* el título va literal: es lo que el vendedor escribió, sin recortes */
+  const titulo = numero ? "" : String(n.nombre ?? "").trim();
+  /* Cabina y franquicia. En la alternativa de un paquete van ARRIBA del
+     itinerario, como en la opción principal —ahí salen en "El precio incluye",
+     antes de los vuelos—: abajo el pasajero recorría toda la tabla y recién al
+     final leía con qué equipaje viaja (pedido de Gero, 14/09). En una
+     cotización de solo vuelos la opción numerada las sigue mostrando abajo,
+     que es donde las muestra la opción 1 de esa misma cotización. */
+  const fichaCabina = (n.cabina || n.equipaje) ? (
+    <div style={{ display:"flex", gap:10, alignItems:"flex-start",
+      ...(numero ? { marginTop:11 } : { marginBottom:11 }),
+      padding:"9px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
+      background:"#FBFBFE", breakInside:"avoid", breakAfter: numero ? undefined : "avoid" }}>
+      <div style={{ width:26, height:26, borderRadius:9, flexShrink:0, display:"grid",
+        placeItems:"center", background:`${G.b}12`, color:G.b }}>
+        {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
+          return <C.Icon size={13} />; })()}
+      </div>
+      <div style={{ fontSize:fzp(12.5, 13, 12), lineHeight:1.5, paddingTop:4, fontWeight:500 }}>
+        {[n.cabina, n.equipaje].filter(Boolean).join(" · ")}
+      </div>
+    </div>
+  ) : null;
   return (
     <div style={{ marginBottom: ultimo ? 22 : 18, breakInside:"avoid" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:7, flexWrap:"wrap", marginBottom:9 }}>
+      {/* Sin `flexWrap`: con un título largo el renglón se partía y el avión
+          quedaba solo arriba, como un renglón vacío. El rótulo es corto y el
+          título tiene su propio renglón abajo. */}
+      <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom: titulo ? 4 : 9 }}>
         <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
-        <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, overflowWrap:"anywhere" }}>
-          {numero ? `Opción ${numero}` : (n.nombre || "Otra opción de vuelo")}
+        <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, minWidth:0,
+          color: numero ? undefined : "#5B3FBF" }}>
+          {numero ? `Opción ${numero}` : "Opción alternativa de vuelo"}
         </span>
       </div>
+      {titulo && (
+        <div style={{ fontSize:fzp(13, 14, 12.5), fontWeight:700, lineHeight:1.35,
+          marginBottom:9, overflowWrap:"anywhere" }}>
+          {titulo}
+        </div>
+      )}
+
+      {!numero && fichaCabina}
 
       {agruparTrayectos(n.vuelos, mismaCiudad).map((seg, ti, arr) => (
         <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
           anio={anio} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
       ))}
 
-      {(n.cabina || n.equipaje) && (
-        <div style={{ display:"flex", gap:10, alignItems:"flex-start", marginTop:11,
-          padding:"9px 12px", borderRadius:11, border:"1px solid rgba(17,17,36,.09)",
-          background:"#FBFBFE", breakInside:"avoid" }}>
-          <div style={{ width:26, height:26, borderRadius:9, flexShrink:0, display:"grid",
-            placeItems:"center", background:`${G.b}12`, color:G.b }}>
-            {(() => { const C = CATS.find((c) => c.id === "aereo") || CATS[0];
-              return <C.Icon size={13} />; })()}
-          </div>
-          <div style={{ fontSize:fzp(12.5, 13, 12), lineHeight:1.5, paddingTop:4, fontWeight:500 }}>
-            {[n.cabina, n.equipaje].filter(Boolean).join(" · ")}
-          </div>
-        </div>
-      )}
+      {numero ? fichaCabina : null}
 
       {filas.length > 0 && (
         <div style={{ borderRadius:13, background:"#FAFBFE", border:"1px solid rgba(17,17,36,.08)",
