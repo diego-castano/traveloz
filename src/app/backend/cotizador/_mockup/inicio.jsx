@@ -1059,8 +1059,9 @@ function ListadoContenido({
     /* la chip roja solo existe mientras los links vencen */
     ...(LINKS_VENCEN ? [{ k:"roja", c:"#F43E55", l:"Vencidas sin abrir", n:resumenSem.roja,
       tip:"El link venció y el pasajero nunca lo abrió. Reactivá y reenviá." }] : []),
-    { k:"amarilla", c:"#E8A13C", l:"+24 h hábiles sin abrir",  n:resumenSem.amarilla,
-      tip:"Más de 24 h hábiles sin apertura (el fin de semana no cuenta). Va un recordatorio." },
+    /* La chip "+24 h hábiles sin abrir" se sacó a pedido de Gero (14/09):
+       nadie filtraba por ahí. El punto ámbar sigue en la fila, que es donde
+       se mira el seguimiento de una cotización concreta. */
     { k:"verde",    c:"#2A9E8E", l:"Abiertas o confirmadas",   n:resumenSem.verde,
       tip:"El pasajero la abrió, o ya confirmó. Buen momento para el seguimiento." },
     { k:"borrador", c:"#B0B4CD", l:"Borradores",               n:resumenSem.borrador,
@@ -1120,8 +1121,8 @@ function ListadoContenido({
         )}
       </div>
 
-      {/* semáforo del listado: cuatro chips que filtran la grilla de abajo.
-          Tocar el que ya está activo lo apaga y vuelven todas. */}
+      {/* semáforo del listado: las chips que filtran la grilla de abajo.
+          Tocar la que ya está activa la apaga y vuelven todas. */}
       <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
         {CHIPS_SEM.map((ch) => (
           <button key={ch.k} className={`chip ${semFiltro === ch.k ? "chip-on" : ""}`}
@@ -1138,9 +1139,12 @@ function ListadoContenido({
             <X size={11} /> Ver todas
           </button>
         )}
-        <span className="hint-desk" style={{ fontSize:10.5, color:"var(--n300)", marginLeft:"auto" }}>
-          {LINKS_VENCEN ? "la vigencia y el “+24 h” se cuentan en horas hábiles" : "el “+24 h” se cuenta en horas hábiles"}
-        </span>
+        {/* Sin la chip ámbar y sin vigencia no queda nada que aclarar acá. */}
+        {LINKS_VENCEN && (
+          <span className="hint-desk" style={{ fontSize:10.5, color:"var(--n300)", marginLeft:"auto" }}>
+            la vigencia se cuenta en horas hábiles
+          </span>
+        )}
       </div>
 
       {/* tabla — la fila entera abre el drawer */}

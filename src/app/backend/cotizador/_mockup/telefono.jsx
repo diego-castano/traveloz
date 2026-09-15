@@ -821,40 +821,6 @@ function SalidaPasajero({
           </div>
         )}
 
-        {/* opcionales — NO incluidos en el precio, se suman a pedido. La bajada
-            que lo decía ("No están incluidos en el precio. Se suman a pedido.")
-            se fue a pedido de Gero (11/09): el título alcanza. */}
-        {(q.opcionales || []).some((o) => (o.texto || "").trim()) && (
-          <div ref={(el) => { anclas.current["b-opcionales"] = el; }} data-sec="opcionales" data-ap
-            style={impresion ? { marginTop:AIRE_SEC } : undefined}>
-            <SecTitulo texto="Opcionales" />
-            <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr",
-              gap: impresion ? "9px 10px" : "9px 18px",
-              ...(impresion ? { alignItems:"stretch" } : null), marginBottom:24 }}>
-              {q.opcionales.filter((o) => (o.texto || "").trim()).map((o) => (
-                <div key={o.id} style={{ display:"flex", gap: impresion ? 10 : 11, alignItems:"center",
-                  ...(impresion ? { breakInside:"avoid", padding:"10px 12px", borderRadius:11,
-                    border:"1px solid rgba(17,17,36,.09)", background:"#FBFBFE" } : null) }}>
-                  <div style={{ width: impresion ? 26 : 30, height: impresion ? 26 : 30,
-                    borderRadius: impresion ? 999 : 9, flexShrink:0, display:"grid", placeItems:"center",
-                    background:`${G.b}${impresion ? "14" : "12"}`, color:G.b }}>
-                    <ServiceIcon icon={resolverIcono({ categoria:"opcionales", texto:o.texto, icono:o.icono })}
-                      size={impresion ? 13 : 14} color={G.b} /></div>
-                  <div style={{ fontSize:fzp(13, 13.5, 12.5), lineHeight:1.5, fontWeight:500, flex:1 }}>
-                    {o.texto}
-                  </div>
-                  {Number(o.precio) > 0 && (
-                    <div style={{ textAlign:"right", flexShrink:0 }}>
-                      <div style={{ fontSize:fzp(13, 13.5, 12.5), fontWeight:700 }}>{money(o.precio)}</div>
-                      {o.porPersona !== false && <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5" }}>p/p</div>}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* itinerario — tarjetas por trayecto (Ida / Vuelta / Tramo N) */}
         {q.vuelos.length > 0 && (
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap
@@ -1318,6 +1284,46 @@ function SalidaPasajero({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* opcionales — NO incluidos en el precio, se suman a pedido.
+
+            Van DESPUÉS de los precios, pegados a las notas: el pasajero
+            primero lee lo que cuesta el viaje y recién después lo que puede
+            sumarle (pedido de Gero, 14/09). Arriba, entre "El precio incluye"
+            y el itinerario, se leían como parte de lo que ya estaba pago.
+
+            La bajada que decía "No están incluidos en el precio. Se suman a
+            pedido." se fue a pedido de Gero (11/09): el título alcanza. */}
+        {(q.opcionales || []).some((o) => (o.texto || "").trim()) && (
+          <div ref={(el) => { anclas.current["b-opcionales"] = el; }} data-sec="opcionales" data-ap
+            style={impresion ? { marginTop:AIRE_SEC } : undefined}>
+            <SecTitulo texto="Opcionales" />
+            <div style={{ display:"grid", gridTemplateColumns: desk ? "1fr 1fr" : "1fr",
+              gap: impresion ? "9px 10px" : "9px 18px",
+              ...(impresion ? { alignItems:"stretch" } : null), marginBottom:24 }}>
+              {q.opcionales.filter((o) => (o.texto || "").trim()).map((o) => (
+                <div key={o.id} style={{ display:"flex", gap: impresion ? 10 : 11, alignItems:"center",
+                  ...(impresion ? { breakInside:"avoid", padding:"10px 12px", borderRadius:11,
+                    border:"1px solid rgba(17,17,36,.09)", background:"#FBFBFE" } : null) }}>
+                  <div style={{ width: impresion ? 26 : 30, height: impresion ? 26 : 30,
+                    borderRadius: impresion ? 999 : 9, flexShrink:0, display:"grid", placeItems:"center",
+                    background:`${G.b}${impresion ? "14" : "12"}`, color:G.b }}>
+                    <ServiceIcon icon={resolverIcono({ categoria:"opcionales", texto:o.texto, icono:o.icono })}
+                      size={impresion ? 13 : 14} color={G.b} /></div>
+                  <div style={{ fontSize:fzp(13, 13.5, 12.5), lineHeight:1.5, fontWeight:500, flex:1 }}>
+                    {o.texto}
+                  </div>
+                  {Number(o.precio) > 0 && (
+                    <div style={{ textAlign:"right", flexShrink:0 }}>
+                      <div style={{ fontSize:fzp(13, 13.5, 12.5), fontWeight:700 }}>{money(o.precio)}</div>
+                      {o.porPersona !== false && <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5" }}>p/p</div>}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
