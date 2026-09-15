@@ -10,6 +10,8 @@ import {
 } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useToast } from "@/components/ui/Toast";
+import { getPaquetePreviewUrl } from "@/actions/paquete-frontend.actions";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Package,
@@ -449,6 +451,38 @@ function DetailPanel({
   ciudadById,
 }: DetailPanelProps) {
   const safeIdx = Math.min(selectedOpcionIdx, Math.max(0, breakdown.opcionesDetail.length - 1));
+  /* Al vendedor le sirve la ficha que ve el pasajero, no la pantalla de
+     edición del panel (pedido de Gero, 15/09). La dirección pública la arma el
+     servidor: necesita la región del primer destino y el slug del paquete, que
+     esta vista no tiene. Un paquete sin publicar abre igual, en vista previa,
+     con el cartel de borrador que ya trae esa página.
+
+     La pestaña se abre ANTES de esperar la respuesta: las que se abren después
+     de un await las bloquea el navegador. */
+  const { toast } = useToast();
+  const [abriendo, setAbriendo] = useState(false);
+  const verEnLaWeb = () => {
+    if (abriendo) return;
+    setAbriendo(true);
+    const pestana = window.open("about:blank", "_blank");
+    if (pestana) pestana.opener = null;
+    void (async () => {
+      try {
+        const res = await getPaquetePreviewUrl(paquete.id);
+        if (!res.ok) {
+          pestana?.close();
+          toast("error", "No se pudo abrir el paquete en la web", res.reason);
+          return;
+        }
+        const url = res.publicado ? res.url.replace(/\?preview=1$/, "") : res.url;
+        if (pestana) pestana.location.href = url;
+        else window.open(url, "_blank");
+      } finally {
+        setAbriendo(false);
+      }
+    })();
+  };
+
   const opcionDetail = breakdown.opcionesDetail[safeIdx];
 
   // Proveedores por id para mostrar el operador de cada circuito (ver
@@ -725,13 +759,15 @@ function DetailPanel({
           )}
         </div>
 
-        <Link
-          href={`/backend/paquetes/${paquete.id}`}
-          className="mt-3 flex items-center justify-center gap-1.5 rounded-[9px] bg-[#8B5CF6] py-2 text-[12.5px] font-semibold text-white transition hover:bg-[#7B4EE6]"
+        <button
+          type="button"
+          onClick={verEnLaWeb}
+          disabled={abriendo}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-[9px] bg-[#8B5CF6] py-2 text-[12.5px] font-semibold text-white transition hover:bg-[#7B4EE6] disabled:opacity-70"
         >
-          Ver paquete completo
+          {abriendo ? "Abriendo…" : "Ver paquete en la web"}
           <ExternalLink size={12} strokeWidth={2.25} />
-        </Link>
+        </button>
       </div>
     </div>
   );
