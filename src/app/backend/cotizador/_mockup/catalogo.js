@@ -13,10 +13,7 @@ import {
   useAlojamientos,
   useServiceLoading,
   useServiceProgress,
-  useServiceDispatch,
 } from "@/components/providers/ServiceProvider";
-import { notifyServiceMutation } from "@/lib/services-broadcast";
-import { crearAlojamientoRapido } from "@/actions/alojamiento-rapido.actions";
 import {
   usePaises,
   useRegiones,
@@ -127,7 +124,6 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
   const paises = usePaises();
   const regiones = useRegiones();
   const regimenes = useRegimenes();
-  const serviceDispatch = useServiceDispatch();
 
   const cargandoPaquetes = usePackageLoading();
   const cargandoServicios = useServiceLoading();
@@ -295,63 +291,6 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
     setTick((t) => t + 1);
     return h;
   }, []);
-
-  /**
-   * Mete un `Alojamiento` recién creado en la lista en memoria y lo devuelve
-   * ya con la forma que consume el buscador ({ id, nombre, ciudad, cat, foto,
-   * seed }). No habla con el server: es el puente para que el hotel aparezca
-   * en el acto, sin esperar a que el provider re-renderice.
-   */
-  const agregarHotelAlCatalogo = useCallback(
-    (alojamiento) => {
-      if (!alojamiento?.id) return null;
-      const h = {
-        id: alojamiento.id,
-        nombre: alojamiento.nombre,
-        ciudad: alojamiento.ciudad?.nombre ?? nombreCiudad(alojamiento.ciudadId),
-        cat: alojamiento.categoria ?? 0,
-        foto: null,                       // recién creado: las fotos van por el ABM
-        seed: seedDe(alojamiento.id),
-      };
-      const resto = nuevosRef.current.filter((x) => x.id !== h.id);
-      nuevosRef.current = [...resto, h];
-      setTick((t) => t + 1);
-      return h;
-    },
-    [nombreCiudad],
-  );
-
-  /**
-   * Alta rápida de hotel desde el buscador del cotizador.
-   *
-   * Hace las tres cosas de una: lo crea en la base, lo publica en el
-   * `ServiceProvider` (y en las demás pestañas, por el canal de mutaciones) y
-   * lo suma a la lista en memoria. Devuelve el hotel en forma de catálogo para
-   * que el llamador lo seleccione en el slot como `hotelId` real.
-   *
-   * Vive acá y no en ui.jsx a propósito: la ficha del pasajero importa ui.jsx
-   * y se monta también en el link público, que no tiene ningún provider del
-   * panel. Si el alta colgara del buscador, ese bundle se llevaría el
-   * ServiceProvider entero.
-   *
-   * → { ok:true, hotel, existente } | { ok:false, error }
-   */
-  const crearHotelEnCatalogo = useCallback(
-    async ({ nombre, ciudad, ciudadId, cat }) => {
-      const id = ciudadId || ciudadIdDeNombre(ciudad);
-      if (!id) return { ok: false, error: "Elegí una ciudad del catálogo." };
-      const res = await crearAlojamientoRapido({
-        nombre: String(nombre || "").trim(),
-        ciudadId: id,
-        categoria: cat ? Number(cat) : null,
-      });
-      if (!res?.ok) return { ok: false, error: res?.error || "No pudimos crear el hotel." };
-      serviceDispatch({ type: "ADD_ALOJAMIENTO", payload: res.alojamiento });
-      notifyServiceMutation({ type: "ADD_ALOJAMIENTO", payload: res.alojamiento });
-      return { ok: true, hotel: agregarHotelAlCatalogo(res.alojamiento), existente: res.existente };
-    },
-    [ciudadIdDeNombre, serviceDispatch, agregarHotelAlCatalogo],
-  );
 
   const esFavorito = useCallback(
     (id) => favoritosRef.current.has(id),
@@ -773,10 +712,6 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       hotelById,
       hotelesCotizadosEn,
       registrarHotelLibre,
-      /* alta rápida de hotel: lo crea en la base, lo publica en el provider y
-         lo devuelve ya en forma de catálogo */
-      crearHotelEnCatalogo,
-      agregarHotelAlCatalogo,
       ciudadIdDeNombre,
       esFavorito,
       toggleFavorito,
@@ -796,8 +731,6 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       hotelById,
       hotelesCotizadosEn,
       registrarHotelLibre,
-      crearHotelEnCatalogo,
-      agregarHotelAlCatalogo,
       ciudadIdDeNombre,
       esFavorito,
       toggleFavorito,

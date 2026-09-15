@@ -2160,7 +2160,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             {/* el régimen va pegado al buscador: cada hotel el suyo */}
                             <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
                               <div style={{ flex:"1 1 200px", minWidth:0 }}>
-                                <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""} onToast={toast}
+                                <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""}
                                   onPick={(hh) => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
                                     d.opciones[i].hoteles[hi] = { ...prev, hotelId:hh.id, libre:"",
                                       regimen: prev.regimen || regimenDeTramo(hi) }; })}
