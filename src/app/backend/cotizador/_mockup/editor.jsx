@@ -1585,25 +1585,109 @@ const MAX_VUELOS_NOTA = 2;
    quieta. */
 function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
   const tramos = nota.vuelos || [];
+  /* ── Captura de pantalla, igual que arriba ────────────────────────────
+     El itinerario principal lee fotos desde el primer día: se pega una
+     captura del GDS con Ctrl+V y la IA la convierte. Esta ficha no tenía
+     nada, y en una cotización de solo vuelos vive ADENTRO del contenedor que
+     escucha el pegado del bloque de arriba. Resultado: el vendedor pegaba la
+     captura en la opción 2 y la leía el bloque principal — los avisos decían
+     "itinerario leído" y los tramos se iban a la opción 1, encima de los que
+     ya estaban, mientras la ficha quedaba vacía (reporte de Gero, 16/09).
+
+     Ahora la ficha atiende su propio pegado y corta la propagación, así que
+     la captura se queda donde se pegó. Sirven las tres formas: pegar, soltar
+     encima o elegir el archivo. */
+  const [leyendo, setLeyendo] = useState(false);
+  const [errorFoto, setErrorFoto] = useState(null);
+  const [foto, setFoto] = useState(null);          // { nombre, url }
+  const fileRef = useRef(null);
+  /* cada lectura lleva número: si el vendedor dispara otra, la vieja se descarta */
+  const pedidoRef = useRef(0);
+  const urlFotoRef = useRef(null);
+  useEffect(() => () => { if (urlFotoRef.current) URL.revokeObjectURL(urlFotoRef.current); }, []);
 
   const enNota = (fn) => set((d) => { fn(d.vuelosNota[i]); });
 
-  const convertir = () => {
+  const leerFoto = async (archivo) => {
+    if (!archivo) return;
+    if (urlFotoRef.current) URL.revokeObjectURL(urlFotoRef.current);
+    const url = URL.createObjectURL(archivo);
+    urlFotoRef.current = url;
+    setFoto({ nombre: archivo.name || "captura", url });
+    setErrorFoto(null);
+    setLeyendo(true);
+    const pedido = ++pedidoRef.current;
+    try {
+      const imagen = await comprimirImagen(archivo);
+      const v = await pedirLectura({ imagen });
+      if (pedido !== pedidoRef.current) return;
+      if (!v.length) throw new Error("No se reconoció ningún vuelo en esa imagen.");
+      enNota((n) => { n.vuelos = v; });
+      setLeyendo(false);
+      toast({ msg:`Itinerario leído desde la imagen — ${v.length} ${v.length === 1 ? "tramo" : "tramos"}`, tone:"ok" });
+    } catch (e) {
+      if (pedido !== pedidoRef.current) return;
+      setLeyendo(false);
+      setErrorFoto(e?.message || "No se pudo leer la imagen.");
+    }
+  };
+
+  /* Ctrl+V con una captura en el portapapeles. Devuelve true cuando se la
+     quedó, para que el textarea no la trate también como texto. */
+  const pegarImagen = (e) => {
+    const f = e.clipboardData?.files?.[0];
+    if (!f || !String(f.type).startsWith("image/")) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    toast({ msg:"Imagen pegada — leyendo el itinerario…", tone:"ok" });
+    void leerFoto(f);
+    return true;
+  };
+
+  const soltar = (e) => {
+    const f = Array.from(e.dataTransfer?.files || []).find((x) => String(x.type).startsWith("image/"));
+    if (!f) return;
+    e.preventDefault();
+    void leerFoto(f);
+  };
+
+  const convertir = async () => {
     const crudo = nota.pnrRaw || "";
     if (!crudo.trim()) return;
     const v = parsePNR(crudo, aerolineas);
-    if (!v.length) {
-      toast({ msg:"No se reconoció ningún tramo en ese texto. Pegá el itinerario tal cual sale del GDS.",
-        tone:"warn", ms:5000 });
+    if (v.length) {
+      enNota((n) => { n.vuelos = v; });
+      toast({ msg:`${v.length} ${v.length === 1 ? "tramo convertido" : "tramos convertidos"}`, tone:"ok" });
       return;
     }
-    enNota((n) => { n.vuelos = v; });
-    toast({ msg:`${v.length} ${v.length === 1 ? "tramo convertido" : "tramos convertidos"}`, tone:"ok" });
+    /* El parser no reconoció nada. Antes moría acá; ahora lo intenta la IA,
+       que es la misma que lee el itinerario de arriba. */
+    setErrorFoto(null);
+    setLeyendo(true);
+    const pedido = ++pedidoRef.current;
+    try {
+      const ia = await pedirLectura({ texto: crudo.slice(0, TEXTO_MAX_LECTOR) });
+      if (pedido !== pedidoRef.current) return;
+      setLeyendo(false);
+      if (!ia.length) throw new Error("No se reconoció ningún tramo en ese texto.");
+      enNota((n) => { n.vuelos = ia; });
+      toast({ msg:`Itinerario leído — ${ia.length} ${ia.length === 1 ? "tramo" : "tramos"}`, tone:"ok" });
+    } catch (e) {
+      if (pedido !== pedidoRef.current) return;
+      setLeyendo(false);
+      setErrorFoto(e?.message || "No se reconoció ningún tramo en ese texto. Pegá el itinerario tal cual sale del GDS.");
+    }
   };
 
   return (
-    <div style={{ border:"1px solid var(--hair)", borderRadius:13, padding:"11px 12px 12px",
-      background:"var(--card-3)", marginBottom:9 }}>
+    /* El pegado y el soltar escuchan en toda la ficha, no solo en el
+       textarea: el vendedor copia la captura y pega donde tenga el cursor. */
+    <div onPaste={pegarImagen} onDrop={soltar}
+      onDragOver={(e) => { if (e.dataTransfer?.types?.includes("Files")) e.preventDefault(); }}
+      style={{ border:"1px solid var(--hair)", borderRadius:13, padding:"11px 12px 12px",
+        background:"var(--card-3)", marginBottom:9 }}>
+      <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }}
+        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void leerFoto(f); }} />
       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:9 }}>
         <span style={{ width:24, height:24, borderRadius:7, flexShrink:0, display:"grid", placeItems:"center",
           background:"rgba(120,90,229,.11)", color:"var(--violet)" }}><Plane size={12} /></span>
@@ -1628,15 +1712,49 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
         </button>
       </div>
 
+      {/* Estado del lector: vale para la ficha vacía y para la que ya tiene
+          tramos, porque la captura también se puede pegar para reemplazarlos. */}
+      {leyendo && (
+        <div className="a-pop" style={{ display:"flex", alignItems:"center", gap:9, marginBottom:9,
+          padding:"8px 11px", borderRadius:11, background:"rgba(120,90,229,.07)",
+          border:"1px solid rgba(120,90,229,.2)" }}>
+          <Loader2 size={14} className="spin" style={{ color:"var(--violet)", flexShrink:0 }} />
+          <span style={{ fontSize:12, fontWeight:600, color:"var(--n600)" }}>Leyendo el itinerario…</span>
+          {foto?.nombre && (
+            <span style={{ fontSize:11.5, color:"var(--n400)", minWidth:0, overflow:"hidden",
+              textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{foto.nombre}</span>
+          )}
+        </div>
+      )}
+      {!leyendo && errorFoto && (
+        <div className="a-pop" style={{ display:"flex", alignItems:"center", gap:9, marginBottom:9,
+          padding:"8px 11px", borderRadius:11, background:"rgba(247,178,103,.13)",
+          border:"1px solid rgba(247,178,103,.34)" }}>
+          <AlertCircle size={14} style={{ color:"var(--ink-amber)", flexShrink:0 }} />
+          <span style={{ fontSize:12, color:"var(--ink-amber)", lineHeight:1.45 }}>{errorFoto}</span>
+        </div>
+      )}
+
       {tramos.length === 0 ? (
         <>
           <textarea className="in mono" rows={4} style={{ width:"100%", fontSize:11.5, lineHeight:1.5 }}
-            value={nota.pnrRaw || ""} placeholder="Pegá acá el itinerario tal cual sale del GDS…"
+            value={nota.pnrRaw || ""} placeholder="Pegá acá el itinerario tal cual sale del GDS… o una captura"
+            onPaste={pegarImagen}
             onChange={(e) => enNota((n) => { n.pnrRaw = e.target.value; })} />
-          <Btn variant="p" size="sm" style={{ marginTop:8 }}
-            disabled={!(nota.pnrRaw || "").trim()} onClick={convertir}>
-            Convertir itinerario
-          </Btn>
+          <div style={{ display:"flex", alignItems:"center", gap:7, marginTop:8, flexWrap:"wrap" }}>
+            <Btn variant="p" size="sm"
+              disabled={!(nota.pnrRaw || "").trim() || leyendo} onClick={convertir}>
+              {leyendo ? <Loader2 size={13} className="spin" /> : <Zap size={13} />}
+              {leyendo ? "Leyendo el itinerario…" : "Convertir itinerario"}
+            </Btn>
+            <Btn size="sm" disabled={leyendo} onClick={() => fileRef.current?.click()}>
+              <ImageIcon size={13} /> Subir captura
+            </Btn>
+          </div>
+          <div style={{ fontSize:11, color:"var(--n400)", marginTop:7, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+            <ImageIcon size={11} style={{ color:"var(--violet)", flexShrink:0 }} />
+            <span>También podés pegar una captura con <span className="kbd">Ctrl</span>+<span className="kbd">V</span> — la IA la lee igual que el texto.</span>
+          </div>
         </>
       ) : (
         <>

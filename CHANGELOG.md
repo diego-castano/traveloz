@@ -11,6 +11,34 @@ del catálogo, CRM).
 
 ---
 
+## 16 de septiembre de 2026
+
+### Arreglado
+
+- **La captura pegada en una opción de vuelo se queda en esa opción.** Al
+  agregar una segunda opción en una cotización de solo vuelos y pegar ahí la
+  imagen del itinerario, salían los avisos de "imagen pegada" y "itinerario
+  leído", pero la ficha quedaba vacía: la captura la leía el bloque de
+  arriba y los tramos se cargaban en la opción 1, encima del itinerario que
+  ya estaba (reporte de Gero, 16/09). Ahora cada opción lee su propia
+  captura y el itinerario principal no se toca. Se puede pegar con Ctrl+V,
+  soltar la imagen encima o elegirla con "Subir captura"; mientras la IA la
+  lee se ve el estado, y si falla el aviso queda en la ficha. De paso, un
+  texto que el lector rápido no reconoce ya no muere ahí: lo intenta la IA,
+  igual que arriba.
+
+## 15 de septiembre de 2026
+
+### Cambiado
+
+- **Los opcionales salen después de los precios.** En la ficha del pasajero
+  la sección "Opcionales" iba arriba, entre "El precio incluye" y el
+  itinerario, y se leía como parte de lo que ya estaba pago. Ahora va
+  después de las opciones de alojamiento —con su precio y su botón de
+  confirmar— y justo antes de las notas: primero lo que cuesta el viaje,
+  después lo que se le puede sumar. Vale para el link y para el PDF.
+  (Pedido de Gero, 14/09.)
+
 ## 14 de septiembre de 2026
 
 ### Nuevo
