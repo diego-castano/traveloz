@@ -15,6 +15,14 @@ del catálogo, CRM).
 
 ### Cambiado
 
+- **Se ve dónde termina una opción de vuelo y arranca la otra.** En una
+  cotización de solo vuelos, la opción 2 caía pegada al precio de la 1 y las
+  dos se leían como un bloque ("no se sabe dónde termina una y arranca la
+  otra", Gero 16/09, que propuso una línea o un color). Ahora cada opción
+  abre con una línea a todo el ancho y su rótulo va en violeta, el mismo de
+  la marca: las dos cosas juntas, que se leen de un vistazo sin agregar otra
+  caja a la hoja. Vale para el link y para el PDF, y también separa una
+  alternativa de vuelo de la siguiente cuando hay dos en las notas.
 - **El pie del PDF va más discreto.** En la cotización impresa los logos de
   las tarjetas y de los bancos salían a 40 px y la firma del vendedor
   ocupaba todo el ancho de la hoja: el cierre pesaba más que el viaje
