@@ -11,6 +11,18 @@ del catálogo, CRM).
 
 ---
 
+## 15 de septiembre de 2026
+
+### Cambiado
+
+- **Los opcionales salen después de los precios.** En la ficha del pasajero
+  la sección "Opcionales" iba arriba, entre "El precio incluye" y el
+  itinerario, y se leía como parte de lo que ya estaba pago. Ahora va
+  después de las opciones de alojamiento —con su precio y su botón de
+  confirmar— y justo antes de las notas: primero lo que cuesta el viaje,
+  después lo que se le puede sumar. Vale para el link y para el PDF.
+  (Pedido de Gero, 14/09.)
+
 ## 14 de septiembre de 2026
 
 ### Nuevo
