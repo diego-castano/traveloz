@@ -13,6 +13,18 @@ del catálogo, CRM).
 
 ## 16 de septiembre de 2026
 
+### Cambiado
+
+- **El pie del PDF va más discreto.** En la cotización impresa los logos de
+  las tarjetas y de los bancos salían a 40 px y la firma del vendedor
+  ocupaba todo el ancho de la hoja: el cierre pesaba más que el viaje
+  ("queda muy grande en formato pdf los logos y la firma… demasiado
+  grotesco", Gero 16/09). Ahora los logos van a 26 px y la firma entra
+  acotada al 58 % del ancho, centrada. El bloque de pago pasa de 144 a 116
+  px y el de la firma de 276 a 174, así que el pie ocupa casi la mitad y la
+  última hoja respira. En el link del pasajero no cambia nada: esto es solo
+  para el papel.
+
 ### Nuevo
 
 - **Eliminar una cotización desde el listado.** En Seguimiento de

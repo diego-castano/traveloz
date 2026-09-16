@@ -68,6 +68,18 @@ const AIRE_SEC_1 = 24;    /* el primer título de la hoja, contra el saludo */
 const AIRE_PAGO = 28;     /* Condiciones → Formas de pago */
 const AIRE_FIRMA = 24;    /* la firma cierra el documento, no abre sección */
 
+/* Los logos de pago en papel. Nacieron a 40 px y en la hoja impresa las marcas
+   competían con el itinerario; a 26 se leen igual y acompañan en vez de gritar.
+   (Pedido de Gero, 16/09.) En pantalla no cambia nada: ahí van en su cajita. */
+const ALTO_LOGO_PAGO = 26;
+/** Alto del bloque de pago en papel: título, dos rótulos y las dos filas. */
+const ALTO_PAGO = 150;
+
+/* La firma en papel no va a todo el ancho: a 703 px el GIF medía 228 px de
+   alto y cerraba la cotización con un cartel. Acotada al 58% entra en un
+   tercio de eso y sigue leyéndose. (Mismo pedido.) */
+const ANCHO_FIRMA_PAPEL = "58%";
+
 /* ── Firma del vendedor (pedido del cliente 28/08) ────────────────────────
    Con `firma` cargada la hoja imprime el GIF institucional tal cual; sin ella
    dibuja en HTML el mismo diseño (panel con degradado, óvalo con la foto,
@@ -76,9 +88,10 @@ const AIRE_FIRMA = 24;    /* la firma cierra el documento, no abre sección */
    Alturas sobre papel, para la estimación del corte. Medidas el 28/08 con el
    harness, renderizando la hoja a 703 px (A4 menos los 12 mm por lado del
    @page): el GIF de 1800×585 ocupa 227 px y el bloque `[data-sec="firma"]`
-   entero —imagen más el renglón de la web— cierra en 261; la firma HTML, con
-   su caja de 196, cierra en 230. */
-const ALTO_FIRMA_IMG = 261;
+   entero —imagen más el renglón de la web— cerraba en 261; con la firma
+   acotada al 58% del ancho la imagen mide 133 y el bloque cierra en 166. La
+   firma HTML, con su caja de 196, cierra en 230. */
+const ALTO_FIRMA_IMG = 166;
 const ALTO_FIRMA_HTML = 230;
 
 /** Alto de la caja de la firma HTML en papel y escritorio. */
@@ -440,8 +453,9 @@ function SalidaPasajero({
   }, [condiciones.length, condicionesCortas]);
 
   /* ¿el pie del documento viaja entero? (ver el bloque de cierre)
-     Formas de pago son 178 con su título y las dos filas de logos; la firma la
-     mide `altoFirma`. Entre bloque y bloque, el aire nuevo.
+     Formas de pago son 150 con su título y las dos filas de logos —eran 178
+     con los logos a 40 px—; la firma la mide `altoFirma`. Entre bloque y
+     bloque, el aire nuevo.
 
      El techo era media carilla. Con la firma nueva —230 px la HTML, 261 la
      imagen— el pie de una cotización normal da 572-603 px y se pasaba por poco:
@@ -452,7 +466,7 @@ function SalidaPasajero({
      ya no es "el pie", es media cotización empujada. */
   const cierreEntero = useMemo(() => {
     if (!impresion) return false;
-    return altoCondiciones + AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma <= CARILLA * 0.6;
+    return altoCondiciones + AIRE_PAGO + ALTO_PAGO + AIRE_FIRMA + altoFirma <= CARILLA * 0.6;
   }, [impresion, altoCondiciones, altoFirma]);
 
   /* Red de contención del anterior: con una lista de condiciones larga el pie
@@ -461,7 +475,7 @@ function SalidaPasajero({
      Con las alturas de hoy siempre da true; la cuenta queda escrita porque el
      día que crezcan (más medios de pago, otra firma) tiene que apagarse sola. */
   const pagoConFirma = useMemo(
-    () => impresion && AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma <= CARILLA / 2,
+    () => impresion && AIRE_PAGO + ALTO_PAGO + AIRE_FIRMA + altoFirma <= CARILLA / 2,
     [impresion, altoFirma],
   );
 
@@ -542,7 +556,7 @@ function SalidaPasajero({
     /* condiciones + formas de pago + firma, cada una con su aire. Se arma con
        las mismas piezas que `cierreEntero` para que las dos estimaciones no se
        vayan por caminos distintos el día que cambie una altura. */
-    const CIERRE = AIRE_SEC + altoCondiciones + AIRE_PAGO + 178 + AIRE_FIRMA + altoFirma;
+    const CIERRE = AIRE_SEC + altoCondiciones + AIRE_PAGO + ALTO_PAGO + AIRE_FIRMA + altoFirma;
     /* hasta donde arranca la sección de abajo: membrete + banda + saludo con
        su aire (376) y, si hay servicios, las fichas con el suyo (24 + 155) */
     const portada = 376 + (q.servicios.length && !q.soloVuelos ? AIRE_SEC_1 + 155 : 0);
@@ -1408,11 +1422,13 @@ function SalidaPasajero({
             color:"#8A8DB5", marginBottom:7 }}>Tarjetas de crédito</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap: impresion ? 10 : 8, marginBottom:14 }}>
             {PAGO_TARJETAS.map((l) => (
-              /* En el papel el logo va suelto y a 40 px de alto: la cajita con
-                 borde y sombra alrededor de cada marca sumaba ocho bordes más
-                 a una hoja que ya tenía demasiados. */
+              /* En el papel el logo va suelto y sin cajita: el borde y la
+                 sombra alrededor de cada marca sumaban ocho bordes más a una
+                 hoja que ya tenía demasiados. Y va a 26 px, no a 40: a 40 las
+                 marcas pesaban más que el precio del viaje —"queda muy grande
+                 en formato pdf los logos", Gero (16/09)—. */
               <div key={l.src} style={impresion
-                ? { display:"inline-flex", alignItems:"center", justifyContent:"center", height:40 }
+                ? { display:"inline-flex", alignItems:"center", justifyContent:"center", height:ALTO_LOGO_PAGO }
                 : { display:"inline-flex", alignItems:"center", justifyContent:"center",
                     width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
                     border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
@@ -1428,7 +1444,7 @@ function SalidaPasajero({
             {PAGO_BANCOS.map((l) => (
               <div key={l.alt} style={impresion
                 ? { display:"inline-flex", alignItems:"center", justifyContent:"center",
-                    height:40, ...(l.src ? null : { padding:"0 10px" }) }
+                    height:ALTO_LOGO_PAGO, ...(l.src ? null : { padding:"0 10px" }) }
                 : { display:"inline-flex", alignItems:"center", justifyContent:"center",
                     width:fz(68, 76), height:fz(40, 44), padding:"6px 10px", borderRadius:10, background:"#fff",
                     border:"1px solid rgba(17,17,36,.09)", boxShadow:"0 1px 3px rgba(17,17,36,.05)" }}>
@@ -1458,11 +1474,21 @@ function SalidaPasajero({
              Debajo, solo en pantalla, el contacto clickeable: adentro de la
              imagen no hay links. */
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={impresion ? (V.firmaEstatica || V.firma) : V.firma}
-              alt={V.nombre} loading="eager" decoding="sync"
-              style={{ width:"100%", height:"auto", display:"block", borderRadius:14,
-                breakInside:"avoid" }} />
+            {/* El ancho del papel lo pone ESTE div y no la imagen: la hoja
+                impresa lleva una regla `img { max-width:100% !important }`
+                —la red que evita que una captura pegada en las notas se salga
+                de la página— y cualquier tope puesto en la imagen se pierde
+                contra ese `!important`. Acotando el contenedor, el 100% de la
+                imagen ya es el ancho chico. */}
+            <div style={impresion
+              ? { maxWidth:ANCHO_FIRMA_PAPEL, margin:"0 auto", breakInside:"avoid" }
+              : undefined}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={impresion ? (V.firmaEstatica || V.firma) : V.firma}
+                alt={V.nombre} loading="eager" decoding="sync"
+                style={{ width:"100%", height:"auto", display:"block", borderRadius:14,
+                  breakInside:"avoid" }} />
+            </div>
             {/* Iban en monoespaciada y el email quedaba grande y "de código" al
                 lado de los datos del GIF. Gero (11/09): más sutil y con la misma
                 letra que el teléfono y la dirección. Misma tipografía y tono que
