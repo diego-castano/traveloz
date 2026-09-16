@@ -1018,6 +1018,29 @@ function ListadoContenido({
   const [mesFiltro, setMesFiltro] = useState("todos");    // v2F · filtro por mes de salida
   const [selId, setSelId] = useState(null);               // fila abierta en el drawer
   const acc = useAccionesFila({ recargar, toast, cerrarDrawer: () => setSelId(null) });
+  /* ── Eliminar desde la fila ───────────────────────────────────────────
+     Pedido de Gero (16/09): "que los chicos tengan forma de amoldar su panel
+     para orden propio". Ya se podía eliminar abriendo el detalle; acá es un
+     tacho al lado de duplicar.
+
+     Eliminar es lo único de esta barra que no se deshace desde la pantalla,
+     así que va en dos toques, igual que el botón del detalle: el primero lo
+     arma y lo pinta de rojo, el segundo borra. Se desarma solo a los cuatro
+     segundos y cuando el mouse se va de la fila, para que no quede una fila
+     armada esperando un click distraído. */
+  const [armada, setArmada] = useState(null);             // id de la fila con el tacho armado
+  const relojArmada = useRef(null);
+  const desarmar = useCallback(() => {
+    clearTimeout(relojArmada.current);
+    setArmada(null);
+  }, []);
+  useEffect(() => () => clearTimeout(relojArmada.current), []);
+  const tocarTacho = useCallback((r) => {
+    if (armada === r.id) { desarmar(); acc.eliminar(r); return; }
+    clearTimeout(relojArmada.current);
+    setArmada(r.id);
+    relojArmada.current = setTimeout(() => setArmada(null), 4000);
+  }, [armada, desarmar, acc]);
 
   const conOv = useMemo(() => conPisadas(base, acc.ov), [base, acc.ov]);
   const sel = conOv.find((r) => r.id === selId) || null;
@@ -1171,7 +1194,7 @@ function ListadoContenido({
                 borderBottom: i < filas.length - 1 ? "1px solid var(--hair-soft)" : "none",
                 animationDelay:`${i * .03}s`, transition:"background .14s", borderRadius: i === 0 ? "16px 16px 0 0" : 0 }}
               onMouseEnter={(e) => e.currentTarget.style.background = "rgba(120,90,229,.035)"}
-              onMouseLeave={(e) => e.currentTarget.style.background = ""}>
+              onMouseLeave={(e) => { e.currentTarget.style.background = ""; if (armada === r.id) desarmar(); }}>
               <div className="mono fs-num" style={{ fontSize:11, color:"var(--n400)", width:110, flexShrink:0 }}>{r.num}</div>
               <div className="fs-cli" style={{ flex:"1 1 150px", minWidth:0 }}>
                 <div className="fs-cli-n" style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{r.cliente}</div>
@@ -1217,6 +1240,15 @@ function ListadoContenido({
                   onClick={(e) => { e.stopPropagation(); onEditar?.(r); }}><PenLine size={12} /></button>
                 <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Duplicar"
                   onClick={(e) => { e.stopPropagation(); onDuplicar?.(r); }}><Files size={12} /></button>
+                <button className="btn btn-s btn-ico" style={{ width: armada === r.id ? "auto" : 27, height:27,
+                    paddingInline: armada === r.id ? 9 : 0, gap:5, fontSize:11, fontWeight:700, whiteSpace:"nowrap",
+                    ...(armada === r.id ? { color:"var(--ink-coral)", background:"rgba(244,62,85,.09)",
+                      borderColor:"rgba(244,62,85,.42)" } : null) }}
+                  title={armada === r.id ? "Tocá de nuevo para eliminarla" : "Eliminar"}
+                  aria-label={armada === r.id ? `Confirmar: eliminar ${r.num}` : `Eliminar ${r.num}`}
+                  onClick={(e) => { e.stopPropagation(); tocarTacho(r); }}>
+                  <Trash2 size={12} />{armada === r.id ? "Confirmar" : null}
+                </button>
               </div>
             </div>
           );
