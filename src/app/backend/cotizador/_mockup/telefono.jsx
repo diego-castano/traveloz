@@ -846,7 +846,7 @@ function SalidaPasajero({
             {opcionesDeVuelo.length > 0 && (
               <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:9 }}>
                 <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
-                <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700 }}>Opción 1</span>
+                <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, color:"#5B3FBF" }}>Opción 1</span>
               </div>
             )}
             <div style={{ marginBottom: q.soloVuelos ? 14 : 24 }}>
@@ -929,7 +929,7 @@ function SalidaPasajero({
           <div data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             {opcionesDeVuelo.map((n, ni) => (
               <VueloExtra key={n.id} n={n} numero={ni + 2} ultimo={ni === opcionesDeVuelo.length - 1}
-                fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
+                separar fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
                 fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
           </div>
@@ -1377,7 +1377,7 @@ function SalidaPasajero({
                 cambiar de idioma visual. */}
             {alternativasEnNotas.map((n, ni) => (
               <VueloExtra key={n.id} n={n} ultimo={ni === alternativasEnNotas.length - 1}
-                fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
+                separar={ni > 0} fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
                 fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
           </div>
@@ -1608,7 +1608,7 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
    vuelo. En una de solo vuelos es una OPCIÓN más y lleva número, porque ahí
    las opciones son la cotización y el pasajero contesta "me quedo con la 2".
    Es la misma pieza: cambia el rótulo y dónde se dibuja, no lo que muestra. */
-function VueloExtra({ n, numero, ultimo, fechaSalida, desk, impresion, fz, fzp, G, mismaCiudad }) {
+function VueloExtra({ n, numero, ultimo, separar, fechaSalida, desk, impresion, fz, fzp, G, mismaCiudad }) {
   const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
     .filter(([k]) => Number(n.precio?.[k]) > 0);
   /* el título va literal: es lo que el vendedor escribió, sin recortes */
@@ -1635,14 +1635,26 @@ function VueloExtra({ n, numero, ultimo, fechaSalida, desk, impresion, fz, fzp, 
     </div>
   ) : null;
   return (
-    <div style={{ marginBottom: ultimo ? 22 : 18, breakInside:"avoid" }}>
+    <div style={{ marginBottom: ultimo ? 22 : 18, breakInside:"avoid",
+      ...(separar ? { marginTop: impresion ? 18 : 22 } : null) }}>
+      {/* Dónde termina una opción y arranca la otra.
+
+          Con varias opciones de vuelo, la 2 caía pegada al precio de la 1 y se
+          leían como un solo bloque —"no se sabe dónde termina una y arranca la
+          otra", Gero (16/09)—. Ahora cada opción abre con una línea a todo el
+          ancho y su rótulo en violeta: las dos cosas que pidió, que juntas se
+          leen de un vistazo sin agregar otra caja a la hoja. */}
+      {separar && (
+        <div aria-hidden="true" style={{ borderTop:"1px solid rgba(17,17,36,.11)",
+          marginBottom: impresion ? 13 : 15 }} />
+      )}
       {/* Sin `flexWrap`: con un título largo el renglón se partía y el avión
           quedaba solo arriba, como un renglón vacío. El rótulo es corto y el
           título tiene su propio renglón abajo. */}
       <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom: titulo ? 4 : 9 }}>
         <Plane size={13} style={{ color:G.b, flexShrink:0 }} />
         <span style={{ fontSize:fzp(12.5, 13.5, 12.5), fontWeight:700, minWidth:0,
-          color: numero ? undefined : "#5B3FBF" }}>
+          color:"#5B3FBF" }}>
           {numero ? `Opción ${numero}` : "Opción alternativa de vuelo"}
         </span>
       </div>
