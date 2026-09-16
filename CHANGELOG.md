@@ -13,6 +13,18 @@ del catálogo, CRM).
 
 ## 16 de septiembre de 2026
 
+### Nuevo
+
+- **Eliminar una cotización desde el listado.** En Seguimiento de
+  cotizaciones, al pasar el mouse por una fila aparecían editar y duplicar;
+  ahora también el tacho, al lado (pedido de Gero, 16/09: "que los chicos
+  tengan forma de amoldar su panel para orden propio"). Va en dos toques: el
+  primero pinta el botón de rojo y pide confirmar, el segundo elimina; se
+  desarma solo a los cuatro segundos o al salir de la fila. Elimina lo
+  mismo que el botón del detalle —la cotización sale del listado y queda
+  registrada en la bitácora—, así que sigue siendo cada vendedor con lo
+  suyo. En el celular los tres botones ya se ven sin pasar el mouse.
+
 ### Arreglado
 
 - **La captura pegada en una opción de vuelo se queda en esa opción.** Al
