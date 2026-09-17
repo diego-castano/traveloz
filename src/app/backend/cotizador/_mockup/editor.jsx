@@ -1342,10 +1342,12 @@ function BloqueServicios({ q, set, refEl, toast }) {
                   {s.categoria === "traslado" && (
                     <>
                       {/* decenas de ubicaciones: va con buscador. Primero las
-                          ciudades de esta cotización, después el catálogo. */}
+                          ciudades de esta cotización, después el catálogo, y al
+                          final lo que el vendedor escriba: el traslado puede
+                          salir de un pueblo que el catálogo no tiene. */}
                       <SelectBuscable valor={s.ciudad || ""} ancho={126} alto={30} fontSize={12}
                         opciones={[...new Set([...q.destinos.map((x) => x.ciudad), ...CIUDADES])].filter(Boolean)}
-                        vacio="Ciudad…" buscarPlaceholder="Buscar ciudad…"
+                        libre vacio="Ciudad…" buscarPlaceholder="Buscar ciudad…"
                         titulo="Ciudad del traslado"
                         onChange={(v) => set((d) => { d.servicios[i].ciudad = v; })} />
                       <select className="in" style={{ width:92, height:30, fontSize:12 }} value={s.modalidad || "Regular"}
@@ -1434,8 +1436,10 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
   const [abierto, setAbierto] = useState(false);
   const [c, setC] = useState("");
   const [n, setN] = useState("");
+  const [subiendo, setSubiendo] = useState(0);
   const inp = useRef(null);
   const notas = q.notas || [];
+  const imgs = q.notasImgs || [];
   const total = notas.reduce((a, x) => a + Number(x.neto || 0), 0);
 
   const agregarCosto = () => {
@@ -1456,13 +1460,95 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
     return () => document.removeEventListener("keydown", h);
   }, [abierto]);
 
+  /* ── Capturas ────────────────────────────────────────────────────────
+     Gero pidió pegar imágenes en el bloc (17/09): el detalle de horarios de
+     un tren, el itinerario de un crucero. La imagen se va al bucket y en la
+     cotización queda la URL —un base64 de tres megas rebota contra el límite
+     del autosave—, y queda tan interna como el texto: no viaja a la ficha del
+     pasajero. Se puede pegar, arrastrar o elegir del disco. */
+  const imagenDe = (lista) =>
+    Array.from(lista || []).find((f) => String(f?.type).startsWith("image/")) || null;
+
+  const subirImagen = async (file) => {
+    if (!file || !String(file.type).startsWith("image/")) return;
+    setSubiendo((x) => x + 1);
+    try {
+      const s = await uploadFile(file, { folder:"cotizador/notas", convertToWebp:true });
+      set((d) => {
+        if (!d.notasImgs) d.notasImgs = [];
+        d.notasImgs.push({ id:uid("nim"), url:s.url, nombre:file.name || "" });
+      });
+      toast?.({ msg:"Imagen guardada en las notas internas", tone:"ok" });
+    } catch (err) {
+      toast?.({ msg: err?.message || "No pudimos subir la imagen. Probá de nuevo.", tone:"warn", ms:5000 });
+    } finally {
+      setSubiendo((x) => x - 1);
+    }
+  };
+
+  const pegar = (e) => {
+    const f = imagenDe(e.clipboardData?.files);
+    /* sin imagen no se toca nada: el textarea pega el texto como siempre */
+    if (!f) return;
+    e.preventDefault();
+    void subirImagen(f);
+  };
+
+  const soltar = (e) => {
+    const f = imagenDe(e.dataTransfer?.files);
+    if (!f) return;
+    e.preventDefault();
+    void subirImagen(f);
+  };
+
+  const borrarImagen = (x, i) => {
+    set((d) => { d.notasImgs.splice(i, 1); });
+    toast?.({ msg:"Imagen quitada", tone:"warn",
+      undo:() => set((d) => { d.notasImgs.splice(i, 0, x); }) });
+  };
+
   /* un bloc y nada más: Enter es salto de línea, como en cualquier cuaderno */
   const bloc = (grande) => (
     <textarea className="in notas-ta" autoFocus={grande} value={q.notasLibres || ""}
       style={{ width:"100%", resize:"none", lineHeight:1.55, fontSize:12,
         ...(grande ? { flex:1, height:"100%" } : {}) }}
-      placeholder="Escribí libre: aéreo 700, hotel 1 400…"
+      placeholder="Escribí libre: aéreo 700, hotel 1 400… y pegá capturas si hacen falta"
+      onPaste={pegar} onDrop={soltar}
       onChange={(e) => set((d) => { d.notasLibres = e.target.value; })} />
+  );
+
+  /* La tira de capturas: miniatura que abre la imagen entera en otra pestaña,
+     crucecita para sacarla y, al final, el botón de elegir del disco. */
+  const tira = (lado) => (
+    <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center", marginTop:8, flexShrink:0 }}>
+      {imgs.map((x, i) => (
+        <div key={x.id} style={{ position:"relative", width:lado, height:lado }}>
+          <button type="button" title={x.nombre || "Ver la imagen"}
+            onClick={() => window.open(x.url, "_blank", "noopener")}
+            style={{ width:"100%", height:"100%", padding:0, cursor:"zoom-in",
+              border:"1px solid var(--hair-soft)", borderRadius:9, overflow:"hidden",
+              background:`center/cover no-repeat url(${x.url})` }} />
+          <button type="button" className="btn btn-g btn-ico" title="Quitar la imagen"
+            onClick={() => borrarImagen(x, i)}
+            style={{ position:"absolute", top:-6, right:-6, width:19, height:19, borderRadius:10 }}>
+            <X size={10} />
+          </button>
+        </div>
+      ))}
+      {subiendo > 0 && (
+        <div style={{ width:lado, height:lado, borderRadius:9, border:"1px dashed var(--hair-soft)",
+          display:"grid", placeItems:"center", fontSize:9.5, color:"var(--n400)", textAlign:"center" }}>
+          Subiendo…
+        </div>
+      )}
+      <label className="btn btn-g" title="Pegá con ⌘V, arrastrá el archivo o elegilo del disco"
+        style={{ width:lado, height:lado, borderRadius:9, padding:0, cursor:"pointer",
+          display:"grid", placeItems:"center" }}>
+        <ImageIcon size={13} />
+        <input type="file" accept="image/*" hidden
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; void subirImagen(f); }} />
+      </label>
+    </div>
   );
 
   if (vistaPasajero) {
@@ -1491,6 +1577,7 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
         </div>
 
         {bloc(false)}
+        {tira(38)}
 
         <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, flexShrink:0 }}>
           <button className="btn btn-g btn-xs notas-exp" onClick={() => setAbierto(true)}
@@ -1521,6 +1608,7 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
               <div style={{ flex:"1 1 auto", minHeight:260, display:"flex" }}>
                 {bloc(true)}
               </div>
+              {tira(64)}
 
               <div className="lbl" style={{ margin:"16px 0 7px", flexShrink:0 }}>Costos fijos</div>
               {notas.length === 0

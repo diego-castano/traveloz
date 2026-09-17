@@ -576,6 +576,7 @@ function SelectBuscable({
   titulo,
   disabled = false,
   buscarPlaceholder = "Buscar…",
+  libre = false,
 }) {
   const uid = useId();
   const [open, setOpen] = useState(false);
@@ -600,13 +601,25 @@ function SelectBuscable({
     return vacioValue == null ? base : [{ value: vacioValue, label: vacioLabel, esVacio: true }, ...base];
   }, [opciones, vacioValue, vacioLabel]);
 
+  /* Con `libre`, lo que el vendedor escribe y no está en el catálogo se puede
+     usar igual: la última fila del panel ofrece el texto tal cual. El catálogo
+     nunca va a tener todas las ciudades del mundo y el traslado hay que poder
+     cotizarlo igual. Lo escrito vive solo en esta cotización. */
   const res = useMemo(() => {
     const t = norm(q.trim());
-    if (!t) return lista;
-    return lista.filter((o) => norm(o.label).includes(t) || (o.sub && norm(o.sub).includes(t)));
-  }, [q, lista]);
+    const base = t
+      ? lista.filter((o) => norm(o.label).includes(t) || (o.sub && norm(o.sub).includes(t)))
+      : lista;
+    if (!libre || !t) return base;
+    const texto = q.trim();
+    if (base.some((o) => norm(o.label) === t)) return base;
+    return [...base, { value: texto, label: texto, esLibre: true }];
+  }, [q, lista, libre]);
 
-  const sel = lista.find((o) => o.value === (valor ?? "")) || null;
+  /* Un valor escrito a mano no está en `lista`: se muestra tal cual en vez de
+     caer en el placeholder, que haría parecer el campo vacío. */
+  const sel = lista.find((o) => o.value === (valor ?? ""))
+    || (libre && valor ? { value: valor, label: valor } : null);
   const enVacio = !sel || sel.esVacio === true;
   const limpiable = limpiar && !disabled && !enVacio;
 
@@ -780,6 +793,9 @@ function SelectBuscable({
 
           <div className="sb-lista" id={`${uid}-lb`} role="listbox">
             {res.length === 0 && <div className="sb-nada">Nada con “{q.trim()}”</div>}
+            {libre && res.length === 1 && res[0].esLibre && (
+              <div className="sb-nada">Nada con “{q.trim()}” en el catálogo</div>
+            )}
             {res.map((o, i) => {
               const on = o.value === (valor ?? "");
               return (
@@ -789,8 +805,12 @@ function SelectBuscable({
                   onMouseEnter={() => setIdx(i)}
                   onClick={() => elegir(o)}>
                   <span className="sb-i-txt">
-                    <span className={o.esVacio ? "sb-i-vacio" : undefined}>{marcar(o.label)}</span>
-                    {o.sub && <span className="sb-i-sub">{marcar(o.sub)}</span>}
+                    <span className={o.esVacio ? "sb-i-vacio" : undefined}>
+                      {o.esLibre ? <>Usar “<b>{o.label}</b>”</> : marcar(o.label)}
+                    </span>
+                    {o.esLibre
+                      ? <span className="sb-i-sub">No está en el catálogo</span>
+                      : o.sub && <span className="sb-i-sub">{marcar(o.sub)}</span>}
                   </span>
                   {on && <Check size={13} className="sb-i-ok" />}
                 </button>
