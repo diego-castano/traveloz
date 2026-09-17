@@ -81,6 +81,7 @@ function cotizacionVacia(ajustes) {
     servicios: serviciosDefault(7),
     notas: [],
     notasLibres: "",          /* v4 · bloc de notas interno, sin cápsulas ni autores */
+    notasImgs: [],            /* capturas pegadas en ese bloc; tampoco se comparten */
     notasCliente: "",         /* v4 · campo libre HTML del pasajero, admite imágenes */
     /* Itinerarios de vuelo alternativos abajo de las notas. Opcional de punta
        a punta: vacío, la sección de notas se ve exactamente como siempre. */

@@ -235,6 +235,13 @@ export const notaSchema = z.looseObject({
   neto: numeroCero,
 });
 
+/** Captura pegada en el bloc interno: vive en el bucket, acá va la URL. */
+export const imagenNotaSchema = z.looseObject({
+  id: textoFlojo,
+  url: textoFlojo,
+  nombre: textoFlojo.default(""),
+});
+
 export const clienteSchema = z.looseObject({
   nombre: textoFlojo,
   apellido: textoFlojo,
@@ -294,6 +301,9 @@ export const contenidoSchema = z.looseObject({
   // Internos: costos fijos y bloc de notas del vendedor.
   notas: z.array(notaSchema).default([]),
   notasLibres: textoFlojo.default(""),
+  // Capturas del bloc interno (horarios de un tren, itinerario de un crucero).
+  // Internas como el texto: no viajan a `contenidoPublico`.
+  notasImgs: z.array(imagenNotaSchema).default([]),
   // HTML libre que sí ve el pasajero. Acá SÍ se rechaza en vez de recortar:
   // cortar HTML a la mitad deja etiquetas abiertas y rompe la cotización.
   notasCliente: textoFlojo
