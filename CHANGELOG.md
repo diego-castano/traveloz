@@ -11,6 +11,22 @@ del catálogo, CRM).
 
 ---
 
+## 17 de septiembre de 2026
+
+### Arreglado
+
+- **La cotización copia el "Incluye" que publica el paquete.** Al armar una
+  cotización desde un paquete, "El precio incluye" se rearmaba con los
+  servicios cargados en el panel y decía otra cosa que la web. En "Turquía &
+  Madrid" la ficha pública ofrecía seis renglones —vuelo, equipaje, las
+  noches de cada tramo, guía de habla hispana y régimen de comidas— y la
+  cotización salía con tres genéricos, sin la guía ni el régimen (reporte del
+  cliente, 16/09). Ahora la cotización arranca con la lista publicada tal
+  cual: mismo texto, mismo ícono y mismo orden. Queda editable como siempre,
+  y la cabina o el equipaje que elija el vendedor ya no reescriben el renglón
+  del vuelo que el pasajero leyó en la web. Los paquetes sin lista publicada
+  siguen como estaban, con los servicios cargados.
+
 ## 16 de septiembre de 2026
 
 ### Cambiado

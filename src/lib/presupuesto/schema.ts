@@ -210,6 +210,11 @@ export const servicioSchema = z.looseObject({
   tramo: textoNulo.optional(),
   // Ícono elegido a mano; sin esto se resuelve por categoría/texto al dibujar.
   icono: iconoFlojo.optional(),
+  // "publicacion" cuando el renglón se copió del "Incluye" de la ficha del
+  // paquete. Se escribe una sola vez, al armar la cotización desde el paquete,
+  // y sirve para que la cabina/equipaje no reescriba una línea que el pasajero
+  // ya leyó en la web. El vendedor la edita o la borra como cualquier otra.
+  origen: textoNulo.optional(),
 });
 
 /** Servicio NO incluido en el precio, que el pasajero puede sumar a pedido.

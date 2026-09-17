@@ -1,6 +1,18 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { parseIncluyeItems } from "@/lib/incluye";
+
+/* La categoría de un renglón copiado de la publicación sale de su ícono: en la
+   cotización la categoría solo agrupa y elige un ícono de respaldo, y el ícono
+   de verdad viaja aparte en `icono`. Lo que no matchea cae en "opcionales",
+   que es el cajón de los servicios sueltos. */
+const CAT_POR_ICONO = {
+  vuelo:"aereo", equipaje:"aereo", valijamano:"aereo", mochila:"aereo",
+  alojamiento:"alojamiento", seguro:"seguro",
+  traslado:"traslado", bus:"traslado", tren:"traslado", crucero:"traslado", velero:"traslado",
+};
+const categoriaDeIcono = (icono) => CAT_POR_ICONO[String(icono || "")] || "opcionales";
 import {
   usePaquetes,
   usePackageState,
@@ -465,11 +477,38 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
         }
       }
 
-      /* ── servicios ─────────────────────────────────────────────────────
-         Salen de los joins reales del paquete, en el orden de cada tabla.
-         `textoDisplay` es lo que el operador escribió para el pasajero; si
-         está vacío se cae al nombre del servicio del ABM. */
+      /* ── servicios: "El precio incluye" ────────────────────────────────
+         Manda lo que dice la publicación. La ficha del paquete en la web
+         muestra la lista que el operador armó a mano en Publicación —el
+         módulo de renglones con ícono, guardado en `textoIncluye`— y esa es
+         la lista que el pasajero ya vio. Hasta ahora el cotizador la ignoraba
+         y rearmaba la suya con los servicios cargados, así que la cotización
+         decía otra cosa que la web: en "Turquía & Madrid" la publicación
+         hablaba de guía de habla hispana y régimen de comidas, y la
+         cotización salía con tres renglones genéricos (reporte del cliente,
+         16/09).
+
+         Se copia tal cual: mismo texto, mismo ícono y mismo orden. Queda
+         editable —el vendedor borra y agrega lo que quiera— pero arranca con
+         todo puesto. Sin `auto`: estos renglones son los de la publicación y
+         nada los reescribe solo.
+
+         Sin lista publicada seguimos como antes: los joins reales del
+         paquete, en el orden de cada tabla. `textoDisplay` es lo que el
+         operador escribió para el pasajero; si está vacío se cae al nombre
+         del servicio del ABM. */
       const servicios = [];
+
+      const publicados = (parseIncluyeItems(p.textoIncluye) ?? [])
+        .map((it) => ({ icon: it.icon, texto: String(it.texto || "").replace(/\s+/g, " ").trim() }))
+        .filter((it) => it.texto);
+
+      if (publicados.length) {
+        for (const it of publicados) {
+          servicios.push({ cat: categoriaDeIcono(it.icon), texto: it.texto,
+            icono: it.icon || null, origen: "publicacion" });
+        }
+      } else {
 
       /* La línea de aéreo va SIN aerolínea. La agencia cotiza el aéreo por
          ruta y se reserva cambiar de compañía manteniendo el precio; con la
@@ -514,6 +553,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
         const c = circuitoPorId.get(pc.circuitoId);
         const texto = (pc.textoDisplay || c?.nombre || "").trim();
         if (texto) servicios.push({ cat: "opcionales", texto });
+      }
       }
 
       /* ── opciones ──────────────────────────────────────────────────────
