@@ -778,7 +778,9 @@ function BloqueVuelos({ q, set, refEl, toast }) {
   /* la cabina y el equipaje escriben el ítem de aéreo de los servicios incluidos,
      aunque el vendedor lo haya editado a mano: le reponemos el flag y lo vuelve a seguir */
   const escribirAereo = (d) => {
-    const iA = d.servicios.findIndex((s) => s.categoria === "aereo");
+    /* La línea copiada del "Incluye" publicado no se toca: es la que el
+       pasajero ya leyó en la web y el vendedor la edita a mano si quiere. */
+    const iA = d.servicios.findIndex((s) => s.categoria === "aereo" && s.origen !== "publicacion");
     if (iA < 0) return;
     const extra = [d.cabina, d.equipaje].filter(Boolean).join(" · ");
     d.servicios[iA].texto = extra

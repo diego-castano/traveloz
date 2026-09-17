@@ -272,6 +272,10 @@ function desdePaquete(p, ajustes, catalogo) {
     }
     return [{ id:uid("srv"), categoria:s.cat, texto:s.texto,
       ciudad:s.ciudad ?? null, modalidad:s.modalidad ?? null,
+      /* los renglones copiados de la publicación traen su ícono y su marca:
+         con `origen` puesto, nada los reescribe solo (ver escribirAereo) */
+      ...(s.icono ? { icono:s.icono } : {}),
+      ...(s.origen ? { origen:s.origen } : {}),
       ...(s.auto ? { auto:s.auto } : {}) }];
   });
 
