@@ -793,9 +793,6 @@ function SelectBuscable({
 
           <div className="sb-lista" id={`${uid}-lb`} role="listbox">
             {res.length === 0 && <div className="sb-nada">Nada con “{q.trim()}”</div>}
-            {libre && res.length === 1 && res[0].esLibre && (
-              <div className="sb-nada">Nada con “{q.trim()}” en el catálogo</div>
-            )}
             {res.map((o, i) => {
               const on = o.value === (valor ?? "");
               return (
