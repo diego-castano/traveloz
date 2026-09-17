@@ -494,7 +494,7 @@ function SalidaPasajero({
   };
 
 
-  /* itinerario agrupado en trayectos (Ida / Vuelta / Tramo N) */
+  /* itinerario agrupado en trayectos (Tramo N) */
   /* Dos códigos son la misma ciudad si el catálogo lo dice. Sin el aeropuerto
      cargado no se adivina: se comparan solo códigos distintos con ciudad
      conocida, así un AVV que falta en Catálogos no inventa un cambio. */
@@ -835,7 +835,7 @@ function SalidaPasajero({
           </div>
         )}
 
-        {/* itinerario — tarjetas por trayecto (Ida / Vuelta / Tramo N) */}
+        {/* itinerario — tarjetas por trayecto (Tramo N) */}
         {q.vuelos.length > 0 && (
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
@@ -1718,7 +1718,11 @@ function TrayectoTabla({ seg, ti, ultimo, ancho, impresion, fz, fzp, G }) {
   const holgado = ancho || impresion;
   const primero = seg[0];
   const cierra = seg[seg.length - 1];
-  const etiqueta = ti === 0 ? "Ida" : ti === 1 ? "Vuelta" : `Tramo ${ti + 1}`;
+  /* Todos los trayectos se numeran igual. "Ida" y "Vuelta" mentían apenas el
+     itinerario tenía noches en una escala: un Estambul → Lisboa con tres
+     noches en Lisboa no es la vuelta de nada. Gero pidió un rótulo que sirva
+     para cualquier forma de viaje (17/09). */
+  const etiqueta = `Tramo ${ti + 1}`;
 
   /* Un código que no está en la tabla Aeropuerto no se inventa: sale tal cual
      y sin subtítulo, igual que hacía PuntoRuta. El nombre corto de la terminal
