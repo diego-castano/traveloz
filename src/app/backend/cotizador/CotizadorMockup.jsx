@@ -1371,7 +1371,10 @@ export default function Cotizador({
             {/* rail: los bloques plegados arriba y las notas internas con todo el alto
                 que queda. Las notas son la herramienta del vendedor mientras arma, así
                 que se ven siempre, esté donde esté del formulario (Gero, 17/09). */}
-            <aside className="rail-col ed-rail" style={{ width:196, flexShrink:0, position:"sticky", top:74,
+            {/* zIndex 20: la animación de entrada hace de la columna una capa propia, y sin
+                nivel la lista de bloques quedaba debajo de las tarjetas del formulario.
+                Por debajo del encabezado del editor (50). */}
+            <aside className="rail-col ed-rail" style={{ width:196, flexShrink:0, position:"sticky", top:74, zIndex:20,
               /* 150 px: el encabezado del panel más el del editor. Así el bloc entra entero
                  también arriba de todo, antes de que la columna se pegue al hacer scroll. */
               height:"calc(100vh - 150px)", minHeight:420, display:"flex", flexDirection:"column", gap:10 }}>
