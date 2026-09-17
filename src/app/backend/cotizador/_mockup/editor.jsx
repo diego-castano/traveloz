@@ -1459,7 +1459,6 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
   /* un bloc y nada más: Enter es salto de línea, como en cualquier cuaderno */
   const bloc = (grande) => (
     <textarea className="in notas-ta" autoFocus={grande} value={q.notasLibres || ""}
-      rows={grande ? undefined : 7}
       style={{ width:"100%", resize:"none", lineHeight:1.55, fontSize:12,
         ...(grande ? { flex:1, height:"100%" } : {}) }}
       placeholder="Escribí libre: aéreo 700, hotel 1 400…"
@@ -1468,7 +1467,7 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
 
   if (vistaPasajero) {
     return (
-      <div className="card" style={{ padding:11, marginTop:11, opacity:.55 }}>
+      <div className="card" style={{ padding:11, opacity:.55 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:7 }}>
           <Lock size={12} style={{ color:"var(--n400)", flexShrink:0 }} />
           <span className="lbl">Notas internas</span>
@@ -1483,7 +1482,8 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
 
   return (
     <>
-      <div className="card notas-card" style={{ padding:11, marginTop:11 }}>
+      {/* flex:1 — ocupa todo el alto que dejan los bloques en la columna fija */}
+      <div className="card notas-card" style={{ padding:11, flex:1 }}>
         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8, flexWrap:"wrap" }}>
           <Lock size={12} style={{ color:"var(--coral)", flexShrink:0 }} />
           <span className="lbl">Notas internas</span>
@@ -1492,14 +1492,11 @@ function NotasRail({ q, set, vistaPasajero, toast }) {
 
         {bloc(false)}
 
-        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:8, flexShrink:0 }}>
           <button className="btn btn-g btn-xs notas-exp" onClick={() => setAbierto(true)}
             title="Abrir el bloc a pantalla, con los costos fijos">
             <Maximize2 size={11} /> Expandir
           </button>
-        </div>
-        <div style={{ fontSize:10, color:"var(--n300)", marginTop:6, lineHeight:1.45 }}>
-          Escribí como quieras: esto no sale en ningún lado.
         </div>
       </div>
 

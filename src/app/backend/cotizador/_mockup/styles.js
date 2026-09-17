@@ -510,10 +510,21 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 
 /* ── botón "Escribir por mí" (identidad IA) ──────────────────────────── */
 /* ── bloc de notas del rail: crece con el mouse para leer mejor ───────── */
-.notas-card { transition:box-shadow .3s cubic-bezier(.2,.8,.2,1), transform .3s cubic-bezier(.2,.8,.2,1); }
-.notas-card:hover { box-shadow:0 14px 34px -16px rgba(26,26,46,.22); transform:translateY(-1px); }
-.notas-card .notas-ta { height:118px; transition:height .38s cubic-bezier(.2,.8,.2,1); }
-.notas-card:hover .notas-ta, .notas-card:focus-within .notas-ta { height:260px; }
+/* Notas internas: siempre abiertas y con todo el alto que deja la columna
+   (Gero, 17/09). Antes medían 118 px y crecían solo con el mouse encima. */
+.notas-card { display:flex; flex-direction:column; min-height:0; transition:box-shadow .3s cubic-bezier(.2,.8,.2,1); }
+.notas-card:focus-within { box-shadow:0 14px 34px -16px rgba(26,26,46,.22); }
+.notas-card .notas-ta { flex:1 1 auto; min-height:170px; height:auto; }
+/* Bloques plegados arriba de las notas: una barra con el avance que se abre
+   al pasar el mouse, con clic o con el teclado. */
+.rail-bar { position:relative; display:flex; align-items:center; gap:8px; width:100%; padding:9px 11px 12px;
+  overflow:hidden; cursor:pointer; text-align:left; color:var(--ink); }
+.rail-bar:hover, .rail-bar[aria-expanded="true"] { border-color:rgba(120,90,229,.35); }
+.rail-bar-avance { position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--sunk); }
+.rail-bar-avance > span { display:block; height:100%; background:linear-gradient(90deg,#45D4C0,#2A9E8E);
+  transition:width .5s cubic-bezier(.2,.8,.2,1); }
+.rail-pop { position:absolute; top:calc(100% + 6px); left:0; width:232px; padding:9px; z-index:60;
+  background:var(--pop); backdrop-filter:none; box-shadow:0 22px 50px -14px rgba(17,17,36,.28); }
 .notas-exp svg { transition:transform .26s cubic-bezier(.34,1.56,.64,1); }
 .notas-exp:hover svg { transform:scale(1.25) rotate(8deg); }
 /* la bitácora expandida entra como drawer desde la izquierda */
@@ -710,7 +721,8 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .ctz.dark .btn-tt:hover { background:rgba(69,212,192,.19); border-color:rgba(69,212,192,.55); }
 .ctz.dark .btn-ta { background:rgba(247,178,103,.13); border-color:rgba(247,178,103,.4); }
 .ctz.dark .btn-ta:hover { background:rgba(247,178,103,.2); border-color:rgba(247,178,103,.58); }
-.ctz.dark .notas-card:hover { box-shadow:0 14px 34px -16px rgba(0,0,0,.5); }
+.ctz.dark .notas-card:focus-within { box-shadow:0 14px 34px -16px rgba(0,0,0,.5); }
+.ctz.dark .rail-pop { box-shadow:0 22px 50px -14px rgba(0,0,0,.7); }
 .ctz.dark .drawer-izq { box-shadow:24px 0 70px -20px rgba(0,0,0,.8); }
 .ctz.dark .kbd { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.12); color:var(--n500); }
 .ctz.dark :focus-visible { box-shadow:0 0 0 2px var(--page), 0 0 0 4px rgba(69,212,192,.55) !important; }

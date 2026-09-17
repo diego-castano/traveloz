@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Plus, Send, ArrowLeft, Command, Zap, X,
   Smartphone, LayoutGrid, Loader2, CheckCheck, AlertCircle, Lock, Gauge, Ticket, Files, Monitor,
-  StickyNote, ListChecks, Eye, EyeOff, Keyboard, Star
+  StickyNote, ListChecks, Eye, EyeOff, Keyboard, Star, ChevronDown
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import { CSS_UI } from "./_mockup/styles-ui";
@@ -180,6 +180,66 @@ function sincronizarAlojamiento(servicios, destinos) {
   }
   const igual = salida.length === filas.length && salida.every((s, i) => s === filas[i]);
   return igual ? filas : salida;
+}
+
+/* ── Bloques plegados ───────────────────────────────────────────────────
+   Una barra con el avance que se abre al pasar el mouse. Con clic también
+   (pantallas táctiles) y con el foco (teclado). La lista flota encima de las
+   notas y se cierra al elegir un bloque, al salir con el mouse o con Escape.
+   Los atajos Alt+N siguen funcionando igual. */
+function RailBloques({ bloques, listos, activo, irA, onAtajos }) {
+  const [abierto, setAbierto] = useState(false);
+  const cierre = useRef(null);
+  const abrir = () => { clearTimeout(cierre.current); setAbierto(true); };
+  /* un respiro antes de cerrar: cruzar el hueco entre la barra y la lista no la cierra */
+  const cerrarPronto = () => { clearTimeout(cierre.current); cierre.current = setTimeout(() => setAbierto(false), 180); };
+  useEffect(() => () => clearTimeout(cierre.current), []);
+  useEffect(() => {
+    if (!abierto) return;
+    const h = (e) => { if (e.key === "Escape") setAbierto(false); };
+    document.addEventListener("keydown", h);
+    return () => document.removeEventListener("keydown", h);
+  }, [abierto]);
+  const actual = bloques.find((b) => b.id === activo);
+  const total = bloques.length || 1;
+
+  return (
+    <div style={{ position:"relative", flexShrink:0 }}
+      onMouseEnter={abrir} onMouseLeave={cerrarPronto}
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) cerrarPronto(); }}>
+      <button type="button" className="card rail-bar" aria-expanded={abierto} aria-haspopup="menu"
+        onClick={() => setAbierto((v) => !v)} onFocus={abrir}>
+        <LayoutGrid size={14} style={{ color:"var(--violet)", flexShrink:0 }} />
+        <span style={{ flex:1, minWidth:0 }}>
+          <span className="lbl" style={{ display:"block" }}>Bloques</span>
+          <span style={{ display:"block", fontSize:12, fontWeight:600, whiteSpace:"nowrap",
+            overflow:"hidden", textOverflow:"ellipsis" }}>{actual?.l || "Ir a un bloque"}</span>
+        </span>
+        <span className="mono" style={{ fontSize:10.5, color:"var(--n400)", flexShrink:0 }}>{listos}/{bloques.length}</span>
+        <ChevronDown size={13} style={{ color:"var(--n400)", flexShrink:0,
+          transform: abierto ? "rotate(180deg)" : "none", transition:"transform .2s" }} />
+        <span className="rail-bar-avance" aria-hidden><span style={{ width:`${(listos / total) * 100}%` }} /></span>
+      </button>
+
+      {abierto && (
+        <div className="card rail-pop" role="menu">
+          {bloques.map((b, i) => (
+            <button key={b.id} type="button" role="menuitem" className="rail-i" data-on={activo === b.id ? "1" : "0"}
+              onClick={() => { irA(b.id); setAbierto(false); }} title={`Ir a ${b.l} · Alt+${i + 1}`}>
+              <span className="rail-dot" data-ok={b.ok ? "1" : "0"} />
+              <b.Icon size={13} style={{ opacity:.75, flexShrink:0 }} />
+              <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.l}</span>
+              <span className="rail-k mono">alt {i + 1}</span>
+            </button>
+          ))}
+          <button type="button" className="rail-help" style={{ padding:"0 10px" }}
+            onClick={() => { setAbierto(false); onAtajos(); }}>
+            Ver todos los atajos <span className="kbd">?</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* Clave de idempotencia del alta: una por cotización nueva. Si el autosave
@@ -1308,33 +1368,15 @@ export default function Cotizador({
           {/* ── cuerpo: rail · formulario · teléfono ──────────────────── */}
           <div style={{ display:"flex", gap:20, maxWidth:1460, margin:"0 auto", padding:"18px 18px 60px", alignItems:"flex-start" }}>
 
-            {/* rail */}
-            <aside className="rail-col ed-rail" style={{ width:196, flexShrink:0, position:"sticky", top:74 }}>
-              <div className="card" style={{ padding:9 }}>
-                <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"3px 7px 8px" }}>
-                  <span className="lbl">Bloques</span>
-                  <span className="mono" style={{ fontSize:10.5, color:"var(--n400)" }}>{listos}/{bloques.length}</span>
-                </div>
-                <div style={{ height:3, borderRadius:9, background:"var(--sunk)", margin:"0 7px 9px", overflow:"hidden" }}>
-                  <div style={{ height:"100%", borderRadius:9, width:`${(listos / bloques.length) * 100}%`,
-                    background:"linear-gradient(90deg,#45D4C0,#2A9E8E)", transition:"width .5s cubic-bezier(.2,.8,.2,1)" }} />
-                </div>
-                {bloques.map((b, i) => (
-                  <button key={b.id} className="rail-i" data-on={activo === b.id ? "1" : "0"} onClick={() => irA(b.id)}
-                    title={`Ir a ${b.l} · Alt+${i + 1}`}>
-                    <span className="rail-dot" data-ok={b.ok ? "1" : "0"} />
-                    <b.Icon size={13} style={{ opacity:.75, flexShrink:0 }} />
-                    <span style={{ whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{b.l}</span>
-                    <span className="rail-k mono">alt {i + 1}</span>
-                  </button>
-                ))}
-              </div>
-              <div style={{ padding:"11px 9px 0", fontSize:10.5, color:"var(--n300)", lineHeight:1.5 }}>
-                Un solo scroll. El rail es para saltar, no un asistente por pasos.
-                <button className="rail-help" onClick={() => setAtajos(true)}>
-                  Ver todos los atajos <span className="kbd">?</span>
-                </button>
-              </div>
+            {/* rail: los bloques plegados arriba y las notas internas con todo el alto
+                que queda. Las notas son la herramienta del vendedor mientras arma, así
+                que se ven siempre, esté donde esté del formulario (Gero, 17/09). */}
+            <aside className="rail-col ed-rail" style={{ width:196, flexShrink:0, position:"sticky", top:74,
+              /* 150 px: el encabezado del panel más el del editor. Así el bloc entra entero
+                 también arriba de todo, antes de que la columna se pegue al hacer scroll. */
+              height:"calc(100vh - 150px)", minHeight:420, display:"flex", flexDirection:"column", gap:10 }}>
+              <RailBloques bloques={bloques} listos={listos} activo={activo} irA={irA}
+                onAtajos={() => setAtajos(true)} />
 
               {/* bitácora interna: fija acá, nunca en el flujo de la cotización */}
               <NotasRail q={q} set={set} vistaPasajero={vistaPasajero} toast={toast} vendedor={vendedor} />
