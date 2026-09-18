@@ -294,7 +294,7 @@ export async function revelarPago(input: {
     // ── Segundo factor ────────────────────────────────────────────────────
     const user = await prisma.user.findUnique({
       where: { id: ctx.userId },
-      select: { id: true, email: true, passwordHash: true, pinHash: true },
+      select: { id: true, name: true, email: true, passwordHash: true, pinHash: true },
     });
     if (!user) return { ok: false, message: MSG_GENERICO };
 
@@ -320,7 +320,15 @@ export async function revelarPago(input: {
         // Solo QUÉ factor se intentó. La credencial no entra a la metadata.
         metadata: { pagoId: row.id, factor: usaPin ? "pin" : "password" },
       });
-      return { ok: false, message: MSG_CREDENCIAL };
+      /* El mensaje nombra la sesión abierta. La mitad de los fallos reales son
+         una persona tipeando SU PIN en la computadora de otra —el 18/09 pasó
+         con el PIN de Diego en la sesión de Amparo— y "Credencial incorrecta"
+         a secas se lee como "la bóveda está rota". El nombre no revela nada:
+         ya está en el menú del panel, arriba a la derecha. */
+      return {
+        ok: false,
+        message: `${MSG_CREDENCIAL} La sesión abierta acá es la de ${user.name}: tiene que ser su PIN o su contraseña. Si la credencial es de otra persona, cerrá sesión y entrá con esa cuenta.`,
+      };
     }
 
     // ── Descifrado ────────────────────────────────────────────────────────
