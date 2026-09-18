@@ -1102,30 +1102,30 @@ function BloqueVuelos({ q, set, refEl, toast }) {
   );
 }
 
-/* ── Ícono de una línea de servicio — botón que abre un selector chico con
-   los 20 íconos del registro más "Automático" (borra `icono` y vuelve a
-   resolverse por categoría/texto). Anclado al botón, portal a `.ctz` igual
-   que SelectBuscable, cierra con clic afuera o Escape. ────────────────── */
-function IconoServicioPicker({ servicio, onElegir }) {
+/* ── Panel de íconos anclado a un botón ───────────────────────────────
+   Lo usan el ícono de cada fila de servicio y la pestaña "Otros". Portal a
+   `.ctz` igual que SelectBuscable, se cierra con clic afuera o Escape. */
+function usePopAncla(ancho) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const refBtn = useRef(null);
   const refPop = useRef(null);
 
-  const medir = () => {
+  const abrir = () => {
     const el = refBtn.current;
     if (!el) return;
-    const w = 208;
     const r = el.getBoundingClientRect();
-    const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - w - 8));
+    const left = Math.min(Math.max(8, r.left), Math.max(8, window.innerWidth - ancho - 8));
     const abajo = window.innerHeight - r.bottom;
     const haciaArriba = abajo < 260 && r.top > abajo;
     setPos({
-      left, width: w,
+      left, width: ancho,
       top: haciaArriba ? null : Math.round(r.bottom + 6),
       bottom: haciaArriba ? Math.round(window.innerHeight - r.top + 6) : null,
     });
+    setOpen(true);
   };
+  const cerrar = () => setOpen(false);
 
   useEffect(() => {
     if (!open) return;
@@ -1146,36 +1146,90 @@ function IconoServicioPicker({ servicio, onElegir }) {
   const cont = open && typeof document !== "undefined"
     ? (document.querySelector(".ctz") || document.body) : null;
 
+  return { open, pos, cont, refBtn, refPop, abrir, cerrar };
+}
+
+/* Los 20 íconos del registro, en grilla. `actual` marca el elegido. */
+function GrillaIconos({ actual, onElegir }) {
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:4 }}>
+      {ICON_OPTIONS.map((o) => (
+        <button key={o.key} type="button" title={o.label}
+          style={{ width:32, height:32, borderRadius:8, display:"grid", placeItems:"center",
+            background: actual === o.key ? "rgba(120,90,229,.18)" : "transparent",
+            border:"1px solid var(--hair-soft)", cursor:"pointer" }}
+          onClick={() => onElegir(o.key)}>
+          <ServiceIcon icon={o.key} size={14} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ── Ícono de una línea de servicio — botón que abre la grilla más
+   "Automático" (borra `icono` y vuelve a resolverse por categoría/texto). */
+function IconoServicioPicker({ servicio, onElegir }) {
+  const pop = usePopAncla(208);
+
   return (
     <>
-      <button type="button" ref={refBtn} title="Cambiar ícono"
+      <button type="button" ref={pop.refBtn} title="Cambiar ícono"
         style={{ width:24, height:24, borderRadius:7, flexShrink:0, display:"grid", placeItems:"center",
           background:"rgba(120,90,229,.10)", color:"var(--violet)", border:"none", cursor:"pointer" }}
-        onClick={() => { if (open) { setOpen(false); return; } medir(); setOpen(true); }}>
+        onClick={() => (pop.open ? pop.cerrar() : pop.abrir())}>
         <ServiceIcon icon={resolverIcono(servicio)} size={12} />
       </button>
-      {open && pos && cont && createPortal(
-        <div ref={refPop} className="ac-pop a-slide"
-          style={{ position:"fixed", left:pos.left, width:pos.width,
-            top: pos.top ?? undefined, bottom: pos.bottom ?? undefined, padding:8, zIndex:60 }}>
+      {pop.open && pop.pos && pop.cont && createPortal(
+        <div ref={pop.refPop} className="ac-pop a-slide"
+          style={{ position:"fixed", left:pop.pos.left, width:pop.pos.width,
+            top: pop.pos.top ?? undefined, bottom: pop.pos.bottom ?? undefined, padding:8, zIndex:60 }}>
           <button type="button" className="ac-i" style={{ marginBottom:4 }}
-            onClick={() => { onElegir(null); setOpen(false); }}>
+            onClick={() => { onElegir(null); pop.cerrar(); }}>
             <span style={{ flex:1 }}>Automático</span>
             {!servicio.icono && <Check size={12} />}
           </button>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(5, 1fr)", gap:4 }}>
-            {ICON_OPTIONS.map((o) => (
-              <button key={o.key} type="button" title={o.label}
-                style={{ width:32, height:32, borderRadius:8, display:"grid", placeItems:"center",
-                  background: servicio.icono === o.key ? "rgba(120,90,229,.18)" : "transparent",
-                  border:"1px solid var(--hair-soft)", cursor:"pointer" }}
-                onClick={() => { onElegir(o.key); setOpen(false); }}>
-                <ServiceIcon icon={o.key} size={14} />
-              </button>
-            ))}
-          </div>
+          <GrillaIconos actual={servicio.icono}
+            onElegir={(key) => { onElegir(key); pop.cerrar(); }} />
         </div>,
-        cont,
+        pop.cont,
+      )}
+    </>
+  );
+}
+
+/* ── Pestaña "Otros" ──────────────────────────────────────────────────
+   Las otras pestañas agregan la fila y listo, pero "Otros" es el cajón de lo
+   que no tiene categoría y siempre nacía con la estrella: había que abrir el
+   panel de la fila para ponerle el ícono que va. Ahora la pestaña misma
+   muestra la grilla y la fila nace con el ícono elegido, lista para escribir
+   (Gero, 18/09). */
+function ChipOtros({ Icon, label, activo, n, late, onElegir }) {
+  const pop = usePopAncla(208);
+
+  return (
+    <>
+      <button type="button" ref={pop.refBtn}
+        className={`chip ${activo ? "chip-on" : ""} ${late ? "a-tada" : ""}`}
+        title="Elegí el ícono y se agrega la línea"
+        onClick={() => (pop.open ? pop.cerrar() : pop.abrir())}>
+        <Icon size={12} />{label}
+        {n > 0 && <span key={n} className="mono a-pulse" style={{ fontSize:10, opacity:.7 }}>{n}</span>}
+        <ChevronDown size={11} style={{ opacity:.55 }} />
+      </button>
+      {pop.open && pop.pos && pop.cont && createPortal(
+        <div ref={pop.refPop} className="ac-pop a-slide"
+          style={{ position:"fixed", left:pop.pos.left, width:pop.pos.width,
+            top: pop.pos.top ?? undefined, bottom: pop.pos.bottom ?? undefined, padding:8, zIndex:60 }}>
+          <div style={{ fontSize:10.5, color:"var(--n400)", padding:"1px 3px 7px" }}>
+            Elegí el ícono y escribí el servicio
+          </div>
+          <GrillaIconos onElegir={(key) => { pop.cerrar(); onElegir(key); }} />
+          <button type="button" className="ac-i" style={{ marginTop:5 }}
+            onClick={() => { pop.cerrar(); onElegir(null); }}>
+            <span style={{ flex:1 }}>Agregar sin elegir ícono</span>
+          </button>
+        </div>,
+        pop.cont,
       )}
     </>
   );
@@ -1218,12 +1272,17 @@ function BloqueServicios({ q, set, refEl, toast }) {
   const enfocarFila = (id) => requestAnimationFrame(() => {
     document.querySelector(`[data-srv-id="${id}"]`)?.focus();
   });
-  const clicPestana = (categoria) => {
+  const clicPestana = (categoria, icono) => {
     setCat(categoria);
     const vacia = q.servicios.find((s) => s.categoria === categoria && !s.texto.trim());
-    if (vacia) { enfocarFila(vacia.id); return; }
+    if (vacia) {
+      /* la fila vacía que ya estaba se queda con el ícono recién elegido */
+      if (icono) set((d) => { const f = d.servicios.find((x) => x.id === vacia.id); if (f) f.icono = icono; });
+      enfocarFila(vacia.id);
+      return;
+    }
     const id = uid("srv");
-    set((d) => { d.servicios.push({ id, categoria, texto:"",
+    set((d) => { d.servicios.push({ id, categoria, texto:"", ...(icono ? { icono } : {}),
       ciudad: categoria === "traslado" ? "" : null, modalidad: categoria === "traslado" ? "Regular" : null }); });
     enfocarFila(id);
   };
@@ -1246,6 +1305,12 @@ function BloqueServicios({ q, set, refEl, toast }) {
         {CATS.map((c) => {
           const n = q.servicios.filter((s) => s.categoria === c.id).length;
           const late = pulseCat && String(pulseCat).startsWith(c.id);
+          if (c.id === "opcionales") {
+            return (
+              <ChipOtros key={c.id} Icon={c.Icon} label={c.label} activo={cat === c.id} n={n} late={late}
+                onElegir={(icono) => clicPestana(c.id, icono)} />
+            );
+          }
           return (
             <button key={c.id} className={`chip ${cat === c.id ? "chip-on" : ""} ${late ? "a-tada" : ""}`}
               onClick={() => clicPestana(c.id)}>
