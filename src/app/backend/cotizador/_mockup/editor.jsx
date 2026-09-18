@@ -411,6 +411,31 @@ function SeccionDestinos({ q, set, tramos, toast }) {
     else if (v && n > 0) toast({ msg:`Régimen aplicado a ${n} ${n === 1 ? "opción" : "opciones"}`, tone:"ok" });
   };
 
+  /* ── Reordenar destinos ───────────────────────────────────────────────
+     Mover una ciudad arrastra lo que cuelga de ella: el hotel de ese tramo en
+     TODAS las opciones hoteleras. Si solo cambiaran de lugar las ciudades, la
+     opción 1 quedaría con el hotel de Río abajo de Búzios y hay que rearmarla
+     entera a mano (Gero, 18/09). El check-in pisado viaja con su destino
+     —vive en la fila—; el automático se recalcula solo, que es justamente lo
+     que espera quien reordena el viaje. */
+  const moverDestino = (i, j) => {
+    if (j < 0 || j >= q.destinos.length || j === i) return;
+    set((d) => {
+      const [dst] = d.destinos.splice(i, 1);
+      d.destinos.splice(j, 0, dst);
+      (d.opciones || []).forEach((o) => {
+        const hs = o.hoteles;
+        if (!Array.isArray(hs)) return;
+        /* Una opción puede tener menos hoteles que destinos (se armó antes de
+           agregar el último tramo). Se completa hasta el largo de la lista
+           para que el splice mueva el hotel que es y no corra a los demás. */
+        while (hs.length < d.destinos.length) hs.push({ hotelId:null, libre:"", cat:0, regimen:"" });
+        const [h] = hs.splice(i, 1);
+        hs.splice(j, 0, h);
+      });
+    });
+  };
+
   /* ¿los hoteles de este tramo dicen algo distinto de lo que dice arriba? */
   const hotelesDivergen = (i) => {
     const dd = q.destinos[i];
@@ -489,6 +514,12 @@ function SeccionDestinos({ q, set, tramos, toast }) {
                 </div>
 
                 <div style={{ display:"flex", gap:3, marginLeft:"auto", flexShrink:0 }}>
+                  <button className="btn btn-g btn-ico" disabled={i === 0}
+                    title="Subir este destino — los hoteles de las opciones suben con él"
+                    onClick={() => moverDestino(i, i - 1)}><ArrowUp size={13} /></button>
+                  <button className="btn btn-g btn-ico" disabled={i === q.destinos.length - 1}
+                    title="Bajar este destino — los hoteles de las opciones bajan con él"
+                    onClick={() => moverDestino(i, i + 1)}><ArrowDown size={13} /></button>
                   <button className="btn btn-g btn-ico" title="Quitar destino"
                     onClick={() => { const cp = { ...dd }; set((d) => { d.destinos.splice(i, 1); });
                       toast({ msg:`Se quitó ${cp.ciudad || "el destino"}`, tone:"warn",
