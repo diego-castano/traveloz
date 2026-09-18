@@ -2310,28 +2310,13 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
 
                 {/* hoteles por tramo */}
                 <div style={{ padding:"11px" }}>
-                  {/* Régimen de la opción. Es el que vale cuando ningún hotel
-                      trae el suyo, y el ÚNICO control disponible mientras no
-                      haya destinos cargados: los selectores de régimen viven
-                      dentro de cada tramo, así que una opción armada sobre la
-                      marcha salía sin régimen y la hoja del pasajero lo
-                      mostraba vacío. (Reporte de Gero, 01/09.) */}
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:11, flexWrap:"wrap" }}>
-                    <span className="lbl">Régimen</span>
-                    <select className="in" style={{ flex:"0 1 210px", height:34, fontSize:12 }}
-                      title="Régimen de la opción. Cada hotel puede llevar el suyo y pisa a este."
-                      value={o.regimen || ""}
-                      onChange={(e) => { const v = e.target.value;
-                        set((d) => { d.opciones[i].regimen = v; }); }}>
-                      <option value="">Régimen…</option>
-                      {REGIMENES.map((x) => <option key={x}>{x}</option>)}
-                    </select>
-                    {tramos.length > 0 && (
-                      <span style={{ fontSize:10.5, color:"var(--n400)" }}>
-                        Vale para los hoteles que no tengan el suyo.
-                      </span>
-                    )}
-                  </div>
+                  {/* Acá vivía un tercer selector de régimen, el de la opción
+                      entera. Sobraba: el régimen se elige en el destino, baja
+                      solo a los hoteles y, con "Régimen detallado", cada hotel
+                      lleva el suyo — tres controles diciendo lo mismo, uno
+                      arriba del otro (Diego, 17/09). El campo `regimen` de la
+                      opción sigue leyéndose en la ficha del pasajero para no
+                      cambiarle nada a las cotizaciones ya armadas. */}
                   {tramos.length === 0 && <div style={{ fontSize:12, color:"var(--n400)" }}>Agregá destinos para elegir hoteles por tramo.</div>}
                   {tramos.map((t, hi) => {
                     const h = o.hoteles[hi] || { hotelId:null, libre:"", cat:0, regimen:"" };
