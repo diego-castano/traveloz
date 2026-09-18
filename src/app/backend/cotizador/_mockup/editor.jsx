@@ -448,7 +448,8 @@ function SeccionDestinos({ q, set, tramos, toast }) {
      abajo se corren uno, y por eso el -1 cuando se baja. */
   const soltar = (from, to) => {
     if (from == null || to == null) return;
-    moverDestino(from, from < to ? to - 1 : to);
+    const destino = from < to ? to - 1 : to;
+    moverDestino(from, Math.min(destino, q.destinos.length - 1));
   };
 
   /* ¿los hoteles de este tramo dicen algo distinto de lo que dice arriba? */
@@ -570,6 +571,15 @@ function SeccionDestinos({ q, set, tramos, toast }) {
               </React.Fragment>
             );
           })}
+          {/* Zona de descarte al final. La guía se dibuja ARRIBA de cada fila,
+              así que sin esto el último lugar de la lista era inalcanzable
+              arrastrando: siempre caía antes del último destino. */}
+          {drag !== null && (
+            <div onDragOver={(e) => { e.preventDefault(); setOver(q.destinos.length); }}
+              style={{ height:14, marginTop:-6 }}>
+              {over === q.destinos.length && <div className="drop-line" />}
+            </div>
+          )}
         </div>
       )}
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
