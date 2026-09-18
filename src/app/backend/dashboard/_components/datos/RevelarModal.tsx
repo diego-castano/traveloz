@@ -16,6 +16,7 @@
 // ---------------------------------------------------------------------------
 
 import { useCallback, useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { motion } from "motion/react";
 import {
   AlertTriangle,
@@ -72,6 +73,8 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
 
   const [meta, setMeta] = useState<PagoMetaView | null>(null);
   const [metaError, setMetaError] = useState<string | null>(null);
+  const { data: sesion } = useSession();
+  const nombreSesion = sesion?.user?.name ?? null;
   const [paso, setPaso] = useState<Paso>("confirmar");
   const [credencial, setCredencial] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -218,11 +221,18 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
               </div>
             ) : paso === "credencial" ? (
               <form onSubmit={(e) => void confirmarCredencial(e)} className="space-y-2.5">
+                {/* El PIN que vale es el del usuario que tiene la sesión abierta
+                    en ESTE navegador, no el de quien está mirando la pantalla.
+                    Con las computadoras compartidas de la agencia esa
+                    diferencia es la mitad de los fallos, así que el nombre va
+                    en el rótulo y se ve antes de tipear (Diego, 18/09). */}
                 <label
                   htmlFor="revelar-credencial"
                   className="block text-[10.5px] font-bold uppercase tracking-wider text-neutral-400"
                 >
-                  Confirmá con tu PIN o tu contraseña
+                  {nombreSesion
+                    ? `Confirmá con el PIN o la contraseña de ${nombreSesion}`
+                    : "Confirmá con tu PIN o tu contraseña"}
                 </label>
                 <div className="relative">
                   <KeyRound
