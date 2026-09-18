@@ -386,6 +386,13 @@ function BloqueEncabezado({ q, set, tramos, hayManual, onRepropagar, refEl }) {
 
 /* ── 3 · Destinos y noches ───────────────────────────────────────────── */
 function SeccionDestinos({ q, set, tramos, toast }) {
+  /* Arrastrar: mismo mecanismo que la lista de servicios. `armado` existe
+     porque la fila entera no es arrastrable —adentro hay inputs de texto y
+     fechas que se romperían—: solo se arma al apretar la manija. */
+  const [drag, setDrag] = useState(null);
+  const [over, setOver] = useState(null);
+  const [armado, setArmado] = useState(null);
+
   /* 7 noches por defecto: es el paquete estándar del 70-80% de las ventas */
   const filaNueva = () => ({ id:uid("dst"), ciudad:"", noches:7, regimen:"", checkinManual:null });
   const agregar = () => set((d) => { d.destinos.push(filaNueva()); });
@@ -436,6 +443,14 @@ function SeccionDestinos({ q, set, tramos, toast }) {
     });
   };
 
+  /* La guía se dibuja ARRIBA de la fila `over`, así que soltar sobre la fila 3
+     significa "entrá antes de la 3". Al sacar la fila de origen los índices de
+     abajo se corren uno, y por eso el -1 cuando se baja. */
+  const soltar = (from, to) => {
+    if (from == null || to == null) return;
+    moverDestino(from, from < to ? to - 1 : to);
+  };
+
   /* ¿los hoteles de este tramo dicen algo distinto de lo que dice arriba? */
   const hotelesDivergen = (i) => {
     const dd = q.destinos[i];
@@ -456,8 +471,18 @@ function SeccionDestinos({ q, set, tramos, toast }) {
           {q.destinos.map((dd, i) => {
             const t = tramos[i];
             return (
-              <div key={dd.id} className="a-pop" style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
+              <React.Fragment key={dd.id}>
+                {over === i && drag !== null && drag !== i && <div className="drop-line" />}
+              <div draggable={armado === i}
+                onDragStart={() => setDrag(i)}
+                onDragEnd={() => { soltar(drag, over); setDrag(null); setOver(null); setArmado(null); }}
+                onDragOver={(e) => { e.preventDefault(); setOver(i); }}
+                className={`a-pop ${drag === i ? "drag-on" : ""}`}
+                style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px",
                 background:"var(--card-3)", border:"1px solid var(--hair-soft)", borderRadius:11, flexWrap:"wrap" }}>
+                <GripVertical size={14} style={{ color:"var(--n300)", cursor:"grab", flexShrink:0 }}
+                  title="Arrastrá para reordenar — los hoteles de las opciones van con el destino"
+                  onMouseDown={() => setArmado(i)} onMouseUp={() => setArmado(null)} />
                 <div className="mono" style={{ width:20, height:20, borderRadius:6, flexShrink:0, display:"grid",
                   placeItems:"center", background:"rgba(120,90,229,.11)", color:"var(--violet)", fontSize:10, fontWeight:600 }}>{i + 1}</div>
 
@@ -542,12 +567,15 @@ function SeccionDestinos({ q, set, tramos, toast }) {
                   </div>
                 )}
               </div>
+              </React.Fragment>
             );
           })}
         </div>
       )}
       <div style={{ fontSize:11, color:"var(--n400)", marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
         <Zap size={11} style={{ color:"var(--teal-2)" }} />
+        Arrastrá un destino por la manija para cambiarlo de orden, o usá las flechas: los hoteles
+        cargados en las opciones se mueven con él.
         El check-in baja solo de la fecha de salida y podés pisarlo por destino: el check-out se recalcula.
         El régimen baja a los servicios y a los hoteles de todas las opciones; con “Régimen detallado” cada hotel lleva el suyo.
       </div>
