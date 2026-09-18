@@ -258,7 +258,10 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
         categoria: txt(s?.categoria),
         texto: txt(s?.texto),
         ciudad: s?.ciudad ?? null,
-        modalidad: s?.modalidad ?? null,
+        // El selector del editor muestra "Regular" desde que nace la fila, así
+        // que un traslado sin modalidad guardada es regular: la hoja del
+        // pasajero tiene que decir lo mismo que vio el vendedor.
+        modalidad: s?.modalidad ?? (txt(s?.categoria) === "traslado" ? "Regular" : null),
         icono: s?.icono ?? null,
       })),
 

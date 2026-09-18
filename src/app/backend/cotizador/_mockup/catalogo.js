@@ -503,10 +503,25 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
         .map((it) => ({ icon: it.icon, texto: String(it.texto || "").replace(/\s+/g, " ").trim() }))
         .filter((it) => it.texto);
 
+      /* Un renglón copiado del "Incluye" publicado no dice si el traslado es
+         regular o privado —eso vive en el traslado del paquete—, y sin
+         modalidad la ficha del pasajero no mostraba nada aunque el selector
+         del editor dijera "Regular": había que elegir Privado y volver a
+         Regular para que apareciera (Gero, 18/09). Si todos los traslados del
+         paquete son del mismo tipo, la línea lo hereda; si se mezclan, queda
+         Regular, que es lo que el selector muestra desde que nace la fila. */
+      const tipoTrasladoPaquete = (() => {
+        const tipos = [...new Set(asigTraslados
+          .map((pt) => trasladoPorId.get(pt.trasladoId)?.tipo)
+          .filter(Boolean))];
+        return tipos.length === 1 && tipos[0] === "PRIVADO" ? "Privado" : "Regular";
+      })();
+
       if (publicados.length) {
         for (const it of publicados) {
-          servicios.push({ cat: categoriaDeIcono(it.icon), texto: it.texto,
-            icono: it.icon || null, origen: "publicacion" });
+          const cat = categoriaDeIcono(it.icon);
+          servicios.push({ cat, texto: it.texto, icono: it.icon || null, origen: "publicacion",
+            ...(cat === "traslado" ? { modalidad: tipoTrasladoPaquete } : {}) });
         }
       } else {
 

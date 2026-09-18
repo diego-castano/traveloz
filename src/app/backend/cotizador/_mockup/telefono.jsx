@@ -125,6 +125,16 @@ const OFICINA_DIR = "Luis A. de Herrera 1343 Of. 301";
  * Cuenta como contenido: texto una vez sacado el markup y los espacios duros,
  * o una imagen/tabla incrustada (el editor las admite).
  */
+/* Modalidad que se muestra debajo de un traslado. El selector del editor
+   arranca en "Regular" aunque el dato esté vacío —una línea copiada del
+   "Incluye" del paquete nace así—, y la ficha mostraba el renglón en blanco:
+   el vendedor tenía que elegir Privado y volver a Regular para que apareciera
+   (Gero, 18/09). Es el mismo criterio que aplica `contenidoPublico`. */
+function modalidadServicio(sv) {
+  if (sv?.modalidad) return sv.modalidad;
+  return sv?.categoria === "traslado" ? "Regular" : null;
+}
+
 function hayNotasReales(html) {
   const s = typeof html === "string" ? html : "";
   if (!s) return false;
@@ -822,9 +832,9 @@ function SalidaPasajero({
                       <ServiceIcon icon={resolverIcono(sv)} size={impresion ? 13 : 14} color={G.b} /></div>
                     <div style={{ fontSize:fzp(13, 13.5, 12.5), lineHeight:1.5, paddingTop: impresion ? 4 : 5, fontWeight:500 }}>
                       {sv.texto}
-                      {(sv.ciudad || sv.modalidad) && (
+                      {(sv.ciudad || modalidadServicio(sv)) && (
                         <div style={{ fontSize:fz(11, 11.5), color:"#8A8DB5", fontWeight:400 }}>
-                          {[sv.ciudad, sv.modalidad].filter(Boolean).join(" · ")}
+                          {[sv.ciudad, modalidadServicio(sv)].filter(Boolean).join(" · ")}
                         </div>
                       )}
                     </div>
