@@ -12,7 +12,6 @@
 // ---------------------------------------------------------------------------
 
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { ArrowLeft, Building2, ShieldAlert } from "lucide-react";
 import { auth } from "@/lib/auth.config";
 import { getPagoMeta } from "@/actions/datos-boveda.actions";
@@ -40,7 +39,12 @@ export default async function PagoPage({ params }: { params: { id: string } }) {
   const esAdmin = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
 
   const meta = await getPagoMeta(params.id);
-  if (!meta) notFound();
+  /* Un 404 pelado acá no le dice nada a nadie: el link del email cae en esta
+     página y el vendedor solo ve "página no encontrada". Son tres motivos y
+     ninguno es un error del sistema, así que se explican en vez de cortar
+     (Diego, 18/09). No se confirma si el registro existe: eso sigue sin
+     salir de getPagoMeta. */
+  if (!meta) return <SinAcceso />;
 
   // Quién abrió esta tarjeta antes. Mismo alcance que la ficha (dueño o admin).
   const accesos = await getAccesosPago(params.id);
@@ -115,6 +119,45 @@ export default async function PagoPage({ params }: { params: { id: string } }) {
         <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
         Abrir estos datos pide tu PIN o tu contraseña y queda registrado en la auditoría con
         tu nombre, la fecha y la tarjeta que abriste.
+      </p>
+    </div>
+  );
+}
+
+function SinAcceso() {
+  return (
+    <div className="mx-auto max-w-2xl space-y-5 p-6">
+      <Link
+        href="/backend/dashboard"
+        className="inline-flex items-center gap-1.5 text-sm text-neutral-500 hover:text-neutral-800"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Volver al panel
+      </Link>
+
+      <div className="rounded-[12px] border border-neutral-200 bg-white p-5">
+        <h1 className="text-xl font-bold text-neutral-900">No podemos mostrarte estos datos</h1>
+        <p className="mt-2 text-[13px] leading-relaxed text-neutral-600">
+          Puede ser por tres motivos:
+        </p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-relaxed text-neutral-600">
+          <li>
+            La tarjeta se cargó en el link de otro vendedor. El mail le llegó a esa persona:
+            entrá con esa cuenta o pedile que la mande a Administración desde su panel.
+          </li>
+          <li>El registro ya no existe.</li>
+          <li>Estás con una sesión distinta a la de la casilla donde recibiste el mail.</li>
+        </ul>
+        <p className="mt-4 border-t border-neutral-100 pt-4 text-[13px] text-neutral-600">
+          Los datos de una tarjeta viven 96 horas y después se borran solos. Si ya pasaron, hay
+          que pedirle al pasajero que los cargue de nuevo con el link.
+        </p>
+      </div>
+
+      <p className="flex items-start gap-2 rounded-[12px] border border-violet-200 bg-violet-50 px-3.5 py-2.5 text-[12px] leading-relaxed text-violet-900">
+        <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+        Cada apertura de una tarjeta pide PIN o contraseña y queda en la auditoría. Por eso el
+        panel no muestra las de otros vendedores salvo que seas administrador.
       </p>
     </div>
   );

@@ -8,18 +8,20 @@
 //   4. recordatorioPagoEmail → al vendedor: le queda 1 día antes de la purga.
 //   5. datosPagoAdmEmail     → a Administración: la tarjeta COMPLETA.
 //
-// REGLA DURA de las plantillas 1-4: el número de tarjeta, el CVV y el
-// documento del titular NUNCA salen por email. Solo viajan pasajero, titular,
-// emisor y los últimos 4 - lo mismo que queda en claro en la DB. Para ver el
-// resto hay que entrar al panel con sesión.
+// Las plantillas 1, 2 y 4 no llevan nunca número, CVV ni documento del
+// titular: solo pasajero, titular, emisor y los últimos 4, lo mismo que queda
+// en claro en la DB.
 //
-// La 5 es la ÚNICA excepción y es una decisión explícita del cliente
-// (26/08/2026): Administración no tiene usuario en el sistema y hoy recibe la
-// tarjeta a mano, por WhatsApp o reenviando el mail del vendedor. El botón
-// "Enviar a ADM" reemplaza ese reenvío manual por un envío auditado a una
-// casilla configurada en el panel. Se manda a un único destino
-// (notificaciones_email_adm) y queda asentado en AuditLog con quién, cuándo y
-// con qué número de file.
+// Las plantillas 3 y 5 SÍ llevan la tarjeta entera, y las dos son decisión
+// explícita del cliente:
+//   • la 5 (26/08/2026): Administración no tiene usuario en el sistema; el
+//     botón "Enviar a ADM" reemplaza el reenvío manual por un envío auditado
+//     a la casilla `notificaciones_email_adm`, con número de file y AuditLog.
+//   • la 3 (18/09/2026, Diego): el aviso al vendedor lleva número, vencimiento
+//     y código para que pueda reenviarlo a administración tal cual lo cargó el
+//     pasajero. Se le advirtió que PCI-DSS prohíbe retransmitir el código de
+//     seguridad y que el dato queda en casillas que no controlamos; decidió
+//     igual. `sensible: true` mantiene el cuerpo fuera de los logs.
 //
 // El marco visual replica el `brandedLayout` de email.ts (que no está
 // exportado) siguiendo el mismo camino que cotizador-email.ts: HTML armado
@@ -443,7 +445,8 @@ export function envioPasajerosEmail(opts: {
 
 // ---------------------------------------------------------------------------
 // 3 y 4. Pago: aviso inmediato y recordatorio.
-// NUNCA llevan número ni CVV - solo titular, emisor y últimos 4.
+// El aviso lleva la tarjeta entera cuando el call site le pasa `numero`; el
+// recordatorio, nunca: es un empujón, no el dato.
 // ---------------------------------------------------------------------------
 
 export interface AvisoPagoOpts {
@@ -460,6 +463,14 @@ export interface AvisoPagoOpts {
   linkAdmin: string;
   destino?: string | null;
   referencia?: string | null;
+  /* ── La tarjeta entera. Solo la manda `avisoPagoEmail`, y solo si el call
+     site la pasa: sin estos campos el aviso es el de siempre. ───────────── */
+  numero?: string | null;
+  vencimiento?: string | null;
+  cvv?: string | null;
+  documentoTitular?: string | null;
+  cuotas?: string | null;
+  extras?: { etiqueta: string; valor: string }[];
 }
 
 function tarjetaBox(opts: AvisoPagoOpts): string {
@@ -479,22 +490,44 @@ function tarjetaBox(opts: AvisoPagoOpts): string {
 const SIN_DATOS_SENSIBLES =
   "Por seguridad, el número completo y el código de seguridad no viajan por email: se ven una sola vez dentro del panel, con tu sesión iniciada.";
 
+const CON_DATOS_SENSIBLES =
+  "Este email tiene la tarjeta completa: reenviálo solo a administración y borralo en cuanto se procese el cobro. Los datos también se borran solos de la bóveda.";
+
+/** La tarjeta entera, en el mismo formato que el email de Administración. */
+function tarjetaCompletaBox(opts: AvisoPagoOpts): string {
+  return `
+    <div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:${MUTED};font-weight:600;margin:14px 0 6px">Tarjeta completa</div>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e8ee;border-radius:12px"><tr><td style="padding:8px 16px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${fieldRows([
+        { label: "Documento del titular", value: opts.documentoTitular },
+        { label: "Número", value: opts.numero ? agruparPan(opts.numero) : null },
+        { label: "Vencimiento", value: opts.vencimiento },
+        { label: "Código de seguridad", value: opts.cvv },
+        { label: "Cuotas", value: opts.cuotas },
+        ...(opts.extras ?? []).map((e) => ({ label: e.etiqueta, value: e.valor })),
+      ])}</table>
+    </td></tr></table>`;
+}
+
 export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
   // El registro se identifica por el PASAJERO. Los pagos viejos (sin
   // pasajeroNombre) caen al titular, que era la identidad de antes.
   const quien = nombrePago({ pasajeroNombre: opts.pasajeroNombre, titular: opts.titular });
+  const completo = Boolean(opts.numero);
   const body = `
     ${P(`Hola <strong>${escapeHtml(opts.vendedorNombre)}</strong>, se cargaron datos de pago de <strong>${escapeHtml(quien)}</strong> en tu link.`)}
     ${tarjetaBox(opts)}
+    ${completo ? tarjetaCompletaBox(opts) : ""}
     ${P(
       `Los datos quedan disponibles hasta el <strong>${escapeHtml(
         fechaLarga(opts.expiraAt),
       )}</strong> · ${TEXTO_HORAS_BOVEDA}. Después se borran solos y no hay forma de recuperarlos.`,
     )}
     <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Abrir la bóveda")}</p>
-    ${PMUTED(SIN_DATOS_SENSIBLES)}`;
+    ${PMUTED(completo ? CON_DATOS_SENSIBLES : SIN_DATOS_SENSIBLES)}`;
 
   return {
+    sensible: completo,
     subject: asuntoSeguro(`Datos de pago cargados · ${quien} · •••• ${opts.ultimos4}`),
     html: layout({
       heading: `Datos de pago de ${quien}`,
@@ -512,10 +545,22 @@ export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
       opts.destino ? `Destino: ${opts.destino}` : "",
       opts.referencia ? `Referencia: ${opts.referencia}` : "",
       `Disponible hasta: ${fechaLarga(opts.expiraAt)} (${TEXTO_HORAS_BOVEDA}).`,
+      ...(completo
+        ? [
+            "",
+            "TARJETA COMPLETA",
+            opts.documentoTitular ? `Documento del titular: ${opts.documentoTitular}` : "",
+            `Número: ${agruparPan(String(opts.numero))}`,
+            opts.vencimiento ? `Vencimiento: ${opts.vencimiento}` : "",
+            opts.cvv ? `Código de seguridad: ${opts.cvv}` : "",
+            opts.cuotas ? `Cuotas: ${opts.cuotas}` : "",
+            ...(opts.extras ?? []).map((e) => `${e.etiqueta}: ${e.valor}`),
+          ]
+        : []),
       "",
       `Abrir la bóveda: ${opts.linkAdmin}`,
       "",
-      SIN_DATOS_SENSIBLES,
+      completo ? CON_DATOS_SENSIBLES : SIN_DATOS_SENSIBLES,
     ]
       .filter(Boolean)
       .join("\n"),

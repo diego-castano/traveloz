@@ -513,10 +513,12 @@ export async function submitDatosPago(
 
     log.info("datos.pago.ok", { pagoId: registro.id, vendedorId: vendedor.id });
 
-    // Aviso inmediato. El email NO lleva número ni CVV: solo pasajero,
-    // titular, emisor, últimos 4 y el link al panel. (El único email que lleva
-    // la tarjeta entera es el de Administración, que dispara el vendedor a
-    // mano desde el panel: ver enviarPagoAAdm en datos-vendedor.actions.ts.)
+    // Aviso inmediato, con la tarjeta entera adentro. Decisión de Diego del
+    // 18/09/2026: el vendedor necesita reenviarle a administración lo que
+    // cargó el pasajero, tal cual. Se le advirtió que PCI-DSS prohíbe
+    // retransmitir el código de seguridad y que el dato queda en casillas que
+    // no controlamos. El recordatorio de las 24 h sigue sin llevar nada: se
+    // arma con estos mismos opts pero su plantilla no los mira.
     const avisoOpts = {
       vendedorNombre: vendedor.name,
       pasajeroNombre: datos.pasajeroNombre,
@@ -528,6 +530,12 @@ export async function submitDatosPago(
       linkAdmin: `${SITE_BASE_URL}${ADMIN_PAGOS_PATH}/${registro.id}`,
       destino: solicitud?.destino ?? null,
       referencia: solicitud?.referencia ?? null,
+      numero: datos.numero,
+      vencimiento: datos.vencimiento,
+      cvv: datos.cvv,
+      documentoTitular: datos.documentoTitular,
+      cuotas: datos.cuotas,
+      extras: datos.respuestas,
     };
 
     try {
@@ -538,6 +546,8 @@ export async function submitDatosPago(
         subject: tmpl.subject,
         html: tmpl.html,
         text: tmpl.text,
+        // Lleva la tarjeta completa: sin preview en logs, nunca.
+        sensible: tmpl.sensible,
       });
     } catch (err) {
       log.error(`datos.pago.email failed (pago ${registro.id})`, err);
