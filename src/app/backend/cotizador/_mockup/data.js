@@ -341,6 +341,26 @@ function ventaTarifa(t, factorFallback) {
   if (t.venta !== null && t.venta !== "" && t.venta !== undefined) return Number(t.venta) || 0;
   return venta(t.neto, t.factor ?? factorFallback ?? FACTOR_DEFAULT);
 }
+/* El texto de la línea de aéreo de "El precio incluye".
+
+   Vive acá porque lo escriben dos lugares —el editor cuando el vendedor toca
+   cabina o equipaje, y el efecto que mantiene al día los servicios `auto`— y
+   cuando cada uno tenía el suyo el segundo le pisaba el texto al primero.
+
+   En una cotización armada desde un paquete, la ruta ya la dice el renglón
+   que publicó la web, así que este solo lleva cabina y equipaje; de cero,
+   lleva el "Pasaje aéreo ida y vuelta" adelante. */
+function textoAereo(q) {
+  const extra = [q.cabina, q.equipaje].filter(Boolean).join(" · ");
+  const publicadas = (q.servicios || []).some(
+    (s) => s.categoria === "aereo" && s.origen === "publicacion",
+  );
+  if (publicadas) return extra || "Artículo personal y equipaje de mano";
+  return extra
+    ? "Pasaje aéreo ida y vuelta · " + extra
+    : "Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano";
+}
+
 function etiquetaTarifa(t) { return t.tipo === "Otro" ? (t.tipoLibre?.trim() || "Otro") : t.tipo; }
 /* precio principal de una opción: primera tarifa de la primera habitación */
 function precioOpcion(o) {
@@ -729,7 +749,7 @@ export {
   REGIMEN_DETALLADO, REGIMEN_DETALLADO_TXT, REGIMENES_DESTINO, esDetallado, regimenHeredable,
   CABINAS, EQUIPAJES, OCUPACIONES, OCUPACION_MAS, PERSONAS_MIN, PERSONAS_MAX,
   personasDeOcupacion, ocupacionDePersonas, TARIFA_TIPOS, FACTOR_DEFAULT,
-  serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion,
+  serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion, textoAereo,
   SUG_ALL, PNR_DEMO,
   registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,
   horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,

@@ -16,7 +16,7 @@ import {
   PNR_DEMO, uid, clamp, toISO, parseISO, fmtCorto, money, venta,
   limpiarPegado, parsePNR, fechaDeVuelo, itinerarioMasCompleto,
   habitacionNueva, tarifaNueva, ventaTarifa,
-  precioOpcion, norm, destinoFinal, diasDeMas
+  precioOpcion, norm, destinoFinal, diasDeMas, textoAereo
 } from "./data";
 import { useCatalogo, useAjustes, useAerolineas } from "./contexto";
 import { uploadFile } from "@/components/lib/upload";
@@ -896,11 +896,7 @@ function BloqueVuelos({ q, set, refEl, toast }) {
       d.servicios.splice(i, 1);
       return;
     }
-    d.servicios[i].texto = publicadas
-      ? (extra || "Artículo personal y equipaje de mano")
-      : (extra
-          ? "Pasaje aéreo ida y vuelta · " + extra
-          : "Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano");
+    d.servicios[i].texto = textoAereo(d);
     d.servicios[i].auto = "aereo";
   };
   /* Ctrl+V con una captura en el portapapeles: la IA la lee igual que el texto */

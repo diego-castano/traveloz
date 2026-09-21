@@ -12,7 +12,7 @@ import {
   ANIO_ACTUAL, registrarVendedores, uid, toISO, parseISO, ESTADOS,
   serviciosDefault, habitacionNueva, ventaTarifa, PNR_DEMO, parsePNR, FACTOR_DEFAULT,
   REGIMEN_DETALLADO, REGIMEN_DETALLADO_TXT, esDetallado, regimenHeredable, destinoFinal,
-  tituloDeDestinos,
+  tituloDeDestinos, textoAereo,
 } from "./_mockup/data";
 import { CotizadorCtx, indexarAeropuertos, indexarAerolineas } from "./_mockup/contexto";
 import { useCatalogoCotizador } from "./_mockup/catalogo";
@@ -862,9 +862,8 @@ export default function Cotizador({
   /* ── los servicios marcados `auto` siguen a lo que se carga arriba.
         En cuanto el vendedor los edita a mano pierden el flag y quedan quietos. ── */
   useEffect(() => {
-    const txtAereo = (q.cabina || q.equipaje)
-      ? "Pasaje aéreo ida y vuelta · " + [q.cabina, q.equipaje].filter(Boolean).join(" · ")
-      : "Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano";
+    /* Solo lo que el texto mira, y es justo lo que este efecto ya escucha. */
+    const txtAereo = textoAereo({ cabina:q.cabina, equipaje:q.equipaje, servicios:q.servicios });
     const cambiaA = q.servicios.some((s) => s.auto === "aereo" && s.texto !== txtAereo);
     const filas = sincronizarAlojamiento(q.servicios, q.destinos);
     if (!cambiaA && filas === q.servicios) return;
