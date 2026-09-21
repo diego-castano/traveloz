@@ -346,11 +346,17 @@ function SalidaPasajero({
   const arrastre = useRef(null);
   const [puntas, setPuntas] = useState({ izq:false, der:false });
 
+  /* Solo avisa cuando alguna punta cambió: este medidor corre en cada render
+     —el ancho de las pestañas depende de cosas que se declaran más abajo en
+     el componente— y con un objeto nuevo cada vez el render se repetiría sin
+     fin. */
   const medirPuntas = useCallback(() => {
     const c = refSeg.current;
     if (!c) return;
     const max = c.scrollWidth - c.clientWidth;
-    setPuntas({ izq: c.scrollLeft > 4, der: max > 4 && c.scrollLeft < max - 4 });
+    const izq = c.scrollLeft > 4;
+    const der = max > 4 && c.scrollLeft < max - 4;
+    setPuntas((p) => (p.izq === izq && p.der === der ? p : { izq, der }));
   }, []);
 
   useEffect(() => {
@@ -363,7 +369,12 @@ function SalidaPasajero({
       c.removeEventListener("scroll", medirPuntas);
       window.removeEventListener("resize", medirPuntas);
     };
-  }, [medirPuntas, q.opciones.length, desk]);
+  }, [medirPuntas, q.opciones.length]);
+
+  /* Sin lista de dependencias a propósito: cualquier render puede cambiar el
+     ancho de la fila (cambio de modo celular/escritorio, precios que se
+     acortan) y medir cuesta dos lecturas. */
+  useEffect(medirPuntas);
 
   useEffect(() => {
     const cont = refSeg.current;
