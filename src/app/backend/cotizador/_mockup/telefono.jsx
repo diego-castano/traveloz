@@ -334,6 +334,18 @@ function SalidaPasajero({
 
   /* v2C · el pasajero cambia de opción desde el switcher (solo vista, no toca el editor) */
   const [sel, setSel] = useState(confirmadaInicial || q.opciones[0]?.id || null);
+  /* Con más de tres opciones la fila de pestañas se corre de costado, y la
+     elegida puede quedar fuera de la vista: se la trae al centro. Movemos
+     `scrollLeft` del contenedor y no `scrollIntoView`, que en el celular
+     también empuja la página entera. */
+  const refSeg = useRef(null);
+  useEffect(() => {
+    const cont = refSeg.current;
+    const btn = cont?.querySelector('button[data-on="1"]');
+    if (!cont || !btn) return;
+    const izq = btn.offsetLeft - (cont.clientWidth - btn.offsetWidth) / 2;
+    cont.scrollTo({ left: Math.max(0, izq), behavior: "smooth" });
+  }, [sel]);
   useEffect(() => {
     if (!q.opciones.length) { setSel(null); return; }
     if (!q.opciones.some((o) => o.id === sel)) setSel(q.opciones[0].id);
@@ -965,7 +977,7 @@ function SalidaPasajero({
                 y un pasajero preguntó si eso había que sumarlo al precio.
                 Lectura razonable, así que se fue (Gero, 11/09). */}
             {varias && !impresion && (
-              <div className="opt-seg" data-desk={desk ? "1" : "0"}>
+              <div className="opt-seg" ref={refSeg} data-desk={desk ? "1" : "0"}>
                 {q.opciones.map((o, i) => {
                   const pv = precioOpcion(o);
                   return (

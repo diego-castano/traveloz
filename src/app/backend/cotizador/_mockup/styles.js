@@ -579,10 +579,21 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 /* ══ v2C: teléfono y envío ════════════════════════════════════════════ */
 
 /* ── switcher de opciones (lo ve el pasajero, no el vendedor) ────────── */
+/* Con una, dos o tres opciones las pestañas se reparten el ancho. De la
+   cuarta en adelante ya no entran en el celular, así que la fila se corre de
+   costado (Gero, 21/09): por eso `flex:1 0 auto` —crecen para llenar, no se
+   achican— y las sombras de los bordes, que aparecen solas cuando queda algo
+   fuera de vista y desaparecen al llegar a la punta. */
 .opt-seg { display:flex; gap:5px; padding:4px; margin-bottom:13px; border-radius:15px;
-  background:#F5F6FA; border:1px solid rgba(17,17,36,.055); overflow-x:auto; }
+  border:1px solid rgba(17,17,36,.055); overflow-x:auto; scroll-snap-type:x proximity;
+  background:
+    linear-gradient(90deg, #F5F6FA 40%, rgba(245,246,250,0)) left center / 26px 100% no-repeat local,
+    linear-gradient(90deg, rgba(245,246,250,0), #F5F6FA 60%) right center / 26px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(26,26,46,.13), rgba(26,26,46,0)) left center / 13px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(26,26,46,.13), rgba(26,26,46,0)) right center / 13px 100% no-repeat scroll,
+    #F5F6FA; }
 .opt-seg::-webkit-scrollbar { height:0; width:0; }
-.opt-seg > button { flex:1 1 0; min-width:76px; padding:8px 7px 9px; border-radius:12px;
+.opt-seg > button { flex:1 0 auto; scroll-snap-align:center; min-width:76px; padding:8px 7px 9px; border-radius:12px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
   color:#6B6F99; transition:background .22s, box-shadow .22s, color .22s, transform .16s; }
 .opt-seg > button > span { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
