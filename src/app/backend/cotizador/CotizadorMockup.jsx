@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Plus, Send, ArrowLeft, Command, Zap, X,
   Smartphone, LayoutGrid, Loader2, CheckCheck, AlertCircle, Lock, Gauge, Ticket, Files, Monitor,
-  StickyNote, ListChecks, Eye, EyeOff, Keyboard, Star, ChevronDown
+  StickyNote, ListChecks, Eye, EyeOff, Keyboard, Star, ChevronDown, Save
 } from "lucide-react";
 import { CSS } from "./_mockup/styles";
 import { CSS_UI } from "./_mockup/styles-ui";
@@ -675,6 +675,19 @@ export default function Cotizador({
   }, [guardarInterno]);
   guardarRef.current = guardarAhora;
 
+  /* El botón de guardar del encabezado: corta la espera del debounce, guarda
+     y confirma. Lo pidió el equipo aunque el autoguardado ya estaba: ver algo
+     que diga "listo" antes de cerrar la pestaña. */
+  const guardarYa = useCallback(async () => {
+    clearTimeout(debounceRef.current);
+    try {
+      await guardarAhora();
+      toast({ msg:"Cotización guardada", tone:"ok" });
+    } catch {
+      /* el estado del cartel ya quedó en "Sin guardar — reintentar" */
+    }
+  }, [guardarAhora, toast]);
+
   /* el debounce: 1.500 ms desde la última tecla */
   useEffect(() => {
     if (pantalla !== "editor" || demoRef.current) return;
@@ -831,6 +844,11 @@ export default function Cotizador({
       /* v2F · si un campo ya usó la tecla (Ctrl+Enter de la bitácora), acá no se pisa */
       if (e.defaultPrevented) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPaleta((v) => !v); }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s" && pantallaRef.current === "editor") {
+        /* el navegador guardaría la página entera: acá guardamos la cotización */
+        e.preventDefault();
+        void guardarRef.current?.();
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && pantallaRef.current === "editor") {
         e.preventDefault(); setCompartir(true); }
       /* v2B · Alt+1…Alt+N salta al bloque N (e.code aguanta el Alt raro de macOS).
@@ -1321,15 +1339,20 @@ export default function Cotizador({
 
               <div style={{ flex:1 }} />
 
-              {/* autoguardado: el error se puede reintentar tocándolo */}
-              <button style={{ display:"flex", alignItems:"center", gap:6, fontSize:11.5,
-                  color: guardado === "error" ? "var(--coral)" : "var(--n400)",
-                  cursor: guardado === "error" ? "pointer" : "default" }}
-                title={guardado === "error" ? "Reintentar el guardado" : undefined}
-                onClick={() => { if (guardado === "error") { fallosRef.current = 0; void guardarAhora(); } }}>
+              {/* Se guarda solo, pero el vendedor quiere apretar algo y quedarse
+                  tranquilo antes de cerrar la pestaña (Gero, 21/09). Así que el
+                  cartel de estado es también el botón: dice cómo viene el
+                  guardado y, tocándolo, guarda ya mismo sin esperar el segundo
+                  y medio del autoguardado. ⌘S / Ctrl+S hacen lo mismo. */}
+              <button className="btn btn-g btn-xs" style={{ gap:6, height:28, fontSize:11.5,
+                  color: guardado === "error" ? "var(--coral)" : "var(--n500)" }}
+                title={guardado === "error"
+                  ? "Reintentar el guardado"
+                  : "Guardar ahora — igual se guarda solo (⌘S)"}
+                onClick={() => { fallosRef.current = 0; void guardarYa(); }}>
                 {guardado === "guardando" ? <><Loader2 size={12} className="spin" /> Guardando…</>
                   : guardado === "error" ? <><AlertCircle size={12} /> Sin guardar — reintentar</>
-                  : guardado === "sin cambios" ? <><CheckCheck size={12} style={{ opacity:.5 }} /> Sin cambios</>
+                  : guardado === "sin cambios" ? <><Save size={12} style={{ opacity:.55 }} /> Guardar</>
                   : <><CheckCheck size={12} style={{ color:"var(--teal-2)" }} /> Guardado</>}
               </button>
 
