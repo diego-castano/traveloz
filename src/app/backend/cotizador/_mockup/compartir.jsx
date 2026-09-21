@@ -77,7 +77,13 @@ function ModalCompartir({
      email cargado" y había que cerrar, ir al bloque del cliente y volver. Lo
      que se tipea se manda y queda guardado en la cotización. */
   const [emailNuevo, setEmailNuevo] = useState("");
-  const emailTipeado = RE_MAIL.test(emailNuevo.trim()) ? emailNuevo.trim().toLowerCase() : "";
+  /* Separados por coma, como en cualquier cliente de correo: el primero es el
+     destinatario y el resto va en copia, que es lo que hace el server con los
+     otros destinatarios (Diego, 21/09). */
+  const tipeados = emailNuevo.split(/[,;]+/).map((e) => e.trim()).filter(Boolean);
+  const paraValidos = tipeados.filter((e) => RE_MAIL.test(e)).map((e) => e.toLowerCase());
+  const paraRotos = tipeados.filter((e) => !RE_MAIL.test(e));
+  const emailTipeado = paraValidos[0] || "";
   const emailFicha = String(q.cliente.email || "").trim();
   const clienteVa = !!emailFicha && !sinCliente;
   const paraPasajero = clienteVa ? emailFicha : emailTipeado;
@@ -111,7 +117,9 @@ function ModalCompartir({
     if (clienteVa)
       l.push({ k:"mail", t:"ok", txt:`El email va a ${q.cliente.email}` });
     else if (emailTipeado)
-      l.push({ k:"mail", t:"ok", txt:`El email va a ${emailTipeado}` });
+      l.push({ k:"mail", t:"ok", txt: paraValidos.length > 1
+        ? `El email va a ${emailTipeado} y ${paraValidos.length - 1} más`
+        : `El email va a ${emailTipeado}` });
     else if (sinCliente && emailCopia)
       l.push({ k:"mail", t:"info", txt:`Sin el pasajero — el email va solo a ${emailCopia}${extras.trim() ? " y a los otros destinatarios" : ""}` });
     else if (extras.split(/[,;]+/).some((e) => e.trim()))
@@ -121,7 +129,7 @@ function ModalCompartir({
     else
       l.push({ k:"mail", t:"warn", txt:"Sin email — cargalo o escribí un destinatario para mandar por email", ir:"b-cliente" });
     return l;
-  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom, q.cliente.email, extras, clienteVa, emailTipeado, sinCliente, emailCopia]);
+  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom, q.cliente.email, extras, clienteVa, emailTipeado, paraValidos.length, sinCliente, emailCopia]);
   const todoListo = checks.every((c) => c.t === "ok");
 
   useEffect(() => {
@@ -290,7 +298,10 @@ function ModalCompartir({
     const lista = extras.split(/[,;]+/).map((e) => e.trim()).filter(Boolean);
     const r = await enviarPorEmail(presupuestoId, {
       vigenciaHoras: vig,
-      extras: lista,
+      /* Los tipeados después del primero viajan como destinatarios extra: es
+         el mismo canal que usa el campo de abajo y el server los pone en
+         copia. */
+      extras: [...paraValidos.slice(1), ...lista],
       esRecordatorio: recordatorio,
       sinCliente,
       emailCliente: emailTipeado || undefined,
@@ -498,7 +509,7 @@ function ModalCompartir({
               ) : (
                 <>
                   {cajaLink}
-                  <Label>Para</Label>
+                  <Label hint={clienteVa ? undefined : "separados por coma"}>Para</Label>
                   <div className="in" style={{ display:"flex", alignItems:"center", gap:7, marginBottom:10 }}>
                     <Mail size={13} style={{ color:"var(--n300)" }} />
                     {clienteVa ? (
@@ -519,21 +530,25 @@ function ModalCompartir({
                           onClick={() => setSinCliente(false)}>Deshacer</button>
                       </>
                     ) : (
-                      <input type="email" autoComplete="off" value={emailNuevo}
+                      <input type="text" autoComplete="off" value={emailNuevo}
                         onChange={(e) => setEmailNuevo(e.target.value)}
                         placeholder={`Email del pasajero${emailCopia ? ` · vacío va solo a ${emailCopia}` : ""}`}
                         style={{ flex:1, minWidth:0, border:"none", background:"transparent", outline:"none",
                           fontSize:13, color:"var(--n700)" }} />
                     )}
                   </div>
-                  {!clienteVa && !sinCliente && emailNuevo.trim() && !emailTipeado && (
+                  {!clienteVa && !sinCliente && paraRotos.length > 0 && (
                     <div style={{ fontSize:11, color:"var(--ink-amber)", margin:"-6px 0 10px 2px" }}>
-                      Ese email está incompleto — revisalo o dejalo vacío.
+                      {paraRotos.length === 1
+                        ? `“${paraRotos[0]}” no es un email — revisalo o sacalo.`
+                        : `Hay ${paraRotos.length} direcciones incompletas — revisalas o sacalas.`}
                     </div>
                   )}
                   {!clienteVa && emailTipeado && (
                     <div style={{ fontSize:11, color:"var(--n400)", margin:"-6px 0 10px 2px" }}>
-                      Queda guardado en la cotización, así el recordatorio sale sin volver a pedirlo.
+                      {paraValidos.length > 1
+                        ? `Separados por coma: ${emailTipeado} recibe y ${paraValidos.length - 1} más van en copia. El primero queda guardado en la cotización.`
+                        : "Queda guardado en la cotización, así el recordatorio sale sin volver a pedirlo."}
                     </div>
                   )}
                   <Label>Copia</Label>
