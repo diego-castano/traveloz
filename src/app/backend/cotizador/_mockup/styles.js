@@ -581,8 +581,8 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 /* ── switcher de opciones (lo ve el pasajero, no el vendedor) ────────── */
 /* Con una, dos o tres opciones las pestañas se reparten el ancho. De la
    cuarta en adelante ya no entran en el celular, así que la fila se corre de
-   costado (Gero, 21/09): por eso `flex:1 0 auto` —crecen para llenar, no se
-   achican— y las sombras de los bordes, que aparecen solas cuando queda algo
+   costado (Gero, 21/09): por eso crecen para llenar pero no se
+   achican, y las sombras de los bordes aparecen solas cuando queda algo
    fuera de vista y desaparecen al llegar a la punta. */
 .opt-seg { display:flex; gap:5px; padding:4px; margin-bottom:13px; border-radius:15px;
   border:1px solid rgba(17,17,36,.055); overflow-x:auto; scroll-snap-type:x proximity;
