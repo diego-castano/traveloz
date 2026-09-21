@@ -846,16 +846,62 @@ function BloqueVuelos({ q, set, refEl, toast }) {
   };
   /* la cabina y el equipaje escriben el ítem de aéreo de los servicios incluidos,
      aunque el vendedor lo haya editado a mano: le reponemos el flag y lo vuelve a seguir */
+  /* ¿Este renglón del "Incluye" habla de equipaje? Por el ícono cuando lo
+     trae, y si no por lo que dice: los paquetes escriben "Articulo personal +
+     Equipaje de mano" y variantes. */
+  const esLineaEquipaje = (s) =>
+    ["equipaje", "valijamano", "mochila"].includes(String(s.icono || "")) ||
+    /equipaje|carry|bodega|art[ií]culo personal|mochila|valija|maleta/i.test(s.texto || "");
+
+  /* La cabina y el equipaje que elige el vendedor tienen que verse en "El
+     precio incluye". Hay dos escenarios y antes solo andaba el primero:
+
+       • Cotización de cero: hay una línea de aéreo nuestra y se reescribe
+         entera, con el "Pasaje aéreo ida y vuelta ·" adelante.
+       • Cotización armada desde un paquete: las líneas las publicó la web y
+         están protegidas para no pisar lo que el pasajero ya leyó. El
+         vendedor elegía "+ equipaje de bodega" y arriba no cambiaba nada
+         (Gero, 21/09). Ahora, si elige equipaje, adoptamos el renglón de
+         equipaje del paquete —el de la ruta no se toca— y si no hay ninguno
+         se agrega uno debajo del último de aéreo. La ruta la sigue diciendo
+         la línea publicada, así que la nuestra va sin el prefijo. */
   const escribirAereo = (d) => {
-    /* La línea copiada del "Incluye" publicado no se toca: es la que el
-       pasajero ya leyó en la web y el vendedor la edita a mano si quiere. */
-    const iA = d.servicios.findIndex((s) => s.categoria === "aereo" && s.origen !== "publicacion");
-    if (iA < 0) return;
     const extra = [d.cabina, d.equipaje].filter(Boolean).join(" · ");
-    d.servicios[iA].texto = extra
-      ? "Pasaje aéreo ida y vuelta · " + extra
-      : "Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano";
-    d.servicios[iA].auto = "aereo";
+    const publicadas = d.servicios.some((s) => s.categoria === "aereo" && s.origen === "publicacion");
+
+    let i = d.servicios.findIndex((s) => s.categoria === "aereo" && s.auto === "aereo");
+    if (i < 0) i = d.servicios.findIndex((s) => s.categoria === "aereo" && s.origen !== "publicacion");
+    if (i < 0 && d.equipaje) {
+      i = d.servicios.findIndex((s) => s.categoria === "aereo" && esLineaEquipaje(s));
+      if (i >= 0) {
+        /* deja de ser el texto publicado: de acá en adelante lo manejamos */
+        delete d.servicios[i].origen;
+        if (!d.servicios[i].icono) d.servicios[i].icono = "equipaje";
+      }
+    }
+
+    if (i < 0) {
+      if (!extra) return;
+      const ultima = d.servicios.map((s) => s.categoria === "aereo").lastIndexOf(true);
+      d.servicios.splice(ultima >= 0 ? ultima + 1 : d.servicios.length, 0, {
+        id: uid("srv"), categoria:"aereo", texto: extra, auto:"aereo",
+        icono: d.equipaje ? "equipaje" : "vuelo", ciudad:null, modalidad:null,
+      });
+      return;
+    }
+
+    if (!extra && publicadas && d.servicios[i].auto === "aereo") {
+      /* sin cabina ni equipaje elegidos, nuestra línea no dice nada: se va y
+         quedan las del paquete, que es como estaba antes de tocar */
+      d.servicios.splice(i, 1);
+      return;
+    }
+    d.servicios[i].texto = publicadas
+      ? (extra || "Artículo personal y equipaje de mano")
+      : (extra
+          ? "Pasaje aéreo ida y vuelta · " + extra
+          : "Pasaje aéreo ida y vuelta con artículo personal y equipaje de mano");
+    d.servicios[i].auto = "aereo";
   };
   /* Ctrl+V con una captura en el portapapeles: la IA la lee igual que el texto */
   const pegarImagen = (e) => {
