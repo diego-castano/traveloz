@@ -1527,6 +1527,7 @@ export default function Cotizador({
           onImprimir={() => { setCompartir(false); setImprimir(true); }}
           onIr={(id) => { setCompartir(false); irA(id); }}
           onVigencia={(h) => set((d) => { d.vigencia = h; })}
+          onEmailCliente={(mail) => set((d) => { d.cliente.email = mail; })}
           onEnviada={() => { set((d) => { d.estado = "enviada"; }); void recargar(); }} />
       )}
       {imprimir && (

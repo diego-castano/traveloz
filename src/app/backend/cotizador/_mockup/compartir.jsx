@@ -40,9 +40,12 @@ import {
  * `presupuestoId` es la fila en la base; sin él no hay nada que compartir (una
  * cotización recién abierta que todavía no guardó).
  */
+/* Alcanza para atajar el dedazo: el servidor valida de nuevo antes de mandar. */
+const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 function ModalCompartir({
   q, presupuestoId, vendedor, onClose, onEnviada, toast, recordatorio = false,
-  onVigencia, onIr, onPreview, onImprimir, tabInicial, onPedido,
+  onVigencia, onIr, onPreview, onImprimir, tabInicial, onPedido, onEmailCliente,
   /* del drawer: el número, cuándo salió la primera y hasta cuándo abre el link
      vivo. Solo los usa el recordatorio, que cuenta esa historia. */
   numero, enviadaAt, expiraAt,
@@ -69,7 +72,15 @@ function ModalCompartir({
      lo mandaron por WhatsApp y el email es el registro en cotizaciones@. No
      toca la ficha del cliente: su email queda cargado para la próxima. */
   const [sinCliente, setSinCliente] = useState(false);
-  const clienteVa = !!q.cliente.email && !sinCliente;
+  /* Email escrito acá mismo, para la cotización que se armó sin el del
+     pasajero (Gero, 21/09). Antes este campo era un cartel muerto: decía "sin
+     email cargado" y había que cerrar, ir al bloque del cliente y volver. Lo
+     que se tipea se manda y queda guardado en la cotización. */
+  const [emailNuevo, setEmailNuevo] = useState("");
+  const emailTipeado = RE_MAIL.test(emailNuevo.trim()) ? emailNuevo.trim().toLowerCase() : "";
+  const emailFicha = String(q.cliente.email || "").trim();
+  const clienteVa = !!emailFicha && !sinCliente;
+  const paraPasajero = clienteVa ? emailFicha : emailTipeado;
   const [copiado, setCopiado] = useState(null);
 
   /* v2C · pre-flight: cuenta lo que falta, nunca frena el envío */
@@ -99,6 +110,8 @@ function ModalCompartir({
        destinatario, o sin nadie a quien mandarle. */
     if (clienteVa)
       l.push({ k:"mail", t:"ok", txt:`El email va a ${q.cliente.email}` });
+    else if (emailTipeado)
+      l.push({ k:"mail", t:"ok", txt:`El email va a ${emailTipeado}` });
     else if (sinCliente && emailCopia)
       l.push({ k:"mail", t:"info", txt:`Sin el pasajero — el email va solo a ${emailCopia}${extras.trim() ? " y a los otros destinatarios" : ""}` });
     else if (extras.split(/[,;]+/).some((e) => e.trim()))
@@ -108,7 +121,7 @@ function ModalCompartir({
     else
       l.push({ k:"mail", t:"warn", txt:"Sin email — cargalo o escribí un destinatario para mandar por email", ir:"b-cliente" });
     return l;
-  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom, q.cliente.email, extras, clienteVa, sinCliente, emailCopia]);
+  }, [q.opciones, q.vuelos.length, q.soloVuelos, q.precioVuelo, tel, nom, q.cliente.email, extras, clienteVa, emailTipeado, sinCliente, emailCopia]);
   const todoListo = checks.every((c) => c.t === "ok");
 
   useEffect(() => {
@@ -280,9 +293,13 @@ function ModalCompartir({
       extras: lista,
       esRecordatorio: recordatorio,
       sinCliente,
+      emailCliente: emailTipeado || undefined,
     });
     setEnviandoMail(false);
     if (!r.ok) { setErrLink(r.error); return; }
+    /* El editor abierto atrás sigue con la ficha vacía: si no se entera, su
+       próximo autosave pisa el email que el server acaba de guardar. */
+    if (emailTipeado) onEmailCliente?.(emailTipeado);
     setLink(r.data);
     setMailListo(r.data);
     onEnviada?.(r.data);
@@ -502,11 +519,23 @@ function ModalCompartir({
                           onClick={() => setSinCliente(false)}>Deshacer</button>
                       </>
                     ) : (
-                      <span style={{ fontSize:13, color:"var(--n300)" }}>
-                        Sin email cargado{emailCopia ? ` · va solo a ${emailCopia}` : ""}
-                      </span>
+                      <input type="email" autoComplete="off" value={emailNuevo}
+                        onChange={(e) => setEmailNuevo(e.target.value)}
+                        placeholder={`Email del pasajero${emailCopia ? ` · vacío va solo a ${emailCopia}` : ""}`}
+                        style={{ flex:1, minWidth:0, border:"none", background:"transparent", outline:"none",
+                          fontSize:13, color:"var(--n700)" }} />
                     )}
                   </div>
+                  {!clienteVa && !sinCliente && emailNuevo.trim() && !emailTipeado && (
+                    <div style={{ fontSize:11, color:"var(--ink-amber)", margin:"-6px 0 10px 2px" }}>
+                      Ese email está incompleto — revisalo o dejalo vacío.
+                    </div>
+                  )}
+                  {!clienteVa && emailTipeado && (
+                    <div style={{ fontSize:11, color:"var(--n400)", margin:"-6px 0 10px 2px" }}>
+                      Queda guardado en la cotización, así el recordatorio sale sin volver a pedirlo.
+                    </div>
+                  )}
                   <Label>Copia</Label>
                   <div style={{ display:"flex", gap:7, flexWrap:"wrap", alignItems:"center", marginBottom:10 }}>
                     <span className="chip chip-on" style={{ gap:6 }}>
@@ -526,8 +555,8 @@ function ModalCompartir({
                   {/* Con la casilla de copia configurada siempre hay a quién mandarle:
                       es el envío "solo a cotizaciones@" del equipo (14/09). */}
                   <Btn variant="p" style={{ width:"100%", height:42, marginTop:13 }}
-                    disabled={enviandoMail || !presupuestoId || (!clienteVa && !hayExtras && !emailCopia)}
-                    title={!clienteVa && !hayExtras && !emailCopia ? "Cargá el email del cliente o escribí un destinatario" : undefined}
+                    disabled={enviandoMail || !presupuestoId || (!paraPasajero && !hayExtras && !emailCopia)}
+                    title={!paraPasajero && !hayExtras && !emailCopia ? "Escribí el email del pasajero o un destinatario" : undefined}
                     onClick={mandarMail}>
                     {enviandoMail
                       ? <><Loader2 size={15} className="spin" /> Enviando…</>

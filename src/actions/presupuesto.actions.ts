@@ -1386,6 +1386,14 @@ const enviarEmailSchema = z.object({
    * pasa a ser el primer extra, o la casilla de copia de Ajustes.
    */
   sinCliente: z.boolean().optional(),
+  /**
+   * Email del pasajero escrito en el modal, para las cotizaciones que se
+   * armaron sin él (Gero, 21/09): el vendedor lo tipea al mandar en vez de
+   * volver al bloque del cliente. Solo se mira si la ficha no trae ninguno, y
+   * se guarda en la cotización para que el recordatorio salga sin volver a
+   * pedirlo.
+   */
+  emailCliente: z.string().max(200).optional(),
 });
 
 export interface EnvioEmailResumen extends LinkEmitido {
@@ -1462,7 +1470,11 @@ export async function enviarPorEmail(
        de copia de Ajustes —que es exactamente el caso "solo a cotizaciones@
        como registro, al pasajero le paso el link por WhatsApp". */
     const copiaMaster = emailValido(ajustes.emailCopia);
-    let para = sinCliente ? null : emailValido(q.cliente?.email);
+    const emailFicha = emailValido(q.cliente?.email);
+    /* El tipeado en el modal solo entra cuando la ficha no tiene ninguno: si
+       hay email cargado, manda la ficha y el modal ni siquiera pide otro. */
+    const emailTipeado = emailFicha ? null : emailValido(parsedInput.data.emailCliente);
+    let para = sinCliente ? null : (emailFicha ?? emailTipeado);
     if (!para) para = extrasValidos.shift() ?? null;
     if (!para) para = copiaMaster;
     if (!para) {
@@ -1471,6 +1483,18 @@ export async function enviarPorEmail(
           ? "Sin el pasajero no hay a quién mandarle: escribí un destinatario o configurá la casilla de copia en Ajustes."
           : "Cargá el email del cliente o escribí al menos un destinatario.",
       );
+    }
+
+    /* El email tipeado queda en la cotización: el recordatorio de dentro de dos
+       días tiene que salir sin volver a preguntarlo. Es un jsonb_set sobre la
+       clave sola —no reescribe el contenido entero— así que no pisa lo que el
+       vendedor esté editando en otra pestaña, y deja `updatedAt` quieto para
+       no romperle el guardado optimista al editor abierto. */
+    if (!sinCliente && emailTipeado && para === emailTipeado) {
+      await prisma.$executeRaw`
+        UPDATE "Presupuesto"
+           SET contenido = jsonb_set(contenido::jsonb, '{cliente,email}', to_jsonb(${emailTipeado}::text), true)
+         WHERE id = ${row.id}`;
     }
 
     const extras = extrasValidos.filter((e) => e !== para);
