@@ -2,7 +2,8 @@
 
 import { Fragment, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
-  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone, CheckCheck, Utensils, Link2,
+  Plane, MapPin, Calendar, ChevronDown, ChevronLeft, ChevronRight, Bed, Smartphone,
+  CheckCheck, Utensils, Link2,
   CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
 } from "lucide-react";
 import {
@@ -334,11 +335,36 @@ function SalidaPasajero({
 
   /* v2C · el pasajero cambia de opción desde el switcher (solo vista, no toca el editor) */
   const [sel, setSel] = useState(confirmadaInicial || q.opciones[0]?.id || null);
-  /* Con más de tres opciones la fila de pestañas se corre de costado, y la
-     elegida puede quedar fuera de la vista: se la trae al centro. Movemos
-     `scrollLeft` del contenedor y no `scrollIntoView`, que en el celular
-     también empuja la página entera. */
+  /* ── la fila de opciones cuando no entran todas ──────────────────────
+     Con más de tres, la fila se corre de costado. En el celular el dedo ya
+     la arrastra; en la vista previa del escritorio no hay dedo, así que se
+     arrastra con el mouse, y las flechas de los bordes dicen que hay más
+     (Diego, 21/09). La elegida se acomoda sola en el centro: movemos
+     `scrollLeft` y no `scrollIntoView`, que en el celular empuja la página
+     entera. */
   const refSeg = useRef(null);
+  const arrastre = useRef(null);
+  const [puntas, setPuntas] = useState({ izq:false, der:false });
+
+  const medirPuntas = useCallback(() => {
+    const c = refSeg.current;
+    if (!c) return;
+    const max = c.scrollWidth - c.clientWidth;
+    setPuntas({ izq: c.scrollLeft > 4, der: max > 4 && c.scrollLeft < max - 4 });
+  }, []);
+
+  useEffect(() => {
+    const c = refSeg.current;
+    if (!c) return;
+    medirPuntas();
+    c.addEventListener("scroll", medirPuntas, { passive: true });
+    window.addEventListener("resize", medirPuntas);
+    return () => {
+      c.removeEventListener("scroll", medirPuntas);
+      window.removeEventListener("resize", medirPuntas);
+    };
+  }, [medirPuntas, q.opciones.length, desk]);
+
   useEffect(() => {
     const cont = refSeg.current;
     const btn = cont?.querySelector('button[data-on="1"]');
@@ -346,6 +372,47 @@ function SalidaPasajero({
     const izq = btn.offsetLeft - (cont.clientWidth - btn.offsetWidth) / 2;
     cont.scrollTo({ left: Math.max(0, izq), behavior: "smooth" });
   }, [sel]);
+
+  /* Correr de a una pantalla con las flechas. */
+  const correr = (dir) => {
+    const c = refSeg.current;
+    if (!c) return;
+    c.scrollBy({ left: dir * Math.max(120, c.clientWidth * 0.7), behavior: "smooth" });
+  };
+
+  /* Arrastrar con el mouse. En táctil no se toca nada: el scroll nativo del
+     celular arrastra mejor que cualquier cosa que escribamos. */
+  const arrancarArrastre = (e) => {
+    const c = refSeg.current;
+    if (!c || e.pointerType === "touch") return;
+    if (c.scrollWidth <= c.clientWidth) return;
+    arrastre.current = { x:e.clientX, left:c.scrollLeft, movido:false, id:e.pointerId };
+    c.setPointerCapture?.(e.pointerId);
+    c.dataset.arrastrando = "1";
+  };
+  const moverArrastre = (e) => {
+    const a = arrastre.current;
+    const c = refSeg.current;
+    if (!a || !c) return;
+    const dx = e.clientX - a.x;
+    if (Math.abs(dx) > 3) a.movido = true;
+    c.scrollLeft = a.left - dx;
+  };
+  const soltarArrastre = (e) => {
+    const c = refSeg.current;
+    const a = arrastre.current;
+    if (!c || !a) return;
+    c.releasePointerCapture?.(a.id);
+    delete c.dataset.arrastrando;
+    /* Un arrastre no es un clic: si movió, el botón de abajo no elige nada. */
+    arrastre.current = null;
+    if (a.movido) {
+      const tragar = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+      c.addEventListener("click", tragar, { capture:true, once:true });
+      setTimeout(() => c.removeEventListener("click", tragar, { capture:true }), 0);
+    }
+    e.stopPropagation?.();
+  };
   useEffect(() => {
     if (!q.opciones.length) { setSel(null); return; }
     if (!q.opciones.some((o) => o.id === sel)) setSel(q.opciones[0].id);
@@ -977,17 +1044,31 @@ function SalidaPasajero({
                 y un pasajero preguntó si eso había que sumarlo al precio.
                 Lectura razonable, así que se fue (Gero, 11/09). */}
             {varias && !impresion && (
-              <div className="opt-seg" ref={refSeg} data-desk={desk ? "1" : "0"}>
-                {q.opciones.map((o, i) => {
-                  const pv = precioOpcion(o);
-                  return (
-                    <button key={o.id} data-on={elegida?.id === o.id ? "1" : "0"}
-                      onClick={() => { setSel(o.id); setAbierta(o.id); }}>
-                      <span className="opt-n">{tabNombre(o, i)}</span>
-                      <span className="opt-p">{money(pv)}</span>
-                    </button>
-                  );
-                })}
+              <div className="opt-wrap">
+                <div className="opt-seg" ref={refSeg} data-desk={desk ? "1" : "0"}
+                  onPointerDown={arrancarArrastre}
+                  onPointerMove={moverArrastre}
+                  onPointerUp={soltarArrastre}
+                  onPointerCancel={soltarArrastre}>
+                  {q.opciones.map((o, i) => {
+                    const pv = precioOpcion(o);
+                    return (
+                      <button key={o.id} data-on={elegida?.id === o.id ? "1" : "0"}
+                        onClick={() => { setSel(o.id); setAbierta(o.id); }}>
+                        <span className="opt-n">{tabNombre(o, i)}</span>
+                        <span className="opt-p">{money(pv)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {puntas.izq && (
+                  <button type="button" className="opt-fl" data-lado="i" aria-label="Ver las opciones anteriores"
+                    onClick={() => correr(-1)}><ChevronLeft size={14} /></button>
+                )}
+                {puntas.der && (
+                  <button type="button" className="opt-fl" data-lado="d" aria-label="Ver las opciones siguientes"
+                    onClick={() => correr(1)}><ChevronRight size={14} /></button>
+                )}
               </div>
             )}
 

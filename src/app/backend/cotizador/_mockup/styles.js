@@ -593,6 +593,19 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
     radial-gradient(farthest-side at 100% 50%, rgba(26,26,46,.13), rgba(26,26,46,0)) right center / 13px 100% no-repeat scroll,
     #F5F6FA; }
 .opt-seg::-webkit-scrollbar { height:0; width:0; }
+/* El envoltorio existe para colgarle las flechas, que solo aparecen cuando
+   hay algo fuera de vista de ese lado. */
+.opt-wrap { position:relative; }
+.opt-wrap .opt-seg { cursor:grab; }
+.opt-wrap .opt-seg[data-arrastrando="1"] { cursor:grabbing; scroll-snap-type:none; user-select:none; }
+.opt-fl { position:absolute; top:calc(50% - 6px); width:26px; height:26px; border-radius:50%;
+  display:grid; place-items:center; background:#fff; color:#1A1A2E; z-index:3;
+  border:1px solid rgba(17,17,36,.08); box-shadow:0 3px 10px rgba(26,26,46,.16);
+  transform:translateY(-50%); transition:transform .15s, box-shadow .15s; }
+.opt-fl:hover { box-shadow:0 4px 14px rgba(26,26,46,.22); }
+.opt-fl:active { transform:translateY(-50%) scale(.93); }
+.opt-fl[data-lado="i"] { left:-7px; }
+.opt-fl[data-lado="d"] { right:-7px; }
 .opt-seg > button { flex:1 0 auto; scroll-snap-align:center; min-width:76px; padding:8px 7px 9px; border-radius:12px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
   color:#6B6F99; transition:background .22s, box-shadow .22s, color .22s, transform .16s; }
