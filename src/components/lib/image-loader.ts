@@ -38,8 +38,14 @@ import type { ImageLoaderProps } from "next/image";
  */
 export function proxyThumbUrl(url: string, width: number): string {
   if (!url.startsWith("/api/image/")) return url;
-  const sep = url.includes("?") ? "&" : "?";
-  return `${url}${sep}w=${width}`;
+  /* Si la URL ya venía con un ancho, se reemplaza: encadenar dos (`?w=640&w=320`)
+     dejaba mandando al primero, que es el que lee el route handler, y el
+     recuadro chico seguía bajando la foto grande (medido en producción,
+     22/09). */
+  const [base, query = ""] = url.split("?");
+  const params = new URLSearchParams(query);
+  params.set("w", String(width));
+  return `${base}?${params.toString()}`;
 }
 
 export function bucketImageLoader({ src, width, quality }: ImageLoaderProps): string {
