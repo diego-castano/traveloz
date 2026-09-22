@@ -19,12 +19,14 @@ import {
   useAllOpcionesHoteleras,
   usePackageLoading,
   usePackageProgress,
+  usePackageRefresh,
 } from "@/components/providers/PackageProvider";
 import {
   useServiceState,
   useAlojamientos,
   useServiceLoading,
   useServiceProgress,
+  useServiceRefresh,
 } from "@/components/providers/ServiceProvider";
 import {
   usePaises,
@@ -129,6 +131,15 @@ function agrupar(filas, clave) {
  */
 export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = {}) {
   const paquetesRaw = usePaquetes();
+  const rehidratarPaquetes = usePackageRefresh();
+  const rehidratarServicios = useServiceRefresh();
+  /* Reintentar la carga sin recargar la página: si una ola se cayó o se colgó,
+     el catálogo queda incompleto para siempre y armar desde un paquete se
+     queda esperando. Hasta hoy la única salida era Ctrl+R (Gero, 22/09). */
+  const reintentar = useCallback(() => {
+    rehidratarPaquetes();
+    rehidratarServicios();
+  }, [rehidratarPaquetes, rehidratarServicios]);
   const packageState = usePackageState();
   const opcionesTodas = useAllOpcionesHoteleras();
   const serviceState = useServiceState();
@@ -777,6 +788,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       listo,
       fallo,
       progreso,
+      reintentar,
     }),
     [
       paquetes,
@@ -796,6 +808,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       listo,
       fallo,
       progreso,
+      reintentar,
     ],
   );
 }

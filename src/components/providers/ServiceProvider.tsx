@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useReducer,
   useEffect,
@@ -457,6 +458,9 @@ function serviceReducer(state: ServiceState, action: ServiceAction): ServiceStat
 // ---------------------------------------------------------------------------
 const ServiceStateContext = createContext<ServiceState | null>(null);
 const ServiceDispatchContext = createContext<Dispatch<ServiceAction> | null>(null);
+/* Ver la nota del mismo contexto en PackageProvider: hidratar de nuevo a
+   pedido, para no depender de que alguien recargue la página. */
+const ServiceRefreshContext = createContext<(() => void) | null>(null);
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -473,6 +477,7 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
   const [refreshNonce, setRefreshNonce] = useState(0);
   const lastLoadRef = useRef(0);
   const REFRESH_MIN_INTERVAL_MS = 15_000;
+  const rehidratar = useCallback(() => setRefreshNonce((n) => n + 1), []);
   useEffect(() => {
     if (sessionStatus !== "authenticated") return;
     const maybeRefresh = () => {
@@ -635,9 +640,11 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ServiceStateContext.Provider value={state}>
+      <ServiceRefreshContext.Provider value={rehidratar}>
       <ServiceDispatchContext.Provider value={dispatch}>
         {children}
       </ServiceDispatchContext.Provider>
+      </ServiceRefreshContext.Provider>
     </ServiceStateContext.Provider>
   );
 }
@@ -645,6 +652,11 @@ export function ServiceProvider({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 // Raw state / dispatch hooks
 // ---------------------------------------------------------------------------
+/** Dispara una hidratación nueva de servicios, sin recargar la página. */
+export function useServiceRefresh(): () => void {
+  return useContext(ServiceRefreshContext) ?? (() => {});
+}
+
 export function useServiceState(): ServiceState {
   const ctx = useContext(ServiceStateContext);
   if (!ctx) {

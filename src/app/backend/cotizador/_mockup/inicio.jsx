@@ -428,16 +428,34 @@ function Inicio({
 
   const pedirPaquete = useCallback((p) => {
     if (catalogo.listo) { setModalNueva(false); onPaquete(p); return; }
-    /* con una ola caída no hay nada que esperar: lo que falta no va a llegar
-       hasta recargar, y precargar así escribe el precio sin el alojamiento */
+    /* Con una ola caída falta parte del catálogo y precargar así escribiría el
+       precio sin el alojamiento. Antes esto terminaba en "recargá la página", y
+       el vendedor efectivamente recargaba con Ctrl+R (Gero, 22/09). Ahora el
+       clic pide los datos de nuevo y queda en cola: la cotización se abre sola
+       cuando llegan. */
     if (catalogo.fallo) {
-      toast({ msg:"No se pudo cargar el catálogo completo — recargá la página para arrancar desde un paquete", tone:"warn" });
-      return;
+      catalogo.reintentar?.();
+      toast({ msg:"Faltaban datos del catálogo — los estoy pidiendo de nuevo", tone:"warn" });
     }
     /* el mismo clic otra vez cancela la espera: nadie queda atado a un paquete
        que eligió sin querer mientras el catálogo terminaba de cargar */
     setEsperando((prev) => (prev === p.id ? null : p.id));
-  }, [catalogo.listo, catalogo.fallo, onPaquete, toast]);
+  }, [catalogo, onPaquete, toast]);
+
+  /* Perro guardián de la espera. Una ola que se cuelga —la petición que nunca
+     vuelve— no levanta `fallo`, así que el catálogo no está listo ni falló y
+     el spinner giraba para siempre. A los 8 segundos se piden los datos de
+     nuevo y a los 25 se corta la espera avisando, en vez de dejar al vendedor
+     mirando la rueda. */
+  useEffect(() => {
+    if (!esperando || catalogo.listo) return;
+    const reintento = setTimeout(() => catalogo.reintentar?.(), 8000);
+    const rendicion = setTimeout(() => {
+      setEsperando(null);
+      toast({ msg:"El catálogo sigue sin cargar. Probá de nuevo en un momento.", tone:"warn", ms:6000 });
+    }, 25000);
+    return () => { clearTimeout(reintento); clearTimeout(rendicion); };
+  }, [esperando, catalogo, toast]);
 
   useEffect(() => {
     if (!esperando || !catalogo.listo) return;

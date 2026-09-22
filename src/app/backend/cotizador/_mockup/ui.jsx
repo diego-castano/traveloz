@@ -10,16 +10,32 @@ import {
   MESES, MES_AB, fotoBg, clamp, parseISO, toISO, addDays, norm,
 } from "./data";
 import { useCatalogo } from "./contexto";
+import { proxyThumbUrl } from "@/components/lib/image-loader";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { ICONO_POR_CATEGORIA } from "@/lib/presupuesto/iconos";
 
+/* Ancho de miniatura para el marco que se va a dibujar. El proxy solo acepta
+   estos anchos; el doble del lado más largo cubre las pantallas retina. */
+const ANCHOS_THUMB = [160, 320, 480, 640, 960, 1280];
+function anchoThumb(w, h) {
+  const lado = Math.max(typeof w === "number" ? w : 0, typeof h === "number" ? h : 0);
+  const objetivo = (lado || 160) * 2;
+  return ANCHOS_THUMB.find((x) => x >= objetivo) || 1280;
+}
+
 /* El recuadro de foto: si el paquete o el hotel tiene imagen cargada va la
-   imagen recortada al mismo marco; si no, el gradiente por semilla de siempre. */
+   imagen recortada al mismo marco; si no, el gradiente por semilla de siempre.
+
+   La imagen se pide del tamaño del marco. Antes bajaba el original: el
+   selector de plantillas se traía cuarenta fotos de más de un mega y tardaba
+   un segundo por foto (medido en producción, 22/09). El proxy devuelve WebP y
+   lo cachea un año, así que la segunda vez es instantánea. */
 function Foto({ seed = 0, url = null, alt = "", w = 56, h = 42, r = 10, children, style }) {
+  const src = url ? proxyThumbUrl(url, anchoThumb(w, h)) : null;
   return (
     <div className="foto" style={{ width: w, height: h, borderRadius: r, background: fotoBg(seed), ...style }}>
-      {url && (
-        <img src={url} alt={alt} loading="lazy" decoding="async"
+      {src && (
+        <img src={src} alt={alt} loading="lazy" decoding="async"
           style={{ position:"absolute", inset:0, width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
       )}
       <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,transparent 45%,rgba(0,0,0,.28))" }} />

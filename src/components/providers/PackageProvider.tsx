@@ -3,6 +3,7 @@
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useReducer,
   useMemo,
@@ -575,6 +576,10 @@ function packageReducer(state: PackageState, action: PackageAction): PackageStat
 // ---------------------------------------------------------------------------
 const PackageStateContext = createContext<PackageState | null>(null);
 const PackageDispatchContext = createContext<Dispatch<PackageAction> | null>(null);
+/* Volver a hidratar a pedido. Es el mismo camino que el refresco por foco:
+   cuando una ola se cae o se cuelga, el catálogo queda incompleto para
+   siempre y hasta hoy la única salida era recargar la página a mano. */
+const PackageRefreshContext = createContext<(() => void) | null>(null);
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -591,6 +596,9 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
   const [refreshNonce, setRefreshNonce] = useState(0);
   const lastLoadRef = useRef(0);
   const REFRESH_MIN_INTERVAL_MS = 15_000;
+  /* A pedido no hay throttle: si alguien aprieta "reintentar" es porque lo
+     que tiene en pantalla no le sirve. */
+  const rehidratar = useCallback(() => setRefreshNonce((n) => n + 1), []);
   useEffect(() => {
     if (sessionStatus !== "authenticated") return;
     const maybeRefresh = () => {
@@ -742,9 +750,11 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <PackageStateContext.Provider value={state}>
+      <PackageRefreshContext.Provider value={rehidratar}>
       <PackageDispatchContext.Provider value={dispatch}>
         {children}
       </PackageDispatchContext.Provider>
+      </PackageRefreshContext.Provider>
     </PackageStateContext.Provider>
   );
 }
@@ -752,6 +762,11 @@ export function PackageProvider({ children }: { children: React.ReactNode }) {
 // ---------------------------------------------------------------------------
 // Raw state / dispatch hooks
 // ---------------------------------------------------------------------------
+/** Dispara una hidratación nueva, sin esperar al foco ni recargar la página. */
+export function usePackageRefresh(): () => void {
+  return useContext(PackageRefreshContext) ?? (() => {});
+}
+
 export function usePackageState(): PackageState {
   const ctx = useContext(PackageStateContext);
   if (!ctx) {
