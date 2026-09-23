@@ -1450,30 +1450,13 @@ function SalidaPasajero({
                               )}
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <button className="a-fade btn-conf" onClick={() => confirmar(o)} disabled={!!enviando}
-                              data-enviando={enviando === "conf" ? "1" : undefined}
-                              style={{ width:"100%", marginTop:11, minHeight:50, padding:"14px", borderRadius:14, color:"#fff",
-                                fontSize:fz(14, 14.5), fontWeight:800, letterSpacing:"-.012em",
-                                opacity: enviando ? .7 : 1, cursor: enviando ? "wait" : "pointer",
-                                background:"linear-gradient(152deg,#4FDDC8 0%,#2A9E8E 62%,#1F7D70 100%)",
-                                boxShadow:"0 10px 24px -8px rgba(42,158,142,.55), inset 0 1px 0 rgba(255,255,255,.32)" }}>
-                              {enviando === "conf" ? "Confirmando…" : "Confirmar esta opción"}
-                            </button>
-                            <div style={{ fontSize:fz(10, 10.5), color:"#8A8DB5", textAlign:"center", marginTop:7,
-                              lineHeight:1.5 }}>
-                              Al confirmar aceptás esta cotización — vale como firma digital.
-                            </div>
-                            {errorAcc && (
-                              <div className="a-pop" style={{ marginTop:8, padding:"9px 12px", borderRadius:11,
-                                background:"rgba(244,62,85,.08)", fontSize:fz(11, 11.5), color:"#CC2030",
-                                textAlign:"center", fontWeight:600, lineHeight:1.5 }}>
-                                {errorAcc}
-                              </div>
-                            )}
-                          </>
-                        )}
+                        ) : null
+                        /* Hasta el 23/09 acá iba "Confirmar esta opción", con la leyenda
+                           de que valía como firma digital. Se sacó de todas las
+                           cotizaciones a pedido de Gero (confirmado por Diego): la
+                           confirmación la cierra el vendedor con el pasajero, no un botón.
+                           Las que ya estaban confirmadas siguen mostrando su estado y los
+                           links para cargar datos, en la rama de arriba. */}
                       </div>
                     )}
                   </div>
