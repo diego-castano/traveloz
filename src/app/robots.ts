@@ -109,6 +109,9 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           "/datos-de-pasajeros",
           "/datos-de-pago",
           "/c",
+          // Pantallas de prueba de diseño: piden sesión, así que como /backend
+          // no hay nada que Google tenga que leer.
+          "/propuestas",
           ...extra,
         ],
       },

@@ -105,7 +105,12 @@ function LoginPageInner() {
   // seria un open redirect.
   const destino = (() => {
     const next = search?.get("next");
-    if (!next || !next.startsWith("/backend/")) return "/backend/dashboard";
+    // /propuestas/ son las pantallas de prueba para que el cliente elija un
+    // diseño: viven fuera del panel porque muestran la ficha del pasajero tal
+    // cual, pero piden sesión. Siguen siendo rutas internas.
+    if (!next || !(next.startsWith("/backend/") || next.startsWith("/propuestas/"))) {
+      return "/backend/dashboard";
+    }
     if (next.startsWith("//")) return "/backend/dashboard";
     if (next.startsWith("/backend/login")) return "/backend/dashboard";
     return next;

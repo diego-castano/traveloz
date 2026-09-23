@@ -13,6 +13,9 @@ import {
 } from "./data";
 import { useCtz, useCatalogo, useAjustes, useAeropuertos, buscarVendedor } from "./contexto";
 import { Foto, CATS, Estrellas } from "./ui";
+import {
+  AvisoOpciones, PestanasOpciones, NavOpciones, CarruselOpciones, SelectorOpciones,
+} from "./opciones-variantes";
 import { telefonoWa } from "@/lib/telefono";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { resolverIcono } from "@/lib/presupuesto/iconos";
@@ -311,6 +314,9 @@ function FirmaVendedor({ v, telWa, desk }) {
 function SalidaPasajero({
   q, marca, vendedor, tramos, foco, scrollRef, modo = "cel",
   onConfirmar, onRevision, confirmadaInicial = null, animar = false,
+  /* Solo lo pasa /propuestas/opciones (23/09): cuatro formas de mostrar las
+     opciones para que el cliente elija una. Sin él, la ficha es la de siempre. */
+  varianteOpciones = null,
 }) {
   const { hotelById } = useCatalogo();
   const anclas = useRef({});
@@ -322,7 +328,9 @@ function SalidaPasajero({
     cont.scrollTo({ top, behavior:"smooth" });
   }, [foco, scrollRef]);
 
-  const [abierta, setAbierta] = useState(confirmadaInicial || q.opciones[0]?.id || null);
+  const [abierta, setAbierta] = useState(
+    confirmadaInicial || (varianteOpciones === "lista" ? null : q.opciones[0]?.id) || null,
+  );
   const [confirmada, setConfirmada] = useState(confirmadaInicial || null);
   /* acciones reales: mientras viaja la action los botones se bloquean y, si el
      server dice que no, el pasajero lee el motivo en vez de quedarse mirando */
@@ -330,8 +338,10 @@ function SalidaPasajero({
   const [errorAcc, setErrorAcc] = useState(null);
   useEffect(() => {
     if (!q.opciones.length) { setAbierta(null); return; }
+    /* en la propuesta "una debajo de la otra" pueden estar todas cerradas */
+    if (abierta == null && varianteOpciones === "lista") return;
     if (!q.opciones.some((o) => o.id === abierta)) setAbierta(q.opciones[0].id);
-  }, [q.opciones, abierta]);
+  }, [q.opciones, abierta, varianteOpciones]);
 
   /* v2C · el pasajero cambia de opción desde el switcher (solo vista, no toca el editor) */
   const [sel, setSel] = useState(confirmadaInicial || q.opciones[0]?.id || null);
@@ -495,7 +505,39 @@ function SalidaPasajero({
 
   const varias = q.opciones.length > 1;
   const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
-  const visibles = !q.opciones.length ? [] : impresion ? q.opciones : varias ? [elegida] : q.opciones;
+  /* La propuesta que se está mirando, si hay. En papel y con una sola opción
+     no aplica ninguna: no hay nada que elegir. */
+  const vOp = impresion || !varias ? null : varianteOpciones;
+  const visibles = !q.opciones.length ? [] : impresion ? q.opciones
+    : varias && vOp !== "lista" ? [elegida] : q.opciones;
+
+  /* Lo que las propuestas muestran de cada opción sin abrirla. */
+  const resumenes = !vOp ? [] : q.opciones.map((o, i) => {
+    const hs = (tramos.length ? tramos.map((_, k) => o.hoteles?.[k]) : (o.hoteles || [])).filter(Boolean);
+    const H0 = hotelById(o.hoteles?.[0]?.hotelId);
+    const regs = [...new Set((o.hoteles || []).map((h) => h.regimen).filter(Boolean))];
+    const hab0 = o.habitaciones?.[0];
+    const tarifa0 = hab0?.tarifas?.[0];
+    return {
+      id: o.id,
+      n: i + 1,
+      nombre: tabNombre(o, i),
+      hoteles: hs.map((h) => h.libre || hotelById(h.hotelId)?.nombre).filter(Boolean),
+      cat: H0?.cat || o.hoteles?.[0]?.cat || 0,
+      regimen: regs.length > 1 ? "Régimen según hotel" : (regs[0] || o.regimen || ""),
+      precio: money(precioOpcion(o)),
+      caption: tarifa0
+        ? `${etiquetaTarifa(tarifa0).toLowerCase()}${hab0.ocupacion ? ` · hab. ${String(hab0.ocupacion).toLowerCase()}` : ""}`
+        : "por adulto · base doble",
+      foto: H0?.foto || null,
+      seed: H0?.seed ?? i,
+    };
+  });
+  const elegirOpcion = (id, { subir = false } = {}) => {
+    setSel(id);
+    setAbierta(id);
+    if (subir) anclas.current["b-alojamiento"]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   /* escala: en escritorio todo un punto más grande.
      `fzp` es la variante con tercer valor para el papel: cuando la pantalla
@@ -1046,7 +1088,9 @@ function SalidaPasajero({
               {impresion
                 ? (varias ? "Las opciones cotizadas, una debajo de la otra." : "El detalle de hoteles y fechas.")
                 : varias
-                ? "Cambiá de opción para comparar precios, hoteles y régimen."
+                ? (vOp === "lista"
+                    ? "Compará las opciones de un vistazo y tocá una para ver hoteles, fechas y tarifas."
+                    : "Cambiá de opción para comparar precios, hoteles y régimen.")
                 : "Tocá la opción para ver el detalle de hoteles y fechas."}
             </div>
 
@@ -1054,7 +1098,20 @@ function SalidaPasajero({
                 Mostraba también la diferencia contra la opción 1 ("+USD 150"),
                 y un pasajero preguntó si eso había que sumarlo al precio.
                 Lectura razonable, así que se fue (Gero, 11/09). */}
-            {varias && !impresion && (
+            {varias && vOp && (
+              vOp === "pestanas" ? (
+                <PestanasOpciones resumenes={resumenes} elegidaId={elegida?.id} onElegir={elegirOpcion}
+                  desk={desk} G={G} />
+              ) : vOp === "carrusel" ? (
+                <CarruselOpciones resumenes={resumenes} elegidaId={elegida?.id} onElegir={elegirOpcion}
+                  desk={desk} G={G} grad={grad} margen={desk ? 42 : 20} />
+              ) : vOp === "selector" ? (
+                <SelectorOpciones resumenes={resumenes} elegidaId={elegida?.id} onElegir={elegirOpcion} G={G} />
+              ) : (
+                <AvisoOpciones n={q.opciones.length} texto="Tocá una para ver el detalle" G={G} />
+              )
+            )}
+            {varias && !impresion && !vOp && (
               <div className="opt-wrap">
                 <div className="opt-seg" ref={refSeg} data-desk={desk ? "1" : "0"}
                   onPointerDown={arrancarArrastre}
@@ -1104,7 +1161,7 @@ function SalidaPasajero({
                 const regimenTxt = regimenesOpcion.length > 1 ? "Régimen según hotel" : (regimenesOpcion[0] || o.regimen);
                 return (
                   /* con switcher hay una sola card: la clave fija deja que el precio ruede al cambiar */
-                  <div key={varias && !impresion ? "op-visible" : o.id} className="op-card" style={{ borderRadius: impresion ? 14 : 20, overflow:"hidden", background:"#fff",
+                  <div key={varias && !impresion && vOp !== "lista" ? "op-visible" : o.id} className="op-card" style={{ borderRadius: impresion ? 14 : 20, overflow:"hidden", background:"#fff",
                     ...(impresion
                       ? { border:"1px solid rgba(17,17,36,.12)" }
                       : {
@@ -1413,6 +1470,9 @@ function SalidaPasajero({
                 );
               })}
             </div>
+            {vOp === "pestanas" && (
+              <NavOpciones resumenes={resumenes} elegidaId={elegida?.id} onElegir={elegirOpcion} />
+            )}
           </div>
         )}
 

@@ -606,6 +606,90 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .opt-fl:active { transform:translateY(-50%) scale(.93); }
 .opt-fl[data-lado="i"] { left:-7px; }
 .opt-fl[data-lado="d"] { right:-7px; }
+
+/* ── propuestas para mostrar las opciones (solo /propuestas/opciones) ─────
+   Cuatro formas de que se note que hay más de una opción (Gero, 23/09). Las
+   clases viven acá porque la ficha es la misma del link público; ninguna se
+   dibuja si la página no pide una propuesta. */
+.pv-aviso { display:flex; align-items:center; gap:8px; margin:-4px 0 11px; font-size:12px;
+  color:#6B6F99; font-weight:600; line-height:1.35; }
+.pv-cuenta { flex-shrink:0; color:#fff; padding:3px 9px; border-radius:999px; font-size:11px;
+  font-weight:800; letter-spacing:.01em; }
+.pv-radio { position:absolute; width:15px; height:15px; border-radius:99px; background:#fff;
+  border:2px solid #B9BBD8; transition:border-color .2s, background .2s, box-shadow .2s; }
+
+/* 1 · pestañas con cara de pestaña */
+.pv-tabs { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(0,1fr); gap:8px; margin-bottom:14px; }
+.pv-tabs[data-desk="1"] { gap:10px; }
+.pv-tab { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:3px;
+  min-width:0; padding:32px 11px 11px; border-radius:15px; text-align:left; background:#F4F4FA;
+  border:1.5px solid rgba(17,17,36,.1); color:#4B4F77;
+  transition:border-color .2s, background .2s, box-shadow .2s, transform .15s; }
+.pv-tabs[data-desk="1"] .pv-tab { padding:14px 14px 13px 40px; }
+.pv-tab .pv-radio { left:11px; top:11px; }
+.pv-tabs[data-desk="1"] .pv-tab .pv-radio { left:14px; top:50%; margin-top:-7.5px; }
+.pv-tab:active { transform:scale(.97); }
+.pv-tab[data-on="1"] { background:#fff; border-color:#785AE5; color:#1A1A2E;
+  box-shadow:0 10px 24px -14px rgba(120,90,229,.7); }
+.pv-tab[data-on="1"] .pv-radio, .pv-sel-i[data-on="1"] .pv-radio { border-color:#785AE5;
+  background:#785AE5; box-shadow:inset 0 0 0 3px #fff; }
+.pv-tab-n { font-size:11px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pv-tab-p { font-size:15px; font-weight:800; letter-spacing:-.02em; white-space:nowrap; }
+.pv-tab[data-on="1"] .pv-tab-p { color:#785AE5; }
+@keyframes pvSalto { 0%,100% { transform:translateY(0); } 40% { transform:translateY(-4px); } 70% { transform:translateY(1px); } }
+.pv-tab[data-on="0"] { animation:pvSalto .7s cubic-bezier(.3,.7,.3,1) 1.2s 2; }
+.pv-nav { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:-8px 0 24px; }
+.pv-nav-b { display:inline-flex; align-items:center; gap:4px; min-height:38px; padding:0 12px;
+  border-radius:12px; font-size:12.5px; font-weight:700; color:#785AE5; background:rgba(120,90,229,.08); }
+.pv-nav-b[disabled] { visibility:hidden; }
+.pv-nav-b[data-sig="1"] { background:#785AE5; color:#fff; box-shadow:0 10px 20px -12px rgba(120,90,229,.9); }
+.pv-dots { display:flex; align-items:center; gap:6px; }
+.pv-dots > i { display:block; width:7px; height:7px; border-radius:99px; background:#D5D6E8;
+  cursor:pointer; transition:width .25s, background .25s; }
+.pv-dots > i[data-on="1"] { width:20px; background:#785AE5; }
+
+/* 3 · tarjetas que se deslizan, con la siguiente asomando */
+.pv-car { display:flex; gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; cursor:grab; }
+.pv-car::-webkit-scrollbar { height:0; width:0; }
+.pv-car[data-arrastrando="1"] { cursor:grabbing; scroll-snap-type:none; user-select:none; }
+.pv-card { flex:0 0 80%; scroll-snap-align:center; display:block; border-radius:18px; overflow:hidden;
+  background:#fff; text-align:left;
+  box-shadow:inset 0 0 0 1px rgba(17,17,36,.07), 0 14px 30px -22px rgba(58,38,120,.55);
+  transition:box-shadow .25s, transform .25s, opacity .25s; }
+.pv-car[data-desk="1"] .pv-card { flex-basis:44%; }
+.pv-card[data-on="1"] { box-shadow:inset 0 0 0 2px #785AE5, 0 18px 36px -20px rgba(120,90,229,.65); }
+.pv-card[data-on="0"] { transform:scale(.965); opacity:.9; }
+.pv-card-n { position:absolute; top:9px; left:9px; display:inline-flex; align-items:center; gap:6px;
+  padding:4px 10px 4px 4px; border-radius:999px; background:rgba(255,255,255,.95); font-size:11px;
+  font-weight:800; color:#1A1A2E; box-shadow:0 2px 8px rgba(0,0,0,.16); }
+.pv-card-n > b { width:18px; height:18px; border-radius:99px; display:grid; place-items:center;
+  color:#fff; font-size:10px; }
+.pv-card-body { display:flex; flex-direction:column; gap:3px; padding:11px 13px 13px; }
+.pv-card-h { font-size:13.5px; font-weight:700; color:#1A1A2E; line-height:1.3; }
+.pv-card-reg { font-size:11px; color:#8A8DB5; }
+.pv-card-p { font-size:20px; font-weight:800; letter-spacing:-.03em; margin-top:4px; line-height:1.05; }
+.pv-card-cap { font-size:9.5px; font-weight:600; color:#8A8DB5; }
+.pv-car-pie { display:flex; align-items:center; justify-content:center; gap:14px; margin:0 0 16px; }
+.pv-car-fl { width:30px; height:30px; border-radius:99px; display:grid; place-items:center; background:#fff;
+  color:#1A1A2E; border:1px solid rgba(17,17,36,.1); box-shadow:0 3px 10px rgba(26,26,46,.12); }
+.pv-car-fl[disabled] { opacity:.35; box-shadow:none; }
+
+/* 4 · lista para elegir, como una tarifa de avión */
+.pv-sel { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.pv-sel-t { font-size:12.5px; font-weight:600; color:#6B6F99; margin:-4px 0 2px; line-height:1.45; }
+.pv-sel-i { position:relative; display:flex; align-items:center; gap:10px; width:100%;
+  padding:12px 13px 12px 38px; border-radius:15px; text-align:left; background:#fff;
+  border:1.5px solid rgba(17,17,36,.1); transition:border-color .2s, box-shadow .2s, background .2s; }
+.pv-sel-i .pv-radio { left:13px; top:50%; margin-top:-7.5px; }
+.pv-sel-i[data-on="1"] { border-color:#785AE5; background:#FBFAFF; box-shadow:0 12px 26px -18px rgba(120,90,229,.8); }
+.pv-sel-txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.pv-sel-n { font-size:10.5px; font-weight:800; color:#785AE5; letter-spacing:.04em; text-transform:uppercase; }
+.pv-sel-h { display:flex; align-items:center; gap:6px; min-width:0; font-size:13.5px; font-weight:700; color:#1A1A2E; }
+.pv-sel-h > span:first-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pv-sel-r { font-size:11.5px; color:#8A8DB5; }
+.pv-sel-p { flex-shrink:0; text-align:right; font-size:16px; font-weight:800; letter-spacing:-.02em; color:#1A1A2E; }
+.pv-sel-p > small { display:block; margin-top:1px; font-size:9.5px; font-weight:600; letter-spacing:0; color:#8A8DB5; }
+@media (prefers-reduced-motion:reduce){ .pv-tab[data-on="0"] { animation:none; } }
 .opt-seg > button { flex:1 0 auto; scroll-snap-align:center; min-width:76px; padding:8px 7px 9px; border-radius:12px;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
   color:#6B6F99; transition:background .22s, box-shadow .22s, color .22s, transform .16s; }

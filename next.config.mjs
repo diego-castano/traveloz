@@ -146,6 +146,16 @@ const nextConfig = {
         ],
       },
       {
+        // Pantallas de prueba para que el cliente elija un diseño de la ficha
+        // (/propuestas/opciones/<n>). Muestran una cotización real, así que
+        // llevan la misma CSP sin medición que /c/ y nunca se indexan.
+        source: "/propuestas/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: cspPublicoCotizacion },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
         // Tipografías del cotizador (public/fonts/cotizador/*.woff2). El nombre
         // del archivo lleva la version de gstatic (dm-sans-v17…), asi que
         // actualizar una fuente crea una URL nueva: por eso se puede ir a un
