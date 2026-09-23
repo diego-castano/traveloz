@@ -623,14 +623,28 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .pv-tabs[data-desk="1"] { gap:10px; }
 .pv-tab { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:3px;
   min-width:0; padding:32px 11px 11px; border-radius:15px; text-align:left; background:#F4F4FA;
-  border:1.5px solid rgba(17,17,36,.1); color:#4B4F77;
+  border:2.5px solid #C9CBE2; color:#4B4F77;
   transition:border-color .2s, background .2s, box-shadow .2s, transform .15s; }
 .pv-tabs[data-desk="1"] .pv-tab { padding:14px 14px 13px 40px; }
 .pv-tab .pv-radio { left:11px; top:11px; }
 .pv-tabs[data-desk="1"] .pv-tab .pv-radio { left:14px; top:50%; margin-top:-7.5px; }
 .pv-tab:active { transform:scale(.97); }
 .pv-tab[data-on="1"] { background:#fff; border-color:#785AE5; color:#1A1A2E;
-  box-shadow:0 10px 24px -14px rgba(120,90,229,.7); }
+  box-shadow:0 0 0 3px rgba(120,90,229,.15), 0 10px 24px -14px rgba(120,90,229,.7); }
+/* Con cuatro opciones o más no entran a lo ancho: la fila se desliza, cada
+   pestaña con su ancho, y las flechas de los bordes avisan que sigue. */
+.pv-tabs-wrap { position:relative; }
+.pv-tabs[data-muchas="1"] { display:flex; overflow-x:auto; scroll-snap-type:x proximity;
+  padding:4px 2px 6px; margin:-4px -2px 8px; cursor:grab; }
+.pv-tabs[data-muchas="1"]::-webkit-scrollbar { height:0; width:0; }
+.pv-tabs[data-muchas="1"][data-arrastrando="1"] { cursor:grabbing; scroll-snap-type:none; user-select:none; }
+.pv-tabs[data-muchas="1"] > .pv-tab { flex:0 0 auto; min-width:112px; scroll-snap-align:center; }
+.pv-tabs[data-muchas="1"][data-desk="1"] > .pv-tab { min-width:150px; }
+.pv-fl { position:absolute; top:calc(50% - 5px); width:28px; height:28px; border-radius:50%;
+  display:grid; place-items:center; background:#fff; color:#1A1A2E; z-index:3;
+  border:1px solid rgba(17,17,36,.1); box-shadow:0 3px 12px rgba(26,26,46,.2); transform:translateY(-50%); }
+.pv-fl[data-lado="i"] { left:-8px; }
+.pv-fl[data-lado="d"] { right:-8px; }
 .pv-tab[data-on="1"] .pv-radio, .pv-sel-i[data-on="1"] .pv-radio { border-color:#785AE5;
   background:#785AE5; box-shadow:inset 0 0 0 3px #fff; }
 .pv-tab-n { font-size:11px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

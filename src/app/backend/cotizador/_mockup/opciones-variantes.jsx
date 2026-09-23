@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Foto, Estrellas } from "./ui";
 
@@ -41,32 +41,132 @@ export function AvisoOpciones({ n, texto, G }) {
 }
 
 /* ── 1 · pestañas que se ven como pestañas ───────────────────────────────
-   Cada pestaña es una tarjeta con un círculo de selección, como un formulario:
-   se entiende que se toca. Las que no están elegidas dan un salto chico al
-   llegar, dos veces, para que el ojo las registre. */
+   La que eligió Gero el 23/09, con su pedido: más grosor en el recuadro de
+   cada opción. Cada pestaña es una tarjeta con un círculo de selección, como
+   en un formulario. Con cuatro opciones o más ya no entran a lo ancho: la
+   fila se corre de costado, con flechas en los bordes y arrastre con el
+   mouse, que captura el puntero recién cuando el mouse se movió de verdad
+   (capturarlo al apretar le robaba el clic a la pestaña). */
+/** Hasta tres, las pestañas se reparten el ancho; desde cuatro, la fila se desliza. */
+const MAX_A_LO_ANCHO = 3;
+
 export function PestanasOpciones({ resumenes, elegidaId, onElegir, desk, G }) {
+  const fila = useRef(null);
+  const arrastre = useRef(null);
+  const [puntas, setPuntas] = useState({ izq: false, der: false });
+  const muchas = resumenes.length > MAX_A_LO_ANCHO;
+
+  /* Solo avisa si una punta cambió: corre en cada render y con un objeto nuevo
+     cada vez el render se repetiría sin fin. */
+  const medir = useCallback(() => {
+    const c = fila.current;
+    if (!c) return;
+    const max = c.scrollWidth - c.clientWidth;
+    const izq = c.scrollLeft > 4;
+    const der = max > 4 && c.scrollLeft < max - 4;
+    setPuntas((p) => (p.izq === izq && p.der === der ? p : { izq, der }));
+  }, []);
+
+  useEffect(() => {
+    const c = fila.current;
+    if (!c) return undefined;
+    c.addEventListener("scroll", medir, { passive: true });
+    window.addEventListener("resize", medir);
+    return () => {
+      c.removeEventListener("scroll", medir);
+      window.removeEventListener("resize", medir);
+    };
+  }, [medir]);
+
+  /* sin dependencias a propósito: el ancho depende del modo y de los precios */
+  useEffect(medir);
+
+  /* la elegida siempre a la vista, en el centro de la fila */
+  useEffect(() => {
+    const c = fila.current;
+    const b = c?.querySelector('[data-on="1"]');
+    if (!c || !b || c.scrollWidth <= c.clientWidth) return;
+    const izq = b.offsetLeft - (c.clientWidth - b.offsetWidth) / 2;
+    c.scrollTo({ left: Math.max(0, izq), behavior: "smooth" });
+  }, [elegidaId]);
+
+  const correr = (dir) => {
+    const c = fila.current;
+    if (!c) return;
+    c.scrollBy({ left: dir * Math.max(120, c.clientWidth * 0.7), behavior: "smooth" });
+  };
+
+  /* ── arrastre con el mouse (en táctil manda el scroll nativo) ──────────── */
+  const bajar = (e) => {
+    const c = fila.current;
+    if (!c || e.pointerType === "touch" || c.scrollWidth <= c.clientWidth) return;
+    arrastre.current = { x: e.clientX, left: c.scrollLeft, movido: false, id: e.pointerId };
+  };
+  const mover = (e) => {
+    const a = arrastre.current;
+    const c = fila.current;
+    if (!a || !c) return;
+    const dx = e.clientX - a.x;
+    if (!a.movido) {
+      /* un temblor de la mano no es un arrastre: el clic tiene que seguir
+         llegando a la pestaña */
+      if (Math.abs(dx) <= 4) return;
+      a.movido = true;
+      try { c.setPointerCapture?.(a.id); } catch { /* sin captura */ }
+      c.dataset.arrastrando = "1";
+    }
+    c.scrollLeft = a.left - dx;
+  };
+  const soltar = () => {
+    const a = arrastre.current;
+    const c = fila.current;
+    arrastre.current = null;
+    if (!a || !c || !a.movido) return;
+    try { c.releasePointerCapture?.(a.id); } catch { /* ya no estaba capturado */ }
+    delete c.dataset.arrastrando;
+    /* después de arrastrar, soltar encima de una pestaña no la elige */
+    const tragar = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    c.addEventListener("click", tragar, { capture: true, once: true });
+    setTimeout(() => c.removeEventListener("click", tragar, { capture: true }), 0);
+  };
+
   return (
     <div>
-      <AvisoOpciones n={resumenes.length} texto="Tocá cada una para compararla" G={G} />
-      <div className="pv-tabs" role="tablist" data-desk={desk ? "1" : "0"}>
-        {resumenes.map((r) => {
-          const on = r.id === elegidaId;
-          return (
-            <button key={r.id} type="button" role="tab" aria-selected={on}
-              className="pv-tab" data-on={on ? "1" : "0"} onClick={() => onElegir(r.id)}>
-              <span className="pv-radio" aria-hidden="true" />
-              <span className="pv-tab-n">{r.nombre}</span>
-              <span className="pv-tab-p">{r.precio}</span>
-            </button>
-          );
-        })}
+      <div className="pv-aviso">
+        <span className="pv-cuenta" style={{ background: G.b }}>{resumenes.length} opciones</span>
+        <span>{muchas && !desk ? "Deslizá y tocá cada una para compararla" : "Tocá cada una para compararla"}</span>
+      </div>
+      <div className="pv-tabs-wrap">
+        <div className="pv-tabs" ref={fila} role="tablist"
+          data-desk={desk ? "1" : "0"} data-muchas={muchas ? "1" : "0"}
+          onPointerDown={bajar} onPointerMove={mover} onPointerUp={soltar} onPointerCancel={soltar}>
+          {resumenes.map((r) => {
+            const on = r.id === elegidaId;
+            return (
+              <button key={r.id} type="button" role="tab" aria-selected={on}
+                className="pv-tab" data-on={on ? "1" : "0"} onClick={() => onElegir(r.id)}>
+                <span className="pv-radio" aria-hidden="true" />
+                <span className="pv-tab-n">{r.nombre}</span>
+                <span className="pv-tab-p">{r.precio}</span>
+              </button>
+            );
+          })}
+        </div>
+        {puntas.izq && (
+          <button type="button" className="pv-fl" data-lado="i" aria-label="Ver las opciones anteriores"
+            onClick={() => correr(-1)}><ChevronLeft size={14} /></button>
+        )}
+        {puntas.der && (
+          <button type="button" className="pv-fl" data-lado="d" aria-label="Ver las opciones siguientes"
+            onClick={() => correr(1)}><ChevronRight size={14} /></button>
+        )}
       </div>
     </div>
   );
 }
 
-/* El pie de la pestaña 1: "anterior / siguiente" con los puntos en el medio.
-   Es lo que ve quien bajó leyendo la opción entera y llegó al final. */
+/* El pie de la opción abierta: "anterior / siguiente" con los puntos en el
+   medio. Es lo que ve quien bajó leyendo la opción entera y llegó al final. */
 export function NavOpciones({ resumenes, elegidaId, onElegir }) {
   const i = Math.max(0, resumenes.findIndex((r) => r.id === elegidaId));
   const ant = resumenes[i - 1];
@@ -78,7 +178,9 @@ export function NavOpciones({ resumenes, elegidaId, onElegir }) {
         <ChevronLeft size={15} /> {ant ? ant.nombre : ""}
       </button>
       <div className="pv-dots" aria-label={`Opción ${i + 1} de ${resumenes.length}`}>
-        {resumenes.map((r, k) => <i key={r.id} data-on={k === i ? "1" : "0"} />)}
+        {resumenes.map((r, k) => (
+          <i key={r.id} data-on={k === i ? "1" : "0"} onClick={() => onElegir(r.id, { subir: true })} />
+        ))}
       </div>
       <button type="button" className="pv-nav-b" data-sig="1" disabled={!sig}
         onClick={() => sig && onElegir(sig.id, { subir: true })}>
@@ -133,35 +235,38 @@ export function CarruselOpciones({ resumenes, elegidaId, onElegir, desk, G, grad
   const ir = (k) => { const r = resumenes[k]; if (r) onElegir(r.id); };
 
   /* arrastre con mouse; en táctil manda el scroll nativo */
+  /* el puntero se captura recién cuando el mouse se movió: capturarlo al
+     apretar le robaba el clic a la tarjeta */
   const bajar = (e) => {
     const c = pista.current;
     if (!c || e.pointerType === "touch") return;
     arrastre.current = { x: e.clientX, left: c.scrollLeft, movido: false, id: e.pointerId };
-    c.setPointerCapture?.(e.pointerId);
-    c.dataset.arrastrando = "1";
   };
   const mover = (e) => {
     const a = arrastre.current;
     const c = pista.current;
     if (!a || !c) return;
     const dx = e.clientX - a.x;
-    if (Math.abs(dx) > 3) a.movido = true;
+    if (!a.movido) {
+      if (Math.abs(dx) <= 4) return;
+      a.movido = true;
+      try { c.setPointerCapture?.(a.id); } catch { /* sin captura */ }
+      c.dataset.arrastrando = "1";
+    }
     c.scrollLeft = a.left - dx;
   };
   const soltar = () => {
     const c = pista.current;
     const a = arrastre.current;
-    if (!c || !a) return;
-    c.releasePointerCapture?.(a.id);
-    delete c.dataset.arrastrando;
     arrastre.current = null;
-    if (a.movido) {
-      /* un arrastre no es un clic: la tarjeta de abajo no se elige al soltar */
-      const tragar = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
-      c.addEventListener("click", tragar, { capture: true, once: true });
-      setTimeout(() => c.removeEventListener("click", tragar, { capture: true }), 0);
-      alDeslizar();
-    }
+    if (!c || !a || !a.movido) return;
+    try { c.releasePointerCapture?.(a.id); } catch { /* ya no estaba capturado */ }
+    delete c.dataset.arrastrando;
+    /* un arrastre no es un clic: la tarjeta de abajo no se elige al soltar */
+    const tragar = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    c.addEventListener("click", tragar, { capture: true, once: true });
+    setTimeout(() => c.removeEventListener("click", tragar, { capture: true }), 0);
+    alDeslizar();
   };
 
   return (

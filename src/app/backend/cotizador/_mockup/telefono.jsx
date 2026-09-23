@@ -403,35 +403,45 @@ function SalidaPasajero({
 
   /* Arrastrar con el mouse. En táctil no se toca nada: el scroll nativo del
      celular arrastra mejor que cualquier cosa que escribamos. */
+  /* El puntero se captura recién cuando el mouse se movió de verdad. Hasta el
+     23/09 se capturaba al apretar, y con el puntero capturado el clic le
+     llega a la fila y no a la pestaña: con cuatro opciones o más —la fila
+     desborda y el arrastre se arma— en la vista previa del vendedor no se
+     podía cambiar de opción (Gero, COT-2026-0309). En el link del pasajero no
+     pasaba porque ahí se toca con el dedo, y el táctil no pasa por acá. */
   const arrancarArrastre = (e) => {
     const c = refSeg.current;
     if (!c || e.pointerType === "touch") return;
     if (c.scrollWidth <= c.clientWidth) return;
     arrastre.current = { x:e.clientX, left:c.scrollLeft, movido:false, id:e.pointerId };
-    c.setPointerCapture?.(e.pointerId);
-    c.dataset.arrastrando = "1";
   };
   const moverArrastre = (e) => {
     const a = arrastre.current;
     const c = refSeg.current;
     if (!a || !c) return;
     const dx = e.clientX - a.x;
-    if (Math.abs(dx) > 3) a.movido = true;
+    if (!a.movido) {
+      /* un temblor de la mano no es un arrastre: el clic sigue siendo clic */
+      if (Math.abs(dx) <= 4) return;
+      a.movido = true;
+      /* si el puntero ya no está activo el navegador la rechaza: sin captura
+         el arrastre igual anda mientras el mouse no salga de la fila */
+      try { c.setPointerCapture?.(a.id); } catch { /* sin captura */ }
+      c.dataset.arrastrando = "1";
+    }
     c.scrollLeft = a.left - dx;
   };
   const soltarArrastre = (e) => {
     const c = refSeg.current;
     const a = arrastre.current;
-    if (!c || !a) return;
-    c.releasePointerCapture?.(a.id);
+    arrastre.current = null;
+    if (!c || !a || !a.movido) return;
+    try { c.releasePointerCapture?.(a.id); } catch { /* ya no estaba capturado */ }
     delete c.dataset.arrastrando;
     /* Un arrastre no es un clic: si movió, el botón de abajo no elige nada. */
-    arrastre.current = null;
-    if (a.movido) {
-      const tragar = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
-      c.addEventListener("click", tragar, { capture:true, once:true });
-      setTimeout(() => c.removeEventListener("click", tragar, { capture:true }), 0);
-    }
+    const tragar = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
+    c.addEventListener("click", tragar, { capture:true, once:true });
+    setTimeout(() => c.removeEventListener("click", tragar, { capture:true }), 0);
     e.stopPropagation?.();
   };
   useEffect(() => {
