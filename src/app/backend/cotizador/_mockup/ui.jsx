@@ -446,13 +446,26 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, onVaciar, autoFocus }) 
     document.addEventListener("mousedown", h); return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  /* Elegir de la lista. Un hotel "propio" es uno escrito a mano antes en esta
+     sesión: el catálogo lo recuerda para ofrecerlo de nuevo, pero su id vive
+     solo en la memoria del navegador. Guardarlo como hotelId dejaba la
+     cotización apuntando a algo que no existe: en el editor se veía el nombre
+     y el pasajero leía "A definir" (Gero, 23/09; 12 cotizaciones enviadas así).
+     Se guarda como lo que es, texto libre, con sus estrellas. */
+  const elegir = (h) => {
+    if (h.propio) onLibre(h.nombre, h.cat || 0);
+    else onPick(h);
+    setQ("");
+    setOpen(false);
+  };
+
   const key = (e) => {
     const ultimo = res.length;
     if (e.key === "ArrowDown") { e.preventDefault(); setIdx((i) => clamp(i + 1, 0, ultimo)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setIdx((i) => clamp(i - 1, 0, ultimo)); }
     else if (e.key === "Enter") {
       e.preventDefault();
-      if (idx < res.length) { onPick(res[idx]); setQ(""); setOpen(false); }
+      if (idx < res.length) elegir(res[idx]);
       else if (idx === res.length && q.trim()) { onLibre(q.trim()); setQ(""); setOpen(false); }
     } else if (e.key === "Escape") { setOpen(false); }
   };
@@ -506,8 +519,8 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, onVaciar, autoFocus }) 
             const fav = esFavorito(h.id);
             return (
             <div key={h.id} role="button" tabIndex={0} onMouseEnter={() => setIdx(i)}
-              onClick={() => { onPick(h); setOpen(false); setQ(""); }}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPick(h); setOpen(false); setQ(""); } }}
+              onClick={() => elegir(h)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); elegir(h); } }}
               style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"8px 10px", textAlign:"left", cursor:"pointer",
                 background: i === idx ? "rgba(120,90,229,.07)" : "transparent" }}>
               <Foto seed={h.seed} url={h.foto} alt={h.nombre} w={40} h={30} r={7} />

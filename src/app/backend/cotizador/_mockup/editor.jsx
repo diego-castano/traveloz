@@ -2516,11 +2516,14 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                                   onPick={(hh) => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
                                     d.opciones[i].hoteles[hi] = { ...prev, hotelId:hh.id, libre:"",
                                       regimen: prev.regimen || regimenDeTramo(hi) }; })}
-                                  onLibre={(txt) => {
-                                    registrarHotelLibre(txt, t.ciudad, h.cat || 0);
+                                  onLibre={(txt, catLibre) => {
+                                    /* las estrellas del hotel "propio" elegido de la lista le
+                                       ganan a las que tuviera el tramo */
+                                    const cat = catLibre || h.cat || 0;
+                                    registrarHotelLibre(txt, t.ciudad, cat);
                                     set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
                                       d.opciones[i].hoteles[hi] = { ...prev, hotelId:null, libre:txt,
-                                        cat: prev.cat || 0, regimen: prev.regimen || regimenDeTramo(hi) }; });
+                                        cat, regimen: prev.regimen || regimenDeTramo(hi) }; });
                                   }}
                                   /* El tramo queda sin hotel y sin estrellas, pero conserva el
                                      régimen: ese lo manda el destino, no el alojamiento. Aguas

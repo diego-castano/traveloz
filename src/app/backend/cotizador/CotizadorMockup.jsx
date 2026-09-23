@@ -877,6 +877,27 @@ export default function Cotizador({
   const repropagar = () => { set((d) => { d.destinos.forEach((x) => { x.checkinManual = null; }); });
     toast({ msg:"Fechas actualizadas desde la salida", tone:"ok" }); };
 
+  /* ── hoteles escritos a mano que quedaron guardados como id ─────────────
+     Hasta el 23/09, elegir de la lista un hotel "propio" (uno escrito a mano
+     antes en la sesión) lo guardaba con un id que solo existe en la memoria
+     del navegador: el pasajero leía "A definir". Mientras la pestaña que lo
+     escribió siga abierta, el catálogo todavía sabe el nombre, así que se lo
+     pasa a texto libre y el próximo autoguardado lo deja escrito. */
+  useEffect(() => {
+    const rotos = [];
+    (q.opciones || []).forEach((o, io) => (o.hoteles || []).forEach((h, ih) => {
+      const H = h?.hotelId ? catalogo.hotelById(h.hotelId) : null;
+      if (H?.propio) rotos.push({ io, ih, nombre: H.nombre, cat: H.cat || 0 });
+    }));
+    if (!rotos.length) return;
+    set((d) => {
+      rotos.forEach(({ io, ih, nombre, cat }) => {
+        const h = d.opciones[io].hoteles[ih];
+        d.opciones[io].hoteles[ih] = { ...h, hotelId: null, libre: nombre, cat: h.cat || cat };
+      });
+    });
+  }, [q.opciones, catalogo, set]);
+
   /* ── los servicios marcados `auto` siguen a lo que se carga arriba.
         En cuanto el vendedor los edita a mano pierden el flag y quedan quietos. ── */
   useEffect(() => {
