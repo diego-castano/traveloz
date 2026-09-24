@@ -58,6 +58,8 @@ export const roleConfig: Record<Role, RoleConfig> = {
       "reportes",
       "web",
       "leads",
+      // Visitas y consultas por UTM (/backend/analitica). También MARKETING.
+      "analitica",
       "cotizadores",
       // Bandeja global de pasajeros + bóveda de pagos + editor de los dos
       // formularios públicos. Solo ADMIN: el vendedor tiene su propia vista
@@ -73,7 +75,7 @@ export const roleConfig: Record<Role, RoleConfig> = {
   MARKETING: {
     canEdit: false,
     canSeePricing: { neto: false, markup: false, venta: true },
-    visibleModules: ["paquetes", "reportes"],
+    visibleModules: ["paquetes", "reportes", "analitica"],
   },
 } as const;
 

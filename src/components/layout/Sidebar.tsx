@@ -28,6 +28,7 @@ import {
   X,
   Globe,
   IdCard,
+  BarChart3,
   ListChecks,
   Inbox,
   ScrollText,
@@ -151,6 +152,13 @@ const navGroups: NavGroup[] = [
     items: [
       { id: "web", label: "Frontend", icon: Globe, href: "/backend/web" },
       { id: "leads", label: "Contactos", icon: Inbox, href: "/backend/leads" },
+      {
+        id: "analitica",
+        label: "Analítica UTM",
+        sublabel: "visitas y consultas",
+        icon: BarChart3,
+        href: "/backend/analitica",
+      },
       {
         id: "datos",
         label: "Pasajeros y pagos",
