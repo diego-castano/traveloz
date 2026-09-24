@@ -39,7 +39,7 @@ import {
 } from "@/lib/email";
 import { getBaseUrl } from "@/lib/seo";
 import { crearNegocioLead, mensajeErrorCrm } from "@/lib/bitrix";
-import { resumenPauta } from "@/lib/atribucion";
+import { resumenPauta, utmDePauta } from "@/lib/atribucion";
 import { leerAtribucion } from "@/lib/atribucion-server";
 
 const log = logger.child({ module: "public-forms.actions" });
@@ -955,6 +955,7 @@ export async function submitQuoteForm(
           comentarios: data.comentarios,
           origen: s(formData, "origen") ?? captureOrigen(),
           pauta,
+          utm: utmDePauta(atrib?.first, atrib?.last),
           aceptaPromos: formData.get("aceptaPromos") === "on",
           canal: paqueteId
             ? "Sitio web - consulta de paquete"

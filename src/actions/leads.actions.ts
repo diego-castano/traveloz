@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth, requireCanEdit } from "@/lib/require-auth";
 import type { CrmEstado, EstadoMensaje } from "@prisma/client";
-import { touchSchema, resumenPauta, type Touch } from "@/lib/atribucion";
+import { touchSchema, resumenPauta, utmDePauta, type Touch } from "@/lib/atribucion";
 import { crearNegocioLead, mensajeErrorCrm } from "@/lib/bitrix";
 import { getBaseUrl } from "@/lib/seo";
 
@@ -410,6 +410,7 @@ export async function reintentarCrmCotizacion(
         parseTouchJson(cot.atribFirst),
         parseTouchJson(cot.atribLast),
       ),
+      utm: utmDePauta(parseTouchJson(cot.atribFirst), parseTouchJson(cot.atribLast)),
       aceptaPromos: cot.aceptaPromos,
       canal: cot.paqueteId
         ? "Sitio web - consulta de paquete"

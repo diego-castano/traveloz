@@ -335,3 +335,29 @@ export function resumenPauta(
   }
   return base;
 }
+
+/** Las cinco UTM de un touch, con los nombres que usa el CRM. */
+export interface UtmPauta {
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  content?: string;
+  term?: string;
+}
+
+/**
+ * Las UTM que se le atribuyen a un lead. Mismo criterio que `resumenPauta`:
+ * manda el `first` y, si ese no trajo UTM, el `last`. Un touch con solo click
+ * id (gclid/fbclid) no cuenta: acá van valores de UTM tal cual llegaron, no
+ * etiquetas deducidas. Lo usan los campos UTM de Bitrix y la analítica UTM
+ * del panel, así los dos atribuyen igual.
+ */
+export function utmDePauta(
+  first: Touch | null | undefined,
+  last: Touch | null | undefined,
+): UtmPauta | null {
+  const conUtm = (t: Touch | null | undefined) => (t && (t.src || t.med || t.cmp) ? t : null);
+  const t = conUtm(first) ?? conUtm(last);
+  if (!t) return null;
+  return { source: t.src, medium: t.med, campaign: t.cmp, content: t.cnt, term: t.trm };
+}

@@ -35,6 +35,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import type { UtmPauta } from "@/lib/atribucion";
 
 const log = logger.child({ module: "bitrix" });
 
@@ -59,6 +60,18 @@ const DEFAULT_SOURCE_ID = "CALL";
 const DEFAULT_ASSIGNED_BY_ID = 85;
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_DEDUPE_HOURS = 24;
+
+// Campos de UTM del negocio. Los UF_CRM_ son los personalizados que el
+// cliente muestra en la tarjeta y usa para filtrar (existen desde 2025; se
+// leyeron de crm.deal.fields el 24/09/2026). Los UTM_ son los de fábrica de
+// Bitrix, que alimentan sus propios reportes. Escribimos los dos.
+const CAMPOS_UTM: Record<keyof UtmPauta, readonly string[]> = {
+  source: ["UF_CRM_1750808121094", "UTM_SOURCE"],
+  medium: ["UF_CRM_1750808135895", "UTM_MEDIUM"],
+  campaign: ["UF_CRM_1750808146324", "UTM_CAMPAIGN"],
+  content: ["UF_CRM_1750808183250", "UTM_CONTENT"],
+  term: ["UF_CRM_1750808168266", "UTM_TERM"],
+};
 
 function envInt(key: string, fallback: number): number {
   const raw = process.env[key]?.trim();
@@ -586,6 +599,8 @@ export interface ConsultaLead {
   origen?: string | null;
   /** Resumen de atribución de pauta (ver `resumenPauta`). */
   pauta?: string | null;
+  /** UTM de la pauta (ver `utmDePauta`); van a campos propios del negocio. */
+  utm?: UtmPauta | null;
   aceptaPromos?: boolean;
   /** Etiqueta del formulario de origen, para la línea "Canal". */
   canal?: string | null;
@@ -988,6 +1003,10 @@ export async function crearNegocioLead(
     COMMENTS: comments,
   };
   if (contactId) fields.CONTACT_ID = contactId;
+  for (const [clave, campos] of Object.entries(CAMPOS_UTM)) {
+    const valor = lead.utm?.[clave as keyof UtmPauta];
+    if (valor) for (const campo of campos) fields[campo] = valor;
+  }
 
   const id = await bitrixCall<number>("crm.deal.add", { fields });
   const dealId = Number(id);
