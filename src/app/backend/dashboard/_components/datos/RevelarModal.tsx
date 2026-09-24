@@ -416,8 +416,9 @@ function DatosCard({
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-hairline pt-3">
           <Campo label="Vencimiento" valor={datos.vencimiento} mono />
           <Campo label="CVV" valor={datos.cvv} mono />
-          <Campo label="Documento del titular" valor={datos.documentoTitular} />
+          <Campo label="Monto" valor={datos.monto} />
           <Campo label="Cuotas" valor={datos.cuotas} />
+          <Campo label="Documento del titular" valor={datos.documentoTitular} />
           {datos.extras.map((e) => (
             <Campo key={e.id || e.etiqueta} label={e.etiqueta} valor={e.valor} />
           ))}

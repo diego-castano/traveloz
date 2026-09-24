@@ -199,6 +199,12 @@ export const datosPagoSchema = z.object({
     .trim()
     .regex(/^\d{2}\s*\/?\s*\d{2}$/, "El vencimiento va en formato MM/AA."),
   cvv: z.string().trim().regex(/^\d{3,4}$/, "El código de seguridad tiene 3 o 4 dígitos."),
+  // Texto libre para que entre la moneda ("USD 1.250"). Lo pidió el cliente
+  // el 24/09/2026: sin esto Administración no sabía cuánto cobrar.
+  monto: textoReq(40, "Ingrese el monto a pagar.").refine(
+    (v) => /\d/.test(v),
+    "Escriba el monto en números.",
+  ),
   cuotas: texto(20)
     .nullable()
     .refine(

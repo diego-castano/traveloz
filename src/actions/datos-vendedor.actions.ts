@@ -1064,6 +1064,7 @@ export async function enviarPagoAAdm(
       numero: claro.numero,
       vencimiento: claro.vencimiento,
       cvv: claro.cvv,
+      monto: claro.monto,
       cuotas: claro.cuotas,
       destino: solicitud?.destino ?? null,
       referencia: solicitud?.referencia ?? null,

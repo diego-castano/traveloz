@@ -215,16 +215,28 @@ export function PagoForm({
           />
         </div>
 
-        <div>
-          <Label htmlFor="cuotas">Cuotas</Label>
-          <select id="cuotas" name="cuotas" className={inputClass} defaultValue="">
-            <option value="">Sin especificar</option>
-            {CUOTAS.map((n) => (
-              <option key={n} value={String(n)}>
-                {n === 1 ? "1 pago" : `${n} cuotas`}
-              </option>
-            ))}
-          </select>
+        {/* Monto y cuotas en la misma fila que vencimiento y código: el
+            cliente pidió que cuotas no ocupe todo el ancho (24/09/2026). */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3.5">
+          <Campo
+            name="monto"
+            label="Monto"
+            requerido
+            required
+            maxLength={40}
+            placeholder="USD 1.250"
+          />
+          <div>
+            <Label htmlFor="cuotas">Cuotas</Label>
+            <select id="cuotas" name="cuotas" className={inputClass} defaultValue="">
+              <option value="">Elegir</option>
+              {CUOTAS.map((n) => (
+                <option key={n} value={String(n)}>
+                  {n === 1 ? "1 pago" : `${n} cuotas`}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <CamposExtra campos={campos} />

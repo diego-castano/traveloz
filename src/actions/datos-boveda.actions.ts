@@ -213,6 +213,7 @@ export interface DatosRevelados {
   vencimiento: string;
   cvv: string;
   documentoTitular: string;
+  monto: string | null;
   cuotas: string | null;
   extras: { id: string; etiqueta: string; valor: string }[];
 }
@@ -340,6 +341,7 @@ export async function revelarPago(input: {
         vencimiento: claro.vencimiento,
         cvv: claro.cvv,
         documentoTitular: claro.documentoTitular,
+        monto: claro.monto ?? null,
         cuotas: claro.cuotas,
         extras: claro.extras ?? [],
       };

@@ -35,6 +35,8 @@ export interface DatosTarjeta {
   vencimiento: string;
   cvv: string;
   documentoTitular: string;
+  /** Los pagos cargados antes del 24/09/2026 no lo tienen. */
+  monto?: string | null;
   cuotas: string | null;
   /**
    * Campos EXTRA que el admin agregó al formulario de pago. Van adentro del

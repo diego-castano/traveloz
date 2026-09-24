@@ -447,6 +447,7 @@ export async function submitDatosPago(
       numero: campo(formData, "numero") ?? "",
       vencimiento: campo(formData, "vencimiento") ?? "",
       cvv: campo(formData, "cvv") ?? "",
+      monto: campo(formData, "monto") ?? "",
       cuotas: campo(formData, "cuotas"),
       autorizo: campo(formData, "autorizo") ?? "",
       respuestas: extras.respuestas,
@@ -475,6 +476,7 @@ export async function submitDatosPago(
       vencimiento: datos.vencimiento,
       cvv: datos.cvv,
       documentoTitular: datos.documentoTitular,
+      monto: datos.monto,
       cuotas: datos.cuotas,
       extras: datos.respuestas,
     });
@@ -534,6 +536,7 @@ export async function submitDatosPago(
       vencimiento: datos.vencimiento,
       cvv: datos.cvv,
       documentoTitular: datos.documentoTitular,
+      monto: datos.monto,
       cuotas: datos.cuotas,
       extras: datos.respuestas,
     };
