@@ -1,52 +1,27 @@
 import { prisma } from "@/lib/db";
-import { touchSchema, utmDePauta } from "@/lib/atribucion";
+import { touchSchema, type Touch } from "@/lib/atribucion";
+import type { ConsultaUtm, DatosAnaliticaUtm, Dims, TipoConsulta } from "@/lib/analitica-utm-tipos";
 
 // ---------------------------------------------------------------------------
-// Analítica UTM: cuántas visitas y consultas trajo cada UTM.
+// Analítica UTM: los datos crudos, compactos, para que la pantalla filtre y
+// agrupe en el navegador sin volver al servidor.
 //
 // Visitas: filas de PaginaVista cuyo link traía utm_* en el query string (el
 // beacon guarda la ruta con el query). Cada clic en un link con UTM es una;
-// recargar la página también suma.
+// recargar la página también suma. Se agrupan por visitante, día y UTM.
 //
-// Consultas: los leads del período (cotizaciones, landings, contacto y
-// corporativo), atribuidos con `utmDePauta`: el mismo criterio que la línea
-// "Pauta" del CRM y los campos UTM de Bitrix.
+// Consultas: los leads (cotizaciones, landings, contacto y corporativo) con
+// la UTM de su primer y de su último contacto. La pantalla elige cuál manda;
+// "primer contacto" es el criterio de la línea "Pauta" y de Bitrix
+// (`utmDePauta`).
 // ---------------------------------------------------------------------------
-
-export type AgrupacionUtm = "combinaciones" | "campanas" | "fuentes";
-
-export interface FilaUtm {
-  clave: string;
-  source: string | null;
-  medium: string | null;
-  campaign: string | null;
-  visitas: number;
-  visitantes: number;
-  consultas: number;
-  /** "aaaa-mm-dd" (hora de Montevideo) → cantidad. */
-  visitasPorDia: Record<string, number>;
-  consultasPorDia: Record<string, number>;
-}
-
-export interface AnaliticaUtm {
-  /** Primer día del período, "aaaa-mm-dd". */
-  desde: string;
-  /** Primer día con datos de visitas (arranque del tracking o retención). */
-  datosDesde: string | null;
-  paginasVistas: number;
-  visitas: number;
-  visitantes: number;
-  consultas: number;
-  consultasConUtm: number;
-  filas: Record<AgrupacionUtm, FilaUtm[]>;
-}
 
 // Uruguay no tiene horario de verano desde 2015: UTC-3 fijo.
 const OFFSET_MVD_MS = 3 * 60 * 60 * 1000;
 const DIA_MS = 24 * 60 * 60 * 1000;
 
-function diaMvd(d: Date): string {
-  return new Date(d.getTime() - OFFSET_MVD_MS).toISOString().slice(0, 10);
+function diaMvd(d: Date): number {
+  return Math.floor((d.getTime() - OFFSET_MVD_MS) / DIA_MS);
 }
 
 /**
@@ -69,157 +44,169 @@ function limpiar(v: string | null | undefined): string | null {
   return s || null;
 }
 
-type Utm3 = { source: string | null; medium: string | null; campaign: string | null };
-
-const CLAVES: Record<AgrupacionUtm, (u: Utm3) => Utm3> = {
-  combinaciones: (u) => u,
-  campanas: (u) => ({ source: null, medium: null, campaign: u.campaign }),
-  fuentes: (u) => ({ source: u.source, medium: null, campaign: null }),
-};
-
-interface Acumulado {
-  fila: FilaUtm;
-  vids: Set<string>;
-  // Cómo se escribe cada valor → cuántas veces, para mostrar la forma más usada
-  // ("Instagram" e "instagram" cuentan juntas).
-  formas: Map<string, number>;
-}
-
-function acumular(
-  grupos: Map<string, Acumulado>,
-  u: Utm3,
-  dia: string,
-  tipo: "visita" | "consulta",
-  vid?: string,
-) {
-  // Sin mayúsculas y con "+" igual a espacio: un "+" sin codificar en el link
-  // llega como espacio, y "BR+Caribe" y "BR Caribe" son la misma campaña.
-  const clave = [u.source, u.medium, u.campaign]
-    .map((v) => (v ?? "").toLowerCase().replace(/[+\s]+/g, " "))
-    .join("|");
-  let g = grupos.get(clave);
-  if (!g) {
-    g = {
-      fila: {
-        clave,
-        source: null,
-        medium: null,
-        campaign: null,
-        visitas: 0,
-        visitantes: 0,
-        consultas: 0,
-        visitasPorDia: {},
-        consultasPorDia: {},
-      },
-      vids: new Set(),
-      formas: new Map(),
-    };
-    grupos.set(clave, g);
-  }
-  const forma = JSON.stringify([u.source, u.medium, u.campaign]);
-  g.formas.set(forma, (g.formas.get(forma) ?? 0) + 1);
-  if (tipo === "visita") {
-    g.fila.visitas++;
-    g.fila.visitasPorDia[dia] = (g.fila.visitasPorDia[dia] ?? 0) + 1;
-    if (vid) g.vids.add(vid);
-  } else {
-    g.fila.consultas++;
-    g.fila.consultasPorDia[dia] = (g.fila.consultasPorDia[dia] ?? 0) + 1;
-  }
-}
-
-function cerrar(grupos: Map<string, Acumulado>): FilaUtm[] {
-  return Array.from(grupos.values())
-    .map(({ fila, vids, formas }) => {
-      const [forma] = Array.from(formas.entries()).sort((a, b) => b[1] - a[1])[0];
-      const [source, medium, campaign] = JSON.parse(forma) as (string | null)[];
-      return { ...fila, source, medium, campaign, visitantes: vids.size };
-    })
-    .sort((a, b) => b.visitas - a.visitas || b.consultas - a.consultas);
+/** La ruta de entrada sin barra final ("/destinos/" y "/destinos" son la misma). */
+function limpiarRuta(v: string | null | undefined): string | null {
+  if (!v) return null;
+  const s = v.split("?")[0].trim();
+  return s.length > 1 ? s.replace(/\/+$/, "") : s || null;
 }
 
 /**
- * `dias` = 7, 30, 90… o `null` para todo lo que hay guardado. Sin chequeo de
+ * Diccionario de valores. Sin mayúsculas y con "+" igual a espacio: un "+"
+ * sin codificar en el link llega como espacio, y "BR+Caribe" y "BR Caribe"
+ * son la misma campaña. Se muestra la forma más usada.
+ */
+class Diccionario {
+  private indice = new Map<string, number>();
+  private formas: Map<string, number>[] = [new Map()];
+
+  id(v: string | null): number {
+    if (!v) return 0;
+    const clave = v.toLowerCase().replace(/[+\s]+/g, " ");
+    let i = this.indice.get(clave);
+    if (i === undefined) {
+      i = this.formas.length;
+      this.indice.set(clave, i);
+      this.formas.push(new Map());
+    }
+    const f = this.formas[i];
+    f.set(v, (f.get(v) ?? 0) + 1);
+    return i;
+  }
+
+  valores(): string[] {
+    return this.formas.map((f, i) =>
+      i === 0 ? "" : Array.from(f.entries()).sort((a, b) => b[1] - a[1])[0][0],
+    );
+  }
+}
+
+function dimsDeParams(dic: Diccionario, p: URLSearchParams, ruta: string | null): Dims | null {
+  const src = limpiar(p.get("utm_source"));
+  const med = limpiar(p.get("utm_medium"));
+  const cmp = limpiar(p.get("utm_campaign"));
+  if (!src && !med && !cmp) return null;
+  return [
+    dic.id(src),
+    dic.id(med),
+    dic.id(cmp),
+    dic.id(limpiar(p.get("utm_content"))),
+    dic.id(limpiar(p.get("utm_term"))),
+    dic.id(limpiarRuta(ruta)),
+  ];
+}
+
+/** Mismo corte que `utmDePauta`: sin source, medium ni campaign no es UTM. */
+function dimsDeTouch(dic: Diccionario, t: Touch | null): Dims | null {
+  if (!t) return null;
+  const src = limpiar(t.src);
+  const med = limpiar(t.med);
+  const cmp = limpiar(t.cmp);
+  if (!src && !med && !cmp) return null;
+  return [
+    dic.id(src),
+    dic.id(med),
+    dic.id(cmp),
+    dic.id(limpiar(t.cnt)),
+    dic.id(limpiar(t.trm)),
+    dic.id(limpiarRuta(t.lp)),
+  ];
+}
+
+/**
+ * Todo lo guardado (las visitas se retienen 180 días). Sin chequeo de
  * sesión: lo hace `getAnaliticaUtm` en src/actions/analitica-utm.actions.ts.
  */
-export async function calcularAnaliticaUtm(dias: number | null): Promise<AnaliticaUtm> {
-  // Desde las 00:00 de Montevideo de hace `dias - 1` días: "7 días" es hoy y
-  // los seis anteriores completos.
-  const hoy = Date.parse(`${diaMvd(new Date())}T00:00:00Z`) + OFFSET_MVD_MS;
-  const desde = dias ? new Date(hoy - (dias - 1) * DIA_MS) : null;
-  const creado = desde ? { createdAt: { gte: desde } } : {};
-  const leadSelect = { atribFirst: true, atribLast: true, createdAt: true } as const;
-
-  const [vistas, paginasVistas, primera, ...leads] = await Promise.all([
+export async function calcularAnaliticaUtm(conNombres: boolean): Promise<DatosAnaliticaUtm> {
+  const [vistas, porDia, cotizaciones, landings, mensajes, corporativos] = await Promise.all([
     prisma.paginaVista.findMany({
-      where: { ...creado, url: { contains: "utm_" } },
+      where: { url: { contains: "utm_" } },
       select: { visitanteId: true, url: true, createdAt: true },
     }),
-    prisma.paginaVista.count({ where: creado }),
-    prisma.paginaVista.findFirst({ orderBy: { createdAt: "asc" }, select: { createdAt: true } }),
-    prisma.cotizacion.findMany({ where: creado, select: leadSelect }),
-    prisma.cotizadorLead.findMany({ where: creado, select: leadSelect }),
-    prisma.mensajeContacto.findMany({ where: creado, select: leadSelect }),
-    prisma.contactoCorporativo.findMany({ where: creado, select: leadSelect }),
+    prisma.$queryRaw<{ dia: number; n: number }[]>`
+      select floor(extract(epoch from "createdAt" - interval '3 hours') / 86400)::int as dia,
+             count(*)::int as n
+      from "PaginaVista" group by 1 order by 1`,
+    prisma.cotizacion.findMany({
+      select: {
+        atribFirst: true,
+        atribLast: true,
+        createdAt: true,
+        nombre: true,
+        email: true,
+        paqueteId: true,
+        paquete: { select: { titulo: true } },
+      },
+    }),
+    prisma.cotizadorLead.findMany({
+      select: { atribFirst: true, atribLast: true, createdAt: true, nombre: true, email: true, destino: true },
+    }),
+    prisma.mensajeContacto.findMany({
+      select: { atribFirst: true, atribLast: true, createdAt: true, nombre: true, email: true },
+    }),
+    prisma.contactoCorporativo.findMany({
+      select: { atribFirst: true, atribLast: true, createdAt: true, nombre: true, email: true, empresa: true },
+    }),
   ]);
 
-  const grupos = {
-    combinaciones: new Map<string, Acumulado>(),
-    campanas: new Map<string, Acumulado>(),
-    fuentes: new Map<string, Acumulado>(),
-  } satisfies Record<AgrupacionUtm, Map<string, Acumulado>>;
-  const agrupaciones = Object.keys(grupos) as AgrupacionUtm[];
+  const dic = new Diccionario();
 
-  let visitas = 0;
-  const visitantes = new Set<string>();
+  const vids = new Map<string, number>();
+  const agrupadas = new Map<string, number[]>();
   for (const v of vistas) {
     const q = v.url.indexOf("?");
-    const params = new URLSearchParams(q >= 0 ? v.url.slice(q + 1) : "");
-    const u: Utm3 = {
-      source: limpiar(params.get("utm_source")),
-      medium: limpiar(params.get("utm_medium")),
-      campaign: limpiar(params.get("utm_campaign")),
-    };
-    if (!u.source && !u.medium && !u.campaign) continue;
-    visitas++;
-    visitantes.add(v.visitanteId);
+    if (q < 0) continue;
+    const dims = dimsDeParams(dic, new URLSearchParams(v.url.slice(q + 1)), v.url.slice(0, q));
+    if (!dims) continue;
+    let vid = vids.get(v.visitanteId);
+    if (vid === undefined) {
+      vid = vids.size;
+      vids.set(v.visitanteId, vid);
+    }
     const dia = diaMvd(v.createdAt);
-    for (const a of agrupaciones) acumular(grupos[a], CLAVES[a](u), dia, "visita", v.visitanteId);
+    const clave = `${dia}|${vid}|${dims.join(",")}`;
+    const fila = agrupadas.get(clave);
+    if (fila) fila[fila.length - 1]++;
+    else agrupadas.set(clave, [dia, vid, ...dims, 1]);
   }
 
   const touch = (j: unknown) => {
     const r = touchSchema.safeParse(j);
     return r.success ? r.data : null;
   };
-  let consultas = 0;
-  let consultasConUtm = 0;
-  for (const l of leads.flat()) {
-    consultas++;
-    const utm = utmDePauta(touch(l.atribFirst), touch(l.atribLast));
-    if (!utm) continue;
-    const u: Utm3 = {
-      source: limpiar(utm.source),
-      medium: limpiar(utm.medium),
-      campaign: limpiar(utm.campaign),
+  const consultas: ConsultaUtm[] = [];
+  const sumar = (
+    l: { atribFirst: unknown; atribLast: unknown; createdAt: Date; nombre: string; email: string },
+    tipo: TipoConsulta,
+    detalle: string | null,
+  ) => {
+    const c: ConsultaUtm = {
+      dia: diaMvd(l.createdAt),
+      tipo,
+      primer: dimsDeTouch(dic, touch(l.atribFirst)),
+      ultimo: dimsDeTouch(dic, touch(l.atribLast)),
     };
-    if (!u.source && !u.medium && !u.campaign) continue;
-    consultasConUtm++;
-    const dia = diaMvd(l.createdAt);
-    for (const a of agrupaciones) acumular(grupos[a], CLAVES[a](u), dia, "consulta");
+    if (conNombres) {
+      c.nombre = l.nombre;
+      c.email = l.email;
+      c.detalle = detalle;
+    }
+    consultas.push(c);
+  };
+  for (const l of cotizaciones) {
+    sumar(l, l.paqueteId ? "paquete" : "cotizador", l.paquete?.titulo ?? null);
   }
+  for (const l of landings) sumar(l, "landing", l.destino);
+  for (const l of mensajes) sumar(l, "contacto", null);
+  for (const l of corporativos) sumar(l, "corporativo", l.empresa);
 
   return {
-    desde: desde ? diaMvd(desde) : primera ? diaMvd(primera.createdAt) : diaMvd(new Date()),
-    datosDesde: primera ? diaMvd(primera.createdAt) : null,
-    paginasVistas,
-    visitas,
-    visitantes: visitantes.size,
+    valores: dic.valores(),
+    visitas: Array.from(agrupadas.values()),
+    paginasPorDia: porDia.map((r) => [r.dia, r.n]),
     consultas,
-    consultasConUtm,
-    filas: {
-      combinaciones: cerrar(grupos.combinaciones),
-      campanas: cerrar(grupos.campanas),
-      fuentes: cerrar(grupos.fuentes),
-    },
+    datosDesde: porDia.length ? porDia[0].dia : null,
+    hoy: diaMvd(new Date()),
+    conNombres,
   };
 }

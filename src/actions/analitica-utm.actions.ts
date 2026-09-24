@@ -2,12 +2,16 @@
 
 import { requireAuth } from "@/lib/require-auth";
 import { roleConfig, type Role } from "@/lib/auth";
-import { calcularAnaliticaUtm, type AnaliticaUtm } from "@/lib/analitica-utm";
+import { calcularAnaliticaUtm } from "@/lib/analitica-utm";
+import type { DatosAnaliticaUtm } from "@/lib/analitica-utm-tipos";
 
-export async function getAnaliticaUtm(dias: number | null): Promise<AnaliticaUtm> {
+export async function getAnaliticaUtm(): Promise<DatosAnaliticaUtm> {
   const ctx = await requireAuth();
-  if (!roleConfig[ctx.role as Role]?.visibleModules.includes("analitica")) {
+  const modulos = roleConfig[ctx.role as Role]?.visibleModules ?? [];
+  if (!modulos.includes("analitica")) {
     throw new Error("Tu rol no tiene acceso a la analítica.");
   }
-  return calcularAnaliticaUtm(dias);
+  // Los nombres de las consultas solo para quien ya ve Contactos: MARKETING
+  // ve los números pero no las personas.
+  return calcularAnaliticaUtm(modulos.includes("leads"));
 }
