@@ -12,10 +12,10 @@ import { Foto, Estrellas } from "./ui";
    pestañas. Estas son cuatro formas de resolverlo, para que el cliente elija
    una mirando su propia cotización en /propuestas/opciones/<n>.
 
-   Ninguna llega a un pasajero: `SalidaPasajero` solo las dibuja si recibe
-   `varianteOpciones`, y ese prop lo pasa únicamente la página de propuestas.
-   Cuando el cliente elija, la ganadora pasa a ser el comportamiento por
-   defecto y las otras se borran junto con esa página.
+   Gero eligió la 1 (pestañas con círculo de selección), con el recuadro más
+   grueso, y desde el 24/09 es la de todas las cotizaciones: `SalidaPasajero`
+   la usa cuando no le piden otra. Las demás solo las dibuja la página de
+   propuestas, y se pueden borrar junto con ella.
 
    Regla que vale para las cuatro: ningún precio se muestra como diferencia
    contra otra opción. Un pasajero ya leyó "+USD 150" como algo que había que

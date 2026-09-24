@@ -579,34 +579,6 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 /* ══ v2C: teléfono y envío ════════════════════════════════════════════ */
 
 /* ── switcher de opciones (lo ve el pasajero, no el vendedor) ────────── */
-/* Con una, dos o tres opciones las pestañas se reparten el ancho. De la
-   cuarta en adelante ya no entran en el celular, así que la fila se corre de
-   costado (Gero, 21/09): por eso crecen para llenar pero no se
-   achican, y las sombras de los bordes aparecen solas cuando queda algo
-   fuera de vista y desaparecen al llegar a la punta. */
-.opt-seg { display:flex; gap:5px; padding:4px; margin-bottom:13px; border-radius:15px;
-  border:1px solid rgba(17,17,36,.055); overflow-x:auto; scroll-snap-type:x proximity;
-  background:
-    linear-gradient(90deg, #F5F6FA 40%, rgba(245,246,250,0)) left center / 26px 100% no-repeat local,
-    linear-gradient(90deg, rgba(245,246,250,0), #F5F6FA 60%) right center / 26px 100% no-repeat local,
-    radial-gradient(farthest-side at 0 50%, rgba(26,26,46,.13), rgba(26,26,46,0)) left center / 13px 100% no-repeat scroll,
-    radial-gradient(farthest-side at 100% 50%, rgba(26,26,46,.13), rgba(26,26,46,0)) right center / 13px 100% no-repeat scroll,
-    #F5F6FA; }
-.opt-seg::-webkit-scrollbar { height:0; width:0; }
-/* El envoltorio existe para colgarle las flechas, que solo aparecen cuando
-   hay algo fuera de vista de ese lado. */
-.opt-wrap { position:relative; }
-.opt-wrap .opt-seg { cursor:grab; }
-.opt-wrap .opt-seg[data-arrastrando="1"] { cursor:grabbing; scroll-snap-type:none; user-select:none; }
-.opt-fl { position:absolute; top:calc(50% - 6px); width:26px; height:26px; border-radius:50%;
-  display:grid; place-items:center; background:#fff; color:#1A1A2E; z-index:3;
-  border:1px solid rgba(17,17,36,.08); box-shadow:0 3px 10px rgba(26,26,46,.16);
-  transform:translateY(-50%); transition:transform .15s, box-shadow .15s; }
-.opt-fl:hover { box-shadow:0 4px 14px rgba(26,26,46,.22); }
-.opt-fl:active { transform:translateY(-50%) scale(.93); }
-.opt-fl[data-lado="i"] { left:-7px; }
-.opt-fl[data-lado="d"] { right:-7px; }
-
 /* ── propuestas para mostrar las opciones (solo /propuestas/opciones) ─────
    Cuatro formas de que se note que hay más de una opción (Gero, 23/09). Las
    clases viven acá porque la ficha es la misma del link público; ninguna se
@@ -704,19 +676,6 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .pv-sel-p { flex-shrink:0; text-align:right; font-size:16px; font-weight:800; letter-spacing:-.02em; color:#1A1A2E; }
 .pv-sel-p > small { display:block; margin-top:1px; font-size:9.5px; font-weight:600; letter-spacing:0; color:#8A8DB5; }
 @media (prefers-reduced-motion:reduce){ .pv-tab[data-on="0"] { animation:none; } }
-.opt-seg > button { flex:1 0 auto; scroll-snap-align:center; min-width:76px; padding:8px 7px 9px; border-radius:12px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
-  color:#6B6F99; transition:background .22s, box-shadow .22s, color .22s, transform .16s; }
-.opt-seg > button > span { max-width:100%; overflow:hidden; text-overflow:ellipsis; }
-.opt-seg > button:active { transform:scale(.97); }
-.opt-seg > button[data-on="1"] { background:#fff; color:#1A1A2E;
-  box-shadow:0 2px 9px rgba(26,26,46,.13), 0 0 0 1px rgba(120,90,229,.18); }
-.opt-n { font-size:10.5px; font-weight:700; letter-spacing:.01em; white-space:nowrap; }
-.opt-p { font-size:13px; font-weight:800; letter-spacing:-.02em; white-space:nowrap; }
-.opt-seg > button[data-on="1"] .opt-p { color:#785AE5; }
-.opt-seg[data-desk="1"] > button { min-width:118px; padding:10px 14px 11px; }
-.opt-seg[data-desk="1"] .opt-n { font-size:11.5px; }
-.opt-seg[data-desk="1"] .opt-p { font-size:15px; }
 
 /* ── odómetro del precio: solo ruedan los dígitos ────────────────────── */
 .odo { display:inline-flex; align-items:flex-end; font-variant-numeric:tabular-nums; }
@@ -801,7 +760,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
    Es el tema de la HERRAMIENTA. La vista del pasajero (el teléfono, la
    tablet y el navegador de la vista previa) queda SIEMPRE clara: es lo que
    ve el cliente, no la herramienta. Por eso acá no se toca ninguna clase
-   que viva dentro de SalidaPasajero (.opt-seg, .odo, .phone-scr, .foto…).
+   que viva dentro de SalidaPasajero (.pv-tabs, .odo, .phone-scr, .foto…).
    Los gradientes de marca y la acción teal quedan intactos.
    ══════════════════════════════════════════════════════════════════════ */
 .ctz.dark {
@@ -1058,10 +1017,8 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .ctz .btn:disabled { opacity:.5; cursor:not-allowed; filter:saturate(.6); }
 .ctz .btn:disabled:hover { transform:none; box-shadow:none; }
 
-/* ── switcher de opciones: le faltaba todo lo que pasa antes del click ──── */
-.opt-seg > button { transition:background .2s, color .2s, box-shadow .2s, transform .14s cubic-bezier(.2,.8,.2,1); }
-.opt-seg > button:hover:not([data-on="1"]) { background:rgba(255,255,255,.6); color:var(--ink); }
-.opt-seg > button[data-on="1"] { transform:translateY(-1px); }
+/* ── pestañas de opciones: lo que pasa antes del click ────────────────── */
+.pv-tab:hover:not([data-on="1"]) { border-color:#A9ACD0; background:#EEEEF8; }
 
 /* ── confirmar: presión física y llegada del sí ──────────────────────────── */
 .btn-conf { position:relative; overflow:hidden;
@@ -1145,8 +1102,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
   .ctz-pub-pie { padding:22px 20px 36px; }
   /* nada de tablas de tarifas empujando la hoja a lo ancho */
   .ctz-pub .cot-hoja { overflow-x:hidden; }
-  /* el dedo pide 44 px: el switcher los tenía justos y el link de revisión, no */
-  .ctz-pub .opt-seg > button { min-height:48px; }
+  /* el dedo pide 44 px: las pestañas de opciones ya miden más, el link de revisión no */
   .ctz-pub .lnk-rev { min-height:44px; }
   .ctz-pub .sec-t-tx { font-size:14.5px; }
 }

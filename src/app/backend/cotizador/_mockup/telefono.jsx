@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
-  Plane, MapPin, Calendar, ChevronDown, ChevronLeft, ChevronRight, Bed, Smartphone,
+  Plane, MapPin, Calendar, ChevronDown, Bed, Smartphone,
   CheckCheck, Utensils, Link2,
   CreditCard, Lock, Globe, Phone, Instagram, Facebook, Linkedin
 } from "lucide-react";
@@ -314,8 +314,9 @@ function FirmaVendedor({ v, telWa, desk }) {
 function SalidaPasajero({
   q, marca, vendedor, tramos, foco, scrollRef, modo = "cel",
   onConfirmar, onRevision, confirmadaInicial = null, animar = false,
-  /* Solo lo pasa /propuestas/opciones (23/09): cuatro formas de mostrar las
-     opciones para que el cliente elija una. Sin él, la ficha es la de siempre. */
+  /* Cómo se muestran las opciones. Desde el 24/09 todas las cotizaciones usan
+     "pestanas", la propuesta 1 que eligió Gero; /propuestas/opciones sigue
+     pudiendo pedir las otras para comparar. */
   varianteOpciones = null,
 }) {
   const { hotelById } = useCatalogo();
@@ -345,105 +346,6 @@ function SalidaPasajero({
 
   /* v2C · el pasajero cambia de opción desde el switcher (solo vista, no toca el editor) */
   const [sel, setSel] = useState(confirmadaInicial || q.opciones[0]?.id || null);
-  /* ── la fila de opciones cuando no entran todas ──────────────────────
-     Con más de tres, la fila se corre de costado. En el celular el dedo ya
-     la arrastra; en la vista previa del escritorio no hay dedo, así que se
-     arrastra con el mouse, y las flechas de los bordes dicen que hay más
-     (Diego, 21/09). La elegida se acomoda sola en el centro: movemos
-     `scrollLeft` y no `scrollIntoView`, que en el celular empuja la página
-     entera. */
-  const refSeg = useRef(null);
-  const arrastre = useRef(null);
-  const [puntas, setPuntas] = useState({ izq:false, der:false });
-
-  /* Solo avisa cuando alguna punta cambió: este medidor corre en cada render
-     —el ancho de las pestañas depende de cosas que se declaran más abajo en
-     el componente— y con un objeto nuevo cada vez el render se repetiría sin
-     fin. */
-  const medirPuntas = useCallback(() => {
-    const c = refSeg.current;
-    if (!c) return;
-    const max = c.scrollWidth - c.clientWidth;
-    const izq = c.scrollLeft > 4;
-    const der = max > 4 && c.scrollLeft < max - 4;
-    setPuntas((p) => (p.izq === izq && p.der === der ? p : { izq, der }));
-  }, []);
-
-  useEffect(() => {
-    const c = refSeg.current;
-    if (!c) return;
-    medirPuntas();
-    c.addEventListener("scroll", medirPuntas, { passive: true });
-    window.addEventListener("resize", medirPuntas);
-    return () => {
-      c.removeEventListener("scroll", medirPuntas);
-      window.removeEventListener("resize", medirPuntas);
-    };
-  }, [medirPuntas, q.opciones.length]);
-
-  /* Sin lista de dependencias a propósito: cualquier render puede cambiar el
-     ancho de la fila (cambio de modo celular/escritorio, precios que se
-     acortan) y medir cuesta dos lecturas. */
-  useEffect(medirPuntas);
-
-  useEffect(() => {
-    const cont = refSeg.current;
-    const btn = cont?.querySelector('button[data-on="1"]');
-    if (!cont || !btn) return;
-    const izq = btn.offsetLeft - (cont.clientWidth - btn.offsetWidth) / 2;
-    cont.scrollTo({ left: Math.max(0, izq), behavior: "smooth" });
-  }, [sel]);
-
-  /* Correr de a una pantalla con las flechas. */
-  const correr = (dir) => {
-    const c = refSeg.current;
-    if (!c) return;
-    c.scrollBy({ left: dir * Math.max(120, c.clientWidth * 0.7), behavior: "smooth" });
-  };
-
-  /* Arrastrar con el mouse. En táctil no se toca nada: el scroll nativo del
-     celular arrastra mejor que cualquier cosa que escribamos. */
-  /* El puntero se captura recién cuando el mouse se movió de verdad. Hasta el
-     23/09 se capturaba al apretar, y con el puntero capturado el clic le
-     llega a la fila y no a la pestaña: con cuatro opciones o más —la fila
-     desborda y el arrastre se arma— en la vista previa del vendedor no se
-     podía cambiar de opción (Gero, COT-2026-0309). En el link del pasajero no
-     pasaba porque ahí se toca con el dedo, y el táctil no pasa por acá. */
-  const arrancarArrastre = (e) => {
-    const c = refSeg.current;
-    if (!c || e.pointerType === "touch") return;
-    if (c.scrollWidth <= c.clientWidth) return;
-    arrastre.current = { x:e.clientX, left:c.scrollLeft, movido:false, id:e.pointerId };
-  };
-  const moverArrastre = (e) => {
-    const a = arrastre.current;
-    const c = refSeg.current;
-    if (!a || !c) return;
-    const dx = e.clientX - a.x;
-    if (!a.movido) {
-      /* un temblor de la mano no es un arrastre: el clic sigue siendo clic */
-      if (Math.abs(dx) <= 4) return;
-      a.movido = true;
-      /* si el puntero ya no está activo el navegador la rechaza: sin captura
-         el arrastre igual anda mientras el mouse no salga de la fila */
-      try { c.setPointerCapture?.(a.id); } catch { /* sin captura */ }
-      c.dataset.arrastrando = "1";
-    }
-    c.scrollLeft = a.left - dx;
-  };
-  const soltarArrastre = (e) => {
-    const c = refSeg.current;
-    const a = arrastre.current;
-    arrastre.current = null;
-    if (!c || !a || !a.movido) return;
-    try { c.releasePointerCapture?.(a.id); } catch { /* ya no estaba capturado */ }
-    delete c.dataset.arrastrando;
-    /* Un arrastre no es un clic: si movió, el botón de abajo no elige nada. */
-    const tragar = (ev) => { ev.preventDefault(); ev.stopPropagation(); };
-    c.addEventListener("click", tragar, { capture:true, once:true });
-    setTimeout(() => c.removeEventListener("click", tragar, { capture:true }), 0);
-    e.stopPropagation?.();
-  };
   useEffect(() => {
     if (!q.opciones.length) { setSel(null); return; }
     if (!q.opciones.some((o) => o.id === sel)) setSel(q.opciones[0].id);
@@ -517,7 +419,7 @@ function SalidaPasajero({
   const elegida = q.opciones.find((o) => o.id === sel) || q.opciones[0];
   /* La propuesta que se está mirando, si hay. En papel y con una sola opción
      no aplica ninguna: no hay nada que elegir. */
-  const vOp = impresion || !varias ? null : varianteOpciones;
+  const vOp = impresion || !varias ? null : (varianteOpciones || "pestanas");
   const visibles = !q.opciones.length ? [] : impresion ? q.opciones
     : varias && vOp !== "lista" ? [elegida] : q.opciones;
 
@@ -1121,35 +1023,6 @@ function SalidaPasajero({
                 <AvisoOpciones n={q.opciones.length} texto="Tocá una para ver el detalle" G={G} />
               )
             )}
-            {varias && !impresion && !vOp && (
-              <div className="opt-wrap">
-                <div className="opt-seg" ref={refSeg} data-desk={desk ? "1" : "0"}
-                  onPointerDown={arrancarArrastre}
-                  onPointerMove={moverArrastre}
-                  onPointerUp={soltarArrastre}
-                  onPointerCancel={soltarArrastre}>
-                  {q.opciones.map((o, i) => {
-                    const pv = precioOpcion(o);
-                    return (
-                      <button key={o.id} data-on={elegida?.id === o.id ? "1" : "0"}
-                        onClick={() => { setSel(o.id); setAbierta(o.id); }}>
-                        <span className="opt-n">{tabNombre(o, i)}</span>
-                        <span className="opt-p">{money(pv)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                {puntas.izq && (
-                  <button type="button" className="opt-fl" data-lado="i" aria-label="Ver las opciones anteriores"
-                    onClick={() => correr(-1)}><ChevronLeft size={14} /></button>
-                )}
-                {puntas.der && (
-                  <button type="button" className="opt-fl" data-lado="d" aria-label="Ver las opciones siguientes"
-                    onClick={() => correr(1)}><ChevronRight size={14} /></button>
-                )}
-              </div>
-            )}
-
             {/* en papel la lista de opciones va en flujo normal y no en flex:
                 el motor de impresión parte una columna de bloques mucho mejor
                 que un contenedor flex, y acá las opciones tienen que poder
