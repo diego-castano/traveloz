@@ -191,6 +191,16 @@ export const vueloDeNotaSchema = z.looseObject({
   }).optional(),
 });
 
+/** Vuelos adicionales al itinerario principal: los internos de un paquete por
+ *  Europa, por ejemplo. Solo el itinerario, con su título: cabina, equipaje y
+ *  precio son los del vuelo principal (pedido del cliente, 25/09). */
+export const vueloExtraSchema = z.looseObject({
+  id: textoFlojo,
+  nombre: textoFlojo.optional(),
+  pnrRaw: textoFlojo.optional(),
+  vuelos: z.array(vueloSchema).default([]),
+});
+
 /** Clave de ícono elegida a mano; una clave que no existe en el registro
  *  (versión vieja, dedazo) se descarta y el ícono vuelve a ser automático. */
 const iconoFlojo = textoFlojo.transform((v) => {
@@ -315,6 +325,9 @@ export const contenidoSchema = z.looseObject({
   // El tope vive en la pantalla de notas y no acá: si lo pusiera el schema,
   // una cotización de solo vuelos con cinco opciones no se podría guardar.
   vuelosNota: z.array(vueloDeNotaSchema).default([]),
+  // Título del itinerario principal. Vacío: la ficha dice "Itinerario de vuelos".
+  tituloVuelos: textoFlojo.default(""),
+  vuelosExtra: vueloExtraSchema.nullable().default(null),
 
   vigencia: numeroFlojo
     .nullable()

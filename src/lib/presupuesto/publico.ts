@@ -129,6 +129,11 @@ export interface ContenidoPublico {
       masDias: number | null;
     }>;
   }>;
+  /** Título del itinerario principal. Vacío: la ficha dice "Itinerario de vuelos". */
+  tituloVuelos: string;
+  /** Vuelos adicionales (los internos de un paquete, por ejemplo): solo el
+   *  itinerario, con su título. null si la cotización no tiene. */
+  vuelosExtra: { id: string; nombre: string; vuelos: ContenidoPublico["vuelos"] } | null;
   cabina: string | null;
   equipaje: string | null;
   destinos: Array<{
@@ -158,6 +163,25 @@ export interface ContenidoPublico {
   vigencia: number | null;
   cliente: { nombre: string };
   opciones: OpcionPublica[];
+}
+
+/** Un tramo tal como lo ve el pasajero. Lo usan el itinerario principal, las
+ *  alternativas y los vuelos adicionales. */
+function vueloPublico(v: ContenidoPresupuesto["vuelos"][number]): ContenidoPublico["vuelos"][number] {
+  return {
+    id: txt(v?.id),
+    cia: txt(v?.cia),
+    nro: txt(v?.nro),
+    aerolinea: txt(v?.aerolinea),
+    dia: v?.dia ?? null,
+    mes: v?.mes ?? null,
+    fecha: typeof v?.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.fecha) ? v.fecha : null,
+    origen: txt(v?.origen),
+    destino: txt(v?.destino),
+    salida: txt(v?.salida),
+    llegada: txt(v?.llegada),
+    masDias: v?.masDias ?? null,
+  };
 }
 
 /**
@@ -195,20 +219,7 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
     },
     fotosHotel: q.fotosHotel === true,
 
-    vuelos: (q.vuelos ?? []).map((v) => ({
-      id: txt(v?.id),
-      cia: txt(v?.cia),
-      nro: txt(v?.nro),
-      aerolinea: txt(v?.aerolinea),
-      dia: v?.dia ?? null,
-      mes: v?.mes ?? null,
-      fecha: typeof v?.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.fecha) ? v.fecha : null,
-      origen: txt(v?.origen),
-      destino: txt(v?.destino),
-      salida: txt(v?.salida),
-      llegada: txt(v?.llegada),
-      masDias: v?.masDias ?? null,
-    })),
+    vuelos: (q.vuelos ?? []).map(vueloPublico),
     /* El PNR crudo de cada alternativa NO cruza: es la pantalla del GDS, con
        el localizador de la reserva adentro. Al pasajero le va el itinerario ya
        leído, igual que con el de arriba. */
@@ -222,21 +233,17 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
         menor: txt(n?.precio?.menor),
         infante: txt(n?.precio?.infante),
       },
-      vuelos: (n?.vuelos ?? []).map((v) => ({
-        id: txt(v?.id),
-        cia: txt(v?.cia),
-        nro: txt(v?.nro),
-        aerolinea: txt(v?.aerolinea),
-        dia: v?.dia ?? null,
-        mes: v?.mes ?? null,
-        fecha: typeof v?.fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v.fecha) ? v.fecha : null,
-        origen: txt(v?.origen),
-        destino: txt(v?.destino),
-        salida: txt(v?.salida),
-        llegada: txt(v?.llegada),
-        masDias: v?.masDias ?? null,
-      })),
+      vuelos: (n?.vuelos ?? []).map(vueloPublico),
     })),
+    tituloVuelos: txt(q.tituloVuelos),
+    // Sin el PNR crudo, igual que las alternativas.
+    vuelosExtra: q.vuelosExtra
+      ? {
+          id: txt(q.vuelosExtra.id),
+          nombre: txt(q.vuelosExtra.nombre),
+          vuelos: (q.vuelosExtra.vuelos ?? []).map(vueloPublico),
+        }
+      : null,
     cabina: q.cabina ?? null,
     equipaje: q.equipaje ?? null,
 

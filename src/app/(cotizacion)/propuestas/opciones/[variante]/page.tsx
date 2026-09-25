@@ -135,7 +135,14 @@ export default async function PropuestasOpcionesPage({
   );
   const codigos = Array.from(
     new Set(
-      (pub.vuelos ?? [])
+      // Los tres itinerarios: el principal, las alternativas y los vuelos
+      // adicionales. Antes solo el principal, y las otras mostraban "SSA" en
+      // vez de la ciudad en el link del pasajero.
+      [
+        ...(pub.vuelos ?? []),
+        ...(pub.vuelosNota ?? []).flatMap((n) => n.vuelos ?? []),
+        ...(pub.vuelosExtra?.vuelos ?? []),
+      ]
         .flatMap((v) => [String(v.origen ?? ""), String(v.destino ?? "")])
         .map((c) => c.trim().toUpperCase())
         .filter(Boolean),

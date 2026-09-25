@@ -86,6 +86,11 @@ function cotizacionVacia(ajustes) {
     /* Itinerarios de vuelo alternativos abajo de las notas. Opcional de punta
        a punta: vacío, la sección de notas se ve exactamente como siempre. */
     vuelosNota: [],
+    /* Título del itinerario principal ("" = "Itinerario de vuelos") y vuelos
+       adicionales: los internos de un paquete por Europa, solo itinerario.
+       null = no hay. */
+    tituloVuelos: "",
+    vuelosExtra: null,
     vigencia: ajustes?.vigenciaDefault || 96,
     opciones: [],
     /* Servicios NO incluidos en el precio, que el pasajero puede sumar a

@@ -564,6 +564,12 @@ function SalidaPasajero({
     () => agruparTrayectos(conFechas(q.vuelos, q.fechaSalida), mismaCiudad),
     [q.vuelos, q.fechaSalida, mismaCiudad]
   );
+  /* Vuelos adicionales (los internos de un paquete, por ejemplo): se agrupan
+     igual que el itinerario principal y salen en su propia sección. */
+  const trayectosExtra = useMemo(
+    () => agruparTrayectos(conFechas(q.vuelosExtra?.vuelos ?? [], q.fechaSalida), mismaCiudad),
+    [q.vuelosExtra, q.fechaSalida, mismaCiudad]
+  );
 
   /* ¿hay bloc de notas al pasajero? El HTML puede ser puro markup vacío. */
   const hayNotas = hayNotasReales(q.notasCliente);
@@ -605,7 +611,7 @@ function SalidaPasajero({
      estos números el modelo cae a menos de 2 px del alto real de la hoja en
      las cinco variantes del harness. */
   const cortarAntesDeOpciones = useMemo(() => {
-    if (!impresion || q.vuelos.length || !q.opciones.length) return false;
+    if (!impresion || q.vuelos.length || trayectosExtra.length || !q.opciones.length) return false;
     const PAGINA = CARILLA;                  // A4 menos margen de 10mm/13mm
     /* condiciones + formas de pago + firma, cada una con su aire. Se arma con
        las mismas piezas que `cierreEntero` para que las dos estimaciones no se
@@ -625,7 +631,7 @@ function SalidaPasajero({
       opciones + notas + CIERRE <= PAGINA &&
       portada >= PAGINA * 0.45
     );
-  }, [impresion, q.vuelos.length, q.opciones.length, q.servicios.length, q.soloVuelos, q.fotosHotel,
+  }, [impresion, q.vuelos.length, trayectosExtra.length, q.opciones.length, q.servicios.length, q.soloVuelos, q.fotosHotel,
       tramos.length, hayNotas, altoCondiciones, altoFirma]);
 
   /* ── papel: la opción viaja entera ────────────────────────────────────
@@ -893,7 +899,7 @@ function SalidaPasajero({
         {q.vuelos.length > 0 && (
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
-            <SecTitulo texto="Itinerario de vuelos" />
+            <SecTitulo texto={q.tituloVuelos?.trim() || "Itinerario de vuelos"} />
             {/* El "Opción 1" aparece solo si hay más opciones abajo. Con un
                 itinerario solo, numerarlo es ruido; con varias, no numerarlo
                 deja al pasajero contando desde una que nadie nombró. */}
@@ -986,6 +992,20 @@ function SalidaPasajero({
                 separar fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
                 fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
+          </div>
+        )}
+
+        {/* Vuelos adicionales: parte del mismo viaje, con su título. Cabina,
+            equipaje y precio son los del vuelo principal. */}
+        {trayectosExtra.length > 0 && (
+          <div data-sec="vuelos" data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
+            <SecTitulo texto={q.vuelosExtra?.nombre?.trim() || "Vuelos adicionales"} />
+            <div style={{ marginBottom:24 }}>
+              {trayectosExtra.map((seg, ti) => (
+                <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectosExtra.length - 1}
+                  ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+              ))}
+            </div>
           </div>
         )}
 

@@ -924,6 +924,15 @@ function BloqueVuelos({ q, set, refEl, toast }) {
         </>
       }>
       <div onPaste={pegarImagen}>
+      {/* El título lo elige el vendedor: con vuelos adicionales abajo, "Vuelo
+          internacional" y "Vuelos internos" se leen mejor que dos itinerarios
+          sin nombre (pedido del cliente, 25/09). Vacío sale el de siempre. */}
+      <div style={{ marginBottom:10 }}>
+        <Label>Título que ve el pasajero</Label>
+        <input className="in" style={{ height:32, fontSize:12.5 }} value={q.tituloVuelos || ""}
+          placeholder="Itinerario de vuelos (ej. Vuelo internacional)"
+          onChange={(e) => { const v = e.target.value; set((d) => { d.tituloVuelos = v; }); }} />
+      </div>
       {modo === "texto" ? (
         <textarea className="in mono" rows={q.pnrRaw ? 5 : 3} value={q.pnrRaw}
           style={{ fontSize:11.5, lineHeight:1.55, background: estado === "error" ? "rgba(244,62,85,.07)" : "var(--field)" }}
@@ -1207,6 +1216,30 @@ function BloqueVuelos({ q, set, refEl, toast }) {
           <Check size={11} style={{ color:"var(--teal-2)" }} />
           Con los vuelos cargados, las fechas de traslado no se piden en ningún otro lado.
         </div>
+      )}
+
+      {/* Vuelos adicionales: los internos de un paquete por Europa, por
+          ejemplo. No es otra opción ni una alternativa: es parte del mismo
+          viaje, así que va sin cabina, equipaje ni precio, que son los del
+          vuelo principal. En la ficha sale abajo del itinerario (y de las
+          opciones de vuelo, en solo vuelos), con su título. */}
+      <div className="hairline" style={{ margin:"16px 0 12px" }} />
+      <div style={{ display:"flex", alignItems:"center", gap:9, flexWrap:"wrap",
+        marginBottom: q.vuelosExtra ? 11 : 0 }}>
+        <Plane size={12} style={{ color:"var(--violet)", flexShrink:0 }} />
+        <span style={{ fontSize:12.5, fontWeight:700 }}>Vuelos adicionales</span>
+        <span style={{ fontSize:11.5, color:"var(--n400)" }}>
+          opcional · solo el itinerario, sin equipaje ni precio
+        </span>
+        {!q.vuelosExtra && (
+          <Btn size="sm" style={{ marginLeft:"auto" }}
+            onClick={() => set((d) => { d.vuelosExtra = { id:uid("vx"), nombre:"", pnrRaw:"", vuelos:[] }; })}>
+            <Plus size={12} /> Agregar vuelos
+          </Btn>
+        )}
+      </div>
+      {q.vuelosExtra && (
+        <FichaVueloNota nota={q.vuelosExtra} i={0} set={set} aerolineas={aerolineas} toast={toast} extra />
       )}
       </div>
     </Block>
@@ -1846,7 +1879,7 @@ const MAX_VUELOS_NOTA = 2;
    confirmar. Con el parser alcanza para el texto que sale del GDS, y si no
    reconoce nada lo dice en vez de dejar al vendedor mirando una pantalla
    quieta. */
-function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
+function FichaVueloNota({ nota, i, set, aerolineas, toast, numero, extra }) {
   const tramos = nota.vuelos || [];
   /* ── Captura de pantalla, igual que arriba ────────────────────────────
      El itinerario principal lee fotos desde el primer día: se pega una
@@ -1869,7 +1902,8 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
   const urlFotoRef = useRef(null);
   useEffect(() => () => { if (urlFotoRef.current) URL.revokeObjectURL(urlFotoRef.current); }, []);
 
-  const enNota = (fn) => set((d) => { fn(d.vuelosNota[i]); });
+  /* `extra`: la ficha edita `vuelosExtra` en vez de una de `vuelosNota`. */
+  const enNota = (fn) => set((d) => { fn(extra ? d.vuelosExtra : d.vuelosNota[i]); });
 
   const leerFoto = async (archivo) => {
     if (!archivo) return;
@@ -1963,11 +1997,19 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
           <span style={{ flex:1, fontSize:13, fontWeight:700 }}>Opción {numero}</span>
         ) : (
           <input className="in" style={{ flex:1, height:30, fontSize:12 }} value={nota.nombre || ""}
-            placeholder="Título que ve el pasajero (ej. Pasajes aéreos con Copa Airlines – según itinerario)"
+            placeholder={extra
+              ? "Título que ve el pasajero (ej. Vuelos internos en Europa)"
+              : "Título que ve el pasajero (ej. Pasajes aéreos con Copa Airlines – según itinerario)"}
             onChange={(e) => enNota((n) => { n.nombre = e.target.value; })} />
         )}
         <button className="btn btn-g btn-ico" title="Quitar este itinerario"
           onClick={() => { const cp = JSON.parse(JSON.stringify(nota));
+            if (extra) {
+              set((d) => { d.vuelosExtra = null; });
+              toast({ msg:"Vuelos adicionales quitados", tone:"warn",
+                undo:() => set((d) => { d.vuelosExtra = cp; }) });
+              return;
+            }
             set((d) => { d.vuelosNota.splice(i, 1); });
             toast({ msg:"Itinerario quitado de las notas", tone:"warn",
               undo:() => set((d) => { d.vuelosNota.splice(i, 0, cp); }) }); }}>
@@ -2043,43 +2085,49 @@ function FichaVueloNota({ nota, i, set, aerolineas, toast, numero }) {
               </div>
             );
           })}
-          {/* Una alternativa lleva lo mismo que el vuelo principal: sin cabina,
-              equipaje y precio no se puede comparar contra nada, que es
-              justamente para lo que existe. */}
-          <div className="hairline" style={{ margin:"11px 0 10px" }} />
-          <div style={{ marginBottom:9 }}>
-            <Label>Tipo de cabina</Label>
-            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-              {CABINAS.map((x) => (
-                <button key={x} className={`chip ${nota.cabina === x ? "chip-on" : ""}`}
-                  onClick={() => enNota((n) => { n.cabina = n.cabina === x ? null : x; })}>
-                  {nota.cabina === x ? <Check size={10} /> : <Plane size={10} />}{x}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ marginBottom:10 }}>
-            <Label>Equipaje</Label>
-            <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-              {EQUIPAJES.map((x) => (
-                <button key={x} className={`chip ${nota.equipaje === x ? "chip-on" : ""}`}
-                  onClick={() => enNota((n) => { n.equipaje = n.equipaje === x ? null : x; })}>
-                  {nota.equipaje === x ? <Check size={10} /> : <Luggage size={10} />}{x}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ display:"flex", gap:9, flexWrap:"wrap", alignItems:"flex-end" }}>
-            {[["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]].map(([k, rot]) => (
-              <div key={k} style={{ width:104 }}>
-                <Label>{rot}</Label>
-                <input className="in mono" type="number" style={{ height:32, textAlign:"right" }}
-                  value={nota.precio?.[k] ?? ""}
-                  onChange={(e) => { const v = e.target.value;
-                    enNota((n) => { n.precio = { ...(n.precio || {}), [k]: v }; }); }} />
+          {/* Los vuelos adicionales no llevan nada de esto: cabina, equipaje y
+              precio son los del vuelo principal. */}
+          {!extra && (
+            <>
+            {/* Una alternativa lleva lo mismo que el vuelo principal: sin cabina,
+                equipaje y precio no se puede comparar contra nada, que es
+                justamente para lo que existe. */}
+            <div className="hairline" style={{ margin:"11px 0 10px" }} />
+            <div style={{ marginBottom:9 }}>
+              <Label>Tipo de cabina</Label>
+              <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                {CABINAS.map((x) => (
+                  <button key={x} className={`chip ${nota.cabina === x ? "chip-on" : ""}`}
+                    onClick={() => enNota((n) => { n.cabina = n.cabina === x ? null : x; })}>
+                    {nota.cabina === x ? <Check size={10} /> : <Plane size={10} />}{x}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+            <div style={{ marginBottom:10 }}>
+              <Label>Equipaje</Label>
+              <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+                {EQUIPAJES.map((x) => (
+                  <button key={x} className={`chip ${nota.equipaje === x ? "chip-on" : ""}`}
+                    onClick={() => enNota((n) => { n.equipaje = n.equipaje === x ? null : x; })}>
+                    {nota.equipaje === x ? <Check size={10} /> : <Luggage size={10} />}{x}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{ display:"flex", gap:9, flexWrap:"wrap", alignItems:"flex-end" }}>
+              {[["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]].map(([k, rot]) => (
+                <div key={k} style={{ width:104 }}>
+                  <Label>{rot}</Label>
+                  <input className="in mono" type="number" style={{ height:32, textAlign:"right" }}
+                    value={nota.precio?.[k] ?? ""}
+                    onChange={(e) => { const v = e.target.value;
+                      enNota((n) => { n.precio = { ...(n.precio || {}), [k]: v }; }); }} />
+                </div>
+              ))}
+            </div>
+            </>
+          )}
           <button className="btn btn-g" style={{ height:26, fontSize:11, marginTop:10 }}
             onClick={() => enNota((n) => { n.vuelos = []; })}>
             Pegar otro itinerario
