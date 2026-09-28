@@ -25,15 +25,14 @@
 // | imagenes | pdf.
 //
 // Lo que esta ruta NO hace: sellar el envío. Bajar el PDF no es mandarle nada
-// al pasajero, así que el estado y el reloj de la vigencia no se tocan. Sí
-// puede renovar el vencimiento del link cuando ya venció — sin un link vivo no
-// hay página que imprimir, y es exactamente lo que ya hacía "Copiar link".
+// al pasajero, así que el estado no se toca. Sí emite un link cuando la
+// cotización todavía no tiene uno: sin link no hay página que imprimir, y es
+// exactamente lo que ya hacía "Copiar link".
 // ---------------------------------------------------------------------------
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import {
   ErrorDeNegocio,
   cargarPropia,
@@ -81,7 +80,7 @@ export async function GET(
 
   // ── se puede generar en esta máquina ────────────────────────────────────
   // Se pregunta ANTES de tocar el link: si no hay navegador, no tiene sentido
-  // renovarle el vencimiento a nadie.
+  // emitir uno.
   if (!(await pdfDisponible())) {
     return error(
       "Este servidor no puede generar PDF ahora. Usá la vista de impresión del navegador.",
@@ -98,7 +97,7 @@ export async function GET(
     numero = row.numero;
 
     const vivo = await linkVivo(row.id);
-    if (vivo && !linkVencido(vivo.expiraAt)) {
+    if (vivo) {
       token = vivo.token;
     } else {
       const horas = row.vigenciaHoras || 48;

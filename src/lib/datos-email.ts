@@ -1,20 +1,20 @@
 // ---------------------------------------------------------------------------
 // Emails de los formularios de datos (pasajeros y pago).
 //
-// Cinco plantillas:
+// Cuatro plantillas (el recordatorio "se borra mañana" se fue con el
+// vencimiento de la bóveda, 28/09):
 //   1. solicitudDatosEmail   → al pasajero: "completá tus datos acá".
 //   2. envioPasajerosEmail   → al vendedor: el grupo completo que llegó.
 //   3. avisoPagoEmail        → al vendedor: AVISO de que hay tarjeta cargada.
-//   4. recordatorioPagoEmail → al vendedor: le queda 1 día antes de la purga.
-//   5. datosPagoAdmEmail     → a Administración: la tarjeta COMPLETA.
+//   4. datosPagoAdmEmail     → a Administración: la tarjeta COMPLETA.
 //
-// Las plantillas 1, 2 y 4 no llevan nunca número, CVV ni documento del
+// Las plantillas 1 y 2 no llevan nunca número, CVV ni documento del
 // titular: solo pasajero, titular, emisor y los últimos 4, lo mismo que queda
 // en claro en la DB.
 //
-// Las plantillas 3 y 5 SÍ llevan la tarjeta entera, y las dos son decisión
+// Las plantillas 3 y 4 SÍ llevan la tarjeta entera, y las dos son decisión
 // explícita del cliente:
-//   • la 5 (26/08/2026): Administración no tiene usuario en el sistema; el
+//   • la 4 (26/08/2026): Administración no tiene usuario en el sistema; el
 //     botón "Enviar a ADM" reemplaza el reenvío manual por un envío auditado
 //     a la casilla `notificaciones_email_adm`, con número de file y AuditLog.
 //   • la 3 (18/09/2026, Diego): el aviso al vendedor lleva número, vencimiento
@@ -31,7 +31,6 @@
 // ---------------------------------------------------------------------------
 
 import { telefonoWa } from "@/lib/telefono";
-import { TEXTO_HORAS_BOVEDA } from "@/lib/datos-constantes";
 import { nombrePago } from "@/lib/datos-nombre";
 
 const ACCENT = "#F43E55";
@@ -266,7 +265,7 @@ export function solicitudDatosEmail(opts: {
     ${
       esPago
         ? PMUTED(
-            `El formulario es seguro: los datos de la tarjeta se guardan cifrados y se eliminan automáticamente a las ${TEXTO_HORAS_BOVEDA}.`,
+            "El formulario es seguro: los datos de la tarjeta se guardan cifrados.",
           )
         : PMUTED("Vas a necesitar el documento de cada pasajero a mano para adjuntarlo.")
     }
@@ -444,9 +443,8 @@ export function envioPasajerosEmail(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// 3 y 4. Pago: aviso inmediato y recordatorio.
-// El aviso lleva la tarjeta entera cuando el call site le pasa `numero`; el
-// recordatorio, nunca: es un empujón, no el dato.
+// 3. Pago: aviso inmediato.
+// Lleva la tarjeta entera cuando el call site le pasa `numero`.
 // ---------------------------------------------------------------------------
 
 export interface AvisoPagoOpts {
@@ -458,7 +456,6 @@ export interface AvisoPagoOpts {
   titular: string;
   emisor?: string | null;
   ultimos4: string;
-  expiraAt: Date;
   /** URL de la bóveda en el panel. */
   linkAdmin: string;
   destino?: string | null;
@@ -483,7 +480,6 @@ function tarjetaBox(opts: AvisoPagoOpts): string {
       { label: "Tarjeta", value: `${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}` },
       { label: "Destino", value: opts.destino },
       { label: "Referencia", value: opts.referencia },
-      { label: "Disponible hasta", value: fechaLarga(opts.expiraAt) },
     ])}</table>
   </td></tr></table>`;
 }
@@ -492,7 +488,7 @@ const SIN_DATOS_SENSIBLES =
   "Por seguridad, el número completo y el código de seguridad no viajan por email: se ven una sola vez dentro del panel, con tu sesión iniciada.";
 
 const CON_DATOS_SENSIBLES =
-  "Este email tiene la tarjeta completa: reenviálo solo a administración y borralo en cuanto se procese el cobro. Los datos también se borran solos de la bóveda.";
+  "Este email tiene la tarjeta completa: reenviálo solo a administración y borralo en cuanto se procese el cobro.";
 
 /** La tarjeta entera, en el mismo formato que el email de Administración. */
 function tarjetaCompletaBox(opts: AvisoPagoOpts): string {
@@ -520,11 +516,6 @@ export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
     ${P(`Hola <strong>${escapeHtml(opts.vendedorNombre)}</strong>, se cargaron datos de pago de <strong>${escapeHtml(quien)}</strong> en tu link.`)}
     ${tarjetaBox(opts)}
     ${completo ? tarjetaCompletaBox(opts) : ""}
-    ${P(
-      `Los datos quedan disponibles hasta el <strong>${escapeHtml(
-        fechaLarga(opts.expiraAt),
-      )}</strong> · ${TEXTO_HORAS_BOVEDA}. Después se borran solos y no hay forma de recuperarlos.`,
-    )}
     <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Abrir la bóveda")}</p>
     ${PMUTED(completo ? CON_DATOS_SENSIBLES : SIN_DATOS_SENSIBLES)}`;
 
@@ -546,7 +537,6 @@ export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
       `Tarjeta: ${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}`,
       opts.destino ? `Destino: ${opts.destino}` : "",
       opts.referencia ? `Referencia: ${opts.referencia}` : "",
-      `Disponible hasta: ${fechaLarga(opts.expiraAt)} (${TEXTO_HORAS_BOVEDA}).`,
       ...(completo
         ? [
             "",
@@ -570,57 +560,10 @@ export function avisoPagoEmail(opts: AvisoPagoOpts): Plantilla {
   };
 }
 
-/**
- * Recordatorio 24 h antes de la purga. La agenda la maneja otro módulo (se
- * programa contra Resend y se guarda el id en DatosPagoCifrado.recordatorioResendId);
- * acá solo vive la plantilla.
- */
-export function recordatorioPagoEmail(opts: AvisoPagoOpts): Plantilla {
-  const body = `
-    ${P(
-      `Hola <strong>${escapeHtml(opts.vendedorNombre)}</strong>, te queda <strong>1 día</strong> para usar estos datos de pago.`,
-    )}
-    ${tarjetaBox(opts)}
-    ${P(
-      `Después del <strong>${escapeHtml(
-        fechaLarga(opts.expiraAt),
-      )}</strong> se borran automáticamente. Si todavía los necesitás, gestionalos hoy o pedile al pasajero que los cargue de nuevo.`,
-    )}
-    <p style="margin:20px 0 0">${ctaButton(opts.linkAdmin, "Abrir la bóveda")}</p>
-    ${PMUTED(SIN_DATOS_SENSIBLES)}`;
-
-  const quien = nombrePago({ pasajeroNombre: opts.pasajeroNombre, titular: opts.titular });
-
-  return {
-    subject: asuntoSeguro(`Te queda 1 día · datos de pago de ${quien} (•••• ${opts.ultimos4})`),
-    html: layout({
-      heading: `Los datos de pago de ${quien} vencen mañana`,
-      kicker: "Bóveda de pagos",
-      bodyHtml: body,
-      preheader: `Vencen el ${fechaLarga(opts.expiraAt)}`,
-    }),
-    text: [
-      `Hola ${opts.vendedorNombre},`,
-      "",
-      `Te queda 1 día para usar los datos de pago de ${quien}.`,
-      opts.pasajeroNombre ? `Pasajero: ${opts.pasajeroNombre}` : "",
-      `Titular de la tarjeta: ${opts.titular}`,
-      `Tarjeta: ${opts.emisor ?? "Tarjeta"} •••• ${opts.ultimos4}`,
-      `Se borran el ${fechaLarga(opts.expiraAt)}.`,
-      "",
-      `Abrir la bóveda: ${opts.linkAdmin}`,
-      "",
-      SIN_DATOS_SENSIBLES,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-  };
-}
-
 // ---------------------------------------------------------------------------
-// 5. Envío a Administración - la ÚNICA plantilla que lleva la tarjeta entera.
+// 4. Envío a Administración - la ÚNICA plantilla que lleva la tarjeta entera.
 //
-// Por qué acá sí van los datos completos, cuando la regla de las otras cuatro
+// Por qué acá sí van los datos completos, cuando la regla de las otras
 // es la contraria: las otras van al VENDEDOR, que tiene usuario y abre la
 // bóveda con su PIN; el email es solo un aviso con link. Administración no
 // tiene usuario en el sistema, y el flujo real de la agencia hoy es que el
@@ -630,7 +573,7 @@ export function recordatorioPagoEmail(opts: AvisoPagoOpts): Plantilla {
 //
 // Decisión del cliente del 26/08/2026. No se puede disparar sin sesión de
 // vendedor/admin con scope sobre el registro, y no borra la tarjeta: sigue
-// viva en la bóveda hasta que se cumplan las HORAS_BOVEDA.
+// en la bóveda.
 // ---------------------------------------------------------------------------
 
 export interface DatosPagoAdmOpts {
@@ -696,7 +639,7 @@ export function datosPagoAdmEmail(opts: DatosPagoAdmOpts): Plantilla {
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${tarjeta}</table>
     </td></tr></table>
     ${PMUTED(
-      `Procesá el cobro y borrá este email cuando termines. Los datos también se eliminan solos de la bóveda a las ${TEXTO_HORAS_BOVEDA} de cargados. Cualquier duda, respondé y le llega a ${escapeHtml(
+      `Procesá el cobro y borrá este email cuando termines. Cualquier duda, respondé y le llega a ${escapeHtml(
         opts.enviadoPorEmail,
       )}.`,
     )}`;

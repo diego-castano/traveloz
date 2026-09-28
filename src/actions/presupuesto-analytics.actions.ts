@@ -79,7 +79,6 @@ const SELECT_ANALYTICS = {
   destino: true,
   createdAt: true,
   enviadaAt: true,
-  expiraAt: true,
   confirmadaAt: true,
   aperturas: true,
   primeraAperturaAt: true,

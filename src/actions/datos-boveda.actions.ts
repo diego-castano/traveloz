@@ -26,7 +26,6 @@ import { logger } from "@/lib/logger";
 import { cancelScheduledEmail } from "@/lib/email";
 import { descifrar } from "@/lib/datos-cifrado";
 import { nombrePago } from "@/lib/datos-nombre";
-import { barridoOportunista } from "@/lib/datos-purga";
 
 const log = logger.child({ module: "datos-boveda.actions" });
 
@@ -125,11 +124,13 @@ export interface PagoMetaView {
   emisor: string | null;
   ultimos4: string;
   createdAt: Date;
-  expiraAt: Date;
   vistoAt: Date | null;
   purgadoAt: Date | null;
-  /** Estado derivado, para que la UI no repita la lógica de fechas. */
-  estado: "DISPONIBLE" | "VISTO" | "PURGADO" | "VENCIDO";
+  /**
+   * Estado derivado. Los datos no vencen: PURGADO solo lo tienen los
+   * registros que limpió el barrido de 96 h que existía antes.
+   */
+  estado: "DISPONIBLE" | "VISTO" | "PURGADO";
   vendedorEmail: string;
   /** Envío a Administración. null mientras nadie lo haya mandado. */
   numeroFile: string | null;
@@ -160,7 +161,6 @@ export async function getPagoMeta(id: string): Promise<PagoMetaView | null> {
         emisor: true,
         ultimos4: true,
         createdAt: true,
-        expiraAt: true,
         vistoAt: true,
         purgadoAt: true,
         numeroFile: true,
@@ -171,14 +171,11 @@ export async function getPagoMeta(id: string): Promise<PagoMetaView | null> {
     if (!row) return null;
     if (row.vendedorId !== ctx.userId && ctx.role !== "ADMIN") return null;
 
-    const vencido = row.expiraAt.getTime() < Date.now();
     const estado: PagoMetaView["estado"] = row.purgadoAt
       ? "PURGADO"
-      : vencido
-        ? "VENCIDO"
-        : row.vistoAt
-          ? "VISTO"
-          : "DISPONIBLE";
+      : row.vistoAt
+        ? "VISTO"
+        : "DISPONIBLE";
 
     return {
       id: row.id,
@@ -189,7 +186,6 @@ export async function getPagoMeta(id: string): Promise<PagoMetaView | null> {
       emisor: row.emisor,
       ultimos4: row.ultimos4,
       createdAt: row.createdAt,
-      expiraAt: row.expiraAt,
       vistoAt: row.vistoAt,
       purgadoAt: row.purgadoAt,
       estado,
@@ -242,10 +238,6 @@ export async function revelarPago(input: {
   try {
     const ctx = await requireAuth();
 
-    // El barrido va primero: si este registro ya venció, queremos que la purga
-    // lo alcance antes de leerlo, no después.
-    await barridoOportunista();
-
     const parsed = revelarSchema.safeParse(input);
     if (!parsed.success) {
       // zod v4: los errores viven en `issues`.
@@ -269,7 +261,6 @@ export async function revelarPago(input: {
         tag: true,
         vistoAt: true,
         purgadoAt: true,
-        expiraAt: true,
         recordatorioResendId: true,
       },
     });
@@ -282,12 +273,9 @@ export async function revelarPago(input: {
       return { ok: false, message: MSG_NO_ENCONTRADO };
     }
 
+    // Los datos no vencen: solo no se abre lo que ya no tiene payload (los
+    // registros que limpió el barrido de 96 h que existía antes).
     if (row.purgadoAt !== null) return { ok: false, message: MSG_PURGADO };
-    // Vencido pero todavía sin purgar (el barrido no le llegó): para el
-    // vendedor es lo mismo que borrado, y no lo descifra.
-    if (row.expiraAt.getTime() < Date.now()) {
-      return { ok: false, message: MSG_PURGADO };
-    }
     if (!row.payload || !row.iv || !row.tag) {
       return { ok: false, message: MSG_PURGADO };
     }
@@ -355,8 +343,9 @@ export async function revelarPago(input: {
     }
 
     // ── Sellado + cancelación del recordatorio (best-effort) ──────────────
-    // Ya lo tenemos descifrado: si algo de acá falla, el vendedor igual ve sus
-    // datos. Lo peor que pasa es un recordatorio de más.
+    // Ya no se agendan recordatorios; se cancela el de algún registro viejo
+    // que todavía lo tenga pendiente. Si algo de acá falla, el vendedor igual
+    // ve sus datos.
     try {
       if (row.recordatorioResendId) {
         await cancelScheduledEmail(row.recordatorioResendId);

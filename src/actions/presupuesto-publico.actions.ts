@@ -20,7 +20,6 @@
 
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
-import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { logger } from "@/lib/logger";
 import { checkFormRate } from "@/lib/rate-limit";
 import { ipConfiableDeHeaders } from "@/lib/request-ip";
@@ -96,7 +95,6 @@ function contextoRequest(): { ip: string | null; ua: string | null } {
 const SELECT_LINK = {
   id: true,
   token: true,
-  expiraAt: true,
   revocadoAt: true,
   presupuesto: {
     select: {
@@ -133,11 +131,11 @@ async function buscarLink(token: string) {
 }
 
 /**
- * Trae el link y comprueba que sirva: forma del token, cotización viva, link
- * sin revocar y dentro de la vigencia. Devuelve el mensaje de error listo para
+ * Trae el link y comprueba que sirva: forma del token, cotización viva y link
+ * sin revocar (los links no vencen). Devuelve el mensaje de error listo para
  * mostrarle al pasajero.
  *
- * Un token inexistente y uno vencido dan el MISMO texto a propósito: no
+ * Un token inexistente y uno revocado dan el MISMO texto a propósito: no
  * confirmamos qué tokens existen.
  */
 async function resolverLink(
@@ -149,7 +147,6 @@ async function resolverLink(
   const link = await buscarLink(token);
   if (!link || link.presupuesto.deletedAt) return { ok: false, error: NO_VALE };
   if (link.revocadoAt) return { ok: false, error: NO_VALE };
-  if (linkVencido(link.expiraAt)) return { ok: false, error: NO_VALE };
 
   return { ok: true, link };
 }

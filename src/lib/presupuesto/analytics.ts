@@ -19,7 +19,6 @@
 // ---------------------------------------------------------------------------
 
 import { SECCIONES, indiceSeccion } from "./secciones";
-import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { destinoFinal, partirDestinoPeriodo } from "./destino";
 
 const HORA_MS = 3_600_000;
@@ -52,7 +51,6 @@ export interface FilaAnalytics {
   destino: string | null;
   createdAt: Date;
   enviadaAt: Date | null;
-  expiraAt: Date | null;
   confirmadaAt: Date | null;
   aperturas: number;
   primeraAperturaAt: Date | null;
@@ -92,7 +90,6 @@ export interface ResumenAnalytics {
   enviadas: number;
   abiertas: number;
   confirmadas: number;
-  vencidas: number;
   /** Fracción 0..1, null si no hubo enviadas. */
   tasaApertura: number | null;
   /** Fracción 0..1, null si no hubo enviadas. */
@@ -206,19 +203,17 @@ function redondear(n: number | null, decimales = 2): number | null {
 /**
  * Mismo criterio que `estadoEfectivoDe()` en presupuesto.actions.ts. Está
  * duplicado porque aquel archivo es "use server" y no puede exportar helpers
- * sincrónicos; si cambia la regla del vencimiento hay que tocar los dos.
+ * sincrónicos; si cambia la regla hay que tocar los dos. Las cotizaciones no
+ * vencen: una fila vieja con VENCIDA se lee como abierta o enviada.
  */
 export function estadoEfectivoAnalytics(f: {
   estado: string;
   estadoManual: string | null;
-  expiraAt: Date | null;
-  confirmadaAt: Date | null;
-}, ahora: number): string {
-  if (f.estadoManual) return f.estadoManual;
-  if (f.estado === "CONFIRMADA" || f.confirmadaAt) return f.estado;
-  if (f.estado !== "ENVIADA" && f.estado !== "ABIERTA") return f.estado;
-  if (linkVencido(f.expiraAt, ahora)) return "VENCIDA";
-  return f.estado;
+  primeraAperturaAt: Date | null;
+}): string {
+  const e = f.estadoManual && f.estadoManual !== "VENCIDA" ? f.estadoManual : f.estado;
+  if (e === "VENCIDA") return f.primeraAperturaAt ? "ABIERTA" : "ENVIADA";
+  return e;
 }
 
 /** Semana ISO en UTC: clave "2026-W35" y el lunes que la abre. */
@@ -297,7 +292,6 @@ export function agregarAnalytics(
   let enviadas = 0;
   let abiertas = 0;
   let confirmadas = 0;
-  let vencidas = 0;
   let montoConfirmado = 0;
   /** Divisor del ticket: confirmadas con `montoPrincipal` cargado. */
   let confirmadasConMonto = 0;
@@ -319,15 +313,13 @@ export function agregarAnalytics(
     if (masViejaMs === null || creadaMs < masViejaMs) masViejaMs = creadaMs;
     if (masNuevaMs === null || creadaMs > masNuevaMs) masNuevaMs = creadaMs;
 
-    const efectivo = estadoEfectivoAnalytics(f, ahora);
+    const efectivo = estadoEfectivoAnalytics(f);
     const fueEnviada = f.enviadaAt != null;
     const fueAbierta = (f.aperturas ?? 0) > 0;
     const fueConfirmada = efectivo === "CONFIRMADA";
-    const fueVencida = efectivo === "VENCIDA";
 
     if (fueEnviada) enviadas += 1;
     if (fueAbierta) abiertas += 1;
-    if (fueVencida) vencidas += 1;
 
     let horasAp: number | null = null;
     if (f.enviadaAt && f.primeraAperturaAt) {
@@ -459,7 +451,7 @@ export function agregarAnalytics(
     hasta: hasta.toISOString(),
     truncado: Boolean(opciones.truncado),
     resumen: {
-      creadas, enviadas, abiertas, confirmadas, vencidas,
+      creadas, enviadas, abiertas, confirmadas,
       tasaApertura: redondear(tasa(abiertas, enviadas), 4),
       tasaConfirmacion: redondear(tasa(confirmadas, enviadas), 4),
       montoConfirmado,

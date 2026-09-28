@@ -34,8 +34,8 @@ export function VendedorShell({ children }: { children: ReactNode }) {
   // el padding que usa la tabla de paquetes.
   const esCotizador = esRutaCotizador(pathname);
 
-  // Badge del botón "Cotizador": cuántas cotizaciones piden algo hoy (vencidas
-  // sin abrir + sin abrir hace más de 24 h hábiles). `null` mientras no llegó
+  // Badge del botón "Cotizador": cuántas cotizaciones piden algo hoy (sin
+  // abrir hace más de 24 h hábiles). `null` mientras no llegó
   // el dato: el badge no aparece y después desaparece, que es peor que no
   // mostrarlo. En 0 tampoco se dibuja — un cero no es una novedad.
   const [paraHoy, setParaHoy] = useState<number | null>(null);

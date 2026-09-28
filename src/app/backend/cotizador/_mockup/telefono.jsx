@@ -474,10 +474,8 @@ function SalidaPasajero({
   );
 
   /* Condiciones del pie: las edita el máster en /backend/cotizador/ajustes.
-     La línea de la vigencia —la que lleva `{vigencia}`— NO se dibuja acá: el
-     documento que el pasajero lee y el PDF que se guarda no llevan fecha de
-     vencimiento. La vigencia sigue viva donde importa: el link vence solo, el
-     email la dice y el listado del vendedor la muestra con su semáforo. */
+     La línea de la vigencia —la que lleva `{vigencia}`— NO se dibuja acá: las
+     cotizaciones no vencen, así que no hay vigencia que imprimir. */
   const condiciones = useMemo(
     () => (ajustes.condiciones || []).map((l) => String(l)).filter((l) => !/\{vigencia\}/.test(l)),
     [ajustes.condiciones],

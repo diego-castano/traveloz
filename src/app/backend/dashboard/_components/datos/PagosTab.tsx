@@ -8,9 +8,9 @@
 // `revelarPago`, con segundo factor - y vive solo dentro del RevelarModal, que
 // se lleva los datos consigo cuando se desmonta.
 //
-// El reloj de vencimiento se calcula en el cliente contra `expiraAt` y se
-// refresca cada minuto: si lo mandáramos formateado desde el server quedaría
-// congelado en el HTML hasta la próxima navegación.
+// Las tarjetas no vencen (cliente, 28/09): quedan en la bóveda sin reloj.
+// "Borrado" solo aparece en registros que limpió el barrido de 96 h que
+// existía antes.
 //
 // Cada registro se identifica por el PASAJERO, no por el titular de la
 // tarjeta (cliente, 26/08/2026): son distintos más veces de las que uno
@@ -31,16 +31,6 @@ const CHIP: Record<EstadoPago, { label: string; clase: string }> = {
   visto: { label: "Visto", clase: "bg-emerald-50 text-emerald-700" },
   purgado: { label: "Borrado", clase: "bg-neutral-100 text-neutral-400" },
 };
-
-/** "quedan 51 h" / "quedan 40 min". Devuelve null si ya venció. */
-function restante(expiraAt: Date, ahora: number): string | null {
-  const ms = new Date(expiraAt).getTime() - ahora;
-  if (ms <= 0) return null;
-  const minutos = Math.floor(ms / 60000);
-  if (minutos < 60) return `quedan ${Math.max(1, minutos)} min`;
-  const horas = Math.floor(minutos / 60);
-  return `quedan ${horas} h`;
-}
 
 /** "hace 2 h" / "hace 15 min" / "el 24/08". Para el sello del envío a ADM. */
 function desde(d: Date, ahora: number): string {
@@ -71,7 +61,7 @@ const fechaCorta = (d: Date) =>
 
 export function PagosTab() {
   const [pagos, setPagos] = useState<PagoResumen[] | null>(null);
-  // Tick por minuto: mueve todos los relojes de la grilla de una sola vez.
+  // Tick por minuto: refresca los "hace X min" de la grilla de una sola vez.
   const [ahora, setAhora] = useState(() => Date.now());
   // Registro que se está abriendo. Acá viaja SOLO el id: nada revelado pasa
   // por el estado de esta grilla.
@@ -112,7 +102,7 @@ export function PagosTab() {
         <p className="text-[14px] font-semibold text-neutral-700">La bóveda está vacía</p>
         <p className="mt-1 max-w-[380px] text-[13px] text-neutral-500">
           Compartí tu link de datos de tarjeta para empezar. Lo que cargue el pasajero se guarda
-          cifrado y se borra solo a las 96 horas.
+          cifrado en la bóveda.
         </p>
       </div>
     );
@@ -123,7 +113,7 @@ export function PagosTab() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {pagos.map((p, i) => {
           const chip = CHIP[p.estado];
-          const quedan = p.estado === "purgado" ? null : restante(p.expiraAt, ahora);
+          const disponible = p.estado !== "purgado";
           return (
             <motion.div
               key={p.id}
@@ -162,14 +152,14 @@ export function PagosTab() {
                   <p className="truncate text-[11px] text-neutral-400">{fechaCorta(p.createdAt)}</p>
                   <p
                     className={`truncate text-[11.5px] font-semibold ${
-                      quedan ? "text-[#8B5CF6]" : "text-neutral-400"
+                      disponible ? "text-[#8B5CF6]" : "text-neutral-400"
                     }`}
                   >
-                    {quedan ?? "Ya no está disponible"}
+                    {disponible ? "Disponible" : "Ya no está disponible"}
                   </p>
                 </div>
 
-                {!p.purgadoAt && quedan ? (
+                {disponible ? (
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button
                       type="button"

@@ -14,14 +14,14 @@
 //     escriben operaciones sueltas y tolerantes; la bitácora es best-effort.
 //   • `contenido` es la fuente de verdad. Las columnas del modelo son un
 //     espejo derivado que se recalcula en cada guardado (derivados.ts).
-//   • El estado "vencida automática" (enviada, sin abrir, pasada la vigencia)
-//     NO se persiste: lo calcula el cliente contra expiraAt.
+//   • Las cotizaciones no vencen (Gero 11/09, cliente 28/09): no hay estado
+//     "vencida" ni automático ni manual. `vigenciaHoras`/`expiraAt` se siguen
+//     escribiendo como registro interno, pero nada los lee para cortar nada.
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
 import type { EstadoPresupuesto, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { LINKS_VENCEN, linkVencido } from "@/lib/presupuesto/vencimiento";
 import { logAudit } from "@/lib/audit";
 import { logger } from "@/lib/logger";
 import { COTIZADOR_SETTINGS } from "@/lib/site-settings-bootstrap";
@@ -47,7 +47,6 @@ import {
   condicionesConHabiles,
   horasHabilesEntre,
   sumarHorasHabiles,
-  textoVencimiento,
 } from "@/lib/presupuesto/habiles";
 import {
   ErrorDeNegocio,
@@ -97,11 +96,8 @@ const EVENTOS_MAX = 100;
 /** Cuántas aperturas del pasajero viajan con cada fila (las más recientes). */
 const APERTURAS_MAX = 20;
 
-// La vigencia se cuenta en HORAS HÁBILES: el sábado y el domingo no corren.
-// Todo el que necesite un vencimiento pasa por `sumarHorasHabiles`
-// (@/lib/presupuesto/habiles) — mandar una cotización el viernes a la tarde y
-// que venza el domingo, cuando nadie puede renovarla, era regalarle dos días
-// al olvido.
+// Las horas se cuentan HÁBILES (@/lib/presupuesto/habiles): el sábado y el
+// domingo no corren para el "+24 h sin abrir" del semáforo.
 
 /** Resultados del buscador de historial (el panel muestra pocos). */
 const HISTORIAL_MAX = 8;
@@ -258,8 +254,6 @@ export interface LinkPresupuesto {
   vigenciaHoras: number;
   emitidoAt: Date;
   expiraAt: Date;
-  /** `true` cuando ya pasó `expiraAt`: el link existe pero no abre. */
-  vencido: boolean;
 }
 
 export interface FilaPresupuesto {
@@ -267,9 +261,8 @@ export interface FilaPresupuesto {
   numero: string;
   estado: EstadoPresupuesto;
   /**
-   * Estado que tiene que mostrar la UI: el manual si lo hay, "VENCIDA" si la
-   * vigencia se cumplió, y si no el estado real. No se persiste — se calcula
-   * en cada lectura contra `expiraAt`, igual que hacía el cliente.
+   * Estado que tiene que mostrar la UI: el manual si lo hay y si no el estado
+   * real. Nunca es VENCIDA (ver `estadoEfectivoDe`).
    */
   estadoEfectivo: EstadoPresupuesto;
   estadoManual: EstadoPresupuesto | null;
@@ -306,23 +299,19 @@ type FilaCruda = Prisma.PresupuestoGetPayload<{ select: typeof SELECT_FILA }>;
 /**
  * Estado que ve el vendedor.
  *
- * El manual gana siempre. Después, una cotización enviada o abierta cuya
- * vigencia se cumplió es VENCIDA aunque la columna diga otra cosa: el
- * vencimiento no se persiste (nadie corre un cron para escribirlo), se calcula
- * al leer. Una confirmada no vence nunca.
+ * El manual gana siempre. Las cotizaciones no vencen (cliente, 28/09): el
+ * valor VENCIDA sigue en el enum de Prisma solo por las filas viejas que lo
+ * tengan guardado, y acá se lee como lo que era antes de vencer —abierta si
+ * el pasajero la abrió, enviada si no—. No se escribe nada en la base.
  */
 function estadoEfectivoDe(r: {
   estado: EstadoPresupuesto;
   estadoManual: EstadoPresupuesto | null;
-  expiraAt: Date | null;
-  confirmadaAt: Date | null;
+  primeraAperturaAt?: Date | null;
 }): EstadoPresupuesto {
-  if (r.estadoManual) return r.estadoManual;
-  if (r.estado === "CONFIRMADA" || r.confirmadaAt) return r.estado;
-  if (r.estado !== "ENVIADA" && r.estado !== "ABIERTA") return r.estado;
-  // Con `LINKS_VENCEN` apagado nunca da VENCIDA: la manual sigue valiendo.
-  if (linkVencido(r.expiraAt)) return "VENCIDA";
-  return r.estado;
+  const e = r.estadoManual && r.estadoManual !== "VENCIDA" ? r.estadoManual : r.estado;
+  if (e === "VENCIDA") return r.primeraAperturaAt ? "ABIERTA" : "ENVIADA";
+  return e;
 }
 
 function aFila(r: FilaCruda): FilaPresupuesto {
@@ -340,7 +329,6 @@ function aFila(r: FilaCruda): FilaPresupuesto {
           vigenciaHoras: vivo.vigenciaHoras,
           emitidoAt: vivo.emitidoAt,
           expiraAt: vivo.expiraAt,
-          vencido: linkVencido(vivo.expiraAt),
         }
       : null,
     aperturasDet: vivo?.aperturas ?? [],
@@ -685,14 +673,13 @@ export async function listarPresupuestos(
  * `count`. Los buckets son los mismos que dibuja `semaforo()` en el cliente
  * (_mockup/data.js), con las horas contadas en hábiles:
  *
- *   rojas      vencida sin ninguna apertura — el pasajero nunca la vio
  *   amarillas  enviada, sin abrir, +24 h hábiles — toca recordatorio
- *   verdes     confirmada, o abierta y todavía vigente
+ *   verdes     confirmada o abierta
  *   borradores nunca salió
  *
- * No es una partición: una enviada de hace tres horas ("en ventana") y una
- * vencida que el pasajero sí abrió no entran en ningún chip, porque no hay
- * nada que hacer con ellas hoy.
+ * No es una partición: una enviada de hace tres horas ("en ventana") no entra
+ * en ningún chip, porque no hay nada que hacer con ella hoy. Las cotizaciones
+ * no vencen, así que ya no hay chip rojo.
  *
  * DÓNDE SE VE ESTO. El único consumidor es `VendedorShell`: el badge "Para
  * hoy" del botón Cotizador, con rol VENDEDOR y por lo tanto con `scopeVendedor`
@@ -702,11 +689,10 @@ export async function listarPresupuestos(
  * coincidir y está bien — responden preguntas distintas.
  */
 export interface ResumenSemaforo {
-  rojas: number;
   amarillas: number;
   verdes: number;
   borradores: number;
-  /** Lo que va en el badge: rojas + amarillas. */
+  /** Lo que va en el badge: las amarillas. */
   paraHoy: number;
 }
 
@@ -715,8 +701,8 @@ export async function resumenSemaforo(): Promise<Resultado<ResumenSemaforo>> {
     const s = await scopeVendedor();
 
     /* Sin `take`. El badge cuenta lo que hay, no las 500 más recientes: un
-       vendedor con historia dejaba afuera justo las vencidas viejas, que son
-       las rojas que el chip existe para mostrar. Lo que abarata la query es
+       vendedor con historia dejaba afuera justo las pendientes viejas. Lo que
+       abarata la query es
        traer seis columnas y sacar las confirmadas de la lista — que son la
        mayoría del archivo histórico y para el badge valen un solo número.
 
@@ -737,8 +723,7 @@ export async function resumenSemaforo(): Promise<Resultado<ResumenSemaforo>> {
           estado: true,
           estadoManual: true,
           enviadaAt: true,
-          expiraAt: true,
-          confirmadaAt: true,
+          primeraAperturaAt: true,
           aperturas: true,
         },
       }),
@@ -756,23 +741,16 @@ export async function resumenSemaforo(): Promise<Resultado<ResumenSemaforo>> {
     const ahora = new Date();
     // Las verdes arrancan con las confirmadas, que ya vinieron contadas.
     const res: ResumenSemaforo = {
-      rojas: 0, amarillas: 0, verdes: confirmadas, borradores: 0, paraHoy: 0,
+      amarillas: 0, verdes: confirmadas, borradores: 0, paraHoy: 0,
     };
 
     for (const r of rows) {
       const estado = estadoEfectivoDe(r);
       if (estado === "BORRADOR") { res.borradores++; continue; }
-      // Una vencida que el pasajero SÍ abrió no es roja (la vio) ni verde (el
-      // link ya no abre): sale por el filtro de estado "Vencida", que existe
-      // desde siempre en la misma barra.
-      if (estado === "VENCIDA") {
-        if (r.aperturas === 0) res.rojas++;
-        continue;
-      }
       if (r.aperturas > 0) { res.verdes++; continue; }
       if (r.enviadaAt && horasHabilesEntre(r.enviadaAt, ahora) >= 24) res.amarillas++;
     }
-    res.paraHoy = res.rojas + res.amarillas;
+    res.paraHoy = res.amarillas;
     return res;
   });
 }
@@ -1160,11 +1138,11 @@ export async function setNotasInternas(
 
 const enviarSchema = z.object({
   canal: z.enum(["whatsapp", "email", "pdf", "manual"]),
-  vigenciaHoras: z.number().int().positive().max(24 * 30),
+  vigenciaHoras: z.number().int().positive().max(24 * 30).optional(),
 });
 
 /**
- * Sella el envío y arranca el reloj de la vigencia.
+ * Sella el envío.
  *
  * Es el camino de "ya se la mandé por otro medio": el vendedor mandó el PDF
  * por su cuenta y solo quiere que el seguimiento arranque. Igual deja el link
@@ -1183,7 +1161,7 @@ export async function marcarEnviada(
 
     const s = await scopeVendedor();
     const row = await cargarPropia(String(id ?? ""), s);
-    const horas = acotarVigencia(vigenciaHoras);
+    const horas = acotarVigencia(vigenciaHoras ?? row.vigenciaHoras);
 
     const sellado = await sellarEnvio(row, canal, horas, s.userId);
 
@@ -1213,10 +1191,9 @@ export async function marcarEnviada(
  * Sella el envío y deja el link listo. Es el corazón compartido de
  * `marcarEnviada`, `emitirLink` y `enviarPorEmail`.
  *
- * `enviadaAt` solo se escribe la primera vez de la ronda (borrador o vencida).
+ * `enviadaAt` solo se escribe la primera vez de la ronda (borrador).
  * Un recordatorio sobre una cotización ya enviada NO lo pisa: si lo pisara,
  * "tardó 3 h en abrirla" pasaría a ser negativo en cuanto el vendedor insiste.
- * El reinicio de ronda es tarea de `reactivarPresupuesto`.
  */
 async function sellarEnvio(
   row: FilaPropia,
@@ -1229,17 +1206,11 @@ async function sellarEnvio(
     detalleExtra?: string;
     /**
      * `true` para los sellados que NO son un envío del vendedor (emitir el
-     * link, correr la vigencia desde el modal): ahí el evento "enviada" solo
-     * se anota si el link es nuevo o si el estado se movió. Sin esto, tocar
-     * 24h/48h/72h dejaba una "Enviada por whatsapp" por toque.
+     * link desde el modal): ahí el evento "enviada" solo se anota si el link
+     * es nuevo o si el estado se movió.
      */
     soloSiCambia?: boolean;
-    /**
-     * Vencimiento ya calculado. Lo pasa `enviarPorEmail`, que necesita la
-     * fecha ANTES de sellar (va escrita en el cuerpo del email): sin esto el
-     * email prometía un vencimiento y la base guardaba otro unos segundos
-     * después.
-     */
+    /** Fecha interna ya calculada (la pasa `enviarPorEmail`). */
     expiraAt?: Date;
   } = {},
 ): Promise<{ link: LinkEmitido; enviadaAt: Date; expiraAt: Date }> {
@@ -1258,8 +1229,7 @@ async function sellarEnvio(
     where: { id: row.id },
     data: {
       estado,
-      // Volver a mandarla saca la marca manual de "vencida": el vendedor acaba
-      // de decir con los hechos que sigue viva.
+      // Una fila vieja con la marca manual "vencida" la pierde al reenviarse.
       ...(row.estadoManual === "VENCIDA" ? { estadoManual: null } : {}),
       ...(arrancaRonda ? { enviadaAt: ahora } : {}),
       expiraAt: expira,
@@ -1268,11 +1238,8 @@ async function sellarEnvio(
     select: { enviadaAt: true, expiraAt: true },
   });
 
-  // Con los links sin vencimiento (LINKS_VENCEN apagado) la bitácora no habla
-  // de vigencia: el dato se sigue guardando, pero no significa nada.
-  const detalle = `${
-    LINKS_VENCEN ? `Vigencia ${vigenciaHoras} h hábiles · vence el ${textoVencimiento(expira)} · ` : ""
-  }link /c/${link.token}${opts.detalleExtra ? ` · ${opts.detalleExtra}` : ""}`;
+  // Los links no vencen: la bitácora no habla de vigencia.
+  const detalle = `link /c/${link.token}${opts.detalleExtra ? ` · ${opts.detalleExtra}` : ""}`;
 
   if (!opts.soloSiCambia) {
     await anotar(row.id, {
@@ -1287,14 +1254,6 @@ async function sellarEnvio(
     await anotar(row.id, {
       tipo: opts.evento ?? "enviada",
       titulo: opts.tituloEvento ?? `Enviada por ${canal}`,
-      detalle,
-      actorId,
-    });
-  } else if (!row.expiraAt || Math.abs(row.expiraAt.getTime() - expira.getTime()) > 60_000) {
-    // Mismo link, mismo estado: lo único que se movió es el vencimiento.
-    await anotar(row.id, {
-      tipo: "vigencia_extendida",
-      titulo: `Vigencia actualizada a ${vigenciaHoras} h`,
       detalle,
       actorId,
     });
@@ -1333,8 +1292,8 @@ export async function emitirLink(
     const row = await cargarPropia(String(id ?? ""), s);
     const horas = acotarVigencia(parsedInput.data.vigenciaHoras ?? row.vigenciaHoras);
 
-    // `soloSiCambia`: el modal llama a esta action al generar el link y cada
-    // vez que el vendedor mueve la vigencia. Solo la primera es un envío.
+    // `soloSiCambia`: el modal puede llamar a esta action más de una vez.
+    // Solo la primera es un envío.
     const { link } = await sellarEnvio(row, canal, horas, s.userId, { soloSiCambia: true });
     return link;
   });
@@ -1546,10 +1505,6 @@ export async function enviarPorEmail(
     const plantilla = cotizacionEmail({
       q,
       url: link.url,
-      vigenciaHoras: horas,
-      // La fecha concreta, no "48 horas": el pasajero no tiene por qué hacer
-      // la cuenta, y menos ahora que la cuenta salta el fin de semana.
-      expiraAt: expira,
       // El recordatorio recuerda cuándo salió la primera: si la ronda arranca
       // recién ahora, `enviadaAt` todavía está vacío y el email no la nombra.
       enviadaAt: row.enviadaAt,
@@ -1633,122 +1588,6 @@ function renderPlantillaServidor(
         .replace(/\n{3,}/g, "\n\n")
         .replace(/\s+$/, "");
   return conLink.replace(/Hola\s+,/, "Hola,");
-}
-
-/**
- * Vuelve a poner en juego una cotización que venció o que nadie abrió: reloj
- * desde cero y contador de aperturas en cero, así el seguimiento no arrastra
- * lo de la ronda anterior.
- */
-export async function reactivarPresupuesto(
-  id: string,
-): Promise<Resultado<{ id: string; enviadaAt: Date; expiraAt: Date; link: LinkEmitido }>> {
-  return ejecutar("reactivarPresupuesto", async () => {
-    const s = await scopeVendedor();
-    const row = await cargarPropia(String(id ?? ""), s);
-
-    // El mismo estado que ve el vendedor en la lista: una ABIERTA cuya
-    // vigencia se cumplió muestra "Vencida" y tiene que poder reactivarse. Con
-    // el estado crudo la UI ofrecía el botón y el server lo rechazaba.
-    const efectivo = estadoEfectivoDe(row);
-    if (efectivo !== "VENCIDA" && efectivo !== "ENVIADA") {
-      fallar("Solo se reactivan cotizaciones enviadas o vencidas.");
-    }
-
-    const ahora = new Date();
-    const horas = acotarVigencia(row.vigenciaHoras || VIGENCIA_DEFAULT);
-    const expira = sumarHorasHabiles(ahora, horas);
-
-    // Ronda nueva: el link viejo se revoca y sale uno nuevo. Reactivar borra el
-    // contador de aperturas, y si el token siguiera vivo las aperturas de la
-    // ronda anterior se le pegarían al link nuevo por el `linkId`.
-    await prisma.presupuestoLink.updateMany({
-      where: { presupuestoId: row.id, revocadoAt: null },
-      data: { revocadoAt: ahora },
-    });
-    const link = await emitirORenovar(row.id, "manual", horas, expira);
-
-    const actualizada = await prisma.presupuesto.update({
-      where: { id: row.id },
-      data: {
-        estado: "ENVIADA",
-        // El estado a mano se limpia: reactivar es volver al flujo automático.
-        estadoManual: null,
-        enviadaAt: ahora,
-        expiraAt: expira,
-        vigenciaHoras: horas,
-        aperturas: 0,
-        primeraAperturaAt: null,
-        ultimaAperturaAt: null,
-      },
-      select: { id: true, enviadaAt: true, expiraAt: true },
-    });
-
-    await anotar(row.id, {
-      tipo: "reactivada",
-      titulo: `Reactivada por ${horas} h hábiles`,
-      detalle: `Vence el ${textoVencimiento(expira)} · link nuevo /c/${link.token}`,
-      actorId: s.userId,
-    });
-
-    return {
-      id: actualizada.id,
-      enviadaAt: actualizada.enviadaAt as Date,
-      expiraAt: actualizada.expiraAt as Date,
-      link,
-    };
-  });
-}
-
-/** Corre el vencimiento hacia adelante sin resetear el seguimiento. */
-export async function extenderVigencia(
-  id: string,
-  horas: number = VIGENCIA_DEFAULT,
-): Promise<Resultado<{ id: string; expiraAt: Date; link: LinkEmitido }>> {
-  return ejecutar("extenderVigencia", async () => {
-    const n = Math.round(Number(horas));
-    if (!Number.isFinite(n) || n <= 0 || n > 24 * 30) {
-      fallar("La extensión tiene que ir entre 1 hora y 30 días.");
-    }
-    const s = await scopeVendedor();
-    const row = await cargarPropia(String(id ?? ""), s);
-
-    // Desde el vencimiento si todavía no pasó, y desde ahora si ya venció:
-    // extender una cotización vencida hace tres días tiene que dar `n` horas
-    // desde este momento, no `n` horas desde hace tres días.
-    const ahora = new Date();
-    const base = row.expiraAt && row.expiraAt > ahora ? row.expiraAt : ahora;
-    const expira = sumarHorasHabiles(base, n);
-
-    // `vigenciaHoras` es la ventana con la que se envía y con la que reactiva:
-    // acumular acá la inflaba sola (48 + 48 + 48…) y una reactivación después
-    // de tres extensiones daba una semana de vigencia sin que nadie lo pida.
-    // El vencimiento que manda para el pasajero es el del LINK: la página
-    // pública mira `PresupuestoLink.expiraAt`, no la columna del presupuesto.
-    // Si acá se corriera solo la columna, el drawer diría "quedan 48 h" y el
-    // link seguiría dando "esta cotización venció". Si no hay link vivo (nunca
-    // se compartió, o se revocó al reactivar) se emite uno.
-    const link = await emitirORenovar(row.id, "manual", acotarVigencia(row.vigenciaHoras), expira);
-
-    const actualizada = await prisma.presupuesto.update({
-      where: { id: row.id },
-      data: {
-        expiraAt: expira,
-        // Extender es decir "sigue viva": la marca manual de vencida se cae.
-        ...(row.estadoManual === "VENCIDA" ? { estadoManual: null } : {}),
-      },
-      select: { id: true, expiraAt: true },
-    });
-
-    await anotar(row.id, {
-      tipo: "vigencia_extendida",
-      titulo: `Vigencia extendida ${n} h hábiles`,
-      detalle: `Vence el ${textoVencimiento(expira)} · link /c/${link.token}`,
-      actorId: s.userId,
-    });
-
-    return { id: actualizada.id, expiraAt: actualizada.expiraAt as Date, link };
-  });
 }
 
 const confirmarSchema = z.object({
@@ -2116,14 +1955,13 @@ const DATOS_MAX = 20;
 const SOLO_EL_FIRMANTE =
   "La solicitud sale a nombre de quien la manda. Esta cotización la firma otro vendedor: pedísela desde su usuario o pasale el link a mano.";
 
-export type EstadoSolicitudDato = "completada" | "vigente" | "vencida";
+export type EstadoSolicitudDato = "completada" | "pendiente";
 
 export interface SolicitudDeCotizacion {
   id: string;
   tipo: TipoDato;
   destinatarioEmail: string;
   enviadoAt: Date;
-  expiraAt: Date;
   completadoAt: Date | null;
   estado: EstadoSolicitudDato;
 }
@@ -2145,7 +1983,6 @@ export interface PagoDeCotizacion {
   emisor: string | null;
   ultimos4: string;
   createdAt: Date;
-  expiraAt: Date;
   vistoAt: Date | null;
   purgadoAt: Date | null;
   estado: "vivo" | "visto" | "purgado";
@@ -2164,12 +2001,9 @@ export interface DatosDelPasajero {
   pagos: PagoDeCotizacion[];
 }
 
-function estadoDeSolicitud(f: {
-  completadoAt: Date | null;
-  expiraAt: Date;
-}): EstadoSolicitudDato {
-  if (f.completadoAt) return "completada";
-  return f.expiraAt.getTime() <= Date.now() ? "vencida" : "vigente";
+/** Las solicitudes no vencen: o se completaron o siguen pendientes. */
+function estadoDeSolicitud(f: { completadoAt: Date | null }): EstadoSolicitudDato {
+  return f.completadoAt ? "completada" : "pendiente";
 }
 
 /**
@@ -2198,7 +2032,6 @@ export async function datosDelPasajero(
         tipo: true,
         destinatarioEmail: true,
         enviadoAt: true,
-        expiraAt: true,
         completadoAt: true,
       },
     });
@@ -2241,7 +2074,6 @@ export async function datosDelPasajero(
               emisor: true,
               ultimos4: true,
               createdAt: true,
-              expiraAt: true,
               vistoAt: true,
               purgadoAt: true,
             },
@@ -2249,7 +2081,6 @@ export async function datosDelPasajero(
         : Promise.resolve([]),
     ]);
 
-    const ahora = Date.now();
     return {
       referencia,
       puedePedir,
@@ -2273,8 +2104,10 @@ export async function datosDelPasajero(
       }),
       pagos: pagos.map((f) => ({
         ...f,
+        // Los datos no vencen: "purgado" son solo los que limpió el barrido
+        // de 96 h que existía antes.
         estado:
-          f.purgadoAt || f.expiraAt.getTime() <= ahora
+          f.purgadoAt
             ? ("purgado" as const)
             : f.vistoAt
               ? ("visto" as const)

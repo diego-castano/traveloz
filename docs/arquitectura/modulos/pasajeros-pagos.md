@@ -15,8 +15,8 @@ los datos de todo el grupo tal cual figuran en el documento de viaje. Con el
 otro, carga los datos de la tarjeta con la que paga.
 
 Los datos de pasajeros quedan en la bandeja del vendedor y el email se los
-manda completos. Los datos de tarjeta entran a una **bóveda cifrada** que se
-borra sola a las 96 horas: el vendedor recibe solo un aviso, abre el registro
+manda completos. Los datos de tarjeta entran a una **bóveda cifrada** sin
+vencimiento (ver §3.6): el vendedor recibe solo un aviso, abre el registro
 con su PIN o su contraseña, y lo manda a Administración con el número de file
 desde un botón que deja auditoría.
 
@@ -259,54 +259,27 @@ falta la clave o es inválida, `bovedaDisponible()` devuelve false y el
 formulario de pago no se muestra. Es preferible perder un envío que dejar un
 número de tarjeta legible en la base.
 
-### 3.6 Retención de 96 horas y purga
+### 3.6 Sin vencimiento (antes: retención de 96 horas y purga)
 
-[src/lib/datos-constantes.ts](../../../src/lib/datos-constantes.ts) exporta dos
-cosas y nada más:
+Desde el 28/09/2026, por pedido del cliente, **nada de este módulo vence**:
 
-```ts
-export const HORAS_BOVEDA = 96;
-export const TEXTO_HORAS_BOVEDA = `${HORAS_BOVEDA} horas`;
-```
+- La tarjeta queda en la bóveda sin fecha de expiración. Se eliminaron
+  `datos-purga.ts`, `datos-constantes.ts` (`HORAS_BOVEDA`), el endpoint
+  `POST /api/datos/purgar`, el workflow `purga-boveda.yml` y el secret
+  `PURGA_SECRET`.
+- Ya no se agenda el recordatorio "te queda 1 día" (`recordatorioPagoEmail`
+  se borró). `revelarPago` sigue cancelando el `recordatorioResendId` de las
+  filas viejas que lo tengan.
+- Las solicitudes por email (`SolicitudDato`) no vencen: el token sirve hasta
+  que el pasajero completa el formulario. Estados: `completada` o `pendiente`.
+- La migración `20260928120000_datos_sin_vencimiento` solo afloja el
+  `NOT NULL` de `expiraAt` en `SolicitudDato` y `DatosPagoCifrado`. Las filas
+  nuevas lo dejan en null y nada lo lee.
+- Los registros que el barrido ya había purgado (`purgadoAt` sellado, sin
+  payload) siguen mostrándose como "Borrado": esos datos no se recuperan.
 
-El módulo es puro a propósito, sin `node:crypto` ni Prisma, para que lo pueda
-importar un componente cliente, una pantalla del cotizador o un email del
-servidor. La vida de la bóveda se dice en siete pantallas distintas: con el
-número como literal en cada una, cambiarlo obligaba a acordarse de las siete, y
-el día que se olvida una la promesa que lee el pasajero deja de ser la que
-cumple el barrido.
-
-[src/lib/datos-purga.ts](../../../src/lib/datos-purga.ts) tiene el barrido:
-
-- `purgarBovedaVencida()` corre **un solo `updateMany`**, con el `where`
-  `{ expiraAt: { lt: ahora }, purgadoAt: null }` y el `data`
-  `{ payload: null, iv: null, tag: null, pasajeroDocumento: null, purgadoAt: ahora }`.
-- `barridoOportunista()` lo dispara con probabilidad 0,05 en cada lectura, y
-  nunca propaga el error.
-
-El archivo lleva un cartel en caja: **ese es el único `updateMany` permitido
-sobre `DatosPagoCifrado`, y siempre con ese mismo `where`**. Sin el
-`expiraAt < ahora` se borra la bóveda entera y no hay backup posible, porque el
-payload cifrado es la única copia. Sin el `purgadoAt: null` se pierde la fecha
-real de borrado. La base de este proyecto es producción.
-
-`pasajeroDocumento` se borra con la tarjeta porque también es dato personal. El
-nombre del pasajero queda: identifica la fila.
-
-**La red diaria** es
-[.github/workflows/purga-boveda.yml](../../../.github/workflows/purga-boveda.yml):
-cron `0 6 * * *` (06:00 UTC, 03:00 en Montevideo) más disparo manual. Hace un
-`POST` a `https://traveloz.com.uy/api/datos/purgar` con el header
-`x-purga-secret` tomado del secret `PURGA_SECRET`, y falla el job si la
-respuesta no es 200. Existe para el caso "nadie abrió el panel en todo el fin de
-semana"; en minutos de Actions es efectivamente gratis, que fue el criterio
-frente a un cron pago en Railway.
-
-El endpoint [/api/datos/purgar](../../../src/app/api/datos/purgar/route.ts) es
-solo POST, porque un GET que borra datos es un accidente esperando a un preload.
-Acepta el header con el secreto o una sesión de ADMIN. Si la env
-`PURGA_SECRET` falta del lado del servidor responde 503 pidiendo definirla y
-forzar redeploy; si el secreto no coincide, 401. Es idempotente.
+Las secciones de abajo que hablan de 96 horas, `expiraAt` o del recordatorio
+describen el comportamiento anterior.
 
 ### 3.7 Emails
 
@@ -557,7 +530,6 @@ revelado y de envío, así que hay una sola implementación de cada cosa.
 
 | Método y ruta | Quién | Qué |
 |---|---|---|
-| `POST /api/datos/purgar` | Header `x-purga-secret` o sesión ADMIN | Dispara el barrido de la bóveda |
 | `POST /api/datos/upload` | Público, con rate limit y validación por magic bytes | Sube un adjunto del formulario de pasajeros |
 | `GET /api/image/<key>` | Sesión; para `leads/datos-pasajeros/` además pertenencia | Descarga un adjunto |
 
@@ -601,7 +573,6 @@ interprete como fórmula.
 | Dónde | Qué |
 |---|---|
 | `DATOS_PAGO_KEY` (env) | Clave AES de 32 bytes en base64. Sin ella la bóveda no funciona y el formulario de pago no se muestra |
-| `PURGA_SECRET` (env + secret de GitHub) | Autentica el cron de la purga. Los dos lados tienen que coincidir |
 | SiteSetting `notificaciones_email_adm` | Casilla de Administración, editable en `/backend/web/notificaciones`. Se siembra vacía |
 | `FormularioDato.publicado` | La llave del go-live de cada formulario público |
 | `User.linkActivo` | Interruptor del link de un vendedor |

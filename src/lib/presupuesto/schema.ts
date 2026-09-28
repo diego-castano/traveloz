@@ -365,13 +365,15 @@ export function parseContenido(
 
 // ---------------------------------------------------------------------------
 // Estados: la UI habla en minúscula, la base en enum.
+//
+// Sin "vencida": las cotizaciones no vencen (cliente, 28/09). VENCIDA queda en
+// el enum de Prisma solo por las filas viejas; ni se filtra ni se fija a mano.
 // ---------------------------------------------------------------------------
 
 export const ESTADOS_UI = {
   borrador: "BORRADOR",
   enviada: "ENVIADA",
   abierta: "ABIERTA",
-  vencida: "VENCIDA",
   confirmada: "CONFIRMADA",
 } as const;
 
@@ -382,7 +384,6 @@ export const ESTADOS_DB: Record<EstadoDb, EstadoUi> = {
   BORRADOR: "borrador",
   ENVIADA: "enviada",
   ABIERTA: "abierta",
-  VENCIDA: "vencida",
   CONFIRMADA: "confirmada",
 };
 

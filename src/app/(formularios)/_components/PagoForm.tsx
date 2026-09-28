@@ -13,9 +13,10 @@
 //
 // De la tarjeta no se guarda nada en claro: la server action cifra el cuerpo
 // con AES-256-GCM y solo persiste emisor y últimos 4. Sí quedan legibles el
-// pasajero y el titular, que son la identidad del registro. El microcopy de
-// las 96 horas está a la vista a propósito - es la promesa que hace que
-// alguien se anime a cargar su tarjeta en un formulario web.
+// pasajero y el titular, que son la identidad del registro. El microcopy del
+// cifrado está a la vista a propósito - es la promesa que hace que alguien se
+// anime a cargar su tarjeta en un formulario web. (Ya no promete borrado: los
+// datos no vencen desde el 28/09.)
 // ---------------------------------------------------------------------------
 
 import { useMemo, useState } from "react";
@@ -272,7 +273,7 @@ export function PagoForm({
           <Lock className="mt-[2px] h-3.5 w-3.5 shrink-0 text-neutral-400" strokeWidth={1.6} />
           <div className="space-y-1">
             <p className="text-[12px] leading-relaxed text-neutral-600">
-              Los datos viajan cifrados y se eliminan automáticamente.
+              Los datos viajan y se guardan cifrados.
             </p>
             <p className="text-[11.5px] leading-relaxed text-neutral-400">
               Su asesor los ve una sola vez en el panel con su clave, y Administración de la

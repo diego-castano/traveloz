@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
 // La pantalla que ve el pasajero cuando el link ya no abre.
 //
-// No es un error: es una conversación que sigue. Un link vencido significa que
-// la cotización tiene precios de hace días, y lo que corresponde no es
-// mostrarlos igual sino ponerlo en contacto con su asesor en un toque.
+// No es un error: es una conversación que sigue. Los links no vencen: esto
+// solo aparece cuando el vendedor revocó el link (reenvió la cotización), y lo
+// que corresponde es ponerlo en contacto con su asesor en un toque.
 //
 // Vive aparte de `NoDisponible` de los formularios porque el remate es otro: acá
 // el CTA es el WhatsApp del vendedor concreto, no un texto genérico.
@@ -14,7 +14,6 @@
 // que ya no existe: sin ese fondo el texto quedaba invisible.
 // ---------------------------------------------------------------------------
 
-import { Clock3 } from "lucide-react";
 import { telefonoWa } from "@/lib/telefono";
 
 export interface VendedorDelLink {
@@ -26,20 +25,12 @@ export interface VendedorDelLink {
   cargo: string;
 }
 
-export function CotizacionNoDisponible({
-  vendedor,
-  vencida = false,
-}: {
-  vendedor: VendedorDelLink;
-  vencida?: boolean;
-}) {
+export function CotizacionNoDisponible({ vendedor }: { vendedor: VendedorDelLink }) {
   const primerNombre = vendedor.nombre.split(" ")[0] || "tu asesor";
   // wa.me sin código de país no abre ningún chat: lo agrega el helper.
   const wa = telefonoWa(vendedor.tel);
   const texto = encodeURIComponent(
-    vencida
-      ? `Hola ${primerNombre}, se me venció el link de la cotización. ¿Me la podés volver a mandar?`
-      : `Hola ${primerNombre}, no me abre el link de la cotización. ¿Me la podés volver a mandar?`,
+    `Hola ${primerNombre}, no me abre el link de la cotización. ¿Me la podés volver a mandar?`,
   );
   const href = wa ? `https://wa.me/${wa}?text=${texto}` : `mailto:${vendedor.email}`;
 
@@ -47,14 +38,8 @@ export function CotizacionNoDisponible({
     <div className="cot-vencida">
       <section>
         <span className="cv-rule" />
-        <h1 className="disp cv-t">
-          {vencida ? "Esta cotización venció" : "Esta cotización no está disponible"}
-        </h1>
-        <p className="cv-p">
-          {vencida
-            ? "Los precios de aéreos y hoteles cambian todos los días, así que los links tienen fecha de vencimiento. La vigencia se cuenta en horas hábiles: no corren sábados ni domingos. Pedile a tu asesor uno nuevo y lo tenés en minutos."
-            : "No pudimos abrirla. Escribile a tu asesor y te la manda de nuevo."}
-        </p>
+        <h1 className="disp cv-t">Esta cotización no está disponible</h1>
+        <p className="cv-p">No pudimos abrirla. Escribile a tu asesor y te la manda de nuevo.</p>
 
         <div className="cv-vend">
           {vendedor.foto ? (
@@ -72,13 +57,6 @@ export function CotizacionNoDisponible({
         <a href={href} target={wa ? "_blank" : undefined} rel={wa ? "noreferrer" : undefined} className="cv-cta">
           {wa ? "Pedirle una cotización nueva" : "Escribirle por email"}
         </a>
-
-        {/* La nota de las horas hábiles solo tiene sentido si los links vencen. */}
-        {vencida && (
-          <p className="cv-nota">
-            <Clock3 size={13} /> Los links valen unas horas hábiles: el fin de semana no cuenta.
-          </p>
-        )}
       </section>
     </div>
   );

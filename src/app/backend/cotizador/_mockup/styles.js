@@ -1051,7 +1051,7 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 .precio-chip[data-latido="1"] { animation:precioLatido .42s cubic-bezier(.2,.8,.2,1); }
 @media (prefers-reduced-motion:reduce){ .precio-chip[data-latido="1"] { animation:none; } }
 
-/* ── link vencido o revocado ──────────────────────────────────────────────
+/* ── link revocado (no disponible) ──────────────────────────────────────────────
    Misma tarjeta, misma sombra y mismo Playfair que la hoja: el pasajero tiene
    que reconocer de dónde viene, aunque lo que abrió ya no esté. */
 .cot-vencida { max-width:560px; margin:0 auto; padding:8px 20px 20px; }

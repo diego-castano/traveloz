@@ -3,11 +3,11 @@
 //
 // Lo abre el pasajero desde WhatsApp o desde el email. No hay cuenta, no hay
 // sesión: el token de 8 caracteres es toda la credencial, y por eso se valida
-// forma, vigencia y revocación antes de tocar nada.
+// forma y revocación antes de tocar nada. Los links no vencen.
 //
 // Estados:
 //   • token con forma rara / inexistente / cotización borrada → notFound()
-//   • link revocado o vencido                                  → pantalla de cortesía
+//   • link revocado                                            → pantalla de cortesía
 //   • todo bien                                                → la ficha del pasajero
 //
 // `?print=1` dibuja la misma hoja que la vista de impresión del editor (sin la
@@ -19,7 +19,6 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { checkFormRate, peekFormRate } from "@/lib/rate-limit";
 import { ipConfiableDeHeaders } from "@/lib/request-ip";
 import { logger } from "@/lib/logger";
@@ -53,7 +52,7 @@ function fechaLarga(iso: unknown): string {
   return mes ? `${Number(m[3])} de ${mes.toLowerCase()} de ${m[1]}` : "";
 }
 
-/** Lo que ve quien llega con un token que no existe, vencido o mal formado.
+/** Lo que ve quien llega con un token que no existe, revocado o mal formado.
  *  Es también el piso de la vista previa: nunca se muestra menos que esto. */
 const META_BASE: Metadata = {
   title: "Tu cotización · TravelOz",
@@ -100,12 +99,10 @@ export async function generateMetadata(
       where: { token },
       select: {
         revocadoAt: true,
-        expiraAt: true,
         presupuesto: { select: { contenido: true, deletedAt: true } },
       },
     });
     if (!link || link.presupuesto.deletedAt || link.revocadoAt) return META_BASE;
-    if (linkVencido(link.expiraAt)) return META_BASE;
 
     const leido = parseContenido(link.presupuesto.contenido);
     if (!leido.ok) return META_BASE;
@@ -163,11 +160,9 @@ function semilla(key: string): string {
  * y la vigencia por defecto.
  *
  * La línea de la vigencia —la que el máster escribe con `{vigencia}` adentro—
- * se cae acá y no llega a la página. El documento que el pasajero lee y el PDF
- * que se guarda no llevan fecha de vencimiento impresa: el que la necesita es
- * el vendedor, y la tiene donde corresponde (el link vence solo, el email la
- * dice y el listado la muestra con su semáforo). La semilla de
- * `cotizador_condiciones` no se toca: el filtro es del render.
+ * se cae acá y no llega a la página: las cotizaciones no vencen, así que no
+ * hay vigencia que imprimir. La semilla de `cotizador_condiciones` no se
+ * toca: el filtro es del render.
  *
  * Deliberadamente NO se reusa `getContextoCotizador`: esa action exige sesión
  * de vendedor y acá del otro lado hay un pasajero.
@@ -220,7 +215,6 @@ export default async function CotizacionPublicaPage({
   const link = await prisma.presupuestoLink.findUnique({
     where: { token },
     select: {
-      expiraAt: true,
       revocadoAt: true,
       presupuesto: {
         select: {
@@ -284,10 +278,10 @@ export default async function CotizacionPublicaPage({
     rol: "",
   };
 
-  // Revocado —o vencido, cuando los links vencen (`LINKS_VENCEN`)—: no es un
-  // 404, es una conversación que sigue.
-  if (link.revocadoAt || linkVencido(link.expiraAt)) {
-    return <CotizacionNoDisponible vendedor={vendedor} vencida={linkVencido(link.expiraAt)} />;
+  // Revocado: no es un 404, es una conversación que sigue. Los links no
+  // vencen (Gero 11/09, cliente 28/09): solo deja de abrir uno revocado.
+  if (link.revocadoAt) {
+    return <CotizacionNoDisponible vendedor={vendedor} />;
   }
 
   const parsed = parseContenido(link.presupuesto.contenido);

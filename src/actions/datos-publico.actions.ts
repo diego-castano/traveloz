@@ -6,7 +6,7 @@
 //   getVendedorPublico(slug)  → la tarjeta del asesor que ve el pasajero.
 //   getSolicitud(token)       → precarga cuando el link vino por email (?s=).
 //   submitEnvioPasajeros(...) → EnvioPasajeros + N PasajeroDato + aviso.
-//   submitDatosPago(...)      → DatosPagoCifrado (bóveda 96 h) + aviso.
+//   submitDatosPago(...)      → DatosPagoCifrado (bóveda, sin vencimiento) + aviso.
 //
 // Reglas que no se negocian:
 //   • Los adjuntos NO viajan por acá: el cliente los sube antes a
@@ -35,7 +35,6 @@ import {
   type PasajeroInput,
 } from "@/lib/datos-form";
 import {
-  HORAS_BOVEDA,
   bovedaDisponible,
   cifrar,
   detectarEmisor,
@@ -49,7 +48,6 @@ import {
   avisoPagoEmail,
   envioPasajerosEmail,
   fechaLarga,
-  recordatorioPagoEmail,
   type PasajeroEmail,
 } from "@/lib/datos-email";
 import type { TipoFormularioDato } from "@prisma/client";
@@ -125,15 +123,15 @@ async function vendedorPorSlug(slug: string) {
 }
 
 /**
- * Solicitud vigente para este tipo. Un token vencido o ya usado devuelve null
- * y el envío sigue igual por el link permanente (solo no queda sellado).
+ * Solicitud pendiente para este tipo. Las solicitudes no vencen: solo un token
+ * ya usado devuelve null, y el envío sigue igual por el link permanente (solo
+ * no queda sellado).
  */
 async function solicitudVigente(token: string | null, tipo: TipoFormularioDato) {
   if (!token) return null;
   const row = await prisma.solicitudDato.findUnique({ where: { token } });
   if (!row || row.tipo !== tipo) return null;
   if (row.completadoAt) return null;
-  if (row.expiraAt.getTime() < Date.now()) return null;
   return row;
 }
 
@@ -182,7 +180,7 @@ export async function getSolicitud(token: string): Promise<SolicitudView | null>
     const limpio = token.trim();
     if (!limpio || limpio.length > 200) return null;
     const row = await prisma.solicitudDato.findUnique({ where: { token: limpio } });
-    if (!row || row.completadoAt || row.expiraAt.getTime() < Date.now()) return null;
+    if (!row || row.completadoAt) return null;
     return {
       tipo: row.tipo,
       destinatarioNombre: row.destinatarioNombre,
@@ -481,8 +479,9 @@ export async function submitDatosPago(
       extras: datos.respuestas,
     });
 
+    // Sin vencimiento (pedido del cliente 28/09): la tarjeta queda en la
+    // bóveda hasta que se borre a mano. No hay purga ni recordatorio.
     const solicitud = await solicitudVigente(solicitudToken, "PAGO");
-    const expiraAt = new Date(Date.now() + HORAS_BOVEDA * 60 * 60 * 1000);
 
     const registro = await prisma.datosPagoCifrado.create({
       data: {
@@ -497,7 +496,6 @@ export async function submitDatosPago(
         payload: sobre.payload,
         iv: sobre.iv,
         tag: sobre.tag,
-        expiraAt,
       },
       select: { id: true },
     });
@@ -519,8 +517,7 @@ export async function submitDatosPago(
     // 18/09/2026: el vendedor necesita reenviarle a administración lo que
     // cargó el pasajero, tal cual. Se le advirtió que PCI-DSS prohíbe
     // retransmitir el código de seguridad y que el dato queda en casillas que
-    // no controlamos. El recordatorio de las 24 h sigue sin llevar nada: se
-    // arma con estos mismos opts pero su plantilla no los mira.
+    // no controlamos.
     const avisoOpts = {
       vendedorNombre: vendedor.name,
       pasajeroNombre: datos.pasajeroNombre,
@@ -528,7 +525,6 @@ export async function submitDatosPago(
       titular: datos.titular,
       emisor,
       ultimos4: cola,
-      expiraAt,
       linkAdmin: `${SITE_BASE_URL}${ADMIN_PAGOS_PATH}/${registro.id}`,
       destino: solicitud?.destino ?? null,
       referencia: solicitud?.referencia ?? null,
@@ -554,54 +550,6 @@ export async function submitDatosPago(
       });
     } catch (err) {
       log.error(`datos.pago.email failed (pago ${registro.id})`, err);
-    }
-
-    // Recordatorio agendado en Resend para 24 h antes de la purga. Guardamos
-    // el id devuelto para poder cancelarlo cuando el vendedor abra la bóveda
-    // (ver revelarPago en datos-boveda.actions.ts).
-    //
-    // El `if` de fecha futura es redundante con HORAS_BOVEDA = 96, pero queda
-    // por si esa constante baja de 24: agendar en el pasado lo rechaza Resend
-    // con un 422 y perderíamos el recordatorio sin enterarnos.
-    //
-    // Best-effort de punta a punta: sin RESEND_API_KEY no hay id (modo
-    // console) y el campo queda en null, que es exactamente lo que espera la
-    // cancelación. Nada de esto puede hacer fallar el envío del pasajero.
-    try {
-      // 24 h antes de la purga, pero nunca más allá de 71 h desde ahora: el
-      // `scheduled_at` de Resend admite hasta 72 h y con la bóveda de 96 h
-      // caía justo en el borde (y un rechazo se perdía en silencio).
-      const recordarAt = new Date(Math.min(
-        expiraAt.getTime() - 24 * 60 * 60 * 1000,
-        Date.now() + 71 * 60 * 60 * 1000,
-      ));
-      if (recordarAt.getTime() > Date.now()) {
-        const tmpl = recordatorioPagoEmail(avisoOpts);
-        const res = await sendEmail({
-          to: vendedor.email,
-          from: DATOS_FROM,
-          subject: tmpl.subject,
-          html: tmpl.html,
-          text: tmpl.text,
-          scheduledAt: recordarAt,
-        });
-        if (res.id) {
-          await prisma.datosPagoCifrado.update({
-            where: { id: registro.id },
-            data: { recordatorioResendId: res.id },
-          });
-        } else {
-          // Sin id no hay recordatorio agendado (Resend lo rechazó o no hay
-          // API key): que quede en el log en vez de perderse en silencio.
-          log.warn("datos.pago.recordatorio.sin_id", {
-            pagoId: registro.id,
-            provider: res.provider,
-            error: typeof res.error === "string" ? res.error.slice(0, 200) : undefined,
-          });
-        }
-      }
-    } catch (err) {
-      log.error(`datos.pago.recordatorio failed (pago ${registro.id})`, err);
     }
 
     return { ok: true, message: EXITO_PAGO };

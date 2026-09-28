@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Sparkles, MessageSquare, FileText, Copy, Trash2, Plus, Check, ChevronDown, ChevronRight, Search,
   Send, Eye, ArrowLeft, Command, Zap, X, Smartphone, Loader2, CheckCheck,
-  RefreshCw, PenLine, TrendingUp, Ticket, Files, ListChecks, Plane, Settings
+  PenLine, TrendingUp, Ticket, Files, ListChecks, Plane, Settings
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -13,7 +13,6 @@ import {
   ESTADOS, estadoEfectivo, norm
 } from "./data";
 import { useCtz, useCatalogo, buscarVendedor } from "./contexto";
-import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { Foto, Btn, Pill, ChipIA, Vacio, SelectBuscable } from "./ui";
 import { MisLinks } from "./mis-links";
 import { DrawerAnalytics } from "./drawer";
@@ -22,8 +21,7 @@ import { fmtDuracion, fmtLectura } from "./adaptadores";
 import { SECCIONES } from "@/lib/presupuesto/secciones";
 import { partirDestinoPeriodo } from "@/lib/presupuesto/destino";
 import {
-  setEstadoManual, setNotasInternas, registrarConfirmacion, reactivarPresupuesto,
-  extenderVigencia as extenderVigenciaAction, eliminarPresupuesto,
+  setEstadoManual, setNotasInternas, registrarConfirmacion, eliminarPresupuesto,
 } from "@/actions/presupuesto.actions";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -31,25 +29,13 @@ import {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* v2F · qué entra en la cola de hoy y por qué — misma regla en todos lados.
-   El vencimiento sale de `expiraAt`, que es lo que guardó el server al marcar
-   la cotización como enviada, y las horas se cuentan HÁBILES: el sábado y el
-   domingo no corren ni para la vigencia ni para el "+24 h sin abrir". Sin eso
-   la cola del lunes amanecía llena de recordatorios de un envío del viernes a
-   la tarde que nadie tuvo tiempo de mirar. */
+   Las horas se cuentan HÁBILES: el sábado y el domingo no corren para el
+   "+24 h sin abrir". Sin eso la cola del lunes amanecía llena de recordatorios
+   de un envío del viernes a la tarde que nadie tuvo tiempo de mirar. Las
+   cotizaciones no vencen, así que no hay "vencidas" en la cola. */
 function calcularCola(base, hechos = {}) {
   return base.map((r) => {
     if (hechos[r.id]) return null;
-    if (r.estado === "vencida") {
-      /* cuánto hace que venció va en horas de calendario: "venció ayer" tiene
-         que seguir diciendo ayer aunque ayer haya sido domingo */
-      const t = r.expiraAt ? new Date(r.expiraAt).getTime() : NaN;
-      const venc = Number.isFinite(t) ? (Date.now() - t) / 3600000 : null;
-      const motivo = venc == null ? "El link ya no está vigente"
-        : venc < 24 ? "El link venció hoy"
-        : venc < 48 ? "El link venció ayer"
-        : `El link venció hace ${Math.round(venc / 24)} días`;
-      return { r, tipo:"vencida", c:"#F43E55", tone:"coral", motivo };
-    }
     const habiles = horasHabilesDesdeEnvio(r);
     if (r.estado === "enviada" && r.aperturas === 0 && habiles != null && habiles >= 24) {
       const d = Math.max(1, Math.round(habiles / 24));
@@ -804,22 +790,6 @@ function useAccionesFila({ recargar, toast, cerrarDrawer }) {
 
   const fallo = useCallback((id, msg) => { despisar(id); toast?.({ msg, tone:"warn" }); }, [despisar, toast]);
 
-  const reactivar = useCallback(async (r) => {
-    pisar(r.id, { estado:"enviada", estadoManual:null, aperturas:0 });
-    const res = await reactivarPresupuesto(r.id);
-    if (!res.ok) return fallo(r.id, res.error);
-    toast?.({ msg:`Reactivada por ${r.vigencia || 96} h ✓`, tone:"ok" });
-    await refrescar();
-  }, [pisar, fallo, toast, refrescar]);
-
-  const extender = useCallback(async (r) => {
-    const res = await extenderVigenciaAction(r.id, 48);
-    if (!res.ok) return fallo(r.id, res.error);
-    pisar(r.id, { expiraAt: res.data.expiraAt, estadoManual: null });
-    toast?.({ msg:"Vigencia extendida — el link vuelve a estar activo 48 h", tone:"ok" });
-    await refrescar();
-  }, [pisar, fallo, toast, refrescar]);
-
   const cambiarEstado = useCallback(async (r, estadoUi) => {
     pisar(r.id, { estadoManual: estadoUi });
     const res = await setEstadoManual(r.id, estadoUi);
@@ -852,7 +822,7 @@ function useAccionesFila({ recargar, toast, cerrarDrawer }) {
   /* el envío marcado desde el modal ya escribió en la base: solo refrescamos */
   const marcada = useCallback(async () => { await refrescar(); }, [refrescar]);
 
-  return { ov, reactivar, extender, cambiarEstado, guardarNotas, confirmar, eliminar, marcada, refrescar };
+  return { ov, cambiarEstado, guardarNotas, confirmar, eliminar, marcada, refrescar };
 }
 
 /** Aplica las pisadas locales y recalcula el estado efectivo de cada fila. */
@@ -871,7 +841,7 @@ function conPisadas(base, ov) {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── v2 · A3 · cola de trabajo del día ───────────────────────────────── */
-function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbrir }) {
+function ColaParaHoy({ items, onRecordatorio, onSeguimiento, onAbrir }) {
   const [abierta, setAbierta] = useState(true);
   const hay = items.length > 0;
   return (
@@ -902,11 +872,6 @@ function ColaParaHoy({ items, onReactivar, onRecordatorio, onSeguimiento, onAbri
                 <Pill tone={it.tone}>{it.motivo}</Pill>
               </button>
 
-              {it.tipo === "vencida" && (
-                <Btn size="xs" className="cola-acc" style={{ flexShrink:0, color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
-                  borderColor:"rgba(59,191,173,.4)", fontWeight:700 }}
-                  onClick={() => onReactivar(it.r)}><RefreshCw size={11} /> Reactivar</Btn>
-              )}
               {it.tipo === "recordatorio" && (
                 <Btn size="xs" className="cola-acc" style={{ flexShrink:0 }} onClick={() => onRecordatorio(it.r)}>
                   <Send size={11} /> Mandar recordatorio</Btn>
@@ -971,7 +936,7 @@ function TabSeguimiento({ base, recargar, toast, onEditar, onDuplicar }) {
     <div className="a-fade">
 
       {/* v2 · A3 · la cola del día, antes que cualquier número */}
-      <ColaParaHoy items={cola} onReactivar={acc.reactivar} onRecordatorio={recordatorio}
+      <ColaParaHoy items={cola} onRecordatorio={recordatorio}
         onSeguimiento={seguimiento} onAbrir={(r) => setSelId(r.id)} />
 
       {/* reportes por vendedor */}
@@ -1008,7 +973,6 @@ function TabSeguimiento({ base, recargar, toast, onEditar, onDuplicar }) {
           <span className="sem-dot" style={{ background:"#2A9E8E", width:8, height:8 }} /> abierta
           <span className="sem-dot" style={{ background:"#45D4C0", width:8, height:8, marginLeft:7 }} /> en ventana
           <span className="sem-dot" style={{ background:"#E8A13C", width:8, height:8, marginLeft:7 }} /> +24 h hábiles sin abrir
-          {LINKS_VENCEN && <><span className="sem-dot" style={{ background:"#F43E55", width:8, height:8, marginLeft:7 }} /> link vencido</>}
         </span>
       </div>
 
@@ -1019,7 +983,7 @@ function TabSeguimiento({ base, recargar, toast, onEditar, onDuplicar }) {
         onConfirmar={acc.confirmar}
         onEstado={acc.cambiarEstado}
         onEliminar={acc.eliminar}
-        onExtender={acc.extender} onRecordatorio={acc.marcada} />}
+        onRecordatorio={acc.marcada} />}
     </div>
   );
 }
@@ -1091,7 +1055,7 @@ function ListadoContenido({
      la grilla no puede mostrar. El reparto lo decide `bucketSemaforo()`, el
      mismo que usa `resumenSemaforo()` en el server para el badge del shell. */
   const resumenSem = useMemo(() => {
-    const c = { roja:0, amarilla:0, verde:0, borrador:0 };
+    const c = { amarilla:0, verde:0, borrador:0 };
     for (const r of conOv) { const b = bucketSemaforo(r); if (b) c[b] += 1; }
     return c;
   }, [conOv]);
@@ -1099,9 +1063,6 @@ function ListadoContenido({
   /* Sin chip de "+24 h hábiles sin abrir": el cliente no lo usa (15/09). La
      fila sigue marcándose en ámbar en la columna de seguimiento. */
   const CHIPS_SEM = [
-    /* la chip roja solo existe mientras los links vencen */
-    ...(LINKS_VENCEN ? [{ k:"roja", c:"#F43E55", l:"Vencidas sin abrir", n:resumenSem.roja,
-      tip:"El link venció y el pasajero nunca lo abrió. Reactivá y reenviá." }] : []),
     { k:"verde",    c:"#2A9E8E", l:"Abiertas o confirmadas",   n:resumenSem.verde,
       tip:"El pasajero la abrió, o ya confirmó. Buen momento para el seguimiento." },
     { k:"borrador", c:"#B0B4CD", l:"Borradores",               n:resumenSem.borrador,
@@ -1180,7 +1141,7 @@ function ListadoContenido({
           </button>
         )}
         <span className="hint-desk" style={{ fontSize:10.5, color:"var(--n300)", marginLeft:"auto" }}>
-          {LINKS_VENCEN ? "la vigencia y el “+24 h” se cuentan en horas hábiles" : "el “+24 h” se cuenta en horas hábiles"}
+          el “+24 h” se cuenta en horas hábiles
         </span>
       </div>
 
@@ -1196,7 +1157,7 @@ function ListadoContenido({
           <span className="sem lbl" style={{ width:26, flexShrink:0, justifyContent:"center", cursor:"help" }}>
             Seg.
             <div className="tip"><b>Semáforo de seguimiento</b>
-              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h hábiles. Ámbar: +24 h hábiles sin abrir.{LINKS_VENCEN ? " Rojo: la vigencia se cumplió sin apertura." : ""} Las horas hábiles no cuentan sábados ni domingos.</div>
+              Verde: abierta o confirmada. Teal: enviada hace menos de 24 h hábiles. Ámbar: +24 h hábiles sin abrir. Las horas hábiles no cuentan sábados ni domingos.</div>
           </span>
           <span className="lbl" style={{ width:52, flexShrink:0, textAlign:"right" }}>Creada</span>
           <span style={{ width:13, flexShrink:0 }} />
@@ -1246,14 +1207,6 @@ function ListadoContenido({
 
               {/* v2 · A4 y A5 · lo más usado, sin abrir la cotización */}
               <div className="fila-acc" onClick={(e) => e.stopPropagation()}>
-                {r.estado === "vencida" && (
-                  <Btn size="xs" title="Generar un link nuevo y volver a dejarla vigente"
-                    style={{ color:"var(--teal-3)", background:"rgba(59,191,173,.09)",
-                      borderColor:"rgba(59,191,173,.4)", fontWeight:700 }}
-                    onClick={(e) => { e.stopPropagation(); acc.reactivar(r); }}>
-                    <RefreshCw size={11} /> Reactivar
-                  </Btn>
-                )}
                 <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Abrir en el editor"
                   onClick={(e) => { e.stopPropagation(); onEditar?.(r); }}><PenLine size={12} /></button>
                 <button className="btn btn-s btn-ico" style={{ width:27, height:27 }} title="Duplicar"
@@ -1291,7 +1244,7 @@ function ListadoContenido({
         onConfirmar={acc.confirmar}
         onEstado={acc.cambiarEstado}
         onEliminar={acc.eliminar}
-        onExtender={acc.extender} onRecordatorio={acc.marcada} />}
+        onRecordatorio={acc.marcada} />}
     </div>
   );
 }

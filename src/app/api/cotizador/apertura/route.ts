@@ -21,7 +21,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { linkVencido } from "@/lib/presupuesto/vencimiento";
 import { logger } from "@/lib/logger";
 import { checkAperturaRate } from "@/lib/rate-limit";
 import {
@@ -65,24 +64,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 429 });
   }
 
-  // Link vivo: existe, sin revocar, con la cotización sin borrar y —si los
-  // links vencen— dentro de la vigencia. Es la misma puerta que la página
-  // pública.
+  // Link vivo: existe, sin revocar y con la cotización sin borrar (los links
+  // no vencen). Es la misma puerta que la página pública.
   const link = await prisma.presupuestoLink.findUnique({
     where: { token },
     select: {
       id: true,
-      expiraAt: true,
       revocadoAt: true,
       presupuesto: { select: { id: true, estado: true, primeraAperturaAt: true, deletedAt: true } },
     },
   });
-  if (
-    !link ||
-    link.revocadoAt ||
-    link.presupuesto.deletedAt ||
-    linkVencido(link.expiraAt)
-  ) {
+  if (!link || link.revocadoAt || link.presupuesto.deletedAt) {
     return NextResponse.json({ ok: false }, { status: 404 });
   }
 
@@ -138,7 +130,7 @@ async function abrir(
         ultimaAperturaAt: ahora,
         ...(link.presupuesto.primeraAperturaAt ? {} : { primeraAperturaAt: ahora }),
         // ENVIADA → ABIERTA. Una CONFIRMADA no vuelve para atrás porque el
-        // pasajero recargue la página, y una VENCIDA no llega hasta acá.
+        // pasajero recargue la página.
         ...(link.presupuesto.estado === "ENVIADA" ? { estado: "ABIERTA" as const } : {}),
       },
     })

@@ -47,12 +47,6 @@ const log = logger.child({ module: "datos-vendedor.actions" });
 /** Tamaño de página del listado de envíos. */
 const ENVIOS_PAGE_SIZE = 20;
 
-/** Vida de la solicitud según el tipo (el link del email caduca; el permanente no). */
-const HORAS_SOLICITUD: Record<TipoFormularioDato, number> = {
-  PASAJEROS: 7 * 24,
-  PAGO: 48,
-};
-
 /** Tope de invitaciones por vendedor cada 24 h. Se cuenta en DB, sin lib nueva. */
 const MAX_SOLICITUDES_DIA = 30;
 
@@ -170,7 +164,7 @@ export interface DatosCounts {
   envios: number;
   /** Envíos todavía sin abrir · el badge violeta de la solapa. */
   enviosSinVer: number;
-  /** Tarjetas todavía legibles: sin purgar y sin vencer. */
+  /** Tarjetas todavía legibles (sin purgar). */
   pagosVivos: number;
 }
 
@@ -180,7 +174,7 @@ export async function getMisDatosCounts(vendedorId?: string): Promise<DatosCount
     prisma.envioPasajeros.count({ where: { vendedorId: targetId } }),
     prisma.envioPasajeros.count({ where: { vendedorId: targetId, vistoAt: null } }),
     prisma.datosPagoCifrado.count({
-      where: { vendedorId: targetId, purgadoAt: null, expiraAt: { gt: new Date() } },
+      where: { vendedorId: targetId, purgadoAt: null },
     }),
   ]);
   return { envios, enviosSinVer, pagosVivos };
@@ -390,8 +384,6 @@ export interface PagoResumen {
   emisor: string | null;
   ultimos4: string;
   createdAt: Date;
-  /** El reloj de la tarjeta lo dibuja el cliente contra esta fecha. */
-  expiraAt: Date;
   vistoAt: Date | null;
   purgadoAt: Date | null;
   estado: EstadoPago;
@@ -421,7 +413,6 @@ export async function getMisPagos(vendedorId?: string): Promise<PagoResumen[]> {
       emisor: true,
       ultimos4: true,
       createdAt: true,
-      expiraAt: true,
       vistoAt: true,
       purgadoAt: true,
       numeroFile: true,
@@ -430,13 +421,12 @@ export async function getMisPagos(vendedorId?: string): Promise<PagoResumen[]> {
     },
   });
 
-  const ahora = Date.now();
   return filas.map((f) => ({
     ...f,
     nombre: nombrePago(f),
-    // Una fila sin purgar pero vencida cuenta como purgada para la UI: el
-    // barrido corre cada tanto y no queremos prometer datos que ya no sirven.
-    estado: f.purgadoAt || f.expiraAt.getTime() <= ahora
+    // Los datos no vencen: "purgado" son solo los que limpió el barrido de
+    // 96 h que existía antes.
+    estado: f.purgadoAt
       ? "purgado"
       : f.vistoAt
         ? "visto"
@@ -576,8 +566,9 @@ export async function crearSolicitud(input: {
     };
   }
 
+  // Sin vencimiento (pedido del cliente 28/09): el link del email sirve
+  // hasta que el pasajero lo complete.
   const token = randomBytes(32).toString("hex");
-  const expiraAt = new Date(Date.now() + HORAS_SOLICITUD[tipo] * 60 * 60 * 1000);
 
   const solicitud = await prisma.solicitudDato.create({
     data: {
@@ -590,7 +581,6 @@ export async function crearSolicitud(input: {
       destino: limpio(datos.destino),
       referencia: limpio(datos.referencia),
       token,
-      expiraAt,
     },
     select: { id: true },
   });
@@ -633,7 +623,7 @@ export async function crearSolicitud(input: {
   return { ok: true, message: "Listo, le mandamos el formulario por email." };
 }
 
-export type EstadoSolicitud = "completada" | "vigente" | "vencida";
+export type EstadoSolicitud = "completada" | "pendiente";
 
 export interface SolicitudResumen {
   id: string;
@@ -642,7 +632,6 @@ export interface SolicitudResumen {
   destino: string | null;
   referencia: string | null;
   enviadoAt: Date;
-  expiraAt: Date;
   completadoAt: Date | null;
   estado: EstadoSolicitud;
 }
@@ -663,19 +652,13 @@ export async function getMisSolicitudes(
       destino: true,
       referencia: true,
       enviadoAt: true,
-      expiraAt: true,
       completadoAt: true,
     },
   });
 
-  const ahora = Date.now();
   return filas.map((f) => ({
     ...f,
-    estado: f.completadoAt
-      ? "completada"
-      : f.expiraAt.getTime() <= ahora
-        ? "vencida"
-        : "vigente",
+    estado: f.completadoAt ? "completada" : "pendiente",
   }));
 }
 
@@ -860,7 +843,7 @@ async function nombresDeUsuarios(ids: (string | null)[]): Promise<Map<string, st
 // Decisiones del cliente (26/08/2026):
 //   • NO pide PIN. La sesión del vendedor alcanza; el registro en AuditLog es
 //     la contrapartida.
-//   • NO borra ni acorta la tarjeta: sigue viva hasta expiraAt.
+//   • NO borra la tarjeta: sigue en la bóveda.
 //   • El número de file es obligatorio y va en el asunto: es la clave con la
 //     que Administración archiva el cobro.
 // ---------------------------------------------------------------------------
@@ -968,7 +951,6 @@ export async function enviarPagoAAdm(
         payload: true,
         iv: true,
         tag: true,
-        expiraAt: true,
         purgadoAt: true,
         solicitudId: true,
         numeroFile: true,
@@ -980,7 +962,7 @@ export async function enviarPagoAAdm(
       // Mismo mensaje que "no existe": no confirmamos un registro ajeno.
       return { ok: false, message: "No encontramos estos datos de pago." };
     }
-    if (row.purgadoAt !== null || row.expiraAt.getTime() < Date.now()) {
+    if (row.purgadoAt !== null) {
       return { ok: false, message: "El dato ya fue eliminado." };
     }
     if (!row.payload || !row.iv || !row.tag) {

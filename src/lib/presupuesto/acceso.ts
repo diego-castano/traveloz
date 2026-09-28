@@ -85,9 +85,9 @@ export async function cargarPropia(id: string, s: Scope) {
       vigenciaHoras: true,
       enviadaAt: true,
       expiraAt: true,
-      // `confirmadaAt` lo necesita `estadoEfectivoDe`: sin él, una confirmada
-      // se leería como vencida en cuanto pasara la vigencia.
       confirmadaAt: true,
+      // Para leer una fila vieja con estado VENCIDA (ver `estadoEfectivoDe`).
+      primeraAperturaAt: true,
       contenido: true,
     },
   });

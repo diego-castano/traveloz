@@ -14,7 +14,7 @@
 // el violeta de marca, nada de gris puro.
 //
 // El CSS del cotizador se inyecta acá y no en la página: así el chrome también
-// puede usar sus variables y el wordmark, y la pantalla de link vencido —que
+// puede usar sus variables y el wordmark, y la pantalla de link no disponible —que
 // vive del otro lado del `return`— hereda la misma identidad.
 // ---------------------------------------------------------------------------
 

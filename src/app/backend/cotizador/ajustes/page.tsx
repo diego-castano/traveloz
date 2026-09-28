@@ -41,7 +41,9 @@ export default async function AjustesCotizadorPage() {
         <SettingsForm
           group="cotizador"
           title="Ajustes del cotizador"
-          blurb="Los textos y valores con los que arranca toda cotización nueva. En el mensaje, {nombre} se reemplaza por el nombre del cliente y {link} por el link de datos de pasajeros del vendedor; las condiciones van una por línea (la que lleve {vigencia} no se muestra: los links de cotización ya no vencen). La foto, el teléfono y el link de cada vendedor se cargan en Perfiles."
+          blurb="Los textos y valores con los que arranca toda cotización nueva. En el mensaje, {nombre} se reemplaza por el nombre del cliente y {link} por el link de datos de pasajeros del vendedor; las condiciones van una por línea (la que lleve {vigencia} no se muestra: las cotizaciones no vencen). La foto, el teléfono y el link de cada vendedor se cargan en Perfiles."
+          // Las cotizaciones no vencen: la vigencia por defecto no se edita.
+          excludeKeys={["cotizador_vigencia_default"]}
         />
       </div>
     </WebEditProvider>

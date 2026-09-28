@@ -53,15 +53,6 @@ type Paso = "confirmar" | "credencial" | "revelado";
 
 const AVISO_AUDITORIA = "Esta apertura queda registrada en la auditoría.";
 
-/** "quedan 51 h" / "quedan 40 min". null si ya venció. */
-function restante(expiraAt: Date): string | null {
-  const ms = new Date(expiraAt).getTime() - Date.now();
-  if (ms <= 0) return null;
-  const minutos = Math.floor(ms / 60000);
-  if (minutos < 60) return `${Math.max(1, minutos)} min`;
-  return `${Math.floor(minutos / 60)} h`;
-}
-
 /** El número agrupado de a 4 se lee y se dicta mucho mejor por teléfono. */
 function agrupar(numero: string): string {
   const digitos = numero.replace(/\D/g, "");
@@ -153,7 +144,6 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
   }
 
   const disponible = meta?.estado === "DISPONIBLE" || meta?.estado === "VISTO";
-  const quedan = meta ? restante(meta.expiraAt) : null;
 
   return (
     <Modal
@@ -200,11 +190,11 @@ export function RevelarModal({ pagoId, open, onOpenChange, onRevelado }: Revelar
                   Titular de la tarjeta: {meta.titular}
                 </p>
               )}
-              <p className="mt-1.5 text-[11.5px] text-neutral-400">
-                {quedan
-                  ? `Se borra en ${quedan}.`
-                  : "Ya no está disponible: se borró de la bóveda."}
-              </p>
+              {!disponible && (
+                <p className="mt-1.5 text-[11.5px] text-neutral-400">
+                  Ya no está disponible: se borró de la bóveda.
+                </p>
+              )}
             </div>
 
             {!disponible ? (

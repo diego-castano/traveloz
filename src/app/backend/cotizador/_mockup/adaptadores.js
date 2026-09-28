@@ -31,7 +31,7 @@ function horasDesde(fecha) {
 
 /**
  * Horas HÁBILES desde una fecha: las que cuentan para el semáforo. El sábado y
- * el domingo no suman, igual que en la vigencia del link.
+ * el domingo no suman.
  */
 function horasHabilesDesde(fecha) {
   if (!fecha) return null;
@@ -150,8 +150,8 @@ function fmtHaceCorto(fecha) {
 /**
  * Fila del server → fila de la grilla.
  *
- * `estado` es el EFECTIVO que ya resolvió el server (manual pisa, y una
- * enviada con la vigencia cumplida es vencida). El cliente lo vuelve a pasar
+ * `estado` es el EFECTIVO que ya resolvió el server (manual pisa; nunca es
+ * "vencida": las cotizaciones no vencen). El cliente lo vuelve a pasar
  * por `estadoEfectivo()` para que las pisadas locales del listado sigan
  * funcionando; con el estado ya resuelto esa segunda vuelta no cambia nada.
  */
@@ -164,7 +164,9 @@ export function filaDesdePresupuesto(fila) {
     destino: textoDestino(fila),
     vendedor: fila.vendedorId,
     estado: String(fila.estadoEfectivo || fila.estado || "borrador").toLowerCase(),
-    estadoManual: fila.estadoManual ? String(fila.estadoManual).toLowerCase() : null,
+    /* una marca manual "vencida" de antes no vale más: se ignora */
+    estadoManual: fila.estadoManual && fila.estadoManual !== "VENCIDA"
+      ? String(fila.estadoManual).toLowerCase() : null,
     monto: fila.montoPrincipal ?? 0,
     dias: diasDesde(fila.createdAt),
     hEnvio: horasDesde(fila.enviadaAt),
@@ -178,8 +180,6 @@ export function filaDesdePresupuesto(fila) {
     linkUrl: fila.link?.url ?? null,
     linkToken: fila.link?.token ?? null,
     linkCanal: fila.link?.canal ?? null,
-    linkExpiraAt: fila.link?.expiraAt ?? null,
-    linkVencido: fila.link?.vencido ?? false,
     /* lectura del pasajero */
     hastaMs: lect.hastaMs,
     lecturaSeg: lect.lecturaSeg,

@@ -44,15 +44,6 @@ const fechaCorta = new Intl.DateTimeFormat("es-UY", {
   minute: "2-digit",
 });
 
-/** Reloj de la bóveda: "quedan 51 h" / "quedan 40 min", o null si ya murió. */
-function restante(expiraAt: Date): string | null {
-  const ms = new Date(expiraAt).getTime() - Date.now();
-  if (ms <= 0) return null;
-  const minutos = Math.floor(ms / 60000);
-  if (minutos < 60) return `${Math.max(1, minutos)} min`;
-  return `${Math.floor(minutos / 60)} h`;
-}
-
 const ESTADO_LABEL: Record<EstadoPagoAdmin, string> = {
   vivo: "Sin abrir",
   visto: "Abierto",
@@ -127,8 +118,8 @@ export function PagosTabla() {
         <div>
           <h2 className="text-xl font-semibold text-neutral-900">Datos de pago</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Las tarjetas viven 96 horas cifradas y después se borran solas. Acá queda el
-            registro, aunque el dato ya no se pueda abrir.
+            Las tarjetas quedan cifradas en la bóveda, sin vencimiento. Acá está el
+            registro de todas las que se cargaron.
           </p>
         </div>
         <Select
@@ -184,7 +175,6 @@ export function PagosTabla() {
               </tr>
             ) : (
               data!.rows.map((r) => {
-                const quedan = r.estado === "purgado" ? null : restante(r.expiraAt);
                 const vivo = r.estado !== "purgado";
                 return (
                   <tr
@@ -213,9 +203,11 @@ export function PagosTabla() {
                       <Badge variant={ESTADO_VARIANT[r.estado]} size="sm">
                         {ESTADO_LABEL[r.estado]}
                       </Badge>
-                      <span className="ml-2 text-[11px] text-neutral-400">
-                        {quedan ? `se borra en ${quedan}` : "ya no se puede abrir"}
-                      </span>
+                      {!vivo && (
+                        <span className="ml-2 text-[11px] text-neutral-400">
+                          ya no se puede abrir
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {r.enviadoAdmAt ? (

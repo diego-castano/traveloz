@@ -2,13 +2,11 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
-  Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Trash2, Clock3, Copy,
+  Sparkles, Check, ChevronDown, Send, Eye, X, CheckCheck, PenLine, Trash2, Copy,
   Lock, Smartphone, Monitor, Loader2, Link2, Download, Users, CreditCard, ClipboardList,
   MailCheck, Clock3 as Reloj, ExternalLink, Inbox
 } from "lucide-react";
 import { semaforo, fmtHace, money, ESTADOS } from "./data";
-import { horasHabilesEntre, textoVencimiento } from "@/lib/presupuesto/habiles";
-import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { useCtz, buscarVendedor } from "./contexto";
 import { obtenerPresupuesto, emitirLink, datosDelPasajero } from "@/actions/presupuesto.actions";
 import { SECCIONES } from "@/lib/presupuesto/secciones";
@@ -27,7 +25,7 @@ function SinDatos() {
 }
 
 /* ── Drawer de analytics de una cotización ─────────────────────────────── */
-function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onRecordatorio, onEditar, onDuplicar, onBitacora, onEliminar, toast }) {
+function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onRecordatorio, onEditar, onDuplicar, onBitacora, onEliminar, toast }) {
   const { vendedores } = useCtz();
   const V = buscarVendedor(vendedores, r.vendedor);
   const S = semaforo(r);
@@ -79,7 +77,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
     let url = linkUrl;
     if (!url) {
       setCopiando(true);
-      const res = await emitirLink(r.id, { canal:"manual", vigenciaHoras: r.vigencia || 96 });
+      const res = await emitirLink(r.id, { canal:"manual" });
       setCopiando(false);
       if (!res.ok) { toast?.({ msg:res.error, tone:"warn" }); return; }
       url = res.data.url;
@@ -121,31 +119,8 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
   const [via, setVia] = useState("WhatsApp");
   const [borrando, setBorrando] = useState(false);
   const [notas, setNotas] = useState(r.bitacora || "");
-  /* también con el link vencido: el pasajero puede haber confirmado por
-     teléfono un rato después, y el vendedor tiene que poder anotarlo */
-  const puedeConfirmar = r.estado === "enviada" || r.estado === "abierta" || r.estado === "vencida";
+  const puedeConfirmar = r.estado === "enviada" || r.estado === "abierta";
   const apDet = r.apDet || [];
-  /* La vigencia y el vencimiento son los que guardó el server al marcarla
-     enviada. Lo que queda se cuenta en horas HÁBILES, igual que como se
-     calculó el vencimiento: un link emitido el viernes 15:00 con 48 h muestra
-     "quedan 48 h" el sábado entero, porque el sábado no descuenta nada. */
-  const vigTotal = r.vigencia || 96;
-  const vigResta = useMemo(() => {
-    /* sin vencimiento el bloque "Vigencia del link" no se dibuja */
-    if (!LINKS_VENCEN || !r.expiraAt) return null;
-    const t = new Date(r.expiraAt).getTime();
-    if (!Number.isFinite(t)) return null;
-    return Math.max(0, Math.round(horasHabilesEntre(Date.now(), t)));
-  }, [r.expiraAt]);
-  /* Vencido o no lo dice el reloj real —es lo que evalúa el server cuando el
-     pasajero abre el link—; las horas que quedan se cuentan en hábiles. */
-  const vigVencida = useMemo(() => {
-    const t = r.expiraAt ? new Date(r.expiraAt).getTime() : NaN;
-    return Number.isFinite(t) && t <= Date.now();
-  }, [r.expiraAt]);
-  /* "martes 26 de agosto a las 15:00": la fecha concreta al lado del reloj. */
-  const vigHasta = useMemo(() => (r.expiraAt ? textoVencimiento(r.expiraAt) : ""), [r.expiraAt]);
-
   /* Notas internas: se escriben acá y viajan al server 800 ms después de la
      última tecla. El texto local manda mientras se escribe, así el cursor no
      salta cuando vuelve la fila refrescada. */
@@ -215,9 +190,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               )}
               <div style={{ fontSize:10, color:"var(--n400)", padding:"6px 9px 3px", lineHeight:1.45,
                 borderTop:"1px solid var(--hair-soft)", marginTop:4 }}>
-                {LINKS_VENCEN
-                  ? "El estado se calcula solo (la vigencia lo pasa a Vencida), pero acá lo pisás a mano para el seguimiento."
-                  : "El estado se calcula solo con los envíos y las aperturas; acá lo pisás a mano para el seguimiento."}
+                El estado se calcula solo con los envíos y las aperturas; acá lo pisás a mano para el seguimiento.
               </div>
             </div>
           )}
@@ -260,31 +233,6 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
               <div style={{ fontSize:12.5, fontWeight:700 }}>{fmtHace(r.hEnvio)}</div>
             </div>
           </div>
-          {vigResta != null && (
-            <div style={{ marginTop:8, padding:"10px 12px", borderRadius:11, background:"var(--tile)" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                <span className="lbl">Vigencia del link</span>
-                <span className="mono" style={{ marginLeft:"auto", fontSize:11, fontWeight:600,
-                  color: vigVencida ? "var(--coral)" : "var(--n600)" }}>
-                  {vigVencida ? "vencido" : `quedan ${vigResta} h hábiles de ${vigTotal}`}</span>
-                {/* v2D · D3 · la vigencia se arregla acá mismo, sin volver a compartir */}
-                <button className="btn btn-g btn-xs" style={{ marginRight:-4 }}
-                  title="Correr el vencimiento 48 horas hábiles hacia adelante"
-                  onClick={() => onExtender?.(r)}><Clock3 size={11} /> +48 h</button>
-              </div>
-              <div style={{ height:5, borderRadius:99, background:"var(--sunk-2)", overflow:"hidden" }}>
-                <div style={{ height:"100%", width:`${vigVencida ? 100 : (vigResta / vigTotal) * 100}%`, borderRadius:99,
-                  background: vigVencida ? "var(--coral)" : vigResta < 12 ? "#E8A13C" : "linear-gradient(90deg,#45D4C0,#2A9E8E)",
-                  transition:"width .6s" }} />
-              </div>
-              {vigVencida
-                ? <div style={{ fontSize:10.5, color:"var(--coral)", marginTop:5 }}>
-                    Con <strong>+48 h</strong> o con un recordatorio vuelve a estar activo.</div>
-                : vigHasta && <div style={{ fontSize:10.5, color:"var(--n400)", marginTop:5 }}>
-                    Abre hasta el <strong>{vigHasta}</strong> · las horas son hábiles, el fin de semana no descuenta.</div>}
-            </div>
-          )}
-
           {/* la URL que tiene el pasajero, tal cual */}
           <div style={{ marginTop:8, padding:"10px 12px", borderRadius:11, background:"var(--tile)" }}>
             <div className="lbl" style={{ marginBottom:6 }}>Link del pasajero</div>
@@ -492,7 +440,7 @@ function DrawerAnalytics({ r, onClose, onConfirmar, onEstado, onExtender, onReco
       </div>
       {comp && contenido && <ModalCompartir q={contenido} presupuestoId={r.id} vendedor={r.vendedor}
         recordatorio={comp === "recordatorio"} tabInicial={comp === "datos" ? "datos" : undefined}
-        numero={r.num} enviadaAt={r.enviadaAt} expiraAt={r.expiraAt}
+        numero={r.num} enviadaAt={r.enviadaAt}
         toast={toast} onPedido={cargarDatos}
         onClose={() => setComp(null)} onEnviada={(d) => onRecordatorio?.(r, d)} />}
       {preview && contenido && (() => {
@@ -591,7 +539,7 @@ function BloqueDatos({ d, num }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
       {d.solicitudes.map((sx) => {
-        const tono = sx.estado === "completada" ? "teal" : sx.estado === "vencida" ? "coral" : "n";
+        const tono = sx.estado === "completada" ? "teal" : "n";
         const Icono = sx.tipo === "PAGO" ? CreditCard : Users;
         return (
           <div key={sx.id} style={{ display:"flex", alignItems:"center", gap:9, padding:"9px 11px",
@@ -609,8 +557,7 @@ function BloqueDatos({ d, num }) {
             </div>
             <Pill tone={tono}>
               {sx.estado === "completada" ? <><MailCheck size={9} /> Completada</>
-                : sx.estado === "vencida" ? <><Reloj size={9} /> Vencida</>
-                : <><Reloj size={9} /> Vigente</>}
+                : <><Reloj size={9} /> Pendiente</>}
             </Pill>
           </div>
         );

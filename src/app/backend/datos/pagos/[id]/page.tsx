@@ -29,8 +29,7 @@ const fechaHora = new Intl.DateTimeFormat("es-UY", {
 
 const ESTADO_TEXTO: Record<string, string> = {
   DISPONIBLE: "Sin abrir · los datos siguen en la bóveda.",
-  VISTO: "Ya se abrió al menos una vez. Sigue disponible hasta que venza.",
-  VENCIDO: "Pasaron las 96 horas: los datos ya no se pueden abrir.",
+  VISTO: "Ya se abrió al menos una vez. Sigue disponible en la bóveda.",
   PURGADO: "Los datos se borraron. Queda el registro, no la tarjeta.",
 };
 
@@ -81,7 +80,6 @@ export default async function PagoPage({ params }: { params: { id: string } }) {
           )}
           <Dato label="Titular de la tarjeta" valor={meta.titular} />
           <Dato label="Recibida" valor={fechaHora.format(new Date(meta.createdAt))} />
-          <Dato label="Se borra" valor={fechaHora.format(new Date(meta.expiraAt))} />
           <Dato
             label="Primera apertura"
             valor={meta.vistoAt ? fechaHora.format(new Date(meta.vistoAt)) : "Todavía nadie"}
@@ -148,10 +146,6 @@ function SinAcceso() {
           <li>El registro ya no existe.</li>
           <li>Estás con una sesión distinta a la de la casilla donde recibiste el mail.</li>
         </ul>
-        <p className="mt-4 border-t border-neutral-100 pt-4 text-[13px] text-neutral-600">
-          Los datos de una tarjeta viven 96 horas y después se borran solos. Si ya pasaron, hay
-          que pedirle al pasajero que los cargue de nuevo con el link.
-        </p>
       </div>
 
       <p className="flex items-start gap-2 rounded-[12px] border border-violet-200 bg-violet-50 px-3.5 py-2.5 text-[12px] leading-relaxed text-violet-900">

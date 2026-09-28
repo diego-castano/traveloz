@@ -70,7 +70,7 @@ const COPY: Record<
     titulo: "Datos de tarjeta",
     descripcion: "Tu link seguro para recibir los datos de pago.",
     ayudaForm:
-      "Los datos de la tarjeta viajan cifrados y se borran solos a las 96 horas.",
+      "Los datos de la tarjeta viajan cifrados y quedan guardados en tu bóveda.",
   },
 };
 
@@ -87,8 +87,7 @@ const CTA_VIOLETA: React.CSSProperties = {
 
 const CHIP_ESTADO: Record<SolicitudResumen["estado"], { label: string; clase: string }> = {
   completada: { label: "Completada", clase: "bg-emerald-50 text-emerald-700" },
-  vigente: { label: "Vigente", clase: "bg-neutral-100 text-neutral-500" },
-  vencida: { label: "Vencida", clase: "bg-amber-50 text-amber-700" },
+  pendiente: { label: "Pendiente", clase: "bg-neutral-100 text-neutral-500" },
 };
 
 const fechaCorta = (d: Date) =>

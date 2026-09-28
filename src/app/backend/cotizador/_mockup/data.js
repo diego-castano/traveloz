@@ -1,6 +1,5 @@
-import { Send, Eye, CheckCheck, PenLine, Clock3 } from "lucide-react";
-import { horasHabilesEntre, textoVencimiento } from "@/lib/presupuesto/habiles";
-import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
+import { Send, Eye, CheckCheck, PenLine } from "lucide-react";
+import { horasHabilesEntre } from "@/lib/presupuesto/habiles";
 /* Una sola implementación del recorte de destino: la comparten el cotizador,
    el email, la ficha pública y el espejo en columnas. */
 import { destinoFinal } from "@/lib/presupuesto/destino";
@@ -136,31 +135,6 @@ function registrarVendedores(lista) {
   VENDEDORES_REG = Array.isArray(lista) ? lista : [];
 }
 
-/* Horas HÁBILES que le quedan de vida al link. Negativo = ya venció. null =
-   nunca se envió, así que el reloj todavía no arrancó.
-
-   Hábiles, no de reloj: el vencimiento lo calculó el server salteando sábados
-   y domingos (src/lib/presupuesto/habiles.ts) y la cuenta regresiva tiene que
-   contar igual. Si acá se restaran horas corridas, un link emitido el viernes
-   mostraría "quedan 9 h" el sábado a la mañana y seguiría abriendo el martes.
- */
-function horasDeVigencia(r) {
-  /* Sin vencimiento no hay cuenta regresiva: null apaga el "Link vencido" del
-     semáforo y la "Vencida" automática de `estadoEfectivo`. */
-  if (!LINKS_VENCEN || !r?.expiraAt) return null;
-  const t = new Date(r.expiraAt).getTime();
-  if (!Number.isFinite(t)) return null;
-  const ahora = Date.now();
-  const habiles = horasHabilesEntre(ahora, t);
-  /* El SIGNO lo decide el reloj real, que es lo que mira el server cuando el
-     pasajero abre el link; lo hábil es cuánto queda. Sin esto, un link viejo
-     —emitido antes de esta regla, con vencimiento un domingo— aparecía como
-     vencido el sábado y sin embargo seguía abriendo. */
-  if (t > ahora) return Math.max(habiles, Number.EPSILON);
-  if (t < ahora) return Math.min(habiles, -Number.EPSILON);
-  return 0;
-}
-
 /* Horas hábiles desde que salió. Sirve para el "+24 h sin abrir": un envío del
    viernes a las 18:00 no está "hace 40 h" el domingo, está hace 6 h hábiles. */
 function horasHabilesDesdeEnvio(r) {
@@ -171,18 +145,9 @@ function horasHabilesDesdeEnvio(r) {
   return horasHabilesEntre(t, Date.now());
 }
 
-/* "vence el martes 26 de agosto a las 15:00" para la fila que ya tiene link. */
-function textoDeVencimiento(r) {
-  return LINKS_VENCEN && r?.expiraAt ? textoVencimiento(r.expiraAt) : "";
-}
-
-/* Semáforo de seguimiento: cuánto hace que se envió, si el pasajero la abrió y
-   cuánto le queda de vigencia al link. */
+/* Semáforo de seguimiento: cuánto hace que se envió y si el pasajero la abrió.
+   Los links no vencen, así que no hay rojo. */
 function semaforo(r) {
-  if (r.estado === "vencida")    return { c:"#F43E55", l:"Vencida",
-    d: r.aperturas > 0
-      ? `La abrió ${r.aperturas === 1 ? "una vez" : r.aperturas + " veces"} pero el link ya venció: si vuelve a entrar se encuentra con la pantalla de vencida. Extendé la vigencia o reactivala.`
-      : "El link venció sin apertura. Reactivalo con un recordatorio o marcá el estado a mano si el seguimiento sigue por otro canal." };
   if (r.estado === "borrador")   return { c:"#B0B4CD", l:"Borrador",
     d:"Todavía no se envió al pasajero. El semáforo arranca a correr cuando la compartas." };
   if (r.estado === "confirmada") return { c:"#2A9E8E", l:"Confirmada",
@@ -190,9 +155,6 @@ function semaforo(r) {
   if (r.aperturas > 0)           return { c:"#2A9E8E", l:"Abierta",
     d:`El pasajero la abrió ${r.aperturas === 1 ? "una vez" : r.aperturas + " veces"}. Buen momento para el seguimiento.` };
   if (r.hEnvio == null)          return { c:"#B0B4CD", l:"—", d:"Sin datos de envío." };
-  const restan = horasDeVigencia(r);
-  if (restan != null && restan <= 0) return { c:"#F43E55", l:"Link vencido",
-    d:"La vigencia se cumplió y nadie la abrió. Reactivalo y reenviá, o llamá al pasajero." };
   const desdeEnvio = horasHabilesDesdeEnvio(r);
   if (desdeEnvio != null && desdeEnvio < 24) return { c:"#45D4C0", l:"En ventana",
     d:"Enviada hace menos de 24 h hábiles y todavía sin abrir. Normal — la mayoría se abre el mismo día." };
@@ -203,18 +165,15 @@ function semaforo(r) {
    en presupuesto.actions.ts — si esto y aquello se separan, el badge del shell
    dice un número y la pantalla muestra otro.
 
-     roja      vencida y el pasajero nunca la abrió
      amarilla  enviada, sin abrir, +24 h HÁBILES
-     verde     confirmada, o abierta con el link todavía vivo
+     verde     confirmada o abierta
      borrador  nunca salió
 
-   Devuelve null para lo que no pide nada hoy: la enviada de hace tres horas y
-   la vencida que el pasajero sí llegó a abrir. */
+   Devuelve null para lo que no pide nada hoy: la enviada de hace tres horas. */
 function bucketSemaforo(r) {
   const est = estadoEfectivo(r);
   if (est === "borrador")   return "borrador";
   if (est === "confirmada") return "verde";
-  if (est === "vencida")    return r.aperturas > 0 ? null : "roja";
   if (r.aperturas > 0)      return "verde";
   const desde = horasHabilesDesdeEnvio(r);
   return desde != null && desde >= 24 ? "amarilla" : null;
@@ -723,25 +682,13 @@ const ESTADOS = {
   borrador:   { l:"Borrador",   tone:"n",      Icon:PenLine },
   enviada:    { l:"Enviada",    tone:"violet", Icon:Send },
   abierta:    { l:"Abierta",    tone:"teal",   Icon:Eye },
-  vencida:    { l:"Vencida",    tone:"coral",  Icon:Clock3 },
   confirmada: { l:"Confirmada", tone:"teal",   Icon:CheckCheck },
 };
-/* Vencida automática: enviada o abierta con la vigencia cumplida — salvo que
-   el vendedor haya pisado el estado a mano. No se persiste: se calcula contra
-   `expiraAt`, que es lo que guarda el server al emitir el link.
-
-   Una ABIERTA también vence: desde que existe el link público, "abierta" quiere
-   decir que el pasajero entró, no que el link siga sirviendo. Si la vigencia se
-   cumplió, la próxima vez que toque el link se va a encontrar con la pantalla
-   de vencida, y el seguimiento tiene que decir lo mismo que ve el pasajero.
-   Misma regla que `estadoEfectivoDe` en presupuesto.actions.ts. */
+/* El manual pisa al real. Las cotizaciones no vencen: no hay "vencida"
+   automática (misma regla que `estadoEfectivoDe` en presupuesto.actions.ts). */
 function estadoEfectivo(r) {
-  if (r.estadoManual) return r.estadoManual;
-  if (r.estado === "enviada" || r.estado === "abierta") {
-    const restan = horasDeVigencia(r);
-    if (restan != null && restan <= 0) return "vencida";
-  }
-  return r.estado;
+  if (r.estadoManual && ESTADOS[r.estadoManual]) return r.estadoManual;
+  return ESTADOS[r.estado] ? r.estado : "enviada";
 }
 
 export {
@@ -751,8 +698,8 @@ export {
   personasDeOcupacion, ocupacionDePersonas, TARIFA_TIPOS, FACTOR_DEFAULT,
   serviciosDefault, habitacionNueva, tarifaNueva, ventaTarifa, etiquetaTarifa, precioOpcion, textoAereo,
   SUG_ALL, PNR_DEMO,
-  registrarVendedores, vendedoresRegistrados, semaforo, horasDeVigencia, fmtHace,
-  horasHabilesDesdeEnvio, textoDeVencimiento, bucketSemaforo,
+  registrarVendedores, vendedoresRegistrados, semaforo, fmtHace,
+  horasHabilesDesdeEnvio, bucketSemaforo,
   uid, clamp, parseISO, toISO,
   addDays, fmtCorto, fmtLargo, money, destinoLimpio, destinoFinal, ciudadLimpia, tituloDeDestinos, venta, margenPct, limpiarPegado, parsePNR, norm, STOP_IA,
   fechaDeVuelo, conFechas, itinerarioMasCompleto, offsetDias, diasDeMas,

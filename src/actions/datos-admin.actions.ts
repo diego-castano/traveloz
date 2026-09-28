@@ -76,7 +76,7 @@ export interface DatosAdminCounts {
   envios: number;
   /** Envíos que nadie abrió todavía · el badge violeta de la solapa. */
   enviosSinVer: number;
-  /** Tarjetas todavía legibles: sin purgar y sin vencer. */
+  /** Tarjetas todavía legibles (sin purgar). */
   pagosVivos: number;
 }
 
@@ -86,7 +86,7 @@ export async function getDatosAdminCounts(): Promise<DatosAdminCounts> {
     prisma.envioPasajeros.count(),
     prisma.envioPasajeros.count({ where: { vistoAt: null } }),
     prisma.datosPagoCifrado.count({
-      where: { purgadoAt: null, expiraAt: { gt: new Date() } },
+      where: { purgadoAt: null },
     }),
   ]);
   return { envios, enviosSinVer, pagosVivos };
@@ -438,8 +438,6 @@ export interface PagoAdminResumen {
   emisor: string | null;
   ultimos4: string;
   createdAt: Date;
-  /** El reloj de vencimiento lo dibuja el cliente contra esta fecha. */
-  expiraAt: Date;
   vistoAt: Date | null;
   purgadoAt: Date | null;
   estado: EstadoPagoAdmin;
@@ -484,7 +482,6 @@ export async function getPagosAdmin(input?: {
         emisor: true,
         ultimos4: true,
         createdAt: true,
-        expiraAt: true,
         vistoAt: true,
         purgadoAt: true,
         vendedorId: true,
@@ -497,7 +494,6 @@ export async function getPagosAdmin(input?: {
   ]);
 
   const nombres = await nombresDeVendedores(filas.map((f) => f.vendedorId));
-  const ahora = Date.now();
 
   return {
     total,
@@ -511,13 +507,12 @@ export async function getPagosAdmin(input?: {
       emisor: f.emisor,
       ultimos4: f.ultimos4,
       createdAt: f.createdAt,
-      expiraAt: f.expiraAt,
       vistoAt: f.vistoAt,
       purgadoAt: f.purgadoAt,
-      // Vencida sin purgar (el barrido todavía no llegó) cuenta como purgada:
-      // no prometemos datos que ya no se pueden abrir.
+      // Los datos no vencen: "purgado" son solo los que limpió el barrido de
+      // 96 h que existía antes.
       estado:
-        f.purgadoAt || f.expiraAt.getTime() <= ahora
+        f.purgadoAt
           ? "purgado"
           : f.vistoAt
             ? "visto"

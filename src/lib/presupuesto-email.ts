@@ -16,12 +16,11 @@
 // ---------------------------------------------------------------------------
 
 import { SITE_BASE_URL } from "@/lib/datos-email";
-import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion } from "@/lib/presupuesto/derivados";
 import { destinoFinal } from "@/lib/presupuesto/destino";
 import { negritasEnHtml, sinMarcasDeNegrita } from "@/lib/presupuesto/negrita";
-import { REGLA_HABILES, textoDiaCorto, textoVencimiento } from "@/lib/presupuesto/habiles";
+import { textoDiaCorto } from "@/lib/presupuesto/habiles";
 import type { ContenidoPresupuesto } from "@/lib/presupuesto/schema";
 
 const ACCENT = "#F43E55";
@@ -269,14 +268,6 @@ export interface CotizacionEmailInput {
   vendedor: VendedorEmail;
   /** URL pública del link (`${SITE_BASE_URL}/c/<token>`). */
   url: string;
-  /** Horas de vigencia del link, para la nota del pie. Son hábiles. */
-  vigenciaHoras: number;
-  /**
-   * Cuándo deja de abrir el link, ya calculado en horas hábiles. El email
-   * escribe la fecha concreta: "48 horas" obliga al pasajero a hacer una
-   * cuenta que además saltea el fin de semana.
-   */
-  expiraAt?: Date | null;
   /** Cuándo salió la primera de esta ronda. Solo lo usa el recordatorio. */
   enviadaAt?: Date | null;
   /**
@@ -294,7 +285,7 @@ export interface CotizacionEmailInput {
  * la cotización.
  */
 export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
-  const { q, vendedor, url, vigenciaHoras } = input;
+  const { q, vendedor, url } = input;
   // Solo el destino final en el asunto y en la ficha: "Jamaica", no
   // "Caribe › Jamaica" (pedido del cliente, 26/08).
   const destino = destinoFinal(q.titulo?.destino) || "tu viaje";
@@ -331,16 +322,9 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
     ? `Tu cotización de ${destino} sigue disponible`
     : `Tu cotización de ${destino}`;
 
-  // La vigencia en fecha, no en horas. Si por lo que sea no llegó `expiraAt`
-  // (una plantilla vieja, un test), el texto vuelve a las horas de siempre.
-  // Con `LINKS_VENCEN` apagado no hay fecha que anunciar.
-  const vence = LINKS_VENCEN && input.expiraAt ? textoVencimiento(input.expiraAt) : "";
+  // Los links no vencen: no hay fecha que anunciar.
   const salio = input.enviadaAt ? textoDiaCorto(input.enviadaAt) : "";
-  const notaVigencia = !LINKS_VENCEN
-    ? "Queda disponible para que la veas cuando quieras"
-    : vence
-      ? `Está disponible hasta el ${vence} (${REGLA_HABILES})`
-      : `El link está disponible por ${vigenciaHoras} horas hábiles (${REGLA_HABILES})`;
+  const notaVigencia = "Queda disponible para que la veas cuando quieras";
 
   // El saludo del vendedor manda; si no cargó ninguno, uno neutro que no suena
   // a plantilla vacía.
@@ -359,11 +343,11 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
       );
 
   // El recordatorio tiene texto propio: no repite el email inicial (ni su
-  // resumen ni el mensaje automático del vendedor). Recuerda cuándo salió,
-  // hasta cuándo sirve y deja el botón. Tres líneas.
+  // resumen ni el mensaje automático del vendedor). Recuerda cuándo salió y
+  // deja el botón. Tres líneas.
   const recordatorioTxt = [
     `Hola${nombre ? ` ${nombre}` : ""}, te escribo por la cotización${numero ? ` ${numero}` : ""} que te mandé${salio ? ` el ${salio}` : ""}.`,
-    vence ? `Sigue disponible hasta el ${vence}.` : "Sigue disponible.",
+    "Sigue disponible.",
     "Cualquier duda me decís.",
   ].join(" ");
 
@@ -371,22 +355,15 @@ export function cotizacionEmail(input: CotizacionEmailInput): PlantillaEmail {
     ? `
     ${P(escapeHtml(recordatorioTxt))}
     <p style="margin:20px 0 0">${ctaButton(url, "Ver mi cotización")}</p>
-    ${PMUTED(`La vigencia se cuenta en horas hábiles: ${escapeHtml(REGLA_HABILES)}. Si se te vence igual, escribile a ${escapeHtml(
-      vendedor.nombre,
-    )} y te lo renueva.`)}
     ${tarjetaVendedor(vendedor)}`
     : `
     ${saludoHtml}
     ${tabla(resumen)}
     <p style="margin:20px 0 0">${ctaButton(url, "Ver mi cotización")}</p>
     ${PMUTED(
-      LINKS_VENCEN
-        ? `Se abre desde el celular y desde la computadora. ${escapeHtml(notaVigencia)}; si se te vence, escribile a ${escapeHtml(
-            vendedor.nombre,
-          )} y te lo renueva.`
-        : `Se abre desde el celular y desde la computadora. ${escapeHtml(notaVigencia)}; cualquier duda, escribile a ${escapeHtml(
-            vendedor.nombre,
-          )}.`,
+      `Se abre desde el celular y desde la computadora. ${escapeHtml(notaVigencia)}; cualquier duda, escribile a ${escapeHtml(
+        vendedor.nombre,
+      )}.`,
     )}
     ${tarjetaVendedor(vendedor)}`;
 

@@ -345,7 +345,7 @@ export function TabAnalytics({ toast }) {
           {/* ── KPIs ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(158px,1fr))",
             gap: 10, marginBottom: 14 }}>
-            <Kpi i={0} l="Creadas" v={String(r.creadas)} d={`${r.vencidas} vencidas`} />
+            <Kpi i={0} l="Creadas" v={String(r.creadas)} d={`${Math.max(0, r.creadas - r.enviadas)} sin enviar`} />
             <Kpi i={1} l="Enviadas" v={String(r.enviadas)} d={`${r.abiertas} abiertas`} />
             <Kpi i={2} l="Tasa de apertura" v={pct(r.tasaApertura)} d={`${r.abiertas} de ${r.enviadas} enviadas`} />
             <Kpi i={3} l="Tasa de confirmación" v={pct(r.tasaConfirmacion)} d={`${r.confirmadas} confirmadas`} />

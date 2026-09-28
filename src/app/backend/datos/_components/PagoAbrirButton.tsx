@@ -18,7 +18,7 @@ export function PagoAbrirButton({
   disabled,
 }: {
   pagoId: string;
-  /** Purgado o vencido: no hay nada que abrir. */
+  /** Purgado (registro viejo sin payload): no hay nada que abrir. */
   disabled?: boolean;
 }) {
   const router = useRouter();

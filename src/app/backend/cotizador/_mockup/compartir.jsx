@@ -9,8 +9,7 @@ import {
 import { Btn, Label } from "./ui";
 import { telefonoWa } from "@/lib/telefono";
 import { precioOpcion, renderPlantilla, destinoFinal } from "./data";
-import { sumarHorasHabiles, textoVencimiento, textoDiaCorto } from "@/lib/presupuesto/habiles";
-import { LINKS_VENCEN } from "@/lib/presupuesto/vencimiento";
+import { textoDiaCorto } from "@/lib/presupuesto/habiles";
 import { useAjustes, useCtz, buscarVendedor } from "./contexto";
 import {
   marcarEnviada, emitirLink, enviarPorEmail, pedirDatosDelPasajero,
@@ -33,8 +32,8 @@ import {
  *     el pasajero). La vista de impresión del navegador queda como salida de
  *     emergencia si el render del server está caído.
  *
- * Cualquiera de las tres sella el envío: estado Enviada, reloj de la vigencia
- * corriendo y el link listo para que el pasajero lo abra. El "ya la mandé por
+ * Cualquiera de las tres sella el envío: estado Enviada y el link listo para
+ * que el pasajero lo abra (los links no vencen). El "ya la mandé por
  * otro medio" quedó como una línea al pie, para el caso raro.
  *
  * `presupuestoId` es la fila en la base; sin él no hay nada que compartir (una
@@ -45,12 +44,12 @@ const RE_MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function ModalCompartir({
   q, presupuestoId, vendedor, onClose, onEnviada, toast, recordatorio = false,
-  onVigencia, onIr, onPreview, onImprimir, tabInicial, onPedido, onEmailCliente,
-  /* del drawer: el número, cuándo salió la primera y hasta cuándo abre el link
-     vivo. Solo los usa el recordatorio, que cuenta esa historia. */
-  numero, enviadaAt, expiraAt,
+  onIr, onPreview, onImprimir, tabInicial, onPedido, onEmailCliente,
+  /* del drawer: el número y cuándo salió la primera. Solo los usa el
+     recordatorio, que cuenta esa historia. */
+  numero, enviadaAt,
 }) {
-  const { emailCopia, vigenciaDefault } = useAjustes();
+  const { emailCopia } = useAjustes();
   const { vendedores, esAdmin, yo } = useCtz();
   const V = buscarVendedor(vendedores, vendedor);
   const tel = String(q.cliente.telefono || "").trim();
@@ -60,7 +59,6 @@ function ModalCompartir({
   );
   const [extras, setExtras] = useState("");
   const [marcando, setMarcando] = useState(false);
-  const [vig, setVig] = useState(q.vigencia ?? vigenciaDefault ?? 96);
 
   /* el link público: se emite al entrar a WhatsApp o al tocar "Generar link" */
   const [link, setLink] = useState(null);
@@ -147,35 +145,22 @@ function ModalCompartir({
       return null;
     }
     setGenerando(true); setErrLink(null);
-    const r = await emitirLink(presupuestoId, { canal, vigenciaHoras: vig });
+    const r = await emitirLink(presupuestoId, { canal });
     setGenerando(false);
     if (!r.ok) { setErrLink(r.error); return null; }
     setLink(r.data);
     onEnviada?.(r.data);
     return r.data;
-  }, [presupuestoId, vig, toast, onEnviada]);
+  }, [presupuestoId, toast, onEnviada]);
 
   /* Mirar la pestaña de WhatsApp NO emite nada.
-     Emitir el link sella el envío: la cotización pasa a Enviada, arranca el
-     reloj de la vigencia y el pasajero ya podría abrirla. Que eso pasara por
-     tocar una pestaña —para espiar cómo iba a quedar el mensaje— dejaba
-     cotizaciones "enviadas" que nunca se mandaron y el vencimiento corriendo.
+     Emitir el link sella el envío: la cotización pasa a Enviada y el pasajero
+     ya podría abrirla. Que eso pasara por tocar una pestaña —para espiar cómo
+     iba a quedar el mensaje— dejaba cotizaciones "enviadas" que nunca se
+     mandaron.
      El link sale con una acción explícita: "Abrir WhatsApp", "Copiar mensaje",
      "Copiar link" o "Generar el link". Hasta entonces la vista previa muestra
      el mensaje con un marcador en el lugar del link. */
-
-  /* Cambiar la vigencia con el link ya emitido lo corre: el token es el mismo,
-     lo que se mueve es el vencimiento. */
-  useEffect(() => {
-    if (!link || generando) return;
-    /* si el vencimiento ya está donde tendría que estar (±2 min de holgura),
-       no hay nada que correr */
-    const objetivo = sumarHorasHabiles(new Date(), vig).getTime();
-    const actual = link.expiraAt ? new Date(link.expiraAt).getTime() : 0;
-    if (Math.abs(actual - objetivo) < 120000) return;
-    void generar(tab === "email" ? "email" : "whatsapp");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vig]);
 
   const copiar = async (texto, clave) => {
     try {
@@ -192,16 +177,6 @@ function ModalCompartir({
      generarlo, la vista previa muestra un marcador para que el vendedor lea el
      mensaje entero sin emitir nada. */
   const MARCADOR_LINK = "🔗 (el link se genera al mandar)";
-
-  /* Hasta cuándo abre el link: el del link vivo si ya se emitió, y si no el que
-     va a quedar con la vigencia elegida. Horas hábiles, como en el server. */
-  const venceTxt = useMemo(() => {
-    if (!LINKS_VENCEN) return "";          // sin vencimiento no hay fecha que contar
-    const delLink = link?.expiraAt ?? expiraAt;
-    const t = delLink ? new Date(delLink).getTime() : NaN;
-    if (Number.isFinite(t) && t > Date.now()) return textoVencimiento(t);
-    return textoVencimiento(sumarHorasHabiles(new Date(), vig));
-  }, [link, expiraAt, vig]);
 
   /* El mensaje inicial suele terminar firmado ("Agustina"). El recordatorio no
      lo hereda entero, pero sí la firma: el pasajero tiene que seguir viendo
@@ -220,14 +195,13 @@ function ModalCompartir({
   const base = useMemo(() => {
     /* al pasajero se le nombra el destino final, no el camino del panel */
     const destino = destinoFinal(q.titulo?.destino) || "tu viaje";
-    /* El recordatorio tiene texto propio: recuerda cuándo salió y hasta cuándo
-       sirve. Mandar de nuevo el mismo mensaje del primer envío hacía que el
+    /* El recordatorio tiene texto propio: recuerda cuándo salió. Mandar de nuevo el mismo mensaje del primer envío hacía que el
        pasajero lo leyera como un copy-paste. */
     if (recordatorio) {
       const dia = enviadaAt ? textoDiaCorto(enviadaAt) : "";
       const cuerpo = [
         `Hola${nom ? ` ${nom}` : ""}, te escribo por la cotización${numero ? ` ${numero}` : ""}${dia ? ` que te mandé el ${dia}` : " que te mandé"}.`,
-        venceTxt ? `Sigue disponible hasta el ${venceTxt}.` : "Sigue disponible.",
+        "Sigue disponible.",
         "Cualquier duda me decís.",
       ].join(" ");
       return firma ? `${cuerpo}\n\n${firma}` : cuerpo;
@@ -235,7 +209,7 @@ function ModalCompartir({
     return (q.mensajeAuto || "").trim()
       ? renderPlantilla(q.mensajeAuto, nom, V.linkDatos)
       : `Hola${nom ? ` ${nom}` : ""}, te comparto la cotización de ${destino}. Se abre desde el celular 👇`;
-  }, [q.mensajeAuto, q.titulo, nom, V.linkDatos, recordatorio, numero, enviadaAt, venceTxt, firma]);
+  }, [q.mensajeAuto, q.titulo, nom, V.linkDatos, recordatorio, numero, enviadaAt, firma]);
 
   const mensajeCon = useCallback((url) => (url ? `${base}\n\n${url}` : base), [base]);
   /* lo que se ve en la caja: con el link si ya está, con el marcador si no */
@@ -252,7 +226,7 @@ function ModalCompartir({
   const abrirWhatsApp = async () => {
     if (generando) return;
     const listo = (url) => {
-      toast?.({ msg: venceTxt ? `Se abrió WhatsApp — el link abre hasta el ${venceTxt}` : "Se abrió WhatsApp — el link ya está vivo", tone:"ok" });
+      toast?.({ msg:"Se abrió WhatsApp — el link ya está vivo", tone:"ok" });
       onClose();
       return url;
     };
@@ -297,7 +271,6 @@ function ModalCompartir({
     setEnviandoMail(true); setErrLink(null);
     const lista = extras.split(/[,;]+/).map((e) => e.trim()).filter(Boolean);
     const r = await enviarPorEmail(presupuestoId, {
-      vigenciaHoras: vig,
       /* Los tipeados después del primero viajan como destinatarios extra: es
          el mismo canal que usa el campo de abajo y el server los pone en
          copia. */
@@ -318,7 +291,7 @@ function ModalCompartir({
       msg: r.data.entregado
         ? `Email enviado a ${r.data.destinatarios[0]}${
             r.data.pdfAdjunto ? " con el PDF adjunto" : " (sin PDF adjunto)"
-          }${venceTxt ? ` — abre hasta el ${venceTxt}` : ""}`
+          }`
         : "Email preparado (sin proveedor configurado): el link ya está vivo",
       tone: r.data.entregado ? "ok" : "warn",
     });
@@ -345,11 +318,11 @@ function ModalCompartir({
       return;
     }
     setMarcando(true);
-    const r = await marcarEnviada(presupuestoId, { canal:"manual", vigenciaHoras: vig });
+    const r = await marcarEnviada(presupuestoId, { canal:"manual" });
     setMarcando(false);
     if (!r.ok) { toast?.({ msg:r.error, tone:"warn" }); return; }
     onEnviada?.(r.data);
-    toast?.({ msg: venceTxt ? `Marcada como enviada — abre hasta el ${venceTxt}` : "Marcada como enviada", tone:"ok" });
+    toast?.({ msg:"Marcada como enviada", tone:"ok" });
     onClose();
   };
 
@@ -425,22 +398,6 @@ function ModalCompartir({
             <span style={{ fontSize:10.5, color:"var(--n400)" }}>No cuenta como apertura del pasajero.</span>
           </div>
         )}
-
-        {/* El selector de vigencia solo existe si los links vencen (Gero, 11/09:
-            los sacó). Las horas se siguen mandando al server, que las guarda
-            en `expiraAt` sin mirarlas. */}
-        {LINKS_VENCEN && <div style={{ display:"flex", alignItems:"center", gap:8, margin:"11px 17px 0", flexWrap:"wrap" }}>
-          <span className="lbl">Vigencia</span>
-          <div className="seg">
-            {[24, 48, 72, 96].map((h) => (
-              <button key={h} data-on={vig === h ? "1" : "0"}
-                onClick={() => { setVig(h); onVigencia?.(h); }}>{h}h</button>
-            ))}
-          </div>
-          <span style={{ fontSize:10.5, color:"var(--n400)" }}>
-            horas hábiles: no corren sábados ni domingos{venceTxt ? ` — vence el ${venceTxt}` : ""}. Después el link muestra “cotización vencida” y se puede reactivar
-          </span>
-        </div>}
 
         <div style={{ display:"flex", gap:5, padding:"11px 17px 0" }}>
           {TABS.map(([k, l, I]) => (
@@ -659,7 +616,7 @@ function ModalCompartir({
                     toast={toast} onPedido={onPedido} copiar={copiar} copiado={copiado} />
                   <FilaLinkDatos
                     tipo="PAGO" Icon={CreditCard} titulo="Datos de tarjeta"
-                    ayuda="Los datos viajan cifrados y se borran solos a las 96 horas."
+                    ayuda="Los datos viajan cifrados y quedan guardados en tu bóveda."
                     url={V.linkPago} tel={tel} nombre={nom} numero={q.numero}
                     emailCliente={q.cliente.email} presupuestoId={presupuestoId}
                     puedePedir={puedePedir} motivo={motivoPedido}
@@ -669,7 +626,7 @@ function ModalCompartir({
             </>
           )}
 
-          {/* El caso raro: la mandó por fuera y solo quiere que arranque el reloj. */}
+          {/* El caso raro: la mandó por fuera y solo quiere sellar el envío. */}
           <div style={{ marginTop:16, paddingTop:12, borderTop:"1px solid var(--hair-soft)", textAlign:"center" }}>
             <button onClick={marcar} disabled={marcando || !presupuestoId}
               style={{ fontSize:11.5, fontWeight:600, color:"var(--n400)", textDecoration:"underline",
@@ -678,7 +635,7 @@ function ModalCompartir({
             </button>
             <div style={{ fontSize:10.5, color:"var(--n300)", marginTop:5, lineHeight:1.5 }}>
               {presupuestoId
-                ? (LINKS_VENCEN ? `Sella el envío y arranca la vigencia de ${vig} h hábiles, sin abrir nada.` : "Sella el envío sin abrir nada.")
+                ? "Sella el envío sin abrir nada."
                 : "Todavía no está guardada: escribí algo y el autoguardado la crea."}
             </div>
           </div>
