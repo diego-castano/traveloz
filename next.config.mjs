@@ -51,6 +51,22 @@ const cspPublicoCotizacion = csp
   .replace(/frame-src [^;]+/, "frame-src 'none'")
   .replace(/form-action [^;]+/, "form-action 'self'");
 
+// Variante para el design system de Traveloz Collection (/collection): el
+// export de Claude Design, servido tal cual desde public/collection (ver
+// scripts/import-collection.mjs). Su runtime arma la pagina en el navegador y
+// evalua la logica del documento con new Function, de ahi el 'unsafe-eval' que
+// el resto del sitio no tiene. Las tipografias vienen de Google Fonts. No mide
+// nada: GTM, GA y el pixel quedan afuera.
+const cspCollection = csp
+  .replace(/script-src [^;]+/, "script-src 'self' 'unsafe-eval'")
+  .replace(
+    /style-src [^;]+/,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  )
+  .replace(/font-src [^;]+/, "font-src 'self' data: https://fonts.gstatic.com")
+  .replace(/frame-src [^;]+/, "frame-src 'none'")
+  .replace(/form-action [^;]+/, "form-action 'self'");
+
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -156,6 +172,16 @@ const nextConfig = {
         ],
       },
       {
+        // Design system de Traveloz Collection. Es un documento de trabajo, no
+        // parte del sitio: robots.ts lo deja rastrear y aca se responde
+        // noindex, que es lo que lo mantiene fuera de Google.
+        source: "/collection/:path*",
+        headers: [
+          { key: "Content-Security-Policy", value: cspCollection },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
+      {
         // Tipografías del cotizador (public/fonts/cotizador/*.woff2). El nombre
         // del archivo lleva la version de gstatic (dm-sans-v17…), asi que
         // actualizar una fuente crea una URL nueva: por eso se puede ir a un
@@ -193,6 +219,10 @@ const nextConfig = {
       {
         source: "/presentacion_traveloz",
         destination: "/presentacion_traveloz/index.html",
+      },
+      {
+        source: "/collection",
+        destination: "/collection/index.html",
       },
     ];
   },
