@@ -898,7 +898,11 @@ function SalidaPasajero({
         {q.vuelos.length > 0 && (
           <div ref={(el) => { anclas.current["b-vuelos"] = el; }} data-sec="vuelos" data-ap
             style={impresion ? { marginTop:AIRE_SEC } : undefined}>
-            <SecTitulo texto={q.tituloVuelos?.trim() || "Itinerario de vuelos"} />
+            {/* En tabla el título va en el encabezado de la tabla, como en la
+                maqueta del cliente (30/09): arriba se leería dos veces. */}
+            {q.estiloVuelos !== "tabla" && (
+              <SecTitulo texto={q.tituloVuelos?.trim() || "Itinerario de vuelos"} />
+            )}
             {/* El "Opción 1" aparece solo si hay más opciones abajo. Con un
                 itinerario solo, numerarlo es ruido; con varias, no numerarlo
                 deja al pasajero contando desde una que nadie nombró. */}
@@ -910,7 +914,7 @@ function SalidaPasajero({
             )}
             <div style={{ marginBottom: q.soloVuelos ? 14 : 24 }}>
               <Itinerario trayectos={trayectos} estilo={q.estiloVuelos}
-                ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+                titulo={q.tituloVuelos?.trim() || "Itinerario de vuelos"} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
             </div>
           </div>
         )}
@@ -996,10 +1000,12 @@ function SalidaPasajero({
             equipaje y precio son los del vuelo principal. */}
         {trayectosExtra.length > 0 && (
           <div data-sec="vuelos" data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
-            <SecTitulo texto={q.vuelosExtra?.nombre?.trim() || "Vuelos adicionales"} />
+            {q.estiloVuelos !== "tabla" && (
+              <SecTitulo texto={q.vuelosExtra?.nombre?.trim() || "Vuelos adicionales"} />
+            )}
             <div style={{ marginBottom:24 }}>
               <Itinerario trayectos={trayectosExtra} estilo={q.estiloVuelos}
-                ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+                titulo={q.vuelosExtra?.nombre?.trim() || "Vuelos adicionales"} ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
             </div>
           </div>
         )}
@@ -1752,9 +1758,9 @@ function VueloExtra({ n, estilo, numero, ultimo, separar, fechaSalida, desk, imp
    diseño por trayecto (TrayectoTabla) o el cuadro de la aerolínea
    (TablaVuelos). Los dos numeran igual, "Tramo 1", "Tramo 2", porque salen
    de los mismos trayectos de agruparTrayectos. */
-function Itinerario({ trayectos, estilo, ancho, impresion, fz, fzp, G }) {
+function Itinerario({ trayectos, estilo, titulo, ancho, impresion, fz, fzp, G }) {
   if (estilo === "tabla") {
-    return <TablaVuelos trayectos={trayectos} ancho={ancho} impresion={impresion} fz={fz} fzp={fzp} G={G} />;
+    return <TablaVuelos trayectos={trayectos} titulo={titulo} ancho={ancho} impresion={impresion} fz={fz} fzp={fzp} />;
   }
   return trayectos.map((seg, ti) => (
     <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectos.length - 1}
@@ -1763,165 +1769,243 @@ function Itinerario({ trayectos, estilo, ancho, impresion, fz, fzp, G }) {
 }
 
 const DIAS_CORTOS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const MESES_LARGOS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
-  "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre"];
+const MESES_MIN = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+  "agosto", "setiembre", "octubre", "noviembre", "diciembre"];
 
-/* El itinerario como el cuadro de la aerolínea.
+/* Colores de la maqueta del cliente (vuelos-traveloz-mobile.html, 30/09). */
+const TV = {
+  fucsia:"#F33E55", pizarra:"#785AE4", lavanda:"#A05ED3",
+  oscuro:"#333333", gris:"#999999", fondoTramo:"#F7F3FC", linea:"#EEEEEE",
+};
 
-   Pedido de Gero (29/09): con muchos tramos, a algunos vendedores la vista por
-   trayecto se les hace larga y prefieren el cuadro que ya mandaban en las
-   cotizaciones de solo vuelos. Lo elige el vendedor en cada cotización. La
-   maqueta que mandó Gero tenía "Ida" y "Vuelta"; van "Tramo 1", "Tramo 2",
-   por la misma razón que en el diseño por trayecto.
+const esFecha = (f) => f instanceof Date && !Number.isNaN(f.getTime());
+const sumarDias = (f, n) => new Date(f.getFullYear(), f.getMonth(), f.getDate() + (n || 0));
 
-   Escritorio y papel llevan las cinco columnas: fecha, vuelo, sale, llega y
-   duración. En el celular no entran sin scroll lateral, que Gero pidió evitar,
-   así que quedan tres (fecha, sale, llega) y el vuelo con su duración baja a
-   un renglón propio. La duración sale solo si los dos aeropuertos tienen zona
-   horaria (zonas-aeropuertos.js): restar horas locales de dos países miente. */
-function TablaVuelos({ trayectos, ancho, impresion, fz, fzp, G }) {
+/* "1 al 9 de octubre", "28 de setiembre al 3 de octubre", y con el año solo
+   cuando el viaje cruza de un año a otro. */
+function rangoDeFechas(a, b) {
+  if (!esFecha(a)) return "";
+  const dm = (f) => `${f.getDate()} de ${MESES_MIN[f.getMonth()]}`;
+  if (!esFecha(b) || b.getTime() === a.getTime()) return dm(a);
+  if (a.getFullYear() !== b.getFullYear()) {
+    return `${dm(a)} de ${a.getFullYear()} al ${dm(b)} de ${b.getFullYear()}`;
+  }
+  if (a.getMonth() === b.getMonth()) return `${a.getDate()} al ${dm(b)}`;
+  return `${dm(a)} al ${dm(b)}`;
+}
+
+/* "Jue 1 oct" */
+const diaCorto = (f) => `${DIAS_CORTOS[f.getDay()]} ${f.getDate()} ${MESES_MIN[f.getMonth()].slice(0, 3)}`;
+
+/* El itinerario como tabla, con el diseño que armó el cliente
+   (vuelos-traveloz-mobile.html, 30/09): encabezado con el degradé de marca,
+   el título y el resumen del viaje; cuatro columnas (vuelo con su fecha,
+   sale, llega y duración); separadores "Tramo 1", "Tramo 2" en lavanda, en
+   vez de ida y vuelta por lo mismo que el diseño por trayecto; y el pie con
+   el "+1".
+
+   En el celular la tabla tiene un ancho mínimo para que las columnas no se
+   aprieten y se desliza de costado, con una barra fina y un degradé en el
+   borde que avisa que hay más (pedido del 30/09). El encabezado y el pie no
+   se mueven. En escritorio y en papel ocupa todo el ancho y no hay scroll.
+
+   La duración sale solo si los dos aeropuertos tienen zona horaria
+   (zonas-aeropuertos.js): restar horas locales de dos países miente. Con las
+   zonas, el día de llegada también sale de ahí. */
+function TablaVuelos({ trayectos, titulo, ancho, impresion, fz, fzp }) {
   const aeropuertos = useAeropuertos();
   const holgado = ancho || impresion;
+  const scrollRef = useRef(null);
+  const [bordes, setBordes] = useState({ izq:false, der:false });
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || holgado) return undefined;
+    const medir = () => setBordes({
+      izq: el.scrollLeft > 2,
+      der: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+    });
+    medir();
+    el.addEventListener("scroll", medir, { passive:true });
+    window.addEventListener("resize", medir);
+    return () => {
+      el.removeEventListener("scroll", medir);
+      window.removeEventListener("resize", medir);
+    };
+  }, [holgado]);
+
   const ciudad = (cod) => aeropuertos[cod]?.ciudad || cod;
-  const lugar = (cod) => { const c = ciudad(cod); return c === cod ? cod : `${c} (${cod})`; };
-  /* Con las zonas de los dos aeropuertos, el día de llegada sale de ahí;
-     sin ellas, de comparar las horas, como en el diseño por trayecto. */
+  /* Con las zonas de los dos aeropuertos, el día de llegada sale de ahí; sin
+     ellas, de comparar las horas, como en el diseño por trayecto. */
   const filas = trayectos.map((seg) => seg.map((s) => {
     const t = tiempoDeVuelo(s);
     return { s, min: t ? t.min : null, mas: t ? t.dias : diasDeMas(s) };
   }));
-  const hayDuracion = filas.some((seg) => seg.some((x) => x.min != null));
-  const hayMas = filas.some((seg) => seg.some((x) => x.mas > 0));
-  const columnas = holgado
-    ? `${impresion ? 74 : 82}px minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)${hayDuracion ? " 72px" : ""}`
-    : "46px minmax(0,1fr) minmax(0,1fr)";
-  const hueco = holgado ? 16 : 10;
-  const lados = holgado ? 18 : 12;
+  const todas = filas.flat();
+  const hayDuracion = todas.some((x) => x.min != null);
 
-  const rotulo = { fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".12em",
-    textTransform:"uppercase", color:"#5B3FBF" };
-  const chico = { fontSize:fzp(11.5, 12.5, 11), color:"#8A8DB5", lineHeight:1.35,
+  /* Resumen del encabezado: de dónde sale, adónde va (el final del primer
+     trayecto, que es el destino del viaje) y de qué día a qué día. */
+  const primero = todas[0]?.s;
+  const destino = filas[0]?.[filas[0].length - 1]?.s;
+  const ultimo = todas[todas.length - 1];
+  const vuelta = ultimo && esFecha(ultimo.s.fechaReal) ? sumarDias(ultimo.s.fechaReal, ultimo.mas) : null;
+  const resumen = [
+    primero ? ciudad(primero.origen) : "",
+    destino ? ciudad(destino.destino) : "",
+    primero ? rangoDeFechas(primero.fechaReal, vuelta) : "",
+  ].filter(Boolean).join(" · ");
+
+  /* "(vie 9 oct)" en el pie, solo si hay una única llegada al día siguiente:
+     con varias, una fecha sola confundiría. */
+  const llegadasMas = [...new Set(todas
+    .filter((x) => x.mas > 0 && esFecha(x.s.fechaReal))
+    .map((x) => diaCorto(sumarDias(x.s.fechaReal, x.mas)).toLowerCase()))];
+
+  const cols = hayDuracion ? 4 : 3;
+  const anchos = hayDuracion ? ["30%", "25%", "25%", "20%"] : ["34%", "33%", "33%"];
+  const lado = holgado ? 18 : 14;
+  const th = { fontSize:fz(10.5, 11), fontWeight:600, textTransform:"uppercase", letterSpacing:".8px",
+    color:TV.pizarra, textAlign:"left", padding:"10px 8px 7px", borderBottom:`2px solid ${TV.fucsia}` };
+  const td = { padding: holgado ? "13px 8px" : "11px 6px", borderBottom:`1px solid ${TV.linea}`,
+    verticalAlign:"top" };
+  const hora = { fontSize:fzp(17, 19, 16), fontWeight:600, color:TV.oscuro, lineHeight:1.15,
+    whiteSpace:"nowrap", fontVariantNumeric:"tabular-nums" };
+  const lugar = { fontSize:fzp(12, 12.5, 11.5), color:TV.gris, lineHeight:1.3, marginTop:2,
     overflowWrap:"anywhere" };
-  const hora = { fontSize:fzp(15.5, 18, 14.5), fontWeight:700, lineHeight:1.25, color:"#1A1A2E",
-    fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" };
-  const fecha = (f) => (f instanceof Date && !Number.isNaN(f.getTime()))
-    ? { dia:`${DIAS_CORTOS[f.getDay()]} ${f.getDate()}`,
-        mes: holgado ? MESES_LARGOS[f.getMonth()] : MESES_LARGOS[f.getMonth()].slice(0, 3).toLowerCase() }
-    : null;
-  /* Un PNR sin nombre de aerolínea trae el código repetido: "JA" y "JA 763"
-     uno arriba del otro es ruido. */
-  const nombreCia = (s) => (s.aerolinea && s.aerolinea !== s.cia ? s.aerolinea : "");
+  const primeraCol = { paddingLeft:lado };
+  const ultimaCol = { paddingRight:lado };
+  const Lugar = ({ cod }) => {
+    const c = ciudad(cod);
+    return <div style={lugar}>{c !== cod ? <>{c}<br />{cod}</> : cod}</div>;
+  };
+  /* Un PNR sin nombre de aerolínea trae el código repetido: "JA JA 763". */
+  const cia = (s) => (s.aerolinea && s.aerolinea !== s.cia ? s.aerolinea : "");
+
+  const sombra = (lado) => ({ position:"absolute", top:0, bottom:0, [lado]:0, width:26, pointerEvents:"none",
+    background:`linear-gradient(to ${lado === "right" ? "left" : "right"}, rgba(255,255,255,.96), rgba(255,255,255,0))`,
+    transition:"opacity .2s ease" });
 
   return (
-    <div style={{ border:"1px solid rgba(17,17,36,.09)", borderRadius:16, overflow:"hidden",
-      background:"#fff" }}>
-      <div aria-hidden="true" style={{ height:4, background:`linear-gradient(90deg, ${G.a}, ${G.b})` }} />
-      <div style={{ display:"grid", gridTemplateColumns:columnas, columnGap:hueco,
-        padding:`${holgado ? 12 : 10}px ${lados}px ${holgado ? 10 : 8}px`,
-        borderBottom:`2px solid ${G.a}`, breakAfter:"avoid" }}>
-        <span style={rotulo}>Fecha</span>
-        {holgado && <span style={rotulo}>Vuelo</span>}
-        <span style={rotulo}>Sale</span>
-        <span style={rotulo}>Llega</span>
-        {holgado && hayDuracion && <span style={rotulo}>Duración</span>}
+    <div style={{ border:`1px solid ${TV.linea}`, borderRadius:16, overflow:"hidden", background:"#fff" }}>
+      <div style={{ background:`linear-gradient(90deg, ${TV.fucsia} 0%, ${TV.lavanda} 55%, ${TV.pizarra} 100%)`,
+        color:"#fff", padding: holgado ? "16px 20px" : "16px 18px", breakAfter:"avoid",
+        WebkitPrintColorAdjust:"exact", printColorAdjust:"exact" }}>
+        <div style={{ fontSize:fzp(20, 22, 18), fontWeight:600, lineHeight:1.2, overflowWrap:"anywhere" }}>
+          {titulo || "Itinerario aéreo"}
+        </div>
+        {resumen && (
+          <div style={{ fontSize:fzp(13, 14, 12.5), fontWeight:300, opacity:.95, marginTop:2 }}>{resumen}</div>
+        )}
       </div>
 
-      {filas.map((seg, ti) => {
-        const primero = seg[0].s;
-        const cierra = seg[seg.length - 1].s;
-        return (
-          <div key={ti}>
-            <div style={{ display:"flex", alignItems:"baseline", flexWrap:"wrap", gap:"3px 10px",
-              padding:`${holgado ? 9 : 8}px ${lados}px`, background:"rgba(120,90,229,.06)",
-              borderTop: ti > 0 ? "1px solid rgba(17,17,36,.07)" : "none",
-              breakInside:"avoid", breakAfter:"avoid" }}>
-              <span style={{ ...rotulo, color:"#7B5CE0" }}>✈ Tramo {ti + 1}</span>
-              <span style={{ fontSize:fzp(12, 13, 11.5), fontWeight:600, color:"#3D4066",
-                overflowWrap:"anywhere" }}>
-                {ciudad(primero.origen)} a {ciudad(cierra.destino)}
-              </span>
-            </div>
+      <div style={{ position:"relative" }}>
+        <div ref={scrollRef} className={holgado ? undefined : "tv-scroll"}>
+          <table style={{ width:"100%", minWidth: holgado ? undefined : (hayDuracion ? 440 : 360),
+            borderCollapse:"collapse", tableLayout:"fixed" }}>
+            <colgroup>{anchos.map((w, i) => <col key={i} style={{ width:w }} />)}</colgroup>
+            <thead>
+              <tr>
+                <th style={{ ...th, ...primeraCol }}>Vuelo</th>
+                <th style={th}>Sale</th>
+                <th style={{ ...th, ...(hayDuracion ? null : { ...ultimaCol, textAlign:"right" }) }}>Llega</th>
+                {hayDuracion && (
+                  <th style={{ ...th, ...ultimaCol, textAlign:"right" }}>{holgado ? "Duración" : "Dur."}</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map((seg, ti) => (
+                <Fragment key={ti}>
+                  <tr style={{ breakInside:"avoid", breakAfter:"avoid" }}>
+                    <td colSpan={cols} style={{ background:TV.fondoTramo, color:TV.lavanda,
+                      fontSize:fz(11, 11.5), fontWeight:600, letterSpacing:"1.2px", textTransform:"uppercase",
+                      padding:`6px ${lado}px`, textAlign:"left" }}>
+                      ✈ Tramo {ti + 1}
+                    </td>
+                  </tr>
+                  {seg.map(({ s, min, mas }, si) => {
+                    const cierra = ti === filas.length - 1 && si === seg.length - 1;
+                    const celda = cierra ? { ...td, borderBottom:0 } : td;
+                    const nombre = cia(s);
+                    return (
+                      <Fragment key={s.id}>
+                        {/* El mismo aviso que el diseño por trayecto: aterriza
+                            en un aeropuerto y sale de otro de la misma ciudad. */}
+                        {s.cambioDesde && (
+                          <tr>
+                            <td colSpan={cols} style={{ padding:`10px ${lado}px 0` }}>
+                              <div style={{ display:"flex", gap:9, alignItems:"flex-start", padding:"9px 12px",
+                                borderRadius:"4px 12px 12px 4px", background:"#FBF3E6",
+                                borderLeft:"2.5px solid #E3C892", fontSize:fzp(11.5, 12.5, 11.5),
+                                lineHeight:1.45, color:"#8A5A16", fontWeight:600 }}>
+                                <span aria-hidden="true">⚠</span>
+                                <span>
+                                  Cambio de aeropuerto en {ciudad(s.origen)}: el vuelo anterior llega
+                                  a {s.cambioDesde} y este sale de {s.origen}. Son dos aeropuertos distintos.
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        <tr style={{ breakInside:"avoid" }}>
+                          <td style={{ ...celda, ...primeraCol }}>
+                            <span style={{ display:"block", fontSize:fzp(14, 15, 13.5), fontWeight:600,
+                              color:TV.oscuro, whiteSpace:"nowrap" }}>
+                              {esFecha(s.fechaReal) ? diaCorto(s.fechaReal) : "—"}
+                            </span>
+                            <span style={{ display:"block", fontSize:fzp(12, 12.5, 11.5), color:TV.gris,
+                              marginTop:2, overflowWrap:"anywhere" }}>
+                              {nombre && <>{nombre} </>}
+                              <b style={{ color:TV.fucsia, fontWeight:600, whiteSpace:"nowrap" }}>
+                                {s.cia} {s.nro}
+                              </b>
+                            </span>
+                          </td>
+                          <td style={celda}>
+                            <div style={hora}>{s.salida}</div>
+                            <Lugar cod={s.origen} />
+                          </td>
+                          <td style={{ ...celda, ...(hayDuracion ? null : { ...ultimaCol, textAlign:"right" }) }}>
+                            <div style={hora}>
+                              {s.llegada}
+                              {mas > 0 && (
+                                <sup style={{ fontSize:fz(10, 11), color:TV.fucsia, fontWeight:600, marginLeft:1 }}>
+                                  +{mas}
+                                </sup>
+                              )}
+                            </div>
+                            <Lugar cod={s.destino} />
+                          </td>
+                          {hayDuracion && (
+                            <td style={{ ...celda, ...ultimaCol, textAlign:"right", fontSize:fzp(12.5, 14, 12),
+                              fontWeight:500, color:TV.oscuro, whiteSpace:"nowrap" }}>
+                              {min != null ? textoDuracion(min) : "—"}
+                            </td>
+                          )}
+                        </tr>
+                      </Fragment>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!holgado && (
+          <>
+            <div aria-hidden="true" style={{ ...sombra("left"), opacity: bordes.izq ? 1 : 0 }} />
+            <div aria-hidden="true" style={{ ...sombra("right"), opacity: bordes.der ? 1 : 0 }} />
+          </>
+        )}
+      </div>
 
-            {seg.map(({ s, min, mas }) => {
-              const fe = fecha(s.fechaReal);
-              const cia = nombreCia(s);
-              return (
-                <div key={s.id} style={{ borderTop:"1px solid rgba(17,17,36,.06)", breakInside:"avoid" }}>
-                  {/* El mismo aviso que el diseño por trayecto: aterriza en un
-                      aeropuerto y sale de otro de la misma ciudad. */}
-                  {s.cambioDesde && (
-                    <div style={{ display:"flex", gap:9, alignItems:"flex-start",
-                      margin:`10px ${lados}px 0`, padding:"9px 12px", borderRadius:"4px 12px 12px 4px",
-                      background:"#FBF3E6", borderLeft:"2.5px solid #E3C892",
-                      fontSize:fzp(11.5, 12.5, 11.5), lineHeight:1.45, color:"#8A5A16", fontWeight:600 }}>
-                      <span aria-hidden="true">⚠</span>
-                      <span>
-                        Cambio de aeropuerto en {ciudad(s.origen)}: el vuelo anterior llega
-                        a {lugar(s.cambioDesde)} y este sale de {lugar(s.origen)}.
-                        Son dos aeropuertos distintos.
-                      </span>
-                    </div>
-                  )}
-                  <div style={{ display:"grid", gridTemplateColumns:columnas, columnGap:hueco, rowGap:5,
-                    alignItems:"start", padding:`${holgado ? 14 : 11}px ${lados}px` }}>
-                    <div>
-                      <div style={{ fontSize:fzp(13.5, 15, 13), fontWeight:700, lineHeight:1.3,
-                        color:"#1A1A2E", whiteSpace:"nowrap" }}>{fe ? fe.dia : "—"}</div>
-                      {fe && <div style={chico}>{fe.mes}</div>}
-                    </div>
-                    {holgado && (
-                      <div style={{ minWidth:0 }}>
-                        {cia && (
-                          <div style={{ fontSize:fzp(13, 14.5, 12.5), fontWeight:700, lineHeight:1.3,
-                            color:"#1A1A2E", overflowWrap:"anywhere" }}>{cia}</div>
-                        )}
-                        <div style={{ fontSize:fzp(12, 13, 11.5), fontWeight:700, color:G.a,
-                          whiteSpace:"nowrap" }}>{s.cia} {s.nro}</div>
-                      </div>
-                    )}
-                    <div style={{ minWidth:0 }}>
-                      <div style={hora}>{s.salida}</div>
-                      <div style={chico}>{lugar(s.origen)}</div>
-                    </div>
-                    <div style={{ minWidth:0 }}>
-                      <div style={hora}>
-                        {s.llegada}
-                        {mas > 0 && (
-                          <sup style={{ fontSize:fz(10, 11), fontWeight:700, color:G.a, marginLeft:2 }}>+{mas}</sup>
-                        )}
-                      </div>
-                      <div style={chico}>{lugar(s.destino)}</div>
-                    </div>
-                    {holgado && hayDuracion && (
-                      <div style={{ fontSize:fzp(13, 14.5, 12.5), fontWeight:500, color:"#1A1A2E",
-                        paddingTop:2, whiteSpace:"nowrap" }}>{min != null ? textoDuracion(min) : "—"}</div>
-                    )}
-                    {!holgado && (
-                      <div style={{ gridColumn:"2 / 4", display:"flex", flexWrap:"wrap", alignItems:"baseline",
-                        gap:"2px 8px" }}>
-                        {cia && <span style={{ fontSize:fz(12, 12.5), fontWeight:600, color:"#3D4066" }}>{cia}</span>}
-                        <span style={{ fontSize:fz(12, 12.5), fontWeight:700, color:G.a, whiteSpace:"nowrap" }}>
-                          {s.cia} {s.nro}
-                        </span>
-                        {min != null && (
-                          <span style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", whiteSpace:"nowrap" }}>
-                            · {textoDuracion(min)}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
-
-      <div style={{ padding:`10px ${lados}px`, borderTop:"1px solid rgba(17,17,36,.07)",
-        fontSize:fz(11, 11.5), color:"#8A8DB5", breakInside:"avoid" }}>
+      <div style={{ fontSize:fz(11, 11.5), color:TV.gris, padding:`10px ${lado}px 12px`,
+        borderTop:`1px solid ${TV.linea}`, breakInside:"avoid" }}>
         Horarios locales de cada aeropuerto
-        {hayMas && <> · <b style={{ color:G.a }}>+1</b> llega al día siguiente</>}
+        {llegadasMas.length > 0 && (
+          <> · <b style={{ color:TV.fucsia }}>+1</b> llega al día siguiente
+            {llegadasMas.length === 1 && ` (${llegadasMas[0]})`}</>
+        )}
       </div>
     </div>
   );
