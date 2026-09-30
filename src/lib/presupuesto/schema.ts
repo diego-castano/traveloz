@@ -327,6 +327,10 @@ export const contenidoSchema = z.looseObject({
   vuelosNota: z.array(vueloDeNotaSchema).default([]),
   // Título del itinerario principal. Vacío: la ficha dice "Itinerario de vuelos".
   tituloVuelos: textoFlojo.default(""),
+  // Cómo ve el pasajero los vuelos: "diseno" (por trayecto, el de siempre) o
+  // "tabla" (el cuadro de la aerolínea). Lo elige el vendedor (Gero, 29/09).
+  // Cualquier otra cosa, o una cotización vieja sin el campo, es "diseno".
+  estiloVuelos: z.enum(["diseno", "tabla"]).catch("diseno"),
   vuelosExtra: vueloExtraSchema.nullable().default(null),
 
   vigencia: numeroFlojo

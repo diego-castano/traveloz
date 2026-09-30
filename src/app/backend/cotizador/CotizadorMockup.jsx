@@ -55,6 +55,20 @@ import { ModalCompartir } from "./_mockup/compartir";
    COMPONENTE RAÍZ
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/* Cómo arranca el itinerario de una cotización nueva: como lo dejó este
+   vendedor la última vez. Quien prefiere la tabla la elige una vez y no en
+   cada cotización (pedido de Gero, 29/09). En el servidor no hay
+   localStorage: arranca en el diseño de siempre. */
+const CLAVE_ESTILO_VUELOS = "cotizador.estiloVuelos";
+function estiloVuelosPreferido() {
+  if (typeof window === "undefined") return "diseno";
+  try {
+    return window.localStorage.getItem(CLAVE_ESTILO_VUELOS) === "tabla" ? "tabla" : "diseno";
+  } catch {
+    return "diseno";
+  }
+}
+
 /* Cotización nueva. El número queda vacío: lo asigna la base en el primer
    guardado (COT-2026-0148), y hasta entonces el encabezado dice
    "Nueva cotización". Los textos y el factor salen de los ajustes del máster. */
@@ -91,6 +105,7 @@ function cotizacionVacia(ajustes) {
        null = no hay. */
     tituloVuelos: "",
     vuelosExtra: null,
+    estiloVuelos: estiloVuelosPreferido(),
     vigencia: ajustes?.vigenciaDefault || 96,
     opciones: [],
     /* Servicios NO incluidos en el precio, que el pasajero puede sumar a

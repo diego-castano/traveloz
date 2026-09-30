@@ -6,7 +6,7 @@ import {
   Plane, Building2, User, MessageSquare, FileText, Copy, Trash2, GripVertical,
   Plus, Check, ChevronDown, ChevronUp, ChevronRight, Search, Eye, EyeOff, Command, Zap, Bed, X, LayoutGrid,
   Loader2, CheckCheck, AlertCircle, RefreshCw, PenLine, Lock, ArrowUp, ArrowDown, CornerDownLeft,
-  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon, MapPin, Bold
+  StickyNote, Keyboard, Maximize2, Luggage, Star, Image as ImageIcon, MapPin, Bold, LayoutList, Table2
 } from "lucide-react";
 import {
   MESES, ANIO_ACTUAL, REGIMENES, SUG, MODALIDADES, SUG_ALL,
@@ -910,6 +910,14 @@ function BloqueVuelos({ q, set, refEl, toast }) {
     void leerFoto(f);
     return true;
   };
+  /* El estilo vale para toda la cotización (itinerario principal, vuelos
+     adicionales y alternativas) y queda como preferencia de este vendedor
+     para las cotizaciones nuevas: misma clave que lee cotizacionVacia en
+     CotizadorMockup.jsx. */
+  const elegirEstilo = (v) => {
+    set((d) => { d.estiloVuelos = v; });
+    try { window.localStorage.setItem("cotizador.estiloVuelos", v); } catch { /* modo privado */ }
+  };
   return (
     <Block id="b-vuelos" forwardRef={refEl} icon={Plane} title="Itinerario de vuelos" count={q.vuelos.length || null}
       right={
@@ -927,11 +935,24 @@ function BloqueVuelos({ q, set, refEl, toast }) {
       {/* El título lo elige el vendedor: con vuelos adicionales abajo, "Vuelo
           internacional" y "Vuelos internos" se leen mejor que dos itinerarios
           sin nombre (pedido del cliente, 25/09). Vacío sale el de siempre. */}
-      <div style={{ marginBottom:10 }}>
-        <Label>Título que ve el pasajero</Label>
-        <input className="in" style={{ height:32, fontSize:12.5 }} value={q.tituloVuelos || ""}
-          placeholder="Itinerario de vuelos (ej. Vuelo internacional)"
-          onChange={(e) => { const v = e.target.value; set((d) => { d.tituloVuelos = v; }); }} />
+      <div style={{ display:"flex", gap:12, flexWrap:"wrap", alignItems:"flex-end", marginBottom:10 }}>
+        <div style={{ flex:"1 1 240px", minWidth:0 }}>
+          <Label>Título que ve el pasajero</Label>
+          <input className="in" style={{ height:32, fontSize:12.5 }} value={q.tituloVuelos || ""}
+            placeholder="Itinerario de vuelos (ej. Vuelo internacional)"
+            onChange={(e) => { const v = e.target.value; set((d) => { d.tituloVuelos = v; }); }} />
+        </div>
+        {/* Diseño por trayecto o el cuadro de la aerolínea: lo elige el
+            vendedor (pedido de Gero, 29/09). */}
+        <div>
+          <Label>Cómo lo ve el pasajero</Label>
+          <div className="seg">
+            <button data-on={q.estiloVuelos === "tabla" ? "0" : "1"} onClick={() => elegirEstilo("diseno")}>
+              <LayoutList size={12} /> Diseño nuevo</button>
+            <button data-on={q.estiloVuelos === "tabla" ? "1" : "0"} onClick={() => elegirEstilo("tabla")}>
+              <Table2 size={12} /> Tabla</button>
+          </div>
+        </div>
       </div>
       {modo === "texto" ? (
         <textarea className="in mono" rows={q.pnrRaw ? 5 : 3} value={q.pnrRaw}

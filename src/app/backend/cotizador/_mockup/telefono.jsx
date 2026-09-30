@@ -20,6 +20,7 @@ import { telefonoWa } from "@/lib/telefono";
 import { ServiceIcon } from "@/components/ui/ServiceIcon";
 import { resolverIcono } from "@/lib/presupuesto/iconos";
 import { partirNegritas } from "@/lib/presupuesto/negrita";
+import { tiempoDeVuelo, textoDuracion } from "./zonas-aeropuertos";
 
 /* pago — logos reales del sitio público (public/site/img), mismo orden que producción */
 const PAGO_TARJETAS = [
@@ -908,10 +909,8 @@ function SalidaPasajero({
               </div>
             )}
             <div style={{ marginBottom: q.soloVuelos ? 14 : 24 }}>
-              {trayectos.map((seg, ti) => (
-                <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectos.length - 1}
-                  ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
-              ))}
+              <Itinerario trayectos={trayectos} estilo={q.estiloVuelos}
+                ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
             </div>
           </div>
         )}
@@ -986,7 +985,7 @@ function SalidaPasajero({
         {opcionesDeVuelo.length > 0 && (
           <div data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             {opcionesDeVuelo.map((n, ni) => (
-              <VueloExtra key={n.id} n={n} numero={ni + 2} ultimo={ni === opcionesDeVuelo.length - 1}
+              <VueloExtra key={n.id} n={n} estilo={q.estiloVuelos} numero={ni + 2} ultimo={ni === opcionesDeVuelo.length - 1}
                 separar fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
                 fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
@@ -999,10 +998,8 @@ function SalidaPasajero({
           <div data-sec="vuelos" data-ap style={impresion ? { marginTop:AIRE_SEC } : undefined}>
             <SecTitulo texto={q.vuelosExtra?.nombre?.trim() || "Vuelos adicionales"} />
             <div style={{ marginBottom:24 }}>
-              {trayectosExtra.map((seg, ti) => (
-                <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectosExtra.length - 1}
-                  ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
-              ))}
+              <Itinerario trayectos={trayectosExtra} estilo={q.estiloVuelos}
+                ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
             </div>
           </div>
         )}
@@ -1434,7 +1431,7 @@ function SalidaPasajero({
                 pasajero lo lee igual que el principal y puede compararlos sin
                 cambiar de idioma visual. */}
             {alternativasEnNotas.map((n, ni) => (
-              <VueloExtra key={n.id} n={n} ultimo={ni === alternativasEnNotas.length - 1}
+              <VueloExtra key={n.id} n={n} estilo={q.estiloVuelos} ultimo={ni === alternativasEnNotas.length - 1}
                 separar={ni > 0} fechaSalida={q.fechaSalida} desk={desk} impresion={impresion}
                 fz={fz} fzp={fzp} G={G} mismaCiudad={mismaCiudad} />
             ))}
@@ -1666,7 +1663,7 @@ function PuntoRuta({ cod, hora, plus, coral, fz }) {
    vuelo. En una de solo vuelos es una OPCIÓN más y lleva número, porque ahí
    las opciones son la cotización y el pasajero contesta "me quedo con la 2".
    Es la misma pieza: cambia el rótulo y dónde se dibuja, no lo que muestra. */
-function VueloExtra({ n, numero, ultimo, separar, fechaSalida, desk, impresion, fz, fzp, G, mismaCiudad }) {
+function VueloExtra({ n, estilo, numero, ultimo, separar, fechaSalida, desk, impresion, fz, fzp, G, mismaCiudad }) {
   const filas = [["adulto", "Por adulto"], ["menor", "Por menor"], ["infante", "Por infante"]]
     .filter(([k]) => Number(n.precio?.[k]) > 0);
   /* el título va literal: es lo que el vendedor escribió, sin recortes */
@@ -1725,10 +1722,8 @@ function VueloExtra({ n, numero, ultimo, separar, fechaSalida, desk, impresion, 
 
       {!numero && fichaCabina}
 
-      {agruparTrayectos(conFechas(n.vuelos, fechaSalida), mismaCiudad).map((seg, ti, arr) => (
-        <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === arr.length - 1}
-          ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
-      ))}
+      <Itinerario trayectos={agruparTrayectos(conFechas(n.vuelos, fechaSalida), mismaCiudad)} estilo={estilo}
+        ancho={desk} impresion={impresion} fz={fz} fzp={fzp} G={G} />
 
       {numero ? fichaCabina : null}
 
@@ -1749,6 +1744,185 @@ function VueloExtra({ n, numero, ultimo, separar, fechaSalida, desk, impresion, 
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* Los trayectos de un itinerario, en la forma que eligió el vendedor: el
+   diseño por trayecto (TrayectoTabla) o el cuadro de la aerolínea
+   (TablaVuelos). Los dos numeran igual, "Tramo 1", "Tramo 2", porque salen
+   de los mismos trayectos de agruparTrayectos. */
+function Itinerario({ trayectos, estilo, ancho, impresion, fz, fzp, G }) {
+  if (estilo === "tabla") {
+    return <TablaVuelos trayectos={trayectos} ancho={ancho} impresion={impresion} fz={fz} fzp={fzp} G={G} />;
+  }
+  return trayectos.map((seg, ti) => (
+    <TrayectoTabla key={ti} seg={seg} ti={ti} ultimo={ti === trayectos.length - 1}
+      ancho={ancho} impresion={impresion} fz={fz} fzp={fzp} G={G} />
+  ));
+}
+
+const DIAS_CORTOS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const MESES_LARGOS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
+  "Agosto", "Setiembre", "Octubre", "Noviembre", "Diciembre"];
+
+/* El itinerario como el cuadro de la aerolínea.
+
+   Pedido de Gero (29/09): con muchos tramos, a algunos vendedores la vista por
+   trayecto se les hace larga y prefieren el cuadro que ya mandaban en las
+   cotizaciones de solo vuelos. Lo elige el vendedor en cada cotización. La
+   maqueta que mandó Gero tenía "Ida" y "Vuelta"; van "Tramo 1", "Tramo 2",
+   por la misma razón que en el diseño por trayecto.
+
+   Escritorio y papel llevan las cinco columnas: fecha, vuelo, sale, llega y
+   duración. En el celular no entran sin scroll lateral, que Gero pidió evitar,
+   así que quedan tres (fecha, sale, llega) y el vuelo con su duración baja a
+   un renglón propio. La duración sale solo si los dos aeropuertos tienen zona
+   horaria (zonas-aeropuertos.js): restar horas locales de dos países miente. */
+function TablaVuelos({ trayectos, ancho, impresion, fz, fzp, G }) {
+  const aeropuertos = useAeropuertos();
+  const holgado = ancho || impresion;
+  const ciudad = (cod) => aeropuertos[cod]?.ciudad || cod;
+  const lugar = (cod) => { const c = ciudad(cod); return c === cod ? cod : `${c} (${cod})`; };
+  /* Con las zonas de los dos aeropuertos, el día de llegada sale de ahí;
+     sin ellas, de comparar las horas, como en el diseño por trayecto. */
+  const filas = trayectos.map((seg) => seg.map((s) => {
+    const t = tiempoDeVuelo(s);
+    return { s, min: t ? t.min : null, mas: t ? t.dias : diasDeMas(s) };
+  }));
+  const hayDuracion = filas.some((seg) => seg.some((x) => x.min != null));
+  const hayMas = filas.some((seg) => seg.some((x) => x.mas > 0));
+  const columnas = holgado
+    ? `${impresion ? 74 : 82}px minmax(0,1.1fr) minmax(0,1fr) minmax(0,1fr)${hayDuracion ? " 72px" : ""}`
+    : "46px minmax(0,1fr) minmax(0,1fr)";
+  const hueco = holgado ? 16 : 10;
+  const lados = holgado ? 18 : 12;
+
+  const rotulo = { fontSize:fz(10, 10.5), fontWeight:700, letterSpacing:".12em",
+    textTransform:"uppercase", color:"#5B3FBF" };
+  const chico = { fontSize:fzp(11.5, 12.5, 11), color:"#8A8DB5", lineHeight:1.35,
+    overflowWrap:"anywhere" };
+  const hora = { fontSize:fzp(15.5, 18, 14.5), fontWeight:700, lineHeight:1.25, color:"#1A1A2E",
+    fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" };
+  const fecha = (f) => (f instanceof Date && !Number.isNaN(f.getTime()))
+    ? { dia:`${DIAS_CORTOS[f.getDay()]} ${f.getDate()}`,
+        mes: holgado ? MESES_LARGOS[f.getMonth()] : MESES_LARGOS[f.getMonth()].slice(0, 3).toLowerCase() }
+    : null;
+  /* Un PNR sin nombre de aerolínea trae el código repetido: "JA" y "JA 763"
+     uno arriba del otro es ruido. */
+  const nombreCia = (s) => (s.aerolinea && s.aerolinea !== s.cia ? s.aerolinea : "");
+
+  return (
+    <div style={{ border:"1px solid rgba(17,17,36,.09)", borderRadius:16, overflow:"hidden",
+      background:"#fff" }}>
+      <div aria-hidden="true" style={{ height:4, background:`linear-gradient(90deg, ${G.a}, ${G.b})` }} />
+      <div style={{ display:"grid", gridTemplateColumns:columnas, columnGap:hueco,
+        padding:`${holgado ? 12 : 10}px ${lados}px ${holgado ? 10 : 8}px`,
+        borderBottom:`2px solid ${G.a}`, breakAfter:"avoid" }}>
+        <span style={rotulo}>Fecha</span>
+        {holgado && <span style={rotulo}>Vuelo</span>}
+        <span style={rotulo}>Sale</span>
+        <span style={rotulo}>Llega</span>
+        {holgado && hayDuracion && <span style={rotulo}>Duración</span>}
+      </div>
+
+      {filas.map((seg, ti) => {
+        const primero = seg[0].s;
+        const cierra = seg[seg.length - 1].s;
+        return (
+          <div key={ti}>
+            <div style={{ display:"flex", alignItems:"baseline", flexWrap:"wrap", gap:"3px 10px",
+              padding:`${holgado ? 9 : 8}px ${lados}px`, background:"rgba(120,90,229,.06)",
+              borderTop: ti > 0 ? "1px solid rgba(17,17,36,.07)" : "none",
+              breakInside:"avoid", breakAfter:"avoid" }}>
+              <span style={{ ...rotulo, color:"#7B5CE0" }}>✈ Tramo {ti + 1}</span>
+              <span style={{ fontSize:fzp(12, 13, 11.5), fontWeight:600, color:"#3D4066",
+                overflowWrap:"anywhere" }}>
+                {ciudad(primero.origen)} a {ciudad(cierra.destino)}
+              </span>
+            </div>
+
+            {seg.map(({ s, min, mas }) => {
+              const fe = fecha(s.fechaReal);
+              const cia = nombreCia(s);
+              return (
+                <div key={s.id} style={{ borderTop:"1px solid rgba(17,17,36,.06)", breakInside:"avoid" }}>
+                  {/* El mismo aviso que el diseño por trayecto: aterriza en un
+                      aeropuerto y sale de otro de la misma ciudad. */}
+                  {s.cambioDesde && (
+                    <div style={{ display:"flex", gap:9, alignItems:"flex-start",
+                      margin:`10px ${lados}px 0`, padding:"9px 12px", borderRadius:"4px 12px 12px 4px",
+                      background:"#FBF3E6", borderLeft:"2.5px solid #E3C892",
+                      fontSize:fzp(11.5, 12.5, 11.5), lineHeight:1.45, color:"#8A5A16", fontWeight:600 }}>
+                      <span aria-hidden="true">⚠</span>
+                      <span>
+                        Cambio de aeropuerto en {ciudad(s.origen)}: el vuelo anterior llega
+                        a {lugar(s.cambioDesde)} y este sale de {lugar(s.origen)}.
+                        Son dos aeropuertos distintos.
+                      </span>
+                    </div>
+                  )}
+                  <div style={{ display:"grid", gridTemplateColumns:columnas, columnGap:hueco, rowGap:5,
+                    alignItems:"start", padding:`${holgado ? 14 : 11}px ${lados}px` }}>
+                    <div>
+                      <div style={{ fontSize:fzp(13.5, 15, 13), fontWeight:700, lineHeight:1.3,
+                        color:"#1A1A2E", whiteSpace:"nowrap" }}>{fe ? fe.dia : "—"}</div>
+                      {fe && <div style={chico}>{fe.mes}</div>}
+                    </div>
+                    {holgado && (
+                      <div style={{ minWidth:0 }}>
+                        {cia && (
+                          <div style={{ fontSize:fzp(13, 14.5, 12.5), fontWeight:700, lineHeight:1.3,
+                            color:"#1A1A2E", overflowWrap:"anywhere" }}>{cia}</div>
+                        )}
+                        <div style={{ fontSize:fzp(12, 13, 11.5), fontWeight:700, color:G.a,
+                          whiteSpace:"nowrap" }}>{s.cia} {s.nro}</div>
+                      </div>
+                    )}
+                    <div style={{ minWidth:0 }}>
+                      <div style={hora}>{s.salida}</div>
+                      <div style={chico}>{lugar(s.origen)}</div>
+                    </div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={hora}>
+                        {s.llegada}
+                        {mas > 0 && (
+                          <sup style={{ fontSize:fz(10, 11), fontWeight:700, color:G.a, marginLeft:2 }}>+{mas}</sup>
+                        )}
+                      </div>
+                      <div style={chico}>{lugar(s.destino)}</div>
+                    </div>
+                    {holgado && hayDuracion && (
+                      <div style={{ fontSize:fzp(13, 14.5, 12.5), fontWeight:500, color:"#1A1A2E",
+                        paddingTop:2, whiteSpace:"nowrap" }}>{min != null ? textoDuracion(min) : "—"}</div>
+                    )}
+                    {!holgado && (
+                      <div style={{ gridColumn:"2 / 4", display:"flex", flexWrap:"wrap", alignItems:"baseline",
+                        gap:"2px 8px" }}>
+                        {cia && <span style={{ fontSize:fz(12, 12.5), fontWeight:600, color:"#3D4066" }}>{cia}</span>}
+                        <span style={{ fontSize:fz(12, 12.5), fontWeight:700, color:G.a, whiteSpace:"nowrap" }}>
+                          {s.cia} {s.nro}
+                        </span>
+                        {min != null && (
+                          <span style={{ fontSize:fz(11.5, 12), color:"#8A8DB5", whiteSpace:"nowrap" }}>
+                            · {textoDuracion(min)}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+
+      <div style={{ padding:`10px ${lados}px`, borderTop:"1px solid rgba(17,17,36,.07)",
+        fontSize:fz(11, 11.5), color:"#8A8DB5", breakInside:"avoid" }}>
+        Horarios locales de cada aeropuerto
+        {hayMas && <> · <b style={{ color:G.a }}>+1</b> llega al día siguiente</>}
+      </div>
     </div>
   );
 }

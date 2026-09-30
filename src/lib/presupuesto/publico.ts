@@ -131,6 +131,8 @@ export interface ContenidoPublico {
   }>;
   /** Título del itinerario principal. Vacío: la ficha dice "Itinerario de vuelos". */
   tituloVuelos: string;
+  /** "tabla" o "diseno": cómo se dibujan los tres itinerarios. */
+  estiloVuelos: "diseno" | "tabla";
   /** Vuelos adicionales (los internos de un paquete, por ejemplo): solo el
    *  itinerario, con su título. null si la cotización no tiene. */
   vuelosExtra: { id: string; nombre: string; vuelos: ContenidoPublico["vuelos"] } | null;
@@ -236,6 +238,7 @@ export function contenidoPublico(q: ContenidoPresupuesto): ContenidoPublico {
       vuelos: (n?.vuelos ?? []).map(vueloPublico),
     })),
     tituloVuelos: txt(q.tituloVuelos),
+    estiloVuelos: q.estiloVuelos === "tabla" ? "tabla" : "diseno",
     // Sin el PNR crudo, igual que las alternativas.
     vuelosExtra: q.vuelosExtra
       ? {
