@@ -1816,14 +1816,22 @@ function TablaVuelos({ trayectos, titulo, ancho, impresion, fz, fzp }) {
   const aeropuertos = useAeropuertos();
   const holgado = ancho || impresion;
   const scrollRef = useRef(null);
-  const [bordes, setBordes] = useState({ izq:false, der:false });
+  /* izq/der: si hay más tabla de cada lado. ancho/desde: el pulgar de la
+     barra propia, en % del riel. */
+  const [bordes, setBordes] = useState({ izq:false, der:false, ancho:100, desde:0 });
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || holgado) return undefined;
-    const medir = () => setBordes({
-      izq: el.scrollLeft > 2,
-      der: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
-    });
+    const medir = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      const ancho = el.scrollWidth ? (el.clientWidth / el.scrollWidth) * 100 : 100;
+      setBordes({
+        izq: el.scrollLeft > 2,
+        der: el.scrollLeft < max - 2,
+        ancho,
+        desde: max > 0 ? (el.scrollLeft / max) * (100 - ancho) : 0,
+      });
+    };
     medir();
     el.addEventListener("scroll", medir, { passive:true });
     window.addEventListener("resize", medir);
@@ -1995,12 +2003,39 @@ function TablaVuelos({ trayectos, titulo, ancho, impresion, fz, fzp }) {
           <>
             <div aria-hidden="true" style={{ ...sombra("left"), opacity: bordes.izq ? 1 : 0 }} />
             <div aria-hidden="true" style={{ ...sombra("right"), opacity: bordes.der ? 1 : 0 }} />
+            {/* Dice que hay más y lleva hasta ahí. Va en el renglón de los
+                rótulos, donde no tapa ningún dato. */}
+            {bordes.der && (
+              <button type="button" aria-label="Ver el resto de la tabla"
+                onClick={() => scrollRef.current?.scrollBy({ left: scrollRef.current.clientWidth * 0.8, behavior:"smooth" })}
+                style={{ position:"absolute", top:5, right:6, width:24, height:24, padding:0, borderRadius:999,
+                  border:`1px solid ${TV.linea}`, background:"#fff", color:TV.lavanda, cursor:"pointer",
+                  display:"grid", placeItems:"center", fontSize:17, fontWeight:600, lineHeight:1,
+                  boxShadow:"0 4px 12px -4px rgba(120,90,228,.45)" }}>
+                ›
+              </button>
+            )}
           </>
         )}
       </div>
 
+      {/* La barra propia: siempre a la vista mientras la tabla no entre, y el
+          pulgar sigue al dedo. */}
+      {!holgado && bordes.ancho < 99.5 && (
+        <div aria-hidden="true" style={{ position:"relative", height:4, margin:`8px ${lado}px 0`,
+          borderRadius:999, background:TV.fondoTramo }}>
+          <div style={{ position:"absolute", top:0, bottom:0, left:`${bordes.desde}%`, width:`${bordes.ancho}%`,
+            borderRadius:999, background:TV.lavanda, opacity:.6 }} />
+        </div>
+      )}
+
       <div style={{ fontSize:fz(11, 11.5), color:TV.gris, padding:`10px ${lado}px 12px`,
         borderTop:`1px solid ${TV.linea}`, breakInside:"avoid" }}>
+        {!holgado && bordes.ancho < 99.5 && (
+          <div style={{ color:TV.lavanda, fontWeight:600, marginBottom:3 }}>
+            ↔ Deslizá la tabla para ver {hayDuracion ? "la duración" : "todo"}
+          </div>
+        )}
         Horarios locales de cada aeropuerto
         {llegadasMas.length > 0 && (
           <> · <b style={{ color:TV.fucsia }}>+1</b> llega al día siguiente

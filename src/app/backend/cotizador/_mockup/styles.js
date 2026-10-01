@@ -1167,13 +1167,13 @@ textarea.in { height:auto; padding:10px 12px; resize:vertical; line-height:1.6; 
 
 }
 
-/* Itinerario en tabla, en el celular: la tabla se desliza de costado con una
-   barra fina en los colores de marca (pedido del cliente, 30/09). */
+/* Itinerario en tabla, en el celular: la tabla se desliza de costado. La
+   barra nativa no sirve de aviso: en Android y en iPhone aparece solo
+   mientras el dedo desliza (reporte de Gero, 01/10). Se esconde y la tabla
+   dibuja la suya, siempre visible, más un botón que lleva al resto. */
 .ctz .tv-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain;
-  scrollbar-width:thin; scrollbar-color:rgba(160,94,211,.45) #F7F3FC; }
-.ctz .tv-scroll::-webkit-scrollbar { height:6px; }
-.ctz .tv-scroll::-webkit-scrollbar-track { background:#F7F3FC; border-radius:999px; margin:0 14px; }
-.ctz .tv-scroll::-webkit-scrollbar-thumb { background:rgba(160,94,211,.45); border-radius:999px; }
+  scrollbar-width:none; }
+.ctz .tv-scroll::-webkit-scrollbar { display:none; }
 `;
 
 export { CSS };
