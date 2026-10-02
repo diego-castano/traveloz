@@ -34,8 +34,13 @@ export default async function CotizadorLandingPage({
       {/* App-bar TravelOz (plataforma) — barra blanca frosteada sobre el fondo. */}
       <header className="sticky top-0 z-10 border-b border-neutral-200/60 bg-white/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-center px-5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/header-logo.webp" alt="TravelOz" className="h-10 w-auto" />
+          {/* El logo lleva a la web principal (pedido de Agustina, 02/10). Vale
+              para todas las landings. "/" y no el dominio entero: la landing
+              vive en el mismo sitio, sea traveloz.com.uy o el de Railway. */}
+          <a href="/" aria-label="Ir a la web de TravelOz" className="rounded-md transition-opacity hover:opacity-80">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/header-logo.webp" alt="TravelOz" className="h-10 w-auto" />
+          </a>
         </div>
       </header>
 
