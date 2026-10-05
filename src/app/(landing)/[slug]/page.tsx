@@ -10,8 +10,23 @@ import { notFound } from "next/navigation";
 import { getPublishedLanding } from "@/actions/cotizador.actions";
 import { DynamicForm } from "./_components/DynamicForm";
 import { Footer } from "@/components/public/Footer";
+import { buildSeoMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+// Lo que se ve al compartir el link (WhatsApp, Instagram): sin esto la landing
+// heredaba "TravelOz Admin" del layout raíz. Imagen: la de marca por defecto.
+// Sigue noindex, igual que el layout del grupo.
+export async function generateMetadata({ params }: { params: { slug: string } }) {
+  const landing = await getPublishedLanding(params.slug);
+  if (!landing) return buildSeoMetadata("default", { noindex: true });
+  const texto = landing.textoInstitucional?.trim() || landing.tituloHero?.trim() || "";
+  return buildSeoMetadata("default", {
+    title: `${landing.nombreMarca} | TravelOz`,
+    description: texto.length > 200 ? `${texto.slice(0, 197).trimEnd()}…` : texto || undefined,
+    noindex: true,
+  });
+}
 
 export default async function CotizadorLandingPage({
   params,
