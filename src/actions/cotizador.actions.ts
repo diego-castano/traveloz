@@ -118,7 +118,6 @@ export async function submitCotizadorLead(
         nombreMarca: true,
         logoUrl: true,
         emailsDestino: true,
-        bitrixSourceId: true,
         campos: true,
       },
     });
@@ -177,9 +176,10 @@ export async function submitCotizadorLead(
       }
     }
 
-    // Best-effort: el lead ya quedó guardado. BITRIX_OFF=1 corta el envío igual
-    // que en el cotizador del sitio.
-    if (landing.bitrixSourceId && process.env.BITRIX_OFF !== "1") {
+    // Toda landing de marca manda a Bitrix (pedido del cliente). Best-effort: el
+    // lead ya quedó guardado. BITRIX_OFF=1 corta el envío igual que en el
+    // cotizador del sitio.
+    if (process.env.BITRIX_OFF !== "1") {
       await enviarLeadCotizadorABitrix(lead.id);
     }
 

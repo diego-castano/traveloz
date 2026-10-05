@@ -90,11 +90,16 @@ export function consultaDesdeLeadCotizador(
     pauta: resumenPauta(first, last),
     utm: utmDePauta(first, last),
     sourceId: landing.bitrixSourceId,
+    sourceDescription: `Landing ${landing.nombreMarca}`,
     fechaConsulta: opts?.conFecha ? lead.createdAt : null,
   };
 }
 
-/** Nunca tira. SALTEADO = sin origen configurado, lead inexistente o ya enviado/en curso. */
+/**
+ * Nunca tira. SALTEADO = lead inexistente o ya enviado/en curso. Toda landing
+ * manda: sin origen propio entra con el de por defecto ("Web") y la
+ * "Información del origen" dice de qué landing vino.
+ */
 export async function enviarLeadCotizadorABitrix(
   leadId: string,
   opts?: { backfill?: boolean },
@@ -113,7 +118,7 @@ export async function enviarLeadCotizadorABitrix(
         landing: { select: { slug: true, nombreMarca: true, bitrixSourceId: true } },
       },
     });
-    if (!lead || !lead.landing.bitrixSourceId) return "SALTEADO";
+    if (!lead) return "SALTEADO";
 
     // Claim atómico: dos requests a la vez no crean dos negocios.
     const claim = await prisma.cotizadorLead.updateMany({
@@ -175,33 +180,49 @@ export async function enviarLeadCotizadorABitrix(
   }
 }
 
-function filtroPendientes(landingId: string) {
-  return {
-    landingId,
-    OR: [
-      { crmEstado: null },
-      { crmEstado: "ERROR" as const, crmIntentos: { lt: MAX_INTENTOS } },
-    ],
-  };
+// Solo cuentan los envíos desde `bitrixDesde` de la landing: los anteriores ya
+// los trabajó el equipo a mano desde el mail, y mandarlos ahora duplicaría.
+async function desdeDeLanding(landingId: string): Promise<Date> {
+  const landing = await prisma.cotizadorLanding.findUnique({
+    where: { id: landingId },
+    select: { bitrixDesde: true },
+  });
+  return landing?.bitrixDesde ?? new Date();
 }
 
 export async function contarPendientesBitrix(landingId: string): Promise<number> {
-  return prisma.cotizadorLead.count({ where: filtroPendientes(landingId) });
+  const desde = await desdeDeLanding(landingId);
+  return prisma.cotizadorLead.count({
+    where: {
+      landingId,
+      createdAt: { gte: desde },
+      OR: [
+        { crmEstado: null },
+        { crmEstado: "ERROR", crmIntentos: { lt: MAX_INTENTOS } },
+      ],
+    },
+  });
 }
 
 export async function enviarPendientesDeLanding(
   landingId: string,
   max = 25,
 ): Promise<{ enviados: number; errores: number; pendientes: number }> {
+  const desde = await desdeDeLanding(landingId);
   let ids = await prisma.cotizadorLead.findMany({
-    where: { landingId, crmEstado: null },
+    where: { landingId, createdAt: { gte: desde }, crmEstado: null },
     orderBy: { createdAt: "asc" },
     take: max,
     select: { id: true },
   });
   if (ids.length === 0) {
     ids = await prisma.cotizadorLead.findMany({
-      where: { landingId, crmEstado: "ERROR", crmIntentos: { lt: MAX_INTENTOS } },
+      where: {
+        landingId,
+        createdAt: { gte: desde },
+        crmEstado: "ERROR",
+        crmIntentos: { lt: MAX_INTENTOS },
+      },
       orderBy: { createdAt: "asc" },
       take: max,
       select: { id: true },

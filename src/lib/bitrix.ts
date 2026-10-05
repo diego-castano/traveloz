@@ -608,6 +608,11 @@ export interface ConsultaLead {
   canal?: string | null;
   /** Origen (SOURCE_ID) del negocio y del contacto nuevo. Sin él vale BITRIX_SOURCE_ID / default. */
   sourceId?: string | null;
+  /**
+   * "Información del origen" (SOURCE_DESCRIPTION) del negocio: de qué
+   * formulario vino. Distingue cada landing aunque comparta el origen "Web".
+   */
+  sourceDescription?: string | null;
   /** Respuestas propias del formulario de una landing (ej. "¡Elegí tu beneficio!"). */
   extras?: { etiqueta: string; valor: string }[];
   /** Si viene, se agrega la línea "Fecha de la consulta" (leads viejos, enviados después). */
@@ -1027,6 +1032,7 @@ export async function crearNegocioLead(
     COMMENTS: comments,
   };
   if (contactId) fields.CONTACT_ID = contactId;
+  if (lead.sourceDescription) fields.SOURCE_DESCRIPTION = lead.sourceDescription;
   for (const [clave, campos] of Object.entries(CAMPOS_UTM)) {
     const valor = lead.utm?.[clave as keyof UtmPauta];
     if (valor) for (const campo of campos) fields[campo] = valor;

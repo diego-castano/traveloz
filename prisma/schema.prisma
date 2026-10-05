@@ -1011,8 +1011,12 @@ model CotizadorLanding {
   // código). Array de FormField (ver src/lib/cotizador-form.ts). El núcleo de
   // cotización se siembra al crear el landing; cada marca lo edita a su gusto.
   campos             Json      @default("[]")
-  // Origen (SOURCE_ID) del negocio en Bitrix. null = la landing no manda a Bitrix.
+  // Origen (SOURCE_ID) del negocio en Bitrix. Toda landing manda a Bitrix: null
+  // = origen por defecto ("Web"); el negocio igual dice de qué landing vino.
   bitrixSourceId     String?
+  // Desde cuándo los envíos de esta landing van a Bitrix. Los anteriores no se
+  // ofrecen para mandar desde el panel (el equipo ya los trabajó por mail).
+  bitrixDesde        DateTime  @default(now())
   publicado          Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt

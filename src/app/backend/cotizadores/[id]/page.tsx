@@ -51,9 +51,7 @@ export default async function EditarCotizadorPage({
   if (!landing || landing.deletedAt) notFound();
 
   const origenesBitrix = await getBitrixOrigenes().catch(() => null);
-  const pendientesBitrix = landing.bitrixSourceId
-    ? await contarPendientesBitrix(landing.id)
-    : 0;
+  const pendientesBitrix = await contarPendientesBitrix(landing.id);
 
   return (
     <div className="mx-auto max-w-6xl p-6">

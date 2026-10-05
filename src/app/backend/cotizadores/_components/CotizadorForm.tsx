@@ -167,10 +167,10 @@ export function CotizadorForm({
         </Field>
 
         <Field
-          label="Enviar a Bitrix"
+          label="Origen en Bitrix"
           hint={
             origenesBitrix
-              ? "Cada envío crea un negocio en Bitrix con este origen. Con \"No enviar a Bitrix\", los envíos solo llegan por mail."
+              ? "Cada envío crea un negocio en Bitrix con este origen, y en \"Información del origen\" dice de qué landing vino. Para filtrar esta landing en Bitrix, creá allá un origen con su nombre y elegilo acá."
               : "No se pudo leer la lista de orígenes de Bitrix."
           }
         >
@@ -182,7 +182,7 @@ export function CotizadorForm({
           >
             {origenesBitrix ? (
               <>
-                <option value="">No enviar a Bitrix</option>
+                <option value="">Por defecto (Web)</option>
                 {origenesBitrix.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.nombre}
@@ -190,7 +190,7 @@ export function CotizadorForm({
                 ))}
               </>
             ) : (
-              <option value={bitrixSourceId}>{bitrixSourceId || "No enviar a Bitrix"}</option>
+              <option value={bitrixSourceId}>{bitrixSourceId || "Por defecto (Web)"}</option>
             )}
           </select>
         </Field>
