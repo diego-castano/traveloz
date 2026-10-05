@@ -12,6 +12,12 @@ https://traveloz.com.uy/collection. Google no lo indexa: la página responde
 
 El script reemplaza entero `public/collection/` y `docs/collection/contexto/`.
 
+Desde la v0.3 (05/10/2026) el mockup se edita directo en
+`public/collection/index.html`: el feedback del cliente del 01/10 (menú nuevo,
+Destinos, Especialistas, Aliados, Contactanos) solo existe en el repo. Un
+import nuevo desde Claude Design lo borra. Antes de importar, hay que aplicar
+esos cambios también en el proyecto de Claude Design.
+
 ## Qué hay
 
 - `public/collection/`: la página exportada (`index.html`), el runtime de
