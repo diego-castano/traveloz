@@ -2383,7 +2383,7 @@ function CampoOcupacion({ valor, onChange }) {
 
 /* ── 8 · Opciones hoteleras ──────────────────────────────────────────── */
 function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
-  const { hotelById, hotelesCotizadosEn, registrarHotelLibre } = useCatalogo();
+  const { hotelById, hotelesCotizadosEn, registrarHotelLibre, eliminarHotelPropio } = useCatalogo();
   /* toda tarifa nueva arranca con el factor que fijó el máster en Ajustes */
   const { factorDefault } = useAjustes();
   const [foco, setFoco] = useState(null);
@@ -2582,6 +2582,7 @@ function SeccionOpciones({ q, set, tramos, toast, vistaPasajero }) {
                             <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
                               <div style={{ flex:"1 1 200px", minWidth:0 }}>
                                 <BuscadorHotel ciudad={t.ciudad} valor={h.libre || H?.nombre || ""}
+                                  onQuitarPropio={eliminarHotelPropio}
                                   onPick={(hh) => set((d) => { const prev = d.opciones[i].hoteles[hi] || {};
                                     d.opciones[i].hoteles[hi] = { ...prev, hotelId:hh.id, libre:"",
                                       regimen: prev.regimen || regimenDeTramo(hi) }; })}

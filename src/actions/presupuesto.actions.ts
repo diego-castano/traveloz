@@ -472,6 +472,7 @@ export interface ContextoCotizador {
   vendedores: VendedorContexto[];
   ajustes: AjustesCotizador;
   favoritos: string[];
+  hotelesPropios: { id: string; vendedorId: string; nombre: string; ciudad: string; cat: number }[];
   aeropuertos: { codigo: string; ciudad: string; nombre: string; terminal: string | null }[];
   aerolineas: { codigo: string; nombre: string }[];
 }
@@ -503,7 +504,7 @@ export async function getContextoCotizador(): Promise<Resultado<ContextoCotizado
   return ejecutar("getContextoCotizador", async () => {
     const s = await scopeVendedor();
 
-    const [yo, lista, settings, favoritos, aeropuertos, aerolineas] = await Promise.all([
+    const [yo, lista, settings, favoritos, hotelesPropios, aeropuertos, aerolineas] = await Promise.all([
       prisma.user.findUnique({ where: { id: s.userId }, select: SELECT_VENDEDOR }),
       // El vendedor no arma la lista del equipo: se ve solo a él.
       s.isAdmin
@@ -521,6 +522,12 @@ export async function getContextoCotizador(): Promise<Resultado<ContextoCotizado
         where: { vendedorId: s.userId },
         select: { alojamientoId: true },
       }),
+      // El vendedor ve los suyos; el admin todos, para que al editar la
+      // cotización de otro encuentre los hoteles de ese vendedor.
+      prisma.hotelPropio.findMany({
+        where: s.isAdmin ? {} : { vendedorId: s.userId },
+        orderBy: { nombre: "asc" },
+      }),
       prisma.aeropuerto.findMany({ orderBy: { codigo: "asc" } }),
       prisma.aerolinea.findMany({ orderBy: { codigo: "asc" } }),
     ]);
@@ -532,6 +539,13 @@ export async function getContextoCotizador(): Promise<Resultado<ContextoCotizado
       vendedores: s.isAdmin ? lista : [yo],
       ajustes: leerAjustes(settings),
       favoritos: favoritos.map((f) => f.alojamientoId),
+      hotelesPropios: hotelesPropios.map((h) => ({
+        id: h.id,
+        vendedorId: h.vendedorId,
+        nombre: h.nombre,
+        ciudad: h.ciudad,
+        cat: h.categoria,
+      })),
       aeropuertos,
       aerolineas,
     };

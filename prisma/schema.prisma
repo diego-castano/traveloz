@@ -131,6 +131,7 @@ model User {
 
   presupuestos     Presupuesto[]
   hotelesFavoritos HotelFavorito[]
+  hotelesPropios   HotelPropio[]
 
   @@index([brandId])
 }
@@ -1499,6 +1500,25 @@ model HotelFavorito {
 
   @@id([vendedorId, alojamientoId])
   @@index([alojamientoId])
+}
+
+// Hotel que un vendedor escribió a mano en el cotizador. Es solo suyo: no
+// entra a Alojamientos (ni backend, ni paquetes, ni web) y otro vendedor no lo
+// ve. Lo vuelve a encontrar en su buscador en las cotizaciones siguientes.
+model HotelPropio {
+  id         String   @id @default(cuid())
+  vendedorId String
+  nombre     String
+  nombreNorm String
+  ciudad     String   @default("")
+  ciudadNorm String   @default("")
+  categoria  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  vendedor   User     @relation(fields: [vendedorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendedorId, nombreNorm, ciudadNorm])
+  @@index([vendedorId])
 }
 
 // Catálogo IATA mínimo para el bloque de vuelos: el parser de PNR devuelve

@@ -24,6 +24,10 @@ import {
   listarPlantillas, crearPlantilla, eliminarPlantilla, usarPlantilla, leerPlantilla,
   toggleFavorito as toggleFavoritoAction,
 } from "@/actions/presupuesto.actions";
+import {
+  guardarHotelPropio as guardarHotelPropioAction,
+  eliminarHotelPropio as eliminarHotelPropioAction,
+} from "@/actions/hotel-propio.actions";
 import { Btn, Pill, Toasts, SelectBuscable } from "./_mockup/ui";
 import { MisLinks } from "./_mockup/mis-links";
 import { SalidaPasajero } from "./_mockup/telefono";
@@ -429,12 +433,12 @@ function desdeIA(det, ajustes, catalogo) {
  * @param {{ yo?: import("./tipos").VendedorCotizador | null,
  *           vendedores?: import("./tipos").VendedorCotizador[],
  *           siteBaseUrl?: string,
- *           ajustes?: object, favoritos?: string[],
+ *           ajustes?: object, favoritos?: string[], hotelesPropios?: object[],
  *           aeropuertos?: object[], aerolineas?: object[] }} props
  */
 export default function Cotizador({
   yo = null, vendedores = [], siteBaseUrl = "",
-  ajustes = null, favoritos = [], aeropuertos = [], aerolineas = [],
+  ajustes = null, favoritos = [], hotelesPropios = [], aeropuertos = [], aerolineas = [],
 }) {
   const esAdmin = yo?.rol === "ADMIN";
   /* el parser de pegados de WhatsApp necesita la lista para no confundir el
@@ -463,7 +467,29 @@ export default function Cotizador({
 
   /* Paquetes, hoteles, ciudades y regímenes reales: salen de los providers del
      panel (Package / Service / Catalog), memoizados una sola vez acá arriba. */
-  const catalogo = useCatalogoCotizador({ favoritosIniciales: favoritos, onToggleFavorito });
+  /* Hoteles escritos a mano: viven en HotelPropio, solo del vendedor. Si no se
+     pudo guardar la cotización conserva el nombre igual; solo avisamos. */
+  const onGuardarHotelPropio = useCallback(async (datos) => {
+    const res = await guardarHotelPropioAction(datos);
+    if (!res.ok) {
+      toast({ msg:"No se pudo guardar el hotel en tus hoteles.", tone:"warn" });
+      return null;
+    }
+    return res.data;
+  }, [toast]);
+  const onEliminarHotelPropio = useCallback(async (id) => {
+    const res = await eliminarHotelPropioAction(id);
+    if (!res.ok) toast({ msg:res.error, tone:"warn" });
+    return res.ok;
+  }, [toast]);
+
+  /* el vendedor dueño de la cotización: de él son los hoteles propios que se ven */
+  const [vendedor, setVendedor] = useState(yo?.id ?? null);
+  const catalogo = useCatalogoCotizador({
+    favoritosIniciales: favoritos, onToggleFavorito,
+    hotelesPropiosIniciales: hotelesPropios, vendedorActivoId: vendedor,
+    onGuardarHotelPropio, onEliminarHotelPropio,
+  });
   catalogoRef.current = catalogo;
 
   const mapaAeropuertos = useMemo(() => indexarAeropuertos(aeropuertos), [aeropuertos]);
@@ -478,7 +504,6 @@ export default function Cotizador({
 
   const [pantalla, setPantalla] = useState("inicio");     // inicio | editor
   const marca = "traveloz";
-  const [vendedor, setVendedor] = useState(yo?.id ?? null);
   const [q, setQ] = useState(() => cotizacionVacia(ajustes));
   /* la fila en la base; null mientras la cotización no exista todavía */
   const [presupuestoId, setPresupuestoId] = useState(null);

@@ -129,7 +129,10 @@ function agrupar(filas, clave) {
  *   estrella en pantalla: la raíz llama a la server action y confirma (o
  *   revierte) con `aplicarFavoritos`.
  */
-export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = {}) {
+export function useCatalogoCotizador({
+  favoritosIniciales, onToggleFavorito,
+  hotelesPropiosIniciales, vendedorActivoId, onGuardarHotelPropio, onEliminarHotelPropio,
+} = {}) {
   const paquetesRaw = usePaquetes();
   const rehidratarPaquetes = usePackageRefresh();
   const rehidratarServicios = useServiceRefresh();
@@ -155,10 +158,23 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
   const progresoServicios = useServiceProgress();
 
   /* ── hoteles escritos a mano y favoritos ────────────────────────────────
-     Los libres viven solo en la sesión (el vendedor los escribe a mano y los
-     vuelve a elegir mientras no recargue). Los favoritos, en cambio, son de la
-     base: arrancan con los del vendedor y cada estrella va a HotelFavorito. */
-  const libresRef = useRef([]);
+     Los libres son los hoteles propios del vendedor (HotelPropio): arrancan
+     con los suyos de la base y cada hotel nuevo que escribe se guarda a su
+     nombre, nunca en Alojamientos. Se muestran solo los del dueño de la
+     cotización (`vendedorActivoId`). Los favoritos también son de la base:
+     arrancan con los del vendedor y cada estrella va a HotelFavorito. */
+  const libresRef = useRef(null);
+  if (libresRef.current === null) {
+    libresRef.current = (hotelesPropiosIniciales || []).map((row, i) => ({
+      id: "hp-" + row.id, dbId: row.id, vendedorId: row.vendedorId,
+      nombre: row.nombre, ciudad: row.ciudad || "", cat: row.cat || 0,
+      foto: null, seed: 40 + i, propio: true,
+    }));
+  }
+  const guardarPropioRef = useRef(onGuardarHotelPropio);
+  guardarPropioRef.current = onGuardarHotelPropio;
+  const eliminarPropioRef = useRef(onEliminarHotelPropio);
+  eliminarPropioRef.current = onEliminarHotelPropio;
   const favoritosRef = useRef(null);
   if (favoritosRef.current === null) {
     favoritosRef.current = new Set(favoritosIniciales || []);
@@ -278,11 +294,12 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
   const hoteles = useMemo(() => {
     const yaEstan = new Set(hotelesCatalogo.map((h) => h.id));
     const nuevos = nuevosRef.current.filter((h) => !yaEstan.has(h.id));
-    return [...hotelesCatalogo, ...nuevos, ...libresRef.current];
+    const propios = libresRef.current.filter((h) => !h.vendedorId || h.vendedorId === vendedorActivoId);
+    return [...hotelesCatalogo, ...nuevos, ...propios];
     // `tick` es el disparador de los libres, los nuevos y los favoritos: sin él
     // la lista no se rearma cuando el vendedor escribe o crea un hotel.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hotelesCatalogo, tick]);
+  }, [hotelesCatalogo, tick, vendedorActivoId]);
 
   const hotelPorId = useMemo(() => {
     const m = new Map();
@@ -295,12 +312,14 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
   const registrarHotelLibre = useCallback((nombre, ciudad, cat = 0) => {
     const n = String(nombre || "").trim();
     if (!n) return null;
-    let h = libresRef.current.find((x) => norm(x.nombre) === norm(n));
+    const c = String(ciudad || "").trim();
+    const mios = (x) => !x.vendedorId || x.vendedorId === vendedorActivoId;
+    let h = libresRef.current.find((x) => mios(x) && norm(x.nombre) === norm(n) && norm(x.ciudad) === norm(c));
     if (!h) {
       h = {
         id: uid("hc"),
         nombre: n,
-        ciudad: ciudad || "",
+        ciudad: c,
         cat: cat || 0,
         foto: null,
         seed: 40 + libresRef.current.length,
@@ -308,11 +327,37 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       };
       libresRef.current = [...libresRef.current, h];
     } else {
-      if (ciudad) h.ciudad = ciudad;
+      h.nombre = n;
       if (cat) h.cat = cat;
     }
     setTick((t) => t + 1);
+    /* se guarda en la base sin frenar la pantalla; si falla, la cotización
+       conserva el nombre igual y la raíz avisa */
+    const item = h;
+    Promise.resolve(guardarPropioRef.current?.({ vendedorId: vendedorActivoId, nombre: n, ciudad: c, cat: item.cat || 0 }))
+      .then((row) => {
+        if (!row) return;
+        /* lo quitaron mientras se guardaba: se borra recién ahora que tiene id */
+        if (item.quitado) { eliminarPropioRef.current?.(row.id); return; }
+        item.dbId = row.id;
+        item.vendedorId = row.vendedorId;
+        setTick((t) => t + 1);
+      })
+      .catch(() => {});
     return h;
+  }, [vendedorActivoId]);
+
+  const eliminarHotelPropio = useCallback((h) => {
+    if (!h) return;
+    libresRef.current = libresRef.current.filter((x) => x !== h);
+    setTick((t) => t + 1);
+    if (!h.dbId) { h.quitado = true; return; }
+    Promise.resolve(eliminarPropioRef.current?.(h.dbId)).then((ok) => {
+      if (ok === false) {
+        libresRef.current = [...libresRef.current, h];
+        setTick((t) => t + 1);
+      }
+    });
   }, []);
 
   const esFavorito = useCallback(
@@ -778,6 +823,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       hotelById,
       hotelesCotizadosEn,
       registrarHotelLibre,
+      eliminarHotelPropio,
       ciudadIdDeNombre,
       esFavorito,
       toggleFavorito,
@@ -798,6 +844,7 @@ export function useCatalogoCotizador({ favoritosIniciales, onToggleFavorito } = 
       hotelById,
       hotelesCotizadosEn,
       registrarHotelLibre,
+      eliminarHotelPropio,
       ciudadIdDeNombre,
       esFavorito,
       toggleFavorito,

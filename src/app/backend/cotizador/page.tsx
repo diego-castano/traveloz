@@ -30,7 +30,7 @@ export default async function CotizadorPage() {
   const res = await getContextoCotizador();
   if (!res.ok) return <AccesoRestringido />;
 
-  const { yo: usuario, vendedores: equipo, ajustes, favoritos, aeropuertos, aerolineas } = res.data;
+  const { yo: usuario, vendedores: equipo, ajustes, favoritos, hotelesPropios, aeropuertos, aerolineas } = res.data;
 
   const yo: VendedorCotizador = vendedorDesdeUsuario(usuario, SITE_BASE_URL);
   const vendedores: VendedorCotizador[] = equipo.map((u) =>
@@ -47,6 +47,7 @@ export default async function CotizadorPage() {
       siteBaseUrl={SITE_BASE_URL}
       ajustes={ajustes}
       favoritos={favoritos}
+      hotelesPropios={hotelesPropios}
       aeropuertos={aeropuertos}
       aerolineas={aerolineas}
     />

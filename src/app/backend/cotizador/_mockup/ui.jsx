@@ -402,7 +402,7 @@ function AutoCiudad({ value, onChange, onPick, placeholder, excluir = [], grande
  * Buscador de hoteles con dos salidas.
  *
  *   1. elegir uno del catálogo      → onPick(hotel)   · hotelId real
- *   2. escribirlo como texto libre  → onLibre(texto)  · vive solo en esta cotización
+ *   2. escribirlo como texto libre  → onLibre(texto)  · queda en los hoteles propios del vendedor
  *
  * Hasta el 15/09 había una tercera salida que daba de alta el hotel en
  * /backend/alojamientos desde acá mismo. Se sacó a pedido del cliente: los
@@ -410,7 +410,7 @@ function AutoCiudad({ value, onChange, onPick, placeholder, excluir = [], grande
  * nombres mal escritos. Los hoteles del catálogo se cargan ahora solo desde
  * /backend/alojamientos; lo que no está ahí se usa como texto libre.
  */
-function BuscadorHotel({ ciudad, valor, onPick, onLibre, onVaciar, autoFocus }) {
+function BuscadorHotel({ ciudad, valor, onPick, onLibre, onVaciar, onQuitarPropio, autoFocus }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [idx, setIdx] = useState(0);
@@ -528,6 +528,16 @@ function BuscadorHotel({ ciudad, valor, onPick, onLibre, onVaciar, autoFocus }) 
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <span style={{ fontSize:13, fontWeight:600, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.nombre}</span>
                   {h.propio && <Pill tone="amber" style={{ flexShrink:0 }}>propio</Pill>}
+                  {h.propio && onQuitarPropio && (
+                    <button type="button" tabIndex={-1} title="Quitar de mis hoteles"
+                      aria-label="Quitar de mis hoteles"
+                      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuitarPropio(h); }}
+                      style={{ flexShrink:0, width:16, height:16, padding:0, border:0, borderRadius:5, cursor:"pointer",
+                        display:"grid", placeItems:"center", background:"var(--sunk)", color:"var(--n500)" }}>
+                      <X size={10} />
+                    </button>
+                  )}
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color:"var(--n400)" }}>
                   <MapPin size={10} />{h.ciudad}<Estrellas n={h.cat} size={9} />

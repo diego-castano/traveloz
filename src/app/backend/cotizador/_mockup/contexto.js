@@ -17,6 +17,7 @@ export const CATALOGO_VACIO = {
   hotelById: () => undefined,
   hotelesCotizadosEn: () => [],
   registrarHotelLibre: () => null,
+  eliminarHotelPropio: () => {},
   esFavorito: () => false,
   toggleFavorito: () => false,
   aplicarFavoritos: () => {},
