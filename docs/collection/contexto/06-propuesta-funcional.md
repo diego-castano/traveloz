@@ -264,7 +264,7 @@ Una sección nueva, **"Collection"**, dentro del mismo panel de siempre.
 - **Destinos:** se eligen de la lista de ciudades que ya existe. **No se cargan países ni ciudades de nuevo.**
 - **Hoteles:** se eligen del catálogo de alojamientos que ya existe, con sus fotos. Cada experiencia le agrega **su propio texto** sin tocar la ficha original.
 - **Fotos y videos:** subida, orden, recorte del encuadre y crédito del fotógrafo cuando el proveedor lo pide.
-- **Asignaciones:** colección o colecciones, **asesor responsable** y proveedor (este último es interno y no se muestra). A confirmar con el cliente: la página Aliados muestra proveedores con logo y descripción.
+- **Asignaciones:** colección o colecciones, **asesor responsable** y proveedor. Por pedido del cliente (01/10/2026), los proveedores se muestran en la página Aliados con logo y descripción breve.
 - **Precio "desde":** apagado por defecto, se prende por experiencia.
 - **Indicador de completitud:** muestra qué falta antes de poder publicar.
 - **Vista previa** en celular y escritorio antes de publicar.
