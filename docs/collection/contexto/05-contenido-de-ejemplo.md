@@ -23,7 +23,7 @@ Textos de muestra para maquetar. **No están aprobados por el cliente**: sirven 
 
 ---
 
-## Colecciones de ejemplo
+## Destinos de ejemplo (antes colecciones)
 
 | Nombre | Bajada |
 |---|---|

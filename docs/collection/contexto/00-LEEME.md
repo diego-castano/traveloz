@@ -16,13 +16,15 @@ Proyecto aprobado por el cliente el 28/09/2026. Diseño: semanas 1 y 2.
 | `assets/referencias/*.jpg` | Capturas de las referencias |
 | `assets/traveloz-logo.png` | Logo del cliente (la marca madre) |
 
+**Menú y mapa del sitio:** cambiaron el 01/10/2026 (Destinos, Especialistas, Aliados, Contactanos). Ver "Cambios acordados con el cliente" en `06-propuesta-funcional.md`.
+
 ## Por dónde empezar
 
 Diseñar en este orden, que es el orden en que se aprueba:
 
 1. **Inicio**, en dos direcciones visuales distintas para elegir.
 2. **Experiencia** (la página que más importa), con el contenido de ejemplo de Filipinas.
-3. **Institucional**: viaje a medida, nosotros y contacto, con el formulario y la página de gracias.
+3. **Institucional**: contactanos, nosotros, especialistas y aliados, con el formulario y la página de gracias.
 
 De cada pantalla hace falta escritorio y celular.
 

@@ -2,7 +2,9 @@
 
 ## Menú
 
-**colecciones** · **experiencias** · **viaje a medida** · **nosotros** · **contacto** + botón "Hablar con un especialista"
+**Nosotros** · **Destinos** · **Experiencias** · **Especialistas** · **Aliados** + botón destacado **Contactanos**
+
+Cambios del cliente del 01/10/2026: "Colecciones" pasa a llamarse "Destinos", "Viaje a medida" sale del menú y su formulario es el de Contactanos.
 
 El menú arranca sobre la portada, transparente y en blanco. Al hacer scroll pasa a fondo sólido con el wordmark en versión oscura.
 
@@ -10,11 +12,12 @@ El menú arranca sobre la portada, transparente y en blanco. Al hacer scroll pas
 
 ```
 Inicio
-├── Colecciones → Colección (ej. Misterios de Oriente) → Experiencia
-├── Experiencias (todas, con filtros) → Experiencia
-├── Viaje a medida → Formulario calificador
 ├── Nosotros
-├── Contacto → Formulario corto
+├── Destinos → Destino (ej. Misterios de Oriente) → Experiencia
+├── Experiencias → Experiencia
+├── Especialistas
+├── Aliados
+├── Contactanos → Formulario de consulta (4 pasos)
 └── Gracias (después de cualquier formulario)
 ```
 
@@ -24,7 +27,7 @@ Inicio
 
 1. **Portada a pantalla completa** con video en bucle y una frase de marca. Wordmark centrado o arriba a la izquierda. Indicador de scroll discreto.
 2. **Manifiesto**: dos o tres líneas en serif grande, mucho aire, sobre blanco.
-3. **Colecciones**: tarjetas grandes con imagen, nombre y una bajada evocadora. Tres o cuatro visibles, el resto en una fila que se desliza.
+3. **Destinos**: tarjetas grandes con imagen, nombre y una bajada evocadora. Tres o cuatro visibles, el resto en una fila que se desliza.
 4. **Experiencias destacadas**: carrusel horizontal con imagen, nombre, noches y destinos.
 5. **Cómo trabajamos**: tres o cuatro pasos. Nos contás → diseñamos → reservamos → viajás acompañado. Sin iconos genéricos: números grandes en serif o una línea fina que los une.
 6. **Inspiración por estilo** (opcional): luna de miel, familia, safari, bienestar, gastronomía.
@@ -32,16 +35,16 @@ Inicio
 8. **Cierre**: invitación al viaje a medida, sobre un bloque a sangre oscuro o una foto.
 9. **Footer**.
 
-## Colección
+## Destino
 
-1. Portada con imagen o video y el nombre de la colección.
-2. Relato de la colección, dos o tres párrafos, ancho de lectura angosto.
+1. Portada con imagen o video y el nombre del destino.
+2. Relato del destino, dos o tres párrafos, ancho de lectura angosto.
 3. Grilla de sus experiencias.
 4. Si está vacía: estado "Próximamente", con una foto y una línea de texto. Tiene que verse elegante, no roto.
 
 ## Experiencias (índice)
 
-Grilla de todas las experiencias con filtros simples arriba: colección, región, tipo (viaje, hotel, crucero, tren) y duración. Con 20 a 25 productos alcanza con chips, sin buscador.
+Grilla de todas las experiencias, con la misma tarjeta que los Destinos (imagen 4:5, duración, nombre, bajada). Los nombres se definen cuando estén elegidos los productos. Filtros simples arriba: destino, región, tipo (viaje, hotel, crucero, tren) y duración. Con 20 a 25 productos alcanza con chips, sin buscador.
 
 ## Experiencia — la página más importante
 
@@ -57,19 +60,27 @@ Grilla de todas las experiencias con filtros simples arriba: colección, región
 10. **Precio "desde"**, solo si está activado: chico, sin jerarquía, con la aclaración al lado.
 11. **Llamada a la acción fija**: en escritorio, una columna lateral que acompaña el scroll con el formulario; en celular, una barra inferior que abre el formulario desde abajo.
 12. **PDF descargable** y **compartir**.
-13. **Más experiencias** de la misma colección.
+13. **Más experiencias** del mismo destino.
 
-## Viaje a medida
+## Contactanos
 
-Portada corta, propuesta de valor, el proceso en pasos y el formulario calificador completo. Es la página para quien no encontró "su" experiencia.
+El botón del menú lleva a esta página. Portada corta, propuesta de valor, el proceso en pasos y el formulario calificador completo (4 pasos). Es la página para quien no encontró "su" experiencia. Reemplaza a "Viaje a medida", que sale del menú.
 
 ## Nosotros
 
-Manifiesto, cómo se trabaja, el equipo de asesores y el respaldo de Traveloz. Pendiente de decisión si es página propia o enlace al "nosotros" de Traveloz: diseñarla igual.
+Página propia (decisión cerrada el 01/10/2026). Imagen grande de un viaje y un texto que cuenta el comienzo de la vertical, a partir de la experiencia de la agencia y de los pedidos de su cartera. Texto a definir. Los asesores van en Especialistas.
+
+## Especialistas
+
+Los asesores, simple y concreto. Por cada uno: retrato 4:5, nombre, especialidad o región y una frase. Se completa cuando estén definidos los asesores.
+
+## Aliados
+
+Logos de los proveedores que apoyan la logística de los viajes, cada uno con una descripción breve al lado. Referencia: https://camillamattar.com.br/#afiliacoes
 
 ## Contacto
 
-Datos, horario, WhatsApp y formulario corto.
+Datos, horario, WhatsApp y formulario corto. Van en el footer y en la página de Contactanos: el ítem del menú lleva al formulario de Contactanos.
 
 ## Gracias
 

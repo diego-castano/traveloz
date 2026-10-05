@@ -6,6 +6,20 @@ Este documento se enfoca en **qué hace el producto y cómo funciona el negocio*
 
 ---
 
+## Cambios acordados con el cliente (01/10/2026)
+
+En el sitio, "Colecciones" se llama **"Destinos"**. El resto de este documento puede seguir usando "colección" como término interno.
+
+- Menú nuevo: **Nosotros · Destinos · Experiencias · Especialistas · Aliados** y botón destacado **Contactanos**.
+- **Destinos** son las antiguas colecciones, agrupadas por regiones.
+- **Experiencias** se muestran igual que los Destinos. Los nombres se definen cuando estén elegidos los productos.
+- **Nosotros** es página propia, con imagen grande y el texto del comienzo de la vertical. Texto a definir.
+- **Especialistas** (nueva): los asesores con retrato, nombre, especialidad o región y una frase.
+- **Aliados** (nueva): logos de proveedores con una descripción breve cada uno.
+- **Contactanos** lleva al formulario de consulta. "Viaje a medida" sale del menú y su formulario de 4 pasos pasa a ser el de Contactanos.
+
+---
+
 ## 1. En una página
 
 **Collection es la vertical de lujo de Traveloz.** Es un sitio aparte, con marca, dominio y menú propios, que muestra entre 20 y 25 **experiencias**. No son paquetes: se venden con imagen, video y relato, sin precio a la vista. Cada experiencia tiene su formulario, y la consulta llega directo al asesor responsable de ese producto.
@@ -121,21 +135,20 @@ flowchart TB
 
   subgraph COL["TRAVELOZ COLLECTION · dominio, marca y menú propios"]
     H(["Inicio"])
-    H --> CS["Colecciones"]
-    H --> EX["Experiencias<br/>todas, con filtros"]
-    H --> AM["Viaje a medida"]
     H --> NO["Nosotros"]
-    H --> CO["Contacto"]
+    H --> CS["Destinos<br/>antes colecciones"]
+    H --> EX["Experiencias<br/>todas, con filtros"]
+    H --> ES["Especialistas"]
+    H --> AL["Aliados"]
+    H --> CO["Contactanos"]
     H --> FT["Footer<br/>legales · redes · datos de la agencia"]
-    CS --> C1["Colección<br/>ej. Misterios de Oriente"]
+    CS --> C1["Destino<br/>ej. Misterios de Oriente"]
     C1 --> E["Experiencia<br/>ej. Filipinas: Manila, El Nido y Boracay"]
     EX --> E
     E --> F1["Consulta por<br/>esta experiencia"]
-    AM --> F2["Formulario<br/>viaje a medida"]
-    CO --> F3["Consulta general<br/>o WhatsApp"]
+    CO --> F2["Formulario de consulta<br/>4 pasos"]
     F1 --> G(["Gracias"])
     F2 --> G
-    F3 --> G
   end
 
   style COL fill:#fbf8f1,stroke:#b08d57,stroke-width:2px,color:#1f1a12
@@ -143,26 +156,27 @@ flowchart TB
   classDef pg fill:#ffffff,stroke:#b08d57,color:#1f1a12
   classDef form fill:#fff4dc,stroke:#b08d57,color:#1f1a12
   classDef toz fill:#ffffff,stroke:#6c2bd9,color:#2a1260
-  class H,CS,EX,AM,NO,CO,FT,C1,E,G pg
-  class F1,F2,F3 form
+  class H,CS,EX,ES,AL,NO,CO,FT,C1,E,G pg
+  class F1,F2 form
   class T toz
 ```
 
 ### Menú principal
-**Colecciones ▾** · **Experiencias** · **Viaje a medida** · **Nosotros** · **Contacto** · botón destacado **"Hablar con un especialista"**
+**Nosotros** · **Destinos** · **Experiencias** · **Especialistas** · **Aliados** · botón destacado **"Contactanos"**
 
 ### Para qué sirve cada página
 
 | Página | Objetivo | Acción principal |
 |---|---|---|
 | Inicio | Impactar y mostrar la propuesta en 10 segundos | Entrar a una colección o experiencia |
-| Colecciones | Mostrar los mundos temáticos | Elegir una colección |
-| Colección | Contar el concepto y listar sus experiencias | Entrar a una experiencia |
+| Destinos | Mostrar los mundos temáticos, agrupados por región (antes Colecciones) | Elegir un destino |
+| Destino | Contar el concepto y listar sus experiencias | Entrar a una experiencia |
 | Experiencias | Ver todo junto y filtrar | Entrar a una experiencia |
 | **Experiencia** | **Enamorar y convertir** | **Consultar** |
-| Viaje a medida | Captar a quien no encontró "su" experiencia | Completar el formulario calificador |
-| Nosotros | Dar confianza (depende de la decisión de marca) | Contactar |
-| Contacto | Canal directo | Consultar o escribir por WhatsApp |
+| Especialistas | Mostrar a los asesores | Contactar |
+| Aliados | Mostrar los proveedores que apoyan la logística | Contactar |
+| Nosotros | Dar confianza: el comienzo de la vertical (página propia) | Contactar |
+| Contactanos | Captar a quien no encontró "su" experiencia y canal directo | Completar el formulario de consulta (4 pasos) o escribir por WhatsApp |
 | Gracias | Confirmar el envío y contar qué pasa ahora | Seguir explorando |
 
 ---
@@ -203,12 +217,12 @@ En este orden:
 13. **Compartir** por WhatsApp o copiando el link: las decisiones de viaje se toman en pareja o en familia.
 14. **Más experiencias** de la misma colección.
 
-### 5.5 Viaje a medida
+### 5.5 Contactanos (antes "Viaje a medida")
 - Propuesta de valor del servicio a medida y proceso.
 - **Formulario calificador:** destinos soñados, época, duración, pasajeros, ocasión, estilo de viaje, rango de inversión y canal preferido.
 
 ### 5.6 Nosotros y Contacto
-- **Nosotros:** página propia o link al de Traveloz, según la decisión de marca (ver §8.1).
+- **Nosotros:** página propia (resuelto el 01/10/2026).
 - **Contacto:** datos, horario, WhatsApp y formulario corto.
 
 ### 5.7 Formulario de consulta (en cada experiencia)
@@ -250,7 +264,7 @@ Una sección nueva, **"Collection"**, dentro del mismo panel de siempre.
 - **Destinos:** se eligen de la lista de ciudades que ya existe. **No se cargan países ni ciudades de nuevo.**
 - **Hoteles:** se eligen del catálogo de alojamientos que ya existe, con sus fotos. Cada experiencia le agrega **su propio texto** sin tocar la ficha original.
 - **Fotos y videos:** subida, orden, recorte del encuadre y crédito del fotógrafo cuando el proveedor lo pide.
-- **Asignaciones:** colección o colecciones, **asesor responsable** y proveedor (este último es interno y no se muestra).
+- **Asignaciones:** colección o colecciones, **asesor responsable** y proveedor (este último es interno y no se muestra). A confirmar con el cliente: la página Aliados muestra proveedores con logo y descripción.
 - **Precio "desde":** apagado por defecto, se prende por experiencia.
 - **Indicador de completitud:** muestra qué falta antes de poder publicar.
 - **Vista previa** en celular y escritorio antes de publicar.
@@ -529,7 +543,7 @@ gantt
 
 **Marca**
 1. ¿Nombre final "Traveloz Collection"? ¿Subdominio, dominio propio o sección de traveloz.com.uy?
-2. ¿Se muestra "by Traveloz"? ¿"Nosotros" propio o compartido?
+2. ¿Se muestra "by Traveloz"? ~~¿"Nosotros" propio o compartido?~~ **Resuelta (01/10/2026): Nosotros propio.**
 3. ¿WhatsApp y remitente de emails propios o los de Traveloz?
 
 **Producto**
