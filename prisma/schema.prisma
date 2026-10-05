@@ -1011,6 +1011,8 @@ model CotizadorLanding {
   // código). Array de FormField (ver src/lib/cotizador-form.ts). El núcleo de
   // cotización se siembra al crear el landing; cada marca lo edita a su gusto.
   campos             Json      @default("[]")
+  // Origen (SOURCE_ID) del negocio en Bitrix. null = la landing no manda a Bitrix.
+  bitrixSourceId     String?
   publicado          Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -1053,6 +1055,17 @@ model CotizadorLead {
   atribFirst  Json?
   atribLast   Json?
   visitanteId String?
+
+  // Estado del push a Bitrix24 (mismo contrato que Cotizacion.crm*). NULL = no
+  // se intentó (leads anteriores a la integración o landing sin origen).
+  crmEstado    CrmEstado?
+  crmDealId    String?
+  crmContactId String?
+  // "negocio-nuevo" o "comentario-en-negocio".
+  crmModo      String?
+  crmError     String?
+  crmEnviadoEn DateTime?
+  crmIntentos  Int        @default(0)
 
   landing CotizadorLanding @relation(fields: [landingId], references: [id], onDelete: Cascade)
 

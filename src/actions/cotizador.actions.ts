@@ -19,6 +19,8 @@ import { cotizadorLeadEmail, cotizadorFrom } from "@/lib/cotizador-email";
 import { logger } from "@/lib/logger";
 import { resumenPauta } from "@/lib/atribucion";
 import { leerAtribucion } from "@/lib/atribucion-server";
+import { bitrixCall, bitrixEnabled } from "@/lib/bitrix";
+import { enviarLeadCotizadorABitrix, enviarPendientesDeLanding } from "@/lib/cotizador-crm";
 
 const log = logger.child({ module: "cotizador.actions" });
 
@@ -116,6 +118,7 @@ export async function submitCotizadorLead(
         nombreMarca: true,
         logoUrl: true,
         emailsDestino: true,
+        bitrixSourceId: true,
         campos: true,
       },
     });
@@ -127,7 +130,8 @@ export async function submitCotizadorLead(
     const atrib = leerAtribucion();
     const pauta = resumenPauta(atrib?.first, atrib?.last);
 
-    await prisma.cotizadorLead.create({
+    const lead = await prisma.cotizadorLead.create({
+      select: { id: true },
       data: {
         landingId,
         nombre: contacto.data.nombre,
@@ -173,6 +177,12 @@ export async function submitCotizadorLead(
       }
     }
 
+    // Best-effort: el lead ya quedó guardado. BITRIX_OFF=1 corta el envío igual
+    // que en el cotizador del sitio.
+    if (landing.bitrixSourceId && process.env.BITRIX_OFF !== "1") {
+      await enviarLeadCotizadorABitrix(lead.id);
+    }
+
     return { ok: true, message: SUCCESS };
   } catch (err) {
     log.error("submitCotizadorLead failed", err);
@@ -195,6 +205,7 @@ const upsertSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, "Color inválido (usá #RRGGBB).")
     .nullable(),
   emailsDestino: z.array(z.string().trim().email()).max(20),
+  bitrixSourceId: z.string().trim().max(50).nullable(),
   campos: camposSchema,
   publicado: z.boolean(),
 });
@@ -207,6 +218,7 @@ export type CotizadorUpsertInput = {
   textoInstitucional?: string | null;
   colorPrimario?: string | null;
   emailsDestino: string[];
+  bitrixSourceId?: string | null;
   campos: FormField[];
   publicado: boolean;
 };
@@ -249,11 +261,36 @@ function normalizeUpsert(input: CotizadorUpsertInput) {
     textoInstitucional: input.textoInstitucional ?? null,
     colorPrimario: input.colorPrimario ?? null,
     emailsDestino: input.emailsDestino ?? [],
+    bitrixSourceId: input.bitrixSourceId?.trim() || null,
     // Un landing siempre tiene formulario: si llega vacío, sembramos el estándar.
     campos: input.campos?.length ? input.campos : camposEstandar(),
     publicado: input.publicado,
   });
   return parsed;
+}
+
+// Orígenes de Bitrix (lista SOURCE) para el selector del admin. null si no hay
+// webhook o Bitrix falla: el formulario conserva el valor actual.
+export async function getBitrixOrigenes(): Promise<{ id: string; nombre: string }[] | null> {
+  await requireAdmin();
+  if (!bitrixEnabled()) return null;
+  try {
+    const rows = await bitrixCall<{ STATUS_ID: string; NAME: string }[]>("crm.status.list", {
+      filter: { ENTITY_ID: "SOURCE" },
+    });
+    if (!Array.isArray(rows)) return null;
+    return rows.map((r) => ({ id: String(r.STATUS_ID), nombre: r.NAME }));
+  } catch (err) {
+    log.error("getBitrixOrigenes failed", err);
+    return null;
+  }
+}
+
+export async function enviarPendientesABitrix(landingId: string) {
+  await requireAdmin();
+  const res = await enviarPendientesDeLanding(landingId);
+  revalidatePath(`/backend/cotizadores/${landingId}`);
+  return res;
 }
 
 export async function createCotizadorLanding(input: CotizadorUpsertInput) {

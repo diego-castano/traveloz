@@ -4,12 +4,14 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCotizadorLanding } from "@/actions/cotizador.actions";
+import { getBitrixOrigenes, getCotizadorLanding } from "@/actions/cotizador.actions";
 import { parseCampos, parseRespuestas } from "@/lib/cotizador-form";
 import type { Touch } from "@/lib/atribucion";
 import { parseAtribJson } from "@/app/backend/leads/_components/atribucion-admin";
+import { contarPendientesBitrix } from "@/lib/cotizador-crm";
 import { CotizadorForm } from "../_components/CotizadorForm";
 import { DeleteLandingButton } from "../_components/DeleteLandingButton";
+import { EnviarPendientesBitrix } from "../_components/EnviarPendientesBitrix";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Editar cotizador — TravelOz" };
@@ -48,6 +50,11 @@ export default async function EditarCotizadorPage({
   }
   if (!landing || landing.deletedAt) notFound();
 
+  const origenesBitrix = await getBitrixOrigenes().catch(() => null);
+  const pendientesBitrix = landing.bitrixSourceId
+    ? await contarPendientesBitrix(landing.id)
+    : 0;
+
   return (
     <div className="mx-auto max-w-6xl p-6">
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -82,10 +89,16 @@ export default async function EditarCotizadorPage({
           textoInstitucional: landing.textoInstitucional,
           colorPrimario: landing.colorPrimario,
           emailsDestino: landing.emailsDestino,
+          bitrixSourceId: landing.bitrixSourceId,
           campos: parseCampos(landing.campos),
           publicado: landing.publicado,
         }}
+        origenesBitrix={origenesBitrix}
       />
+
+      {pendientesBitrix > 0 && (
+        <EnviarPendientesBitrix landingId={landing.id} pendientes={pendientesBitrix} />
+      )}
 
       {/* Leads */}
       <div className="mt-12">
@@ -112,7 +125,17 @@ export default async function EditarCotizadorPage({
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <span className="font-medium text-neutral-900">{lead.nombre}</span>
-                    <span className="text-xs text-neutral-400">{fmt(lead.createdAt)}</span>
+                    <span className="flex gap-3 text-xs text-neutral-400">
+                      {lead.crmEstado === "OK" && lead.crmDealId && (
+                        <span>Bitrix #{lead.crmDealId}</span>
+                      )}
+                      {lead.crmEstado === "ERROR" && (
+                        <span className="text-red-500" title={lead.crmError ?? undefined}>
+                          Error en Bitrix
+                        </span>
+                      )}
+                      {fmt(lead.createdAt)}
+                    </span>
                   </div>
                   <a
                     href={`mailto:${lead.email}`}

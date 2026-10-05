@@ -20,7 +20,14 @@ const PREVIEW_COLOR = "#F43E55";
 
 type Initial = Partial<CotizadorUpsertInput> & { id?: string };
 
-export function CotizadorForm({ initial }: { initial?: Initial }) {
+export function CotizadorForm({
+  initial,
+  origenesBitrix = null,
+}: {
+  initial?: Initial;
+  /** Orígenes de Bitrix; null si no se pudo leer la lista. */
+  origenesBitrix?: { id: string; nombre: string }[] | null;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [pending, startTransition] = useTransition();
@@ -36,6 +43,7 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
     initial?.textoInstitucional ?? "",
   );
   const [emails, setEmails] = useState<string[]>(initial?.emailsDestino ?? []);
+  const [bitrixSourceId, setBitrixSourceId] = useState(initial?.bitrixSourceId ?? "");
   // El formulario nuevo (o una landing sin campos) arranca sembrado con la
   // cotización estándar.
   const [campos, setCampos] = useState<FormField[]>(
@@ -63,6 +71,7 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
       textoInstitucional: textoInstitucional || null,
       colorPrimario: null,
       emailsDestino: emails,
+      bitrixSourceId: bitrixSourceId || null,
       campos,
       publicado,
     };
@@ -155,6 +164,35 @@ export function CotizadorForm({ initial }: { initial?: Initial }) {
           hint="A dónde se notifican los envíos. Escribí uno y Enter (o coma), o pegá varios separados por coma."
         >
           <EmailChips value={emails} onChange={setEmails} />
+        </Field>
+
+        <Field
+          label="Enviar a Bitrix"
+          hint={
+            origenesBitrix
+              ? "Cada envío crea un negocio en Bitrix con este origen. Con \"No enviar a Bitrix\", los envíos solo llegan por mail."
+              : "No se pudo leer la lista de orígenes de Bitrix."
+          }
+        >
+          <select
+            value={bitrixSourceId}
+            onChange={(e) => setBitrixSourceId(e.target.value)}
+            disabled={!origenesBitrix}
+            className={inputClass}
+          >
+            {origenesBitrix ? (
+              <>
+                <option value="">No enviar a Bitrix</option>
+                {origenesBitrix.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.nombre}
+                  </option>
+                ))}
+              </>
+            ) : (
+              <option value={bitrixSourceId}>{bitrixSourceId || "No enviar a Bitrix"}</option>
+            )}
+          </select>
         </Field>
 
         <label className="flex items-center gap-3">

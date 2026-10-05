@@ -461,6 +461,8 @@ export interface UpsertContactoInput {
   telefono?: string | null;
   /** Prefijo de país del selector del formulario ("+598"). */
   paisCodigo?: string | null;
+  /** Origen (SOURCE_ID) del contacto nuevo. Sin él vale BITRIX_SOURCE_ID / default. */
+  sourceId?: string | null;
 }
 
 /**
@@ -522,7 +524,7 @@ export async function upsertContacto(
     LAST_NAME: lastName,
     OPENED: "Y",
     ASSIGNED_BY_ID: envInt("BITRIX_ASSIGNED_BY_ID", DEFAULT_ASSIGNED_BY_ID),
-    SOURCE_ID: envStr("BITRIX_SOURCE_ID", DEFAULT_SOURCE_ID),
+    SOURCE_ID: input.sourceId || envStr("BITRIX_SOURCE_ID", DEFAULT_SOURCE_ID),
   };
   if (email) fields.EMAIL = [{ VALUE: email, VALUE_TYPE: "WORK" }];
   // Guardamos el normalizado, no lo que tipeó la persona: es el único formato
@@ -604,6 +606,12 @@ export interface ConsultaLead {
   aceptaPromos?: boolean;
   /** Etiqueta del formulario de origen, para la línea "Canal". */
   canal?: string | null;
+  /** Origen (SOURCE_ID) del negocio y del contacto nuevo. Sin él vale BITRIX_SOURCE_ID / default. */
+  sourceId?: string | null;
+  /** Respuestas propias del formulario de una landing (ej. "¡Elegí tu beneficio!"). */
+  extras?: { etiqueta: string; valor: string }[];
+  /** Si viene, se agrega la línea "Fecha de la consulta" (leads viejos, enviados después). */
+  fechaConsulta?: Date | null;
 }
 
 /** Fechas del form vienen como medianoche UTC - las leemos en UTC para no correr un día. */
@@ -695,12 +703,21 @@ export function construirComentarios(lead: ConsultaLead): string {
   lineas.push(`Menores: ${lead.ninos ?? 0}`);
   lineas.push(`Infantes: ${lead.infantes ?? 0}`);
 
+  for (const extra of lead.extras ?? []) {
+    opcional(extra.etiqueta, extra.valor);
+  }
+
   opcional("Preferencia de contacto", lead.preferencia);
   opcional("Comentarios del pasajero", lead.comentarios);
   opcional("Origen", lead.origen);
   opcional("Pauta", lead.pauta);
   lineas.push(`Acepta promos: ${lead.aceptaPromos ? "Sí" : "No"}`);
   opcional("Canal", lead.canal);
+  if (lead.fechaConsulta) {
+    lineas.push(
+      `Fecha de la consulta: ${fechaHoraEnMontevideo(lead.fechaConsulta)} (hora de Montevideo)`,
+    );
+  }
 
   return lineas.join("\n");
 }
@@ -857,7 +874,7 @@ export async function buscarNegocioAbiertoDelContacto(
  * Va en hora uruguaya porque el portal está en +03:00 y la tarjeta la abre
  * alguien sentado en Montevideo.
  */
-function ahoraEnMontevideo(): string {
+function fechaHoraEnMontevideo(fecha: Date = new Date()): string {
   return new Intl.DateTimeFormat("es-UY", {
     timeZone: "America/Montevideo",
     day: "2-digit",
@@ -866,7 +883,7 @@ function ahoraEnMontevideo(): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  }).format(new Date());
+  }).format(fecha);
 }
 
 /**
@@ -881,7 +898,7 @@ export function construirComentarioConsultaPosterior(lead: ConsultaLead): string
     destinoLegible(lead.destino) ||
     "cotizador general";
   return [
-    `NUEVA CONSULTA DEL MISMO PASAJERO (${ahoraEnMontevideo()} hs de Montevideo)`,
+    `NUEVA CONSULTA DEL MISMO PASAJERO (${fechaHoraEnMontevideo()} hs de Montevideo)`,
     `Paquete consultado: ${paquete}`,
     "",
     construirComentarios(lead),
@@ -944,6 +961,7 @@ export async function comentarEnNegocio(
  */
 export async function crearNegocioLead(
   lead: ConsultaLead,
+  opciones?: { sinVentana?: boolean },
 ): Promise<CrearNegocioResult | null> {
   if (!bitrixEnabled()) {
     log.debug("bitrix.skip", {
@@ -966,6 +984,7 @@ export async function crearNegocioLead(
       email: lead.email,
       telefono: lead.telefono,
       paisCodigo: lead.paisCodigo,
+      sourceId: lead.sourceId,
     });
   } catch (err) {
     log.error("bitrix.contacto.fail", err);
@@ -974,7 +993,12 @@ export async function crearNegocioLead(
   // Sin contacto no hay con qué buscar negocios previos, así que va derecho al
   // camino de siempre.
   if (contactId) {
-    const existente = await buscarNegocioAbiertoReciente(contactId);
+    // Al reenviar leads viejos la ventana de 24 h no sirve (el lead tiene días
+    // o semanas): si el pasajero ya tiene un negocio abierto, la consulta va
+    // de comentario y no se abre una segunda tarjeta.
+    const existente = opciones?.sinVentana
+      ? await buscarNegocioAbiertoDelContacto(contactId)
+      : await buscarNegocioAbiertoReciente(contactId);
     if (existente) {
       const comentado = await comentarEnNegocio(
         existente,
@@ -997,7 +1021,7 @@ export async function crearNegocioLead(
     TITLE: title,
     CATEGORY_ID: envInt("BITRIX_CATEGORY_ID", DEFAULT_CATEGORY_ID),
     STAGE_ID: envStr("BITRIX_STAGE_ID", DEFAULT_STAGE_ID),
-    SOURCE_ID: envStr("BITRIX_SOURCE_ID", DEFAULT_SOURCE_ID),
+    SOURCE_ID: lead.sourceId || envStr("BITRIX_SOURCE_ID", DEFAULT_SOURCE_ID),
     ASSIGNED_BY_ID: envInt("BITRIX_ASSIGNED_BY_ID", DEFAULT_ASSIGNED_BY_ID),
     OPENED: "Y",
     COMMENTS: comments,
