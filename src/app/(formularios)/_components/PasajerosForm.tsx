@@ -458,8 +458,9 @@ export function PasajerosForm({
                 <Campo
                   name="facturaDireccion"
                   label="Dirección fiscal"
+                  requerido
+                  required
                   maxLength={200}
-                  placeholder="Opcional"
                 />
               </div>
             </motion.div>

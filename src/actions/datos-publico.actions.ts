@@ -265,7 +265,7 @@ export async function submitEnvioPasajeros(
             rut: campo(formData, "facturaRut") ?? "",
             razonSocial: campo(formData, "facturaRazonSocial") ?? "",
             email: campo(formData, "facturaEmail") ?? "",
-            direccion: campo(formData, "facturaDireccion"),
+            direccion: campo(formData, "facturaDireccion") ?? "",
           }
         : null,
       pasajeros,

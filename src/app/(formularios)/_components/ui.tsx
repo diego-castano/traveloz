@@ -134,6 +134,12 @@ export function Honeypot() {
   );
 }
 
+/**
+ * Botón de enviar. Va violeta en los dos formularios, no sigue a
+ * `--form-acento`: el rojo de marca en el botón principal se leía como alarma
+ * (pedido de Gero, 08/10). Es el mismo violeta del tick de `Exito` y del
+ * formulario de pago, así el botón y la pantalla que le sigue combinan.
+ */
 export function SubmitButton({
   children,
   disabled,
@@ -148,12 +154,12 @@ export function SubmitButton({
       type="submit"
       disabled={bloqueado}
       style={{
-        background: "var(--form-acento, #F43E55)",
+        background: "var(--form-boton, #785AE5)",
         // Sombra teñida del propio botón: lo despega de la tarjeta sin el gris
         // sucio de una sombra neutra. Se apaga cuando está bloqueado.
         boxShadow: bloqueado
           ? "none"
-          : "0 8px 20px -10px var(--form-acento-sombra, rgba(244,62,85,0.85))",
+          : "0 8px 20px -10px var(--form-boton-sombra, rgba(120,90,229,0.9))",
       }}
       className="flex h-[50px] w-full items-center justify-center rounded-[12px] px-6 text-[15.5px] font-semibold tracking-[0.01em] text-white transition-all duration-150 hover:brightness-[1.06] active:translate-y-px active:brightness-95 disabled:cursor-not-allowed disabled:opacity-[0.55] sm:h-[46px] sm:text-[15px]"
     >

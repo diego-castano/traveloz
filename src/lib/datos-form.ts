@@ -81,7 +81,8 @@ export interface FacturaInput {
   rut: string;
   razonSocial: string;
   email: string;
-  direccion: string | null;
+  /** Obligatoria desde el 08/10 (pedido de Gero). Los envíos viejos pueden no tenerla. */
+  direccion: string;
 }
 
 export interface EnvioPasajerosInput {
@@ -161,7 +162,7 @@ export const facturaSchema = z.object({
   rut: textoReq(20, "Ingrese el RUT para la factura."),
   razonSocial: textoReq(200, "Ingrese la razón social para la factura."),
   email: z.email("Revise el email de facturación.").max(254),
-  direccion: texto(200).nullable(),
+  direccion: textoReq(200, "Ingrese la dirección fiscal para la factura."),
 });
 
 export const envioPasajerosSchema = z.object({
