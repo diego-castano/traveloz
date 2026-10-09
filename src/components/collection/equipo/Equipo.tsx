@@ -16,6 +16,7 @@ import { cn } from "@/components/lib/cn";
 import { iniciales, useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
 import { Boton, EncabezadoPagina, Filtros, Interruptor } from "../ui";
+import { TextoCambiante, transiciones } from "../movimiento";
 
 const ROLES: Record<string, string> = { ADMIN: "Admin", VENDEDOR: "Vendedor", MARKETING: "Marketing" };
 
@@ -148,11 +149,11 @@ export function Equipo({
                         m.superAdmin ? "text-col-ink" : tieneAcceso(m) ? "text-col-slate" : "text-col-muted",
                       )}
                     >
-                      {ocupado ? "Guardando" : resumen(m)}
+                      <TextoCambiante texto={ocupado ? "Guardando" : resumen(m)} />
                     </span>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 shrink-0 text-col-slate transition-transform duration-col ease-col",
+                        "h-4 w-4 shrink-0 text-col-slate transition-transform duration-col-abre ease-col",
                         expandido && "rotate-180",
                       )}
                       strokeWidth={1.5}
@@ -164,10 +165,7 @@ export function Equipo({
                   {expandido && (
                     <motion.div
                       id={`permisos-${m.id}`}
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                      {...transiciones.acordeon}
                       className="overflow-hidden"
                     >
                       <div className="pb-6 pl-0 md:pl-[60px]">
@@ -191,10 +189,7 @@ export function Equipo({
                         <AnimatePresence initial={false}>
                           {confirmarSa === m.id && (
                             <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: "auto", opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                              {...transiciones.acordeon}
                               className="overflow-hidden"
                             >
                               <div

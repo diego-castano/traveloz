@@ -4,14 +4,13 @@
 // completitud; filtros por estado, búsqueda, orden arrastrando (con el
 // filtro "Todas") y menú por tarjeta.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { DropdownMenu } from "radix-ui";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Archive, Copy, LoaderCircle, MoreHorizontal, Plus, Star } from "lucide-react";
 import {
   alternarDestacada,
@@ -30,9 +29,8 @@ import { AnilloCompletitud, Boton, Buscador, EncabezadoPagina, Estado, Filtros, 
 import { AsaTarjeta } from "../contenido/comun";
 import { MedioImagen } from "../sitio/medios";
 import { EstadoPill } from "../constructor/formato";
-import { useSensoresOrden } from "../constructor/campos";
-
-const EASE = [0.22, 1, 0.36, 1] as const;
+import { claseLevantado, estiloOrden, useRefsUnidos, useSensoresOrden } from "../constructor/campos";
+import { BLUR, DIST, DUR, EASE, Numero, TRANSICION_SOLTAR, desenfoque, useEntradaLista } from "../movimiento";
 
 type Filtro = "todas" | EstadoExperiencia;
 const FILTROS: { id: Filtro; label: string }[] = [
@@ -67,6 +65,7 @@ export function ListaExperiencias({
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState<string | null>(Array.isArray(inicial) ? null : inicial.error);
   const sensores = useSensoresOrden();
+  const entrada = useEntradaLista(items.length > 0);
 
   const elegirFiltro = async (f: Filtro) => {
     setFiltro(f);
@@ -146,9 +145,14 @@ export function ListaExperiencias({
       <EncabezadoPagina
         titulo="Los viajes de Collection"
         descripcion={
-          items.length
-            ? `${plural(items.length, "experiencia", "experiencias")} · ${items.filter((x) => x.estado === "PUBLICADA").length} en el sitio`
-            : "Cada viaje se arma paso a paso, con vista previa."
+          items.length ? (
+            <>
+              <Numero valor={items.length} /> {items.length === 1 ? "experiencia" : "experiencias"} ·{" "}
+              <Numero valor={items.filter((x) => x.estado === "PUBLICADA").length} /> en el sitio
+            </>
+          ) : (
+            "Cada viaje se arma paso a paso, con vista previa."
+          )
         }
         acciones={
           editable &&
@@ -194,12 +198,14 @@ export function ListaExperiencias({
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={visibles.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!ordenable}>
             <ul className="grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3 xl:grid-cols-4">
-              <AnimatePresence initial={false}>
+              <LayoutGroup>
+              <AnimatePresence mode="popLayout">
                 {visibles.map((x, i) => (
                   <Tarjeta
                     key={x.id}
                     x={x}
                     i={i}
+                    entrada={entrada}
                     ordenable={ordenable}
                     raiz={raiz}
                     menu={{
@@ -210,6 +216,7 @@ export function ListaExperiencias({
                   />
                 ))}
               </AnimatePresence>
+              </LayoutGroup>
             </ul>
           </SortableContext>
         </DndContext>
@@ -223,35 +230,30 @@ export function ListaExperiencias({
   );
 }
 
-function Tarjeta({
-  x,
-  i,
-  ordenable,
-  raiz,
-  menu,
-}: {
+// forwardRef: AnimatePresence en modo popLayout necesita el nodo para sacar del flujo al que se va.
+const Tarjeta = forwardRef<HTMLLIElement, {
   x: ExperienciaItem;
   i: number;
+  entrada: ReturnType<typeof useEntradaLista>;
   ordenable: boolean;
   raiz: HTMLElement | null;
   menu: { duplicar: (() => void) | null; destacar: (() => void) | null; archivar: (() => void) | null };
-}) {
-  const orden = useSortable({ id: x.id, disabled: !ordenable });
-  const { setNodeRef, transform, transition, isDragging } = orden;
+}>(function Tarjeta({ x, i, entrada, ordenable, raiz, menu }, ref) {
+  const orden = useSortable({ id: x.id, disabled: !ordenable, transition: TRANSICION_SOLTAR });
+  const { setNodeRef, isDragging } = orden;
+  const o = estiloOrden(orden);
+  const nodo = useRefsUnidos(setNodeRef, ref);
   const [confirmar, setConfirmar] = useState(false);
   const hayMenu = menu.duplicar || menu.destacar || menu.archivar;
   const destinos = x.destinos.map((d) => d.nombre).join(", ");
 
   return (
     <motion.li
-      ref={setNodeRef}
+      ref={nodo}
+      {...entrada(i, o.atenuado)}
       layout={!isDragging}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 8) * 0.03 }}
-      style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
-      className="group relative"
+      style={o.style}
+      className={cn("group relative", o.className)}
     >
       <Link
         href={`/backend/collection/experiencias/${x.id}`}
@@ -262,7 +264,7 @@ function Tarjeta({
         <div
           className={cn(
             "relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-col-sm bg-col-line sm:aspect-[4/3] sm:w-auto",
-            isDragging ? "shadow-col-2" : tarjetaElevable,
+            cn(tarjetaElevable, o.levantado && claseLevantado),
           )}
         >
           {x.portada ? (
@@ -340,7 +342,7 @@ function Tarjeta({
             <DropdownMenu.Content
               align="end"
               sideOffset={6}
-              className="z-50 min-w-[200px] rounded-col-sm border border-col-line bg-col-surface p-1 shadow-col-3"
+              className="col-desplegable z-50 min-w-[200px] rounded-col-sm border border-col-line bg-col-surface p-1 shadow-col-3"
             >
               {menu.duplicar && (
                 <ItemMenu onSelect={menu.duplicar} icono={<Copy />}>
@@ -374,7 +376,7 @@ function Tarjeta({
       )}
     </motion.li>
   );
-}
+});
 
 function ItemMenu({
   onSelect,
@@ -436,9 +438,9 @@ function Vacia({
         ].map(([c, cls], i) => (
           <motion.div
             key={i}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: EASE, delay: i * 0.08 }}
+            initial={{ opacity: 0, y: DIST.base, filter: desenfoque(BLUR.small) }}
+            animate={{ opacity: 1, y: 0, filter: desenfoque(0) }}
+            transition={{ duration: DUR.slow, ease: EASE, delay: i * DUR.stagger }}
             className={cn("rounded-col-sm", cls)}
             style={{
               background: `radial-gradient(120% 90% at 28% 18%, rgba(255,255,255,0.28), rgba(255,255,255,0) 58%), linear-gradient(165deg, ${c} 0%, color-mix(in srgb, ${c} 62%, #32373B) 100%)`,

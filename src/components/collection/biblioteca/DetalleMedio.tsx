@@ -12,13 +12,12 @@ import { actualizarMedio, type ColMedioDto } from "@/actions/collection/medios.a
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { CheckAnimado } from "../movimiento";
+import { CheckAnimado, transiciones, useCambioTexto } from "../movimiento";
 import { Boton, Estado, etiquetaCampo, entrada, entradaArea, cajaCompuesta, entradaInterna } from "../ui";
 import { aspectoDe, fmtDuracion, fmtPeso, srcDe } from "./MedioImagen";
 import { MedioImagen as MedioSitio } from "../sitio/medios";
 import { EditorEncuadre } from "./EditorEncuadre";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 
 export type EstadoGuardado = "quieto" | "guardando" | "guardado" | "error";
 type Textos = { alt: string; leyenda: string; credito: string };
@@ -48,21 +47,12 @@ export function DetalleMedio({
         {medio && (
           <Dialog.Portal forceMount container={raiz}>
             <Dialog.Overlay asChild forceMount>
-              <motion.div
-                className="fixed inset-0 z-50 bg-col-ink/35"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              />
+              <motion.div className="fixed inset-0 z-50 bg-col-ink/35" {...transiciones.velo} />
             </Dialog.Overlay>
             <Dialog.Content asChild forceMount aria-describedby={undefined}>
               <motion.div
                 className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[560px] flex-col bg-col-surface shadow-col-3 focus:outline-none"
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ duration: 0.5, ease: EASE }}
+                {...transiciones.hoja}
               >
                 <Cuerpo
                   key={medio.id}
@@ -513,23 +503,24 @@ function EditorFoco({
 }
 
 export function IndicadorGuardado({ estado }: { estado: EstadoGuardado }) {
+  const cambio = useCambioTexto();
   return (
     <span aria-live="polite" className="flex w-24 items-center justify-end gap-1.5 text-col-xs text-col-slate">
       <AnimatePresence mode="wait" initial={false}>
         {estado === "guardando" && (
-          <motion.span key="g" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.span key="g" className="flex items-center gap-1.5" {...cambio}>
             <LoaderCircle className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} aria-hidden />
             Guardando
           </motion.span>
         )}
         {estado === "guardado" && (
-          <motion.span key="ok" className="flex items-center gap-1.5" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+          <motion.span key="ok" className="flex items-center gap-1.5" {...cambio}>
             <CheckAnimado className="text-col-ok" />
             Guardado
           </motion.span>
         )}
         {estado === "error" && (
-          <motion.span key="e" className="text-col-alerta" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.span key="e" className="text-col-alerta" {...cambio}>
             Sin guardar
           </motion.span>
         )}

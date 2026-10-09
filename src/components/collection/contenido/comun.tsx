@@ -14,7 +14,7 @@ import type { Resultado } from "@/lib/collection/ejecutar";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { Boton, BotonIcono, Entrada } from "../ui";
-import { EASE, transiciones } from "../movimiento";
+import { DIST, DUR, EASE, sacudir, transiciones } from "../movimiento";
 import { IndicadorGuardado, type EstadoGuardado } from "../biblioteca/DetalleMedio";
 import { errorAmigable } from "../shell/Avisos";
 
@@ -108,9 +108,9 @@ export function Hoja({
                 </header>
                 <motion.div
                   className="flex-1 overflow-y-auto"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: DIST.base }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, ease: EASE, delay: 0.12 }}
+                  transition={{ duration: DUR.slow, ease: EASE, delay: DUR.micro }}
                 >
                   {children}
                 </motion.div>
@@ -202,13 +202,21 @@ export function NuevoEnLinea({
   const [abierto, setAbierto] = useState(abiertoInicial);
   const [nombre, setNombre] = useState("");
   const [creando, setCreando] = useState(false);
+  const campo = useRef<HTMLInputElement>(null);
 
   const crear = async () => {
     const t = nombre.trim();
-    if (!t || creando) return;
+    if (creando) return;
+    // Sin nombre no se crea: el campo se sacude y recibe el foco.
+    if (!t) {
+      sacudir(campo.current);
+      campo.current?.focus();
+      return;
+    }
     setCreando(true);
     const ok = await onCrear(t);
     setCreando(false);
+    if (!ok) sacudir(campo.current);
     if (ok) {
       setNombre("");
       setAbierto(false);
@@ -227,10 +235,9 @@ export function NuevoEnLinea({
       ) : (
         <motion.form
           key="f"
-          initial={{ opacity: 0, x: 12 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: 12 }}
-          transition={{ duration: 0.25, ease: EASE }}
+          initial={{ opacity: 0, x: DIST.medium }}
+          animate={{ opacity: 1, x: 0, transition: { duration: DUR.fast, ease: EASE } }}
+          exit={{ opacity: 0, x: DIST.medium, transition: { duration: DUR.quick, ease: EASE } }}
           onSubmit={(e) => {
             e.preventDefault();
             void crear();
@@ -238,6 +245,7 @@ export function NuevoEnLinea({
           className="flex max-w-full flex-wrap items-center gap-2"
         >
           <Entrada
+            ref={campo}
             autoFocus
             aria-label={placeholder}
             value={nombre}

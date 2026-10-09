@@ -4,11 +4,10 @@
 // el mouse, como en el sitio), filtro por tipo, orden arrastrando, interruptor
 // de publicado y una hoja lateral con la fila del sitio en vivo.
 
-import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { forwardRef, useMemo, useState } from "react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Handshake, ImagePlus, RefreshCw, X } from "lucide-react";
 import {
   actualizarAliado,
@@ -22,13 +21,13 @@ import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
 import { EncabezadoPagina, Estado, Eyebrow, Filtros, Interruptor, Vacio, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
-import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
+import { Campo, Contador, claseLevantado, estiloOrden, useRefsUnidos, useSensoresOrden } from "../constructor/campos";
+import { Numero, TRANSICION_SOLTAR, useEntradaLista } from "../movimiento";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { LogoAliado } from "../sitio/tarjetas";
 import "../sitio/sitio.css";
 import { AsaTarjeta, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, reponer, useGuardadoDiferido } from "../contenido/comun";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 export const TIPOS_ALIADO = ["Hotel", "Naviera", "Aerolínea", "Operador", "Otro"];
 const URL_OK = /^https?:\/\/\S+$/i;
 
@@ -84,6 +83,7 @@ export function Aliados({
   const sensores = useSensoresOrden();
 
   const [items, setItems] = useState<AliadoItem[]>(Array.isArray(inicial) ? inicial : []);
+  const entrada = useEntradaLista(items.length > 0);
   const [filtro, setFiltro] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(abrirId);
   const error = Array.isArray(inicial) ? null : inicial.error;
@@ -197,7 +197,11 @@ export function Aliados({
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
         titulo="Con quiénes viajamos"
-        descripcion={`${items.length} ${items.length === 1 ? "aliado" : "aliados"} · ${publicados} en el sitio`}
+        descripcion={
+          <>
+            <Numero valor={items.length} /> {items.length === 1 ? "aliado" : "aliados"} · <Numero valor={publicados} /> en el sitio
+          </>
+        }
         acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo aliado" placeholder="Nombre del aliado" onCrear={crear} />}
       />
       {items.length > 0 && (
@@ -235,12 +239,14 @@ export function Aliados({
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={visibles.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!ordenable}>
             <ul className="grid grid-cols-2 gap-x-5 gap-y-8 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
-              <AnimatePresence initial={false}>
+              <LayoutGroup>
+              <AnimatePresence mode="popLayout">
                 {visibles.map((a, i) => (
                   <Ficha
                     key={a.id}
                     a={a}
                     i={i}
+                    entrada={entrada}
                     ordenable={ordenable}
                     editable={editable}
                     onAbrir={() => setAbierto(a.id)}
@@ -248,6 +254,7 @@ export function Aliados({
                   />
                 ))}
               </AnimatePresence>
+              </LayoutGroup>
             </ul>
           </SortableContext>
         </DndContext>
@@ -294,31 +301,26 @@ function LogoFicha({ a, className }: { a: Pick<AliadoItem, "nombre" | "logo">; c
   );
 }
 
-function Ficha({
-  a,
-  i,
-  ordenable,
-  editable,
-  onAbrir,
-  onPublicar }: {
+// forwardRef: AnimatePresence en modo popLayout necesita el nodo para sacar del flujo al que se va.
+const Ficha = forwardRef<HTMLLIElement, {
   a: AliadoItem;
   i: number;
   ordenable: boolean;
   editable: boolean;
   onAbrir: () => void;
   onPublicar: (v: boolean) => void;
-}) {
-  const orden = useSortable({ id: a.id, disabled: !ordenable });
-  const { setNodeRef, transform, transition, isDragging } = orden;
+  entrada: ReturnType<typeof useEntradaLista>;
+}>(function Ficha({ a, i, ordenable, editable, onAbrir, onPublicar, entrada }, ref) {
+  const orden = useSortable({ id: a.id, disabled: !ordenable, transition: TRANSICION_SOLTAR });
+  const { setNodeRef, isDragging } = orden;
+  const o = estiloOrden(orden);
+  const nodo = useRefsUnidos(setNodeRef, ref);
   return (
     <motion.li
-      ref={setNodeRef}
+      ref={nodo}
+      {...entrada(i, o.atenuado)}
       layout={!isDragging}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 10) * 0.03 }}
-      style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
+      style={o.style}
       className="group relative"
     >
       <button
@@ -326,9 +328,9 @@ function Ficha({
         onClick={onAbrir}
         aria-label={`Editar ${a.nombre || "aliado sin nombre"}`}
         className={cn(
-          "relative flex aspect-[16/10] w-full items-center justify-center rounded-col-sm border border-col-line bg-col-surface transition-[border-color,box-shadow] duration-col-lento ease-col hover:border-col-slate/30 hover:shadow-col-2",
+          "relative flex aspect-[16/10] w-full items-center justify-center rounded-col-sm border border-col-line bg-col-surface transition-[border-color,box-shadow,transform] duration-col-lento ease-col hover:border-col-slate/30 hover:shadow-col-2",
           !a.publicado && "bg-col-surface/60",
-          isDragging && "shadow-col-2",
+          o.levantado && claseLevantado,
         )}
       >
         <LogoFicha a={a} />
@@ -355,7 +357,7 @@ function Ficha({
       </div>
     </motion.li>
   );
-}
+});
 
 /** La fila de aliados del sitio con este resaltado y, alrededor, los vecinos publicados. */
 function VistaFila({ a, todos }: { a: AliadoItem; todos: AliadoItem[] }) {

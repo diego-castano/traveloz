@@ -15,8 +15,8 @@ import { FotoCatalogoImagen, MedioFantasma, MedioImagen } from "../../sitio/medi
 import { Asa, Campo, ChipsTexto, ListaOrdenable, SlotMedio, Stepper, TiraMedios, etiquetaCampo, entrada } from "../campos";
 import { useConstructor } from "../contexto";
 import { nuevoId } from "../estado";
+import { transiciones } from "../../movimiento";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 const MAX_TRAMOS = 12;
 const plural = (n: number, a: string, b: string) => `${n} ${n === 1 ? a : b}`;
 
@@ -160,7 +160,7 @@ function TarjetaTramo({
             aria-label={abierto ? "Cerrar parada" : "Abrir parada"}
             className="flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:bg-col-base hover:text-col-ink"
           >
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-col-lento ease-col", abierto && "rotate-180")} strokeWidth={1.5} />
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-col-abre ease-col", abierto && "rotate-180")} strokeWidth={1.5} />
           </button>
         )}
       </div>
@@ -168,10 +168,7 @@ function TarjetaTramo({
       <AnimatePresence initial={false}>
         {abierto && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE }}
+            {...transiciones.acordeon}
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-8 border-t border-col-line px-5 pb-6 pt-6">

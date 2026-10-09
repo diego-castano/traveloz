@@ -18,8 +18,8 @@ import { useApi } from "../constructor/api";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { MedioImagen } from "../sitio/medios";
 import { Boton, EncabezadoPagina, Estado, Selector, etiquetaCampo, entrada, entradaArea } from "../ui";
+import { DIST, DUR, EASE } from "../movimiento";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 const E164 = /^\+\d{8,15}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2 }$/;
 
@@ -277,10 +277,9 @@ export function Ajustes({
       <AnimatePresence>
         {editable && (sucio || error) && (
           <motion.div
-            initial={{ y: 24, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 24, opacity: 0 }}
-            transition={{ duration: 0.35, ease: EASE }}
+            initial={{ y: DIST.medium, opacity: 0 }}
+            animate={{ y: 0, opacity: 1, transition: { duration: DUR.slow, ease: EASE } }}
+            exit={{ y: DIST.base, opacity: 0, transition: { duration: DUR.medium, ease: EASE } }}
             className="sticky bottom-4 z-20 mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-col-sm bg-col-noche px-5 py-4 text-white shadow-col-3"
           >
             <p className={cn("min-w-0 flex-1 text-col-md", error ? "text-[#F2B8A8]" : "text-white/80")} role={error ? "alert" : undefined}>

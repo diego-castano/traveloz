@@ -13,7 +13,7 @@ import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useApi } from "../constructor/api";
-import { CheckAnimado, EASE, resorteSuave } from "../movimiento";
+import { CheckAnimado, DIST, DUR, EASE, ESCALA, transiciones } from "../movimiento";
 import { esDeSesion, esReintentable, useSubidas, type Subida } from "./useSubidas";
 import { errorAmigable } from "../shell/Avisos";
 import { MENSAJE_MOV, TIPOS_VIDEO, esMov, motivoPortada, motivoVideo } from "@/lib/collection/limites-video";
@@ -167,7 +167,7 @@ export function ZonaSubida({
           recibir(Array.from(e.dataTransfer.files));
         }}
         animate={{ scale: encima ? 1.012 : 1 }}
-        transition={resorteSuave}
+        transition={{ duration: DUR.fast, ease: EASE }}
         className={cn(
           "col-anillo group relative flex w-full flex-1 items-center overflow-hidden rounded-md border-[1.5px] border-dashed transition-[border-color,background-color,box-shadow,min-height] duration-col ease-col focus-visible:shadow-col-anillo",
           finita
@@ -180,8 +180,8 @@ export function ZonaSubida({
       >
         <motion.span
           aria-hidden
-          animate={{ y: encima ? -4 : 0, scale: encima ? 1.06 : 1 }}
-          transition={resorteSuave}
+          animate={{ y: encima ? -DIST.micro : 0, scale: encima ? 1.06 : 1 }}
+          transition={{ duration: DUR.fast, ease: EASE }}
           className={cn(
             "flex shrink-0 items-center justify-center rounded-full transition-colors duration-col ease-col",
             finita ? "h-9 w-9" : "h-14 w-14",
@@ -229,10 +229,10 @@ export function ZonaSubida({
         {motivos.length > 0 && (
           <motion.ul
             role="alert"
-            initial={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0, y: -DIST.micro }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: EASE }}
+            transition={{ duration: DUR.quick, ease: EASE }}
             className="flex flex-col gap-1 rounded-col bg-col-alerta/[0.07] px-4 py-3 text-col-sm text-col-alerta"
           >
             {motivos.slice(0, 4).map((m) => (
@@ -290,10 +290,10 @@ export function TarjetaSubida({ s, onReintentar, listo = "Listo" }: { s: Subida;
   return (
     <motion.li
       layout
-      initial={{ opacity: 0, y: 10, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ duration: 0.35, ease: EASE }}
+      initial={{ opacity: 0, y: DIST.base }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, scale: ESCALA.modal, transition: { duration: DUR.quick, ease: EASE } }}
+      transition={{ duration: DUR.slow, ease: EASE, layout: { duration: DUR.fast, ease: EASE } }}
       className="overflow-hidden rounded-col bg-col-surface ring-1 ring-col-line"
     >
       <div className="relative aspect-[4/3] bg-col-base">
@@ -306,7 +306,7 @@ export function TarjetaSubida({ s, onReintentar, listo = "Listo" }: { s: Subida;
         <span className="absolute inset-0 flex items-center justify-center">
           <AnimatePresence mode="wait" initial={false}>
             {enCurso && (
-              <motion.span key="p" exit={{ opacity: 0, scale: 0.8 }} className="relative flex items-center justify-center text-white">
+              <motion.span key="p" exit={{ opacity: 0, scale: ESCALA.modal, transition: { duration: DUR.quick } }} className="relative flex items-center justify-center text-white">
                 <ProgresoCircular valor={s.estado === "subiendo" ? s.progreso : s.estado === "espera" ? 0 : undefined} tam={48} />
                 {s.estado === "subiendo" && (
                   <span className="absolute text-col-xs tabular-nums text-white">{s.progreso}</span>
@@ -316,9 +316,7 @@ export function TarjetaSubida({ s, onReintentar, listo = "Listo" }: { s: Subida;
             {s.estado === "listo" && (
               <motion.span
                 key="ok"
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={resorteSuave}
+                {...transiciones.pop}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-col-gold text-col-noche shadow-col-3"
               >
                 <CheckAnimado className="h-5 w-5" />
@@ -460,10 +458,7 @@ export function SoltarAqui({
         {encima && (
           <motion.div
             key="encima"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            {...transiciones.velo}
             className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-col border-[1.5px] border-dashed border-col-gold bg-col-noche/60 text-center text-white backdrop-blur-[2px]"
           >
             <Upload className="h-5 w-5 text-col-gold" strokeWidth={1.5} aria-hidden />
@@ -473,10 +468,7 @@ export function SoltarAqui({
         {actual && actual.estado !== "error" && (
           <motion.div
             key="subiendo"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            {...transiciones.velo}
             className="absolute inset-0 z-10 overflow-hidden rounded-col"
             aria-live="polite"
           >
@@ -487,9 +479,7 @@ export function SoltarAqui({
             <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-col-noche/30 text-white">
               {actual.estado === "listo" ? (
                 <motion.span
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={resorteSuave}
+                  {...transiciones.pop}
                   className="flex h-9 w-9 items-center justify-center rounded-full bg-col-gold text-col-noche"
                 >
                   <CheckAnimado className="h-5 w-5" />

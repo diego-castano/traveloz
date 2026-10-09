@@ -9,7 +9,6 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, GripVertical, LoaderCircle, Plus, X } from "lucide-react";
 import {
   actualizarPregunta,
@@ -23,14 +22,14 @@ import { useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
 import { IndicadorGuardado } from "../biblioteca/DetalleMedio";
 import { Boton, EncabezadoPagina, Eyebrow, Filtros, Interruptor, etiquetaCampo, entradaSelect, entrada, entradaTitulo } from "../ui";
-import { Campo, useSensoresOrden } from "../constructor/campos";
+import { Campo, estiloOrdenPlano, useSensoresOrden } from "../constructor/campos";
+import { TRANSICION_SOLTAR, transiciones } from "../movimiento";
 import { EditorTexto } from "../editor/EditorTexto";
 import { ItemPregunta } from "../sitio/tarjetas";
 import { Cabecera, ListaVacia } from "../sitio/bloques/comun";
 import "../sitio/sitio.css";
 import { ZonaEliminar, reponer, useGuardadoDiferido } from "../contenido/comun";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 
 type Payload = Parameters<typeof actualizarPregunta>[1];
 
@@ -333,16 +332,17 @@ function Fila({
   onMover: (c: string) => void;
   onEliminar: () => Promise<string | null>;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id, disabled: !editable });
+  const orden = useSortable({ id: p.id, disabled: !editable, transition: TRANSICION_SOLTAR });
+  const { attributes, listeners, setNodeRef, isDragging } = orden;
   const ro = !editable;
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
+      style={estiloOrdenPlano(orden, ["background-color var(--col-dur-fast) var(--col-ease-smooth-out)"])}
       className={cn(
-        "relative border-b border-col-line transition-[background-color,box-shadow] duration-col-lento ease-col",
+        "relative border-b border-col-line",
         abierta ? "bg-col-surface shadow-col-2" : "hover:bg-col-surface/60",
-        isDragging && "bg-col-surface shadow-col-2",
+        isDragging && "bg-col-surface shadow-col-3",
       )}
     >
       {abierta && <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-col-gold" />}
@@ -397,17 +397,14 @@ function Fila({
           onClick={onAlternar}
           className="ml-1 flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:text-col-ink"
         >
-          <ChevronDown className={cn("h-4 w-4 transition-transform duration-col-lento ease-col", abierta && "rotate-180")} strokeWidth={1.5} />
+          <ChevronDown className={cn("h-4 w-4 transition-transform duration-col-abre ease-col", abierta && "rotate-180")} strokeWidth={1.5} />
         </button>
       </div>
 
       <AnimatePresence initial={false}>
         {abierta && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE }}
+            {...transiciones.acordeon}
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-7 pb-8 pl-10 pr-6 pt-1">

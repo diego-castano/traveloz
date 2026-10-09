@@ -131,9 +131,13 @@ const config: Config = {
         col: "cubic-bezier(0.22, 1, 0.36, 1)",
       },
       transitionDuration: {
+        // Escala de movimiento de Collection (espejo de movimiento.tsx).
         "col-rapido": "150ms",
         col: "200ms",
+        "col-abre": "250ms",
         "col-lento": "320ms",
+        "col-cierre-panel": "350ms",
+        "col-panel": "400ms",
       },
       backdropBlur: {
         glass: "20px",

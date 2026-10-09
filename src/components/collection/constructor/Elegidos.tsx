@@ -109,7 +109,7 @@ export function Elegidos({
             <Popover.Content
               align="start"
               sideOffset={6}
-              className="z-50 flex max-h-[380px] w-[360px] flex-col rounded-col-sm border border-col-line bg-col-surface shadow-col-3"
+              className="col-desplegable z-50 flex max-h-[380px] w-[360px] flex-col rounded-col-sm border border-col-line bg-col-surface shadow-col-3"
             >
               <label className="relative border-b border-col-line">
                 <span className="sr-only">Buscar {etiqueta}</span>

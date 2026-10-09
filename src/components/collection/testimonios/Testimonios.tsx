@@ -4,11 +4,10 @@
 // filete dorado, foto 4:5 del viaje), orden arrastrando, interruptor de
 // publicado y una hoja lateral con la diapositiva del slider en vivo.
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { forwardRef, useState } from "react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { ImagePlus, Quote, RefreshCw, X } from "lucide-react";
 import {
   actualizarTestimonio,
@@ -23,7 +22,8 @@ import { useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
 import { EncabezadoPagina, Eyebrow, Vacio, Interruptor, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
-import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
+import { Campo, Contador, claseLevantado, estiloOrden, useRefsUnidos, useSensoresOrden } from "../constructor/campos";
+import { Numero, TRANSICION_SOLTAR, useEntradaLista } from "../movimiento";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
 import type { Aspecto } from "@/lib/collection/recortes";
@@ -31,7 +31,6 @@ import { TestimonioSlide } from "../sitio/tarjetas";
 import "../sitio/sitio.css";
 import { AsaTarjeta, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "../contenido/comun";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 /** Largo que todavía se lee cómodo en el slider. */
 const CITA_IDEAL = 280;
 
@@ -80,6 +79,7 @@ export function Testimonios({
   const sensores = useSensoresOrden();
 
   const [items, setItems] = useState<TestimonioItem[]>(Array.isArray(inicial) ? inicial : []);
+  const entrada = useEntradaLista(items.length > 0);
   const [abierto, setAbierto] = useState<string | null>(abrirId);
   const error = Array.isArray(inicial) ? null : inicial.error;
 
@@ -183,7 +183,11 @@ export function Testimonios({
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
         titulo="Historias de viajeros"
-        descripcion={`${items.length} ${items.length === 1 ? "testimonio" : "testimonios"} · ${publicados} en el sitio`}
+        descripcion={
+          <>
+            <Numero valor={items.length} /> {items.length === 1 ? "testimonio" : "testimonios"} · <Numero valor={publicados} /> en el sitio
+          </>
+        }
         acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo testimonio" placeholder="Quiénes viajaron" onCrear={crear} />}
       />
 
@@ -204,12 +208,14 @@ export function Testimonios({
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={items.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!editable}>
             <ul className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3">
-              <AnimatePresence initial={false}>
+              <LayoutGroup>
+              <AnimatePresence mode="popLayout">
                 {items.map((t, i) => (
                   <Tarjeta
                     key={t.id}
                     t={t}
                     i={i}
+                    entrada={entrada}
                     experiencia={tituloExp(t.experienciaId)}
                     editable={editable}
                     onAbrir={() => setAbierto(t.id)}
@@ -217,6 +223,7 @@ export function Testimonios({
                   />
                 ))}
               </AnimatePresence>
+              </LayoutGroup>
             </ul>
           </SortableContext>
         </DndContext>
@@ -249,38 +256,34 @@ function Foto({ t, sizes }: { t: Pick<TestimonioItem, "nombre" | "foto">; sizes:
   );
 }
 
-function Tarjeta({
-  t,
-  i,
-  experiencia,
-  editable,
-  onAbrir,
-  onPublicar }: {
+// forwardRef: AnimatePresence en modo popLayout necesita el nodo para sacar del flujo al que se va.
+const Tarjeta = forwardRef<HTMLLIElement, {
   t: TestimonioItem;
   i: number;
   experiencia: string | null;
   editable: boolean;
   onAbrir: () => void;
   onPublicar: (v: boolean) => void;
-}) {
-  const orden = useSortable({ id: t.id, disabled: !editable });
-  const { setNodeRef, transform, transition, isDragging } = orden;
+  entrada: ReturnType<typeof useEntradaLista>;
+}>(function Tarjeta({ t, i, experiencia, editable, onAbrir, onPublicar, entrada }, ref) {
+  const orden = useSortable({ id: t.id, disabled: !editable, transition: TRANSICION_SOLTAR });
+  const { setNodeRef, isDragging } = orden;
+  const o = estiloOrden(orden);
+  const nodo = useRefsUnidos(setNodeRef, ref);
   return (
     <motion.li
-      ref={setNodeRef}
+      ref={nodo}
+      {...entrada(i, o.atenuado)}
       layout={!isDragging}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 10) * 0.03 }}
-      style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
-      className="group relative flex flex-col rounded-col-sm border border-col-line bg-col-surface transition-shadow duration-col-lento ease-col hover:shadow-col-2"
+      style={o.style}
+      // La tarjeta es el li (transform de motion): al levantarla, sombra acá y escala adentro.
+      className={cn("group relative flex flex-col rounded-col-sm border border-col-line bg-col-surface transition-shadow duration-col-lento ease-col hover:shadow-col-2", o.className, o.levantado && "shadow-col-3")}
     >
       <button
         type="button"
         onClick={onAbrir}
         aria-label={`Editar el testimonio de ${t.nombre}`}
-        className="grid flex-1 grid-cols-[112px_minmax(0,1fr)] gap-6 rounded-col-sm p-5 text-left"
+        className={cn("grid flex-1 grid-cols-[112px_minmax(0,1fr)] gap-6 rounded-col-sm p-5 text-left transition-transform duration-col-abre ease-col", o.levantado && "scale-[1.02]")}
       >
         <div className={cn("relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line", !t.publicado && "grayscale-[0.6]")}>
           <Foto t={t} sizes="112px" />
@@ -319,7 +322,7 @@ function Tarjeta({
       </div>
     </motion.li>
   );
-}
+});
 
 function EditorTestimonio({
   t,

@@ -14,10 +14,10 @@ export const ESTADOS: Record<EstadoExperiencia, { label: string; tono: TonoEstad
   ARCHIVADA: { label: "Archivada", tono: "neutro" },
 };
 
-export function EstadoPill({ estado, className }: { estado: EstadoExperiencia; className?: string }) {
+export function EstadoPill({ estado, className, animado }: { estado: EstadoExperiencia; className?: string; animado?: boolean }) {
   const e = ESTADOS[estado];
   return (
-    <Estado tono={e.tono} className={className}>
+    <Estado tono={e.tono} className={className} animado={animado}>
       {e.label}
     </Estado>
   );

@@ -5,7 +5,8 @@
 // un módulo. Sin texto muestra lo último que se abrió desde acá. Todo con
 // teclado: flechas para moverte, Enter para abrir, Esc para cerrar.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { motion, useAnimate } from "motion/react";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import {
@@ -29,6 +30,7 @@ import type { Resultado } from "@/lib/collection/ejecutar";
 import { PAGINAS } from "@/lib/collection/paginas/contenido";
 import { useCollection } from "./contexto";
 import { GRUPOS_NAV } from "./nav";
+import { DUR, EASE } from "../movimiento";
 
 export type BuscarCollection = (q: string) => Promise<Resultado<ResultadoBusqueda[]>>;
 
@@ -47,8 +49,24 @@ const ICONO_GRUPO = Object.fromEntries(GRUPOS.map((g) => [g.id, g.icono])) as Re
 /** Sin tildes ni mayúsculas, para comparar lo que se escribe con los nombres. */
 const normal = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
+// El fondo del elegido no es de cada fila: es una sola pieza (Resaltado) que
+// se desliza de una fila a otra en 250.
 const item =
-  "flex min-h-11 cursor-pointer items-center gap-3 rounded-col-sm px-3 py-1.5 text-col-cuerpo text-col-slate data-[disabled=true]:cursor-default data-[disabled=true]:opacity-45 data-[selected=true]:bg-col-base data-[selected=true]:text-col-ink";
+  "relative isolate flex min-h-11 cursor-pointer items-center gap-3 rounded-col-sm px-3 py-1.5 text-col-cuerpo text-col-slate transition-colors duration-col-rapido ease-col data-[disabled=true]:cursor-default data-[disabled=true]:opacity-45 data-[selected=true]:text-col-ink";
+
+const ElegidoCtx = createContext("");
+
+function Resaltado({ valor }: { valor: string }) {
+  if (useContext(ElegidoCtx) !== valor) return null;
+  return (
+    <motion.span
+      layoutId="col-paleta-elegido"
+      aria-hidden
+      className="absolute inset-0 -z-10 rounded-col-sm bg-col-base"
+      transition={{ duration: DUR.fast, ease: EASE }}
+    />
+  );
+}
 const grupo =
   "[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-col-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-col-muted";
 
@@ -78,7 +96,9 @@ export function PaletaComandos({
   const [resultados, setResultados] = useState<ResultadoBusqueda[]>([]);
   const [buscando, setBuscando] = useState(false);
   const [recientes, setRecientes] = useState<ResultadoBusqueda[]>([]);
+  const [elegido, setElegido] = useState("");
   const pedido = useRef(0);
+  const [lista, animarLista] = useAnimate<HTMLDivElement>();
 
   useEffect(() => {
     if (abierta) setRecientes(leerRecientes());
@@ -146,6 +166,11 @@ export function PaletaComandos({
     return [...resultados, ...paginas];
   }, [resultados, q]);
 
+  // Cuando cambian los resultados, la lista entra con un fundido corto (150).
+  useEffect(() => {
+    if (lista.current) void animarLista(lista.current, { opacity: [0, 1] }, { duration: DUR.quick, ease: "easeOut" });
+  }, [todos, lista, animarLista]);
+
   const verVolver = coincide("Volver a Traveloz");
   const nada = !!q && !buscando && !todos.length && !acciones.length && !modulos.length && !verVolver;
 
@@ -157,8 +182,10 @@ export function PaletaComandos({
       label="Buscar en Collection"
       shouldFilter={false}
       loop
-      overlayClassName="fixed inset-0 z-[60] bg-col-ink/30 backdrop-blur-[2px]"
-      contentClassName="fixed left-1/2 top-[12vh] z-[60] flex max-h-[76vh] w-[min(620px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-col-lg bg-col-surface shadow-col-3 focus:outline-none [&_[cmdk-root]]:flex [&_[cmdk-root]]:min-h-0 [&_[cmdk-root]]:flex-1 [&_[cmdk-root]]:flex-col"
+      value={elegido}
+      onValueChange={setElegido}
+      overlayClassName="col-velo fixed inset-0 z-[60] bg-col-ink/30 backdrop-blur-[2px]"
+      contentClassName="col-modal fixed left-1/2 top-[12vh] z-[60] flex max-h-[76vh] w-[min(620px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-col-lg bg-col-surface shadow-col-3 focus:outline-none [&_[cmdk-root]]:flex [&_[cmdk-root]]:min-h-0 [&_[cmdk-root]]:flex-1 [&_[cmdk-root]]:flex-col"
     >
       <div className="flex items-center gap-3 border-b border-col-line px-5">
         <Search className="h-4 w-4 shrink-0 text-col-slate" strokeWidth={1.5} aria-hidden />
@@ -170,7 +197,10 @@ export function PaletaComandos({
         />
         {buscando && <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-col-slate" strokeWidth={1.75} aria-label="Buscando" />}
       </div>
-      <Command.List className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+      <ElegidoCtx.Provider value={elegido}>
+      {/* layoutScroll: el resaltado se mide bien aunque la lista tenga scroll. */}
+      <motion.div ref={lista} layoutScroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <Command.List className="p-2">
         {nada && (
           <div className="px-4 py-10 text-center">
             <p className="font-col-display text-col-xl text-col-ink">Nada con «{q}»</p>
@@ -202,6 +232,7 @@ export function PaletaComandos({
           <Command.Group heading="Acciones" className={grupo}>
             {acciones.map((a) => (
               <Command.Item key={a.id} value={`accion-${a.id}`} onSelect={() => ir(a.href)} className={item}>
+                <Resaltado valor={`accion-${a.id}`} />
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-col-sm bg-col-base text-col-ink">
                   <a.icono className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                 </span>
@@ -217,6 +248,7 @@ export function PaletaComandos({
               const Icono = m.icono;
               return (
                 <Command.Item key={m.id} value={`modulo-${m.id}`} disabled={!m.href} onSelect={() => m.href && ir(m.href)} className={item}>
+                  <Resaltado valor={`modulo-${m.id}`} />
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center">
                     <Icono className="h-[18px] w-[18px]" strokeWidth={1.5} aria-hidden />
                   </span>
@@ -231,6 +263,7 @@ export function PaletaComandos({
         {verVolver && (
           <Command.Group heading="Traveloz" className={grupo}>
             <Command.Item value="volver-traveloz" onSelect={() => ir("/backend/dashboard")} className={item}>
+              <Resaltado valor="volver-traveloz" />
               <span className="flex h-9 w-9 shrink-0 items-center justify-center">
                 <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.5} aria-hidden />
               </span>
@@ -239,6 +272,8 @@ export function PaletaComandos({
           </Command.Group>
         )}
       </Command.List>
+      </motion.div>
+      </ElegidoCtx.Provider>
       <div className="hidden items-center gap-4 border-t border-col-line px-5 py-2.5 text-col-xs text-col-muted sm:flex">
         <span className="flex items-center gap-1.5">
           <kbd className="rounded-col-sm border border-col-line px-1.5 font-col-text">↑ ↓</kbd> moverte
@@ -259,8 +294,10 @@ export function PaletaComandos({
 
 function FilaResultado({ r, onSelect, reciente }: { r: ResultadoBusqueda; onSelect: () => void; reciente?: boolean }) {
   const Icono = ICONO_GRUPO[r.grupo] ?? Compass;
+  const valor = `${reciente ? "rec" : r.grupo}-${r.id}`;
   return (
-    <Command.Item value={`${reciente ? "rec" : r.grupo}-${r.id}`} onSelect={onSelect} className={item}>
+    <Command.Item value={valor} onSelect={onSelect} className={item}>
+      <Resaltado valor={valor} />
       <span className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-col-sm bg-col-base text-col-slate">
         {r.miniatura ? (
           // eslint-disable-next-line @next/next/no-img-element

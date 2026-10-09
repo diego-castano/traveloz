@@ -12,6 +12,7 @@ import { Eyebrow } from "../ui";
 import { EstadoPill } from "../constructor/formato";
 import { MedioImagen as ImagenSitio } from "../sitio/medios";
 import { MedioImagen, aspectoDe } from "../biblioteca/MedioImagen";
+import { Numero } from "../movimiento";
 
 export interface DatosInicio {
   saludo: string;
@@ -92,7 +93,7 @@ export function Inicio({ d }: { d: DatosInicio }) {
           {hoy.map((n, i) => (
             <li key={n.label} className={cn(i > 0 && "border-t border-col-line sm:border-l sm:border-t-0", i === 2 && "sm:col-span-2 sm:border-l-0 sm:border-t lg:col-span-1 lg:border-l lg:border-t-0")}>
               <Link href={n.href} className="group flex h-full flex-col px-5 py-6 transition-colors duration-col ease-col hover:bg-col-surface md:px-7">
-                <span className="text-col-3xl font-light tabular-nums text-col-ink">{n.n}</span>
+                <Numero valor={n.n} className="text-col-3xl font-light text-col-ink" />
                 <span className="mt-3 flex items-center gap-2 text-col-md font-medium text-col-ink">
                   {n.punto && <span aria-hidden className={cn("h-2 w-2 rounded-full", n.punto)} />}
                   {n.label}

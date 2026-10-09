@@ -12,9 +12,9 @@ import { AlertTriangle, Eye, RotateCw } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { Boton } from "../ui";
+import { DUR, EASE } from "../movimiento";
 import type { Dispositivo } from "./VistaPrevia";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 
 export function useMedia(q: string) {
   const [ok, setOk] = useState(false);
@@ -209,9 +209,10 @@ export function BannerConflicto({ visible }: { visible: boolean }) {
       {visible && (
         <motion.div
           role="alert"
+          // Aviso: entra en 250, se va en 150.
           initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          transition={{ duration: 0.4, ease: EASE }}
+          animate={{ height: "auto", opacity: 1, transition: { duration: DUR.fast, ease: EASE } }}
+          exit={{ height: 0, opacity: 0, transition: { duration: DUR.quick, ease: EASE } }}
           className="shrink-0 overflow-hidden bg-col-ink text-col-base"
         >
           <div className="flex items-center gap-4 px-6 py-4">

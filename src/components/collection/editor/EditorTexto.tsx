@@ -263,7 +263,7 @@ function Enlace({ editor, activo }: { editor: Editor; activo: boolean }) {
           side="bottom"
           align="start"
           sideOffset={6}
-          className="z-[60] w-80 rounded-col-sm border border-col-line bg-col-surface p-4 shadow-col-3"
+          className="col-desplegable z-[60] w-80 rounded-col-sm border border-col-line bg-col-surface p-4 shadow-col-3"
         >
           <form
             onSubmit={(e) => {

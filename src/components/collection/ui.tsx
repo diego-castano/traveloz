@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Popover, Select, Switch, Tooltip } from "radix-ui";
 import { Check, ChevronDown, ExternalLink, LoaderCircle, Search, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/components/lib/cn";
-import { EASE, resorteSuave, transiciones } from "./movimiento";
+import { DUR, DIST, EASE, TextoCambiante, transiciones } from "./movimiento";
 import { urlAbsoluta } from "@/lib/collection/sitio";
 import { CollectionContext } from "./shell/contexto";
 
@@ -37,28 +37,48 @@ const TONOS: Record<TonoEstado, { texto: string; punto: string }> = {
   neutro: { texto: "text-col-muted ring-col-line", punto: "bg-col-subtle" },
 };
 
-/** Píldora de estado: punto de color y texto corto en sentence case. Fondo blanco, así se lee igual sobre fotos. */
+/**
+ * Píldora de estado: punto de color y texto corto en sentence case. Fondo
+ * blanco, así se lee igual sobre fotos. Con `animado`, al cambiar de estado
+ * el texto se cruza (150), el ancho acompaña (layout) y el color pasa en 200.
+ */
 export function Estado({
   tono,
   children,
   className,
   title,
+  animado,
 }: {
   tono: TonoEstado;
   children: React.ReactNode;
   className?: string;
   title?: string;
+  animado?: boolean;
 }) {
   const t = TONOS[tono];
+  const clases = cn(
+    "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-col-surface px-2.5 text-col-xs font-medium ring-1 ring-inset",
+    t.texto,
+    className,
+  );
+  if (animado) {
+    return (
+      <motion.span
+        layout
+        title={title}
+        transition={{ layout: { duration: DUR.fast, ease: EASE } }}
+        style={{ borderRadius: 999 }}
+        className={cn(clases, "transition-[color,box-shadow] duration-col ease-col")}
+      >
+        <motion.span layout="position" aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full transition-colors duration-col ease-col", t.punto)} />
+        <motion.span layout="position" className="inline-flex">
+          <TextoCambiante texto={children} />
+        </motion.span>
+      </motion.span>
+    );
+  }
   return (
-    <span
-      title={title}
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-col-surface px-2.5 text-col-xs font-medium ring-1 ring-inset",
-        t.texto,
-        className,
-      )}
-    >
+    <span title={title} className={clases}>
       <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", t.punto)} />
       {children}
     </span>
@@ -157,7 +177,7 @@ export const BotonIcono = forwardRef<
 >(function BotonIcono({ etiqueta, lado = "top", variante, tam, className, type = "button", ...props }, ref) {
   const raiz = useContext(CollectionContext)?.raiz;
   return (
-    <Tooltip.Provider delayDuration={250} skipDelayDuration={300}>
+    <Tooltip.Provider delayDuration={80} skipDelayDuration={300}>
       <Tooltip.Root>
         <Tooltip.Trigger asChild>
           <button ref={ref} type={type} aria-label={etiqueta} className={cn(botonIcono({ variante, tam }), className)} {...props} />
@@ -166,7 +186,7 @@ export const BotonIcono = forwardRef<
           <Tooltip.Content
             side={lado}
             sideOffset={6}
-            className="z-[95] rounded-col bg-col-ink px-2.5 py-1.5 font-col-text text-col-xs text-col-base shadow-col-3 data-[state=delayed-open]:animate-[col-pop_160ms_cubic-bezier(0.22,1,0.36,1)]"
+            className="z-[95] rounded-col bg-col-ink px-2.5 py-1.5 font-col-text text-col-xs text-col-base shadow-col-3 col-globo"
           >
             {etiqueta}
           </Tooltip.Content>
@@ -245,10 +265,10 @@ export function Campo({
           <motion.p
             key="e"
             role="alert"
-            initial={{ opacity: 0, y: -4 }}
+            initial={{ opacity: 0, y: -DIST.micro }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: EASE }}
+            transition={{ duration: DUR.quick, ease: EASE }}
             className="-mt-0.5 text-col-sm leading-snug text-col-alerta"
           >
             {error}
@@ -362,7 +382,7 @@ export function Selector({
           position="popper"
           sideOffset={6}
           collisionPadding={16}
-          className="z-[95] max-h-[min(360px,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] min-w-[180px] overflow-hidden rounded-col border border-col-line bg-col-surface font-col-text shadow-col-3 data-[state=open]:animate-[col-pop_160ms_cubic-bezier(0.22,1,0.36,1)]"
+          className="z-[95] max-h-[min(360px,var(--radix-select-content-available-height))] w-[var(--radix-select-trigger-width)] min-w-[180px] overflow-hidden rounded-col border border-col-line bg-col-surface font-col-text shadow-col-3 col-desplegable"
         >
           <Select.Viewport className="p-1">
             {opciones.map((o) => (
@@ -467,7 +487,7 @@ export function Segmentado<T extends string>({
                 layoutId={`seg-${id}`}
                 aria-hidden
                 className="absolute inset-0 rounded-col-sm bg-col-surface shadow-col-1"
-                transition={resorteSuave}
+                transition={{ duration: DUR.fast, ease: EASE }}
               />
             )}
             <span className="relative flex items-center gap-2">{o.label}</span>
@@ -761,7 +781,7 @@ export function Filtros<T extends string>({
                 align="start"
                 sideOffset={6}
                 collisionPadding={16}
-                className="z-50 w-[min(280px,calc(100vw-2rem))] rounded-col-sm border border-col-line bg-col-surface p-1 font-col-text shadow-col-3 focus:outline-none"
+                className="z-50 w-[min(280px,calc(100vw-2rem))] rounded-col-sm border border-col-line bg-col-surface p-1 font-col-text shadow-col-3 col-desplegable focus:outline-none"
               >
                 <ul aria-label={etiqueta}>
                   {opciones.map((o) => (
@@ -822,7 +842,7 @@ export function AnilloCompletitud({ valor, tam = 64, className }: { valor: numbe
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeDasharray={`${c * Math.max(valor, 0.02)} ${c}`}
-          className="transition-[stroke-dasharray] duration-col-lento ease-col"
+          className="transition-[stroke-dasharray] duration-col-panel ease-col"
         />
       </svg>
       <span className="font-col-display text-col-xl tabular-nums lining-nums leading-none">

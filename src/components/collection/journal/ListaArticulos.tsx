@@ -6,7 +6,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { BookOpen, LoaderCircle, Plus } from "lucide-react";
 import { crearArticulo, type ArticuloItem } from "@/actions/collection/journal.actions";
 import type { Resultado } from "@/lib/collection/ejecutar";
@@ -18,8 +18,7 @@ import { ESTADOS } from "../constructor/formato";
 import { MedioImagen } from "../sitio/medios";
 import { etiquetaArticulo } from "../sitio/tarjetas";
 import type { EstadoArticulo } from "./api";
-
-const EASE = [0.22, 1, 0.36, 1] as const;
+import { Numero, useEntradaLista } from "../movimiento";
 
 const PILL: Record<EstadoArticulo, { label: string; estilo: keyof typeof ESTADOS }> = {
   BORRADOR: { label: "Borrador", estilo: "BORRADOR" },
@@ -27,9 +26,9 @@ const PILL: Record<EstadoArticulo, { label: string; estilo: keyof typeof ESTADOS
   ARCHIVADO: { label: "Archivado", estilo: "ARCHIVADA" },
 };
 
-export function EstadoArticuloPill({ estado, className }: { estado: EstadoArticulo; className?: string }) {
+export function EstadoArticuloPill({ estado, className, animado }: { estado: EstadoArticulo; className?: string; animado?: boolean }) {
   return (
-    <Estado tono={ESTADOS[PILL[estado].estilo].tono} className={className}>
+    <Estado tono={ESTADOS[PILL[estado].estilo].tono} className={className} animado={animado}>
       {PILL[estado].label}
     </Estado>
   );
@@ -58,6 +57,7 @@ export function ListaArticulos({
   const items = useMemo(() => (Array.isArray(inicial) ? inicial : []), [inicial]);
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [creando, setCreando] = useState(false);
+  const entrada = useEntradaLista(items.length > 0);
 
   const pasa = (x: ArticuloItem, f: Filtro) =>
     f === "todos" || (f === "cambios" ? x.hayCambiosSinPublicar : x.estado === f);
@@ -78,7 +78,12 @@ export function ListaArticulos({
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
         titulo="Relatos y guías"
-        descripcion={`${items.length} ${items.length === 1 ? "artículo" : "artículos"} · ${items.filter((x) => pasa(x, "PUBLICADO")).length} publicados`}
+        descripcion={
+          <>
+            <Numero valor={items.length} /> {items.length === 1 ? "artículo" : "artículos"} ·{" "}
+            <Numero valor={items.filter((x) => pasa(x, "PUBLICADO")).length} /> publicados
+          </>
+        }
         acciones={
           editable && (
             <Boton onClick={() => void nuevo()} disabled={creando}>
@@ -105,13 +110,10 @@ export function ListaArticulos({
 
       {visibles.length ? (
         <ul className="grid grid-cols-1 gap-x-8 gap-y-14 sm:grid-cols-2 xl:grid-cols-3">
+          <LayoutGroup>
+          <AnimatePresence mode="popLayout">
           {visibles.map((a, i) => (
-            <motion.li
-              key={a.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 8) * 0.04 }}
-            >
+            <motion.li key={a.id} {...entrada(i)}>
               <Link href={`/backend/collection/journal/${a.id}`} className="group flex flex-col gap-5" aria-label={`Abrir ${a.titulo || "artículo sin título"}`}>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-col-sm bg-col-line transition-shadow duration-col-lento ease-col group-hover:shadow-col-2">
                   {a.portada ? (
@@ -135,6 +137,8 @@ export function ListaArticulos({
               </Link>
             </motion.li>
           ))}
+          </AnimatePresence>
+          </LayoutGroup>
         </ul>
       ) : items.length ? (
         <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">Nada con ese filtro.</p>

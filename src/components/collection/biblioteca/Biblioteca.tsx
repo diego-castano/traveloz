@@ -18,7 +18,7 @@ import { DetalleMedio } from "./DetalleMedio";
 import { Grilla, GrillaSkeleton } from "./Grilla";
 import { useSubidas } from "./useSubidas";
 import { ACEPTA_TODO, ZonaSubida, nombrarPegados, revisarArchivos } from "./ZonaSubida";
-import { resorteSuave } from "../movimiento";
+import { DIST, DUR, EASE, ESCALA, transiciones } from "../movimiento";
 
 export type FiltroBiblioteca = "todo" | "fotos" | "videos" | "sin-alt" | "sin-credito";
 
@@ -335,10 +335,9 @@ export function Biblioteca({
       <AnimatePresence>
         {enSeleccion && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, y: -DIST.base }}
+            animate={{ opacity: 1, y: 0, transition: { duration: DUR.fast, ease: EASE } }}
+            exit={{ opacity: 0, y: -DIST.micro, transition: { duration: DUR.quick, ease: EASE } }}
             className="sticky top-20 z-20 mb-6 flex flex-wrap items-center gap-3 rounded-col bg-col-ink px-4 py-2.5 text-col-base shadow-col-3"
           >
             <button
@@ -434,22 +433,19 @@ export function Biblioteca({
       <AnimatePresence>
         {arrastrando > 0 && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            {...transiciones.velo}
             className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-col-noche/80 p-6 backdrop-blur-sm"
           >
             <motion.div
-              initial={{ scale: 0.97 }}
+              initial={{ scale: ESCALA.dropdown }}
               animate={{ scale: 1 }}
-              transition={resorteSuave}
+              transition={{ duration: DUR.fast, ease: EASE }}
               className="flex h-full w-full flex-col items-center justify-center rounded-md border-[1.5px] border-dashed border-col-gold/80"
             >
               <motion.span
-                initial={{ y: 8 }}
+                initial={{ y: DIST.base }}
                 animate={{ y: 0 }}
-                transition={resorteSuave}
+                transition={{ duration: DUR.fast, ease: EASE }}
                 className="flex h-16 w-16 items-center justify-center rounded-full bg-col-gold text-col-noche"
               >
                 <Upload className="h-7 w-7" strokeWidth={1.5} aria-hidden />

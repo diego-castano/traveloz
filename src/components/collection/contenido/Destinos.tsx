@@ -4,11 +4,10 @@
 // estado, orden arrastrando y una hoja lateral con vista previa en vivo y
 // guardado automático.
 
-import { useId, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { forwardRef, useId, useMemo, useState } from "react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { ImagePlus, MapPinned, RefreshCw, Search, X } from "lucide-react";
 import {
   actualizarDestino,
@@ -25,7 +24,8 @@ import { useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
 import { EncabezadoPagina, Estado, Vacio, type TonoEstado, Eyebrow, Filtros, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaTitulo, tarjetaElevable, cajaCompuesta, entradaInterna } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
-import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
+import { Campo, Contador, claseLevantado, estiloOrden, useRefsUnidos, useSensoresOrden } from "../constructor/campos";
+import { Numero, TRANSICION_SOLTAR, useEntradaLista } from "../movimiento";
 import { EditorTexto } from "../editor/EditorTexto";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
@@ -33,7 +33,6 @@ import type { Aspecto } from "@/lib/collection/recortes";
 import { SoltarAqui } from "../biblioteca/ZonaSubida";
 import { AsaTarjeta, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "./comun";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 export const DOMINIO_COLLECTION = "collection.traveloz.com.uy";
 
 export interface PaisCatalogo {
@@ -163,6 +162,7 @@ export function Destinos({
   const sensores = useSensoresOrden();
 
   const [items, setItems] = useState<DestinoItem[]>(Array.isArray(inicial) ? inicial : []);
+  const entrada = useEntradaLista(items.length > 0);
   const [filtro, setFiltro] = useState<Filtro>("todos");
   const [abierto, setAbierto] = useState<string | null>(abrirId);
   const error = Array.isArray(inicial) ? null : inicial.error;
@@ -253,7 +253,12 @@ export function Destinos({
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
         titulo="Adónde viajamos"
-        descripcion={`${items.length} ${items.length === 1 ? "destino" : "destinos"} · ${items.filter((x) => x.estado === "PUBLICADO").length} en el sitio`}
+        descripcion={
+          <>
+            <Numero valor={items.length} /> {items.length === 1 ? "destino" : "destinos"} ·{" "}
+            <Numero valor={items.filter((x) => x.estado === "PUBLICADO").length} /> en el sitio
+          </>
+        }
         acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo destino" placeholder="Nombre del destino" onCrear={crear} abiertoInicial={nuevoAlEntrar} />}
       />
       {items.length > 0 && (
@@ -291,11 +296,13 @@ export function Destinos({
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={visibles.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!ordenable}>
             <ul className="grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-14 lg:grid-cols-3 xl:grid-cols-4">
-              <AnimatePresence initial={false}>
+              <LayoutGroup>
+              <AnimatePresence mode="popLayout">
                 {visibles.map((d, i) => (
-                  <Item key={d.id} d={d} i={i} ordenable={ordenable} onAbrir={() => setAbierto(d.id)} />
+                  <Item key={d.id} d={d} i={i} entrada={entrada} ordenable={ordenable} onAbrir={() => setAbierto(d.id)} />
                 ))}
               </AnimatePresence>
+              </LayoutGroup>
             </ul>
           </SortableContext>
         </DndContext>
@@ -333,25 +340,28 @@ function payload(d: DestinoItem): Payload {
     seoDescripcion: d.seoDescripcion };
 }
 
-function Item({ d, i, ordenable, onAbrir }: { d: DestinoItem; i: number; ordenable: boolean; onAbrir: () => void }) {
-  const orden = useSortable({ id: d.id, disabled: !ordenable });
-  const { setNodeRef, transform, transition, isDragging } = orden;
+// forwardRef: AnimatePresence en modo popLayout necesita el nodo para sacar del flujo al que se va.
+const Item = forwardRef<
+  HTMLLIElement,
+  { d: DestinoItem; i: number; ordenable: boolean; onAbrir: () => void; entrada: ReturnType<typeof useEntradaLista> }
+>(function Item({ d, i, ordenable, onAbrir, entrada }, ref) {
+  const orden = useSortable({ id: d.id, disabled: !ordenable, transition: TRANSICION_SOLTAR });
+  const { setNodeRef, isDragging } = orden;
+  const o = estiloOrden(orden);
+  const nodo = useRefsUnidos(setNodeRef, ref);
   return (
     <motion.li
-      ref={setNodeRef}
+      ref={nodo}
+      {...entrada(i, o.atenuado)}
       layout={!isDragging}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 8) * 0.03 }}
-      style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
+      style={o.style}
       className="group relative"
     >
       <button
         type="button"
         onClick={onAbrir}
         aria-label={`Editar ${d.nombre || "destino sin nombre"}`}
-        className={cn("block w-full rounded-col-sm text-left", isDragging && "opacity-90")}
+        className={cn("block w-full rounded-col-sm text-left transition-[transform,box-shadow] duration-col-abre ease-col", o.levantado && claseLevantado)}
       >
         <TarjetaDestino d={d} admin sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 72px" />
       </button>
@@ -360,7 +370,7 @@ function Item({ d, i, ordenable, onAbrir }: { d: DestinoItem; i: number; ordenab
       )}
     </motion.li>
   );
-}
+});
 
 function EditorDestino({
   d,

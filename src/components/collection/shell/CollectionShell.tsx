@@ -21,10 +21,9 @@ import { GRUPOS_NAV, moduloActivo, type ModuloNav } from "./nav";
 import { PaletaComandos, type BuscarCollection } from "./PaletaComandos";
 import { buscarEnCollection } from "@/actions/collection/buscar.actions";
 import { MarcaCollection } from "./MarcaCollection";
+import { DIST, DUR, EASE, Numero, insignia as insigniaMov, transiciones } from "../movimiento";
 
 const CLAVE_RIEL = "col.riel.plegado";
-const EASE = [0.22, 1, 0.36, 1] as const;
-const RESORTE = { type: "spring", stiffness: 380, damping: 36, mass: 0.9 } as const;
 
 export function CollectionShell({
   acceso,
@@ -100,7 +99,7 @@ export function CollectionShell({
   return (
     <CollectionContext.Provider value={{ acceso, usuario, raiz }}>
       <MotionConfig reducedMotion="user">
-        <Tooltip.Provider delayDuration={120} skipDelayDuration={300}>
+        <Tooltip.Provider delayDuration={80} skipDelayDuration={300}>
           <AvisosProvider>
             <div ref={setRaiz} className="flex min-h-screen">
               {/* Primer foco de la página: salta el riel y la barra. */}
@@ -114,7 +113,8 @@ export function CollectionShell({
               <motion.aside
                 initial={false}
                 animate={{ width: plegado ? 64 : 216 }}
-                transition={quieto ? { duration: 0 } : RESORTE}
+                // Panel: se despliega en 400 y se pliega en 350.
+                transition={quieto ? { duration: 0 } : { duration: plegado ? DUR.medium : DUR.slow, ease: EASE }}
                 className="sticky top-0 z-40 hidden h-screen shrink-0 flex-col overflow-hidden bg-col-noche text-white lg:flex"
               >
                 <Riel
@@ -141,21 +141,14 @@ export function CollectionShell({
                   {menuMovil && (
                     <Dialog.Portal forceMount container={raiz}>
                       <Dialog.Overlay asChild forceMount>
-                        <motion.div
-                          className="fixed inset-0 z-50 bg-col-noche/50 backdrop-blur-[2px] lg:hidden"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          transition={{ duration: 0.25 }}
-                        />
+                        <motion.div className="fixed inset-0 z-50 bg-col-noche/50 backdrop-blur-[2px] lg:hidden" {...transiciones.velo} />
                       </Dialog.Overlay>
                       <Dialog.Content asChild forceMount>
                         <motion.div
                           className="fixed inset-y-0 left-0 z-50 flex w-[248px] max-w-[85vw] flex-col overflow-hidden bg-col-noche text-white shadow-col-3 focus:outline-none lg:hidden"
                           initial={{ x: "-100%" }}
-                          animate={{ x: 0 }}
-                          exit={{ x: "-100%" }}
-                          transition={{ duration: 0.45, ease: EASE }}
+                          animate={{ x: 0, transition: { duration: DUR.slow, ease: EASE } }}
+                          exit={{ x: "-100%", transition: { duration: DUR.medium, ease: EASE } }}
                         >
                           <VisuallyHidden.Root>
                             <Dialog.Title>Menú de Collection</Dialog.Title>
@@ -223,9 +216,9 @@ export function CollectionShell({
                 <main id="contenido" tabIndex={-1} className={cn("min-w-0 flex-1 focus:outline-none", !enConstructor && "px-4 pb-24 pt-6 md:px-8 lg:px-12")}>
                   <motion.div
                     key={pathname}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: DIST.base }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.28, ease: EASE }}
+                    transition={{ duration: DUR.fast, ease: EASE }}
                   >
                     {children}
                   </motion.div>
@@ -297,7 +290,7 @@ function Riel({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: DUR.quick }}
           >
             <MarcaCollection compacta={plegado} />
           </motion.span>
@@ -343,9 +336,9 @@ function Navegacion({
               {modulos.map((m) => (
                 <motion.li
                   key={m.id}
-                  initial={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, x: -DIST.base }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.45, ease: EASE, delay: 0.04 + n++ * 0.03 }}
+                  transition={{ duration: DUR.slow, ease: EASE, delay: Math.min(n++, 6) * DUR.stagger }}
                 >
                   <ItemNav m={m} plegado={plegado} activo={m.id === activoId} idIndicador={idIndicador} insignia={insignias[m.id]} />
                 </motion.li>
@@ -363,7 +356,7 @@ function Etiqueta({ children, className }: { children: React.ReactNode; classNam
   return (
     <motion.span
       initial={{ opacity: 0 }}
-      animate={{ opacity: 1, transition: { duration: 0.2, delay: 0.1 } }}
+      animate={{ opacity: 1, transition: { duration: DUR.quick, delay: DUR.micro } }}
       className={className}
     >
       {children}
@@ -382,7 +375,7 @@ function ConGlobo({ texto, activo, children }: { texto: string; activo: boolean;
         <Tooltip.Content
           side="right"
           sideOffset={12}
-          className="z-[80] rounded-col-sm bg-col-noche px-3 py-1.5 font-col-text text-col-sm text-white shadow-col-3 ring-1 ring-col-noche-linea"
+          className="col-globo z-[80] rounded-col-sm bg-col-noche px-3 py-1.5 font-col-text text-col-sm text-white shadow-col-3 ring-1 ring-col-noche-linea"
         >
           {texto}
         </Tooltip.Content>
@@ -447,24 +440,28 @@ function ItemNav({
             layoutId={`col-nav-${idIndicador}`}
             aria-hidden
             className="absolute inset-0 rounded-col-sm bg-col-noche-2 ring-1 ring-inset ring-col-noche-linea"
-            transition={{ type: "spring", stiffness: 420, damping: 36 }}
+            transition={{ duration: DUR.fast, ease: EASE }}
           >
             <span className="absolute inset-y-2 left-0 w-[2px] rounded-full bg-col-gold shadow-none" />
           </motion.span>
         )}
         {icono}
         {plegado ? <span className="sr-only">{m.label}</span> : <Etiqueta className="relative flex-1 whitespace-nowrap">{m.label}</Etiqueta>}
-        {!!insignia && (
-          <span
-            aria-label={`${insignia} ${insignia === 1 ? "nueva" : "nuevas"}`}
-            className={cn(
-              "relative flex h-5 min-w-5 items-center justify-center rounded-full bg-col-gold px-1.5 text-col-xs font-bold tabular-nums leading-none text-col-noche",
-              plegado && "absolute right-1 top-0.5 h-4 min-w-4 px-1 text-col-xs",
-            )}
-          >
-            {insignia > 99 ? "99+" : insignia}
-          </span>
-        )}
+        <AnimatePresence initial={false}>
+          {!!insignia && (
+            <motion.span
+              key="insignia"
+              {...insigniaMov}
+              aria-label={`${insignia} ${insignia === 1 ? "nueva" : "nuevas"}`}
+              className={cn(
+                "relative flex h-5 min-w-5 items-center justify-center rounded-full bg-col-gold px-1.5 text-col-xs font-bold tabular-nums leading-none text-col-noche",
+                plegado && "absolute right-1 top-0.5 h-4 min-w-4 px-1 text-col-xs",
+              )}
+            >
+              <Numero valor={insignia} formato={(n) => (n > 99 ? "99+" : String(n))} />
+            </motion.span>
+          )}
+        </AnimatePresence>
       </Link>
     </ConGlobo>
   );

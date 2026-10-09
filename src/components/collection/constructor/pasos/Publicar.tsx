@@ -3,7 +3,8 @@
 // Paso 9: publicar. Lista de requisitos (obligatorios y recomendados) que
 // lleva a cada paso, el estado y las acciones según permiso, y el historial.
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { PASOS, puedePublicar, requisitos, type Requisito } from "@/lib/collection/experiencia/contenido";
 import type { AccionEstado } from "@/actions/collection/experiencias.actions";
@@ -13,6 +14,7 @@ import { rutaSitio } from "../../sitio/tarjetas";
 import { Grupo } from "../campos";
 import { useConstructor } from "../contexto";
 import { EstadoPill, ListaHistorial } from "../formato";
+import { CheckExito, DUR, sacudir, useLogro } from "../../movimiento";
 
 const TEXTO_ESTADO = {
   BORRADOR: "Solo la ve el equipo. Cuando esté lista, mandala a revisión o publicala.",
@@ -32,12 +34,20 @@ export function PasoPublicar() {
   const recomendados = req.filter((r) => !r.obligatorio).sort(primeroFaltantes);
   const listos = obligatorios.filter((r) => r.ok).length;
   const cambiosSinPublicar = estado === "PUBLICADA" && publicadoRevision !== revision;
+  const recienPublicada = useLogro(estado === "PUBLICADA");
 
   return (
     <div className="flex flex-col gap-12">
       <section className="rounded-col-sm bg-col-ink p-6 text-col-base">
         <div className="flex flex-wrap items-center gap-3">
-          <EstadoPill estado={estado} />
+          <EstadoPill estado={estado} animado />
+          <AnimatePresence>
+            {recienPublicada && (
+              <motion.span key="ok" className="flex text-col-gold" exit={{ opacity: 0, transition: { duration: DUR.quick } }}>
+                <CheckExito className="h-5 w-5" />
+              </motion.span>
+            )}
+          </AnimatePresence>
           {cambiosSinPublicar && <Estado tono="aviso">Cambios sin publicar</Estado>}
         </div>
         <p className="mt-4 max-w-[52ch] font-col-display text-col-xl leading-snug">{TEXTO_ESTADO[estado]}</p>
@@ -115,6 +125,8 @@ function Acciones() {
   const [enCurso, setEnCurso] = useState<AccionEstado | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmarArchivo, setConfirmarArchivo] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
+  const faltaRef = useRef<HTMLParagraphElement>(null);
   const listo = puedePublicar(borrador);
   const cambiosSinPublicar = estado === "PUBLICADA" && c.publicadoRevision !== c.revision;
 
@@ -125,6 +137,7 @@ function Acciones() {
     if (!guardado) {
       setEnCurso(null);
       setError("Primero hay que guardar los últimos cambios. Revisá la conexión y probá de nuevo.");
+      sacudir(caja.current);
       return;
     }
     const r = await c.api.cambiarEstado(c.id, accion).catch(() => null);
@@ -132,9 +145,10 @@ function Acciones() {
     setConfirmarArchivo(false);
     if (!r?.ok) {
       setError(r?.error ?? "Sin conexión. Probá de nuevo.");
+      sacudir(caja.current);
       return;
     }
-    if (accion === "publicar") c.setPublicadoRevision(c.revision);
+    if (accion === "publicar") c.setPublicadoRevision(c.revisionActual());
     c.sumarHistorial(accion === "publicar" && estado === "PUBLICADA" ? "publicar-cambios" : accion);
     c.setEstado(r.data.estado);
   };
@@ -164,8 +178,14 @@ function Acciones() {
   }
 
   return (
-    <div className="mt-6 border-t border-col-base/10 pt-5">
-      <div className="flex flex-wrap items-center gap-3">
+    <div ref={caja} className="mt-6 border-t border-col-base/10 pt-5">
+      {/* Publicar bloqueado: tocar la fila sacude la lista de lo que falta. */}
+      <div
+        className="flex flex-wrap items-center gap-3"
+        onPointerDown={(e) => {
+          if (!listo && (e.target as HTMLElement).closest("button:disabled")) sacudir(faltaRef.current);
+        }}
+      >
         {botones.map((b) => (
           <Boton
             key={b.label}
@@ -214,7 +234,7 @@ function Acciones() {
           ))}
       </div>
       {!listo && permisoPublicar && estado !== "ARCHIVADA" && (
-        <p className="mt-4 text-col-sm text-col-base/60">
+        <p ref={faltaRef} className="mt-4 rounded-col-sm text-col-sm text-col-base/60">
           Para publicar falta: {faltan}.
         </p>
       )}

@@ -6,6 +6,7 @@
 
 import { useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "motion/react";
 import { AlertTriangle, ArrowLeft, Check, LoaderCircle, UserRound } from "lucide-react";
 import { textoPlano, type MedioVista } from "@/lib/collection/experiencia/contenido";
 import {
@@ -33,6 +34,7 @@ import { MedioImagen } from "../sitio/medios";
 import { ArticuloPagina } from "../sitio/journal/ArticuloPagina";
 import { apiJournalReal, type ApiJournal, type EstadoArticulo } from "./api";
 import { EstadoArticuloPill } from "./ListaArticulos";
+import { CheckExito, DUR, sacudir, useLogro } from "../movimiento";
 
 const DOMINIO = "collection.traveloz.com.uy";
 const corte = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
@@ -124,6 +126,8 @@ export function EditorArticulo({
   const editable = puedeEditar && !conflicto;
 
   const [estadoArt, setEstadoArt] = useState<EstadoArticulo>(detalle.estado);
+  const recienPublicado = useLogro(estadoArt === "PUBLICADO");
+  const cajaPublicar = useRef<HTMLDivElement>(null);
   const [publicadoRevision, setPublicadoRevision] = useState(detalle.publicadoRevision);
   const [publicadoEn, setPublicadoEn] = useState(detalle.publicadoEn);
   const hayCambios =
@@ -195,6 +199,7 @@ export function EditorArticulo({
     setConfirmarArchivo(false);
     if (!r?.ok) {
       setErrorEstado(r?.error ?? "Primero hay que guardar los últimos cambios. Revisá la conexión y probá de nuevo.");
+      sacudir(cajaPublicar.current);
       return;
     }
     if (accion === "publicar") {
@@ -249,7 +254,7 @@ export function EditorArticulo({
                 {c.titulo.trim() || "Sin título"}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <EstadoArticuloPill estado={estadoArt} />
+                <EstadoArticuloPill estado={estadoArt} animado />
                 {hayCambios && <Estado tono="aviso">Cambios sin publicar</Estado>}
               </div>
             </div>
@@ -534,9 +539,16 @@ export function EditorArticulo({
 
               {/* Publicar: fuera del fieldset para que los botones respondan al permiso, no al bloqueo de edición */}
               <section id="art-publicar" className="mx-auto w-full max-w-[700px] px-5 pb-24 md:px-10">
-                <div className="rounded-col-sm bg-col-ink p-6 text-col-base">
+                <div ref={cajaPublicar} className="rounded-col-sm bg-col-ink p-6 text-col-base">
                   <div className="flex flex-wrap items-center gap-3">
-                    <EstadoArticuloPill estado={estadoArt} />
+                    <EstadoArticuloPill estado={estadoArt} animado />
+                    <AnimatePresence>
+                      {recienPublicado && (
+                        <motion.span key="ok" className="flex text-col-gold" exit={{ opacity: 0, transition: { duration: DUR.quick } }}>
+                          <CheckExito className="h-5 w-5" />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                     {hayCambios && <Estado tono="aviso">Cambios sin publicar</Estado>}
                   </div>
                   <p className="mt-4 max-w-[52ch] font-col-display text-col-xl leading-snug">

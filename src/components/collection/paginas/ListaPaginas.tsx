@@ -14,8 +14,8 @@ import { EncabezadoPagina, Estado } from "../ui";
 import { PaginaRender } from "../sitio/pagina/PaginaRender";
 import { PaginaLegal } from "../sitio/pagina/PaginaLegal";
 import { fechaLarga } from "../sitio/tarjetas";
+import { useEntradaLista } from "../movimiento";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 const ANCHO = 1280;
 
 export interface TarjetaPagina {
@@ -58,6 +58,11 @@ export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: 
       </p>
     );
   }
+  return <Lista inicial={inicial} />;
+}
+
+function Lista({ inicial }: { inicial: TarjetaPagina[] }) {
+  const entrada = useEntradaLista();
   const principales = inicial.filter((x) => !x.legal);
   const legales = inicial.filter((x) => x.legal);
   return (
@@ -69,7 +74,7 @@ export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: 
       />
       <section className="grid grid-cols-1 gap-x-8 gap-y-12 lg:grid-cols-2">
         {principales.map((x, i) => (
-          <Tarjeta key={x.item.slug} x={x} i={i} grande />
+          <Tarjeta key={x.item.slug} x={x} i={i} entrada={entrada} grande />
         ))}
       </section>
       {legales.length > 0 && (
@@ -79,7 +84,7 @@ export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: 
           </p>
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
             {legales.map((x, i) => (
-              <Tarjeta key={x.item.slug} x={x} i={i + principales.length} />
+              <Tarjeta key={x.item.slug} x={x} i={i + principales.length} entrada={entrada} />
             ))}
           </div>
         </section>
@@ -88,16 +93,21 @@ export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: 
   );
 }
 
-function Tarjeta({ x, i, grande }: { x: TarjetaPagina; i: number; grande?: boolean }) {
+function Tarjeta({
+  x,
+  i,
+  entrada,
+  grande,
+}: {
+  x: TarjetaPagina;
+  i: number;
+  entrada: ReturnType<typeof useEntradaLista>;
+  grande?: boolean;
+}) {
   const { item } = x;
   const publicada = fechaLarga(item.publicadaEn);
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.55, ease: EASE, delay: i * 0.05 }}
-      className="group relative"
-    >
+    <motion.div {...entrada(i)} layout={false} className="group relative">
       <div className="relative overflow-hidden rounded-col-sm border border-col-line transition-[box-shadow,transform] duration-col-lento ease-col group-hover:-translate-y-0.5 group-hover:shadow-col-2">
         <Miniatura vista={x.vista} legal={x.legal} />
         <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-col-sm bg-col-ink/80 text-col-base opacity-0 backdrop-blur-sm transition-opacity duration-col ease-col group-hover:opacity-100">

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, Film, RotateCw, X } from "lucide-react";
 import { cn } from "@/components/lib/cn";
-import { CheckAnimado, EASE, transiciones } from "../movimiento";
+import { CheckAnimado, DIST, DUR, EASE, transiciones } from "../movimiento";
 import { ProgresoCircular, textoEstado } from "./ZonaSubida";
 import { errorAmigable } from "../shell/Avisos";
 import { esDeSesion, esReintentable, type Subida } from "./useSubidas";
@@ -108,10 +108,7 @@ export function ColaSubidas({
             {!plegada && (
               <motion.ul
                 key="lista"
-                initial={{ height: 0 }}
-                animate={{ height: "auto" }}
-                exit={{ height: 0 }}
-                transition={{ duration: 0.3, ease: EASE }}
+                {...transiciones.acordeon}
                 className="max-h-[320px] overflow-y-auto"
               >
                 <AnimatePresence initial={false}>
@@ -119,10 +116,10 @@ export function ColaSubidas({
                     <motion.li
                       key={s.id}
                       layout
-                      initial={{ opacity: 0, y: 6 }}
+                      initial={{ opacity: 0, y: DIST.small }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.25, ease: EASE }}
+                      exit={{ opacity: 0, transition: { duration: DUR.quick } }}
+                      transition={{ duration: DUR.fast, ease: EASE }}
                       className="flex items-center gap-3 px-3.5 py-2.5"
                     >
                       <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-col bg-col-base">

@@ -3,7 +3,7 @@
 // Piezas de formulario del constructor, con el design system de Collection:
 // etiqueta arriba en mayúscula, campos de caja (ui.tsx), foco dorado.
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -24,6 +24,7 @@ import { SoltarAqui } from "../biblioteca/ZonaSubida";
 import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
 import type { Aspecto } from "@/lib/collection/recortes";
 import { ConstructorCtx } from "./contexto";
+import { TRANSICION_SOLTAR } from "../movimiento";
 
 export { Campo, Contador, entrada, entradaArea, entradaSelect, entradaTitulo, etiquetaCampo };
 
@@ -134,6 +135,57 @@ export function useSensoresOrden() {
   );
 }
 
+/**
+ * Lo visual del arrastre, igual en todas las listas ordenables (también con
+ * teclado): el ítem levantado crece 2 % con sombra col-3 (`levantado`, va en
+ * la tarjeta visible), los demás bajan a 0.6 en 250 (`atenuado`) y al soltar
+ * todo se asienta con el resorte de TRANSICION_SOLTAR (pasarlo a useSortable).
+ */
+export function estiloOrden(o: ReturnType<typeof useSortable>) {
+  return {
+    levantado: o.isDragging,
+    atenuado: !!o.active && !o.isDragging,
+    style: {
+      transform: CSS.Translate.toString(o.transform),
+      transition: o.transition,
+      zIndex: o.isDragging ? 20 : undefined,
+    } as React.CSSProperties,
+    className: o.isDragging ? "cursor-grabbing" : undefined,
+  };
+}
+
+/**
+ * Lo mismo para ítems sin motion: el levantar y el atenuado van con las
+ * propiedades sueltas `scale` y `opacity`, sumadas a la transición de dnd-kit.
+ * `extra`: transiciones propias del ítem que no hay que pisar.
+ */
+export function estiloOrdenPlano(orden: ReturnType<typeof useSortable>, extra: string[] = []): React.CSSProperties {
+  const o = estiloOrden(orden);
+  const t = (p: string) => `${p} var(--col-dur-fast) var(--col-ease-smooth-out)`;
+  return {
+    ...o.style,
+    scale: o.levantado ? "1.02" : undefined,
+    opacity: o.atenuado ? 0.6 : undefined,
+    cursor: o.levantado ? "grabbing" : undefined,
+    transition: [o.style.transition, t("scale"), t("opacity"), t("box-shadow"), ...extra].filter(Boolean).join(", "),
+  };
+}
+
+/** Clases de la tarjeta visible mientras se arrastra (va con transition de transform y sombra). */
+export const claseLevantado = "scale-[1.02] shadow-col-3";
+
+/** Une el ref de dnd-kit con el que pone AnimatePresence en modo popLayout. */
+export function useRefsUnidos<T>(nodo: (n: T | null) => void, ref: React.ForwardedRef<T>) {
+  return useCallback(
+    (n: T | null) => {
+      nodo(n);
+      if (typeof ref === "function") ref(n);
+      else if (ref) ref.current = n;
+    },
+    [nodo, ref],
+  );
+}
+
 /** Lista ordenable genérica: render recibe las props del asa para arrastrar. */
 export function ListaOrdenable<T extends { id: string }>({
   items,
@@ -190,12 +242,13 @@ function ItemOrdenable({
   deshabilitado?: boolean;
   children: (asa: AsaProps) => React.ReactNode;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: deshabilitado });
+  const orden = useSortable({ id, disabled: deshabilitado, transition: TRANSICION_SOLTAR });
+  const { attributes, listeners, setNodeRef, isDragging } = orden;
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 10 : undefined }}
-      className={cn("relative", isDragging && "opacity-90")}
+      style={estiloOrdenPlano(orden)}
+      className={cn("relative rounded-col-sm", isDragging && "shadow-col-3")}
     >
       {children({ props: { ...attributes, ...listeners }, arrastrando: isDragging })}
     </div>

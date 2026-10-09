@@ -134,5 +134,8 @@ export function useAutoguardado<B = BorradorExperiencia>({
     return ultimo.current.cambios === guardadoHasta.current && intentos.current === 0;
   }, [guardar]);
 
-  return { guardado, revision, guardarYa };
+  // La revisión vigente leída del ref (el estado de React llega tarde tras guardarYa).
+  const revisionActual = useCallback(() => revisionRef.current, []);
+
+  return { guardado, revision, revisionActual, guardarYa };
 }

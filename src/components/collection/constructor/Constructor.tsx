@@ -37,7 +37,7 @@ import type { ExperienciaDetalle } from "@/actions/collection/experiencias.actio
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { Boton, Estado, Eyebrow, VerEnSitio, entradaSelect } from "../ui";
-import { CheckAnimado } from "../movimiento";
+import { CheckAnimado, CheckExito, DUR, EASE, TextoCambiante, pasoConDireccion, useCambioTexto, useDireccion, useLogro } from "../movimiento";
 import { rutaSitio } from "../sitio/tarjetas";
 import { apiReal, ApiProvider, type ApiConstructor } from "./api";
 import { ConstructorCtx, type EventoHistorial, type ValorConstructor } from "./contexto";
@@ -65,7 +65,6 @@ import { PasoDetalles } from "./pasos/Detalles";
 import { PasoCompartir } from "./pasos/Compartir";
 import { PasoPublicar } from "./pasos/Publicar";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 const CLAVE_PREVIA = "col.constructor.previa";
 
 const AYUDA: Record<PasoId, string> = {
@@ -119,7 +118,7 @@ export function Constructor({
   const [historial, setHistorial] = useState<EventoHistorial[]>(detalle.historial);
 
   const puedeEditar = puede("experiencias.editar");
-  const { guardado, revision, guardarYa } = useAutoguardado({
+  const { guardado, revision, revisionActual, guardarYa } = useAutoguardado({
     id: detalle.id,
     api,
     estado,
@@ -219,6 +218,7 @@ export function Constructor({
     estado: estadoExp,
     setEstado: setEstadoExp,
     revision,
+    revisionActual,
     publicadoRevision,
     setPublicadoRevision,
     historial,
@@ -253,6 +253,11 @@ export function Constructor({
 
   const Paso = COMPONENTES[paso];
   const reducido = useReducedMotion();
+  const direccion = useDireccion(indice);
+  const dirPaso = reducido ? 0 : direccion;
+
+  // Al publicar, la píldora pasa a "Publicada" y aparece el tilde de logro un rato.
+  const recienPublicada = useLogro(estadoExp === "PUBLICADA");
   const titulo = estado.borrador.campos.titulo.trim();
 
   return (
@@ -293,7 +298,14 @@ export function Constructor({
                   {titulo || "Sin título"}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <EstadoPill estado={estadoExp} />
+                  <EstadoPill estado={estadoExp} animado />
+                  <AnimatePresence>
+                    {recienPublicada && (
+                      <motion.span key="ok" className="flex text-col-ok" exit={{ opacity: 0, transition: { duration: DUR.quick } }}>
+                        <CheckExito />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                   {estadoExp === "PUBLICADA" && publicadoRevision !== revision && (
                     <Estado tono="aviso">Cambios sin publicar</Estado>
                   )}
@@ -348,11 +360,12 @@ export function Constructor({
             <SelectorPasoMovil paso={paso} completitud={completitud} onPaso={irAPaso} guardado={guardado} editable={puedeEditar} />
             <AnimatePresence>
               {conflicto && (
+                // Aviso: entra en 250, se va en 150.
                 <motion.div
                   role="alert"
                   initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  transition={{ duration: 0.4, ease: EASE }}
+                  animate={{ height: "auto", opacity: 1, transition: { duration: DUR.fast, ease: EASE } }}
+                  exit={{ height: 0, opacity: 0, transition: { duration: DUR.quick, ease: EASE } }}
                   className="shrink-0 overflow-hidden bg-col-ink text-col-base"
                 >
                   <div className="flex items-center gap-4 px-6 py-4">
@@ -369,12 +382,16 @@ export function Constructor({
               )}
             </AnimatePresence>
             {!puedeEditar && <FranjaLectura>Modo lectura: podés ver esta experiencia, pero tu usuario no tiene permiso para editarla.</FranjaLectura>}
-            <div ref={centro} className="min-h-0 flex-1 overflow-y-auto">
+            <div ref={centro} className="relative min-h-0 flex-1 overflow-y-auto">
+              {/* Adelante entra por la derecha, atrás por la izquierda. */}
+              <AnimatePresence mode="popLayout" initial={false} custom={dirPaso}>
               <motion.div
                 key={paso}
-                initial={reducido ? false : { opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, ease: EASE }}
+                custom={dirPaso}
+                variants={pasoConDireccion}
+                initial="entra"
+                animate="queda"
+                exit="sale"
                 className="mx-auto w-full max-w-[700px] px-5 pb-16 pt-8 md:px-10 md:pt-10"
               >
                 <header className="mb-10">
@@ -398,6 +415,7 @@ export function Constructor({
                   <Paso />
                 </fieldset>
               </motion.div>
+              </AnimatePresence>
             </div>
             <footer className="flex shrink-0 items-center gap-2 border-t border-col-line bg-col-base/95 px-4 py-3 backdrop-blur-sm sm:gap-3 md:px-10">
               <Boton
@@ -458,7 +476,7 @@ function Globo({ texto, lado = "right", children }: { texto: React.ReactNode; la
         <Tooltip.Content
           side={lado}
           sideOffset={8}
-          className="z-[95] max-w-[260px] rounded-col bg-col-ink px-3 py-2 font-col-text text-col-xs leading-snug text-col-base shadow-col-3"
+          className="col-globo z-[95] max-w-[260px] rounded-col bg-col-ink px-3 py-2 font-col-text text-col-xs leading-snug text-col-base shadow-col-3"
         >
           {texto}
         </Tooltip.Content>
@@ -473,23 +491,42 @@ function Globo({ texto, lado = "right", children }: { texto: React.ReactNode; la
  * Tres estados del paso: completo (tilde sobre dorado), incompleto (número con
  * un punto ámbar: ya se tocó y falta algo) y sin tocar (número gris).
  */
-function Marca({ estado, n, activo }: { estado: "completo" | "incompleto" | "sin-tocar"; n: number; activo: boolean }) {
-  if (estado === "completo") {
-    return (
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-col-gold text-col-ink">
-        <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-      </span>
-    );
-  }
+function Marca({ estado, n, activo, valor }: { estado: "completo" | "incompleto" | "sin-tocar"; n: number; activo: boolean; valor: number }) {
+  const completo = estado === "completo";
   return (
     <span
       className={cn(
-        "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-col-xs tabular-nums lining-nums",
-        activo ? "border-col-ink text-col-ink" : "border-col-line text-col-slate",
+        "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-col-xs tabular-nums lining-nums transition-[background-color,border-color,color] duration-col-panel ease-col",
+        completo ? "border-col-gold bg-col-gold text-col-ink" : activo ? "border-col-ink text-col-ink" : "border-col-line text-col-slate",
         estado === "incompleto" && !activo && "border-col-aviso/50",
       )}
     >
-      {n}
+      {/* Anillo de avance: se llena en 400 a medida que se completa el paso. */}
+      <svg aria-hidden viewBox="0 0 28 28" className="pointer-events-none absolute -inset-px -rotate-90 overflow-visible">
+        <circle
+          cx="14"
+          cy="14"
+          r="13.5"
+          fill="none"
+          stroke="#F4B860"
+          strokeWidth="1.5"
+          pathLength={1}
+          strokeDasharray="1"
+          style={{ strokeDashoffset: 1 - Math.min(Math.max(valor, 0), 1) }}
+          className="transition-[stroke-dashoffset] duration-col-panel ease-col"
+        />
+      </svg>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {completo ? (
+          <motion.span key="ok" className="flex" exit={{ opacity: 0, transition: { duration: DUR.quick } }}>
+            <CheckExito fondo={false} className="h-3.5 w-3.5" />
+          </motion.span>
+        ) : (
+          <motion.span key="n" className="flex" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: DUR.quick }}>
+            {n}
+          </motion.span>
+        )}
+      </AnimatePresence>
       {estado === "incompleto" && (
         <span aria-hidden className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-col-aviso ring-2 ring-col-surface" />
       )}
@@ -531,7 +568,7 @@ function ItemPaso({
       )}
     >
       {activo && <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 bg-col-gold" />}
-      <Marca estado={estado} n={n} activo={activo} />
+      <Marca estado={estado} n={n} activo={activo} valor={valor} />
       {!compacto && <span className="min-w-0 flex-1 leading-snug">{titulo}</span>}
     </button>
   );
@@ -552,6 +589,7 @@ function ItemPaso({
 }
 
 export function IndicadorGuardado({ g, editable }: { g: EstadoGuardado; editable: boolean }) {
+  const cambio = useCambioTexto();
   const [, tic] = useState(0);
   useEffect(() => {
     if (g.tipo !== "guardado" || !g.en) return;
@@ -596,18 +634,11 @@ export function IndicadorGuardado({ g, editable }: { g: EstadoGuardado; editable
       className={cn("flex min-w-0 flex-1 items-center gap-2 text-col-xs", clase)}
     >
       <AnimatePresence mode="wait" initial={false}>
-        <motion.span
-          key={g.tipo}
-          className="flex shrink-0 items-center"
-          initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.7 }}
-          transition={{ duration: 0.18 }}
-        >
+        <motion.span key={g.tipo} className="flex shrink-0 items-center" {...cambio}>
           {icono}
         </motion.span>
       </AnimatePresence>
-      <span className="truncate">{texto}</span>
+      <TextoCambiante texto={texto} />
     </p>
   );
 }
@@ -628,7 +659,7 @@ function Historial({ historial }: { historial: EventoHistorial[] }) {
           side="top"
           align="start"
           sideOffset={8}
-          className="z-50 max-h-[420px] w-80 overflow-y-auto rounded-col-sm border border-col-line bg-col-surface p-2 shadow-col-3"
+          className="col-desplegable z-50 max-h-[420px] w-80 overflow-y-auto rounded-col-sm border border-col-line bg-col-surface p-2 shadow-col-3"
         >
           <p className="px-3 pb-2 pt-2 text-col-xs uppercase tracking-[0.16em] text-col-slate">Historial</p>
           <ListaHistorial historial={historial} />

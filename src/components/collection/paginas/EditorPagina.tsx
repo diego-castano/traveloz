@@ -53,7 +53,7 @@ import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
 import { Boton, BotonIcono, Eyebrow, VerEnSitio } from "../ui";
-import { transiciones } from "../movimiento";
+import { CheckExito, DUR, EASE, pasoConDireccion, sacudir, transiciones, useCambioTexto, useDireccion, useEntradaLista } from "../movimiento";
 import { apiReal, ApiProvider, type ApiConstructor } from "../constructor/api";
 import { Asa, ListaOrdenable, MediosCtx } from "../constructor/campos";
 import { FranjaLectura, IndicadorGuardado } from "../constructor/Constructor";
@@ -67,7 +67,6 @@ import { PaginaLegal } from "../sitio/pagina/PaginaLegal";
 import { apiPaginasReal, type ApiPaginas } from "./api";
 import { FormBloque, resumenBloque } from "./FormBloque";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 const LEGALES = ["terminos", "privacidad", "cookies"];
 const SUGERIDOS_LEGALES: TipoBloque[] = ["texto", "imagenTexto", "cita"];
 const MAX_BLOQUES = 40;
@@ -177,6 +176,7 @@ export function EditorPagina({
     lista.current?.querySelector(`[data-item-bloque="${id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, []);
   const bloque = bloques.find((b) => b.id === elegido) ?? null;
+  const dirBloque = useDireccion(bloque ? bloques.indexOf(bloque) : -1);
   // Legales con un solo bloque de texto: se editan directo, sin lista ni "Agregar bloque".
   const directo = legal && bloques.length === 1 && bloques[0].tipo === "texto";
   const [hojaBloques, setHojaBloques] = useState(false);
@@ -218,15 +218,25 @@ export function EditorPagina({
     cambiarBloques((bs) => bs.map((b) => (b.id === elegido ? ({ ...b, ...p } as Bloque) : b)));
 
   // ── Publicar ──
+  const botonPublicar = useRef<HTMLButtonElement>(null);
+  const [festejo, setFestejo] = useState(0);
+  const cambio = useCambioTexto();
   const publicar = async () => {
     setPublicando(true);
     const ok = await guardarYa();
     const r = ok ? await api.publicar(detalle.slug).catch(() => null) : null;
     setPublicando(false);
-    if (!r?.ok) return avisar(r?.error ?? "Primero hay que guardar los últimos cambios. Revisá la conexión.", "error");
+    if (!r?.ok) {
+      sacudir(botonPublicar.current);
+      return avisar(r?.error ?? "Primero hay que guardar los últimos cambios. Revisá la conexión.", "error");
+    }
     setPublicadoRevision(ultimaRevision.current);
     setPublicadaEn(r.data.publicadaEn);
     avisar("Página publicada. Los cambios ya están en el sitio.");
+    // Tilde de logro junto a "Publicada" un rato.
+    const n = Date.now();
+    setFestejo(n);
+    window.setTimeout(() => setFestejo((f) => (f === n ? 0 : f)), 2400);
   };
 
   // ── Vista previa ──
@@ -297,18 +307,28 @@ export function EditorPagina({
             <div className="hidden w-[190px] md:block">
               <IndicadorGuardado g={guardado} editable={puedeEditar} />
             </div>
-            <p className="hidden items-center gap-2 text-col-xs text-col-slate xl:flex">
-              {sinPublicar ? (
-                <>
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-col-gold" /> Cambios sin publicar
-                </>
-              ) : publicadaEn ? (
-                `Publicada ${haceTiempo(publicadaEn)}`
-              ) : null}
+            <p className="relative hidden items-center gap-2 text-col-xs text-col-slate xl:flex">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {sinPublicar ? (
+                  <motion.span key="sin" className="flex items-center gap-2" {...cambio}>
+                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-col-gold" /> Cambios sin publicar
+                  </motion.span>
+                ) : publicadaEn ? (
+                  <motion.span key="pub" className="flex items-center gap-2" {...cambio}>
+                    {`Publicada ${haceTiempo(publicadaEn)}`}
+                  </motion.span>
+                ) : null}
+                {festejo > 0 && (
+                  <motion.span key="ok" className="flex text-col-ok" exit={{ opacity: 0, transition: { duration: DUR.quick } }}>
+                    <CheckExito />
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </p>
             {publicadaEn && <VerEnSitio ruta={ruta} className="hidden shrink-0 text-col-slate hover:text-col-ink sm:inline-flex" />}
             {puedeEditar && (
               <Boton
+                ref={botonPublicar}
                 tam="sm"
                 disabled={!sinPublicar || conflicto}
                 cargando={publicando}
@@ -363,13 +383,16 @@ export function EditorPagina({
                   </button>
                 </div>
               )}
-              <div ref={centro} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+              <div ref={centro} className="relative min-h-0 min-w-0 flex-1 overflow-y-auto">
+                <AnimatePresence mode="popLayout" initial={false} custom={reducido ? 0 : dirBloque}>
                 {bloque && Icono ? (
                   <motion.div
                     key={bloque.id}
-                    initial={reducido ? false : { opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45, ease: EASE }}
+                    custom={reducido ? 0 : dirBloque}
+                    variants={pasoConDireccion}
+                    initial="entra"
+                    animate="queda"
+                    exit="sale"
                     className="mx-auto w-full max-w-[680px] px-5 pb-20 pt-8 md:px-10 md:pt-10"
                   >
                     <header className="mb-10 flex items-start gap-4 sm:gap-5">
@@ -408,6 +431,7 @@ export function EditorPagina({
                     )}
                   </div>
                 )}
+                </AnimatePresence>
               </div>
               {!previa.enLinea && (
                 <footer className="flex shrink-0 items-center gap-3 border-t border-col-line bg-col-base/95 px-4 py-3 backdrop-blur-sm md:px-10">
@@ -577,8 +601,8 @@ function HojaBloques({
               <motion.div
                 className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[85dvh] flex-col rounded-t-col-lg bg-col-surface shadow-col-3 focus:outline-none lg:hidden"
                 initial={{ y: "100%" }}
-                animate={{ y: 0, transition: { type: "spring", stiffness: 320, damping: 34 } }}
-                exit={{ y: "100%", transition: { duration: 0.2 } }}
+                animate={{ y: 0, transition: { duration: DUR.slow, ease: EASE } }}
+                exit={{ y: "100%", transition: { duration: DUR.medium, ease: EASE } }}
               >
                 <div className="flex items-center gap-3 border-b border-col-line px-5 py-3">
                   <Dialog.Title className="flex-1 font-col-display text-col-2xl font-normal text-col-ink">
@@ -618,53 +642,19 @@ function Catalogo({
   const { raiz } = useCollection();
   const sugeridos = legal ? TIPOS_BLOQUE.filter((t) => SUGERIDOS_LEGALES.includes(t.tipo)) : [];
   const resto = legal ? TIPOS_BLOQUE.filter((t) => !SUGERIDOS_LEGALES.includes(t.tipo)) : TIPOS_BLOQUE;
-  const grilla = (items: typeof TIPOS_BLOQUE, i0 = 0) => (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-      {items.map((t, i) => {
-        const Icono = ICONOS_BLOQUE[t.icono] ?? AlignLeft;
-        return (
-          <motion.button
-            key={t.tipo}
-            type="button"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: EASE, delay: Math.min(i0 + i, 16) * 0.015 }}
-            onClick={() => onElegir(t.tipo)}
-            className="group flex flex-col items-start gap-4 rounded-col-sm border border-col-line bg-col-surface p-4 text-left transition-[border-color,transform,box-shadow] duration-col ease-col hover:-translate-y-0.5 hover:border-col-ink/40 hover:shadow-col-2 active:scale-[0.98]"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-col-sm bg-col-base text-col-slate transition-colors duration-col group-hover:bg-col-ink group-hover:text-col-gold">
-              <Icono className="h-[18px] w-[18px]" strokeWidth={1.4} aria-hidden />
-            </span>
-            <span>
-              <span className="block font-col-display text-col-xl leading-tight text-col-ink">{t.nombre}</span>
-              <span className="mt-1 block text-col-sm leading-snug text-col-slate">{t.descripcion}</span>
-            </span>
-          </motion.button>
-        );
-      })}
-    </div>
-  );
+  const grilla = (items: typeof TIPOS_BLOQUE, i0 = 0) => <GrillaCatalogo items={items} i0={i0} onElegir={onElegir} />;
   return (
     <Dialog.Root open={abierto} onOpenChange={(o) => !o && onCerrar()}>
       <AnimatePresence>
         {abierto && (
           <Dialog.Portal forceMount container={raiz}>
             <Dialog.Overlay asChild forceMount>
-              <motion.div
-                className="fixed inset-0 z-[60] bg-col-ink/40 backdrop-blur-[2px]"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              />
+              <motion.div className="fixed inset-0 z-[60] bg-col-ink/40 backdrop-blur-[2px]" {...transiciones.velo} />
             </Dialog.Overlay>
             <Dialog.Content asChild forceMount aria-describedby={undefined}>
               <motion.div
                 className="fixed inset-0 z-[60] m-auto flex h-fit max-h-[calc(100dvh-48px)] w-[min(1180px,calc(100vw-32px))] flex-col overflow-hidden rounded-col bg-col-base shadow-col-3 focus:outline-none"
-                initial={{ opacity: 0, y: 16, scale: 0.985 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.99 }}
-                transition={{ duration: 0.4, ease: EASE }}
+                {...transiciones.dialogo}
               >
                 <div className="flex items-start justify-between gap-6 px-8 pb-6 pt-8">
                   <div>
@@ -697,5 +687,35 @@ function Catalogo({
         )}
       </AnimatePresence>
     </Dialog.Root>
+  );
+}
+
+/** Botones del catálogo: escalonados al abrir (solo los seis primeros). */
+function GrillaCatalogo({ items, i0, onElegir }: { items: typeof TIPOS_BLOQUE; i0: number; onElegir: (t: TipoBloque) => void }) {
+  const entrada = useEntradaLista();
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+      {items.map((t, i) => {
+        const Icono = ICONOS_BLOQUE[t.icono] ?? AlignLeft;
+        return (
+          <motion.button
+            key={t.tipo}
+            type="button"
+            {...entrada(i0 + i)}
+            layout={false}
+            onClick={() => onElegir(t.tipo)}
+            className="group flex flex-col items-start gap-4 rounded-col-sm border border-col-line bg-col-surface p-4 text-left transition-[border-color,transform,box-shadow] duration-col ease-col hover:-translate-y-0.5 hover:border-col-ink/40 hover:shadow-col-2 active:scale-[0.98]"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-col-sm bg-col-base text-col-slate transition-colors duration-col group-hover:bg-col-ink group-hover:text-col-gold">
+              <Icono className="h-[18px] w-[18px]" strokeWidth={1.4} aria-hidden />
+            </span>
+            <span>
+              <span className="block font-col-display text-col-xl leading-tight text-col-ink">{t.nombre}</span>
+              <span className="mt-1 block text-col-sm leading-snug text-col-slate">{t.descripcion}</span>
+            </span>
+          </motion.button>
+        );
+      })}
+    </div>
   );
 }

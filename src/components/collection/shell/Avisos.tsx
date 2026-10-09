@@ -7,7 +7,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
-import { CheckAnimado, transiciones } from "../movimiento";
+import { CheckAnimado, DUR, EASE, transiciones } from "../movimiento";
 
 type TipoAviso = "ok" | "error";
 
@@ -136,6 +136,7 @@ function Tostada({ a, onIrse }: { a: Aviso; onIrse: (vence: boolean) => void }) 
     <motion.div
       layout
       {...transiciones.aviso}
+      transition={{ layout: { duration: DUR.fast, ease: EASE } }}
       onMouseEnter={() => setPausa(true)}
       onMouseLeave={() => setPausa(false)}
       onFocus={() => setPausa(true)}

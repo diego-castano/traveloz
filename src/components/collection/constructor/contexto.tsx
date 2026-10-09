@@ -42,6 +42,8 @@ export interface ValorConstructor {
   estado: EstadoExperiencia;
   setEstado: (e: EstadoExperiencia) => void;
   revision: number;
+  /** Revisión vigente leída del ref: usarla justo después de guardarYa. */
+  revisionActual: () => number;
   publicadoRevision: number | null;
   setPublicadoRevision: (r: number | null) => void;
   historial: EventoHistorial[];

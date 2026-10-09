@@ -4,11 +4,10 @@
 // interruptor de publicado y una hoja lateral con la franja "Tu especialista"
 // tal cual sale en la página de experiencia.
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { forwardRef, useState } from "react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { ImagePlus, RefreshCw, UserRound, X } from "lucide-react";
 import {
   actualizarEspecialista,
@@ -23,7 +22,8 @@ import { iniciales, useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
 import { EncabezadoPagina, Estado, Vacio, Eyebrow, Interruptor, tarjetaElevable, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
-import { Campo, ChipsTexto, Contador, useSensoresOrden } from "../constructor/campos";
+import { Campo, ChipsTexto, Contador, claseLevantado, estiloOrden, useRefsUnidos, useSensoresOrden } from "../constructor/campos";
+import { Numero, TRANSICION_SOLTAR, useEntradaLista } from "../movimiento";
 import { EditorTexto } from "../editor/EditorTexto";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
@@ -34,7 +34,6 @@ import { demoVacia } from "../sitio/demo";
 import "../sitio/sitio.css";
 import { AsaTarjeta, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "./comun";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 
 type Payload = Parameters<typeof actualizarEspecialista>[1];
 
@@ -86,6 +85,7 @@ export function Especialistas({
   const sensores = useSensoresOrden();
 
   const [items, setItems] = useState<EspecialistaItem[]>(Array.isArray(inicial) ? inicial : []);
+  const entrada = useEntradaLista(items.length > 0);
   const [abierto, setAbierto] = useState<string | null>(abrirId);
   const error = Array.isArray(inicial) ? null : inicial.error;
 
@@ -193,7 +193,11 @@ export function Especialistas({
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
         titulo="Quienes arman cada viaje"
-        descripcion={`${plural(items.length, "especialista", "especialistas")} · ${publicados} en el sitio`}
+        descripcion={
+          <>
+            <Numero valor={items.length} /> {items.length === 1 ? "especialista" : "especialistas"} · <Numero valor={publicados} /> en el sitio
+          </>
+        }
         acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo especialista" placeholder="Nombre y apellido" onCrear={crear} />}
       />
 
@@ -214,18 +218,21 @@ export function Especialistas({
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={items.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!editable}>
             <ul className="grid grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
-              <AnimatePresence initial={false}>
+              <LayoutGroup>
+              <AnimatePresence mode="popLayout">
                 {items.map((e, i) => (
                   <Tarjeta
                     key={e.id}
                     e={e}
                     i={i}
+                    entrada={entrada}
                     editable={editable}
                     onAbrir={() => setAbierto(e.id)}
                     onPublicar={(v) => void publicar(e, v)}
                   />
                 ))}
               </AnimatePresence>
+              </LayoutGroup>
             </ul>
           </SortableContext>
         </DndContext>
@@ -260,41 +267,38 @@ function Retrato({ e, sizes }: { e: Pick<EspecialistaItem, "nombre" | "retrato">
   );
 }
 
-function Tarjeta({
-  e,
-  i,
-  editable,
-  onAbrir,
-  onPublicar }: {
+// forwardRef: AnimatePresence en modo popLayout necesita el nodo para sacar del flujo al que se va.
+const Tarjeta = forwardRef<HTMLLIElement, {
   e: EspecialistaItem;
   i: number;
   editable: boolean;
   onAbrir: () => void;
   onPublicar: (v: boolean) => void;
-}) {
-  const orden = useSortable({ id: e.id, disabled: !editable });
-  const { setNodeRef, transform, transition, isDragging } = orden;
+  entrada: ReturnType<typeof useEntradaLista>;
+}>(function Tarjeta({ e, i, editable, onAbrir, onPublicar, entrada }, ref) {
+  const orden = useSortable({ id: e.id, disabled: !editable, transition: TRANSICION_SOLTAR });
+  const { setNodeRef, isDragging } = orden;
+  const o = estiloOrden(orden);
+  const nodo = useRefsUnidos(setNodeRef, ref);
   return (
     <motion.li
-      ref={setNodeRef}
+      ref={nodo}
+      {...entrada(i, o.atenuado)}
       layout={!isDragging}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.97 }}
-      transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 10) * 0.03 }}
-      style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
+      style={o.style}
       className="group relative"
     >
       <button
         type="button"
         onClick={onAbrir}
         aria-label={`Editar a ${e.nombre}`}
-        className={cn("block w-full rounded-col-sm text-left", isDragging && "opacity-90")}
+        className="block w-full rounded-col-sm text-left"
       >
         <div
           className={cn(
             "relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line",
             tarjetaElevable,
+            o.levantado && claseLevantado,
             !e.publicado && "grayscale-[0.6]",
           )}
         >
@@ -323,7 +327,7 @@ function Tarjeta({
       </div>
     </motion.li>
   );
-}
+});
 
 const PAGINA_PREVIEW = { preview: true, consultar: () => {} };
 

@@ -9,12 +9,12 @@ import { AlertTriangle, CalendarRange, Plus, Trash2, Wand2 } from "lucide-react"
 import type { Dia } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { Boton } from "../../ui";
+import { DUR, EASE } from "../../movimiento";
 import { EditorTexto } from "../../editor/EditorTexto";
 import { Campo, Stepper, TiraMedios, entrada, entradaSelect } from "../campos";
 import { useConstructor } from "../contexto";
 import { nuevoId } from "../estado";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
 const MAX_DIAS = 60;
 const ordenar = (d: Dia[]) => [...d].sort((a, b) => a.desde - b.desde);
 
@@ -97,7 +97,7 @@ export function PasoDias() {
             const previo = lista[i - 1];
             const choca = previo && d.desde <= Math.max(previo.desde, previo.hasta);
             return (
-              <motion.li key={d.id} layout transition={{ duration: 0.4, ease: EASE }} className="relative">
+              <motion.li key={d.id} layout transition={{ duration: DUR.fast, ease: EASE }} className="relative">
                 <span
                   aria-hidden
                   className="absolute -left-8 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-col-gold bg-col-base font-col-display text-col-xs text-col-ink"

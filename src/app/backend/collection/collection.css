@@ -53,10 +53,123 @@
   background-size: 16px 16px;
 }
 
-/* Entrada de menús, globos y desplegables. */
-@keyframes col-pop {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+/* Escala de movimiento: la misma que movimiento.tsx (DUR, CURVA, DIST,
+   ESCALA, BLUR) y que las duraciones col-* de tailwind.config.ts. */
+[data-collection-shell] {
+  --col-dur-stagger: 40ms;
+  --col-dur-micro: 80ms;
+  --col-dur-quick: 150ms;
+  --col-dur-fast: 250ms;
+  --col-dur-medium: 350ms;
+  --col-dur-slow: 400ms;
+  --col-dur-very-slow: 500ms;
+  --col-ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --col-ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --col-ease-bounce-strong: cubic-bezier(0.34, 3.85, 0.64, 1);
+  --col-dist-micro: 4px;
+  --col-dist-small: 6px;
+  --col-dist-base: 8px;
+  --col-dist-medium: 12px;
+  --col-scale-modal: 0.96;
+  --col-scale-dropdown: 0.97;
+  --col-scale-tooltip: 0.98;
+  --col-scale-dropdown-close: 0.99;
+  --col-blur-small: 2px;
+  --col-blur-medium: 3px;
+  --col-blur-large: 8px;
+}
+
+/* Desplegables y popovers (Radix): abren en 250 desde 0.97, cierran en 150
+   hacia 0.99. Radix espera al animationend del cierre para desmontar. */
+@keyframes col-abre {
+  from { opacity: 0; transform: scale(var(--col-scale-dropdown)); }
   to { opacity: 1; transform: none; }
+}
+@keyframes col-cierra {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(var(--col-scale-dropdown-close)); }
+}
+[data-collection-shell] .col-desplegable {
+  transform-origin: var(
+    --radix-popover-content-transform-origin,
+    var(--radix-dropdown-menu-content-transform-origin, var(--radix-select-content-transform-origin, top))
+  );
+}
+[data-collection-shell] .col-desplegable[data-state="open"] {
+  animation: col-abre var(--col-dur-fast) var(--col-ease-smooth-out);
+}
+[data-collection-shell] .col-desplegable[data-state="closed"] {
+  animation: col-cierra var(--col-dur-quick) var(--col-ease-smooth-out) forwards;
+}
+
+/* Globos: aparecen en 150 desde 0.98 (la demora de 80 la pone Radix). */
+@keyframes col-globo-abre {
+  from { opacity: 0; transform: scale(var(--col-scale-tooltip)); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes col-globo-cierra {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+[data-collection-shell] .col-globo {
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+[data-collection-shell] .col-globo:is([data-state="delayed-open"], [data-state="instant-open"]) {
+  animation: col-globo-abre var(--col-dur-quick) ease-out;
+}
+[data-collection-shell] .col-globo[data-state="closed"] {
+  animation: col-globo-cierra var(--col-dur-quick) ease-out forwards;
+}
+
+/* Paleta ⌘K (Radix Dialog vía cmdk): como un diálogo, abre en 250 desde 0.96
+   y cierra en 150 hacia 0.99. Va con `scale` suelto porque el contenido ya
+   usa transform para centrarse. El velo acompaña 250 / 150. */
+@keyframes col-modal-abre {
+  from { opacity: 0; scale: var(--col-scale-modal); }
+  to { opacity: 1; scale: 1; }
+}
+@keyframes col-modal-cierra {
+  from { opacity: 1; scale: 1; }
+  to { opacity: 0; scale: var(--col-scale-dropdown-close); }
+}
+@keyframes col-velo-abre {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes col-velo-cierra {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+[data-collection-shell] .col-modal[data-state="open"] {
+  animation: col-modal-abre var(--col-dur-fast) var(--col-ease-smooth-out);
+}
+[data-collection-shell] .col-modal[data-state="closed"] {
+  animation: col-modal-cierra var(--col-dur-quick) var(--col-ease-smooth-out) forwards;
+}
+[data-collection-shell] .col-velo[data-state="open"] {
+  animation: col-velo-abre var(--col-dur-fast) var(--col-ease-smooth-out);
+}
+[data-collection-shell] .col-velo[data-state="closed"] {
+  animation: col-velo-cierra var(--col-dur-quick) var(--col-ease-smooth-out) forwards;
+}
+
+/* Sacudida de error: seis tramos de 80 ms (8 y 6 px), tres idas y vueltas. */
+@keyframes col-sacudir {
+  0%, 100% { transform: none; }
+  16.67% { transform: translateX(var(--col-dist-base)); }
+  33.33% { transform: translateX(calc(var(--col-dist-base) * -1)); }
+  50% { transform: translateX(var(--col-dist-small)); }
+  66.67% { transform: translateX(calc(var(--col-dist-small) * -1)); }
+  83.33% { transform: translateX(var(--col-dist-small)); }
+}
+[data-collection-shell] .col-sacudir {
+  animation: col-sacudir calc(var(--col-dur-micro) * 6) ease-in-out;
+}
+
+/* Con menos movimiento la sacudida es un pulso de color, sin desplazamiento. */
+@keyframes col-pulso-error {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(158, 61, 47, 0); }
+  30% { box-shadow: 0 0 0 4px rgba(158, 61, 47, 0.28); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -67,5 +180,8 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  [data-collection-shell] .col-sacudir.col-sacudir {
+    animation: col-pulso-error calc(var(--col-dur-micro) * 6) ease-in-out !important;
   }
 }

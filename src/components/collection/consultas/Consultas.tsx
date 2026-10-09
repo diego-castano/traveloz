@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { motion } from "motion/react";
+import { AnimatePresence, LayoutGroup, motion } from "motion/react";
 import { ArrowUpRight, Download, LoaderCircle, Mail, MessageCircle, Phone, RotateCcw } from "lucide-react";
 import type { ConsultaFila } from "@/actions/collection/consultas-admin.actions";
 import { canalLegible, textoFechas, textoViajeros } from "@/lib/collection/consultas";
@@ -20,8 +20,7 @@ import { haceTiempo } from "../constructor/formato";
 import { rutaSitio } from "../sitio/tarjetas";
 import { urlAbsoluta } from "@/lib/collection/sitio";
 import { apiConsultasReal, EVENTO_CONSULTAS, type ApiConsultas, type DetalleConsulta, type Suscriptor } from "./api";
-
-const EASE = [0.22, 1, 0.36, 1] as const;
+import { DUR, EASE, useEntradaLista } from "../movimiento";
 
 type Estado = ConsultaFila["estado"];
 type Inicial = { items: ConsultaFila[]; siguiente: string | null } | { error: string };
@@ -50,10 +49,10 @@ const CRM = {
 };
 const crmDe = (e: ConsultaFila["crmEstado"]) => CRM[e ?? "NADA"];
 
-function PildoraEstado({ estado, className }: { estado: Estado; className?: string }) {
+function PildoraEstado({ estado, className, animado }: { estado: Estado; className?: string; animado?: boolean }) {
   const e = ESTADOS[estado];
   return (
-    <Estado tono={e.tono} className={className}>
+    <Estado tono={e.tono} className={className} animado={animado}>
       {e.label}
     </Estado>
   );
@@ -109,7 +108,7 @@ export function Consultas({
             )}
           >
             {p === "consultas" ? "Consultas" : "Newsletter"}
-            {pestana === p && <motion.span layoutId="col-consultas-tab" className="absolute inset-x-0 bottom-0 h-[2px] bg-col-gold" />}
+            {pestana === p && <motion.span layoutId="col-consultas-tab" transition={{ duration: DUR.fast, ease: EASE }} className="absolute inset-x-0 bottom-0 h-[2px] bg-col-gold" />}
           </button>
         ))}
       </div>
@@ -139,6 +138,7 @@ function ListaConsultas({
   const [filtro, setFiltro] = useState<FiltroEstado>("TODAS");
   const [q, setQ] = useState("");
   const [items, setItems] = useState<ConsultaFila[]>("items" in inicial ? inicial.items : []);
+  const entrada = useEntradaLista(items.length > 0);
   const [siguiente, setSiguiente] = useState<string | null>("items" in inicial ? inicial.siguiente : null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>("error" in inicial ? inicial.error : null);
@@ -217,14 +217,10 @@ function ListaConsultas({
           <span title="Bitrix">CRM</span>
         </div>
         <ul className={cn("flex flex-col border-t border-col-line transition-opacity duration-col", cargando && "opacity-60")}>
+          <LayoutGroup>
+          <AnimatePresence mode="popLayout">
           {items.map((c, i) => (
-            <motion.li
-              key={c.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: EASE, delay: Math.min(i, 10) * 0.025 }}
-              className="border-b border-col-line"
-            >
+            <motion.li key={c.id} {...entrada(i)} className="border-b border-col-line">
               <button
                 type="button"
                 onClick={() => onAbrir(c.id)}
@@ -252,7 +248,7 @@ function ListaConsultas({
                   {c.especialista ?? "Sin especialista"}
                 </span>
                 <span className="col-start-2 row-span-2 row-start-1 flex items-center justify-end gap-2 self-start lg:col-start-5 lg:row-span-1 lg:justify-start lg:self-center">
-                  <PildoraEstado estado={c.estado} />
+                  <PildoraEstado estado={c.estado} animado />
                   <span className="lg:hidden">
                     <PuntoCrm estado={c.crmEstado} />
                   </span>
@@ -263,6 +259,8 @@ function ListaConsultas({
               </button>
             </motion.li>
           ))}
+          </AnimatePresence>
+          </LayoutGroup>
         </ul>
         </>
       )}

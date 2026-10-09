@@ -9,7 +9,7 @@ import { motion } from "motion/react";
 import type { ColMedioDto } from "@/actions/collection/medios.actions";
 import { cn } from "@/components/lib/cn";
 import { MedioImagen, aspectoDe, fmtDuracion, fmtPeso } from "./MedioImagen";
-import { resorteSuave } from "../movimiento";
+import { transiciones } from "../movimiento";
 
 const GAP = 12;
 
@@ -215,9 +215,7 @@ function Mosaico({
           {numero && seleccionado ? (
             <motion.span
               key={numero}
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={resorteSuave}
+              {...transiciones.pop}
               className="text-col-xs font-bold leading-none"
             >
               {numero}
