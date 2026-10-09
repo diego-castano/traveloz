@@ -7,6 +7,12 @@ import { resumenPauta, utmDePauta, type Touch } from "@/lib/atribucion";
 
 export const CANAL_BITRIX = "Collection - sitio web";
 
+/** Links de la experiencia para el negocio de Bitrix: el sitio y el constructor. */
+export const urlsExperiencia = (e: { id: string; slug: string | null }) => ({
+  paqueteUrl: e.slug ? `https://collection.traveloz.com.uy/experiencias/${e.slug}` : null,
+  paqueteAdminUrl: `https://www.traveloz.com.uy/backend/collection/experiencias/${e.id}`,
+});
+
 /** Número que ve el equipo y el viajero: TC-0412. */
 export const numeroConsulta = (n: number) => `TC-${String(n).padStart(4, "0")}`;
 
@@ -103,6 +109,8 @@ export function leadDesdeConsulta(
   c: FilaConsultaLead,
   ctx: {
     tituloExperiencia: string | null;
+    /** La experiencia de la consulta, si vino de una. */
+    experiencia?: { id: string; slug: string | null } | null;
     sourceId: string | null;
     first: Touch | null;
     last: Touch | null;
@@ -126,6 +134,7 @@ export function leadDesdeConsulta(
   const telefono = [c.paisCodigo, c.telefono].filter(Boolean).join(" ").trim();
   return {
     tituloPaquete: ctx.tituloExperiencia,
+    ...(ctx.experiencia ? urlsExperiencia(ctx.experiencia) : {}),
     nombre: c.nombre,
     email: c.email,
     telefono: telefono || null,

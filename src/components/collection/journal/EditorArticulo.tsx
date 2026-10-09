@@ -19,7 +19,8 @@ import type { AccionArticulo, ArticuloDetalle, CamposArticulo } from "@/actions/
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton } from "../ui";
+import { Boton, VerEnSitio } from "../ui";
+import { rutaSitio } from "../sitio/tarjetas";
 import { EditorTexto } from "../editor/EditorTexto";
 import { apiReal, ApiProvider, type ApiConstructor } from "../constructor/api";
 import { Campo, Contador, Grupo, MediosCtx, SlotMedio, TiraMedios, inputLinea } from "../constructor/campos";
@@ -525,6 +526,9 @@ export function EditorArticulo({
                         ? "Está en el journal del sitio."
                         : "Guardado fuera de la vista. No se borra nada."}
                   </p>
+                  {estadoArt === "PUBLICADO" && c.slug && (
+                    <VerEnSitio ruta={rutaSitio.articulo(c.slug)} className="mt-3 text-col-base/80 hover:text-col-base" />
+                  )}
                   <ul className="mt-6 flex flex-col border-t border-col-base/10 pt-3">
                     {req.map((r) => (
                       <li key={r.id}>

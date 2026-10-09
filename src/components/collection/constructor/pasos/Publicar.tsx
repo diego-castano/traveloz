@@ -8,7 +8,8 @@ import { AlertTriangle, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { PASOS, puedePublicar, requisitos, type Requisito } from "@/lib/collection/experiencia/contenido";
 import type { AccionEstado } from "@/actions/collection/experiencias.actions";
 import { cn } from "@/components/lib/cn";
-import { Boton } from "../../ui";
+import { Boton, VerEnSitio } from "../../ui";
+import { rutaSitio } from "../../sitio/tarjetas";
 import { Grupo } from "../campos";
 import { useConstructor } from "../contexto";
 import { EstadoPill, ListaHistorial } from "../formato";
@@ -42,6 +43,9 @@ export function PasoPublicar() {
           )}
         </div>
         <p className="mt-4 max-w-[52ch] font-col-display text-[24px] leading-snug">{TEXTO_ESTADO[estado]}</p>
+        {estado === "PUBLICADA" && borrador.campos.slug && (
+          <VerEnSitio ruta={rutaSitio.experiencia(borrador.campos.slug)} className="mt-3 text-col-base/80 hover:text-col-base" />
+        )}
         <div className="mt-6 flex items-center gap-4">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-col-base/15">
             <div

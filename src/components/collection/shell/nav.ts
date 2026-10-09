@@ -43,9 +43,9 @@ export const GRUPOS_NAV: { titulo: string | null; modulos: ModuloNav[] }[] = [
   {
     titulo: "Gestión",
     modulos: [
-      { id: "consultas", label: "Consultas", icono: Inbox },
+      { id: "consultas", label: "Consultas", icono: Inbox, href: "/backend/collection/consultas" },
       { id: "equipo", label: "Equipo", icono: Users, href: "/backend/collection/equipo", soloSuperAdmin: true },
-      { id: "ajustes", label: "Ajustes", icono: Settings2 },
+      { id: "ajustes", label: "Ajustes", icono: Settings2, href: "/backend/collection/ajustes" },
     ],
   },
 ];

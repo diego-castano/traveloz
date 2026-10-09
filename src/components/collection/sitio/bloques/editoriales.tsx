@@ -11,6 +11,7 @@ import { boton, Eyebrow } from "@/components/collection/ui";
 import { cn } from "@/components/lib/cn";
 import { MedioFantasma, MedioImagen } from "../medios";
 import { etiqueta, plural, vacioHtml } from "../experiencia/secciones";
+import { useEnvios } from "../consulta/envios";
 import {
   Cabecera,
   Enlace,
@@ -259,28 +260,94 @@ export function BloqueNewsletter({ bloque: b, modo }: PropsBloque<"newsletter">)
             </h2>
             {b.texto && <p className="max-w-[46ch] text-[17px] font-light leading-[1.6] text-col-line">{b.texto}</p>}
           </div>
-          {/* Sin envío todavía: la fase 5 conecta la suscripción (server action + lista). */}
-          <form className="relative flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
-            <label className="flex flex-col gap-2">
-              <span className={cn(etiqueta, "text-col-line")}>Email</span>
-              <span className="cs-newsletter-campo">
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  placeholder="tu@correo.com"
-                  className="h-[52px] min-w-0 flex-1 border-0 border-b border-col-line bg-transparent px-0 text-[16px] text-col-base placeholder:text-col-line/50 transition-[border-color,box-shadow] duration-300 ease-col focus:border-col-gold focus:shadow-[0_1px_0_#F4B860] focus:outline-none focus:ring-0"
-                />
-                <button type="submit" className={cn(boton(), "h-[52px] bg-col-base text-col-ink hover:bg-col-gold")}>
-                  Suscribirme
-                </button>
-              </span>
-            </label>
-            <span className="text-[13px] text-col-line">Sin spam y con baja en un clic.</span>
-          </form>
+          <FormNewsletter preview={p} />
         </div>
       </div>
     </div>
+  );
+}
+
+/** Doble confirmación: acá solo se pide el mail; la suscripción vale con el clic. */
+function FormNewsletter({ preview }: { preview: boolean }) {
+  const { suscribir } = useEnvios();
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [estado, setEstado] = useState<"quieto" | "enviando" | "ok" | "error">("quieto");
+  const [error, setError] = useState("");
+
+  const enviar = async () => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      setEstado("error");
+      setError("Revisá el email: parece incompleto.");
+      return;
+    }
+    setEstado("enviando");
+    try {
+      const r = await suscribir({ email, origen: `newsletter ${window.location.pathname}`.slice(0, 80), website });
+      if (r.ok) return setEstado("ok");
+      setEstado("error");
+      setError(r.error);
+    } catch {
+      setEstado("error");
+      setError("No pudimos conectarnos. Probá de nuevo en un momento.");
+    }
+  };
+
+  if (estado === "ok") {
+    return (
+      <div role="status" className="relative flex flex-col gap-3 border-l-2 border-col-gold pl-5">
+        <span className="font-col-display text-[26px] leading-tight text-col-base">Te mandamos un mail para confirmar</span>
+        <span className="text-[15px] font-light leading-[1.6] text-col-line">
+          Tocá el enlace del mail que llegó a {email.trim()} y quedás en la lista. Si no lo ves, mirá en promociones o spam.
+        </span>
+      </div>
+    );
+  }
+  return (
+    <form
+      noValidate
+      className="relative flex flex-col gap-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!preview && estado !== "enviando") void enviar();
+      }}
+    >
+      <label className="flex flex-col gap-2">
+        <span className={cn(etiqueta, "text-col-line")}>Email</span>
+        <span className="cs-newsletter-campo">
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="tu@correo.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (estado === "error") setEstado("quieto");
+            }}
+            aria-invalid={estado === "error"}
+            className="h-[52px] min-w-0 flex-1 border-0 border-b border-col-line bg-transparent px-0 text-[16px] text-col-base placeholder:text-col-line/50 transition-[border-color,box-shadow] duration-300 ease-col focus:border-col-gold focus:shadow-[0_1px_0_#F4B860] focus:outline-none focus:ring-0"
+          />
+          <button
+            type="submit"
+            disabled={estado === "enviando"}
+            className={cn(boton(), "h-[52px] bg-col-base text-col-ink hover:bg-col-gold disabled:opacity-80")}
+          >
+            {estado === "enviando" ? "Enviando…" : "Suscribirme"}
+          </button>
+        </span>
+      </label>
+      <span aria-hidden className="sr-only">
+        <input type="text" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+      </span>
+      {estado === "error" ? (
+        <span role="alert" className="text-[14px] text-col-gold">
+          {error}
+        </span>
+      ) : (
+        <span className="text-[13px] text-col-line">Sin spam y con baja en un clic.</span>
+      )}
+    </form>
   );
 }
 

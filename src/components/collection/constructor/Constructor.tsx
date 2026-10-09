@@ -33,7 +33,8 @@ import {
 import type { ExperienciaDetalle } from "@/actions/collection/experiencias.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { Boton, Eyebrow } from "../ui";
+import { Boton, Eyebrow, VerEnSitio } from "../ui";
+import { rutaSitio } from "../sitio/tarjetas";
 import { apiReal, ApiProvider, type ApiConstructor } from "./api";
 import { ConstructorCtx, type EventoHistorial, type ValorConstructor } from "./contexto";
 import {
@@ -312,6 +313,9 @@ export function Constructor({
                   <span className="text-[11px] text-[#B07A2A]">Cambios sin publicar</span>
                 )}
               </div>
+              {estadoExp === "PUBLICADA" && estado.borrador.campos.slug && (
+                <VerEnSitio ruta={rutaSitio.experiencia(estado.borrador.campos.slug)} className="mt-3 text-col-slate hover:text-col-ink" />
+              )}
             </div>
             <nav aria-label="Pasos" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
               <ol className="space-y-0.5">

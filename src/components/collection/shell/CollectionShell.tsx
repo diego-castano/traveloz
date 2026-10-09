@@ -11,6 +11,9 @@ import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/
 import { Dialog, Tooltip, VisuallyHidden } from "radix-ui";
 import { ArrowLeft, ChevronRight, Menu, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react";
 import type { MiAccesoCollection } from "@/actions/collection/equipo.actions";
+import { contarConsultasNuevas } from "@/actions/collection/consultas-admin.actions";
+import type { Resultado } from "@/lib/collection/ejecutar";
+import { EVENTO_CONSULTAS } from "../consultas/api";
 import { cn } from "@/components/lib/cn";
 import { CollectionContext, iniciales, type UsuarioCollection } from "./contexto";
 import { AvisosProvider } from "./Avisos";
@@ -26,12 +29,15 @@ export function CollectionShell({
   acceso,
   usuario,
   ruta,
+  contarNuevas = contarConsultasNuevas,
   children,
 }: {
   acceso: MiAccesoCollection;
   usuario: UsuarioCollection;
   /** Solo para las rutas de desarrollo: hace de cuenta que estamos en esta ruta. */
   ruta?: string;
+  /** Las rutas de desarrollo lo cambian por uno en memoria. */
+  contarNuevas?: () => Promise<Resultado<number>>;
   children: React.ReactNode;
 }) {
   const pathnameReal = usePathname();
@@ -84,6 +90,8 @@ export function CollectionShell({
 
   const activo = moduloActivo(pathname);
   const visibles = (m: ModuloNav) => !m.soloSuperAdmin || acceso.superAdmin;
+  const nuevas = useConsultasNuevas(acceso, contarNuevas);
+  const insignias: Record<string, number> = { consultas: nuevas };
 
   return (
     <CollectionContext.Provider value={{ acceso, usuario, raiz }}>
@@ -102,6 +110,7 @@ export function CollectionShell({
                   plegado={plegado}
                   activoId={activo?.id}
                   visibles={visibles}
+                  insignias={insignias}
                   usuario={usuario}
                   idIndicador="riel"
                   pie={
@@ -145,6 +154,7 @@ export function CollectionShell({
                             plegado={false}
                             activoId={activo?.id}
                             visibles={visibles}
+                            insignias={insignias}
                             usuario={usuario}
                             idIndicador="hoja"
                             pie={
@@ -219,11 +229,38 @@ export function CollectionShell({
   );
 }
 
+/** Consultas en NUEVA para la insignia del riel. Se recuenta al volver a la pestaña y cuando el panel cambia un estado. */
+function useConsultasNuevas(acceso: MiAccesoCollection, contar: () => Promise<Resultado<number>>) {
+  const [n, setN] = useState(0);
+  const habilitado = acceso.superAdmin || (acceso.permisos.includes("panel") && acceso.permisos.includes("consultas.ver"));
+  useEffect(() => {
+    if (!habilitado) return;
+    let vivo = true;
+    const leer = () =>
+      void contar()
+        .then((r) => vivo && r.ok && setN(r.data))
+        .catch(() => {});
+    const alVolver = () => document.visibilityState === "visible" && leer();
+    leer();
+    window.addEventListener("focus", leer);
+    window.addEventListener(EVENTO_CONSULTAS, leer);
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      vivo = false;
+      window.removeEventListener("focus", leer);
+      window.removeEventListener(EVENTO_CONSULTAS, leer);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [habilitado, contar]);
+  return n;
+}
+
 /** Contenido del riel: marca, navegación y pie con la sesión. Lo usan el riel y la hoja móvil. */
 function Riel({
   plegado,
   activoId,
   visibles,
+  insignias,
   usuario,
   idIndicador,
   pie,
@@ -231,6 +268,7 @@ function Riel({
   plegado: boolean;
   activoId?: string;
   visibles: (m: ModuloNav) => boolean;
+  insignias: Record<string, number>;
   usuario: UsuarioCollection;
   idIndicador: string;
   pie: React.ReactNode;
@@ -254,7 +292,7 @@ function Riel({
           </motion.span>
         </AnimatePresence>
       </Link>
-      <Navegacion plegado={plegado} activoId={activoId} visibles={visibles} idIndicador={idIndicador} />
+      <Navegacion plegado={plegado} activoId={activoId} visibles={visibles} insignias={insignias} idIndicador={idIndicador} />
       <PieRiel plegado={plegado} usuario={usuario} pie={pie} />
     </>
   );
@@ -264,11 +302,13 @@ function Navegacion({
   plegado,
   activoId,
   visibles,
+  insignias,
   idIndicador,
 }: {
   plegado: boolean;
   activoId?: string;
   visibles: (m: ModuloNav) => boolean;
+  insignias: Record<string, number>;
   idIndicador: string;
 }) {
   let n = 0;
@@ -296,7 +336,7 @@ function Navegacion({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.45, ease: EASE, delay: 0.04 + n++ * 0.03 }}
                 >
-                  <ItemNav m={m} plegado={plegado} activo={m.id === activoId} idIndicador={idIndicador} />
+                  <ItemNav m={m} plegado={plegado} activo={m.id === activoId} idIndicador={idIndicador} insignia={insignias[m.id]} />
                 </motion.li>
               ))}
             </ul>
@@ -340,7 +380,19 @@ function ConGlobo({ texto, activo, children }: { texto: string; activo: boolean;
   );
 }
 
-function ItemNav({ m, plegado, activo, idIndicador }: { m: ModuloNav; plegado: boolean; activo: boolean; idIndicador: string }) {
+function ItemNav({
+  m,
+  plegado,
+  activo,
+  idIndicador,
+  insignia,
+}: {
+  m: ModuloNav;
+  plegado: boolean;
+  activo: boolean;
+  idIndicador: string;
+  insignia?: number;
+}) {
   const Icono = m.icono;
   const base = cn(
     "group relative flex h-10 items-center gap-3 rounded-sm text-[14px] transition-colors duration-200 ease-col",
@@ -390,7 +442,18 @@ function ItemNav({ m, plegado, activo, idIndicador }: { m: ModuloNav; plegado: b
           </motion.span>
         )}
         {icono}
-        {plegado ? <span className="sr-only">{m.label}</span> : <Etiqueta className="relative whitespace-nowrap">{m.label}</Etiqueta>}
+        {plegado ? <span className="sr-only">{m.label}</span> : <Etiqueta className="relative flex-1 whitespace-nowrap">{m.label}</Etiqueta>}
+        {!!insignia && (
+          <span
+            aria-label={`${insignia} ${insignia === 1 ? "nueva" : "nuevas"}`}
+            className={cn(
+              "relative flex h-5 min-w-5 items-center justify-center rounded-full bg-col-gold px-1.5 text-[11px] font-medium tabular-nums leading-none text-col-noche",
+              plegado && "absolute right-2 top-1 h-4 min-w-4 px-1 text-[10px]",
+            )}
+          >
+            {insignia > 99 ? "99+" : insignia}
+          </span>
+        )}
       </Link>
     </ConGlobo>
   );

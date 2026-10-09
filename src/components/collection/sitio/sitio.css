@@ -1199,3 +1199,11 @@ a.cs-enlace:hover > svg {
     margin-inline: -64px;
   }
 }
+
+/* Sin scroll horizontal: en anchos chicos el submenú de la experiencia muestra
+   solo el título y "Consultar"; las secciones se recorren bajando. */
+@container cs (max-width: 767px) {
+  .cs-subnav .cs-subnav-links {
+    display: none;
+  }
+}

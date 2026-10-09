@@ -52,7 +52,7 @@ import type { PaginaDetalle } from "@/actions/collection/paginas.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton, Eyebrow } from "../ui";
+import { Boton, Eyebrow, VerEnSitio } from "../ui";
 import { apiReal, ApiProvider, type ApiConstructor } from "../constructor/api";
 import { Asa, ListaOrdenable, MediosCtx } from "../constructor/campos";
 import { IndicadorGuardado } from "../constructor/Constructor";
@@ -272,6 +272,7 @@ export function EditorPagina({
                 `Publicada ${haceTiempo(publicadaEn)}`
               ) : null}
             </p>
+            {publicadaEn && <VerEnSitio ruta={ruta} className="hidden shrink-0 text-col-slate hover:text-col-ink sm:inline-flex" />}
             {puedeEditar && (
               <Boton tam="sm" disabled={!sinPublicar || publicando || conflicto} onClick={() => void publicar()}>
                 {publicando && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}

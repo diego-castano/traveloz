@@ -50,7 +50,7 @@ export async function enviarConsultaABitrix(id: string): Promise<"OK" | "ERROR" 
   try {
     const c = await prisma.colConsulta.findUnique({
       where: { id },
-      include: { experiencia: { select: { titulo: true, publicado: true } } },
+      include: { experiencia: { select: { id: true, slug: true, titulo: true, publicado: true } } },
     });
     if (!c) return "SALTEADO";
 
@@ -65,6 +65,7 @@ export async function enviarConsultaABitrix(id: string): Promise<"OK" | "ERROR" 
       const ajustes = await leerAjustesCollection();
       const lead = leadDesdeConsulta(c, {
         tituloExperiencia: c.experiencia ? tituloPublicado(c.experiencia) : null,
+        experiencia: c.experiencia,
         sourceId: ajustes.bitrixOrigen || null,
         first: parseTouch(c.atribFirst),
         last: parseTouch(c.atribLast),

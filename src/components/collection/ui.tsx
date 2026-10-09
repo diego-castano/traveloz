@@ -5,8 +5,9 @@
 import { forwardRef, useContext, useEffect, useRef, useState } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Popover, Switch } from "radix-ui";
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, ExternalLink, Search } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+import { urlAbsoluta } from "@/lib/collection/sitio";
 import { CollectionContext } from "./shell/contexto";
 
 export function Eyebrow({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -321,5 +322,23 @@ export function AnilloCompletitud({ valor, tam = 64, className }: { valor: numbe
         <span className="text-[12px]">%</span>
       </span>
     </span>
+  );
+}
+
+/** "Ver en el sitio": abre lo publicado en collection.traveloz.com.uy en otra pestaña. */
+export function VerEnSitio({ ruta, className }: { ruta: string; className?: string }) {
+  return (
+    <a
+      href={urlAbsoluta(ruta)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "group inline-flex items-center gap-1.5 text-[12px] uppercase tracking-[0.12em] underline decoration-col-gold/60 underline-offset-4 transition-colors duration-200 ease-col hover:decoration-col-gold",
+        className,
+      )}
+    >
+      Ver en el sitio
+      <ExternalLink aria-hidden className="h-3.5 w-3.5 transition-transform duration-200 ease-col group-hover:-translate-y-px group-hover:translate-x-px" strokeWidth={1.5} />
+    </a>
   );
 }
