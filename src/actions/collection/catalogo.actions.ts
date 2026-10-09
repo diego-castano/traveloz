@@ -1,6 +1,7 @@
 "use server";
 
-// Catálogo común de Traveloz que usa Collection (proveedores internos).
+// Catálogo común de Traveloz que usa Collection (proveedores internos y
+// usuarios para vincular especialistas).
 // Contrato { ok, data } | { ok, error }.
 
 import { prisma } from "@/lib/db";
@@ -15,6 +16,17 @@ export async function listarProveedoresCatalogo(): Promise<Resultado<{ id: strin
       where: { brandId: BRAND_ID, deletedAt: null },
       select: { id: true, nombre: true },
       orderBy: { nombre: "asc" },
+    });
+  });
+}
+
+export async function listarUsuariosTraveloz(): Promise<Resultado<{ id: string; name: string }[]>> {
+  return ejecutar("listarUsuariosTraveloz", async () => {
+    await requireCollection("sitio.editar");
+    return prisma.user.findMany({
+      where: { brandId: BRAND_ID, isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
     });
   });
 }

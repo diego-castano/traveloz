@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
 import { ejecutar, type Resultado } from "@/lib/collection/ejecutar";
+import { sanitizarHtml } from "@/lib/collection/sanitizar";
 import { especialistaAVista } from "@/lib/collection/vista-servidor";
 import type { EspecialistaVista } from "@/lib/collection/experiencia/contenido";
 
@@ -25,7 +26,8 @@ export interface EspecialistaItem extends EspecialistaVista {
 
 export async function listarEspecialistas(): Promise<Resultado<EspecialistaItem[]>> {
   return ejecutar("listarEspecialistas", async () => {
-    await requireCollection("sitio.editar");
+    // Verlos alcanza con el panel; editarlos pide sitio.editar.
+    await requireCollection("panel");
     const filas = await prisma.colEspecialista.findMany({
       orderBy: [{ orden: "asc" }, { nombre: "asc" }],
       include: { retrato: true, _count: { select: { experiencias: true } } },
@@ -104,7 +106,7 @@ export async function actualizarEspecialista(
       const m = await prisma.colMedio.findUnique({ where: { id: d.retratoId }, select: { id: true } });
       if (!m) fallar("El retrato elegido ya no existe.");
     }
-    await prisma.colEspecialista.update({ where: { id }, data: d });
+    await prisma.colEspecialista.update({ where: { id }, data: { ...d, bio: sanitizarHtml(d.bio) } });
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "editar", userId, detalle: { publicado: d.publicado } });
     return null;
   });

@@ -29,12 +29,14 @@ export default async function InicioCollection() {
   ]);
   // El layout ya validó el acceso; los conteos son lecturas simples que no
   // tienen action propia todavía.
-  const [totalMedios, sinAlt] = acceso
+  const [totalMedios, sinAlt, experiencias, destinos] = acceso
     ? await Promise.all([
         prisma.colMedio.count(),
         prisma.colMedio.count({ where: { tipo: "FOTO", alt: "" } }),
+        prisma.colExperiencia.count({ where: { estado: { not: "ARCHIVADA" } } }),
+        prisma.colDestino.count({ where: { estado: { not: "ARCHIVADO" } } }),
       ])
-    : [0, 0];
+    : [0, 0, 0, 0];
 
   const nombre = (session?.user?.name ?? "").trim().split(/\s+/)[0] ?? "";
   const fecha = new Intl.DateTimeFormat("es-UY", {
@@ -55,8 +57,18 @@ export default async function InicioCollection() {
       href: "/backend/collection/biblioteca?filtro=sin-alt",
       alerta: sinAlt > 0,
     },
-    { valor: 0, label: "Experiencias", nota: "Pronto", pronto: true },
-    { valor: 0, label: "Destinos", nota: "Pronto", pronto: true },
+    {
+      valor: experiencias,
+      label: "Experiencias",
+      nota: experiencias > 0 ? "Sin contar las archivadas" : "Armá la primera",
+      href: "/backend/collection/experiencias",
+    },
+    {
+      valor: destinos,
+      label: "Destinos",
+      nota: destinos > 0 ? "Sin contar los archivados" : "Creá el mosaico",
+      href: "/backend/collection/destinos",
+    },
   ];
 
   const pasos = [
@@ -66,8 +78,18 @@ export default async function InicioCollection() {
       href: "/backend/collection/biblioteca",
       hecho: totalMedios > 0,
     },
-    { titulo: "Creá los destinos", texto: "El mosaico de lugares que ordena el sitio." },
-    { titulo: "Armá tu primera experiencia", texto: "Portada, relato, recorrido y día a día, con vista previa." },
+    {
+      titulo: "Creá los destinos",
+      texto: "El mosaico de lugares que ordena el sitio.",
+      href: "/backend/collection/destinos",
+      hecho: destinos > 0,
+    },
+    {
+      titulo: "Armá tu primera experiencia",
+      texto: "Portada, relato, recorrido y día a día, con vista previa.",
+      href: "/backend/collection/experiencias",
+      hecho: experiencias > 0,
+    },
   ];
 
   return (
@@ -90,11 +112,7 @@ export default async function InicioCollection() {
         {numeros.map((n, i) => {
           const cuerpo = (
             <>
-              <span
-                className={`block font-col-display text-[48px] font-light leading-none ${
-                  n.pronto ? "text-col-slate/40" : "text-col-ink"
-                }`}
-              >
+              <span className="block font-col-display text-[48px] font-light leading-none text-col-ink">
                 {n.valor}
               </span>
               <span className="mt-4 block text-[13px] uppercase tracking-[0.12em] text-col-ink">{n.label}</span>

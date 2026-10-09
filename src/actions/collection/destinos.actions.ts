@@ -38,7 +38,8 @@ export interface DestinoItem {
 
 export async function listarDestinos(): Promise<Resultado<DestinoItem[]>> {
   return ejecutar("listarDestinos", async () => {
-    await requireCollection("experiencias.editar");
+    // Verlos alcanza con el panel; editarlos pide experiencias.editar.
+    await requireCollection("panel");
     const filas = await prisma.colDestino.findMany({
       orderBy: [{ orden: "asc" }, { nombre: "asc" }],
       include: {

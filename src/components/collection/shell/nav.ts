@@ -30,9 +30,9 @@ export const GRUPOS_NAV: { titulo: string | null; modulos: ModuloNav[] }[] = [
     titulo: "Contenido",
     modulos: [
       { id: "experiencias", label: "Experiencias", icono: Compass, href: "/backend/collection/experiencias" },
-      { id: "destinos", label: "Destinos", icono: MapPinned },
+      { id: "destinos", label: "Destinos", icono: MapPinned, href: "/backend/collection/destinos" },
       { id: "biblioteca", label: "Biblioteca", icono: Images, href: "/backend/collection/biblioteca" },
-      { id: "especialistas", label: "Especialistas", icono: UserRound },
+      { id: "especialistas", label: "Especialistas", icono: UserRound, href: "/backend/collection/especialistas" },
       { id: "aliados", label: "Aliados", icono: Handshake },
       { id: "testimonios", label: "Testimonios", icono: Quote },
       { id: "preguntas", label: "Preguntas", icono: MessageCircleQuestion },

@@ -21,7 +21,7 @@ const RECORTES = [
   { label: "1:1", a: 1 },
 ];
 
-type EstadoGuardado = "quieto" | "guardando" | "guardado" | "error";
+export type EstadoGuardado = "quieto" | "guardando" | "guardado" | "error";
 type Textos = { alt: string; leyenda: string; credito: string };
 
 export function DetalleMedio({
@@ -487,7 +487,7 @@ function EditorFoco({
   );
 }
 
-function IndicadorGuardado({ estado }: { estado: EstadoGuardado }) {
+export function IndicadorGuardado({ estado }: { estado: EstadoGuardado }) {
   return (
     <span aria-live="polite" className="flex w-24 items-center justify-end gap-1.5 text-[12px] text-col-slate">
       <AnimatePresence mode="wait" initial={false}>
