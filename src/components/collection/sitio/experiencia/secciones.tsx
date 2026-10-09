@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { ArrowRight, Check, Mail, MessageCircle, Phone, Play } from "lucide-react";
 import {
   textoPlano,
+  type EspecialistaVista,
   type ExperienciaVista,
   type PASOS,
   type TipoExperiencia,
@@ -714,28 +715,47 @@ export function Detalles({ v }: V) {
 
 export function Especialista({ v }: V) {
   const { preview } = usePagina();
-  const e = v.especialista;
-  if (!e && !preview) return null;
+  if (!v.especialista && !preview) return null;
+  return (
+    <Seccion seccion="hero" ancla="especialista">
+      <BandaEspecialista e={v.especialista} asunto={v.titulo} />
+    </Seccion>
+  );
+}
+
+/**
+ * Banda oscura con retrato, frase y canales. La usan la experiencia y el
+ * artículo del journal; `asunto` arma el mensaje de WhatsApp y el del mail.
+ */
+export function BandaEspecialista({
+  e,
+  asunto,
+  eyebrow,
+}: {
+  e: EspecialistaVista | null;
+  asunto: string;
+  eyebrow?: string;
+}) {
   const canales = e
     ? [
         e.whatsapp && {
           nombre: "WhatsApp",
           href: `https://wa.me/${e.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
-            `Hola ${e.nombre.split(" ")[0]}, quiero consultar por ${v.titulo}.`,
+            `Hola ${e.nombre.split(" ")[0]}, quiero consultar por ${asunto}.`,
           )}`,
           Icono: MessageCircle,
         },
         e.telefono && { nombre: "Llamada", href: `tel:${e.telefono.replace(/[^\d+]/g, "")}`, Icono: Phone },
         e.email && {
           nombre: "Email",
-          href: `mailto:${e.email}?subject=${encodeURIComponent(`Consulta: ${v.titulo}`)}`,
+          href: `mailto:${e.email}?subject=${encodeURIComponent(`Consulta: ${asunto}`)}`,
           Icono: Mail,
         },
       ].filter((c): c is { nombre: string; href: string; Icono: typeof Mail } => !!c)
     : [];
 
   return (
-    <Seccion seccion="hero" ancla="especialista" className="cs-bloque bg-col-ink text-col-base">
+    <div className="cs-bloque bg-col-ink text-col-base">
       <div className="cs-envolvente cs-especialista">
         <div className="cs-especialista-retrato">
           {e?.retrato ? (
@@ -745,7 +765,9 @@ export function Especialista({ v }: V) {
           )}
         </div>
         <div className="flex flex-col gap-5">
-          <Eyebrow className="text-col-line">{e?.region ? `Tu especialista en ${e.region}` : "Tu especialista"}</Eyebrow>
+          <Eyebrow className="text-col-line">
+            {eyebrow ?? (e?.region ? `Tu especialista en ${e.region}` : "Tu especialista")}
+          </Eyebrow>
           <h2 className={cn("cs-h2", !e && "italic text-col-base/40")}>{e?.nombre || "Elegí el especialista"}</h2>
           {e?.frase && (
             <p className="max-w-[34ch] font-col-display text-[24px] leading-[1.3] text-col-line">“{e.frase}”</p>
@@ -777,7 +799,7 @@ export function Especialista({ v }: V) {
           </div>
         )}
       </div>
-    </Seccion>
+    </div>
   );
 }
 

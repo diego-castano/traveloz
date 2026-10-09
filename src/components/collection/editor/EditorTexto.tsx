@@ -44,7 +44,13 @@ export function EditorTexto({
 }) {
   const onCambioRef = useRef(onCambio);
   onCambioRef.current = onCambio;
-  const ultimo = useRef(valor);
+  // TipTap normaliza el HTML que recibe (un <li> pasa a <li><p>), así que el
+  // valor guardado y lo que devuelve el editor no coinciden aunque nadie haya
+  // tocado nada. Guardamos las dos cosas: el último valor que llegó de afuera
+  // y cómo lo dejó el editor. Solo es un cambio lo que difiere de lo segundo.
+  const ultimoExterno = useRef(valor);
+  const ultimoNormalizado = useRef<string | null>(null);
+  const htmlDe = (e: Editor) => (e.isEmpty ? "" : e.getHTML());
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -70,20 +76,28 @@ export function EditorTexto({
         class: "col-prosa-editor focus:outline-none",
       },
     },
+    onCreate: ({ editor: e }) => {
+      ultimoNormalizado.current = htmlDe(e);
+    },
     onUpdate: ({ editor: e }) => {
-      const html = e.isEmpty ? "" : e.getHTML();
-      // Al montar, TipTap emite una actualización sin cambios reales.
-      if (html === ultimo.current) return;
-      ultimo.current = html;
+      const html = htmlDe(e);
+      // Al abrir, TipTap puede emitir su versión normalizada del mismo texto.
+      if (ultimoNormalizado.current === null || html === ultimoNormalizado.current) {
+        ultimoNormalizado.current = html;
+        return;
+      }
+      ultimoNormalizado.current = html;
+      ultimoExterno.current = html;
       onCambioRef.current(html);
     },
   });
 
   // Si el valor cambia desde afuera (deshacer, "armar días"), lo reflejamos.
   useEffect(() => {
-    if (!editor || valor === ultimo.current) return;
-    ultimo.current = valor;
+    if (!editor || valor === ultimoExterno.current) return;
+    ultimoExterno.current = valor;
     editor.commands.setContent(valor, { emitUpdate: false });
+    ultimoNormalizado.current = htmlDe(editor);
   }, [editor, valor]);
 
   useEffect(() => {

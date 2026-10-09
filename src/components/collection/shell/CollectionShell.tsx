@@ -33,9 +33,9 @@ export function CollectionShell({
   const [menuMovil, setMenuMovil] = useState(false);
   const [paleta, setPaleta] = useState(false);
 
-  // El constructor de experiencias ocupa todo el alto y pliega el riel para
+  // Los editores (experiencias, páginas, journal) ocupan todo el alto y pliegan el riel para
   // dejarle lugar a la vista previa; al salir vuelve lo que estaba guardado.
-  const enConstructor = /^\/backend\/collection\/experiencias\/[^/]+/.test(pathname);
+  const enConstructor = /^\/backend\/collection\/(experiencias|paginas|journal)\/[^/]+/.test(pathname);
 
   useEffect(() => {
     if (enConstructor) {

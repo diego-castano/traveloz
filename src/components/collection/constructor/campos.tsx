@@ -3,7 +3,7 @@
 // Piezas de formulario del constructor, con el design system de Collection:
 // etiqueta arriba en mayúscula, línea abajo, foco dorado.
 
-import { useId, useState } from "react";
+import { createContext, useContext, useId, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -20,9 +20,29 @@ import { cn } from "@/components/lib/cn";
 import { etiquetaCampo, inputLinea } from "../ui";
 import { MedioFantasma, MedioImagen, fmtDuracion } from "../sitio/medios";
 import { SelectorMedios } from "../pickers/SelectorMedios";
-import { useConstructor } from "./contexto";
+import { ConstructorCtx } from "./contexto";
 
 export { etiquetaCampo, inputLinea };
+
+/**
+ * Lo que necesitan SlotMedio y TiraMedios. Dentro del constructor sale de su
+ * contexto; los editores de páginas y del journal lo dan con MediosCtx.
+ */
+export interface ValorMedios {
+  medios: Map<string, MedioVista>;
+  agregarMedios: (m: MedioVista[]) => void;
+  editable: boolean;
+}
+
+export const MediosCtx = createContext<ValorMedios | null>(null);
+
+function useMediosCampos(): ValorMedios {
+  const propio = useContext(MediosCtx);
+  const c = useContext(ConstructorCtx);
+  if (propio) return propio;
+  if (!c) throw new Error("SlotMedio fuera de un editor");
+  return { medios: c.mapas.medios, agregarMedios: c.agregarMedios, editable: c.editable };
+}
 
 export function Campo({
   etiqueta,
@@ -358,9 +378,9 @@ export function SlotMedio({
   vacio?: string;
   className?: string;
 }) {
-  const { mapas, agregarMedios, editable } = useConstructor();
+  const { medios, agregarMedios, editable } = useMediosCampos();
   const [abierto, setAbierto] = useState(false);
-  const medio = medioId ? mapas.medios.get(medioId) ?? null : null;
+  const medio = medioId ? medios.get(medioId) ?? null : null;
   return (
     <div className={cn("group relative", className)}>
       {medio ? (
@@ -441,7 +461,7 @@ export function TiraMedios({
   etiqueta: string;
   aspecto?: number;
 }) {
-  const { mapas, agregarMedios, editable } = useConstructor();
+  const { medios, agregarMedios, editable } = useMediosCampos();
   const [abierto, setAbierto] = useState(false);
   const items = refs.map((r) => ({ ...r, id: r.medioId }));
   return (
@@ -453,7 +473,7 @@ export function TiraMedios({
         onOrden={(xs) => onCambio(xs.map(({ id: _id, ...r }) => r))}
         className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2"
         render={(r, _i, asa) => {
-          const m = mapas.medios.get(r.medioId);
+          const m = medios.get(r.medioId);
           return (
             <div className="group relative cursor-grab touch-none active:cursor-grabbing" {...asa.props} aria-label={`Mover ${m?.alt || "foto"}`}>
               {m ? (

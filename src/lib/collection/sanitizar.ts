@@ -3,6 +3,7 @@
 
 import sanitize from "sanitize-html";
 import type { ContenidoExperiencia } from "@/lib/collection/experiencia/contenido";
+import type { ContenidoPagina } from "@/lib/collection/paginas/contenido";
 
 export function sanitizarHtml(s: string): string {
   if (!s) return "";
@@ -29,5 +30,16 @@ export function sanitizarContenido(c: ContenidoExperiencia): ContenidoExperienci
       hotel: t.hotel ? { ...t.hotel, texto: sanitizarHtml(t.hotel.texto) } : null,
     })),
     dias: c.dias.map((d) => ({ ...d, texto: sanitizarHtml(d.texto) })),
+  };
+}
+
+export function sanitizarBloques(c: ContenidoPagina): ContenidoPagina {
+  return {
+    ...c,
+    bloques: c.bloques.map((b) =>
+      b.tipo === "manifiesto" || b.tipo === "texto" || b.tipo === "imagenTexto"
+        ? { ...b, texto: sanitizarHtml(b.texto) }
+        : b,
+    ),
   };
 }

@@ -4,7 +4,7 @@
 
 import type { ExperienciaVista, MedioVista } from "@/lib/collection/experiencia/contenido";
 
-function medio(
+export function medio(
   id: string,
   color: string,
   ancho: number,

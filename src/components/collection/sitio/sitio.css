@@ -670,3 +670,532 @@
     grid-template-columns: minmax(0, 760px);
   }
 }
+
+/* ══ Páginas por bloques: Inicio, Nosotros, legales y journal ══════════════ */
+
+.cs-display {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 46px;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+/* Enlace con filete: la línea fina se cubre de dorado al pasar. */
+.cs-enlace {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.cs-enlace > span:first-child {
+  padding-bottom: 6px;
+  background-image: linear-gradient(#f4b860, #f4b860), linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%, 0 100%;
+  background-size: 0% 2px, 100% 1px;
+  transition: background-size 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cs-enlace > svg {
+  margin-bottom: 6px;
+}
+a.cs-enlace:hover > span:first-child {
+  background-size: 100% 2px, 100% 1px;
+}
+a.cs-enlace:hover > svg {
+  transform: translateX(4px);
+}
+
+.cs-manifiesto {
+  max-width: 980px;
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.cs-manifiesto > * + * {
+  margin-top: 0.6em;
+}
+.cs-manifiesto strong {
+  font-weight: 500;
+}
+.cs-manifiesto em {
+  font-style: italic;
+}
+
+.cs-cita-grande {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.cs-prosa table {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1px solid #32373b;
+  font-size: 0.85em;
+}
+.cs-prosa th,
+.cs-prosa td {
+  padding: 12px 12px 12px 0;
+  border-bottom: 1px solid #dcdcdc;
+  text-align: left;
+  vertical-align: top;
+}
+.cs-prosa th {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.cs-texto-ancho,
+.cs-par,
+.cs-testimonio,
+.cs-preguntas,
+.cs-journal,
+.cs-legal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+}
+
+.cs-cita-foto {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 520px;
+  overflow: hidden;
+  background: #32373b;
+  color: #fff;
+}
+
+/* Mosaico de destinos: en celular una columna 4:3 (ver celdaMosaico). */
+.cs-mosaico {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+.cs-mosaico > * {
+  aspect-ratio: 4 / 3;
+}
+
+.cs-tarjetas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 56px;
+}
+
+/* Estilos: tira que se desliza en angosto y reparte el ancho en escritorio. */
+.cs-estilos {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 72%;
+  gap: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.cs-estilos::-webkit-scrollbar {
+  display: none;
+}
+.cs-estilos > * {
+  aspect-ratio: 3 / 5;
+  scroll-snap-align: start;
+}
+
+.cs-retratos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 40px 12px;
+}
+
+.cs-testimonio-hueco {
+  display: none;
+}
+
+.cs-aliados {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-top: 1px solid #dcdcdc;
+}
+.cs-aliado {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+  padding-block: 24px;
+  border-bottom: 1px solid #dcdcdc;
+}
+
+.cs-articulo-fila {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+
+.cs-newsletter {
+  position: relative;
+  display: grid;
+  gap: 40px;
+  padding: 48px 24px;
+  overflow: hidden;
+  background: #32373b;
+  color: #f0f0f0;
+}
+.cs-newsletter-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cs-cierre-par {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  background: #32373b;
+  color: #f0f0f0;
+}
+.cs-cierre-par-texto {
+  padding: 72px 20px;
+}
+.cs-cierre-par-foto {
+  position: relative;
+  order: -1;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+.cs-legal-indice {
+  align-self: start;
+}
+.cs-prosa--legal {
+  font-size: 16px;
+  line-height: 1.75;
+  font-weight: 400;
+  color: #4a5859;
+}
+.cs-prosa--legal > p:first-child {
+  font-size: 19px;
+  line-height: 1.6;
+  font-weight: 300;
+  color: #32373b;
+}
+.cs-prosa--legal h3 {
+  color: #32373b;
+  font-size: 28px;
+  margin-top: 1.6em;
+  scroll-margin-top: 32px;
+}
+
+/* Artículo del journal: columna de lectura, capitular y citas destacadas. */
+.cs-articulo-portada {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+.cs-articulo {
+  max-width: 680px;
+  margin-inline: auto;
+}
+.cs-articulo.cs-prosa {
+  font-size: 18px;
+  line-height: 1.8;
+}
+.cs-articulo > p:first-of-type::first-letter {
+  float: left;
+  margin: 0.06em 0.12em 0 0;
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 4.4em;
+  line-height: 0.8;
+  color: #32373b;
+}
+.cs-articulo blockquote {
+  position: relative;
+  margin-block: 2.2em;
+  padding: 1.1em 0 0;
+  border-left: 0;
+  text-align: center;
+  font-size: 1.6em;
+  line-height: 1.3;
+  font-weight: 400;
+  text-wrap: balance;
+}
+.cs-articulo blockquote::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 48px;
+  height: 1px;
+  background: #f4b860;
+  transform: translateX(-50%);
+}
+
+/* ── Editor de páginas: bloque elegible, oculto y marco al pasar ───────── */
+
+.cs-elegible {
+  cursor: pointer;
+}
+.cs-marco {
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px #f4b860;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cs-marco > span {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 6px 10px;
+  background: #f4b860;
+  color: #32373b;
+  font-size: 11px;
+}
+.cs-elegible:hover > .cs-marco {
+  opacity: 1;
+}
+.cs-oculto > :not(.cs-oculto-etiqueta):not(.cs-marco) {
+  opacity: 0.38;
+  filter: grayscale(0.7);
+}
+.cs-oculto-etiqueta {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 28;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 2px;
+  background: #32373b;
+  color: #f0f0f0;
+  font-size: 11px;
+}
+
+@container cs (min-width: 560px) {
+  .cs-mosaico {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cs-mosaico > * {
+    aspect-ratio: 4 / 5;
+  }
+  .cs-mosaico > [data-medio="2"] {
+    grid-column: span 2;
+    aspect-ratio: 16 / 9;
+  }
+  .cs-tarjetas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 64px 24px;
+  }
+  .cs-estilos {
+    grid-auto-columns: 42%;
+  }
+  .cs-retratos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 48px 20px;
+  }
+  .cs-aliado {
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 32px;
+  }
+  .cs-articulo-fila {
+    grid-template-columns: 160px minmax(0, 1fr);
+    gap: 24px;
+  }
+  .cs-newsletter-campo {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+@container cs (min-width: 768px) {
+  .cs-display {
+    font-size: 68px;
+  }
+  .cs-manifiesto {
+    font-size: 40px;
+  }
+  .cs-cita-grande {
+    font-size: 36px;
+  }
+  .cs-texto-ancho {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);
+    gap: 72px;
+    align-items: start;
+  }
+  .cs-texto-ancho-cabecera {
+    position: sticky;
+    top: 48px;
+  }
+  .cs-par {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    gap: 72px;
+    align-items: center;
+  }
+  .cs-par--derecha {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+  .cs-par--derecha > :first-child {
+    order: 2;
+  }
+  .cs-par.cs-par--solo {
+    grid-template-columns: minmax(0, 760px);
+  }
+  .cs-cita-foto {
+    min-height: 640px;
+  }
+  .cs-estilos {
+    grid-auto-columns: 30%;
+  }
+  .cs-testimonio {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 72px;
+    align-items: center;
+  }
+  .cs-testimonio-hueco {
+    display: block;
+  }
+  .cs-aliados {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 64px;
+  }
+  .cs-preguntas {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 72px;
+    align-items: start;
+  }
+  .cs-journal {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 56px;
+    align-items: start;
+  }
+  .cs-journal.cs-journal--solo {
+    grid-template-columns: minmax(0, 880px);
+  }
+  .cs-newsletter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 64px;
+    padding: 72px 56px;
+    align-items: end;
+  }
+  .cs-cierre-par {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 640px;
+  }
+  .cs-cierre-par.cs-cierre-par--solo {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .cs-cierre-par-texto {
+    padding: 112px 72px 112px 40px;
+  }
+  .cs-cierre-par-foto {
+    order: 0;
+    aspect-ratio: auto;
+  }
+  .cs-articulo-portada {
+    aspect-ratio: 16 / 9;
+  }
+  .cs-articulo.cs-prosa {
+    font-size: 19px;
+  }
+}
+
+@container cs (min-width: 1100px) {
+  .cs-display {
+    font-size: 84px;
+  }
+  .cs-manifiesto {
+    font-size: 48px;
+  }
+  .cs-cita-grande {
+    font-size: 44px;
+  }
+  .cs-par {
+    gap: 96px;
+  }
+
+  /* Cuatro columnas de celdas cuadradas; la grilla no deja huecos. */
+  .cs-mosaico {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: calc((min(100cqi, 1408px) - 128px - 18px) / 4);
+    grid-auto-flow: dense;
+  }
+  .cs-mosaico > *,
+  .cs-mosaico > [data-medio="2"] {
+    grid-column: auto;
+    aspect-ratio: auto;
+  }
+  .cs-mosaico > [data-ancho="grande"] {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  .cs-mosaico > [data-ancho="grande"][data-lado="derecha"] {
+    grid-column: 3 / span 2;
+  }
+  .cs-mosaico > [data-ancho="mitad"] {
+    grid-column: span 2;
+  }
+  .cs-mosaico > [data-ancho="completo"] {
+    grid-column: 1 / -1;
+  }
+
+  .cs-tarjetas {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 72px 32px;
+  }
+  /* La columna del medio baja un poco: ritmo de revista, no de catálogo. */
+  .cs-tarjetas > :nth-child(3n + 2) {
+    margin-top: 72px;
+  }
+  .cs-estilos {
+    grid-auto-columns: minmax(0, 1fr);
+    overflow: visible;
+  }
+  .cs-retratos {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 56px 24px;
+  }
+  .cs-testimonio {
+    gap: 96px;
+  }
+  .cs-preguntas {
+    gap: 96px;
+  }
+  .cs-newsletter {
+    padding: 80px 64px;
+    gap: 96px;
+  }
+  .cs-cierre-par-texto {
+    padding: 120px 96px 120px 64px;
+  }
+  .cs-legal.cs-legal--indice {
+    grid-template-columns: 240px minmax(0, 680px);
+    gap: 80px;
+  }
+  .cs-legal--indice .cs-legal-indice {
+    position: sticky;
+    top: 32px;
+  }
+  .cs-articulo blockquote {
+    margin-inline: -64px;
+  }
+}

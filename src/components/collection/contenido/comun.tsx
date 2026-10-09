@@ -1,6 +1,7 @@
 "use client";
 
-// Piezas que comparten Destinos y Especialistas: la hoja lateral de edición,
+// Piezas que comparten los módulos de contenido (Destinos, Especialistas,
+// Aliados, Testimonios y Preguntas): la hoja lateral de edición,
 // el guardado automático, el alta con nombre en línea y el borrado con
 // confirmación.
 
@@ -281,4 +282,28 @@ export function tonoDe(texto: string) {
   let h = 0;
   for (const c of texto) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return TONOS[h % TONOS.length];
+}
+
+/** Dibuja `children` a `ancho` px y lo escala para que entre en el contenedor. */
+export function Escalado({ ancho, children }: { ancho: number; children: React.ReactNode }) {
+  const caja = useRef<HTMLDivElement>(null);
+  const interior = useRef<HTMLDivElement>(null);
+  const [medidas, setMedidas] = useState({ escala: 0.5, alto: 0 });
+  useEffect(() => {
+    const medir = () => {
+      const escala = (caja.current?.clientWidth ?? ancho) / ancho;
+      setMedidas({ escala, alto: (interior.current?.offsetHeight ?? 0) * escala });
+    };
+    const ro = new ResizeObserver(medir);
+    if (caja.current) ro.observe(caja.current);
+    if (interior.current) ro.observe(interior.current);
+    return () => ro.disconnect();
+  }, [ancho]);
+  return (
+    <div ref={caja} className="overflow-hidden rounded-sm" style={{ height: medidas.alto || undefined }}>
+      <div ref={interior} style={{ width: ancho, transform: `scale(${medidas.escala})`, transformOrigin: "top left" }}>
+        {children}
+      </div>
+    </div>
+  );
 }

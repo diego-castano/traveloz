@@ -3,11 +3,13 @@
 // Autoguardado del constructor: 1,5 s después del último cambio, un pedido
 // a la vez (si hay cambios mientras guarda, sale otro con lo último). Sin
 // conexión reintenta con espera creciente. Si otra persona guardó antes
-// (conflicto de versión) frena y avisa.
+// (conflicto de versión) frena y avisa. Sirve también para páginas y
+// artículos: con `guardarCon` se le pasa cómo guardar otro tipo de borrador.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { Resultado } from "@/lib/collection/ejecutar";
+import type { BorradorExperiencia } from "@/lib/collection/experiencia/contenido";
 import type { ApiConstructor } from "./api";
-import type { EstadoBorrador } from "./estado";
 
 const ESPERA = 1500;
 const TOPE_REINTENTO = 30000;
@@ -20,16 +22,19 @@ export type EstadoGuardado =
   | { tipo: "error"; mensaje: string }
   | { tipo: "conflicto"; mensaje: string };
 
-export function useAutoguardado({
+export function useAutoguardado<B = BorradorExperiencia>({
   id,
   api,
+  guardarCon,
   estado,
   revisionInicial,
   activo,
 }: {
   id: string;
-  api: ApiConstructor;
-  estado: EstadoBorrador;
+  api?: ApiConstructor;
+  /** Guardado propio (páginas, journal). Tiene que ser estable (useCallback). */
+  guardarCon?: (input: { revision: number; borrador: B }) => Promise<Resultado<{ revision: number }>>;
+  estado: { borrador: B; cambios: number };
   revisionInicial: number;
   activo: boolean;
 }) {
@@ -57,9 +62,12 @@ export function useAutoguardado({
 
     const vuelo = (async () => {
       setGuardado({ tipo: "guardando" });
-      let r: Awaited<ReturnType<ApiConstructor["guardar"]>> | null = null;
+      let r: Resultado<{ revision: number }> | null = null;
       try {
-        r = await api.guardar(id, { revision: revisionRef.current, borrador: foto.borrador });
+        const input = { revision: revisionRef.current, borrador: foto.borrador };
+        r = guardarCon
+          ? await guardarCon(input)
+          : await api!.guardar(id, input as { revision: number; borrador: BorradorExperiencia });
       } catch {
         r = null;
       }
@@ -95,7 +103,7 @@ export function useAutoguardado({
     if (ok && ultimo.current.cambios !== guardadoHasta.current) {
       timer.current = window.setTimeout(() => void guardar(), 200);
     }
-  }, [api, id]);
+  }, [api, id, guardarCon]);
 
   useEffect(() => {
     if (!activo || frenado.current || estado.cambios === guardadoHasta.current) return;

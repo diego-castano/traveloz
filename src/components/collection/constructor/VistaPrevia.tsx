@@ -3,7 +3,8 @@
 // Vista previa del constructor: la misma página del sitio en modo "preview".
 // Escritorio se dibuja a 1280 px y se escala con CSS para entrar en el panel
 // (los @container siguen viendo 1280); celular va a 390 px. Al cambiar de
-// paso hace scroll a la sección y la resalta.
+// paso hace scroll a la sección y la resalta. Con `children` dibuja otra
+// página (bloques, artículo) y `selector` dice adónde hacer scroll.
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
@@ -25,15 +26,27 @@ export function VistaPrevia({
   onColapsar,
   onCerrar,
   actualizando,
+  children,
+  selector,
+  pulso,
+  titulo,
 }: {
-  vista: ExperienciaVista;
-  seccion: string;
+  vista?: ExperienciaVista;
+  seccion?: string;
   dispositivo: Dispositivo;
   onDispositivo: (d: Dispositivo) => void;
   onColapsar?: () => void;
   onCerrar?: () => void;
   /** La vista va un paso atrás de lo que se escribe (useDeferredValue). */
   actualizando?: boolean;
+  /** Lo que se dibuja en lugar de la página de experiencia. */
+  children?: React.ReactNode;
+  /** Elemento al que hace scroll (por defecto, la sección del paso). */
+  selector?: string;
+  /** Cambia para volver a hacer scroll al mismo elemento. */
+  pulso?: number;
+  /** Texto de la barra (por defecto, el nombre de la sección). */
+  titulo?: string;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const interno = useRef<HTMLDivElement>(null);
@@ -62,7 +75,7 @@ export function VistaPrevia({
     const s = scroller.current;
     if (!s || !escala) return;
     const raf = requestAnimationFrame(() => {
-      const el = interno.current?.querySelector<HTMLElement>(`[data-seccion="${seccion}"]`);
+      const el = interno.current?.querySelector<HTMLElement>(selector ?? `[data-seccion="${seccion}"]`);
       if (!el) return;
       const top = el.getBoundingClientRect().top - s.getBoundingClientRect().top + s.scrollTop - margen;
       s.scrollTo({ top: Math.max(0, top), behavior: reducido ? "auto" : "smooth" });
@@ -70,9 +83,9 @@ export function VistaPrevia({
     return () => cancelAnimationFrame(raf);
     // Solo al cambiar de sección o de dispositivo, no con cada tecla.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seccion, dispositivo, escala > 0]);
+  }, [seccion, selector, pulso, dispositivo, escala > 0]);
 
-  const nombreSeccion = SECCIONES_PAGINA.find((s) => s.id === seccion)?.titulo;
+  const nombreSeccion = titulo ?? SECCIONES_PAGINA.find((s) => s.id === seccion)?.titulo;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#E6E6E6]">
@@ -146,7 +159,7 @@ export function VistaPrevia({
             )}
             style={{ width: base, transform: `scale(${escala || 1})` }}
           >
-            <ExperienciaPagina vista={vista} modo="preview" seccionResaltada={seccion} />
+            {children ?? (vista && <ExperienciaPagina vista={vista} modo="preview" seccionResaltada={seccion} />)}
           </div>
         </div>
       </div>

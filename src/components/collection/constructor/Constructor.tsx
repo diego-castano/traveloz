@@ -556,7 +556,7 @@ function ItemPaso({
   );
 }
 
-function IndicadorGuardado({ g, editable }: { g: EstadoGuardado; editable: boolean }) {
+export function IndicadorGuardado({ g, editable }: { g: EstadoGuardado; editable: boolean }) {
   const [, tic] = useState(0);
   useEffect(() => {
     if (g.tipo !== "guardado" || !g.en) return;

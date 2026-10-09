@@ -4,7 +4,7 @@
 // interruptor de publicado y una hoja lateral con la franja "Tu especialista"
 // tal cual sale en la página de experiencia.
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
@@ -30,7 +30,7 @@ import { SelectorMedios } from "../pickers/SelectorMedios";
 import { Especialista, PaginaCtx } from "../sitio/experiencia/secciones";
 import { demoVacia } from "../sitio/demo";
 import "../sitio/sitio.css";
-import { Hoja, NuevoEnLinea, ZonaEliminar, tonoDe, useGuardadoDiferido } from "./comun";
+import { Escalado, Hoja, NuevoEnLinea, ZonaEliminar, tonoDe, useGuardadoDiferido } from "./comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -304,30 +304,6 @@ function Tarjeta({
         </label>
       </div>
     </motion.li>
-  );
-}
-
-/** Dibuja `children` a `ancho` px y lo escala para que entre en el contenedor. */
-function Escalado({ ancho, children }: { ancho: number; children: React.ReactNode }) {
-  const caja = useRef<HTMLDivElement>(null);
-  const interior = useRef<HTMLDivElement>(null);
-  const [medidas, setMedidas] = useState({ escala: 0.5, alto: 0 });
-  useEffect(() => {
-    const medir = () => {
-      const escala = (caja.current?.clientWidth ?? ancho) / ancho;
-      setMedidas({ escala, alto: (interior.current?.offsetHeight ?? 0) * escala });
-    };
-    const ro = new ResizeObserver(medir);
-    if (caja.current) ro.observe(caja.current);
-    if (interior.current) ro.observe(interior.current);
-    return () => ro.disconnect();
-  }, [ancho]);
-  return (
-    <div ref={caja} className="overflow-hidden rounded-sm" style={{ height: medidas.alto || undefined }}>
-      <div ref={interior} style={{ width: ancho, transform: `scale(${medidas.escala})`, transformOrigin: "top left" }}>
-        {children}
-      </div>
-    </div>
   );
 }
 

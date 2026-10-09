@@ -132,8 +132,8 @@ model User {
   presupuestos     Presupuesto[]
   hotelesFavoritos HotelFavorito[]
   hotelesPropios   HotelPropio[]
-  colPermiso       ColPermiso?     @relation("ColPermisoUser")
-  colMedios        ColMedio[]      @relation("ColMedioSubidoPor")
+  colPermiso       ColPermiso?      @relation("ColPermisoUser")
+  colMedios        ColMedio[]       @relation("ColMedioSubidoPor")
   colEspecialista  ColEspecialista? @relation("ColEspecialistaUser")
 
   @@index([brandId])
@@ -308,13 +308,13 @@ model Alojamiento {
   updatedAt      DateTime  @updatedAt
   deletedAt      DateTime?
 
-  precios       PrecioAlojamiento[]
-  fotos         AlojamientoFoto[]
-  ciudad        Ciudad?              @relation(fields: [ciudadId], references: [id])
-  pais          Pais?                @relation(fields: [paisId], references: [id])
-  paquetes      PaqueteAlojamiento[]
-  opcionHoteles OpcionHotel[]
-  favoritos     HotelFavorito[]
+  precios         PrecioAlojamiento[]
+  fotos           AlojamientoFoto[]
+  ciudad          Ciudad?               @relation(fields: [ciudadId], references: [id])
+  pais            Pais?                 @relation(fields: [paisId], references: [id])
+  paquetes        PaqueteAlojamiento[]
+  opcionHoteles   OpcionHotel[]
+  favoritos       HotelFavorito[]
   colExperiencias ColExperienciaHotel[]
 
   @@index([brandId])
@@ -461,6 +461,7 @@ model Proveedor {
   circuitos         Circuito[]
   opcionesHoteleras OpcionHotelera[]
   colExperiencias   ColExperiencia[]
+  colAliados        ColAliado[]
 
   @@index([brandId])
 }
@@ -544,7 +545,7 @@ model Pais {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  region       Region?       @relation(fields: [regionId], references: [id])
+  region       Region?          @relation(fields: [regionId], references: [id])
   ciudades     Ciudad[]
   alojamientos Alojamiento[]
   traslados    Traslado[]
@@ -1595,6 +1596,9 @@ model ColMedio {
   especialistasRetrato ColEspecialista[] @relation("ColEspecialistaRetrato")
   experienciasPortada  ColExperiencia[]  @relation("ColExperienciaPortada")
   experienciasOg       ColExperiencia[]  @relation("ColExperienciaOg")
+  aliadosLogo          ColAliado[]       @relation("ColAliadoLogo")
+  testimoniosFoto      ColTestimonio[]   @relation("ColTestimonioFoto")
+  articulosPortada     ColArticulo[]     @relation("ColArticuloPortada")
 
   @@index([tipo, createdAt(sort: Desc)])
 }
@@ -1685,6 +1689,7 @@ model ColEspecialista {
   user         User?            @relation("ColEspecialistaUser", fields: [userId], references: [id], onDelete: SetNull)
   retrato      ColMedio?        @relation("ColEspecialistaRetrato", fields: [retratoId], references: [id], onDelete: SetNull)
   experiencias ColExperiencia[]
+  articulos    ColArticulo[]
 }
 
 model ColExperiencia {
@@ -1719,12 +1724,14 @@ model ColExperiencia {
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
-  especialista ColEspecialista?        @relation(fields: [especialistaId], references: [id], onDelete: SetNull)
-  proveedor    Proveedor?              @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
-  portada      ColMedio?               @relation("ColExperienciaPortada", fields: [portadaId], references: [id], onDelete: SetNull)
-  ogImagen     ColMedio?               @relation("ColExperienciaOg", fields: [ogImagenId], references: [id], onDelete: SetNull)
+  especialista ColEspecialista?         @relation(fields: [especialistaId], references: [id], onDelete: SetNull)
+  proveedor    Proveedor?               @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+  portada      ColMedio?                @relation("ColExperienciaPortada", fields: [portadaId], references: [id], onDelete: SetNull)
+  ogImagen     ColMedio?                @relation("ColExperienciaOg", fields: [ogImagenId], references: [id], onDelete: SetNull)
   destinos     ColExperienciaDestino[]
   hoteles      ColExperienciaHotel[]
+  testimonios  ColTestimonio[]
+  articulos    ColArticuloExperiencia[]
 
   @@index([estado, orden])
 }
@@ -1749,4 +1756,119 @@ model ColExperienciaHotel {
 
   @@id([experienciaId, alojamientoId])
   @@index([alojamientoId])
+}
+
+enum ColTipoArticulo {
+  GUIA
+  RELATO
+  CONSEJOS
+}
+
+enum ColEstadoArticulo {
+  BORRADOR
+  PUBLICADO
+  ARCHIVADO
+}
+
+model ColAliado {
+  id          String   @id @default(cuid())
+  nombre      String
+  tipo        String   @default("")
+  descripcion String   @default("")
+  url         String   @default("")
+  logoId      String?
+  // Interno, nunca público.
+  proveedorId String?
+  orden       Int      @default(0)
+  publicado   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  logo      ColMedio?  @relation("ColAliadoLogo", fields: [logoId], references: [id], onDelete: SetNull)
+  proveedor Proveedor? @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+}
+
+model ColTestimonio {
+  id            String    @id @default(cuid())
+  nombre        String
+  lugar         String    @default("")
+  viaje         String    @default("")
+  cita          String    @default("") @db.Text
+  fotoId        String?
+  experienciaId String?
+  fecha         DateTime?
+  orden         Int       @default(0)
+  publicado     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  foto        ColMedio?       @relation("ColTestimonioFoto", fields: [fotoId], references: [id], onDelete: SetNull)
+  experiencia ColExperiencia? @relation(fields: [experienciaId], references: [id], onDelete: SetNull)
+}
+
+model ColPregunta {
+  id        String   @id @default(cuid())
+  pregunta  String
+  respuesta String   @default("") @db.Text
+  categoria String   @default("General")
+  orden     Int      @default(0)
+  publicada Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoria, orden])
+}
+
+model ColArticulo {
+  id                String            @id @default(cuid())
+  slug              String?           @unique
+  tipo              ColTipoArticulo   @default(GUIA)
+  titulo            String            @default("")
+  bajada            String            @default("")
+  portadaId         String?
+  autorId           String?
+  contenido         Json              @default("{}")
+  minutos           Int               @default(1)
+  estado            ColEstadoArticulo @default(BORRADOR)
+  seoTitulo         String            @default("")
+  seoDescripcion    String            @default("")
+  // Control de concurrencia del guardado y foto de lo publicado.
+  revision          Int               @default(0)
+  publicado         Json?
+  publicadoRevision Int?
+  publicadoEn       DateTime?
+  creadaPorId       String?
+  actualizadaPorId  String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  portada      ColMedio?                @relation("ColArticuloPortada", fields: [portadaId], references: [id], onDelete: SetNull)
+  autor        ColEspecialista?         @relation(fields: [autorId], references: [id], onDelete: SetNull)
+  experiencias ColArticuloExperiencia[]
+
+  @@index([estado, publicadoEn])
+}
+
+model ColArticuloExperiencia {
+  articuloId    String
+  experienciaId String
+  orden         Int    @default(0)
+
+  articulo    ColArticulo    @relation(fields: [articuloId], references: [id], onDelete: Cascade)
+  experiencia ColExperiencia @relation(fields: [experienciaId], references: [id], onDelete: Cascade)
+
+  @@id([articuloId, experienciaId])
+}
+
+// Páginas fijas del sitio (Inicio, Nosotros, legales), por bloques.
+model ColPagina {
+  slug              String    @id
+  titulo            String
+  contenido         Json      @default("{}")
+  revision          Int       @default(0)
+  publicado         Json?
+  publicadoRevision Int?
+  publicadaEn       DateTime?
+  actualizadaPorId  String?
+  updatedAt         DateTime  @updatedAt
 }
