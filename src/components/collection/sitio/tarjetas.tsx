@@ -56,7 +56,7 @@ export function TarjetaExperiencia({ e, className }: { e: ExperienciaCardVista; 
     <a href={rutaSitio.experiencia(e.slug)} className={cn("group flex flex-col gap-5", className)}>
       <div className="relative overflow-hidden">
         {e.portada ? (
-          <MedioImagen medio={e.portada} aspecto={4 / 5} sizes="(min-width: 1100px) 30vw, (min-width: 560px) 45vw, 100vw" imgClassName={zoom} />
+          <MedioImagen medio={e.portada} aspecto={4 / 5} encuadre={["16:9", "4:5"]} sizes="(min-width: 1100px) 30vw, (min-width: 560px) 45vw, 100vw" imgClassName={zoom} />
         ) : (
           <MedioFantasma aspecto={4 / 5} />
         )}
@@ -104,7 +104,7 @@ export function TarjetaDestino({
       style={aspecto ? { aspectRatio: String(aspecto) } : undefined}
     >
       {d.portada ? (
-        <MedioImagen medio={d.portada} relleno sizes="(min-width: 1100px) 50vw, 100vw" imgClassName={zoom} />
+        <MedioImagen medio={d.portada} relleno encuadre={["16:9", "4:5"]} sizes="(min-width: 1100px) 50vw, 100vw" imgClassName={zoom} />
       ) : (
         <MedioFantasma relleno oscuro />
       )}
@@ -136,7 +136,7 @@ export function TarjetaEspecialista({ e }: { e: EspecialistaVista }) {
   return (
     <div className="flex flex-col gap-4">
       {e.retrato ? (
-        <MedioImagen medio={e.retrato} aspecto={4 / 5} sizes="(min-width: 1100px) 22vw, 45vw" />
+        <MedioImagen medio={e.retrato} aspecto={4 / 5} encuadre="4:5" sizes="(min-width: 1100px) 22vw, 45vw" />
       ) : (
         <MedioFantasma aspecto={4 / 5} />
       )}
@@ -159,7 +159,7 @@ export function TestimonioSlide({ t }: { t: TestimonioVista }) {
   return (
     <figure className="cs-testimonio">
       {t.foto ? (
-        <MedioImagen medio={t.foto} aspecto={4 / 5} sizes="(min-width: 768px) 40vw, 100vw" />
+        <MedioImagen medio={t.foto} aspecto={4 / 5} encuadre="4:5" sizes="(min-width: 768px) 40vw, 100vw" />
       ) : (
         <MedioFantasma aspecto={4 / 5} />
       )}
@@ -313,7 +313,7 @@ export function TarjetaArticulo({
 }) {
   const foto = (aspecto: number, sizes: string) =>
     a.portada ? (
-      <MedioImagen medio={a.portada} aspecto={aspecto} sizes={sizes} imgClassName={zoom} />
+      <MedioImagen medio={a.portada} aspecto={aspecto} encuadre={["4:3", "1:1"]} sizes={sizes} imgClassName={zoom} />
     ) : (
       <MedioFantasma aspecto={aspecto} />
     );

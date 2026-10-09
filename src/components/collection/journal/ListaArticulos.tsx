@@ -115,7 +115,7 @@ export function ListaArticulos({
               <Link href={`/backend/collection/journal/${a.id}`} className="group flex flex-col gap-5" aria-label={`Abrir ${a.titulo || "artículo sin título"}`}>
                 <div className="relative aspect-[4/3] overflow-hidden rounded-col-sm bg-col-line transition-shadow duration-col-lento ease-col group-hover:shadow-col-2">
                   {a.portada ? (
-                    <MedioImagen medio={a.portada} relleno sizes="(min-width: 1280px) 33vw, 50vw" imgClassName="group-hover:scale-[1.03]" />
+                    <MedioImagen medio={a.portada} relleno encuadre={["4:3", "1:1"]} sizes="(min-width: 1280px) 33vw, 50vw" imgClassName="group-hover:scale-[1.03]" />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#D9D9D9] to-[#C9CDCE]">
                       <BookOpen className="h-10 w-10 text-col-base/80" strokeWidth={1} aria-hidden />

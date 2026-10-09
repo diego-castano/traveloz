@@ -28,6 +28,8 @@ import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
 import { SelectorMedios } from "../pickers/SelectorMedios";
+import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
+import type { Aspecto } from "@/lib/collection/recortes";
 import { SoltarAqui } from "../biblioteca/ZonaSubida";
 import { AsaTarjeta, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "./comun";
 
@@ -94,7 +96,7 @@ export function TarjetaDestino({
         )}
       >
         {d.portada ? (
-          <MedioImagen medio={d.portada} relleno sizes={sizes} imgClassName={admin ? "group-hover:scale-[1.03]" : undefined} />
+          <MedioImagen medio={d.portada} relleno encuadre={ENCUADRES} sizes={sizes} imgClassName={admin ? "group-hover:scale-[1.03]" : undefined} />
         ) : (
           <div className="absolute inset-0" style={{ background: fondoDeColor(tonoDe(d.nombre || "destino")) }}>
             <span
@@ -536,6 +538,7 @@ const RECORTES = [
   { label: "Listado 4:3", a: 4 / 3 },
   { label: "Portada 16:9", a: 16 / 9 },
 ];
+const ENCUADRES: Aspecto[] = ["4:5", "16:9"];
 
 /** Portada con los recortes que usa el sitio, respetando el foco del medio. */
 function CampoPortada({
@@ -547,6 +550,11 @@ function CampoPortada({
   onCambio: (m: MedioVista | null) => void;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const encuadre = useEditorEncuadre(ENCUADRES, onCambio);
+  const elegir = (m: MedioVista | null) => {
+    onCambio(m);
+    encuadre.abrir(m, true);
+  };
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-baseline justify-between gap-4">
@@ -570,18 +578,22 @@ function CampoPortada({
           </span>
         )}
       </div>
-      <SoltarAqui tipo="FOTO" deshabilitado={!editable} onMedio={(m) => onCambio(m)}>
+      <SoltarAqui tipo="FOTO" deshabilitado={!editable} onMedio={elegir}>
       {portada ? (
         <>
           <div className="flex items-end gap-3">
             {RECORTES.map((r) => (
               <figure key={r.label} className="min-w-0" style={{ flexGrow: r.a, flexBasis: 0 }}>
-                <MedioImagen medio={portada} aspecto={r.a} sizes="240px" className="w-full rounded-col-sm" />
+                <MedioImagen medio={portada} aspecto={r.a} encuadre={ENCUADRES} sizes="240px" className="w-full rounded-col-sm" />
                 <figcaption className="mt-1.5 text-col-xs tracking-wide text-col-slate">{r.label}</figcaption>
               </figure>
             ))}
           </div>
-          <p className="text-col-sm text-col-muted">El recorte sigue el punto de foco. Se ajusta desde la biblioteca.</p>
+          {editable ? (
+            <BotonEncuadre onClick={() => encuadre.abrir(portada)} className="self-start" />
+          ) : (
+            <p className="text-col-sm text-col-muted">El recorte sigue el encuadre guardado en la foto o su punto de foco.</p>
+          )}
         </>
       ) : (
         <button
@@ -601,8 +613,9 @@ function CampoPortada({
         onCerrar={() => setAbierto(false)}
         tipo="FOTO"
         titulo="Portada del destino"
-        onElegir={(m) => onCambio(m[0] ?? null)}
+        onElegir={(m) => elegir(m[0] ?? null)}
       />
+      {encuadre.editor}
     </div>
   );
 }

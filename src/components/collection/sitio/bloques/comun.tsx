@@ -6,6 +6,7 @@
 import { ArrowRight } from "lucide-react";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import type { BloqueVista } from "@/lib/collection/paginas/contenido";
+import type { Aspecto } from "@/lib/collection/recortes";
 import { Eyebrow } from "@/components/collection/ui";
 import { cn } from "@/components/lib/cn";
 import { MedioFantasma, MedioImagen, MedioVideo } from "../medios";
@@ -69,9 +70,12 @@ export function MedioBloque({
   texto = "Elegí una foto",
   className,
   prioridad,
+  encuadre,
 }: {
   medio: MedioVista | null;
   preview: boolean;
+  /** Encuadre(s) de la foto que valen acá (ver lib/collection/recortes). */
+  encuadre?: Aspecto | readonly Aspecto[];
   aspecto?: number;
   relleno?: boolean;
   sizes?: string;
@@ -82,7 +86,7 @@ export function MedioBloque({
 }) {
   if (!medio) return preview ? <MedioFantasma aspecto={aspecto} relleno={relleno} oscuro={oscuro} texto={texto} className={className} /> : null;
   if (medio.tipo === "VIDEO") return <MedioVideo medio={medio} variante="fondo" aspecto={aspecto} relleno={relleno} className={className} />;
-  return <MedioImagen medio={medio} aspecto={aspecto} relleno={relleno} sizes={sizes} prioridad={prioridad} className={className} />;
+  return <MedioImagen medio={medio} aspecto={aspecto} relleno={relleno} sizes={sizes} prioridad={prioridad} encuadre={encuadre} className={className} />;
 }
 
 /** Enlace con filete que se vuelve dorado. En la vista previa, sin texto, se ve fantasma. */

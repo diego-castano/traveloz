@@ -10,6 +10,7 @@ import {
   registrarMedio,
   type ColMedioDto,
 } from "@/actions/collection/medios.actions";
+import { motivoPortada, motivoVideo } from "@/lib/collection/limites-video";
 
 const MAX_PARALELO = 4;
 
@@ -26,7 +27,7 @@ export interface Subida {
 
 /** Errores que no se arreglan reintentando: sesión vencida, permisos o formato. */
 export function esReintentable(s: Subida) {
-  return s.estado === "error" && !/no autorizado|sesión venció|acceso restringido|permiso|formato|pesa más/i.test(s.error ?? "");
+  return s.estado === "error" && !/no autorizado|sesión venció|acceso restringido|permiso|formato|pesa|dura|\.MOV/i.test(s.error ?? "");
 }
 export const esDeSesion = (s: Subida) => /no autorizado|sesión venció/i.test(s.error ?? "");
 
@@ -97,12 +98,15 @@ export interface OpcionesSubidas {
   preparar?: typeof prepararSubidaMedio;
   registrar?: typeof registrarMedio;
   put?: typeof subirPut;
+  /** Lugar de portada o fondo: videos de hasta 10 MB y 20 segundos. */
+  portada?: boolean;
 }
 
 export function useSubidas(onListo: (m: ColMedioDto) => void, opciones: OpcionesSubidas = {}) {
   const preparar = opciones.preparar ?? prepararSubidaMedio;
   const registrar = opciones.registrar ?? registrarMedio;
   const put = opciones.put ?? subirPut;
+  const portada = !!opciones.portada;
   const [subidas, setSubidas] = useState<Subida[]>([]);
   const [vuelta, setVuelta] = useState(0);
   const activas = useRef(new Set<string>());
@@ -124,6 +128,9 @@ export function useSubidas(onListo: (m: ColMedioDto) => void, opciones: Opciones
         if (file.type.startsWith("video/")) {
           const info = await leerVideo(file).catch(() => null);
           duracion = info?.duracion;
+          // Antes de subir nada: un video largo no entra.
+          const motivo = portada ? motivoPortada(file.size, duracion) : motivoVideo(file.size, duracion);
+          if (motivo) throw new Error(motivo);
           if (info?.poster) {
             actualizar(s.id, { preview: URL.createObjectURL(info.poster) });
             const ext = info.poster.type === "image/webp" ? "webp" : "png";
@@ -164,7 +171,7 @@ export function useSubidas(onListo: (m: ColMedioDto) => void, opciones: Opciones
         });
       }
     },
-    [actualizar, preparar, registrar, put],
+    [actualizar, preparar, registrar, put, portada],
   );
 
   useEffect(() => {

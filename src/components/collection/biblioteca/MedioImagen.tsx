@@ -41,6 +41,7 @@ export function MedioImagen({
   className,
   imgClassName,
   objectPosition,
+  insigniaClassName,
 }: {
   medio: ColMedioDto;
   sizes: string;
@@ -50,6 +51,8 @@ export function MedioImagen({
   className?: string;
   imgClassName?: string;
   objectPosition?: string;
+  /** Clases de la insignia de video (duración y peso). */
+  insigniaClassName?: string;
 }) {
   const [cargada, setCargada] = useState(false);
   const src = srcDe(medio, ancho);
@@ -94,9 +97,14 @@ export function MedioImagen({
         />
       )}
       {medio.tipo === "VIDEO" && (
-        <span className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-col-sm bg-col-ink/70 px-2 py-1 text-col-xs tracking-wide text-col-base backdrop-blur-sm">
+        <span
+          className={cn(
+            "pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-col-sm bg-col-ink/70 px-2 py-1 text-col-xs tracking-wide text-col-base backdrop-blur-sm transition-opacity duration-col ease-col",
+            insigniaClassName,
+          )}
+        >
           <Play className="h-3 w-3 fill-current" strokeWidth={0} aria-hidden />
-          {fmtDuracion(medio.duracion) || "Video"}
+          {[fmtDuracion(medio.duracion), fmtPeso(medio.peso)].filter(Boolean).join(" · ")}
         </span>
       )}
     </div>

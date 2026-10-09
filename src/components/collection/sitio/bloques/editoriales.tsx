@@ -31,7 +31,7 @@ export function BloquePortada({ bloque: b, modo }: PropsBloque<"portada">) {
   const p = modo === "preview";
   return (
     <header className="cs-hero">
-      <MedioBloque medio={b.medioVista} preview={p} relleno oscuro prioridad texto="Elegí la foto o el video de portada" className="pb-56" />
+      <MedioBloque medio={b.medioVista} preview={p} relleno oscuro prioridad encuadre="16:9" texto="Elegí la foto o el video de portada" className="pb-56" />
       <div className="cs-hero-velo" aria-hidden />
       <div className="cs-hero-texto cs-envolvente">
         {b.eyebrow && <Eyebrow className="text-white">{b.eyebrow}</Eyebrow>}
@@ -116,7 +116,7 @@ export function BloqueImagenTexto({ bloque: b, modo }: PropsBloque<"imagenTexto"
         )}
       >
         {conFoto && (
-          <MedioBloque medio={b.medioVista} preview={p} aspecto={4 / 5} sizes="(min-width: 768px) 50vw, 100vw" />
+          <MedioBloque medio={b.medioVista} preview={p} aspecto={4 / 5} encuadre="4:5" sizes="(min-width: 768px) 50vw, 100vw" />
         )}
         <div className="flex flex-col gap-6">
           <Cabecera eyebrow={b.eyebrow} titulo={b.titulo} preview={p} />
@@ -380,7 +380,7 @@ export function BloqueCierre({ bloque: b, modo }: PropsBloque<"cierre">) {
       </div>
       {conFoto && (
         <div className="cs-cierre-par-foto">
-          <MedioBloque medio={b.medioVista} preview={p} relleno oscuro sizes="(min-width: 768px) 50vw, 100vw" />
+          <MedioBloque medio={b.medioVista} preview={p} relleno oscuro encuadre={["4:3", "4:5"]} sizes="(min-width: 768px) 50vw, 100vw" />
         </div>
       )}
     </div>

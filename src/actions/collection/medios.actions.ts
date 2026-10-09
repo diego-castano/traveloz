@@ -4,7 +4,7 @@
 // { ok, data } | { ok, error } que el resto: los errores de negocio no se
 // tiran porque Next los enmascara en producción.
 
-import { randomBytes } from "crypto";
+import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -19,7 +19,9 @@ import {
 } from "@/lib/storage";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
 import { invalidarSitio } from "@/lib/collection/sitio-datos";
-import { procesarFoto } from "@/lib/collection/medios-proceso";
+import { generarOg, procesarFoto } from "@/lib/collection/medios-proceso";
+import { cambioRecortesSchema, leerRecortes, type CambioRecortes, type Recortes } from "@/lib/collection/recortes";
+import { MENSAJE_MOV, TIPOS_VIDEO, VIDEO_MAX_PESO, VIDEO_MAX_SEG, esMov } from "@/lib/collection/limites-video";
 import { medioAVista } from "@/lib/collection/vista-servidor";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 
@@ -45,9 +47,9 @@ async function ejecutar<T>(nombre: string, fn: () => Promise<T>): Promise<Result
 
 const MB = 1024 * 1024;
 const FOTOS = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-const VIDEOS = ["video/mp4", "video/webm", "video/quicktime"];
+const VIDEOS = TIPOS_VIDEO;
 const MAX_FOTO = 30 * MB;
-const MAX_VIDEO = 200 * MB;
+const MAX_VIDEO = VIDEO_MAX_PESO;
 const PREFIJO_ORIGINALES = "collection/originales/";
 
 export interface ColVariante {
@@ -76,6 +78,7 @@ export interface ColMedioDto {
   credito: string;
   focoX: number;
   focoY: number;
+  recortes: Recortes;
   etiquetas: string[];
   subidoPorId: string | null;
   createdAt: string;
@@ -104,6 +107,7 @@ function aDto(m: FilaMedio): ColMedioDto {
     credito: m.credito,
     focoX: m.focoX,
     focoY: m.focoY,
+    recortes: leerRecortes(m.recortes),
     etiquetas: m.etiquetas,
     subidoPorId: m.subidoPorId,
     createdAt: m.createdAt.toISOString(),
@@ -134,9 +138,10 @@ export async function prepararSubidaMedio(input: {
 
     const esFoto = FOTOS.includes(contentType);
     const esVideo = VIDEOS.includes(contentType);
+    if (esMov({ name: nombre, type: contentType })) fallar(MENSAJE_MOV);
     if (!esFoto && !esVideo) fallar("Ese tipo de archivo no está permitido.");
     if (esFoto && peso > MAX_FOTO) fallar("La foto pesa más de 30 MB.");
-    if (esVideo && peso > MAX_VIDEO) fallar("El video pesa más de 200 MB.");
+    if (esVideo && peso > MAX_VIDEO) fallar("El video pesa más de 50 MB.");
 
     const seguro = nombre.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100);
     const key = `${PREFIJO_ORIGINALES}${randomBytes(8).toString("hex")}-${seguro}`;
@@ -180,6 +185,7 @@ export async function registrarMedio(input: {
     const esFoto = FOTOS.includes(d.contentType);
     const esVideo = VIDEOS.includes(d.contentType);
     if (!esFoto && !esVideo) fallar("Ese tipo de archivo no está permitido.");
+    if (esVideo && d.duracion && d.duracion > VIDEO_MAX_SEG) fallar("El video dura más de 2 minutos.");
 
     const existente = await prisma.colMedio.findUnique({ where: { key: d.key } });
     if (existente) return aDto(existente);
@@ -297,7 +303,12 @@ const actualizarSchema = z.object({
   focoX: z.number().min(0).max(1).optional(),
   focoY: z.number().min(0).max(1).optional(),
   etiquetas: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+  recortes: cambioRecortesSchema.optional(),
 });
+
+const OG = "1.91:1";
+const huella = (r: { x: number; y: number; w: number; h: number }) =>
+  createHash("sha1").update([r.x, r.y, r.w, r.h].join(",")).digest("hex").slice(0, 10);
 
 export async function actualizarMedio(
   id: string,
@@ -309,21 +320,61 @@ export async function actualizarMedio(
     focoY?: number;
     etiquetas?: string[];
     nombre?: string;
+    /** Por aspecto: rectángulo nuevo o null para volver al automático. */
+    recortes?: CambioRecortes;
   },
 ): Promise<Resultado<ColMedioDto>> {
   return ejecutar("actualizarMedio", async () => {
     const { userId } = await requireCollection("medios.editar");
     const p = actualizarSchema.safeParse(input);
     if (!p.success) fallar(p.error.issues[0]?.message ?? "Datos inválidos.");
-    const data = { ...p.data };
+    const { recortes: cambio, ...data } = p.data;
     if (data.etiquetas) {
       data.etiquetas = Array.from(new Set(data.etiquetas.map((e) => e.toLowerCase())));
     }
     const previo = await prisma.colMedio.findUnique({ where: { id } });
     if (!previo) fallar("No encontramos ese medio.");
-    const fila = await prisma.colMedio.update({ where: { id }, data });
+
+    let recortes: Recortes | undefined;
+    const ogViejo = leerRecortes(previo.recortes)[OG]?.url;
+    if (cambio) {
+      if (previo.tipo !== "FOTO") fallar("Los encuadres son solo para fotos.");
+      recortes = leerRecortes(previo.recortes);
+      for (const [a, r] of Object.entries(cambio) as [keyof Recortes, (typeof cambio)[keyof Recortes]][]) {
+        if (r) recortes[a] = { x: r.x, y: r.y, w: r.w, h: r.h };
+        else delete recortes[a];
+      }
+      // La imagen para compartir es un JPEG de verdad: WhatsApp y Google no recortan bien.
+      const og = recortes[OG];
+      if (og) {
+        const key = `collection/og/${id}-${huella(og)}.jpg`;
+        if (ogViejo && keyFromUrl(ogViejo) === key) og.url = ogViejo;
+        else {
+          let jpeg: Buffer;
+          try {
+            jpeg = await generarOg(await getObjectBuffer(previo.key), og);
+          } catch (err) {
+            log.error("actualizarMedio.og", { err, id });
+            fallar("No pudimos generar la imagen para compartir. Probá de nuevo.");
+          }
+          await putObject(key, jpeg, "image/jpeg");
+          og.url = publica(key);
+        }
+      }
+    }
+
+    const fila = await prisma.colMedio.update({
+      where: { id },
+      data: { ...data, ...(recortes ? { recortes: recortes as unknown as Prisma.InputJsonValue } : {}) },
+    });
+    // La imagen anterior para compartir ya no la usa nadie.
+    const ogNuevo = recortes ? recortes[OG]?.url : ogViejo;
+    if (ogViejo && ogViejo !== ogNuevo) {
+      const k = keyFromUrl(ogViejo);
+      if (k) await deleteObjects([k]).catch((err) => log.warn("actualizarMedio.ogViejo", { err, id }));
+    }
     invalidarSitio();
-    await registrarEventoCol({ entidad: "medio", entidadId: id, accion: "editar", userId, detalle: { campos: Object.keys(data) } });
+    await registrarEventoCol({ entidad: "medio", entidadId: id, accion: "editar", userId, detalle: { campos: Object.keys(p.data) } });
     return aDto(fila);
   });
 }
@@ -342,6 +393,7 @@ export async function eliminarMedio(id: string): Promise<Resultado<null>> {
       fila.key,
       ...((fila.variantes as unknown as ColVariante[]) ?? []).map((v) => keyFromUrl(v.url)),
       keyFromUrl(fila.posterUrl),
+      keyFromUrl(leerRecortes(fila.recortes)[OG]?.url),
     ].filter((k): k is string => !!k);
     try {
       await deleteObjects(keys);

@@ -1586,6 +1586,8 @@ model ColMedio {
   credito        String       @default("")
   focoX          Float        @default(0.5)
   focoY          Float        @default(0.5)
+  /// Encuadre por aspecto: { "16:9": { x, y, w, h, url? } }, normalizado 0..1 sobre el original rotado.
+  recortes       Json         @default("{}")
   etiquetas      String[]     @default([])
   subidoPorId    String?
   createdAt      DateTime     @default(now())

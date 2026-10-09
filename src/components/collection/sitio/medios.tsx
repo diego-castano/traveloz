@@ -4,12 +4,18 @@
 // el aspecto real, pintan el color dominante y el placeholder borroso hasta
 // que llega la variante, y entran con un fundido. Sin url (borradores o la
 // demo) dibujan un bloque de color con el tono del medio.
+//
+// Encuadres: con `encuadre`, si la foto tiene ese recorte y la caja tiene su
+// aspecto, se dibuja exactamente esa región; si la caja tiene otro aspecto
+// (portadas que cambian con la pantalla) se usa el centro del recorte más
+// parecido como foco. Sin recorte, manda el punto de foco.
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "motion/react";
 import { ImageIcon, Play } from "lucide-react";
 import type { FotoCatalogo, MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
+import { centroDelRecorte, elegirRecorte, estiloRecorte, type Aspecto } from "@/lib/collection/recortes";
 
 export const aspectoMedio = (m: MedioVista) =>
   m.ancho && m.alto ? m.ancho / m.alto : m.tipo === "VIDEO" ? 16 / 9 : 4 / 5;
@@ -51,24 +57,63 @@ function estiloCaja(aspecto: number | undefined, relleno: boolean | undefined): 
   return relleno ? {} : { aspectRatio: String(aspecto) };
 }
 
+/**
+ * Recorte que toca para esta caja: mide la caja (las de relleno no tienen
+ * aspecto fijo) y elige entre los encuadres pedidos.
+ */
+function useEncuadre(medio: MedioVista, encuadre: Aspecto | readonly Aspecto[] | undefined, cajaFija: number | null) {
+  const pedidos: readonly Aspecto[] = !encuadre ? [] : typeof encuadre === "string" ? [encuadre] : encuadre;
+  const activo = medio.tipo === "FOTO" && pedidos.some((a) => medio.recortes?.[a]);
+  const ref = useRef<HTMLDivElement>(null);
+  const [medida, setMedida] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!activo || !el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => {
+      const { width, height } = e.contentRect;
+      if (width > 0 && height > 0) setMedida(width / height);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [activo]);
+  const imgAspect = medio.ancho && medio.alto ? medio.ancho / medio.alto : null;
+  const eleccion = activo ? elegirRecorte(medio.recortes, pedidos, medida ?? cajaFija) : null;
+  let estilo: React.CSSProperties = { objectPosition: focoMedio(medio) };
+  let exacto = false;
+  if (eleccion && eleccion.exacto && imgAspect) {
+    estilo = estiloRecorte(eleccion.recorte, imgAspect);
+    exacto = true;
+  } else if (eleccion) {
+    const c = centroDelRecorte(eleccion.recorte);
+    estilo = { objectPosition: `${c.x * 100}% ${c.y * 100}%` };
+  }
+  return { ref, estilo, exacto };
+}
+
 export function MedioImagen({
   medio,
   sizes = "100vw",
   aspecto,
   relleno,
   prioridad,
+  encuadre,
   className,
   imgClassName,
 }: Caja & {
   medio: MedioVista;
   sizes?: string;
   prioridad?: boolean;
+  /** Encuadre(s) guardados que valen para este lugar (ver lib/collection/recortes). */
+  encuadre?: Aspecto | readonly Aspecto[];
   imgClassName?: string;
 }) {
   const [cargada, setCargada] = useState(false);
   const src = srcDe(medio);
+  const { ref, estilo, exacto } = useEncuadre(medio, encuadre, relleno ? null : aspecto ?? aspectoMedio(medio));
+  const ubicar = exacto ? "" : "absolute inset-0 h-full w-full object-cover";
   return (
     <div
+      ref={ref}
       className={cn("overflow-hidden", relleno ? "absolute inset-0" : "relative", className)}
       style={{
         ...estiloCaja(aspecto ?? aspectoMedio(medio), relleno),
@@ -81,8 +126,8 @@ export function MedioImagen({
           src={medio.placeholder}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full scale-110 object-cover blur-xl"
-          style={{ objectPosition: focoMedio(medio) }}
+          className={cn(ubicar, "scale-110 blur-xl")}
+          style={estilo}
         />
       )}
       {src ? (
@@ -100,11 +145,12 @@ export function MedioImagen({
           }}
           onLoad={() => setCargada(true)}
           className={cn(
-            "absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-700 ease-col",
+            ubicar,
+            "transition-[opacity,transform] duration-700 ease-col",
             cargada ? "opacity-100" : "opacity-0",
             imgClassName,
           )}
-          style={{ objectPosition: focoMedio(medio) }}
+          style={estilo}
         />
       ) : (
         <span role="img" aria-label={medio.alt} className="sr-only" />

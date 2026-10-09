@@ -16,6 +16,7 @@ import type { ExperienciaDetalle } from "@/actions/collection/experiencias.actio
 import type { ColMedioDto } from "@/actions/collection/medios.actions";
 import { demo } from "../sitio/demo";
 import type { ApiConstructor } from "./api";
+import type { Aspecto, Recorte } from "@/lib/collection/recortes";
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms + Math.random() * ms * 0.5));
 const ok = <T,>(data: T) => ({ ok: true as const, data });
@@ -66,6 +67,7 @@ function dtoDe(m: MedioVista, i: number): ColMedioDto {
     credito: m.credito,
     focoX: m.focoX,
     focoY: m.focoY,
+    recortes: m.recortes ?? {},
     etiquetas: [],
     subidoPorId: null,
     createdAt: new Date(Date.UTC(2026, 9, 1, 12) - i * 3_600_000).toISOString(),
@@ -328,6 +330,19 @@ export function crearApiMock(biblioteca: MedioVista[], revisionInicial: number):
     async obtenerMediosVista(ids) {
       await esperar(150);
       return ok(ids.map((id) => store.get(id)).filter((x): x is MedioVista => !!x));
+    },
+    async actualizarMedio(id, input) {
+      await esperar(250);
+      const m = store.get(id);
+      if (!m) return { ok: false as const, error: "No encontramos ese medio." };
+      const recortes = { ...(m.recortes ?? {}) };
+      for (const [a, r] of Object.entries(input.recortes ?? {}) as [Aspecto, Recorte | null][]) {
+        if (r) recortes[a] = a === "1.91:1" ? { ...r, url: m.url } : r;
+        else delete recortes[a];
+      }
+      const nuevo = { ...m, recortes };
+      store.set(id, nuevo);
+      return ok(dtoDe(nuevo, 0));
     },
     async prepararSubidaMedio(input) {
       await esperar(150);

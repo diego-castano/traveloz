@@ -21,6 +21,8 @@ import { Campo, Chips, Contador, entrada, entradaArea, entradaSelect, entradaTit
 import { MedioFantasma, MedioImagen, fmtDuracion } from "../sitio/medios";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { SoltarAqui } from "../biblioteca/ZonaSubida";
+import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
+import type { Aspecto } from "@/lib/collection/recortes";
 import { ConstructorCtx } from "./contexto";
 
 export { Campo, Contador, entrada, entradaArea, entradaSelect, entradaTitulo, etiquetaCampo };
@@ -221,17 +223,19 @@ export function Asa({ asa, label, className }: { asa: AsaProps; label: string; c
 export function Miniatura({
   medio,
   aspecto,
+  encuadre,
   className,
   sizes = "200px",
 }: {
   medio: MedioVista;
   aspecto?: number;
+  encuadre?: readonly Aspecto[];
   className?: string;
   sizes?: string;
 }) {
   return (
     <div className={cn("relative overflow-hidden rounded-col-sm", className)}>
-      <MedioImagen medio={medio} aspecto={aspecto} sizes={sizes} className="h-full w-full" />
+      <MedioImagen medio={medio} aspecto={aspecto} encuadre={encuadre} sizes={sizes} className="h-full w-full" />
       {medio.tipo === "VIDEO" && (
         <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-col-sm bg-col-ink/70 px-1.5 py-0.5 text-col-xs tracking-wide text-col-base">
           {fmtDuracion(medio.duracion) || "Video"}
@@ -244,6 +248,8 @@ export function Miniatura({
 /**
  * Lugar para un medio: vacío invita a elegir; lleno muestra la foto con
  * Cambiar y Quitar. Al elegir, el medio se suma a los mapas de la vista previa.
+ * Con `encuadres` (lugares críticos), una foto recién elegida pasa por el
+ * editor de encuadre y la llena muestra "Ajustar encuadre".
  */
 export function SlotMedio({
   medioId,
@@ -252,6 +258,8 @@ export function SlotMedio({
   tipo,
   etiqueta,
   vacio = "Elegir foto",
+  encuadres,
+  portada,
   className,
 }: {
   medioId: string | null | undefined;
@@ -260,24 +268,31 @@ export function SlotMedio({
   tipo?: "FOTO" | "VIDEO";
   etiqueta: string;
   vacio?: string;
+  encuadres?: readonly Aspecto[];
+  /** Portada o fondo: videos de hasta 10 MB y 20 segundos. */
+  portada?: boolean;
   className?: string;
 }) {
   const { medios, agregarMedios, editable } = useMediosCampos();
   const [abierto, setAbierto] = useState(false);
   const medio = medioId ? medios.get(medioId) ?? null : null;
+  const encuadre = useEditorEncuadre(encuadres, (m) => agregarMedios([m]));
+  const elegir = (m: MedioVista | null) => {
+    if (m) agregarMedios([m]);
+    onCambio(m);
+    encuadre.abrir(m, true);
+  };
   return (
     <SoltarAqui
       tipo={tipo}
+      portada={portada}
       deshabilitado={!editable}
-      onMedio={(m) => {
-        agregarMedios([m]);
-        onCambio(m);
-      }}
+      onMedio={elegir}
       className={cn("group relative", className)}
     >
       {medio ? (
         <>
-          <Miniatura medio={medio} aspecto={aspecto} sizes="320px" />
+          <Miniatura medio={medio} aspecto={aspecto} encuadre={encuadres} sizes="320px" />
           {editable && (
             <div className="absolute inset-x-2 bottom-2 flex justify-end gap-1.5 opacity-0 transition-opacity duration-col ease-col focus-within:opacity-100 group-hover:opacity-100">
               <BotonSobreFoto label={`Cambiar ${etiqueta}`} onClick={() => setAbierto(true)}>
@@ -305,15 +320,17 @@ export function SlotMedio({
           {editable && <span className="text-col-xs text-col-muted">o soltá un archivo</span>}
         </button>
       )}
+      {medio && editable && encuadres?.length && medio.tipo === "FOTO" ? (
+        <BotonEncuadre className="mt-2.5" onClick={() => encuadre.abrir(medio)} />
+      ) : null}
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}
         tipo={tipo}
-        onElegir={(m) => {
-          agregarMedios(m);
-          onCambio(m[0] ?? null);
-        }}
+        portada={portada}
+        onElegir={(m) => elegir(m[0] ?? null)}
       />
+      {encuadre.editor}
     </SoltarAqui>
   );
 }

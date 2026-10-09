@@ -269,6 +269,7 @@ function Tarjeta({
             <MedioImagen
               medio={x.portada}
               relleno
+              encuadre={["16:9", "4:5"]}
               sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 72px"
               imgClassName="group-hover:scale-[1.03]"
             />

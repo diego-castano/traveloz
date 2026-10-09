@@ -14,6 +14,7 @@ import {
   type MedioVista,
   type TipoExperiencia,
 } from "@/lib/collection/experiencia/contenido";
+import { leerRecortes } from "@/lib/collection/recortes";
 
 export function medioAVista(row: ColMedio): MedioVista {
   return {
@@ -32,6 +33,7 @@ export function medioAVista(row: ColMedio): MedioVista {
     focoY: row.focoY,
     posterUrl: row.posterUrl,
     duracion: row.duracion,
+    recortes: leerRecortes(row.recortes),
   };
 }
 

@@ -37,7 +37,7 @@ export default async function Destino({ params }: Props) {
             (card.portada.tipo === "VIDEO" ? (
               <MedioVideo medio={card.portada} variante="fondo" relleno />
             ) : (
-              <MedioImagen medio={card.portada} relleno prioridad sizes="100vw" />
+              <MedioImagen medio={card.portada} relleno prioridad encuadre={["16:9", "4:5"]} sizes="100vw" />
             ))}
           <div className="cs-hero-velo" aria-hidden />
           <div className="cs-hero-texto cs-envolvente">

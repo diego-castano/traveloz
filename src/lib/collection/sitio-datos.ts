@@ -41,10 +41,12 @@ export function invalidarSitio() {
   revalidateTag(ETIQUETA);
 }
 
-/** La variante más grande de una foto (o el póster de un video), para Open Graph. */
+/** Imagen para Open Graph: el encuadre 1.91:1 si existe, si no la variante más grande (o el póster de un video). */
 export function imagenSocial(m: MedioVista | null | undefined): string | null {
   if (!m) return null;
   if (m.tipo === "VIDEO") return m.posterUrl;
+  // El encuadre 1.91:1 ya está generado en 1200 × 630.
+  if (m.recortes?.["1.91:1"]?.url) return m.recortes["1.91:1"].url;
   const mayor = [...m.variantes].sort((a, b) => b.w - a.w)[0];
   return mayor?.url ?? m.url;
 }

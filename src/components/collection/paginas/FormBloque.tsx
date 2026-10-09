@@ -12,6 +12,7 @@ import { EditorTexto } from "../editor/EditorTexto";
 import { Asa, Campo, Contador, ListaOrdenable, SlotMedio, TiraMedios, entrada, entradaArea, entradaSelect, entradaTitulo } from "../constructor/campos";
 import { Elegidos, Segmentado, type OpcionElegible } from "../constructor/Elegidos";
 import { nuevoId } from "../constructor/estado";
+import type { Aspecto } from "@/lib/collection/recortes";
 
 type Patch = Record<string, unknown>;
 type Valores = Record<string, unknown>;
@@ -19,7 +20,7 @@ type Valores = Record<string, unknown>;
 type Def =
   | { c: "linea" | "area"; k: string; label: string; max: number; grande?: boolean; ayuda?: string; ph?: string }
   | { c: "html"; k: string; label: string; max: number; alto?: number; ph?: string }
-  | { c: "medio"; k: string; label: string; aspecto: number; conVideo?: boolean }
+  | { c: "medio"; k: string; label: string; aspecto: number; conVideo?: boolean; encuadres?: Aspecto[] }
   | { c: "seg"; k: string; label: string; opciones: readonly (readonly [string, string])[] }
   | {
       c: "elegidos";
@@ -44,7 +45,7 @@ const cta: Def[] = [
 ];
 
 const CAMPOS: Record<TipoBloque, Def[]> = {
-  portada: [eyebrow, titulo, bajada, { c: "medio", k: "medio", label: "Foto o video", aspecto: 16 / 9, conVideo: true }, ...cta],
+  portada: [eyebrow, titulo, bajada, { c: "medio", k: "medio", label: "Foto o video", aspecto: 16 / 9, conVideo: true, encuadres: ["16:9"] }, ...cta],
   manifiesto: [eyebrow, { c: "html", k: "texto", label: "Texto", max: 4000, alto: 180 }, { c: "linea", k: "firma", label: "Firma", max: 120 }],
   texto: [
     eyebrow,
@@ -56,7 +57,7 @@ const CAMPOS: Record<TipoBloque, Def[]> = {
     eyebrow,
     titulo,
     { c: "html", k: "texto", label: "Texto", max: 6000, alto: 200 },
-    { c: "medio", k: "medio", label: "Foto", aspecto: 4 / 5 },
+    { c: "medio", k: "medio", label: "Foto", aspecto: 4 / 5, encuadres: ["4:5"] },
     { c: "seg", k: "lado", label: "Foto a la", opciones: [["izquierda", "Izquierda"], ["derecha", "Derecha"]] },
   ],
   galeria: [titulo, { c: "galeria" }],
@@ -129,7 +130,7 @@ const CAMPOS: Record<TipoBloque, Def[]> = {
       ayudaAuto: "Se muestran los 3 artículos publicados más recientes." },
   ],
   newsletter: [titulo, { c: "area", k: "texto", label: "Texto", max: 300 }, { c: "medio", k: "medio", label: "Foto", aspecto: 16 / 9 }],
-  cierre: [eyebrow, titulo, { c: "area", k: "texto", label: "Texto", max: 300 }, ...cta, { c: "medio", k: "medio", label: "Foto", aspecto: 4 / 5 }] };
+  cierre: [eyebrow, titulo, { c: "area", k: "texto", label: "Texto", max: 300 }, ...cta, { c: "medio", k: "medio", label: "Foto", aspecto: 4 / 3, encuadres: ["4:3", "4:5"] }] };
 
 function opcionesDe(fuente: "destinos" | "experiencias" | "testimonios" | "articulos", m: MapasPagina): OpcionElegible[] {
   switch (fuente) {
@@ -214,6 +215,8 @@ export function FormBloque({
                 <SlotMedio
                   className="max-w-[420px]"
                   aspecto={d.aspecto}
+                  encuadres={d.encuadres}
+                  portada={d.conVideo}
                   tipo={d.conVideo ? undefined : "FOTO"}
                   medioId={ref?.medioId ?? null}
                   etiqueta={d.label.toLowerCase()}

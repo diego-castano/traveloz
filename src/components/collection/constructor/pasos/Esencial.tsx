@@ -325,7 +325,7 @@ function Especialistas() {
             >
               <span className="relative h-14 w-11 shrink-0 overflow-hidden rounded-col-sm bg-col-base">
                 {e.retrato ? (
-                  <MedioImagen medio={e.retrato} relleno sizes="60px" />
+                  <MedioImagen medio={e.retrato} relleno encuadre="4:5" sizes="60px" />
                 ) : (
                   <UserRound className="absolute inset-0 m-auto h-5 w-5 text-col-subtle" strokeWidth={1.25} />
                 )}

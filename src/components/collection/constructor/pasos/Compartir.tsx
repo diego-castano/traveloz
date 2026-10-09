@@ -98,7 +98,7 @@ export function PasoCompartir() {
             <div className="ml-auto max-w-[360px] rounded-lg rounded-tr-none bg-[#D9FDD3] p-1 shadow-col-1">
               <div className="overflow-hidden rounded-md bg-[#CFEFC6]">
                 {imagen ? (
-                  <MedioImagen medio={imagen} aspecto={1200 / 630} sizes="360px" />
+                  <MedioImagen medio={imagen} aspecto={1200 / 630} encuadre="1.91:1" sizes="360px" />
                 ) : (
                   <MedioFantasma aspecto={1200 / 630} texto="Sin imagen" />
                 )}
@@ -120,10 +120,11 @@ export function PasoCompartir() {
           </div>
           <Campo
             etiqueta="Imagen para compartir"
-            ayuda={c.ogImagenId ? "Recorte 1200 × 630." : "Si no elegís otra, se usa la portada."}
+            ayuda={c.ogImagenId ? "Se genera en 1200 × 630 con el encuadre que elijas." : "Si no elegís otra, se usa la portada."}
           >
             <SlotMedio
               aspecto={1200 / 630}
+              encuadres={["1.91:1"]}
               tipo="FOTO"
               medioId={c.ogImagenId}
               etiqueta="imagen para compartir"

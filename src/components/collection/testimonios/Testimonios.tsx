@@ -25,6 +25,8 @@ import { EncabezadoPagina, Eyebrow, Vacio, Interruptor, etiquetaCampo, entrada, 
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { SelectorMedios } from "../pickers/SelectorMedios";
+import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
+import type { Aspecto } from "@/lib/collection/recortes";
 import { TestimonioSlide } from "../sitio/tarjetas";
 import "../sitio/sitio.css";
 import { AsaTarjeta, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "../contenido/comun";
@@ -241,7 +243,7 @@ export function Testimonios({
 
 function Foto({ t, sizes }: { t: Pick<TestimonioItem, "nombre" | "foto">; sizes: string }) {
   return t.foto ? (
-    <MedioImagen medio={t.foto} relleno sizes={sizes} imgClassName="group-hover:scale-[1.03]" />
+    <MedioImagen medio={t.foto} relleno encuadre="4:5" sizes={sizes} imgClassName="group-hover:scale-[1.03]" />
   ) : (
     <div className="absolute inset-0" style={{ background: fondoDeColor(tonoDe(t.nombre || "testimonio")) }} />
   );
@@ -474,6 +476,8 @@ function EditorTestimonio({
   );
 }
 
+const ENCUADRE_FOTO: Aspecto[] = ["4:5"];
+
 function CampoFoto({
   t,
   editable,
@@ -483,6 +487,7 @@ function CampoFoto({
   onCambio: (m: MedioVista | null) => void;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const encuadre = useEditorEncuadre(ENCUADRE_FOTO, onCambio);
   return (
     <div className="flex flex-col gap-2">
       <span className={etiquetaCampo}>Foto</span>
@@ -521,14 +526,19 @@ function CampoFoto({
           <span className="text-col-sm font-medium">Elegir</span>
         </button>
       )}
+      {t.foto && editable && <BotonEncuadre onClick={() => encuadre.abrir(t.foto)} className="self-start" />}
       <p className="text-col-xs leading-snug text-col-muted">Del viaje, no un retrato a cámara.</p>
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}
         tipo="FOTO"
         titulo="Foto del testimonio"
-        onElegir={(m) => onCambio(m[0] ?? null)}
+        onElegir={(m) => {
+          onCambio(m[0] ?? null);
+          encuadre.abrir(m[0], true);
+        }}
       />
+      {encuadre.editor}
     </div>
   );
 }

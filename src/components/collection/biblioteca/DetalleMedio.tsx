@@ -7,20 +7,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog } from "radix-ui";
 import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink, LoaderCircle, Trash2, X } from "lucide-react";
+import { ASPECTOS, USO_ASPECTO, VALOR_ASPECTO, type Aspecto, type CambioRecortes } from "@/lib/collection/recortes";
 import { actualizarMedio, type ColMedioDto } from "@/actions/collection/medios.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
 import { CheckAnimado } from "../movimiento";
 import { Boton, Estado, etiquetaCampo, entrada, entradaArea, cajaCompuesta, entradaInterna } from "../ui";
-import { MedioImagen, aspectoDe, fmtDuracion, fmtPeso, srcDe } from "./MedioImagen";
+import { aspectoDe, fmtDuracion, fmtPeso, srcDe } from "./MedioImagen";
+import { MedioImagen as MedioSitio } from "../sitio/medios";
+import { EditorEncuadre } from "./EditorEncuadre";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
-const RECORTES = [
-  { label: "4:5", a: 4 / 5 },
-  { label: "16:9", a: 16 / 9 },
-  { label: "1:1", a: 1 },
-];
 
 export type EstadoGuardado = "quieto" | "guardando" | "guardado" | "error";
 type Textos = { alt: string; leyenda: string; credito: string };
@@ -109,6 +107,7 @@ function Cuerpo({
   const [foco, setFoco] = useState({ x: medio.focoX, y: medio.focoY });
   const [estado, setEstado] = useState<EstadoGuardado>("quieto");
   const [confirmar, setConfirmar] = useState(false);
+  const [encuadre, setEncuadre] = useState<Aspecto | null>(null);
 
   // Último valor confirmado por el servidor, para mandar solo lo que cambió.
   const guardado = useRef(medio);
@@ -132,6 +131,14 @@ function Cuerpo({
     },
     [medio.id, onCambio, avisar],
   );
+
+  const guardarRecortes = async (recortes: CambioRecortes) => {
+    const r = await actualizarMedio(medio.id, { recortes }).catch(() => ({ ok: false as const, error: "Sin conexión. Probá de nuevo." }));
+    if (!r.ok) return r.error;
+    guardado.current = r.data;
+    onCambio(r.data);
+    return null;
+  };
 
   const pendientes = useCallback((): Partial<Textos> => {
     const g = guardado.current;
@@ -203,7 +210,8 @@ function Cuerpo({
     : "Sin registro";
 
   const a = aspectoDe(medio);
-  const posicionCss = `${foco.x * 100}% ${foco.y * 100}%`;
+  // Con el foco en vivo, así las vistas "Automático por foco" siguen al punto.
+  const conFoco = { ...medio, focoX: foco.x, focoY: foco.y };
 
   return (
     <>
@@ -257,24 +265,49 @@ function Cuerpo({
             <EditorFoco medio={medio} aspecto={a} foco={foco} editable={editable} onMover={setFoco} onSoltar={(f) => void guardar({ focoX: f.x, focoY: f.y })} />
           )}
           {medio.tipo === "FOTO" && (
-            <div className="mt-5">
-              <p className="mb-2 text-col-xs uppercase tracking-[0.14em] text-col-slate">Así se recorta</p>
-              <div className="flex items-end gap-3">
-                {RECORTES.map((r) => (
-                  <figure key={r.label} className="min-w-0" style={{ flexGrow: r.a, flexBasis: 0 }}>
-                    <MedioImagen
-                      medio={medio}
-                      sizes="200px"
-                      ancho={480}
-                      aspecto={r.a}
-                      objectPosition={posicionCss}
-                      className="w-full rounded-col-sm"
-                    />
-                    <figcaption className="mt-1.5 text-col-xs tracking-wide text-col-slate">{r.label}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            </div>
+            <section className="mt-6" aria-labelledby="encuadres">
+              <h3 id="encuadres" className="text-col-sm font-medium text-col-ink">
+                Encuadres
+              </h3>
+              <p className="mt-0.5 text-col-xs text-col-slate">
+                Uno por forma. Vale en cada lugar del sitio que la usa{editable ? "; tocá uno para elegirlo." : "."}
+              </p>
+              <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {ASPECTOS.map((asp) => {
+                  const propio = !!medio.recortes[asp];
+                  return (
+                    <li key={asp}>
+                      <button
+                        type="button"
+                        disabled={!editable}
+                        onClick={() => setEncuadre(asp)}
+                        aria-label={`Encuadre ${asp}, ${USO_ASPECTO[asp]}: ${propio ? "elegido a mano" : "automático por foco"}`}
+                        className="group flex w-full items-center gap-3 rounded-col-sm border border-col-line bg-col-surface p-2 text-left transition-colors duration-col ease-col hover:border-col-gold disabled:pointer-events-none"
+                      >
+                        <span className="flex h-14 w-[108px] shrink-0 items-center justify-center">
+                          <span className="block h-14 max-w-full" style={{ width: Math.min(108, Math.round(56 * VALOR_ASPECTO[asp])) }}>
+                            <MedioSitio
+                              medio={conFoco}
+                              encuadre={asp}
+                              aspecto={VALOR_ASPECTO[asp]}
+                              sizes="120px"
+                              className="max-h-14 w-full rounded-col-sm"
+                            />
+                          </span>
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-col-sm font-medium text-col-ink">{asp}</span>
+                          <span className="block truncate text-col-xs text-col-slate">{USO_ASPECTO[asp]}</span>
+                          <span className={cn("block text-col-xs", propio ? "text-col-ok" : "text-col-muted")}>
+                            {propio ? "Encuadre propio" : "Automático por foco"}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
         </div>
 
@@ -379,6 +412,12 @@ function Cuerpo({
           )}
         </div>
       </div>
+      <EditorEncuadre
+        medio={encuadre ? medio : null}
+        aspectos={encuadre ? [encuadre] : []}
+        onGuardar={guardarRecortes}
+        onCerrar={() => setEncuadre(null)}
+      />
     </>
   );
 }

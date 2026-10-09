@@ -21,6 +21,7 @@ import { TarjetaSubida, ZonaSubida, aceptaDe, revisarArchivos } from "../bibliot
 import { Grilla, GrillaSkeleton } from "../biblioteca/Grilla";
 import { esReintentable, useSubidas } from "../biblioteca/useSubidas";
 import { useApi } from "../constructor/api";
+import { motivoPortada } from "@/lib/collection/limites-video";
 
 const POR_PAGINA = 36;
 
@@ -34,9 +35,12 @@ export function SelectorMedios({
   titulo,
   maximo,
   pestanaInicial,
+  portada,
   onElegir,
 }: {
   abierto: boolean;
+  /** Portada o fondo: solo videos de hasta 10 MB y 20 segundos. */
+  portada?: boolean;
   /** "subir": abre con la zona de subida agrandada. */
   pestanaInicial?: "biblioteca" | "subir";
   onCerrar: () => void;
@@ -77,6 +81,7 @@ export function SelectorMedios({
                   titulo={titulo}
                   maximo={maximo}
                   pestanaInicial={pestanaInicial}
+                  portada={portada}
                   onCerrar={onCerrar}
                   onElegir={onElegir}
                 />
@@ -95,10 +100,12 @@ function Cuerpo({
   titulo,
   maximo,
   pestanaInicial,
+  portada,
   onCerrar,
   onElegir,
 }: {
   pestanaInicial?: "biblioteca" | "subir";
+  portada?: boolean;
   multiple: boolean;
   tipo?: "FOTO" | "VIDEO";
   titulo?: string;
@@ -121,6 +128,8 @@ function Cuerpo({
   // Archivos arrastrados sobre el diálogo: la franja de subida se agranda.
   const [arrastrando, setArrastrando] = useState(false);
   const [rechazados, setRechazados] = useState<string[]>([]);
+  // Video que no sirve para portada: se avisa al lado de la grilla y no se elige.
+  const [aviso, setAviso] = useState<string | null>(null);
   const profundidad = useRef(0);
   const pedido = useRef(0);
   const centinela = useRef<HTMLDivElement>(null);
@@ -172,8 +181,16 @@ function Cuerpo({
     return () => io.disconnect();
   }, [cursor, cargando, cargar]);
 
+  const noSirve = useCallback(
+    (m: ColMedioDto | undefined) => (portada && m?.tipo === "VIDEO" ? motivoPortada(m.peso, m.duracion) : null),
+    [portada],
+  );
+
   const alternarId = useCallback(
     (id: string) => {
+      const motivo = noSirve(items.find((m) => m.id === id));
+      setAviso(motivo);
+      if (motivo) return;
       setElegidos((prev) => {
         if (!multiple) return prev[0] === id ? [] : [id];
         if (prev.includes(id)) return prev.filter((x) => x !== id);
@@ -181,7 +198,7 @@ function Cuerpo({
         return [...prev, id];
       });
     },
-    [multiple, maximo],
+    [multiple, maximo, items, noSirve],
   );
 
   const alternar = useCallback((indice: number) => {
@@ -193,13 +210,15 @@ function Cuerpo({
   const alListo = useCallback(
     (m: ColMedioDto) => {
       setItems((prev) => (prev.some((p) => p.id === m.id) ? prev : [m, ...prev]));
+      const motivo = noSirve(m);
+      if (motivo) return setAviso(motivo);
       setElegidos((prev) => (prev.includes(m.id) ? prev : multiple ? [...prev, m.id] : [m.id]));
     },
-    [multiple],
+    [multiple, noSirve],
   );
   const opcionesSubida = useMemo(
-    () => ({ preparar: api.prepararSubidaMedio, registrar: api.registrarMedio, put: api.subirArchivo }),
-    [api],
+    () => ({ preparar: api.prepararSubidaMedio, registrar: api.registrarMedio, put: api.subirArchivo, portada }),
+    [api, portada],
   );
   const { subidas, agregar, reintentar, reintentarTodo } = useSubidas(alListo, opcionesSubida);
 
@@ -228,7 +247,7 @@ function Cuerpo({
       setArrastrando(false);
       if (e.defaultPrevented || !conArchivos(e)) return;
       e.preventDefault();
-      const { validos, motivos } = revisarArchivos(Array.from(e.dataTransfer.files), acepta);
+      const { validos, motivos } = revisarArchivos(Array.from(e.dataTransfer.files), acepta, portada);
       setRechazados(motivos);
       if (validos.length) agregarArchivos(validos);
     },
@@ -338,6 +357,7 @@ function Cuerpo({
               pegar
               compacta={!vacia && pestanaInicial !== "subir"}
               abierta={arrastrando}
+              portada={portada}
               onArchivos={agregarArchivos}
               className={cn(vacia && "flex-1")}
             />
@@ -351,6 +371,12 @@ function Cuerpo({
                 </li>
               ))}
             </ul>
+          )}
+          {aviso && (
+            <p role="alert" className="flex items-start gap-2 rounded-col bg-col-alerta/[0.07] px-4 py-3 text-col-sm text-col-alerta">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+              {aviso}
+            </p>
           )}
           {error && (
             <p role="alert" className="flex items-center gap-2 text-col-md text-col-alerta">
@@ -395,7 +421,17 @@ function Cuerpo({
               onAbrir={alternar}
               onAlternar={alternar}
               orden={multiple ? orden : undefined}
-              onDobleClic={multiple ? undefined : (i) => items[i] && void confirmar([items[i].id])}
+              onDobleClic={
+                multiple
+                  ? undefined
+                  : (i) => {
+                      const m = items[i];
+                      if (!m) return;
+                      const motivo = noSirve(m);
+                      if (motivo) setAviso(motivo);
+                      else void confirmar([m.id]);
+                    }
+              }
             />
           )}
           {!vacia && <div ref={centinela} className="h-px" />}

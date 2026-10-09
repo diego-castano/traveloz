@@ -41,7 +41,7 @@ export function ArticuloPagina({ vista: a, modo }: { vista: ArticuloVista; modo:
       {(a.portada || preview) && (
         <div className="cs-envolvente">
           <div className="cs-articulo-portada">
-            <MedioBloque medio={a.portada} preview={preview} relleno prioridad texto="Elegí la portada" sizes="100vw" />
+            <MedioBloque medio={a.portada} preview={preview} relleno prioridad encuadre={["4:3", "1:1", "16:9"]} texto="Elegí la portada" sizes="100vw" />
           </div>
         </div>
       )}

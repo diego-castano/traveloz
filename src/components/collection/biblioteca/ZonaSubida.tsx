@@ -16,34 +16,44 @@ import { useApi } from "../constructor/api";
 import { CheckAnimado, EASE, resorteSuave } from "../movimiento";
 import { esDeSesion, esReintentable, useSubidas, type Subida } from "./useSubidas";
 import { errorAmigable } from "../shell/Avisos";
+import { MENSAJE_MOV, TIPOS_VIDEO, esMov, motivoPortada, motivoVideo } from "@/lib/collection/limites-video";
 
 export const ACEPTA_FOTO = "image/jpeg,image/png,image/webp,image/avif";
-export const ACEPTA_VIDEO = "video/mp4,video/webm,video/quicktime";
+export const ACEPTA_VIDEO = TIPOS_VIDEO.join(",");
 export const ACEPTA_TODO = `${ACEPTA_FOTO},${ACEPTA_VIDEO}`;
 
 const MB = 1024 * 1024;
 const TOPE_FOTO = 30 * MB;
-const TOPE_VIDEO = 200 * MB;
 
 export function aceptaDe(tipo?: "FOTO" | "VIDEO") {
   return tipo === "FOTO" ? ACEPTA_FOTO : tipo === "VIDEO" ? ACEPTA_VIDEO : ACEPTA_TODO;
 }
 
-function textoLimites(acepta: string) {
+function textoLimites(acepta: string, portada?: boolean) {
   const fotos = acepta.includes("image/") ? "Fotos JPG, PNG, WebP o AVIF hasta 30 MB." : "";
-  const videos = acepta.includes("video/") ? "Videos MP4, WebM o MOV hasta 200 MB." : "";
+  const videos = !acepta.includes("video/")
+    ? ""
+    : portada
+      ? "Videos MP4 o WebM hasta 10 MB y 20 segundos."
+      : "Videos MP4 o WebM hasta 50 MB y 2 minutos.";
   return [fotos, videos].filter(Boolean).join(" ");
 }
 
-/** Separa lo que se puede subir de lo que no, con el motivo en criollo. */
-export function revisarArchivos(files: File[], acepta: string) {
+/**
+ * Separa lo que se puede subir de lo que no, con el motivo en criollo. La
+ * duración de los videos la revisa useSubidas antes de subir.
+ */
+export function revisarArchivos(files: File[], acepta: string, portada?: boolean) {
   const tipos = acepta.split(",");
   const validos: File[] = [];
   const motivos: string[] = [];
   for (const f of files) {
-    if (!tipos.includes(f.type)) motivos.push(`${f.name}: formato no admitido`);
+    const video = f.type.startsWith("video/");
+    const motivoTope = video ? (portada ? motivoPortada(f.size, null) : motivoVideo(f.size, null)) : null;
+    if (esMov(f) && acepta.includes("video/")) motivos.push(`${f.name}: ${MENSAJE_MOV}`);
+    else if (!tipos.includes(f.type)) motivos.push(`${f.name}: formato no admitido`);
     else if (f.type.startsWith("image/") && f.size > TOPE_FOTO) motivos.push(`${f.name}: pesa más de 30 MB`);
-    else if (f.type.startsWith("video/") && f.size > TOPE_VIDEO) motivos.push(`${f.name}: pesa más de 200 MB`);
+    else if (motivoTope) motivos.push(`${f.name}: ${motivoTope}`);
     else validos.push(f);
   }
   return { validos, motivos };
@@ -74,10 +84,13 @@ export function ZonaSubida({
   pegar = false,
   compacta = false,
   abierta = false,
+  portada,
   onArchivos,
   className,
 }: {
   acepta?: string;
+  /** Lugar de portada o fondo: videos más cortos y livianos. */
+  portada?: boolean;
   multiple?: boolean;
   /** Escucha ⌘V mientras la zona está en pantalla. */
   pegar?: boolean;
@@ -95,11 +108,11 @@ export function ZonaSubida({
 
   const recibir = useCallback(
     (files: File[]) => {
-      const { validos, motivos } = revisarArchivos(files, acepta);
+      const { validos, motivos } = revisarArchivos(files, acepta, portada);
       setMotivos(motivos);
       if (validos.length) onArchivos(multiple ? validos : validos.slice(0, 1));
     },
-    [acepta, multiple, onArchivos],
+    [acepta, multiple, onArchivos, portada],
   );
 
   useEffect(() => {
@@ -183,7 +196,7 @@ export function ZonaSubida({
               Arrastrá {que} acá o <span className="text-col-ink underline decoration-col-gold underline-offset-4">elegí {multiple ? "archivos" : "un archivo"}</span>
               {pegar && <span className="hidden md:inline">. También podés pegar con ⌘V</span>}
             </span>
-            <span className="hidden shrink-0 text-col-xs text-col-muted lg:block">{textoLimites(acepta)}</span>
+            <span className="hidden shrink-0 text-col-xs text-col-muted lg:block">{textoLimites(acepta, portada)}</span>
           </>
         ) : (
           <>
@@ -195,7 +208,7 @@ export function ZonaSubida({
               <span className="text-col-ink underline decoration-col-gold underline-offset-4">elegí {multiple ? "archivos" : "un archivo"}</span> de
               tu computadora.
             </span>
-            <span className="text-col-xs text-col-muted">{textoLimites(acepta)}</span>
+            <span className="text-col-xs text-col-muted">{textoLimites(acepta, portada)}</span>
           </>
         )}
       </motion.button>
@@ -358,12 +371,15 @@ export function TarjetaSubida({ s, onReintentar, listo = "Listo" }: { s: Subida;
  */
 export function SoltarAqui({
   tipo,
+  portada,
   onMedio,
   deshabilitado,
   className,
   children,
 }: {
   tipo?: "FOTO" | "VIDEO";
+  /** Lugar de portada o fondo: videos de hasta 10 MB y 20 segundos. */
+  portada?: boolean;
   onMedio: (m: MedioVista) => void;
   deshabilitado?: boolean;
   className?: string;
@@ -379,8 +395,8 @@ export function SoltarAqui({
   onMedioRef.current = onMedio;
 
   const opciones = useMemo(
-    () => ({ preparar: api.prepararSubidaMedio, registrar: api.registrarMedio, put: api.subirArchivo }),
-    [api],
+    () => ({ preparar: api.prepararSubidaMedio, registrar: api.registrarMedio, put: api.subirArchivo, portada }),
+    [api, portada],
   );
   const alListo = useCallback(
     async (m: ColMedioDto) => {
@@ -431,7 +447,7 @@ export function SoltarAqui({
         e.preventDefault();
         profundidad.current = 0;
         setEncima(false);
-        const { validos, motivos } = revisarArchivos(Array.from(e.dataTransfer.files), aceptaDe(tipo));
+        const { validos, motivos } = revisarArchivos(Array.from(e.dataTransfer.files), aceptaDe(tipo), portada);
         if (validos[0]) {
           setAviso(null);
           limpiar();

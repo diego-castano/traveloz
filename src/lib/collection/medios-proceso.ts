@@ -46,3 +46,22 @@ export async function procesarFoto(original: Buffer): Promise<FotoProcesada> {
 
   return { ancho, alto, colorDominante, placeholder, variantes };
 }
+
+/**
+ * Imagen para compartir (Open Graph): recorta el original rotado con el
+ * encuadre 1.91:1 (normalizado 0..1) y lo lleva a 1200 × 630 en JPEG.
+ */
+export async function generarOg(original: Buffer, r: { x: number; y: number; w: number; h: number }): Promise<Buffer> {
+  const base = await sharp(original).rotate().toBuffer({ resolveWithObject: true });
+  const W = base.info.width;
+  const H = base.info.height;
+  const left = Math.min(W - 1, Math.max(0, Math.round(r.x * W)));
+  const top = Math.min(H - 1, Math.max(0, Math.round(r.y * H)));
+  const width = Math.max(1, Math.min(W - left, Math.round(r.w * W)));
+  const height = Math.max(1, Math.min(H - top, Math.round(r.h * H)));
+  return sharp(base.data)
+    .extract({ left, top, width, height })
+    .resize(1200, 630, { fit: "cover" })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+}

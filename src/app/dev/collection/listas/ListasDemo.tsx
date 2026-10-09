@@ -71,6 +71,7 @@ export const MEDIOS: ColMedioDto[] = Array.from({ length: 18 }, (_, i) => {
     credito: i % 5 === 0 ? "" : "Traveloz",
     focoX: 0.5,
     focoY: 0.5,
+    recortes: {},
     etiquetas: [],
     subidoPorId: "dev",
     createdAt: "2026-10-09T12:00:00.000Z",

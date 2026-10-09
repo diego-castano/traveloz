@@ -598,7 +598,7 @@ function TarjetaConsultada({ e }: { e: ExperienciaConsultada }) {
   return (
     <div className="flex max-w-[560px] items-center gap-4 border border-col-line bg-col-base p-3">
       <div className="w-16 shrink-0">
-        {e.portada ? <MedioImagen medio={e.portada} aspecto={4 / 5} sizes="64px" /> : <div className="aspect-[4/5] bg-col-line" />}
+        {e.portada ? <MedioImagen medio={e.portada} aspecto={4 / 5} encuadre="4:5" sizes="64px" /> : <div className="aspect-[4/5] bg-col-line" />}
       </div>
       <div className="flex min-w-0 flex-col gap-1">
         <span className={cn(etiqueta, "text-[12px] text-col-slate")}>Consultás por</span>
@@ -624,7 +624,7 @@ function Resumen({ d, experiencia }: { d: DatosConsulta; experiencia: Experienci
         <span aria-hidden className="h-px w-6 bg-col-gold" />
         Tu viaje hasta ahora
       </span>
-      {experiencia?.portada && <MedioImagen medio={experiencia.portada} aspecto={16 / 10} sizes="360px" />}
+      {experiencia?.portada && <MedioImagen medio={experiencia.portada} aspecto={16 / 10} encuadre={["16:9", "4:5"]} sizes="360px" />}
       <dl className="flex flex-col">
         {filas.map((f) => (
           <div key={f.t} className="flex flex-col gap-1 border-b border-col-noche-linea py-4">

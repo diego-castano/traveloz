@@ -20,6 +20,7 @@ import { crearDestino } from "@/actions/collection/destinos.actions";
 import { crearEspecialista } from "@/actions/collection/especialistas.actions";
 import { listarProveedoresCatalogo } from "@/actions/collection/catalogo.actions";
 import {
+  actualizarMedio,
   listarMedios,
   obtenerMediosVista,
   prepararSubidaMedio,
@@ -41,6 +42,8 @@ export interface ApiConstructor {
     take?: number;
   }): R<{ items: ColMedioDto[]; nextCursor: string | null }>;
   obtenerMediosVista(ids: string[]): R<MedioVista[]>;
+  /** Para los encuadres de una foto. */
+  actualizarMedio: typeof actualizarMedio;
   /** Los dos pasos de la subida (los usa useSubidas). */
   prepararSubidaMedio: typeof prepararSubidaMedio;
   registrarMedio: typeof registrarMedio;
@@ -58,6 +61,7 @@ export const apiReal: ApiConstructor = {
   buscarHoteles,
   listarMedios,
   obtenerMediosVista,
+  actualizarMedio,
   prepararSubidaMedio,
   registrarMedio,
   crearDestino,

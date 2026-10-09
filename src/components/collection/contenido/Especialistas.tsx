@@ -26,6 +26,8 @@ import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, ChipsTexto, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
 import { SelectorMedios } from "../pickers/SelectorMedios";
+import { BotonEncuadre, useEditorEncuadre } from "../biblioteca/EditorEncuadre";
+import type { Aspecto } from "@/lib/collection/recortes";
 import { SoltarAqui } from "../biblioteca/ZonaSubida";
 import { Especialista, PaginaCtx } from "../sitio/experiencia/secciones";
 import { demoVacia } from "../sitio/demo";
@@ -250,7 +252,7 @@ export function Especialistas({
 
 function Retrato({ e, sizes }: { e: Pick<EspecialistaItem, "nombre" | "retrato">; sizes: string }) {
   return e.retrato ? (
-    <MedioImagen medio={e.retrato} relleno sizes={sizes} imgClassName="group-hover:scale-[1.03]" />
+    <MedioImagen medio={e.retrato} relleno encuadre="4:5" sizes={sizes} imgClassName="group-hover:scale-[1.03]" />
   ) : (
     <div className="absolute inset-0 flex items-center justify-center" style={{ background: fondoDeColor(tonoDe(e.nombre)) }}>
       <span className="font-col-display text-col-display-lg font-light italic text-col-base/70">{iniciales(e.nombre)}</span>
@@ -508,6 +510,8 @@ function EditorEspecialista({
   );
 }
 
+const ENCUADRE_RETRATO: Aspecto[] = ["4:5"];
+
 function CampoRetrato({
   retrato,
   nombre,
@@ -519,10 +523,15 @@ function CampoRetrato({
   onCambio: (m: MedioVista | null) => void;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const encuadre = useEditorEncuadre(ENCUADRE_RETRATO, onCambio);
+  const elegir = (m: MedioVista | null) => {
+    onCambio(m);
+    encuadre.abrir(m, true);
+  };
   return (
     <div className="flex flex-col gap-2">
       <span className={etiquetaCampo}>Retrato</span>
-      <SoltarAqui tipo="FOTO" deshabilitado={!editable} onMedio={(m) => onCambio(m)}>
+      <SoltarAqui tipo="FOTO" deshabilitado={!editable} onMedio={elegir}>
       {retrato ? (
         <div className="group relative aspect-[4/5] overflow-hidden rounded-col-sm">
           <Retrato e={{ nombre, retrato }} sizes="160px" />
@@ -559,13 +568,15 @@ function CampoRetrato({
         </button>
       )}
       </SoltarAqui>
+      {retrato && editable && <BotonEncuadre onClick={() => encuadre.abrir(retrato)} className="self-start" />}
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}
         tipo="FOTO"
         titulo="Retrato"
-        onElegir={(m) => onCambio(m[0] ?? null)}
+        onElegir={(m) => elegir(m[0] ?? null)}
       />
+      {encuadre.editor}
     </div>
   );
 }

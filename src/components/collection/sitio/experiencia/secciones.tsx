@@ -119,7 +119,7 @@ export function Portada({ v }: V) {
           v.portada.tipo === "VIDEO" ? (
             <MedioVideo medio={v.portada} variante="fondo" relleno />
           ) : (
-            <MedioImagen medio={v.portada} relleno prioridad sizes="100vw" />
+            <MedioImagen medio={v.portada} relleno prioridad encuadre={["16:9", "4:5"]} sizes="100vw" />
           )
         ) : (
           preview && <MedioFantasma relleno oscuro texto="Elegí la portada" className="pb-40" />
@@ -759,7 +759,7 @@ export function BandaEspecialista({
       <div className="cs-envolvente cs-especialista">
         <div className="cs-especialista-retrato">
           {e?.retrato ? (
-            <MedioImagen medio={e.retrato} aspecto={4 / 5} sizes="280px" />
+            <MedioImagen medio={e.retrato} aspecto={4 / 5} encuadre="4:5" sizes="280px" />
           ) : (
             <MedioFantasma aspecto={4 / 5} oscuro texto={e ? undefined : "Retrato"} />
           )}
@@ -809,7 +809,7 @@ export function Cierre({ v }: V) {
   const foto = v.portada?.tipo === "FOTO" ? v.portada : null;
   return (
     <div className="cs-cierre flex items-center">
-      {foto && <MedioImagen medio={foto} relleno sizes="100vw" />}
+      {foto && <MedioImagen medio={foto} relleno encuadre={["16:9", "4:5"]} sizes="100vw" />}
       <div aria-hidden className="absolute inset-0 bg-col-ink/55" />
       <div className="cs-envolvente relative flex flex-col items-center gap-6 py-24 text-center">
         <h2 className="cs-h2 max-w-[20ch] text-col-base">Este viaje se arma a tu medida.</h2>

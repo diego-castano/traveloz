@@ -8,7 +8,7 @@ import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import type { ColMedioDto } from "@/actions/collection/medios.actions";
 import { cn } from "@/components/lib/cn";
-import { MedioImagen, aspectoDe } from "./MedioImagen";
+import { MedioImagen, aspectoDe, fmtDuracion, fmtPeso } from "./MedioImagen";
 import { resorteSuave } from "../movimiento";
 
 const GAP = 12;
@@ -150,6 +150,8 @@ function Mosaico({
           aspecto={w / h}
           className="h-full w-full"
           imgClassName={cn("group-hover:scale-[1.02]", seleccionado && "scale-[0.97]")}
+          // El pie con nombre, duración y peso la reemplaza cuando está a la vista.
+          insigniaClassName={modoSeleccion ? "hidden" : "group-hover:opacity-0 group-focus-within:opacity-0"}
         />
         <span
           aria-hidden
@@ -166,10 +168,17 @@ function Mosaico({
           )}
         >
           <span className="block truncate text-col-sm text-col-base">{m.nombre}</span>
-          {m.ancho && m.alto && (
+          {m.tipo === "VIDEO" ? (
             <span className="block text-col-xs tracking-wide text-col-base/70">
-              {m.ancho} × {m.alto}
+              {["Video", fmtDuracion(m.duracion), fmtPeso(m.peso)].filter(Boolean).join(" · ")}
             </span>
+          ) : (
+            m.ancho &&
+            m.alto && (
+              <span className="block text-col-xs tracking-wide text-col-base/70">
+                {m.ancho} × {m.alto}
+              </span>
+            )
           )}
         </span>
         {(faltaAlt || faltaCredito) && (

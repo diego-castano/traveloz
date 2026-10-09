@@ -4,6 +4,7 @@
 // cliente.
 
 import { z } from "zod";
+import type { Recortes } from "@/lib/collection/recortes";
 
 // ── Piezas ──────────────────────────────────────────────────────────────────
 
@@ -268,6 +269,8 @@ export interface MedioVista {
   focoY: number;
   posterUrl: string | null;
   duracion: number | null;
+  /** Encuadres guardados por aspecto (solo fotos). */
+  recortes?: Recortes;
 }
 
 /** Foto del catálogo común (hoteles de Traveloz), más simple que un medio. */
