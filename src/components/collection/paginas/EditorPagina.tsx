@@ -251,19 +251,19 @@ export function EditorPagina({
             <Link
               href="/backend/collection/paginas"
               aria-label="Volver a páginas"
-              className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
+              className="flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
             >
               <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
             </Link>
             <div className="min-w-0">
-              <p className="truncate font-col-display text-[26px] leading-none text-col-ink">{detalle.titulo}</p>
-              <p className="mt-1 truncate font-mono text-[11px] text-col-slate">collection.traveloz.com.uy{ruta}</p>
+              <p className="truncate font-col-display text-col-2xl leading-none text-col-ink">{detalle.titulo}</p>
+              <p className="mt-1 truncate font-mono text-col-xs text-col-slate">collection.traveloz.com.uy{ruta}</p>
             </div>
             <span className="flex-1" />
             <div className="hidden w-[190px] md:block">
               <IndicadorGuardado g={guardado} editable={puedeEditar} />
             </div>
-            <p className="hidden items-center gap-2 text-[12px] text-col-slate xl:flex">
+            <p className="hidden items-center gap-2 text-col-xs text-col-slate xl:flex">
               {sinPublicar ? (
                 <>
                   <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-col-gold" /> Cambios sin publicar
@@ -282,7 +282,7 @@ export function EditorPagina({
           </header>
           <BannerConflicto visible={conflicto} />
           {!puedeEditar && (
-            <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-[13px] text-col-slate">
+            <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-col-sm text-col-slate">
               Estás viendo esta página en modo lectura: tu usuario no tiene permiso para editar el sitio.
             </p>
           )}
@@ -291,8 +291,8 @@ export function EditorPagina({
             {/* Lista de bloques */}
             <aside className="flex w-[300px] shrink-0 flex-col border-r border-col-line bg-col-surface">
               <div className="flex items-center justify-between px-5 pb-3 pt-5">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-col-slate">
-                  Bloques <span className="tabular-nums text-col-slate/60">{bloques.length}</span>
+                <p className="text-col-xs uppercase tracking-[0.16em] text-col-slate">
+                  Bloques <span className="tabular-nums text-col-muted">{bloques.length}</span>
                 </p>
               </div>
               <div ref={lista} className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
@@ -341,16 +341,16 @@ export function EditorPagina({
                   className="mx-auto w-full max-w-[680px] px-6 pb-20 pt-10 md:px-10"
                 >
                   <header className="mb-10 flex items-start gap-5">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm bg-col-ink text-col-gold">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-col-sm bg-col-ink text-col-gold">
                       <Icono className="h-5 w-5" strokeWidth={1.4} aria-hidden />
                     </span>
                     <div className="min-w-0 flex-1">
                       <Eyebrow>Bloque {bloques.findIndex((b) => b.id === bloque.id) + 1} de {bloques.length}</Eyebrow>
-                      <h2 className="mt-3 font-col-display text-[40px] font-normal leading-[1.05] text-col-ink">{INFO[bloque.tipo].nombre}</h2>
-                      <p className="mt-1 text-[15px] text-col-slate">{INFO[bloque.tipo].descripcion}</p>
+                      <h2 className="mt-3 font-col-display text-col-display font-normal leading-[1.05] text-col-ink">{INFO[bloque.tipo].nombre}</h2>
+                      <p className="mt-1 text-col-cuerpo text-col-slate">{INFO[bloque.tipo].descripcion}</p>
                     </div>
                     {bloque.oculto && (
-                      <span className="mt-1 flex items-center gap-1.5 rounded-sm border border-col-line px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-col-slate">
+                      <span className="mt-1 flex items-center gap-1.5 rounded-col-sm border border-col-line px-2 py-1 text-col-xs uppercase tracking-[0.12em] text-col-slate">
                         <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden /> Oculto
                       </span>
                     )}
@@ -362,7 +362,7 @@ export function EditorPagina({
                 </motion.div>
               ) : (
                 <div className="flex h-full flex-col items-center justify-center gap-5 px-8 text-center">
-                  <p className="max-w-[22ch] font-col-display text-[34px] leading-tight text-col-ink">
+                  <p className="max-w-[22ch] font-col-display text-col-3xl leading-tight text-col-ink">
                     {bloques.length ? "Elegí un bloque para editarlo." : "Esta página todavía no tiene bloques."}
                   </p>
                   {editable && !bloques.length && (
@@ -421,16 +421,16 @@ function ItemBloque({
   const [confirmar, setConfirmar] = useState(false);
   const Icono = iconoBloque(b.tipo);
   const resumen = resumenBloque(b);
-  const accion = "flex h-7 w-7 items-center justify-center rounded-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink";
+  const accion = "flex h-7 w-7 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink";
 
   return (
     <div
       data-item-bloque={b.id}
       onMouseLeave={() => setConfirmar(false)}
       className={cn(
-        "group relative flex items-center gap-2 rounded-sm border py-2 pl-1 pr-2 transition-[background-color,border-color,box-shadow] duration-200 ease-col",
+        "group relative flex items-center gap-2 rounded-col-sm border py-2 pl-1 pr-2 transition-[background-color,border-color,box-shadow] duration-col ease-col",
         activo ? "border-col-ink/80 bg-col-base" : "border-transparent hover:bg-col-base/60",
-        asa.arrastrando && "border-col-line bg-col-surface shadow-[0_16px_32px_-16px_rgba(50,55,59,0.5)]",
+        asa.arrastrando && "border-col-line bg-col-surface shadow-col-2",
       )}
     >
       {activo && <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 bg-col-gold" />}
@@ -438,29 +438,29 @@ function ItemBloque({
       <button type="button" onClick={onElegir} aria-current={activo ? "true" : undefined} className="flex min-w-0 flex-1 items-center gap-3 text-left">
         <span
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-col-sm border",
             activo ? "border-col-ink bg-col-ink text-col-gold" : "border-col-line bg-col-surface text-col-slate",
           )}
         >
           <Icono className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </span>
         <span className={cn("min-w-0 flex-1", b.oculto && "opacity-50")}>
-          <span className="flex items-center gap-1.5 text-[13.5px] text-col-ink">
+          <span className="flex items-center gap-1.5 text-col-md text-col-ink">
             {INFO[b.tipo].nombre}
             {b.oculto && <EyeOff className="h-3 w-3 text-col-slate" strokeWidth={1.75} aria-label="Oculto" />}
           </span>
-          <span className={cn("block truncate text-[12px]", resumen ? "text-col-slate" : "italic text-col-slate/50")}>
+          <span className={cn("block truncate text-col-xs", resumen ? "text-col-slate" : "italic text-col-subtle")}>
             {resumen || "Sin contenido"}
           </span>
         </span>
       </button>
       {editable &&
         (confirmar ? (
-          <span className="absolute inset-y-1 right-1 flex items-center gap-1 rounded-sm bg-col-surface pl-2 shadow-[-12px_0_12px_-6px_#fff]">
+          <span className="absolute inset-y-1 right-1 flex items-center gap-1 rounded-col-sm bg-col-surface pl-2 shadow-[-12px_0_12px_-6px_#fff]">
             <button
               type="button"
               onClick={onEliminar}
-              className="h-7 rounded-sm bg-col-alerta px-2 text-[11px] uppercase tracking-[0.1em] text-col-base"
+              className="h-7 rounded-col-sm bg-col-alerta px-2 text-col-sm font-medium text-col-base"
             >
               Eliminar
             </button>
@@ -469,7 +469,7 @@ function ItemBloque({
             </button>
           </span>
         ) : (
-          <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-sm bg-col-base opacity-0 transition-opacity duration-200 ease-col focus-within:opacity-100 group-hover:opacity-100">
+          <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-col-sm bg-col-base opacity-0 transition-opacity duration-col ease-col focus-within:opacity-100 group-hover:opacity-100">
             <button type="button" onClick={onOcultar} aria-label={b.oculto ? "Mostrar" : "Ocultar"} title={b.oculto ? "Mostrar" : "Ocultar"} className={accion}>
               {b.oculto ? <Eye className="h-3.5 w-3.5" strokeWidth={1.5} /> : <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} />}
             </button>
@@ -513,14 +513,14 @@ function Catalogo({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: EASE, delay: Math.min(i0 + i, 16) * 0.015 }}
             onClick={() => onElegir(t.tipo)}
-            className="group flex flex-col items-start gap-4 rounded-sm border border-col-line bg-col-surface p-4 text-left transition-[border-color,transform,box-shadow] duration-200 ease-col hover:-translate-y-0.5 hover:border-col-ink/40 hover:shadow-[0_16px_32px_-20px_rgba(50,55,59,0.45)] active:scale-[0.98]"
+            className="group flex flex-col items-start gap-4 rounded-col-sm border border-col-line bg-col-surface p-4 text-left transition-[border-color,transform,box-shadow] duration-col ease-col hover:-translate-y-0.5 hover:border-col-ink/40 hover:shadow-col-2 active:scale-[0.98]"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-sm bg-col-base text-col-slate transition-colors duration-200 group-hover:bg-col-ink group-hover:text-col-gold">
+            <span className="flex h-10 w-10 items-center justify-center rounded-col-sm bg-col-base text-col-slate transition-colors duration-col group-hover:bg-col-ink group-hover:text-col-gold">
               <Icono className="h-[18px] w-[18px]" strokeWidth={1.4} aria-hidden />
             </span>
             <span>
-              <span className="block font-col-display text-[21px] leading-tight text-col-ink">{t.nombre}</span>
-              <span className="mt-1 block text-[12.5px] leading-snug text-col-slate">{t.descripcion}</span>
+              <span className="block font-col-display text-col-xl leading-tight text-col-ink">{t.nombre}</span>
+              <span className="mt-1 block text-col-sm leading-snug text-col-slate">{t.descripcion}</span>
             </span>
           </motion.button>
         );
@@ -543,7 +543,7 @@ function Catalogo({
             </Dialog.Overlay>
             <Dialog.Content asChild forceMount aria-describedby={undefined}>
               <motion.div
-                className="fixed inset-0 z-[60] m-auto flex h-fit max-h-[calc(100dvh-48px)] w-[min(1180px,calc(100vw-32px))] flex-col overflow-hidden rounded bg-col-base shadow-[0_40px_120px_-40px_rgba(50,55,59,0.6)] focus:outline-none"
+                className="fixed inset-0 z-[60] m-auto flex h-fit max-h-[calc(100dvh-48px)] w-[min(1180px,calc(100vw-32px))] flex-col overflow-hidden rounded-col bg-col-base shadow-col-3 focus:outline-none"
                 initial={{ opacity: 0, y: 16, scale: 0.985 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.99 }}
@@ -552,14 +552,14 @@ function Catalogo({
                 <div className="flex items-start justify-between gap-6 px-8 pb-6 pt-8">
                   <div>
                     <Eyebrow>Agregar bloque</Eyebrow>
-                    <Dialog.Title className="mt-3 font-col-display text-[38px] font-normal leading-none text-col-ink">
+                    <Dialog.Title className="mt-3 font-col-display text-col-3xl font-normal leading-none text-col-ink">
                       ¿Qué querés sumar?
                     </Dialog.Title>
-                    <p className="mt-2 text-[14px] text-col-slate">Se agrega debajo del bloque elegido.</p>
+                    <p className="mt-2 text-col-md text-col-slate">Se agrega debajo del bloque elegido.</p>
                   </div>
                   <Dialog.Close
                     aria-label="Cerrar"
-                    className="flex h-10 w-10 items-center justify-center rounded-sm text-col-slate hover:bg-col-surface hover:text-col-ink"
+                    className="flex h-10 w-10 items-center justify-center rounded-col-sm text-col-slate hover:bg-col-surface hover:text-col-ink"
                   >
                     <X className="h-5 w-5" strokeWidth={1.5} />
                   </Dialog.Close>
@@ -567,9 +567,9 @@ function Catalogo({
                 <div className="min-h-0 overflow-y-auto px-8 pb-8">
                   {legal && (
                     <>
-                      <p className="mb-3 text-[11px] uppercase tracking-[0.16em] text-col-slate">Para una página legal</p>
+                      <p className="mb-3 text-col-xs uppercase tracking-[0.16em] text-col-slate">Para una página legal</p>
                       {grilla(sugeridos)}
-                      <p className="mb-3 mt-8 text-[11px] uppercase tracking-[0.16em] text-col-slate">Todos los bloques</p>
+                      <p className="mb-3 mt-8 text-col-xs uppercase tracking-[0.16em] text-col-slate">Todos los bloques</p>
                     </>
                   )}
                   {grilla(resto, sugeridos.length)}

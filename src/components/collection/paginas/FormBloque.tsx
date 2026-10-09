@@ -9,7 +9,7 @@ import { textoPlano } from "@/lib/collection/experiencia/contenido";
 import type { Bloque, MapasPagina, TipoBloque } from "@/lib/collection/paginas/contenido";
 import { cn } from "@/components/lib/cn";
 import { EditorTexto } from "../editor/EditorTexto";
-import { Asa, Campo, Contador, ListaOrdenable, SlotMedio, TiraMedios, inputLinea } from "../constructor/campos";
+import { Asa, Campo, Contador, ListaOrdenable, SlotMedio, TiraMedios, entrada, entradaArea, entradaSelect, entradaTitulo } from "../constructor/campos";
 import { Elegidos, Segmentado, type OpcionElegible } from "../constructor/Elegidos";
 import { nuevoId } from "../constructor/estado";
 
@@ -79,8 +79,7 @@ const CAMPOS: Record<TipoBloque, Def[]> = {
       fuente: "destinos",
       modos: [["todos", "Todos"], ["elegidos", "Elegidos"]],
       elegir: "elegidos",
-      ayudaAuto: "Se muestran todos los destinos publicados, en el orden de Destinos.",
-    },
+      ayudaAuto: "Se muestran todos los destinos publicados, en el orden de Destinos." },
   ],
   experiencias: [
     eyebrow,
@@ -95,8 +94,7 @@ const CAMPOS: Record<TipoBloque, Def[]> = {
       fuente: "experiencias",
       modos: [["destacadas", "Destacadas"], ["elegidas", "Elegidas"]],
       elegir: "elegidas",
-      ayudaAuto: "Se muestran hasta 6 experiencias destacadas, en el orden de Experiencias.",
-    },
+      ayudaAuto: "Se muestran hasta 6 experiencias destacadas, en el orden de Experiencias." },
   ],
   estilos: [eyebrow, titulo, { c: "estilos" }],
   especialistas: [eyebrow, titulo, bajada, { c: "nota", texto: "Se muestran todos los especialistas, en el orden de Especialistas." }],
@@ -112,8 +110,7 @@ const CAMPOS: Record<TipoBloque, Def[]> = {
       fuente: "testimonios",
       modos: [["todos", "Todos"], ["elegidos", "Elegidos"]],
       elegir: "elegidos",
-      ayudaAuto: "Se muestran todos los testimonios publicados.",
-    },
+      ayudaAuto: "Se muestran todos los testimonios publicados." },
   ],
   aliados: [eyebrow, titulo, bajada, { c: "nota", texto: "Se muestran todos los aliados publicados, en el orden de Aliados." }],
   preguntas: [eyebrow, titulo, { c: "categoria" }],
@@ -129,12 +126,10 @@ const CAMPOS: Record<TipoBloque, Def[]> = {
       fuente: "articulos",
       modos: [["recientes", "Recientes"], ["elegidos", "Elegidos"]],
       elegir: "elegidos",
-      ayudaAuto: "Se muestran los 3 artículos publicados más recientes.",
-    },
+      ayudaAuto: "Se muestran los 3 artículos publicados más recientes." },
   ],
   newsletter: [titulo, { c: "area", k: "texto", label: "Texto", max: 300 }, { c: "medio", k: "medio", label: "Foto", aspecto: 16 / 9 }],
-  cierre: [eyebrow, titulo, { c: "area", k: "texto", label: "Texto", max: 300 }, ...cta, { c: "medio", k: "medio", label: "Foto", aspecto: 4 / 5 }],
-};
+  cierre: [eyebrow, titulo, { c: "area", k: "texto", label: "Texto", max: 300 }, ...cta, { c: "medio", k: "medio", label: "Foto", aspecto: 4 / 5 }] };
 
 function opcionesDe(fuente: "destinos" | "experiencias" | "testimonios" | "articulos", m: MapasPagina): OpcionElegible[] {
   switch (fuente) {
@@ -143,8 +138,7 @@ function opcionesDe(fuente: "destinos" | "experiencias" | "testimonios" | "artic
         id: d.id,
         titulo: d.nombre,
         detalle: d.proximamente ? "Próximamente" : `${d.experiencias} experiencias`,
-        medio: d.portada,
-      }));
+        medio: d.portada }));
     case "experiencias":
       return m.experiencias.map((e) => ({ id: e.id, titulo: e.titulo, detalle: e.destinos.join(", "), medio: e.portada }));
     case "testimonios":
@@ -158,8 +152,7 @@ export function FormBloque({
   bloque,
   onCambio,
   mapas,
-  editable,
-}: {
+  editable }: {
   bloque: Bloque;
   onCambio: (p: Patch) => void;
   mapas: MapasPagina;
@@ -185,11 +178,11 @@ export function FormBloque({
                   rows={d.c === "area" ? 2 : undefined}
                   placeholder={d.ph}
                   onChange={(e) => onCambio({ [d.k]: e.target.value })}
-                  className={cn(
-                    inputLinea,
-                    d.c === "area" && "resize-none leading-relaxed [field-sizing:content]",
-                    d.grande ? "font-col-display text-[26px] leading-tight placeholder:italic" : "text-[16px]",
-                  )}
+                  className={d.grande
+                    ? cn(entradaTitulo, "text-col-2xl leading-tight", d.c === "area" && "resize-none [field-sizing:content]")
+                    : d.c === "area"
+                      ? entradaArea
+                      : entrada}
                 />
               </Campo>
             );
@@ -273,7 +266,7 @@ export function FormBloque({
                   id={`b-${bloque.id}-cat`}
                   value={actual}
                   onChange={(e) => onCambio({ categoria: e.target.value })}
-                  className={cn(inputLinea, "max-w-[360px]")}
+                  className={cn(entradaSelect, "max-w-[360px]")}
                 >
                   <option value="">Todas las categorías</option>
                   {[...cats, ...(actual && !cats.includes(actual) ? [actual] : [])].map((c) => (
@@ -291,7 +284,7 @@ export function FormBloque({
             return <Estilos key={key} bloque={v} onCambio={onCambio} editable={editable} />;
           case "nota":
             return (
-              <p key={key} className="border-l-2 border-col-gold pl-4 text-[14px] leading-relaxed text-col-slate">
+              <p key={key} className="border-l-2 border-col-gold pl-4 text-col-md leading-relaxed text-col-slate">
                 {d.texto}
               </p>
             );
@@ -311,10 +304,10 @@ function BotonSumar({ onClick, children, n, max }: { onClick: () => void; childr
     <button
       type="button"
       onClick={onClick}
-      className="flex h-10 items-center gap-2 self-start text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors hover:text-col-ink"
+      className="flex h-10 items-center gap-2 self-start text-col-sm font-medium text-col-slate transition-colors hover:text-col-ink"
     >
       <Plus className="h-4 w-4 text-col-gold" strokeWidth={1.5} /> {children}
-      <span className="normal-case tracking-normal text-col-slate/60">
+      <span className="normal-case tracking-normal text-col-muted">
         ({n} de {max})
       </span>
     </button>
@@ -328,7 +321,7 @@ function BotonQuitar({ label, onClick }: { label: string; onClick: () => void })
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-col-slate/70 transition-colors hover:bg-col-base hover:text-col-alerta"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-col-sm text-col-muted transition-colors hover:bg-col-base hover:text-col-alerta"
     >
       <Trash2 className="h-4 w-4" strokeWidth={1.5} />
     </button>
@@ -347,7 +340,7 @@ function Cifras({ bloque, onCambio, editable }: { bloque: Valores; onCambio: (p:
         deshabilitado={!editable}
         className="flex flex-col gap-2"
         render={(x, _i, asa) => (
-          <div className="flex items-end gap-3 rounded-sm border border-col-line bg-col-surface px-2 py-2">
+          <div className="flex items-end gap-3 rounded-col-sm border border-col-line bg-col-surface px-2 py-2">
             {editable && <Asa asa={asa} label={x.etiqueta || "cifra"} className="mb-1" />}
             <input
               aria-label="Valor"
@@ -355,7 +348,7 @@ function Cifras({ bloque, onCambio, editable }: { bloque: Valores; onCambio: (p:
               maxLength={20}
               placeholder="18"
               onChange={(e) => cambiar(x.id, { valor: e.target.value })}
-              className={cn(inputLinea, "w-24 font-col-display text-[28px] tabular-nums lining-nums")}
+              className={cn(entradaTitulo, "w-24 text-col-2xl leading-tight tabular-nums lining-nums")}
             />
             <input
               aria-label="Etiqueta"
@@ -363,7 +356,7 @@ function Cifras({ bloque, onCambio, editable }: { bloque: Valores; onCambio: (p:
               maxLength={80}
               placeholder="Años armando viajes"
               onChange={(e) => cambiar(x.id, { etiqueta: e.target.value })}
-              className={cn(inputLinea, "flex-1")}
+              className={cn(entrada, "flex-1")}
             />
             {editable && <BotonQuitar label="Quitar cifra" onClick={() => set(items.filter((y) => y.id !== x.id))} />}
           </div>
@@ -390,7 +383,7 @@ function Estilos({ bloque, onCambio, editable }: { bloque: Valores; onCambio: (p
         deshabilitado={!editable}
         className="flex flex-col gap-3"
         render={(x, _i, asa) => (
-          <div className="grid grid-cols-[auto_120px_1fr_auto] items-start gap-4 rounded-sm border border-col-line bg-col-surface p-3">
+          <div className="grid grid-cols-[auto_120px_1fr_auto] items-start gap-4 rounded-col-sm border border-col-line bg-col-surface p-3">
             {editable ? <Asa asa={asa} label={x.titulo || "estilo"} /> : <span />}
             <SlotMedio
               aspecto={3 / 4}
@@ -407,7 +400,7 @@ function Estilos({ bloque, onCambio, editable }: { bloque: Valores; onCambio: (p
                 maxLength={80}
                 placeholder="Luna de miel"
                 onChange={(e) => cambiar(x.id, { titulo: e.target.value })}
-                className={cn(inputLinea, "font-col-display text-[22px]")}
+                className={cn(entradaTitulo, "text-col-xl leading-tight")}
               />
               <textarea
                 aria-label="Texto del estilo"
@@ -416,7 +409,7 @@ function Estilos({ bloque, onCambio, editable }: { bloque: Valores; onCambio: (p
                 rows={2}
                 placeholder="Islas, cenas en la arena y nadie más alrededor."
                 onChange={(e) => cambiar(x.id, { texto: e.target.value })}
-                className={cn(inputLinea, "resize-none text-[14px] leading-relaxed [field-sizing:content]")}
+                className={cn(entradaArea, "min-h-11 text-col-md")}
               />
               <input
                 aria-label="Enlace del estilo"
@@ -424,7 +417,7 @@ function Estilos({ bloque, onCambio, editable }: { bloque: Valores; onCambio: (p
                 maxLength={200}
                 placeholder="/experiencias?estilo=luna-de-miel"
                 onChange={(e) => cambiar(x.id, { href: e.target.value })}
-                className={cn(inputLinea, "font-mono text-[13px]")}
+                className={cn(entrada, "font-mono text-col-sm")}
               />
             </div>
             {editable && <BotonQuitar label="Quitar estilo" onClick={() => set(items.filter((y) => y.id !== x.id))} />}

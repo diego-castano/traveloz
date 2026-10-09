@@ -86,7 +86,7 @@ export function MedioImagen({
           }}
           onLoad={() => setCargada(true)}
           className={cn(
-            "absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-500 ease-col",
+            "absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-col-lento ease-col",
             cargada ? "opacity-100" : "opacity-0",
             imgClassName,
           )}
@@ -94,7 +94,7 @@ export function MedioImagen({
         />
       )}
       {medio.tipo === "VIDEO" && (
-        <span className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-sm bg-col-ink/70 px-2 py-1 text-[11px] tracking-wide text-col-base backdrop-blur-sm">
+        <span className="pointer-events-none absolute bottom-2 left-2 flex items-center gap-1.5 rounded-col-sm bg-col-ink/70 px-2 py-1 text-col-xs tracking-wide text-col-base backdrop-blur-sm">
           <Play className="h-3 w-3 fill-current" strokeWidth={0} aria-hidden />
           {fmtDuracion(medio.duracion) || "Video"}
         </span>

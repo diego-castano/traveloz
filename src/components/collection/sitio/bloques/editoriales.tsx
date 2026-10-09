@@ -331,7 +331,7 @@ function FormNewsletter({ preview }: { preview: boolean }) {
           <button
             type="submit"
             disabled={estado === "enviando"}
-            className={cn(boton(), "h-[52px] bg-col-base text-col-ink hover:bg-col-gold disabled:opacity-80")}
+            className={cn(boton({ tam: "lg" }), "h-[52px] bg-col-base text-col-ink hover:bg-col-gold disabled:opacity-80")}
           >
             {estado === "enviando" ? "Enviando…" : "Suscribirme"}
           </button>
@@ -369,11 +369,11 @@ export function BloqueCierre({ bloque: b, modo }: PropsBloque<"cierre">) {
         )}
         {conCta &&
           (b.ctaTexto.trim() && b.ctaHref.trim() ? (
-            <a href={b.ctaHref} className={cn(boton(), "mt-4 self-start bg-col-base text-col-ink hover:bg-col-gold")}>
+            <a href={b.ctaHref} className={cn(boton({ tam: "lg" }), "mt-4 self-start bg-col-base text-col-ink hover:bg-col-gold")}>
               {b.ctaTexto}
             </a>
           ) : (
-            <span className={cn(boton(), "mt-4 self-start border border-col-base/30 bg-transparent text-col-base/50 hover:bg-transparent")}>
+            <span className={cn(boton({ tam: "lg" }), "mt-4 self-start border border-col-base/30 bg-transparent text-col-base/50 hover:bg-transparent")}>
               {b.ctaTexto || "Texto del botón"}
             </span>
           ))}

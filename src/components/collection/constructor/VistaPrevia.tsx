@@ -90,7 +90,7 @@ export function VistaPrevia({
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#E6E6E6]">
       <div className="flex h-12 shrink-0 items-center gap-3 border-b border-col-line bg-col-surface px-3">
-        <div role="radiogroup" aria-label="Dispositivo" className="flex gap-0.5 rounded-sm bg-col-base p-0.5">
+        <div role="radiogroup" aria-label="Dispositivo" className="flex gap-0.5 rounded-col-sm bg-col-base p-0.5">
           {(
             [
               ["celular", Smartphone, "Celular"],
@@ -104,8 +104,8 @@ export function VistaPrevia({
               aria-checked={dispositivo === id}
               onClick={() => onDispositivo(id)}
               className={cn(
-                "flex h-8 items-center gap-1.5 rounded-sm px-2.5 text-[11px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col",
-                dispositivo === id ? "bg-col-surface text-col-ink shadow-[0_1px_2px_rgba(50,55,59,0.12)]" : "text-col-slate hover:text-col-ink",
+                "flex h-8 items-center gap-1.5 rounded-col-sm px-2.5 text-col-md font-medium transition-colors duration-col ease-col",
+                dispositivo === id ? "bg-col-surface text-col-ink shadow-col-1" : "text-col-slate hover:text-col-ink",
               )}
             >
               <Icono className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
@@ -113,13 +113,13 @@ export function VistaPrevia({
             </button>
           ))}
         </div>
-        <p className="min-w-0 flex-1 truncate text-[12px] text-col-slate" aria-live="polite">
+        <p className="min-w-0 flex-1 truncate text-col-xs text-col-slate" aria-live="polite">
           {nombreSeccion}
         </p>
         <span
           aria-hidden
           className={cn(
-            "h-1.5 w-1.5 rounded-full bg-col-gold transition-opacity duration-300",
+            "h-1.5 w-1.5 rounded-full bg-col-gold transition-opacity duration-col-lento",
             actualizando ? "opacity-100" : "opacity-0",
           )}
         />
@@ -129,7 +129,7 @@ export function VistaPrevia({
             onClick={onColapsar}
             aria-label="Plegar vista previa"
             title="Plegar vista previa"
-            className="flex h-8 w-8 items-center justify-center rounded-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
+            className="flex h-8 w-8 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
           >
             <PanelRightClose className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -139,7 +139,7 @@ export function VistaPrevia({
             type="button"
             onClick={onCerrar}
             aria-label="Cerrar vista previa"
-            className="flex h-8 w-8 items-center justify-center rounded-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
+            className="flex h-8 w-8 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
           >
             <X className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -153,8 +153,8 @@ export function VistaPrevia({
           <div
             ref={interno}
             className={cn(
-              "origin-top-left transition-opacity duration-300",
-              dispositivo === "celular" && "overflow-hidden rounded-[6px] shadow-[0_24px_60px_-28px_rgba(50,55,59,0.55)]",
+              "origin-top-left transition-opacity duration-col-lento",
+              dispositivo === "celular" && "overflow-hidden rounded-col shadow-col-2",
               !escala && "opacity-0",
             )}
             style={{ width: base, transform: `scale(${escala || 1})` }}

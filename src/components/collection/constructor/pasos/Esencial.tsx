@@ -4,12 +4,12 @@
 // dirección web, destacada y proveedor interno.
 
 import { useState } from "react";
-import { BedDouble, Check, ChevronDown, Compass, LoaderCircle, Plus, Ship, TrainTrack, UserRound } from "lucide-react";
+import { BedDouble, Check, Compass, LoaderCircle, Plus, Ship, TrainTrack, UserRound } from "lucide-react";
 import { TIPOS_EXPERIENCIA, type TipoExperiencia } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
-import { Interruptor } from "../../ui";
+import { Interruptor, boton, cajaCompuesta, entradaInterna } from "../../ui";
 import { MedioImagen } from "../../sitio/medios";
-import { Campo, Contador, Grupo, inputLinea } from "../campos";
+import { Campo, Contador, Grupo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../campos";
 import { useConstructor } from "../contexto";
 import { slugDe } from "../estado";
 
@@ -17,8 +17,7 @@ const TIPOS: Record<TipoExperiencia, { label: string; texto: string; icono: type
   VIAJE: { label: "Viaje", texto: "Varias paradas", icono: Compass },
   HOTEL: { label: "Hotel", texto: "Una estadía", icono: BedDouble },
   CRUCERO: { label: "Crucero", texto: "Por mar o río", icono: Ship },
-  TREN: { label: "Tren", texto: "Sobre rieles", icono: TrainTrack },
-};
+  TREN: { label: "Tren", texto: "Sobre rieles", icono: TrainTrack } };
 
 const MAX_DESTINOS = 6;
 
@@ -41,7 +40,7 @@ export function PasoEsencial() {
             maxLength={140}
             onChange={(e) => cambiarTitulo(e.target.value)}
             placeholder="Filipinas: Manila, El Nido y Boracay"
-            className={cn(inputLinea, "py-3 font-col-display text-[28px] leading-tight placeholder:italic md:text-[34px]")}
+            className={cn(entradaTitulo, "text-col-2xl leading-tight md:text-col-3xl")}
           />
         </Campo>
         <Campo
@@ -57,7 +56,7 @@ export function PasoEsencial() {
             maxLength={240}
             onChange={(e) => setCampos({ bajada: e.target.value })}
             placeholder="Tres islas, dos mares y una idea distinta de la calma."
-            className={cn(inputLinea, "resize-none text-[17px] leading-relaxed [field-sizing:content]")}
+            className={cn(entradaArea, "text-col-lg")}
           />
         </Campo>
       </div>
@@ -75,14 +74,14 @@ export function PasoEsencial() {
                 aria-checked={activo}
                 onClick={() => setCampos({ tipo: t })}
                 className={cn(
-                  "group relative flex flex-col items-start gap-6 rounded-sm border p-4 text-left transition-[border-color,background-color,transform] duration-200 ease-col active:scale-[0.98]",
+                  "group relative flex flex-col items-start gap-6 rounded-col-sm border p-4 text-left transition-[border-color,background-color,transform] duration-col ease-col active:scale-[0.98]",
                   activo ? "border-col-ink bg-col-ink text-col-base" : "border-col-line bg-col-surface text-col-ink hover:border-col-slate/50",
                 )}
               >
                 <Icono className={cn("h-6 w-6", activo ? "text-col-gold" : "text-col-slate")} strokeWidth={1.25} aria-hidden />
                 <span>
-                  <span className="block font-col-display text-[22px] leading-none">{label}</span>
-                  <span className={cn("mt-1 block text-[12px]", activo ? "text-col-base/60" : "text-col-slate")}>{texto}</span>
+                  <span className="block font-col-display text-col-xl leading-none">{label}</span>
+                  <span className={cn("mt-1 block text-col-xs", activo ? "text-col-base/60" : "text-col-slate")}>{texto}</span>
                 </span>
               </button>
             );
@@ -110,7 +109,7 @@ export function PasoEsencial() {
               <button
                 type="button"
                 onClick={() => setCampos({ slug: slugDe(c.titulo) })}
-                className="text-[12px] uppercase tracking-[0.12em] text-col-slate underline decoration-col-gold underline-offset-4 hover:text-col-ink"
+                className="text-col-sm font-medium text-col-slate underline decoration-col-gold underline-offset-4 hover:text-col-ink"
               >
                 Usar el título
               </button>
@@ -128,18 +127,17 @@ export function PasoEsencial() {
                   .toLowerCase()
                   .replace(/\s+/g, "-")
                   .replace(/[^a-z0-9-]/g, "")
-                  .replace(/-{2,}/g, "-"),
-              })
+                  .replace(/-{2 }/g, "-") })
             }
             onBlur={() => setCampos({ slug: slugDe(c.slug) })}
             placeholder="filipinas-manila-el-nido-boracay"
-            className={cn(inputLinea, "font-mono text-[14px]")}
+            className={cn(entrada, "font-mono text-col-md")}
           />
         </Campo>
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-[15px] text-col-ink">Destacada</p>
-            <p className="mt-0.5 text-[13px] text-col-slate">Aparece primero en la portada del sitio.</p>
+            <p className="text-col-cuerpo text-col-ink">Destacada</p>
+            <p className="mt-0.5 text-col-sm text-col-slate">Aparece primero en la portada del sitio.</p>
           </div>
           <Interruptor
             checked={c.destacada}
@@ -154,7 +152,7 @@ export function PasoEsencial() {
               id="exp-proveedor"
               value={c.proveedorId ?? ""}
               onChange={(e) => setCampos({ proveedorId: e.target.value || null })}
-              className={cn(inputLinea, "appearance-none pr-8")}
+              className={entradaSelect}
             >
               <option value="">Sin proveedor</option>
               {proveedores.map((p) => (
@@ -166,7 +164,6 @@ export function PasoEsencial() {
                 <option value={c.proveedorId}>Proveedor dado de baja</option>
               )}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
           </div>
         </Campo>
       </Grupo>
@@ -216,7 +213,7 @@ function Destinos() {
               aria-pressed={activo}
               onClick={() => alternar(d.id)}
               className={cn(
-                "flex h-10 items-center gap-2 rounded-sm border px-4 text-[14px] transition-colors duration-200 ease-col",
+                "flex h-10 items-center gap-2 rounded-col-sm border px-4 text-col-md transition-colors duration-col ease-col",
                 activo
                   ? "border-col-ink bg-col-ink text-col-base"
                   : "border-col-line bg-col-surface text-col-slate hover:border-col-slate/50 hover:text-col-ink",
@@ -224,7 +221,7 @@ function Destinos() {
             >
               {activo && <Check className="h-3.5 w-3.5 text-col-gold" strokeWidth={2} aria-hidden />}
               {d.nombre}
-              {d.estado === "PROXIMAMENTE" && <span className="text-[10px] uppercase tracking-[0.12em] opacity-60">Pronto</span>}
+              {d.estado === "PROXIMAMENTE" && <span className="text-col-xs uppercase tracking-[0.12em] opacity-60">Pronto</span>}
             </button>
           );
         })}
@@ -235,7 +232,7 @@ function Destinos() {
                 e.preventDefault();
                 void crear();
               }}
-              className="flex h-10 items-center gap-2 rounded-sm border border-col-gold bg-col-surface pl-3 pr-1"
+              className={cn(cajaCompuesta, "min-h-10 w-auto gap-1 pr-1")}
             >
               <input
                 autoFocus
@@ -245,12 +242,12 @@ function Destinos() {
                 onKeyDown={(e) => e.key === "Escape" && setAbierto(false)}
                 aria-label="Nombre del destino nuevo"
                 placeholder="Misterios de Oriente"
-                className="w-48 border-0 bg-transparent p-0 text-[14px] focus:outline-none focus:ring-0"
+                className={cn(entradaInterna, "w-48 flex-none py-[7px] text-col-md")}
               />
               <button
                 type="submit"
                 disabled={creando || !nombre.trim()}
-                className="flex h-8 items-center gap-1.5 rounded-sm bg-col-ink px-3 text-[11px] uppercase tracking-[0.12em] text-col-base disabled:opacity-40"
+                className={boton({ tam: "sm" })}
               >
                 {creando ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : "Crear"}
               </button>
@@ -259,14 +256,14 @@ function Destinos() {
             <button
               type="button"
               onClick={() => setAbierto(true)}
-              className="flex h-10 items-center gap-1.5 rounded-sm border border-dashed border-col-slate/40 px-4 text-[13px] text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
+              className="flex h-10 items-center gap-1.5 rounded-col-sm border border-dashed border-col-slate/40 px-4 text-col-sm text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
             >
               <Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> Crear destino
             </button>
           ))}
       </div>
       {error && (
-        <p role="alert" className="-mt-4 text-[13px] text-col-alerta">
+        <p role="alert" className="-mt-4 text-col-sm text-col-alerta">
           {error}
         </p>
       )}
@@ -302,8 +299,7 @@ function Especialistas() {
       retrato: null,
       whatsapp: "",
       email: "",
-      telefono: "",
-    });
+      telefono: "" });
     setCampos({ especialistaId: r.data.id });
     setNombre("");
   };
@@ -321,20 +317,20 @@ function Especialistas() {
               aria-checked={activo}
               onClick={() => setCampos({ especialistaId: activo ? null : e.id })}
               className={cn(
-                "group flex items-center gap-3 rounded-sm border p-2.5 text-left transition-[border-color,background-color] duration-200 ease-col",
+                "group flex items-center gap-3 rounded-col-sm border p-2.5 text-left transition-[border-color,background-color] duration-col ease-col",
                 activo ? "border-col-gold bg-col-surface ring-1 ring-col-gold" : "border-col-line bg-col-surface hover:border-col-slate/50",
               )}
             >
-              <span className="relative h-14 w-11 shrink-0 overflow-hidden rounded-sm bg-col-base">
+              <span className="relative h-14 w-11 shrink-0 overflow-hidden rounded-col-sm bg-col-base">
                 {e.retrato ? (
                   <MedioImagen medio={e.retrato} relleno sizes="60px" />
                 ) : (
-                  <UserRound className="absolute inset-0 m-auto h-5 w-5 text-col-slate/40" strokeWidth={1.25} />
+                  <UserRound className="absolute inset-0 m-auto h-5 w-5 text-col-subtle" strokeWidth={1.25} />
                 )}
               </span>
               <span className="min-w-0">
-                <span className="block truncate font-col-display text-[19px] leading-tight text-col-ink">{e.nombre}</span>
-                <span className="block truncate text-[12px] text-col-slate">{e.region || "Sin región"}</span>
+                <span className="block truncate font-col-display text-col-xl leading-tight text-col-ink">{e.nombre}</span>
+                <span className="block truncate text-col-xs text-col-slate">{e.region || "Sin región"}</span>
               </span>
               {activo && <Check className="ml-auto h-4 w-4 shrink-0 text-col-gold" strokeWidth={2} aria-hidden />}
             </button>
@@ -356,13 +352,13 @@ function Especialistas() {
               maxLength={100}
               onChange={(e) => setNombre(e.target.value)}
               placeholder="Nombre y apellido"
-              className={inputLinea}
+              className={entrada}
             />
           </Campo>
           <button
             type="submit"
             disabled={creando || !nombre.trim()}
-            className="mb-1 flex h-9 items-center gap-1.5 rounded-sm border border-col-ink/25 px-4 text-[12px] uppercase tracking-[0.12em] text-col-ink transition-colors hover:border-col-ink disabled:opacity-40"
+            className="mb-1 flex h-9 items-center gap-1.5 rounded-col-sm border border-col-ink/25 px-4 text-col-md font-medium text-col-ink transition-colors hover:border-col-ink disabled:opacity-40"
           >
             {creando ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />}
             Crear

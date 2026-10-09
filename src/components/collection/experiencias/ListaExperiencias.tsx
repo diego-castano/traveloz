@@ -26,7 +26,8 @@ import type { EstadoExperiencia } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { AnilloCompletitud, Boton, Buscador, EncabezadoPagina, Filtros, barraHerramientas, tarjetaElevable } from "../ui";
+import { AnilloCompletitud, Boton, Buscador, EncabezadoPagina, Estado, Filtros, barraHerramientas, tarjetaElevable } from "../ui";
+import { AsaTarjeta } from "../contenido/comun";
 import { MedioImagen } from "../sitio/medios";
 import { EstadoPill } from "../constructor/formato";
 import { useSensoresOrden } from "../constructor/campos";
@@ -126,7 +127,6 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Experiencias"
         titulo="Los viajes de Collection"
         descripcion={
           items.length
@@ -154,7 +154,7 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
       </div>
 
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
@@ -195,7 +195,7 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
         </DndContext>
       )}
       {ordenable && visibles.length > 1 && (
-        <p className="mt-12 text-center text-[13px] text-col-slate/70">
+        <p className="mt-12 text-center text-col-sm text-col-muted">
           Arrastrá las tarjetas para cambiar el orden en el sitio.
         </p>
       )}
@@ -216,7 +216,8 @@ function Tarjeta({
   raiz: HTMLElement | null;
   menu: { duplicar: (() => void) | null; destacar: (() => void) | null; archivar: (() => void) | null };
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: x.id, disabled: !ordenable });
+  const orden = useSortable({ id: x.id, disabled: !ordenable });
+  const { setNodeRef, transform, transition, isDragging } = orden;
   const [confirmar, setConfirmar] = useState(false);
   const hayMenu = menu.duplicar || menu.destacar || menu.archivar;
   const destinos = x.destinos.map((d) => d.nombre).join(", ");
@@ -234,14 +235,13 @@ function Tarjeta({
     >
       <Link
         href={`/backend/collection/experiencias/${x.id}`}
-        {...(ordenable ? { ...attributes, ...listeners } : {})}
         aria-label={`Abrir ${x.titulo || "experiencia sin título"}`}
-        className={cn("block", ordenable && "cursor-grab active:cursor-grabbing")}
+        className="block rounded-col-sm"
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line",
-            isDragging ? "shadow-[0_32px_64px_-24px_rgba(50,55,59,0.6)]" : tarjetaElevable,
+            "relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line",
+            isDragging ? "shadow-col-2" : tarjetaElevable,
           )}
         >
           {x.portada ? (
@@ -255,13 +255,13 @@ function Tarjeta({
             // Sin portada: un lienzo claro con el anillo de completitud, que invita a seguir.
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 border border-dashed border-col-slate/25 bg-[radial-gradient(120%_80%_at_30%_15%,#FFFFFF_0%,#F4F4F4_55%,#E9EAEA_100%)] text-col-ink">
               <AnilloCompletitud valor={x.completitud} tam={72} />
-              <span className="text-[11px] uppercase tracking-[0.16em] text-col-slate/70">Falta la portada</span>
+              <span className="text-col-sm font-medium text-col-slate">Falta la portada</span>
             </div>
           )}
           <div className="absolute left-3 top-3 flex items-center gap-1.5">
-            <EstadoPill estado={x.estado} className="shadow-sm" />
+            <EstadoPill estado={x.estado} className="shadow-col-1" />
             {x.destacada && (
-              <span className="flex h-6 w-6 items-center justify-center rounded-sm bg-col-ink/70 backdrop-blur-sm" title="Destacada">
+              <span className="flex h-6 w-6 items-center justify-center rounded-col-sm bg-col-ink/70 backdrop-blur-sm" title="Destacada">
                 <Star className="h-3 w-3 fill-col-gold text-col-gold" strokeWidth={1.5} aria-label="Destacada" />
               </span>
             )}
@@ -274,30 +274,33 @@ function Tarjeta({
         </div>
         <div className="mt-4">
           {x.titulo ? (
-            <p className="font-col-display text-[26px] leading-[1.1] text-col-ink">{x.titulo}</p>
+            <p className="font-col-display text-col-2xl leading-[1.1] text-col-ink">{x.titulo}</p>
           ) : (
-            <p className="font-col-display text-[26px] italic leading-[1.1] text-col-slate/45">Sin título</p>
+            <p className="font-col-display text-col-2xl italic leading-[1.1] text-col-subtle">Sin título</p>
           )}
-          <p className="mt-2 flex items-center gap-2 text-[13px] text-col-slate">
+          <p className="mt-2 flex items-center gap-2 text-col-sm text-col-slate">
             <span className="truncate">
               {[destinos || null, x.noches ? plural(x.noches, "noche", "noches") : null].filter(Boolean).join(" · ") || "Sin destino"}
             </span>
             {x.hayCambiosSinPublicar && (
-              <span className="flex shrink-0 items-center gap-1.5 text-[#B07A2A]">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-col-gold" /> Cambios sin publicar
-              </span>
+              <Estado tono="aviso" className="shrink-0">
+                Cambios sin publicar
+              </Estado>
             )}
           </p>
           {x.completitud < 1 && (
-            <p className="mt-1 text-[12px] tabular-nums lining-nums text-col-slate/70">{Math.round(x.completitud * 100)} % completa</p>
+            <p className="mt-1 text-col-xs tabular-nums lining-nums text-col-muted">{Math.round(x.completitud * 100)} % completa</p>
           )}
         </div>
       </Link>
+      {ordenable && (
+        <AsaTarjeta nombre={x.titulo || "experiencia sin título"} orden={orden} className={hayMenu ? "right-[52px]" : undefined} />
+      )}
       {hayMenu && (
         <DropdownMenu.Root onOpenChange={(o) => !o && setConfirmar(false)}>
           <DropdownMenu.Trigger
             aria-label={`Opciones de ${x.titulo || "la experiencia"}`}
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-sm bg-col-surface/90 text-col-ink opacity-0 shadow-sm backdrop-blur-sm transition-opacity duration-200 ease-col hover:bg-col-surface focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
+            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-col bg-col-surface/95 text-col-ink opacity-70 shadow-col-1 backdrop-blur-sm transition-opacity duration-col ease-col hover:bg-col-surface focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
           >
             <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
           </DropdownMenu.Trigger>
@@ -305,7 +308,7 @@ function Tarjeta({
             <DropdownMenu.Content
               align="end"
               sideOffset={6}
-              className="z-50 min-w-[200px] rounded-sm border border-col-line bg-col-surface p-1 shadow-[0_20px_40px_-20px_rgba(50,55,59,0.45)]"
+              className="z-50 min-w-[200px] rounded-col-sm border border-col-line bg-col-surface p-1 shadow-col-3"
             >
               {menu.duplicar && (
                 <ItemMenu onSelect={menu.duplicar} icono={<Copy />}>
@@ -356,7 +359,7 @@ function ItemMenu({
     <DropdownMenu.Item
       onSelect={onSelect}
       className={cn(
-        "flex h-10 cursor-pointer items-center gap-3 rounded-sm px-3 text-[14px] outline-none data-[highlighted]:bg-col-base [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.5]",
+        "flex h-10 cursor-pointer items-center gap-3 rounded-col-sm px-3 text-col-md outline-none data-[highlighted]:bg-col-base [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.5]",
         peligro ? "text-col-alerta" : "text-col-ink",
       )}
     >
@@ -382,7 +385,7 @@ function Vacia({
   if (hayAlgo) {
     return (
       <div className="flex flex-col items-center py-24 text-center">
-        <p className="font-col-display text-[28px] italic text-col-slate">Nada con ese filtro.</p>
+        <p className="font-col-display text-col-2xl italic text-col-slate">Nada con ese filtro.</p>
         <Boton variante="secundario" tam="sm" className="mt-6" onClick={onTodas}>
           Ver todas
         </Boton>
@@ -404,7 +407,7 @@ function Vacia({
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE, delay: i * 0.08 }}
-            className={cn("rounded-sm", cls)}
+            className={cn("rounded-col-sm", cls)}
             style={{
               background: `radial-gradient(120% 90% at 28% 18%, rgba(255,255,255,0.28), rgba(255,255,255,0) 58%), linear-gradient(165deg, ${c} 0%, color-mix(in srgb, ${c} 62%, #32373B) 100%)`,
             }}
@@ -412,10 +415,10 @@ function Vacia({
         ))}
       </div>
       <div>
-        <p className="font-col-display text-[48px] font-light leading-[1.05] text-col-ink">
+        <p className="font-col-display text-col-display font-light leading-[1.05] text-col-ink">
           Acá van a vivir los viajes de Collection.
         </p>
-        <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-col-slate">
+        <p className="mt-5 max-w-[46ch] text-col-cuerpo leading-relaxed text-col-slate">
           Cada experiencia se arma paso a paso, con fotos de la biblioteca y una vista previa que se actualiza mientras
           escribís.
         </p>

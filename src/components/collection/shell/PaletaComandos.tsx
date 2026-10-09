@@ -9,7 +9,7 @@ import { useCollection } from "./contexto";
 import { GRUPOS_NAV } from "./nav";
 
 const item =
-  "flex h-11 cursor-pointer items-center gap-3 rounded-sm px-3 text-[15px] text-col-slate data-[disabled=true]:cursor-default data-[disabled=true]:opacity-45 data-[selected=true]:bg-col-base data-[selected=true]:text-col-ink";
+  "flex h-11 cursor-pointer items-center gap-3 rounded-col-sm px-3 text-col-cuerpo text-col-slate data-[disabled=true]:cursor-default data-[disabled=true]:opacity-45 data-[selected=true]:bg-col-base data-[selected=true]:text-col-ink";
 
 export function PaletaComandos({
   abierta,
@@ -35,11 +35,11 @@ export function PaletaComandos({
       container={raiz ?? undefined}
       label="Ir a un módulo de Collection"
       overlayClassName="fixed inset-0 z-[60] bg-col-ink/30 backdrop-blur-[2px]"
-      contentClassName="fixed left-1/2 top-[14vh] z-[60] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded bg-col-surface shadow-[0_32px_64px_-24px_rgba(50,55,59,0.45)] focus:outline-none"
+      contentClassName="fixed left-1/2 top-[14vh] z-[60] w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 overflow-hidden rounded-col bg-col-surface shadow-col-3 focus:outline-none"
     >
       <Command.Input
         placeholder="¿A dónde vamos?"
-        className="h-14 w-full border-0 border-b border-col-line bg-transparent px-5 font-col-display text-[22px] text-col-ink placeholder:text-col-slate/50 focus:border-col-gold focus:outline-none focus:ring-0"
+        className="h-14 w-full border-0 border-b border-col-line bg-transparent px-5 font-col-display text-col-xl text-col-ink placeholder:text-col-slate/50 focus:border-col-gold focus:outline-none focus:ring-0"
       />
       <Command.List className="max-h-[60vh] overflow-y-auto p-2">
         <Command.Empty className="px-3 py-6 text-center text-sm text-col-slate">No hay nada con ese nombre.</Command.Empty>
@@ -47,7 +47,7 @@ export function PaletaComandos({
           <Command.Group
             key={i}
             heading={g.titulo ?? "General"}
-            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.18em] [&_[cmdk-group-heading]]:text-col-slate/70"
+            className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-col-xs [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.18em] [&_[cmdk-group-heading]]:text-col-muted"
           >
             {g.modulos
               .filter((m) => !m.soloSuperAdmin || superAdmin)
@@ -63,7 +63,7 @@ export function PaletaComandos({
                   >
                     <Icono className="h-[18px] w-[18px]" strokeWidth={1.5} aria-hidden />
                     <span className="flex-1">{m.label}</span>
-                    {!m.href && <span className="text-[10px] uppercase tracking-[0.16em]">Pronto</span>}
+                    {!m.href && <span className="text-col-xs uppercase tracking-[0.16em]">Pronto</span>}
                   </Command.Item>
                 );
               })}
@@ -71,7 +71,7 @@ export function PaletaComandos({
         ))}
         <Command.Group
           heading="Traveloz"
-          className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.18em] [&_[cmdk-group-heading]]:text-col-slate/70"
+          className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-col-xs [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.18em] [&_[cmdk-group-heading]]:text-col-muted"
         >
           <Command.Item value="Volver a Traveloz" onSelect={() => ir("/backend/dashboard")} className={item}>
             <ArrowLeft className="h-[18px] w-[18px]" strokeWidth={1.5} aria-hidden />

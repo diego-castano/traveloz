@@ -9,7 +9,7 @@ export default async function EquipoPage() {
   const r = await listarEquipoCollection();
   if (!r.ok) {
     return (
-      <p role="alert" className="mx-auto max-w-[1080px] py-20 text-center text-[15px] text-col-alerta">
+      <p role="alert" className="mx-auto max-w-[1080px] py-20 text-center text-col-cuerpo text-col-alerta">
         {r.error}
       </p>
     );

@@ -14,7 +14,7 @@ export function ResultadoNewsletter({ titulo, texto, ok }: { titulo: string; tex
         <p className="max-w-[44ch] text-[17px] font-light leading-[1.65] text-white/75">{texto}</p>
         <Link
           href={ok ? "/experiencias" : "/"}
-          className="inline-flex h-12 items-center rounded-sm border border-white/40 px-6 text-[13px] font-medium uppercase tracking-[0.12em] transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-gold"
+          className="inline-flex h-12 items-center rounded-sm border border-white/40 px-6 text-[12px] uppercase tracking-[0.14em] transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-gold"
         >
           {ok ? "Ver experiencias" : "Ir al inicio"}
         </Link>

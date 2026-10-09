@@ -9,28 +9,28 @@ import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ImagePlus, RefreshCw, X } from "lucide-react";
+import { ImagePlus, RefreshCw, X } from "lucide-react";
 import {
   actualizarEspecialista,
   crearEspecialista,
   eliminarEspecialista,
   reordenarEspecialistas,
-  type EspecialistaItem,
-} from "@/actions/collection/especialistas.actions";
+  type EspecialistaItem } from "@/actions/collection/especialistas.actions";
 import type { Resultado } from "@/lib/collection/ejecutar";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { iniciales, useCollection } from "../shell/contexto";
-import { useAviso } from "../shell/Avisos";
-import { EncabezadoPagina, Eyebrow, Interruptor, tarjetaElevable, etiquetaCampo, inputLinea } from "../ui";
+import { useAviso, useDeshacer } from "../shell/Avisos";
+import { EncabezadoPagina, Estado, Eyebrow, Interruptor, tarjetaElevable, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, ChipsTexto, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
 import { SelectorMedios } from "../pickers/SelectorMedios";
+import { SoltarAqui } from "../biblioteca/ZonaSubida";
 import { Especialista, PaginaCtx } from "../sitio/experiencia/secciones";
 import { demoVacia } from "../sitio/demo";
 import "../sitio/sitio.css";
-import { Escalado, Hoja, NuevoEnLinea, ZonaEliminar, tonoDe, useGuardadoDiferido } from "./comun";
+import { AsaTarjeta, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "./comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -48,8 +48,7 @@ const apiReal: ApiEspecialistas = {
   crear: crearEspecialista,
   actualizar: actualizarEspecialista,
   reordenar: reordenarEspecialistas,
-  eliminar: eliminarEspecialista,
-};
+  eliminar: eliminarEspecialista };
 
 function payload(e: EspecialistaItem): Payload {
   return {
@@ -63,8 +62,7 @@ function payload(e: EspecialistaItem): Payload {
     whatsapp: e.whatsapp,
     email: e.email,
     telefono: e.telefono,
-    publicado: e.publicado,
-  };
+    publicado: e.publicado };
 }
 
 const plural = (n: number, a: string, b: string) => `${n} ${n === 1 ? a : b}`;
@@ -73,14 +71,14 @@ export function Especialistas({
   inicial,
   usuarios,
   api = apiReal,
-  abrirId = null,
-}: {
+  abrirId = null }: {
   inicial: EspecialistaItem[] | { error: string };
   usuarios: { id: string; name: string }[];
   api?: ApiEspecialistas;
   abrirId?: string | null;
 }) {
   const avisar = useAviso();
+  const deshacible = useDeshacer();
   const { puede } = useCollection();
   const editable = puede("sitio.editar");
   const sensores = useSensoresOrden();
@@ -123,22 +121,31 @@ export function Especialistas({
       orden: items.length,
       userId: null,
       bio: "",
-      experiencias: 0,
-    };
+      experiencias: 0 };
     setItems((l) => [...l, nuevo]);
     setAbierto(nuevo.id);
     return true;
   };
 
   // El interruptor de la tarjeta guarda al toque, con todo lo demás como está.
-  const publicar = async (e: EspecialistaItem, publicado: boolean) => {
+  const guardarVisible = async (e: EspecialistaItem, publicado: boolean) => {
     setItems((l) => l.map((x) => (x.id === e.id ? { ...x, publicado } : x)));
     const r = await api.actualizar(e.id, payload({ ...e, publicado }));
     if (!r.ok) {
       setItems((l) => l.map((x) => (x.id === e.id ? { ...x, publicado: !publicado } : x)));
       avisar(r.error, "error");
+      return false;
     }
+    return true;
   };
+
+  // Publicar u ocultar cambia el sitio al toque: el aviso ofrece volver atrás (acción inversa).
+  const publicar = (e: EspecialistaItem, publicado: boolean) =>
+    deshacible({
+      mensaje: `${e.nombre} ${publicado ? "ya se ve" : "ya no se ve"} en el sitio.`,
+      aplicar: () => guardarVisible(e, publicado),
+      deshacer: () => void guardarVisible({ ...e, publicado }, !publicado),
+    });
 
   const alSoltar = async (ev: DragEndEvent) => {
     if (!ev.over || ev.active.id === ev.over.id) return;
@@ -156,13 +163,25 @@ export function Especialistas({
     }
   };
 
+  // Borrado diferido: sale de la grilla al toque y el servidor se entera
+  // cuando vence el aviso. "Deshacer" lo repone sin llamar a nadie.
   const eliminar = async () => {
     if (!actual) return null;
-    const r = await api.eliminar(actual.id);
-    if (!r.ok) return r.error;
+    const x = actual;
+    const i = items.findIndex((y) => y.id === x.id);
     setAbierto(null);
-    setItems((l) => l.filter((x) => x.id !== actual.id));
-    avisar("Especialista eliminado.");
+    void deshacible({
+      mensaje: `Eliminaste ${x.nombre}.`,
+      aplicar: () => setItems((l) => l.filter((y) => y.id !== x.id)),
+      deshacer: () => setItems((l) => reponer(l, i, x)),
+      confirmar: async () => {
+        const r = await api.eliminar(x.id);
+        if (!r.ok) {
+          setItems((l) => reponer(l, i, x));
+          avisar(r.error, "error");
+        }
+      },
+    });
     return null;
   };
 
@@ -171,20 +190,19 @@ export function Especialistas({
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Especialistas"
         titulo="Quienes arman cada viaje"
         descripcion={`${plural(items.length, "especialista", "especialistas")} · ${publicados} en el sitio`}
         acciones={editable && <NuevoEnLinea etiqueta="Nuevo especialista" placeholder="Nombre y apellido" onCrear={crear} />}
       />
 
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
 
       {items.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-[28px] italic text-col-slate">
+        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
           Todavía no hay especialistas. Sumá el primero.
         </p>
       ) : (
@@ -208,7 +226,7 @@ export function Especialistas({
         </DndContext>
       )}
       {editable && items.length > 1 && (
-        <p className="mt-12 text-center text-[13px] text-col-slate/70">Arrastrá los retratos para cambiar el orden en el sitio.</p>
+        <p className="mt-12 text-center text-col-sm text-col-muted">Arrastrá los retratos para cambiar el orden en el sitio.</p>
       )}
 
       <Hoja abierta={!!actual} titulo={actual?.nombre || "Especialista"} estado={guardado.estado} onCerrar={cerrar}>
@@ -232,7 +250,7 @@ function Retrato({ e, sizes }: { e: Pick<EspecialistaItem, "nombre" | "retrato">
     <MedioImagen medio={e.retrato} relleno sizes={sizes} imgClassName="group-hover:scale-[1.03]" />
   ) : (
     <div className="absolute inset-0 flex items-center justify-center" style={{ background: fondoDeColor(tonoDe(e.nombre)) }}>
-      <span className="font-col-display text-[64px] font-light italic text-col-base/70">{iniciales(e.nombre)}</span>
+      <span className="font-col-display text-col-display-lg font-light italic text-col-base/70">{iniciales(e.nombre)}</span>
     </div>
   );
 }
@@ -242,15 +260,15 @@ function Tarjeta({
   i,
   editable,
   onAbrir,
-  onPublicar,
-}: {
+  onPublicar }: {
   e: EspecialistaItem;
   i: number;
   editable: boolean;
   onAbrir: () => void;
   onPublicar: (v: boolean) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: e.id, disabled: !editable });
+  const orden = useSortable({ id: e.id, disabled: !editable });
+  const { setNodeRef, transform, transition, isDragging } = orden;
   return (
     <motion.li
       ref={setNodeRef}
@@ -265,32 +283,32 @@ function Tarjeta({
       <button
         type="button"
         onClick={onAbrir}
-        {...(editable ? { ...attributes, ...listeners } : {})}
         aria-label={`Editar a ${e.nombre}`}
-        className={cn("block w-full text-left", editable && "cursor-grab active:cursor-grabbing", isDragging && "opacity-90")}
+        className={cn("block w-full rounded-col-sm text-left", isDragging && "opacity-90")}
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line",
+            "relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line",
             tarjetaElevable,
             !e.publicado && "grayscale-[0.6]",
           )}
         >
           <Retrato e={e} sizes="(min-width: 1536px) 20vw, (min-width: 1024px) 25vw, 50vw" />
           {!e.publicado && (
-            <span className="absolute left-3 top-3 rounded-sm border border-col-line bg-col-surface px-2 py-1 text-[10.5px] uppercase tracking-[0.14em] text-col-slate">
+            <Estado tono="neutro" className="absolute left-3 top-3 shadow-col-1">
               Oculto
-            </span>
+            </Estado>
           )}
         </div>
-        <p className="mt-4 font-col-display text-[24px] leading-[1.15] text-col-ink">{e.nombre}</p>
-        <p className="mt-1 truncate text-[13px] text-col-slate">{e.region || "Sin región"}</p>
+        <p className="mt-4 font-col-display text-col-xl leading-[1.15] text-col-ink">{e.nombre}</p>
+        <p className="mt-1 truncate text-col-sm text-col-slate">{e.region || "Sin región"}</p>
       </button>
+      {editable && <AsaTarjeta nombre={e.nombre} orden={orden} />}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-col-line pt-3">
-        <span className="text-[12px] uppercase tracking-[0.12em] text-col-slate">
+        <span className="text-col-sm text-col-slate">
           {plural(e.experiencias, "experiencia", "experiencias")}
         </span>
-        <label className="flex items-center gap-2 text-[12px] text-col-slate">
+        <label className="flex items-center gap-2 text-col-xs text-col-slate">
           {e.publicado ? "Publicado" : "Oculto"}
           <Interruptor checked={e.publicado} onCheckedChange={onPublicar} disabled={!editable} label={`Publicar a ${e.nombre}`} />
         </label>
@@ -307,8 +325,7 @@ function EditorEspecialista({
   editable,
   error,
   cambiar,
-  onEliminar,
-}: {
+  onEliminar }: {
   e: EspecialistaItem;
   usuarios: { id: string; name: string }[];
   editable: boolean;
@@ -326,7 +343,7 @@ function EditorEspecialista({
       <div className="bg-col-base px-6 py-7">
         <div className="mb-4 flex items-baseline justify-between gap-4">
           <Eyebrow>Vista previa</Eyebrow>
-          <span className="text-[12px] text-col-slate">Así sale al pie de cada experiencia</span>
+          <span className="text-col-xs text-col-slate">Así sale al pie de cada experiencia</span>
         </div>
         <Escalado ancho={820}>
           <PaginaCtx.Provider value={PAGINA_PREVIEW}>
@@ -336,11 +353,11 @@ function EditorEspecialista({
           </PaginaCtx.Provider>
         </Escalado>
         {error && (
-          <p role="alert" className="mt-3 text-[13px] text-col-alerta">
+          <p role="alert" className="mt-3 text-col-sm text-col-alerta">
             {error}
           </p>
         )}
-        {ro && <p className="mt-3 text-[13px] text-col-slate">Solo lectura: te falta el permiso para editar el sitio.</p>}
+        {ro && <p className="mt-3 text-col-sm text-col-slate">Solo lectura: te falta el permiso para editar el sitio.</p>}
       </div>
 
       <div className="flex flex-col gap-9 px-6 py-8">
@@ -354,10 +371,10 @@ function EditorEspecialista({
                 maxLength={100}
                 disabled={ro}
                 onChange={(ev) => cambiar({ nombre: ev.target.value })}
-                className={cn(inputLinea, "font-col-display text-[26px]")}
+                className={cn(entradaTitulo, "text-col-2xl leading-tight")}
               />
             </Campo>
-            <Campo etiqueta="Región" htmlFor="e-region" ayuda="Completa “Tu especialista en …”.">
+            <Campo etiqueta="Región" htmlFor="e-region" ayuda="Completá “Tu especialista en …”.">
               <input
                 id="e-region"
                 value={e.region}
@@ -365,7 +382,7 @@ function EditorEspecialista({
                 disabled={ro}
                 placeholder="Asia y Oceanía"
                 onChange={(ev) => cambiar({ region: ev.target.value })}
-                className={inputLinea}
+                className={entrada}
               />
             </Campo>
           </div>
@@ -378,7 +395,7 @@ function EditorEspecialista({
             value={e.userId ?? ""}
             disabled={ro}
             onChange={(ev) => cambiar({ userId: ev.target.value || null })}
-            className={cn(inputLinea, "cursor-pointer appearance-none bg-none pr-6")}
+            className={entradaSelect}
           >
             <option value="">Sin usuario</option>
             {opciones.map((u) => (
@@ -387,7 +404,6 @@ function EditorEspecialista({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} aria-hidden />
           </div>
         </Campo>
 
@@ -400,7 +416,7 @@ function EditorEspecialista({
             disabled={ro}
             placeholder="Lo que diría al conocerte."
             onChange={(ev) => cambiar({ frase: ev.target.value })}
-            className={cn(inputLinea, "resize-none font-col-display text-[20px] italic")}
+            className={cn(entradaArea, "font-col-display text-col-xl italic leading-snug")}
           />
         </Campo>
 
@@ -430,7 +446,7 @@ function EditorEspecialista({
         </Campo>
 
         <section className="flex flex-col gap-7 border-t border-col-line pt-8">
-          <h3 className="font-col-display text-[24px] leading-tight text-col-ink">Canales</h3>
+          <h3 className="font-col-display text-col-xl leading-tight text-col-ink">Canales</h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-7">
             <Campo etiqueta="WhatsApp" htmlFor="e-wa">
               <input
@@ -441,7 +457,7 @@ function EditorEspecialista({
                 disabled={ro}
                 placeholder="+598 99 123 456"
                 onChange={(ev) => cambiar({ whatsapp: ev.target.value })}
-                className={inputLinea}
+                className={entrada}
               />
             </Campo>
             <Campo etiqueta="Teléfono" htmlFor="e-tel">
@@ -452,7 +468,7 @@ function EditorEspecialista({
                 maxLength={40}
                 disabled={ro}
                 onChange={(ev) => cambiar({ telefono: ev.target.value })}
-                className={inputLinea}
+                className={entrada}
               />
             </Campo>
             <Campo etiqueta="Email" htmlFor="e-email" className="col-span-2">
@@ -464,7 +480,7 @@ function EditorEspecialista({
                 disabled={ro}
                 placeholder="nombre@traveloz.com.uy"
                 onChange={(ev) => cambiar({ email: ev.target.value })}
-                className={inputLinea}
+                className={entrada}
               />
             </Campo>
           </div>
@@ -472,14 +488,14 @@ function EditorEspecialista({
 
         <div className="flex items-center justify-between gap-4 border-t border-col-line pt-8">
           <div>
-            <p className="text-[15px] text-col-ink">Publicado</p>
-            <p className="mt-1 text-[13px] text-col-slate">Apagado, no aparece en el sitio ni en sus experiencias.</p>
+            <p className="text-col-cuerpo text-col-ink">Publicado</p>
+            <p className="mt-1 text-col-sm text-col-slate">Apagado, no aparece en el sitio ni en sus experiencias.</p>
           </div>
           <Interruptor checked={e.publicado} onCheckedChange={(v) => cambiar({ publicado: v })} disabled={ro} label="Publicado" />
         </div>
 
         {editable && (
-          <ZonaEliminar texto={`¿Eliminar a ${e.nombre}? No se puede deshacer.`} onEliminar={onEliminar} />
+          <ZonaEliminar texto={`¿Eliminar a ${e.nombre}? Vas a tener unos segundos para deshacerlo.`} onEliminar={onEliminar} />
         )}
       </div>
     </>
@@ -490,8 +506,7 @@ function CampoRetrato({
   retrato,
   nombre,
   editable,
-  onCambio,
-}: {
+  onCambio }: {
   retrato: MedioVista | null;
   nombre: string;
   editable: boolean;
@@ -501,16 +516,17 @@ function CampoRetrato({
   return (
     <div className="flex flex-col gap-2">
       <span className={etiquetaCampo}>Retrato</span>
+      <SoltarAqui tipo="FOTO" deshabilitado={!editable} onMedio={(m) => onCambio(m)}>
       {retrato ? (
-        <div className="group relative aspect-[4/5] overflow-hidden rounded-sm">
+        <div className="group relative aspect-[4/5] overflow-hidden rounded-col-sm">
           <Retrato e={{ nombre, retrato }} sizes="160px" />
           {editable && (
-            <div className="absolute inset-x-1.5 bottom-1.5 flex justify-end gap-1.5 opacity-0 transition-opacity duration-200 ease-col focus-within:opacity-100 group-hover:opacity-100">
+            <div className="absolute inset-x-1.5 bottom-1.5 flex justify-end gap-1.5 opacity-0 transition-opacity duration-col ease-col focus-within:opacity-100 group-hover:opacity-100">
               <button
                 type="button"
                 aria-label="Cambiar retrato"
                 onClick={() => setAbierto(true)}
-                className="flex h-8 w-8 items-center justify-center rounded-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-col-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
               >
                 <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
@@ -518,7 +534,7 @@ function CampoRetrato({
                 type="button"
                 aria-label="Quitar retrato"
                 onClick={() => onCambio(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-col-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
               >
                 <X className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
@@ -530,12 +546,13 @@ function CampoRetrato({
           type="button"
           disabled={!editable}
           onClick={() => setAbierto(true)}
-          className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 bg-col-base text-col-slate transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
+          className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-2 rounded-col-sm border border-dashed border-col-slate/30 bg-col-base text-col-slate transition-colors duration-col ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
         >
           <ImagePlus className="h-5 w-5 text-col-gold" strokeWidth={1.4} aria-hidden />
-          <span className="text-[11px] uppercase tracking-[0.14em]">Elegir</span>
+          <span className="text-col-sm font-medium">Elegir</span>
         </button>
       )}
+      </SoltarAqui>
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}

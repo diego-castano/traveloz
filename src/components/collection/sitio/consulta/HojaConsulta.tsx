@@ -285,7 +285,7 @@ function FormularioCorto({ experienciaSlug }: { experienciaSlug: string }) {
         <button
           type="submit"
           disabled={envio.estado === "enviando"}
-          className={cn(boton(), "group h-[52px] w-full gap-3 disabled:opacity-80")}
+          className={cn(boton({ tam: "lg" }), "group h-[52px] w-full gap-3 disabled:opacity-80")}
         >
           {envio.estado === "enviando" ? (
             <>

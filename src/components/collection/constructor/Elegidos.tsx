@@ -21,7 +21,7 @@ export interface OpcionElegible {
 
 function Foto({ medio }: { medio: MedioVista | null }) {
   return (
-    <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-sm bg-col-line">
+    <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-col-sm bg-col-line">
       {medio && <MedioImagen medio={medio} relleno sizes="48px" />}
     </span>
   );
@@ -63,18 +63,18 @@ export function Elegidos({
           render={({ id, o }, i, asa) => (
             <div
               className={cn(
-                "flex items-center gap-3 rounded-sm border border-col-line bg-col-surface py-1.5 pl-1 pr-2",
-                asa.arrastrando && "shadow-[0_16px_32px_-16px_rgba(50,55,59,0.5)]",
+                "flex items-center gap-3 rounded-col-sm border border-col-line bg-col-surface py-1.5 pl-1 pr-2",
+                asa.arrastrando && "shadow-col-2",
               )}
             >
               {editable && <Asa asa={asa} label={o?.titulo ?? "item"} />}
-              <span className="w-5 text-center text-[12px] tabular-nums lining-nums text-col-slate/70">{i + 1}</span>
+              <span className="w-5 text-center text-col-xs tabular-nums lining-nums text-col-muted">{i + 1}</span>
               <Foto medio={o?.medio ?? null} />
               <span className="min-w-0 flex-1">
-                <span className={cn("block truncate text-[14px]", o ? "text-col-ink" : "italic text-col-slate")}>
+                <span className={cn("block truncate text-col-md", o ? "text-col-ink" : "italic text-col-slate")}>
                   {o?.titulo || "No disponible"}
                 </span>
-                <span className="block truncate text-[12px] text-col-slate">
+                <span className="block truncate text-col-xs text-col-slate">
                   {o ? o.detalle : "No está publicado: en el sitio no se muestra."}
                 </span>
               </span>
@@ -83,7 +83,7 @@ export function Elegidos({
                   type="button"
                   aria-label={`Quitar ${o?.titulo ?? "item"}`}
                   onClick={() => onCambio(ids.filter((x) => x !== id))}
-                  className="flex h-7 w-7 items-center justify-center rounded-sm text-col-slate hover:bg-col-base hover:text-col-ink"
+                  className="flex h-7 w-7 items-center justify-center rounded-col-sm text-col-slate hover:bg-col-base hover:text-col-ink"
                 >
                   <X className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </button>
@@ -92,16 +92,16 @@ export function Elegidos({
           )}
         />
       ) : (
-        <p className="text-[14px] italic text-col-slate">{vacio}</p>
+        <p className="text-col-md italic text-col-slate">{vacio}</p>
       )}
       {editable && ids.length < max && (
         <Popover.Root open={abierto} onOpenChange={(o) => {
             setAbierto(o);
             if (!o) setQ("");
           }}>
-          <Popover.Trigger className="flex h-10 items-center gap-2 self-start text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors hover:text-col-ink">
+          <Popover.Trigger className="flex h-10 items-center gap-2 self-start text-col-sm font-medium text-col-slate transition-colors hover:text-col-ink">
             <Plus className="h-4 w-4 text-col-gold" strokeWidth={1.5} /> Sumar {etiqueta}
-            <span className="normal-case tracking-normal text-col-slate/60">
+            <span className="normal-case tracking-normal text-col-muted">
               ({ids.length} de {max})
             </span>
           </Popover.Trigger>
@@ -109,17 +109,17 @@ export function Elegidos({
             <Popover.Content
               align="start"
               sideOffset={6}
-              className="z-50 flex max-h-[380px] w-[360px] flex-col rounded-sm border border-col-line bg-col-surface shadow-[0_20px_50px_-24px_rgba(50,55,59,0.5)]"
+              className="z-50 flex max-h-[380px] w-[360px] flex-col rounded-col-sm border border-col-line bg-col-surface shadow-col-3"
             >
               <label className="relative border-b border-col-line">
                 <span className="sr-only">Buscar {etiqueta}</span>
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
                 <input
                   autoFocus
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Buscar"
-                  className="h-11 w-full border-0 bg-transparent pl-9 pr-3 text-[14px] text-col-ink placeholder:text-col-slate/60 focus:outline-none focus:ring-0"
+                  className="col-anillo h-11 w-full border-0 bg-transparent pl-10 pr-3.5 text-col-md text-col-ink placeholder:text-col-slate/50 focus:outline-none focus:ring-0"
                 />
               </label>
               <div className="min-h-0 flex-1 overflow-y-auto p-1">
@@ -132,17 +132,17 @@ export function Elegidos({
                         onCambio([...ids, o.id]);
                         if (ids.length + 1 >= max) setAbierto(false);
                       }}
-                      className="flex w-full items-center gap-3 rounded-sm p-1.5 text-left transition-colors hover:bg-col-base"
+                      className="flex w-full items-center gap-3 rounded-col-sm p-1.5 text-left transition-colors hover:bg-col-base"
                     >
                       <Foto medio={o.medio} />
                       <span className="min-w-0">
-                        <span className="block truncate text-[14px] text-col-ink">{o.titulo}</span>
-                        {o.detalle && <span className="block truncate text-[12px] text-col-slate">{o.detalle}</span>}
+                        <span className="block truncate text-col-md text-col-ink">{o.titulo}</span>
+                        {o.detalle && <span className="block truncate text-col-xs text-col-slate">{o.detalle}</span>}
                       </span>
                     </button>
                   ))
                 ) : (
-                  <p className="px-3 py-6 text-center text-[13px] text-col-slate">
+                  <p className="px-3 py-6 text-center text-col-sm text-col-slate">
                     {opciones.length ? "No hay más para sumar." : "No hay nada publicado todavía."}
                   </p>
                 )}
@@ -170,7 +170,7 @@ export function Segmentado<T extends string>({
   deshabilitado?: boolean;
 }) {
   return (
-    <div role="radiogroup" aria-label={etiqueta} className="inline-flex gap-0.5 self-start rounded-sm bg-col-line/60 p-0.5">
+    <div role="radiogroup" aria-label={etiqueta} className="inline-flex gap-0.5 self-start rounded-col-sm bg-col-line/60 p-0.5">
       {opciones.map(([v, label]) => (
         <button
           key={v}
@@ -180,8 +180,8 @@ export function Segmentado<T extends string>({
           disabled={deshabilitado}
           onClick={() => onCambio(v)}
           className={cn(
-            "h-9 rounded-sm px-4 text-[12px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col",
-            valor === v ? "bg-col-surface text-col-ink shadow-[0_1px_2px_rgba(50,55,59,0.12)]" : "text-col-slate hover:text-col-ink",
+            "h-9 rounded-col-sm px-4 text-col-md font-medium transition-colors duration-col ease-col",
+            valor === v ? "bg-col-surface text-col-ink shadow-col-1" : "text-col-slate hover:text-col-ink",
           )}
         >
           {label}

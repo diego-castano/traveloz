@@ -8,14 +8,48 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog } from "radix-ui";
-import { LoaderCircle, Plus, Trash2, X } from "lucide-react";
+import type { useSortable } from "@dnd-kit/sortable";
+import { GripVertical, LoaderCircle, Plus, Trash2, X } from "lucide-react";
 import type { Resultado } from "@/lib/collection/ejecutar";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { Boton } from "../ui";
+import { Boton, BotonIcono, Entrada } from "../ui";
+import { EASE, transiciones } from "../movimiento";
 import { IndicadorGuardado, type EstadoGuardado } from "../biblioteca/DetalleMedio";
+import { errorAmigable } from "../shell/Avisos";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
+/**
+ * Asa para mover una tarjeta de grilla. Lleva los listeners de dnd-kit (mouse,
+ * toque y teclado: Espacio levanta, flechas mueven, Espacio suelta), así la
+ * tarjeta queda libre para abrirse con clic, Enter o Espacio. Se ve al pasar
+ * el mouse o al enfocarla, y siempre en pantallas táctiles.
+ */
+export function AsaTarjeta({
+  nombre,
+  orden,
+  className,
+}: {
+  nombre: string;
+  orden: Pick<ReturnType<typeof useSortable>, "attributes" | "listeners" | "setActivatorNodeRef">;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      ref={orden.setActivatorNodeRef}
+      {...orden.attributes}
+      {...orden.listeners}
+      aria-label={`Mover ${nombre}`}
+      title="Arrastrá para cambiar el orden"
+      className={cn(
+        "absolute right-3 top-3 z-10 flex h-9 w-9 cursor-grab touch-none items-center justify-center rounded-col bg-col-surface/95 text-col-slate opacity-0 shadow-col-1 backdrop-blur-sm transition-opacity duration-col ease-col hover:text-col-ink focus-visible:opacity-100 active:cursor-grabbing group-hover:opacity-100 [@media(hover:none)]:opacity-100",
+        className,
+      )}
+    >
+      <GripVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+    </button>
+  );
+}
 
 /** Hoja lateral derecha, mismo estilo que el detalle de la biblioteca. */
 export function Hoja({
@@ -38,35 +72,41 @@ export function Hoja({
         {abierta && (
           <Dialog.Portal forceMount container={raiz}>
             <Dialog.Overlay asChild forceMount>
-              <motion.div
-                className="fixed inset-0 z-50 bg-col-ink/35"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              />
+              <motion.div className="fixed inset-0 z-50 bg-col-ink/35 backdrop-blur-[1px]" {...transiciones.velo} />
             </Dialog.Overlay>
-            <Dialog.Content asChild forceMount aria-describedby={undefined}>
+            <Dialog.Content
+              asChild
+              forceMount
+              aria-describedby={undefined}
+              // El foco va al panel y no al primer botón, así no se abre su globo.
+              onOpenAutoFocus={(e) => {
+                e.preventDefault();
+                (e.target as HTMLElement | null)?.focus();
+              }}
+            >
               <motion.div
-                className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[600px] flex-col bg-col-surface shadow-[-24px_0_60px_-30px_rgba(50,55,59,0.45)] focus:outline-none"
-                initial={{ x: "100%" }}
-                animate={{ x: 0 }}
-                exit={{ x: "100%" }}
-                transition={{ duration: 0.5, ease: EASE }}
+                className="col-anillo fixed inset-y-0 right-0 z-50 flex w-full max-w-[600px] flex-col bg-col-surface shadow-col-3 focus:outline-none"
+                {...transiciones.hoja}
               >
-                <header className="flex h-16 shrink-0 items-center gap-3 border-b border-col-line px-5">
-                  <Dialog.Title className="min-w-0 flex-1 truncate font-col-display text-[22px] font-normal text-col-ink">
+                <header className="flex h-16 shrink-0 items-center gap-3 border-b border-col-line pl-6 pr-3">
+                  <Dialog.Title className="min-w-0 flex-1 truncate font-col-display text-col-xl font-normal text-col-ink">
                     {titulo}
                   </Dialog.Title>
                   <IndicadorGuardado estado={estado} />
-                  <Dialog.Close
-                    aria-label="Cerrar"
-                    className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
-                  >
-                    <X className="h-5 w-5" strokeWidth={1.5} />
+                  <Dialog.Close asChild>
+                    <BotonIcono etiqueta="Cerrar" lado="left">
+                      <X strokeWidth={1.5} />
+                    </BotonIcono>
                   </Dialog.Close>
                 </header>
-                <div className="flex-1 overflow-y-auto">{children}</div>
+                <motion.div
+                  className="flex-1 overflow-y-auto"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: EASE, delay: 0.12 }}
+                >
+                  {children}
+                </motion.div>
               </motion.div>
             </Dialog.Content>
           </Dialog.Portal>
@@ -113,7 +153,7 @@ export function useGuardadoDiferido<T>(
     enVuelo.current = false;
     // Con error tampoco reintenta solo: el próximo cambio vuelve a probar.
     guardado.current = foto;
-    setError(r.ok ? null : r.error);
+    setError(r.ok ? null : errorAmigable(r.error));
     if (ultimo.current !== foto) return ya();
     setEstado(r.ok ? "guardado" : "error");
   }, []);
@@ -158,45 +198,48 @@ export function NuevoEnLinea({
     }
   };
 
-  if (!abierto) {
-    return (
-      <Boton onClick={() => setAbierto(true)}>
-        <Plus className="h-4 w-4" strokeWidth={1.5} />
-        {etiqueta}
-      </Boton>
-    );
-  }
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        void crear();
-      }}
-      className="flex max-w-full flex-wrap items-center gap-3"
-    >
-      <input
-        autoFocus
-        aria-label={placeholder}
-        value={nombre}
-        maxLength={80}
-        onChange={(e) => setNombre(e.target.value)}
-        onKeyDown={(e) => e.key === "Escape" && setAbierto(false)}
-        placeholder={placeholder}
-        className="h-12 w-60 min-w-0 max-w-full border-0 border-b border-col-gold bg-transparent px-0 font-col-display text-[22px] text-col-ink placeholder:text-col-slate/50 focus:outline-none focus:ring-0"
-      />
-      <Boton type="submit" disabled={!nombre.trim() || creando}>
-        {creando ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={1.5} />}
-        Crear
-      </Boton>
-      <button
-        type="button"
-        aria-label="Cancelar"
-        onClick={() => setAbierto(false)}
-        className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
-      >
-        <X className="h-4 w-4" strokeWidth={1.5} />
-      </button>
-    </form>
+    <AnimatePresence mode="popLayout" initial={false}>
+      {!abierto ? (
+        <motion.div key="b" {...transiciones.pop}>
+          <Boton onClick={() => setAbierto(true)}>
+            <Plus strokeWidth={1.5} />
+            {etiqueta}
+          </Boton>
+        </motion.div>
+      ) : (
+        <motion.form
+          key="f"
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 12 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void crear();
+          }}
+          className="flex max-w-full flex-wrap items-center gap-2"
+        >
+          <Entrada
+            autoFocus
+            aria-label={placeholder}
+            value={nombre}
+            maxLength={80}
+            onChange={(e) => setNombre(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setAbierto(false)}
+            placeholder={placeholder}
+            className="min-h-10 w-64 max-w-full py-[7px]"
+          />
+          <Boton type="submit" disabled={!nombre.trim()} cargando={creando}>
+            {!creando && <Plus strokeWidth={1.5} />}
+            Crear
+          </Boton>
+          <BotonIcono etiqueta="Cancelar" onClick={() => setAbierto(false)}>
+            <X strokeWidth={1.5} />
+          </BotonIcono>
+        </motion.form>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -209,7 +252,7 @@ export function ZonaEliminar({ texto, onEliminar }: { texto: string; onEliminar:
     setBorrando(true);
     const e = await onEliminar();
     setBorrando(false);
-    setError(e);
+    setError(e && errorAmigable(e));
     if (e) setConfirmar(false);
   };
   return (
@@ -217,7 +260,7 @@ export function ZonaEliminar({ texto, onEliminar }: { texto: string; onEliminar:
       <div className="flex flex-wrap items-center gap-3">
         {confirmar ? (
           <>
-            <p className="mr-auto text-[14px] text-col-ink">{texto}</p>
+            <p className="mr-auto text-col-md text-col-ink">{texto}</p>
             <Boton variante="fantasma" tam="sm" onClick={() => setConfirmar(false)}>
               Cancelar
             </Boton>
@@ -233,19 +276,25 @@ export function ZonaEliminar({ texto, onEliminar }: { texto: string; onEliminar:
               setError(null);
               setConfirmar(true);
             }}
-            className="flex h-9 items-center gap-2 text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors duration-200 ease-col hover:text-col-alerta"
+            className="flex h-9 items-center gap-2 text-col-sm font-medium text-col-slate transition-colors duration-col ease-col hover:text-col-alerta"
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.5} /> Eliminar
           </button>
         )}
       </div>
       {error && (
-        <p role="alert" className="mt-3 text-[13px] text-col-alerta">
+        <p role="alert" className="mt-3 text-col-sm text-col-alerta">
           {error}
         </p>
       )}
     </section>
   );
+}
+
+/** Vuelve a poner `x` en la posición `i` (para deshacer un borrado). */
+export function reponer<T extends { id: string }>(lista: T[], i: number, x: T) {
+  if (lista.some((y) => y.id === x.id)) return lista;
+  return [...lista.slice(0, i), x, ...lista.slice(i)];
 }
 
 /** Color estable por texto, para portadas y retratos que todavía no tienen foto. */
@@ -272,7 +321,7 @@ export function Escalado({ ancho, children }: { ancho: number; children: React.R
     return () => ro.disconnect();
   }, [ancho]);
   return (
-    <div ref={caja} className="overflow-hidden rounded-sm" style={{ height: medidas.alto || undefined }}>
+    <div ref={caja} className="overflow-hidden rounded-col-sm" style={{ height: medidas.alto || undefined }}>
       <div ref={interior} style={{ width: ancho, transform: `scale(${medidas.escala})`, transformOrigin: "top left" }}>
         {children}
       </div>

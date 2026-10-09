@@ -13,7 +13,7 @@ import { Bold, Heading3, Italic, Link2, List, ListOrdered, Quote, Unlink } from 
 import { textoPlano } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { Boton, inputLinea } from "../ui";
+import { Boton, entrada } from "../ui";
 import "./editor.css";
 
 export function EditorTexto({
@@ -26,8 +26,7 @@ export function EditorTexto({
   maximo,
   recomendado,
   compacto,
-  deshabilitado,
-}: {
+  deshabilitado }: {
   valor: string;
   onCambio: (html: string) => void;
   placeholder?: string;
@@ -63,8 +62,7 @@ export function EditorTexto({
         horizontalRule: false,
         strike: false,
         underline: false,
-        link: { openOnClick: false, autolink: true, defaultProtocol: "https" },
-      }),
+        link: { openOnClick: false, autolink: true, defaultProtocol: "https" } }),
       Placeholder.configure({ placeholder: placeholder ?? "" }),
     ],
     content: valor,
@@ -73,9 +71,7 @@ export function EditorTexto({
         "aria-label": etiqueta,
         "aria-multiline": "true",
         role: "textbox",
-        class: "col-prosa-editor focus:outline-none",
-      },
-    },
+        class: "col-prosa-editor focus:outline-none" } },
     onCreate: ({ editor: e }) => {
       ultimoNormalizado.current = htmlDe(e);
     },
@@ -89,8 +85,7 @@ export function EditorTexto({
       ultimoNormalizado.current = html;
       ultimoExterno.current = html;
       onCambioRef.current(html);
-    },
-  });
+    } });
 
   // Si el valor cambia desde afuera (deshacer, "armar días"), lo reflejamos.
   useEffect(() => {
@@ -109,7 +104,7 @@ export function EditorTexto({
   return (
     <div
       className={cn(
-        "group/editor rounded-sm border border-col-line bg-col-surface transition-colors duration-200 ease-col focus-within:border-col-gold",
+        "group/editor rounded-col-sm border border-col-line bg-col-surface transition-colors duration-col ease-col focus-within:border-col-gold",
         deshabilitado && "opacity-70",
       )}
     >
@@ -123,17 +118,17 @@ export function EditorTexto({
           <EditorContent editor={editor} />
         ) : (
           <div
-            className="col-prosa-editor text-col-slate/60"
+            className="col-prosa-editor text-col-muted"
             dangerouslySetInnerHTML={{ __html: valor || `<p>${placeholder ?? ""}</p>` }}
           />
         )}
       </div>
       {(maximo || recomendado) && (
-        <div className="flex justify-end border-t border-col-line/70 px-4 py-1.5 text-[11px] tracking-wide text-col-slate/70">
+        <div className="flex justify-end border-t border-col-line/70 px-4 py-1.5 text-col-xs tracking-wide text-col-muted">
           <span
             className={cn(
-              recomendado && largo >= recomendado && "text-[#B07A2A]",
-              maximo && largo > maximo && "text-col-alerta",
+              recomendado && largo >= recomendado && "text-col-ok",
+              maximo && largo > maximo && "text-col-error",
             )}
           >
             {largo.toLocaleString("es-UY")}
@@ -157,10 +152,8 @@ function Barra({ editor, compacto }: { editor: Editor | null; compacto?: boolean
             lista: e.isActive("bulletList"),
             numerada: e.isActive("orderedList"),
             cita: e.isActive("blockquote"),
-            enlace: e.isActive("link"),
-          }
-        : null,
-  });
+            enlace: e.isActive("link") }
+        : null });
   if (!editor) return <div className="h-10 border-b border-col-line/70" aria-hidden />;
   const c = () => editor.chain().focus();
   return (
@@ -205,8 +198,7 @@ function BotonBarra({
   atajo,
   activo,
   onClick,
-  children,
-}: {
+  children }: {
   label: string;
   atajo?: string;
   activo?: boolean;
@@ -223,7 +215,7 @@ function BotonBarra({
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-sm text-col-slate transition-colors duration-200 ease-col hover:bg-col-base hover:text-col-ink [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.6]",
+        "flex h-8 w-8 items-center justify-center rounded-col-sm text-col-slate transition-colors duration-col ease-col hover:bg-col-base hover:text-col-ink [&>svg]:h-4 [&>svg]:w-4 [&>svg]:stroke-[1.6]",
         activo && "bg-col-base text-col-ink",
       )}
     >
@@ -259,7 +251,7 @@ function Enlace({ editor, activo }: { editor: Editor; activo: boolean }) {
           aria-pressed={activo}
           onMouseDown={(e) => e.preventDefault()}
           className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-sm text-col-slate transition-colors duration-200 ease-col hover:bg-col-base hover:text-col-ink",
+            "flex h-8 w-8 items-center justify-center rounded-col-sm text-col-slate transition-colors duration-col ease-col hover:bg-col-base hover:text-col-ink",
             activo && "bg-col-base text-col-ink",
           )}
         >
@@ -271,7 +263,7 @@ function Enlace({ editor, activo }: { editor: Editor; activo: boolean }) {
           side="bottom"
           align="start"
           sideOffset={6}
-          className="z-[60] w-80 rounded-sm border border-col-line bg-col-surface p-4 shadow-[0_16px_40px_-20px_rgba(50,55,59,0.45)]"
+          className="z-[60] w-80 rounded-col-sm border border-col-line bg-col-surface p-4 shadow-col-3"
         >
           <form
             onSubmit={(e) => {
@@ -279,7 +271,7 @@ function Enlace({ editor, activo }: { editor: Editor; activo: boolean }) {
               aplicar();
             }}
           >
-            <label className="text-[12px] uppercase tracking-[0.12em] text-col-slate" htmlFor="col-enlace">
+            <label className="text-col-sm font-medium text-col-slate" htmlFor="col-enlace">
               Dirección del enlace
             </label>
             <input
@@ -288,7 +280,7 @@ function Enlace({ editor, activo }: { editor: Editor; activo: boolean }) {
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="traveloz.com.uy/collection"
-              className={inputLinea}
+              className={entrada}
             />
             <div className="mt-4 flex items-center justify-between">
               {activo ? (
@@ -298,7 +290,7 @@ function Enlace({ editor, activo }: { editor: Editor; activo: boolean }) {
                     editor.chain().focus().extendMarkRange("link").unsetLink().run();
                     setAbierto(false);
                   }}
-                  className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.12em] text-col-slate hover:text-col-alerta"
+                  className="flex items-center gap-1.5 text-col-sm font-medium text-col-slate hover:text-col-alerta"
                 >
                   <Unlink className="h-3.5 w-3.5" strokeWidth={1.6} /> Quitar
                 </button>

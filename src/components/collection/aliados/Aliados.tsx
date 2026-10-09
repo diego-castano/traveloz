@@ -9,25 +9,24 @@ import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ImagePlus, RefreshCw, X } from "lucide-react";
+import { ImagePlus, RefreshCw, X } from "lucide-react";
 import {
   actualizarAliado,
   crearAliado,
   eliminarAliado,
   reordenarAliados,
-  type AliadoItem,
-} from "@/actions/collection/aliados.actions";
+  type AliadoItem } from "@/actions/collection/aliados.actions";
 import type { Resultado } from "@/lib/collection/ejecutar";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { useAviso } from "../shell/Avisos";
-import { EncabezadoPagina, Eyebrow, Filtros, Interruptor, barraHerramientas, etiquetaCampo, inputLinea } from "../ui";
+import { useAviso, useDeshacer } from "../shell/Avisos";
+import { EncabezadoPagina, Estado, Eyebrow, Filtros, Interruptor, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { LogoAliado } from "../sitio/tarjetas";
 import "../sitio/sitio.css";
-import { Escalado, Hoja, NuevoEnLinea, ZonaEliminar, useGuardadoDiferido } from "../contenido/comun";
+import { AsaTarjeta, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, reponer, useGuardadoDiferido } from "../contenido/comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 export const TIPOS_ALIADO = ["Hotel", "Naviera", "Aerolínea", "Operador", "Otro"];
@@ -47,8 +46,7 @@ const apiReal: ApiAliados = {
   crear: crearAliado,
   actualizar: actualizarAliado,
   reordenar: reordenarAliados,
-  eliminar: eliminarAliado,
-};
+  eliminar: eliminarAliado };
 
 function payload(a: AliadoItem): Payload {
   return {
@@ -58,8 +56,7 @@ function payload(a: AliadoItem): Payload {
     url: a.url,
     logoId: a.logo?.id ?? null,
     proveedorId: a.proveedorId,
-    publicado: a.publicado,
-  };
+    publicado: a.publicado };
 }
 
 /** Los tipos de siempre más los que ya se usan, sin repetir. */
@@ -74,14 +71,14 @@ export function Aliados({
   inicial,
   proveedores,
   api = apiReal,
-  abrirId = null,
-}: {
+  abrirId = null }: {
   inicial: AliadoItem[] | { error: string };
   proveedores: { id: string; nombre: string }[];
   api?: ApiAliados;
   abrirId?: string | null;
 }) {
   const avisar = useAviso();
+  const deshacible = useDeshacer();
   const { puede } = useCollection();
   const editable = puede("sitio.editar");
   const sensores = useSensoresOrden();
@@ -130,22 +127,31 @@ export function Aliados({
       logo: null,
       publicado: false,
       orden: items.length,
-      proveedorId: null,
-    };
+      proveedorId: null };
     setItems((l) => [...l, nuevo]);
     setAbierto(nuevo.id);
     return true;
   };
 
   // El interruptor de la ficha guarda al toque, con todo lo demás como está.
-  const publicar = async (a: AliadoItem, publicado: boolean) => {
+  const guardarVisible = async (a: AliadoItem, publicado: boolean) => {
     setItems((l) => l.map((x) => (x.id === a.id ? { ...x, publicado } : x)));
     const r = await api.actualizar(a.id, payload({ ...a, publicado }));
     if (!r.ok) {
       setItems((l) => l.map((x) => (x.id === a.id ? { ...x, publicado: !publicado } : x)));
       avisar(r.error, "error");
+      return false;
     }
+    return true;
   };
+
+  // Publicar u ocultar cambia el sitio al toque: el aviso ofrece volver atrás (acción inversa).
+  const publicar = (a: AliadoItem, publicado: boolean) =>
+    deshacible({
+      mensaje: `${a.nombre || "El aliado"} ${publicado ? "ya se ve" : "ya no se ve"} en el sitio.`,
+      aplicar: () => guardarVisible(a, publicado),
+      deshacer: () => void guardarVisible({ ...a, publicado }, !publicado),
+    });
 
   const alSoltar = async (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return;
@@ -163,13 +169,25 @@ export function Aliados({
     }
   };
 
+  // Borrado diferido: sale de la grilla al toque y el servidor se entera
+  // cuando vence el aviso. "Deshacer" lo repone sin llamar a nadie.
   const eliminar = async () => {
     if (!actual) return null;
-    const r = await api.eliminar(actual.id);
-    if (!r.ok) return r.error;
+    const x = actual;
+    const i = items.findIndex((y) => y.id === x.id);
     setAbierto(null);
-    setItems((l) => l.filter((x) => x.id !== actual.id));
-    avisar("Aliado eliminado.");
+    void deshacible({
+      mensaje: `Eliminaste ${x.nombre || "el aliado"}.`,
+      aplicar: () => setItems((l) => l.filter((y) => y.id !== x.id)),
+      deshacer: () => setItems((l) => reponer(l, i, x)),
+      confirmar: async () => {
+        const r = await api.eliminar(x.id);
+        if (!r.ok) {
+          setItems((l) => reponer(l, i, x));
+          avisar(r.error, "error");
+        }
+      },
+    });
     return null;
   };
 
@@ -178,7 +196,6 @@ export function Aliados({
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Aliados"
         titulo="Con quiénes viajamos"
         descripcion={`${items.length} ${items.length === 1 ? "aliado" : "aliados"} · ${publicados} en el sitio`}
         acciones={editable && <NuevoEnLinea etiqueta="Nuevo aliado" placeholder="Nombre del aliado" onCrear={crear} />}
@@ -196,13 +213,13 @@ export function Aliados({
       </div>
 
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
 
       {visibles.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-[28px] italic text-col-slate">
+        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
           {items.length ? "Nada de ese tipo todavía." : "Todavía no hay aliados. Sumá el primero."}
         </p>
       ) : (
@@ -227,7 +244,7 @@ export function Aliados({
         </DndContext>
       )}
       {ordenable && visibles.length > 1 && (
-        <p className="mt-12 text-center text-[13px] text-col-slate/70">Arrastrá las fichas para cambiar el orden en el sitio.</p>
+        <p className="mt-12 text-center text-col-sm text-col-muted">Arrastrá las fichas para cambiar el orden en el sitio.</p>
       )}
 
       <Hoja abierta={!!actual} titulo={actual?.nombre || "Aliado"} estado={guardado.estado} onCerrar={cerrar}>
@@ -257,12 +274,12 @@ function LogoFicha({ a, className }: { a: Pick<AliadoItem, "nombre" | "logo">; c
       alt={a.nombre}
       loading="lazy"
       className={cn(
-        "max-h-[46%] w-auto max-w-[72%] object-contain opacity-70 grayscale transition-[filter,opacity] duration-300 ease-col group-hover:opacity-100 group-hover:grayscale-0",
+        "max-h-[46%] w-auto max-w-[72%] object-contain opacity-70 grayscale transition-[filter,opacity] duration-col-lento ease-col group-hover:opacity-100 group-hover:grayscale-0",
         className,
       )}
     />
   ) : (
-    <span className="px-4 text-center font-col-display text-[24px] leading-tight text-col-slate transition-colors duration-300 ease-col group-hover:text-col-ink">
+    <span className="px-4 text-center font-col-display text-col-xl leading-tight text-col-slate transition-colors duration-col-lento ease-col group-hover:text-col-ink">
       {a.nombre || "Sin nombre"}
     </span>
   );
@@ -274,8 +291,7 @@ function Ficha({
   ordenable,
   editable,
   onAbrir,
-  onPublicar,
-}: {
+  onPublicar }: {
   a: AliadoItem;
   i: number;
   ordenable: boolean;
@@ -283,7 +299,8 @@ function Ficha({
   onAbrir: () => void;
   onPublicar: (v: boolean) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: a.id, disabled: !ordenable });
+  const orden = useSortable({ id: a.id, disabled: !ordenable });
+  const { setNodeRef, transform, transition, isDragging } = orden;
   return (
     <motion.li
       ref={setNodeRef}
@@ -298,26 +315,25 @@ function Ficha({
       <button
         type="button"
         onClick={onAbrir}
-        {...(ordenable ? { ...attributes, ...listeners } : {})}
         aria-label={`Editar ${a.nombre || "aliado sin nombre"}`}
         className={cn(
-          "relative flex aspect-[16/10] w-full items-center justify-center rounded-sm border border-col-line bg-col-surface transition-[border-color,box-shadow] duration-300 ease-col hover:border-col-slate/30 hover:shadow-[0_18px_40px_-28px_rgba(50,55,59,0.5)]",
-          ordenable && "cursor-grab active:cursor-grabbing",
+          "relative flex aspect-[16/10] w-full items-center justify-center rounded-col-sm border border-col-line bg-col-surface transition-[border-color,box-shadow] duration-col-lento ease-col hover:border-col-slate/30 hover:shadow-col-2",
           !a.publicado && "bg-col-surface/60",
-          isDragging && "shadow-[0_24px_50px_-24px_rgba(50,55,59,0.55)]",
+          isDragging && "shadow-col-2",
         )}
       >
         <LogoFicha a={a} />
         {!a.publicado && (
-          <span className="absolute left-2.5 top-2.5 rounded-sm border border-col-line bg-col-base px-2 py-1 text-[10.5px] uppercase tracking-[0.14em] text-col-slate">
+          <Estado tono="neutro" className="absolute left-2.5 top-2.5">
             Oculto
-          </span>
+          </Estado>
         )}
       </button>
+      {ordenable && <AsaTarjeta nombre={a.nombre || "aliado sin nombre"} orden={orden} className="right-2 top-2" />}
       <div className="mt-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[15px] text-col-ink">{a.nombre || "Sin nombre"}</p>
-          <p className="mt-0.5 truncate text-[11.5px] uppercase tracking-[0.12em] text-col-slate">{a.tipo || "Sin tipo"}</p>
+          <p className="truncate text-col-cuerpo text-col-ink">{a.nombre || "Sin nombre"}</p>
+          <p className="mt-0.5 truncate text-col-sm text-col-slate">{a.tipo || "Sin tipo"}</p>
         </div>
         <Interruptor checked={a.publicado} onCheckedChange={onPublicar} disabled={!editable} label={`Publicar ${a.nombre}`} />
       </div>
@@ -339,7 +355,7 @@ function VistaFila({ a, todos }: { a: AliadoItem; todos: AliadoItem[] }) {
             {ventana.map((x) => (
               <div
                 key={x.id}
-                className={cn("relative transition-opacity duration-300 ease-col", x.id !== a.id && "opacity-40")}
+                className={cn("relative transition-opacity duration-col-lento ease-col", x.id !== a.id && "opacity-40")}
               >
                 {x.id === a.id && <span aria-hidden className="absolute -left-4 inset-y-5 w-[3px] bg-col-gold" />}
                 <LogoAliado a={x} />
@@ -360,8 +376,7 @@ function EditorAliado({
   editable,
   error,
   cambiar,
-  onEliminar,
-}: {
+  onEliminar }: {
   a: AliadoItem;
   todos: AliadoItem[];
   tipos: string[];
@@ -389,17 +404,17 @@ function EditorAliado({
       <div className="bg-col-base px-6 py-7">
         <div className="mb-4 flex items-baseline justify-between gap-4">
           <Eyebrow>Vista previa</Eyebrow>
-          <span className="text-[12px] text-col-slate">
+          <span className="text-col-xs text-col-slate">
             {a.publicado ? "Así sale en la sección Aliados del sitio" : "Oculto: no sale en el sitio"}
           </span>
         </div>
         <VistaFila a={a} todos={todos} />
         {error && (
-          <p role="alert" className="mt-3 text-[13px] text-col-alerta">
+          <p role="alert" className="mt-3 text-col-sm text-col-alerta">
             {error}
           </p>
         )}
-        {ro && <p className="mt-3 text-[13px] text-col-slate">Solo lectura: te falta el permiso para editar el sitio.</p>}
+        {ro && <p className="mt-3 text-col-sm text-col-slate">Solo lectura: te falta el permiso para editar el sitio.</p>}
       </div>
 
       <div className="flex flex-col gap-9 px-6 py-8">
@@ -410,7 +425,7 @@ function EditorAliado({
             maxLength={100}
             disabled={ro}
             onChange={(e) => cambiar({ nombre: e.target.value })}
-            className={cn(inputLinea, "font-col-display text-[26px]")}
+            className={cn(entradaTitulo, "text-col-2xl leading-tight")}
           />
         </Campo>
 
@@ -426,7 +441,7 @@ function EditorAliado({
                 disabled={ro}
                 onClick={() => cambiar({ tipo: a.tipo === t ? "" : t })}
                 className={cn(
-                  "h-9 rounded-sm border px-4 text-[12px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col disabled:cursor-not-allowed",
+                  "h-9 rounded-col-sm border px-4 text-col-md font-medium transition-colors duration-col ease-col disabled:cursor-not-allowed",
                   a.tipo === t ? "border-col-ink bg-col-ink text-col-base" : "border-col-line text-col-slate hover:border-col-slate/50 hover:text-col-ink",
                 )}
               >
@@ -447,7 +462,7 @@ function EditorAliado({
                 }}
                 onBlur={sumarTipo}
                 placeholder="+ Otro tipo"
-                className="h-9 w-36 border-0 border-b border-dashed border-col-slate/40 bg-transparent px-1 text-[14px] text-col-ink placeholder:text-col-slate/60 focus:border-solid focus:border-col-gold focus:outline-none focus:ring-0"
+                className={cn(entrada, "min-h-9 w-40 border-dashed px-3 py-[5px] text-col-md focus:border-solid")}
               />
             )}
           </div>
@@ -464,7 +479,7 @@ function EditorAliado({
             disabled={ro}
             placeholder="Qué hacen y por qué viajamos con ellos, en una o dos líneas."
             onChange={(e) => cambiar({ descripcion: e.target.value })}
-            className={cn(inputLinea, "resize-none")}
+            className={entradaArea}
           />
         </Campo>
 
@@ -488,7 +503,7 @@ function EditorAliado({
               const u = a.url.trim();
               if (u && !/^https?:\/\//i.test(u) && !/\s/.test(u)) cambiar({ url: `https://${u}` });
             }}
-            className={cn(inputLinea, urlMal && "border-col-alerta")}
+            className={cn(entrada, urlMal && "border-col-alerta")}
           />
         </Campo>
 
@@ -499,7 +514,7 @@ function EditorAliado({
               value={a.proveedorId ?? ""}
               disabled={ro}
               onChange={(e) => cambiar({ proveedorId: e.target.value || null })}
-              className={cn(inputLinea, "cursor-pointer appearance-none bg-none pr-6")}
+              className={entradaSelect}
             >
               <option value="">Sin proveedor</option>
               {opciones.map((p) => (
@@ -508,19 +523,18 @@ function EditorAliado({
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} aria-hidden />
           </div>
         </Campo>
 
         <div className="flex items-center justify-between gap-4 border-t border-col-line pt-8">
           <div>
-            <p className="text-[15px] text-col-ink">Publicado</p>
-            <p className="mt-1 text-[13px] text-col-slate">Apagado, no aparece en la sección Aliados del sitio.</p>
+            <p className="text-col-cuerpo text-col-ink">Publicado</p>
+            <p className="mt-1 text-col-sm text-col-slate">Apagado, no aparece en la sección Aliados del sitio.</p>
           </div>
           <Interruptor checked={a.publicado} onCheckedChange={(v) => cambiar({ publicado: v })} disabled={ro} label="Publicado" />
         </div>
 
-        {editable && <ZonaEliminar texto={`¿Eliminar ${a.nombre || "este aliado"}? No se puede deshacer.`} onEliminar={onEliminar} />}
+        {editable && <ZonaEliminar texto={`¿Eliminar ${a.nombre || "este aliado"}? Vas a tener unos segundos para deshacerlo.`} onEliminar={onEliminar} />}
       </div>
     </>
   );
@@ -529,8 +543,7 @@ function EditorAliado({
 function CampoLogo({
   a,
   editable,
-  onCambio,
-}: {
+  onCambio }: {
   a: AliadoItem;
   editable: boolean;
   onCambio: (m: MedioVista | null) => void;
@@ -545,14 +558,14 @@ function CampoLogo({
             <button
               type="button"
               onClick={() => setAbierto(true)}
-              className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.12em] text-col-slate hover:text-col-ink"
+              className="flex items-center gap-1.5 text-col-sm font-medium text-col-slate hover:text-col-ink"
             >
               <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} /> Cambiar
             </button>
             <button
               type="button"
               onClick={() => onCambio(null)}
-              className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.12em] text-col-slate hover:text-col-alerta"
+              className="flex items-center gap-1.5 text-col-sm font-medium text-col-slate hover:text-col-alerta"
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.5} /> Quitar
             </button>
@@ -561,13 +574,13 @@ function CampoLogo({
       </div>
       {a.logo ? (
         <div className="grid grid-cols-2 gap-3">
-          <figure className="group flex aspect-[2/1] items-center justify-center rounded-sm border border-col-line bg-col-surface">
+          <figure className="group flex aspect-[2/1] items-center justify-center rounded-col-sm border border-col-line bg-col-surface">
             <LogoFicha a={a} />
           </figure>
-          <figure className="flex aspect-[2/1] items-center justify-center rounded-sm border border-col-line bg-col-surface">
+          <figure className="flex aspect-[2/1] items-center justify-center rounded-col-sm border border-col-line bg-col-surface">
             <LogoFicha a={a} className="opacity-100 grayscale-0" />
           </figure>
-          <figcaption className="col-span-2 -mt-1 grid grid-cols-2 gap-3 text-[11px] tracking-wide text-col-slate">
+          <figcaption className="col-span-2 -mt-1 grid grid-cols-2 gap-3 text-col-xs tracking-wide text-col-slate">
             <span>Como se ve en el sitio</span>
             <span>Al pasar el mouse</span>
           </figcaption>
@@ -577,13 +590,13 @@ function CampoLogo({
           type="button"
           disabled={!editable}
           onClick={() => setAbierto(true)}
-          className="flex aspect-[16/6] w-full flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 bg-col-surface text-col-slate transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
+          className="flex aspect-[16/6] w-full flex-col items-center justify-center gap-2 rounded-col-sm border border-dashed border-col-slate/30 bg-col-surface text-col-slate transition-colors duration-col ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
         >
           <ImagePlus className="h-5 w-5 text-col-gold" strokeWidth={1.4} aria-hidden />
-          <span className="text-[11px] uppercase tracking-[0.14em]">Elegir logo</span>
+          <span className="text-col-sm font-medium">Elegir logo</span>
         </button>
       )}
-      <p className="text-[13px] text-col-slate/80">PNG con fondo transparente se ve mejor. Sin logo, el sitio muestra el nombre.</p>
+      <p className="text-col-sm text-col-muted">PNG con fondo transparente se ve mejor. Sin logo, el sitio muestra el nombre.</p>
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}

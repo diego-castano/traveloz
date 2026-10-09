@@ -10,7 +10,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { PaginaVista } from "@/lib/collection/paginas/contenido";
 import type { PaginaItem } from "@/actions/collection/paginas.actions";
 import { cn } from "@/components/lib/cn";
-import { EncabezadoPagina } from "../ui";
+import { EncabezadoPagina, Estado } from "../ui";
 import { PaginaRender } from "../sitio/pagina/PaginaRender";
 import { PaginaLegal } from "../sitio/pagina/PaginaLegal";
 import { fechaLarga } from "../sitio/tarjetas";
@@ -41,7 +41,7 @@ function Miniatura({ vista, legal }: { vista: PaginaVista; legal: boolean }) {
   return (
     <div ref={caja} aria-hidden className="pointer-events-none relative aspect-[16/9] select-none overflow-hidden bg-col-surface">
       <div
-        className={cn("origin-top-left transition-opacity duration-500", !escala && "opacity-0")}
+        className={cn("origin-top-left transition-opacity duration-col-lento", !escala && "opacity-0")}
         style={{ width: ANCHO, transform: `scale(${escala || 1})` }}
       >
         {legal ? <PaginaLegal vista={vista} modo="sitio" /> : <PaginaRender vista={vista} modo="sitio" />}
@@ -53,7 +53,7 @@ function Miniatura({ vista, legal }: { vista: PaginaVista; legal: boolean }) {
 export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: string } }) {
   if (!Array.isArray(inicial)) {
     return (
-      <p role="alert" className="text-[14px] text-col-alerta">
+      <p role="alert" className="text-col-md text-col-alerta">
         {inicial.error}
       </p>
     );
@@ -64,7 +64,6 @@ export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: 
     <div className="mx-auto flex max-w-[1600px] flex-col gap-16">
       <EncabezadoPagina
         className="mb-0"
-        eyebrow="Páginas"
         titulo="El sitio, por bloques"
         descripcion="Lo que edites se guarda solo y llega al sitio cuando tocás Publicar cambios."
       />
@@ -75,7 +74,7 @@ export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: 
       </section>
       {legales.length > 0 && (
         <section>
-          <p className="mb-6 flex items-center gap-3 text-[13px] uppercase tracking-[0.12em] text-col-slate">
+          <p className="mb-6 flex items-center gap-3 text-col-xs uppercase tracking-[0.14em] text-col-slate">
             <span aria-hidden className="h-px w-6 bg-col-gold" /> Legales
           </p>
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
@@ -99,26 +98,24 @@ function Tarjeta({ x, i, grande }: { x: TarjetaPagina; i: number; grande?: boole
       transition={{ duration: 0.55, ease: EASE, delay: i * 0.05 }}
       className="group relative"
     >
-      <div className="relative overflow-hidden rounded-sm border border-col-line transition-[box-shadow,transform] duration-300 ease-col group-hover:-translate-y-0.5 group-hover:shadow-[0_28px_56px_-30px_rgba(50,55,59,0.55)]">
+      <div className="relative overflow-hidden rounded-col-sm border border-col-line transition-[box-shadow,transform] duration-col-lento ease-col group-hover:-translate-y-0.5 group-hover:shadow-col-2">
         <Miniatura vista={x.vista} legal={x.legal} />
-        <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-sm bg-col-ink/80 text-col-base opacity-0 backdrop-blur-sm transition-opacity duration-200 ease-col group-hover:opacity-100">
+        <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-col-sm bg-col-ink/80 text-col-base opacity-0 backdrop-blur-sm transition-opacity duration-col ease-col group-hover:opacity-100">
           <ArrowUpRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
         </span>
       </div>
       <div className="mt-4 flex items-start justify-between gap-6">
         <div className="min-w-0">
-          <p className={cn("font-col-display leading-[1.1] text-col-ink", grande ? "text-[32px]" : "text-[24px]")}>{item.titulo}</p>
-          <p className="mt-1 font-mono text-[12px] text-col-slate">{item.ruta}</p>
+          <p className={cn("font-col-display leading-[1.1] text-col-ink", grande ? "text-col-3xl" : "text-col-xl")}>{item.titulo}</p>
+          <p className="mt-1 font-mono text-col-xs text-col-slate">{item.ruta}</p>
         </div>
-        <div className="shrink-0 text-right text-[13px]">
+        <div className="shrink-0 text-right text-col-sm">
           {item.hayCambiosSinPublicar ? (
-            <p className="flex items-center justify-end gap-1.5 text-[#B07A2A]">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-col-gold" /> Cambios sin publicar
-            </p>
+            <Estado tono="aviso">Cambios sin publicar</Estado>
           ) : (
             <p className="text-col-slate">{publicada ? `Publicada el ${publicada}` : "Sin publicar"}</p>
           )}
-          <p className="mt-1 tabular-nums lining-nums text-col-slate/70">
+          <p className="mt-1 tabular-nums lining-nums text-col-muted">
             {item.bloques} {item.bloques === 1 ? "bloque" : "bloques"}
           </p>
         </div>
@@ -127,7 +124,7 @@ function Tarjeta({ x, i, grande }: { x: TarjetaPagina; i: number; grande?: boole
       <Link
         href={`/backend/collection/paginas/${item.slug}`}
         aria-label={`Editar ${item.titulo}`}
-        className="absolute inset-0 rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-col-gold"
+        className="absolute inset-0 rounded-col-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-col-gold"
       />
     </motion.div>
   );

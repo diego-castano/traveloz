@@ -2,11 +2,11 @@
 
 // Paso 3: relato. La frase del hero, la intro, la mejor época y los imperdibles.
 
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import type { Imperdible } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { EditorTexto } from "../../editor/EditorTexto";
-import { Asa, Campo, Contador, Grupo, ListaOrdenable, SlotMedio, inputLinea } from "../campos";
+import { Asa, Campo, Contador, Grupo, ListaOrdenable, SlotMedio, entrada, entradaArea, entradaSelect, entradaTitulo } from "../campos";
 import { useConstructor } from "../contexto";
 import { nuevoId } from "../estado";
 
@@ -35,7 +35,7 @@ export function PasoRelato() {
           maxLength={200}
           onChange={(e) => setContenido(() => ({ frase: e.target.value }))}
           placeholder="Filipinas no se recorre: se navega."
-          className={cn(inputLinea, "py-3 font-col-display text-[30px] italic leading-snug")}
+          className={cn(entradaTitulo, "text-col-2xl italic leading-snug")}
         />
       </Campo>
 
@@ -67,7 +67,7 @@ export function PasoRelato() {
             maxLength={80}
             onChange={(e) => setContenido(() => ({ mejorEpoca: e.target.value }))}
             placeholder="Todo el año"
-            className={inputLinea}
+            className={entrada}
           />
         </Campo>
       </Grupo>
@@ -81,8 +81,7 @@ function SelectMes({
   id,
   etiqueta,
   valor,
-  onCambio,
-}: {
+  onCambio }: {
   id: string;
   etiqueta: string;
   valor: string;
@@ -91,7 +90,7 @@ function SelectMes({
   return (
     <Campo etiqueta={etiqueta} htmlFor={id}>
       <div className="relative">
-        <select id={id} value={valor} onChange={(e) => onCambio(e.target.value)} className={cn(inputLinea, "appearance-none pr-8")}>
+        <select id={id} value={valor} onChange={(e) => onCambio(e.target.value)} className={entradaSelect}>
           <option value="">Elegí un mes</option>
           {MESES.map((m) => (
             <option key={m} value={m}>
@@ -99,7 +98,6 @@ function SelectMes({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
       </div>
     </Campo>
   );
@@ -117,7 +115,7 @@ function Imperdibles() {
       titulo="Lo imperdible"
       ayuda="Entre 4 y 6 momentos que justifican el viaje."
       accion={
-        <span className={cn("text-[13px] tabular-nums lining-nums", conTitulo >= 4 ? "text-[#B07A2A]" : "text-col-slate")}>
+        <span className={cn("text-col-sm tabular-nums lining-nums", conTitulo >= 4 ? "text-col-ok" : "text-col-slate")}>
           {conTitulo} de 4 a 6
         </span>
       }
@@ -130,13 +128,13 @@ function Imperdibles() {
         render={(it, i, asa) => (
           <div
             className={cn(
-              "flex gap-3 rounded-sm border border-col-line bg-col-surface p-3 pl-1 transition-shadow duration-200",
-              asa.arrastrando && "shadow-[0_20px_40px_-20px_rgba(50,55,59,0.45)]",
+              "flex gap-3 rounded-col-sm border border-col-line bg-col-surface p-3 pl-1 transition-shadow duration-col",
+              asa.arrastrando && "shadow-col-2",
             )}
           >
             <div className="flex flex-col items-center gap-1 pt-1">
               {editable && <Asa asa={asa} label={`imperdible ${i + 1}`} />}
-              <span className="font-col-display text-[20px] leading-none text-col-gold">{i + 1}</span>
+              <span className="font-col-display text-col-xl leading-none text-col-muted">{i + 1}</span>
             </div>
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <input
@@ -145,7 +143,7 @@ function Imperdibles() {
                 maxLength={120}
                 onChange={(e) => cambiar(it.id, { titulo: e.target.value })}
                 placeholder="Navegar entre las lagunas de Bacuit"
-                className={cn(inputLinea, "py-1 text-[16px]")}
+                className={entrada}
               />
               <textarea
                 aria-label={`Texto del imperdible ${i + 1}`}
@@ -154,7 +152,7 @@ function Imperdibles() {
                 maxLength={400}
                 onChange={(e) => cambiar(it.id, { texto: e.target.value })}
                 placeholder="Una línea más, opcional."
-                className={cn(inputLinea, "resize-none border-col-slate/20 py-1 text-[14px] text-col-slate [field-sizing:content]")}
+                className={cn(entradaArea, "min-h-11 text-col-md text-col-slate")}
               />
             </div>
             <SlotMedio
@@ -171,7 +169,7 @@ function Imperdibles() {
                 type="button"
                 aria-label={`Quitar imperdible ${i + 1}`}
                 onClick={() => setContenido((k) => ({ imperdibles: k.imperdibles.filter((x) => x.id !== it.id) }))}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-col-slate/60 transition-colors hover:bg-col-base hover:text-col-alerta"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-col-sm text-col-muted transition-colors hover:bg-col-base hover:text-col-alerta"
               >
                 <Trash2 className="h-4 w-4" strokeWidth={1.5} />
               </button>
@@ -185,7 +183,7 @@ function Imperdibles() {
           onClick={() =>
             setContenido((k) => ({ imperdibles: [...k.imperdibles, { id: nuevoId(), titulo: "", texto: "", medio: null }] }))
           }
-          className="-mt-4 flex h-12 items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
+          className="-mt-4 flex h-12 items-center justify-center gap-2 rounded-col-sm border border-dashed border-col-slate/30 text-col-sm font-medium text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} /> Sumar imperdible
         </button>

@@ -15,7 +15,7 @@ import type { PermisoCollection } from "@/lib/collection/permisos";
 import { cn } from "@/components/lib/cn";
 import { iniciales, useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { EncabezadoPagina, Filtros, Interruptor } from "../ui";
+import { Boton, EncabezadoPagina, Filtros, Interruptor } from "../ui";
 
 const ROLES: Record<string, string> = { ADMIN: "Admin", VENDEDOR: "Vendedor", MARKETING: "Marketing" };
 
@@ -34,12 +34,25 @@ export interface InfoPermiso {
   descripcion: string;
 }
 
-export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; permisos: InfoPermiso[] }) {
+type Guardar = typeof guardarPermisosCollection;
+
+export function Equipo({
+  inicial,
+  permisos,
+  guardarPermisos = guardarPermisosCollection,
+}: {
+  inicial: MiembroCollection[];
+  permisos: InfoPermiso[];
+  /** La ruta de desarrollo pasa uno en memoria. */
+  guardarPermisos?: Guardar;
+}) {
   const [miembros, setMiembros] = useState(inicial);
   const [filtro, setFiltro] = useState<"acceso" | "todos">("acceso");
   const [abierto, setAbierto] = useState<string | null>(null);
   const [guardando, setGuardando] = useState<Set<string>>(new Set());
   const [errores, setErrores] = useState<Record<string, string>>({});
+  // Super admin da (o saca) acceso total: se confirma en línea antes de guardar.
+  const [confirmarSa, setConfirmarSa] = useState<string | null>(null);
   const avisar = useAviso();
   const router = useRouter();
   const { usuario } = useCollection();
@@ -52,7 +65,7 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
     setMiembros((lista) => lista.map((x) => (x.id === m.id ? { ...x, ...cambio, conFila: true } : x)));
     setGuardando((s) => new Set(s).add(m.id));
     setErrores((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== m.id)));
-    const r = await guardarPermisosCollection(m.id, cambio);
+    const r = await guardarPermisos(m.id, cambio);
     setGuardando((s) => {
       const n = new Set(s);
       n.delete(m.id);
@@ -80,7 +93,6 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
   return (
     <div className="mx-auto max-w-[1080px]">
       <EncabezadoPagina
-        eyebrow="Equipo"
         titulo={
           <>
             Quién trabaja en <em className="italic">Collection</em>
@@ -102,7 +114,7 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
       />
 
       {visibles.length === 0 ? (
-        <p className="py-20 text-center font-col-display text-[30px] font-light italic text-col-ink">
+        <p className="py-20 text-center font-col-display text-col-2xl font-light italic text-col-ink">
           Nadie tiene acceso todavía.
         </p>
       ) : (
@@ -123,24 +135,24 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
                   >
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
-                        <span className="truncate text-[16px] text-col-ink">{m.name}</span>
-                        <span className="hidden shrink-0 rounded-sm border border-col-line px-1.5 py-0.5 text-[10px] uppercase tracking-[0.14em] text-col-slate sm:inline">
+                        <span className="truncate text-col-cuerpo text-col-ink">{m.name}</span>
+                        <span className="hidden shrink-0 rounded-col-sm border border-col-line px-1.5 py-0.5 text-col-xs uppercase tracking-[0.14em] text-col-slate sm:inline">
                           {ROLES[m.role] ?? m.role}
                         </span>
                       </span>
-                      <span className="block truncate text-[13px] text-col-slate">{m.email}</span>
+                      <span className="block truncate text-col-sm text-col-slate">{m.email}</span>
                     </span>
                     <span
                       className={cn(
-                        "hidden shrink-0 text-[13px] md:block",
-                        m.superAdmin ? "text-col-ink" : tieneAcceso(m) ? "text-col-slate" : "text-col-slate/60",
+                        "hidden shrink-0 text-col-sm md:block",
+                        m.superAdmin ? "text-col-ink" : tieneAcceso(m) ? "text-col-slate" : "text-col-muted",
                       )}
                     >
                       {ocupado ? "Guardando" : resumen(m)}
                     </span>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 shrink-0 text-col-slate transition-transform duration-200 ease-col",
+                        "h-4 w-4 shrink-0 text-col-slate transition-transform duration-col ease-col",
                         expandido && "rotate-180",
                       )}
                       strokeWidth={1.5}
@@ -159,12 +171,12 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
                       className="overflow-hidden"
                     >
                       <div className="pb-6 pl-0 md:pl-[60px]">
-                        <div className="flex items-start gap-4 rounded-sm bg-col-surface px-5 py-4">
+                        <div className="flex items-start gap-4 rounded-col-sm bg-col-surface px-5 py-4">
                           <div className="flex-1">
-                            <label htmlFor={`sa-${m.id}`} className="block text-[15px] text-col-ink">
+                            <label htmlFor={`sa-${m.id}`} className="block text-col-cuerpo text-col-ink">
                               Super admin
                             </label>
-                            <p className="mt-0.5 text-[13px] text-col-slate">
+                            <p className="mt-0.5 text-col-sm text-col-slate">
                               Puede todo y además gestiona el equipo.
                             </p>
                           </div>
@@ -172,20 +184,57 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
                             id={`sa-${m.id}`}
                             label={`Super admin para ${m.name}`}
                             checked={m.superAdmin}
-                            disabled={ocupado}
-                            onCheckedChange={(v) => void guardar(m, { superAdmin: v, permisos: m.permisos })}
+                            disabled={ocupado || confirmarSa === m.id}
+                            onCheckedChange={() => setConfirmarSa(m.id)}
                           />
                         </div>
+                        <AnimatePresence initial={false}>
+                          {confirmarSa === m.id && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                              className="overflow-hidden"
+                            >
+                              <div
+                                role="alertdialog"
+                                aria-label="Confirmar super admin"
+                                className="mt-2 flex flex-wrap items-center gap-3 rounded-col bg-col-surface px-5 py-4 ring-1 ring-inset ring-col-aviso/30"
+                              >
+                                <p className="mr-auto min-w-[220px] flex-1 text-col-md text-col-ink">
+                                  {m.superAdmin
+                                    ? `¿Quitarle el acceso total a ${m.name.split(" ")[0]}? Se queda con los permisos de abajo.`
+                                    : `¿Darle acceso total a ${m.name.split(" ")[0]}? Va a poder cambiar todo, también el equipo.`}
+                                </p>
+                                <Boton variante="fantasma" tam="sm" onClick={() => setConfirmarSa(null)}>
+                                  Cancelar
+                                </Boton>
+                                <Boton
+                                  variante={m.superAdmin ? "peligro" : "primario"}
+                                  tam="sm"
+                                  autoFocus
+                                  onClick={() => {
+                                    setConfirmarSa(null);
+                                    void guardar(m, { superAdmin: !m.superAdmin, permisos: m.permisos });
+                                  }}
+                                >
+                                  {m.superAdmin ? "Sí, quitar" : "Sí, dar acceso total"}
+                                </Boton>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                         <div className="mt-2 grid gap-x-8 md:grid-cols-2">
                           {permisos.map(({ id: p, label, descripcion }) => {
                             const incluido = m.superAdmin;
                             return (
                               <div key={p} className="flex items-start gap-4 border-b border-col-line px-5 py-4 last:border-b-0 md:[&:nth-last-child(2)]:border-b-0">
                                 <div className="flex-1">
-                                  <label htmlFor={`${p}-${m.id}`} className={cn("block text-[15px]", incluido ? "text-col-slate" : "text-col-ink")}>
+                                  <label htmlFor={`${p}-${m.id}`} className={cn("block text-col-cuerpo", incluido ? "text-col-slate" : "text-col-ink")}>
                                     {label}
                                   </label>
-                                  <p className="mt-0.5 text-[13px] leading-relaxed text-col-slate">
+                                  <p className="mt-0.5 text-col-sm leading-relaxed text-col-slate">
                                     {incluido ? "Incluido por super admin." : descripcion}
                                   </p>
                                 </div>
@@ -201,7 +250,7 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
                           })}
                         </div>
                         {errores[m.id] && (
-                          <p role="alert" className="mt-3 px-5 text-[13px] text-col-alerta">
+                          <p role="alert" className="mt-3 px-5 text-col-sm text-col-alerta">
                             {errores[m.id]}
                           </p>
                         )}
@@ -222,7 +271,7 @@ function Avatar({ m }: { m: MiembroCollection }) {
   return (
     <span
       className={cn(
-        "relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-sm font-col-display text-[18px]",
+        "relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-col-sm font-col-display text-col-lg",
         tieneAcceso(m) ? "bg-col-ink text-col-base" : "bg-col-line text-col-slate",
       )}
     >

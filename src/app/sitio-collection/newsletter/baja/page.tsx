@@ -43,7 +43,7 @@ export default function BajaNewsletter({
 
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 py-24 text-center">
-      <p className="text-[13px] uppercase tracking-[0.12em] text-col-slate">Newsletter</p>
+      <p className="text-[12px] uppercase tracking-[0.14em] text-col-slate">Newsletter</p>
       <h1 className="mt-4 font-col-display text-[40px] font-light leading-tight text-col-ink">
         ¿Te damos de baja?
       </h1>
@@ -53,7 +53,7 @@ export default function BajaNewsletter({
       <form action={confirmarBaja} className="mt-10">
         <button
           type="submit"
-          className="inline-flex h-12 items-center bg-col-ink px-6 text-[13px] font-medium uppercase tracking-[0.12em] text-col-base transition-opacity duration-200 hover:opacity-90"
+          className="inline-flex h-12 items-center bg-col-ink px-6 text-[12px] uppercase tracking-[0.14em] text-col-base transition-opacity duration-200 hover:opacity-90"
         >
           Confirmar baja
         </button>

@@ -13,7 +13,7 @@ import type { Resultado } from "@/lib/collection/ejecutar";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton, EncabezadoPagina, Eyebrow, Filtros, barraHerramientas } from "../ui";
+import { Boton, EncabezadoPagina, Estado, Eyebrow, Filtros, barraHerramientas } from "../ui";
 import { ESTADOS } from "../constructor/formato";
 import { MedioImagen } from "../sitio/medios";
 import { etiquetaArticulo } from "../sitio/tarjetas";
@@ -28,18 +28,10 @@ const PILL: Record<EstadoArticulo, { label: string; estilo: keyof typeof ESTADOS
 };
 
 export function EstadoArticuloPill({ estado, className }: { estado: EstadoArticulo; className?: string }) {
-  const e = ESTADOS[PILL[estado].estilo];
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-sm border px-2 text-[10.5px] uppercase tracking-[0.14em]",
-        e.clase,
-        className,
-      )}
-    >
-      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", e.punto)} />
+    <Estado tono={ESTADOS[PILL[estado].estilo].tono} className={className}>
       {PILL[estado].label}
-    </span>
+    </Estado>
   );
 }
 
@@ -85,7 +77,6 @@ export function ListaArticulos({
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Journal"
         titulo="Relatos y guías"
         descripcion={`${items.length} ${items.length === 1 ? "artículo" : "artículos"} · ${items.filter((x) => pasa(x, "PUBLICADO")).length} publicados`}
         acciones={
@@ -107,7 +98,7 @@ export function ListaArticulos({
       </div>
 
       {!Array.isArray(inicial) && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {inicial.error}
         </p>
       )}
@@ -122,7 +113,7 @@ export function ListaArticulos({
               transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 8) * 0.04 }}
             >
               <Link href={`/backend/collection/journal/${a.id}`} className="group flex flex-col gap-5" aria-label={`Abrir ${a.titulo || "artículo sin título"}`}>
-                <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-col-line transition-shadow duration-300 ease-col group-hover:shadow-[0_24px_48px_-28px_rgba(50,55,59,0.5)]">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-col-sm bg-col-line transition-shadow duration-col-lento ease-col group-hover:shadow-col-2">
                   {a.portada ? (
                     <MedioImagen medio={a.portada} relleno sizes="(min-width: 1280px) 33vw, 50vw" imgClassName="group-hover:scale-[1.03]" />
                   ) : (
@@ -133,26 +124,26 @@ export function ListaArticulos({
                   <EstadoArticuloPill estado={a.estado} className="absolute left-3 top-3 shadow-sm" />
                 </div>
                 <Eyebrow>{etiquetaArticulo(a)}</Eyebrow>
-                <p className={cn("-mt-1 font-col-display text-[28px] leading-[1.12]", a.titulo ? "text-col-ink" : "italic text-col-slate/50")}>
+                <p className={cn("-mt-1 font-col-display text-col-2xl leading-[1.12]", a.titulo ? "text-col-ink" : "italic text-col-subtle")}>
                   {a.titulo || "Sin título"}
                 </p>
                 {a.hayCambiosSinPublicar && (
-                  <p className="-mt-2 flex items-center gap-1.5 text-[13px] text-[#B07A2A]">
-                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-col-gold" /> Cambios sin publicar
-                  </p>
+                  <Estado tono="aviso" className="-mt-2 self-start">
+                    Cambios sin publicar
+                  </Estado>
                 )}
               </Link>
             </motion.li>
           ))}
         </ul>
       ) : items.length ? (
-        <p className="py-24 text-center font-col-display text-[26px] italic text-col-slate">Nada con ese filtro.</p>
+        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">Nada con ese filtro.</p>
       ) : (
         <div className="flex flex-col items-start gap-5 py-16">
-          <p className="max-w-[18ch] font-col-display text-[48px] font-light leading-[1.05] text-col-ink">
+          <p className="max-w-[18ch] font-col-display text-col-display font-light leading-[1.05] text-col-ink">
             Guías, relatos y consejos para leer antes de salir.
           </p>
-          <p className="max-w-[46ch] text-[16px] leading-relaxed text-col-slate">
+          <p className="max-w-[46ch] text-col-cuerpo leading-relaxed text-col-slate">
             Cada artículo tiene su portada, su autor y las experiencias que lo acompañan.
           </p>
           {editable && (

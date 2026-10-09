@@ -14,7 +14,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ChevronDown,
   CloudOff,
   Eye,
   History,
@@ -33,7 +32,8 @@ import {
 import type { ExperienciaDetalle } from "@/actions/collection/experiencias.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { Boton, Eyebrow, VerEnSitio } from "../ui";
+import { Boton, Estado, Eyebrow, VerEnSitio, entradaSelect } from "../ui";
+import { CheckAnimado } from "../movimiento";
 import { rutaSitio } from "../sitio/tarjetas";
 import { apiReal, ApiProvider, type ApiConstructor } from "./api";
 import { ConstructorCtx, type EventoHistorial, type ValorConstructor } from "./contexto";
@@ -295,14 +295,14 @@ export function Constructor({
             <div className="px-5 pb-5 pt-5">
               <Link
                 href="/backend/collection/experiencias"
-                className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] text-col-slate transition-colors hover:text-col-ink"
+                className="inline-flex items-center gap-1.5 text-col-sm font-medium text-col-slate transition-colors hover:text-col-ink"
               >
                 <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden /> Experiencias
               </Link>
               <p
                 className={cn(
-                  "mt-4 line-clamp-3 font-col-display text-[24px] leading-[1.1] text-col-ink",
-                  !titulo && "italic text-col-slate/50",
+                  "mt-4 line-clamp-3 font-col-display text-col-xl leading-[1.1] text-col-ink",
+                  !titulo && "italic text-col-subtle",
                 )}
               >
                 {titulo || "Sin título"}
@@ -310,7 +310,7 @@ export function Constructor({
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <EstadoPill estado={estadoExp} />
                 {estadoExp === "PUBLICADA" && publicadoRevision !== revision && (
-                  <span className="text-[11px] text-[#B07A2A]">Cambios sin publicar</span>
+                  <Estado tono="aviso">Cambios sin publicar</Estado>
                 )}
               </div>
               {estadoExp === "PUBLICADA" && estado.borrador.campos.slug && (
@@ -331,7 +331,7 @@ export function Constructor({
                   </li>
                 ))}
               </ol>
-              <p className="mt-4 px-3 text-[11px] leading-relaxed text-col-slate/60">
+              <p className="mt-4 px-3 text-col-xs leading-relaxed text-col-muted">
                 <kbd className="font-col-text">Alt</kbd> + <kbd className="font-col-text">↑ ↓</kbd> para moverte entre pasos
               </p>
             </nav>
@@ -355,7 +355,7 @@ export function Constructor({
                 >
                   <div className="flex items-center gap-4 px-6 py-4">
                     <AlertTriangle className="h-5 w-5 shrink-0 text-col-gold" strokeWidth={1.5} aria-hidden />
-                    <p className="flex-1 text-[14px] leading-snug">
+                    <p className="flex-1 text-col-md leading-snug">
                       Alguien más guardó cambios. Recargá para ver la última versión.
                       <span className="block text-col-base/60">Lo que escribiste después de eso no se guardó.</span>
                     </p>
@@ -367,7 +367,7 @@ export function Constructor({
               )}
             </AnimatePresence>
             {!puedeEditar && (
-              <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-[13px] text-col-slate">
+              <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-col-sm text-col-slate">
                 Estás viendo esta experiencia en modo lectura: tu usuario no tiene permiso para editarla.
               </p>
             )}
@@ -383,10 +383,10 @@ export function Constructor({
                   <Eyebrow>
                     Paso {indice + 1} de {PASOS.length}
                   </Eyebrow>
-                  <h2 className="mt-4 font-col-display text-[42px] font-normal leading-[1.05] text-col-ink">
+                  <h2 className="mt-4 font-col-display text-col-display font-normal leading-[1.05] text-col-ink">
                     {PASOS[indice].titulo}
                   </h2>
-                  <p className="mt-2 text-[15px] text-col-slate">{AYUDA[paso]}</p>
+                  <p className="mt-2 text-col-cuerpo text-col-slate">{AYUDA[paso]}</p>
                 </header>
                 <fieldset disabled={!editable && paso !== "publicar"} className="m-0 min-w-0 border-0 p-0">
                   <legend className="sr-only">{PASOS[indice].titulo}</legend>
@@ -453,7 +453,7 @@ export function Constructor({
               onClick={() => setCajon(true)}
               aria-expanded={cajon}
               className={cn(
-                "fixed bottom-[76px] right-5 z-40 flex h-12 items-center gap-2 rounded-sm bg-col-ink px-5 text-[12px] uppercase tracking-[0.14em] text-col-base shadow-[0_16px_40px_-16px_rgba(50,55,59,0.6)] transition-[transform,opacity] duration-300 ease-col hover:-translate-y-0.5",
+                "fixed bottom-[76px] right-5 z-40 flex h-12 items-center gap-2 rounded-col-sm bg-col-ink px-5 text-col-md font-medium text-col-base shadow-col-3 transition-[transform,opacity] duration-col-lento ease-col hover:-translate-y-0.5",
                 cajon && "pointer-events-none translate-y-2 opacity-0",
               )}
             >
@@ -464,7 +464,7 @@ export function Constructor({
                 {!escritorio && <Drawer.Overlay className="fixed inset-0 z-40 bg-col-ink/40" />}
                 <Drawer.Content
                   aria-describedby={undefined}
-                  className="fixed bottom-0 right-0 top-0 z-50 flex w-screen flex-col bg-col-surface shadow-[-24px_0_60px_-30px_rgba(50,55,59,0.5)] !outline-none lg:w-[min(860px,60vw)]"
+                  className="fixed bottom-0 right-0 top-0 z-50 flex w-screen flex-col bg-col-surface shadow-col-3 !outline-none lg:w-[min(860px,60vw)]"
                 >
                   <Drawer.Title className="sr-only">Vista previa</Drawer.Title>
                   <PreviaMemo
@@ -479,7 +479,7 @@ export function Constructor({
                     <button
                       type="button"
                       onClick={() => cambiarPrefs({ colapsada: false })}
-                      className="absolute bottom-4 left-4 flex h-9 items-center gap-2 rounded-sm bg-col-ink/85 px-3 text-[11px] uppercase tracking-[0.14em] text-col-base backdrop-blur-sm hover:bg-col-ink"
+                      className="absolute bottom-4 left-4 flex h-9 items-center gap-2 rounded-col-sm bg-col-ink/85 px-3 text-col-md font-medium text-col-base backdrop-blur-sm hover:bg-col-ink"
                     >
                       Fijar al costado
                     </button>
@@ -516,14 +516,14 @@ function Anillo({ valor, n, activo }: { valor: number; n: number; activo: boolea
             strokeWidth="2"
             strokeLinecap="round"
             strokeDasharray={`${c * valor} ${c}`}
-            className="transition-[stroke-dasharray] duration-500 ease-col"
+            className="transition-[stroke-dasharray] duration-col-lento ease-col"
           />
         )}
       </svg>
       {listo ? (
         <Check className="relative h-3.5 w-3.5 text-col-ink" strokeWidth={2.25} aria-hidden />
       ) : (
-        <span className={cn("relative text-[12px] tabular-nums lining-nums", activo ? "text-col-ink" : "text-col-slate")}>{n}</span>
+        <span className={cn("relative text-col-xs tabular-nums lining-nums", activo ? "text-col-ink" : "text-col-slate")}>{n}</span>
       )}
     </span>
   );
@@ -549,7 +549,7 @@ function ItemPaso({
       aria-current={activo ? "step" : undefined}
       aria-label={`${titulo}, ${valor >= 1 ? "completo" : `${Math.round(valor * 100)} por ciento`}`}
       className={cn(
-        "relative flex h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-[14px] transition-colors duration-200 ease-col",
+        "relative flex h-11 w-full items-center gap-3 rounded-col-sm px-3 text-left text-col-md transition-colors duration-col ease-col",
         activo ? "bg-col-base text-col-ink" : "text-col-slate hover:bg-col-base/60 hover:text-col-ink",
       )}
     >
@@ -568,7 +568,7 @@ export function IndicadorGuardado({ g, editable }: { g: EstadoGuardado; editable
     return () => window.clearInterval(t);
   }, [g]);
 
-  let icono: React.ReactNode = <Check className="h-3.5 w-3.5 text-col-gold" strokeWidth={2} />;
+  let icono: React.ReactNode = <Check className="h-3.5 w-3.5 text-col-ok" strokeWidth={2} />;
   let texto = "Todo guardado";
   let clase = "text-col-slate";
   if (!editable) {
@@ -577,9 +577,10 @@ export function IndicadorGuardado({ g, editable }: { g: EstadoGuardado; editable
   } else if (g.tipo === "guardado" && g.en) {
     const s = Math.round((Date.now() - g.en) / 1000);
     texto = s < 5 ? "Guardado" : s < 60 ? `Guardado hace ${s} s` : `Guardado ${haceTiempo(g.en)}`;
+    icono = <CheckAnimado className="text-col-ok" />;
   } else if (g.tipo === "pendiente") {
     texto = "Cambios sin guardar";
-    icono = <span className="h-1.5 w-1.5 rounded-full bg-col-gold" />;
+    icono = <span className="h-1.5 w-1.5 rounded-full bg-col-aviso" />;
   } else if (g.tipo === "guardando") {
     texto = "Guardando…";
     icono = <LoaderCircle className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />;
@@ -601,9 +602,20 @@ export function IndicadorGuardado({ g, editable }: { g: EstadoGuardado; editable
       role="status"
       aria-live="polite"
       title={g.tipo === "error" ? g.mensaje : undefined}
-      className={cn("flex min-w-0 flex-1 items-center gap-2 text-[12px]", clase)}
+      className={cn("flex min-w-0 flex-1 items-center gap-2 text-col-xs", clase)}
     >
-      {icono}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={g.tipo}
+          className="flex shrink-0 items-center"
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.7 }}
+          transition={{ duration: 0.18 }}
+        >
+          {icono}
+        </motion.span>
+      </AnimatePresence>
       <span className="truncate">{texto}</span>
     </p>
   );
@@ -616,7 +628,7 @@ function Historial({ historial }: { historial: EventoHistorial[] }) {
       <Popover.Trigger
         aria-label="Historial"
         title="Historial"
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
       >
         <History className="h-4 w-4" strokeWidth={1.5} />
       </Popover.Trigger>
@@ -625,9 +637,9 @@ function Historial({ historial }: { historial: EventoHistorial[] }) {
           side="top"
           align="start"
           sideOffset={8}
-          className="z-50 max-h-[420px] w-80 overflow-y-auto rounded-sm border border-col-line bg-col-surface p-2 shadow-[0_20px_50px_-24px_rgba(50,55,59,0.5)]"
+          className="z-50 max-h-[420px] w-80 overflow-y-auto rounded-col-sm border border-col-line bg-col-surface p-2 shadow-col-3"
         >
-          <p className="px-3 pb-2 pt-2 text-[11px] uppercase tracking-[0.16em] text-col-slate">Historial</p>
+          <p className="px-3 pb-2 pt-2 text-col-xs uppercase tracking-[0.16em] text-col-slate">Historial</p>
           <ListaHistorial historial={historial} />
         </Popover.Content>
       </Popover.Portal>
@@ -656,7 +668,7 @@ function SelectorPasoMovil({
         <select
           value={paso}
           onChange={(e) => onPaso(e.target.value as PasoId)}
-          className="h-10 w-full appearance-none rounded-sm border border-col-line bg-col-base pl-3 pr-9 text-[14px] text-col-ink focus:border-col-gold focus:outline-none focus:ring-0"
+          className={cn(entradaSelect, "min-h-10 py-[7px] text-col-md")}
         >
           {PASOS.map((p, n) => (
             <option key={p.id} value={p.id}>
@@ -665,9 +677,8 @@ function SelectorPasoMovil({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
       </label>
-      <span className="text-[12px] tabular-nums lining-nums text-col-slate">
+      <span className="text-col-xs tabular-nums lining-nums text-col-slate">
         {i + 1}/{PASOS.length}
       </span>
       <div className="w-[150px]">

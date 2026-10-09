@@ -1,4 +1,4 @@
-// Marca de Traveloz Collection armada con tipografías: "Traveloz" en Jost 600
+// Marca de Traveloz Collection armada con tipografías: "Traveloz" en Clarika Geometric Bold
 // con el globito de diálogo arriba del final, y "collection" en Cormorant
 // itálica dorada con un subrayado fino. Es una aproximación: cuando llegue el
 // archivo del diseñador se reemplaza este componente por el SVG original.
@@ -29,7 +29,7 @@ export function MarcaCollection({
   if (compacta) {
     return (
       <span className={cn("relative inline-flex flex-col items-center", tinta, className)}>
-        <span className="relative font-col-text text-[26px] font-semibold leading-none tracking-[-0.02em]">
+        <span className="relative font-col-text text-col-2xl font-bold leading-none tracking-[-0.02em]">
           T
           <Globito className="absolute -right-2.5 -top-2 h-[10px] w-[11px]" />
         </span>
@@ -39,11 +39,11 @@ export function MarcaCollection({
   }
   return (
     <span className={cn("inline-flex flex-col items-end", tinta, className)}>
-      <span className="relative font-col-text text-[26px] font-semibold leading-none tracking-[-0.025em]">
+      <span className="relative font-col-text text-col-2xl font-bold leading-none tracking-[-0.025em]">
         Traveloz
         <Globito className="absolute -right-1.5 -top-3 h-[12px] w-[13px]" />
       </span>
-      <span className="-mt-0.5 border-b border-col-gold pb-px font-col-display text-[19px] font-normal italic leading-none text-col-gold">
+      <span className="-mt-0.5 border-b border-col-gold pb-px font-col-display text-col-xl font-normal italic leading-none text-col-gold">
         collection
       </span>
     </span>

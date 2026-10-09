@@ -88,7 +88,7 @@ export default async function Experiencias({ searchParams }: { searchParams: Fil
 function GrupoChips({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-baseline sm:gap-6">
-      <span className="w-20 shrink-0 text-[12px] font-medium uppercase tracking-[0.12em] text-col-slate">{etiqueta}</span>
+      <span className="w-20 shrink-0 text-[12px] uppercase tracking-[0.14em] text-col-slate">{etiqueta}</span>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );

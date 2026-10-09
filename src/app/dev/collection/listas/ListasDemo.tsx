@@ -39,7 +39,7 @@ function exp(
   };
 }
 
-const EXPERIENCIAS: ExperienciaItem[] = [
+export const EXPERIENCIAS: ExperienciaItem[] = [
   exp("e1", "Filipinas, islas y arrecifes", "PUBLICADA", "#2F6E73", ["Filipinas"], 12, 1, { destacada: true }),
   exp("e2", "Japón en otoño", "EN_REVISION", "#8A6B52", ["Japón"], 14, 0.86, { hayCambiosSinPublicar: true }),
   exp("", "", "BORRADOR", null, [], 0, 0.14),
@@ -49,7 +49,7 @@ const EXPERIENCIAS: ExperienciaItem[] = [
 ].map((x, i) => ({ ...x, id: x.id || `e${i + 1}`, orden: i }));
 
 const COLORES = ["#3E7C86", "#8A6B52", "#C9A57A", "#2F6E73", "#B79C78", "#6E7F62", "#5D7F8C", "#8F6F5A"];
-const MEDIOS: ColMedioDto[] = Array.from({ length: 18 }, (_, i) => {
+export const MEDIOS: ColMedioDto[] = Array.from({ length: 18 }, (_, i) => {
   const vertical = i % 3 === 1;
   return {
     id: `b${i}`,

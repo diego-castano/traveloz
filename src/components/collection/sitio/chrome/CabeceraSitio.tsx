@@ -15,7 +15,7 @@ import { MarcaCollection } from "@/components/collection/shell/MarcaCollection";
 import { cn } from "@/components/lib/cn";
 import { CONTACTO_SITIO, MENU_SITIO } from "./menu";
 
-const etiqueta = "text-[13px] font-medium uppercase tracking-[0.12em]";
+const etiqueta = "text-[12px] uppercase tracking-[0.14em]";
 
 export function CabeceraSitio() {
   const pathname = usePathname();

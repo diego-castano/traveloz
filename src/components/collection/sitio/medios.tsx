@@ -167,7 +167,7 @@ export function MedioFantasma({
       style={estiloCaja(aspecto, relleno)}
     >
       <ImageIcon className="h-6 w-6" strokeWidth={1.25} />
-      {texto && <span className="px-4 text-center text-[12px] uppercase tracking-[0.12em]">{texto}</span>}
+      {texto && <span className="px-4 text-center text-[12px] uppercase tracking-[0.14em]">{texto}</span>}
     </div>
   );
 }
@@ -251,7 +251,7 @@ export function MedioVideo({
             >
               <Play className="ml-1 h-7 w-7" strokeWidth={1.25} />
             </button>
-            <span className="text-[13px] font-medium uppercase tracking-[0.12em] text-white">
+            <span className="text-[12px] uppercase tracking-[0.14em] text-white">
               Reproducir{duracion && ` · ${duracion}`}
             </span>
           </div>

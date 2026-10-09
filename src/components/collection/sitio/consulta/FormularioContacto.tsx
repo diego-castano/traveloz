@@ -238,7 +238,7 @@ export function FormularioContacto({
               Tenés una consulta sin terminar{borrador.datos.nombre ? `, ${borrador.datos.nombre.split(" ")[0]}` : ""}. ¿Seguimos donde la dejaste?
             </p>
             <div className="flex shrink-0 flex-wrap items-center gap-4">
-              <button type="button" onClick={retomar} className={cn(boton({ tam: "sm" }))}>
+              <button type="button" onClick={retomar} className={cn(boton({ tam: "md" }))}>
                 Seguir con mi consulta
               </button>
               <button type="button" onClick={descartar} className={cn(etiqueta, "text-[12px] text-col-slate underline decoration-col-line underline-offset-4 hover:text-col-ink")}>
@@ -526,7 +526,7 @@ export function FormularioContacto({
               {envio.mensaje ?? "Guardamos todo lo que escribiste. Probá de nuevo en un momento o escribinos por WhatsApp."}
             </span>
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" onClick={() => void enviar()} className={boton({ tam: "sm" })}>
+              <button type="button" onClick={() => void enviar()} className={boton({ tam: "md" })}>
                 <RotateCcw aria-hidden className="h-3.5 w-3.5" strokeWidth={1.5} />
                 Reintentar
               </button>
@@ -535,7 +535,7 @@ export function FormularioContacto({
                   href={`https://wa.me/${whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent("Hola, quiero hacer una consulta para un viaje.")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={boton({ variante: "secundario", tam: "sm" })}
+                  className={boton({ variante: "secundario", tam: "md" })}
                 >
                   WhatsApp
                 </a>
@@ -559,7 +559,7 @@ export function FormularioContacto({
             type="submit"
             disabled={envio.estado === "enviando"}
             className={cn(
-              boton(),
+              boton({ tam: "lg" }),
               "group h-[52px] gap-3 bg-[linear-gradient(#F4B860,#F4B860)] bg-[length:0%_2px] bg-[position:0_100%] bg-no-repeat px-6 transition-[background-size,gap] duration-[400ms] hover:gap-[18px] hover:bg-[length:100%_2px] sm:px-8 disabled:opacity-80",
             )}
           >

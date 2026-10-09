@@ -1,9 +1,9 @@
 "use client";
 
 // Piezas de formulario del constructor, con el design system de Collection:
-// etiqueta arriba en mayúscula, línea abajo, foco dorado.
+// etiqueta arriba en mayúscula, campos de caja (ui.tsx), foco dorado.
 
-import { createContext, useContext, useId, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -17,12 +17,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, ImagePlus, Minus, Plus, RefreshCw, X } from "lucide-react";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
-import { etiquetaCampo, inputLinea } from "../ui";
+import { Campo, Chips, Contador, entrada, entradaArea, entradaSelect, entradaTitulo, etiquetaCampo } from "../ui";
 import { MedioFantasma, MedioImagen, fmtDuracion } from "../sitio/medios";
 import { SelectorMedios } from "../pickers/SelectorMedios";
+import { SoltarAqui } from "../biblioteca/ZonaSubida";
 import { ConstructorCtx } from "./contexto";
 
-export { etiquetaCampo, inputLinea };
+export { Campo, Contador, entrada, entradaArea, entradaSelect, entradaTitulo, etiquetaCampo };
 
 /**
  * Lo que necesitan SlotMedio y TiraMedios. Dentro del constructor sale de su
@@ -44,59 +45,6 @@ function useMediosCampos(): ValorMedios {
   return { medios: c.mapas.medios, agregarMedios: c.agregarMedios, editable: c.editable };
 }
 
-export function Campo({
-  etiqueta,
-  ayuda,
-  htmlFor,
-  accion,
-  error,
-  children,
-  className,
-}: {
-  etiqueta: string;
-  ayuda?: React.ReactNode;
-  htmlFor?: string;
-  accion?: React.ReactNode;
-  error?: string | null;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-baseline justify-between gap-4">
-        <label htmlFor={htmlFor} className={etiquetaCampo}>
-          {etiqueta}
-        </label>
-        {accion}
-      </div>
-      {children}
-      {error ? (
-        <p role="alert" className="text-[13px] text-col-alerta">
-          {error}
-        </p>
-      ) : (
-        ayuda && <p className="text-[13px] leading-relaxed text-col-slate/80">{ayuda}</p>
-      )}
-    </div>
-  );
-}
-
-/** "12 / 60": dorado dentro del rango ideal, rojo al pasarse. */
-export function Contador({ n, ideal, max }: { n: number; ideal?: number; max: number }) {
-  return (
-    <span
-      aria-live="polite"
-      className={cn(
-        "text-[12px] tabular-nums lining-nums tracking-wide text-col-slate/70",
-        ideal && n >= ideal * 0.6 && n <= max && "text-[#B07A2A]",
-        n > max && "text-col-alerta",
-      )}
-    >
-      {n} / {max}
-    </span>
-  );
-}
-
 /** Bloque del formulario con título chico y separación generosa. */
 export function Grupo({
   titulo,
@@ -116,8 +64,8 @@ export function Grupo({
       {(titulo || accion) && (
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            {titulo && <h3 className="font-col-display text-[24px] font-normal leading-tight text-col-ink">{titulo}</h3>}
-            {ayuda && <p className="mt-1 text-[14px] text-col-slate">{ayuda}</p>}
+            {titulo && <h3 className="font-col-display text-col-xl font-normal leading-tight text-col-ink">{titulo}</h3>}
+            {ayuda && <p className="mt-1 text-col-md text-col-slate">{ayuda}</p>}
           </div>
           {accion}
         </div>
@@ -146,7 +94,7 @@ export function Stepper({
 }) {
   const fijar = (n: number) => onCambio(Math.min(max, Math.max(min, Math.round(n || 0))));
   const btn =
-    "flex h-9 w-9 items-center justify-center rounded-sm border border-col-line text-col-slate transition-colors duration-200 ease-col hover:border-col-ink hover:text-col-ink disabled:opacity-30 disabled:hover:border-col-line";
+    "col-anillo flex h-9 w-9 items-center justify-center rounded-col border border-col-line bg-col-surface text-col-slate transition-[border-color,color,transform] duration-col ease-col hover:border-col-ink hover:text-col-ink active:scale-[0.94] focus-visible:shadow-col-anillo disabled:opacity-30 disabled:hover:border-col-line";
   return (
     <div className="flex items-center gap-2" role="group" aria-label={label}>
       <button type="button" aria-label="Restar" disabled={deshabilitado || valor <= min} onClick={() => fijar(valor - 1)} className={btn}>
@@ -162,82 +110,18 @@ export function Stepper({
         disabled={deshabilitado}
         onChange={(e) => fijar(Number(e.target.value))}
         onKeyDown={(e) => e.stopPropagation()}
-        className="h-9 w-12 border-0 border-b border-col-slate/30 bg-transparent p-0 text-center font-col-display text-[22px] tabular-nums lining-nums text-col-ink focus:border-col-gold focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+        className={cn(entrada, "h-9 min-h-9 w-14 px-1 py-0 text-center font-col-display text-col-xl tabular-nums lining-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none")}
       />
       <button type="button" aria-label="Sumar" disabled={deshabilitado || valor >= max} onClick={() => fijar(valor + 1)} className={btn}>
         <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
       </button>
-      {sufijo && <span className="ml-1 text-[13px] text-col-slate">{sufijo(valor)}</span>}
+      {sufijo && <span className="ml-1 text-col-sm text-col-slate">{sufijo(valor)}</span>}
     </div>
   );
 }
 
-/** Chips de texto: Enter agrega, la cruz quita. */
-export function ChipsTexto({
-  valores,
-  onCambio,
-  placeholder,
-  max,
-  maxLargo = 80,
-  label,
-  deshabilitado,
-}: {
-  valores: string[];
-  onCambio: (v: string[]) => void;
-  placeholder: string;
-  max: number;
-  maxLargo?: number;
-  label: string;
-  deshabilitado?: boolean;
-}) {
-  const [texto, setTexto] = useState("");
-  const id = useId();
-  const agregar = () => {
-    const t = texto.trim();
-    if (!t || valores.length >= max || valores.includes(t)) return;
-    onCambio([...valores, t.slice(0, maxLargo)]);
-    setTexto("");
-  };
-  return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-col-slate/40 pb-2 focus-within:border-col-gold">
-      {valores.map((v) => (
-        <span key={v} className="flex h-8 items-center gap-1.5 rounded-sm bg-col-base pl-3 pr-1.5 text-[13px] text-col-ink">
-          {v}
-          {!deshabilitado && (
-            <button
-              type="button"
-              aria-label={`Quitar ${v}`}
-              onClick={() => onCambio(valores.filter((x) => x !== v))}
-              className="flex h-5 w-5 items-center justify-center rounded-sm text-col-slate hover:bg-col-line hover:text-col-ink"
-            >
-              <X className="h-3 w-3" strokeWidth={2} />
-            </button>
-          )}
-        </span>
-      ))}
-      {!deshabilitado && valores.length < max && (
-        <input
-          id={id}
-          aria-label={label}
-          value={texto}
-          maxLength={maxLargo}
-          onChange={(e) => setTexto(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              agregar();
-            } else if (e.key === "Backspace" && !texto && valores.length) {
-              onCambio(valores.slice(0, -1));
-            }
-          }}
-          onBlur={agregar}
-          placeholder={valores.length ? "" : placeholder}
-          className="h-8 min-w-[160px] flex-1 border-0 bg-transparent p-0 text-[15px] text-col-ink placeholder:text-col-slate/60 focus:outline-none focus:ring-0"
-        />
-      )}
-    </div>
-  );
-}
+/** Alias histórico: los chips viven en ui.tsx. */
+export const ChipsTexto = Chips;
 
 // ── Orden con arrastre ────────────────────────────────────────────────────
 
@@ -323,7 +207,7 @@ export function Asa({ asa, label, className }: { asa: AsaProps; label: string; c
       aria-label={`Arrastrar ${label}`}
       {...asa.props}
       className={cn(
-        "flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-col-slate/50 transition-colors hover:text-col-ink active:cursor-grabbing",
+        "flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-col-sm text-col-subtle transition-colors hover:text-col-ink active:cursor-grabbing",
         className,
       )}
     >
@@ -346,10 +230,10 @@ export function Miniatura({
   sizes?: string;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-sm", className)}>
+    <div className={cn("relative overflow-hidden rounded-col-sm", className)}>
       <MedioImagen medio={medio} aspecto={aspecto} sizes={sizes} className="h-full w-full" />
       {medio.tipo === "VIDEO" && (
-        <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-sm bg-col-ink/70 px-1.5 py-0.5 text-[10px] tracking-wide text-col-base">
+        <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded-col-sm bg-col-ink/70 px-1.5 py-0.5 text-col-xs tracking-wide text-col-base">
           {fmtDuracion(medio.duracion) || "Video"}
         </span>
       )}
@@ -382,12 +266,20 @@ export function SlotMedio({
   const [abierto, setAbierto] = useState(false);
   const medio = medioId ? medios.get(medioId) ?? null : null;
   return (
-    <div className={cn("group relative", className)}>
+    <SoltarAqui
+      tipo={tipo}
+      deshabilitado={!editable}
+      onMedio={(m) => {
+        agregarMedios([m]);
+        onCambio(m);
+      }}
+      className={cn("group relative", className)}
+    >
       {medio ? (
         <>
           <Miniatura medio={medio} aspecto={aspecto} sizes="320px" />
           {editable && (
-            <div className="absolute inset-x-2 bottom-2 flex justify-end gap-1.5 opacity-0 transition-opacity duration-200 ease-col focus-within:opacity-100 group-hover:opacity-100">
+            <div className="absolute inset-x-2 bottom-2 flex justify-end gap-1.5 opacity-0 transition-opacity duration-col ease-col focus-within:opacity-100 group-hover:opacity-100">
               <BotonSobreFoto label={`Cambiar ${etiqueta}`} onClick={() => setAbierto(true)}>
                 <RefreshCw />
               </BotonSobreFoto>
@@ -398,7 +290,7 @@ export function SlotMedio({
           )}
         </>
       ) : medioId ? (
-        <MedioFantasma aspecto={aspecto} texto="No encontramos este medio" className="rounded-sm" />
+        <MedioFantasma aspecto={aspecto} texto="No encontramos este medio" className="rounded-col-sm" />
       ) : (
         <button
           type="button"
@@ -406,10 +298,11 @@ export function SlotMedio({
           onClick={() => setAbierto(true)}
           aria-label={`${vacio}: ${etiqueta}`}
           style={{ aspectRatio: String(aspecto) }}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 bg-col-surface text-col-slate transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
+          className="flex w-full flex-col items-center justify-center gap-1.5 rounded-col border-[1.5px] border-dashed border-col-slate/30 bg-col-surface px-2 text-col-slate transition-colors duration-col ease-col hover:border-col-gold hover:bg-[#FDF8EF] hover:text-col-ink disabled:pointer-events-none"
         >
-          <ImagePlus className="h-5 w-5 text-col-gold" strokeWidth={1.4} aria-hidden />
-          <span className="text-[11px] uppercase tracking-[0.14em]">{vacio}</span>
+          <ImagePlus className="h-5 w-5 text-col-gold transition-transform duration-col ease-col group-hover:-translate-y-0.5" strokeWidth={1.4} aria-hidden />
+          <span className="text-col-sm font-medium">{vacio}</span>
+          {editable && <span className="text-col-xs text-col-muted">o soltá un archivo</span>}
         </button>
       )}
       <SelectorMedios
@@ -421,7 +314,7 @@ export function SlotMedio({
           onCambio(m[0] ?? null);
         }}
       />
-    </div>
+    </SoltarAqui>
   );
 }
 
@@ -440,7 +333,7 @@ export function BotonSobreFoto({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="flex h-8 w-8 items-center justify-center rounded-sm bg-col-ink/70 text-col-base backdrop-blur-sm transition-colors duration-200 ease-col hover:bg-col-ink [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:stroke-[1.75]"
+      className="flex h-8 w-8 items-center justify-center rounded-col-sm bg-col-ink/70 text-col-base backdrop-blur-sm transition-colors duration-col ease-col hover:bg-col-ink [&>svg]:h-3.5 [&>svg]:w-3.5 [&>svg]:stroke-[1.75]"
     >
       {children}
     </button>
@@ -479,7 +372,7 @@ export function TiraMedios({
               {m ? (
                 <Miniatura medio={m} aspecto={aspecto} sizes="120px" />
               ) : (
-                <MedioFantasma aspecto={aspecto} className="rounded-sm" />
+                <MedioFantasma aspecto={aspecto} className="rounded-col-sm" />
               )}
               {editable && (
                 <button
@@ -487,7 +380,7 @@ export function TiraMedios({
                   aria-label={`Quitar ${m?.alt || "foto"}`}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => onCambio(refs.filter((x) => x.medioId !== r.medioId))}
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-sm bg-col-ink/70 text-col-base opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-col-sm bg-col-ink/70 text-col-base opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
                 >
                   <X className="h-3 w-3" strokeWidth={2} />
                 </button>
@@ -501,12 +394,12 @@ export function TiraMedios({
           type="button"
           onClick={() => setAbierto(true)}
           className={cn(
-            "flex h-10 items-center gap-2 text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors hover:text-col-ink",
+            "flex h-10 items-center gap-2 text-col-sm font-medium text-col-slate transition-colors hover:text-col-ink",
             refs.length > 0 && "mt-3",
           )}
         >
           <ImagePlus className="h-4 w-4 text-col-gold" strokeWidth={1.5} /> Sumar fotos
-          <span className="normal-case tracking-normal text-col-slate/60">
+          <span className="normal-case tracking-normal text-col-muted">
             ({refs.length} de {max})
           </span>
         </button>

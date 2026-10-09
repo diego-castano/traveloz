@@ -16,20 +16,20 @@ import {
   eliminarDestino,
   reordenarDestinos,
   type DestinoItem,
-  type EstadoDestino,
-} from "@/actions/collection/destinos.actions";
+  type EstadoDestino } from "@/actions/collection/destinos.actions";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import type { Resultado } from "@/lib/collection/ejecutar";
 import { slugify } from "@/lib/utils";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { useAviso } from "../shell/Avisos";
-import { EncabezadoPagina, Eyebrow, Filtros, barraHerramientas, etiquetaCampo, inputLinea, tarjetaElevable } from "../ui";
+import { useAviso, useDeshacer } from "../shell/Avisos";
+import { EncabezadoPagina, Estado, type TonoEstado, Eyebrow, Filtros, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaTitulo, tarjetaElevable, cajaCompuesta, entradaInterna } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
 import { SelectorMedios } from "../pickers/SelectorMedios";
-import { Hoja, NuevoEnLinea, ZonaEliminar, tonoDe, useGuardadoDiferido } from "./comun";
+import { SoltarAqui } from "../biblioteca/ZonaSubida";
+import { AsaTarjeta, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "./comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 export const DOMINIO_COLLECTION = "collection.traveloz.com.uy";
@@ -54,30 +54,21 @@ const apiReal: ApiDestinos = {
   crear: crearDestino,
   actualizar: actualizarDestino,
   reordenar: reordenarDestinos,
-  eliminar: eliminarDestino,
-};
+  eliminar: eliminarDestino };
 
-export const ESTADOS_DESTINO: Record<EstadoDestino, { label: string; clase: string; punto: string }> = {
-  BORRADOR: { label: "Borrador", clase: "border-col-line text-col-slate bg-col-surface", punto: "bg-col-slate/40" },
-  PUBLICADO: { label: "Publicado", clase: "border-col-ink bg-col-ink text-col-base", punto: "bg-col-gold" },
-  PROXIMAMENTE: { label: "Próximamente", clase: "border-col-gold text-col-ink bg-col-surface", punto: "bg-col-gold" },
-  ARCHIVADO: { label: "Archivado", clase: "border-col-line text-col-slate/70 bg-col-base", punto: "bg-col-line" },
-};
+export const ESTADOS_DESTINO: Record<EstadoDestino, { label: string; tono: TonoEstado }> = {
+  BORRADOR: { label: "Borrador", tono: "neutro" },
+  PUBLICADO: { label: "Publicado", tono: "ok" },
+  PROXIMAMENTE: { label: "Próximamente", tono: "info" },
+  ARCHIVADO: { label: "Archivado", tono: "neutro" } };
 const ORDEN_ESTADOS: EstadoDestino[] = ["BORRADOR", "PUBLICADO", "PROXIMAMENTE", "ARCHIVADO"];
 
 function PillDestino({ estado, className }: { estado: EstadoDestino; className?: string }) {
   const e = ESTADOS_DESTINO[estado];
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-sm border px-2 text-[10.5px] uppercase tracking-[0.14em]",
-        e.clase,
-        className,
-      )}
-    >
-      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", e.punto)} />
+    <Estado tono={e.tono} className={className}>
       {e.label}
-    </span>
+    </Estado>
   );
 }
 
@@ -87,8 +78,7 @@ const plural = (n: number, a: string, b: string) => `${n} ${n === 1 ? a : b}`;
 export function TarjetaDestino({
   d,
   sizes = "320px",
-  admin,
-}: {
+  admin }: {
   d: Pick<DestinoItem, "nombre" | "bajada" | "portada" | "estado" | "experiencias">;
   sizes?: string;
   admin?: boolean;
@@ -96,12 +86,12 @@ export function TarjetaDestino({
   const proximamente = d.estado === "PROXIMAMENTE";
   return (
     <div>
-      <div className={cn("relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line", admin && tarjetaElevable)}>
+      <div className={cn("relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line", admin && tarjetaElevable)}>
         {d.portada ? (
           <MedioImagen medio={d.portada} relleno sizes={sizes} imgClassName={admin ? "group-hover:scale-[1.03]" : undefined} />
         ) : (
           <div className="absolute inset-0" style={{ background: fondoDeColor(tonoDe(d.nombre || "destino")) }}>
-            <span className="absolute bottom-4 left-5 font-col-display text-[72px] font-light italic leading-none text-col-base/50">
+            <span className="absolute bottom-4 left-5 font-col-display text-col-display-lg font-light italic leading-none text-col-base/70">
               {(d.nombre.trim()[0] ?? "·").toUpperCase()}
             </span>
           </div>
@@ -110,20 +100,20 @@ export function TarjetaDestino({
           <PillDestino estado={d.estado} className="absolute left-3 top-3 shadow-sm" />
         ) : (
           proximamente && (
-            <span className="absolute left-4 top-4 bg-col-base px-3 py-2 text-[12px] font-medium uppercase tracking-[0.12em] text-col-ink">
+            <span className="absolute left-4 top-4 bg-col-base px-3 py-2 text-col-xs uppercase tracking-[0.14em] text-col-ink">
               Próximamente
             </span>
           )
         )}
       </div>
       <div className="mt-5 flex flex-col gap-2">
-        <span className="text-[12px] font-medium uppercase tracking-[0.12em] text-col-slate">
+        <span className="text-col-xs uppercase tracking-[0.14em] text-col-slate">
           {proximamente ? "Destino · Próximamente" : `Destino · ${plural(d.experiencias, "experiencia", "experiencias")}`}
         </span>
-        <span className={cn("font-col-display text-[30px] leading-[1.15]", d.nombre ? "text-col-ink" : "italic text-col-slate/50")}>
+        <span className={cn("font-col-display text-col-2xl leading-[1.15]", d.nombre ? "text-col-ink" : "italic text-col-subtle")}>
           {d.nombre || "Sin nombre"}
         </span>
-        {d.bajada && <span className="line-clamp-2 text-[15px] leading-relaxed text-col-slate">{d.bajada}</span>}
+        {d.bajada && <span className="line-clamp-2 text-col-cuerpo leading-relaxed text-col-slate">{d.bajada}</span>}
       </div>
     </div>
   );
@@ -135,14 +125,14 @@ export function Destinos({
   inicial,
   paises,
   api = apiReal,
-  abrirId = null,
-}: {
+  abrirId = null }: {
   inicial: DestinoItem[] | { error: string };
   paises: PaisCatalogo[];
   api?: ApiDestinos;
   abrirId?: string | null;
 }) {
   const avisar = useAviso();
+  const deshacible = useDeshacer();
   const { puede } = useCollection();
   const editable = puede("experiencias.editar");
   const sensores = useSensoresOrden();
@@ -187,8 +177,7 @@ export function Destinos({
       seoTitulo: "",
       seoDescripcion: "",
       paises: [],
-      experiencias: 0,
-    };
+      experiencias: 0 };
     setItems((l) => [...l, nuevo]);
     setFiltro("todos");
     setAbierto(nuevo.id);
@@ -211,13 +200,25 @@ export function Destinos({
     }
   };
 
+  // Borrado diferido: sale de la grilla al toque y el servidor se entera
+  // cuando vence el aviso. "Deshacer" lo repone sin llamar a nadie.
   const eliminar = async () => {
     if (!actual) return null;
-    const r = await api.eliminar(actual.id);
-    if (!r.ok) return r.error;
+    const x = actual;
+    const i = items.findIndex((y) => y.id === x.id);
     setAbierto(null);
-    setItems((l) => l.filter((x) => x.id !== actual.id));
-    avisar("Destino eliminado.");
+    void deshacible({
+      mensaje: `Eliminaste ${x.nombre || "el destino"}.`,
+      aplicar: () => setItems((l) => l.filter((y) => y.id !== x.id)),
+      deshacer: () => setItems((l) => reponer(l, i, x)),
+      confirmar: async () => {
+        const r = await api.eliminar(x.id);
+        if (!r.ok) {
+          setItems((l) => reponer(l, i, x));
+          avisar(r.error, "error");
+        }
+      },
+    });
     return null;
   };
 
@@ -226,7 +227,6 @@ export function Destinos({
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Destinos"
         titulo="Adónde viajamos"
         descripcion={`${items.length} ${items.length === 1 ? "destino" : "destinos"} · ${items.filter((x) => x.estado === "PUBLICADO").length} en el sitio`}
         acciones={editable && <NuevoEnLinea etiqueta="Nuevo destino" placeholder="Nombre del destino" onCrear={crear} />}
@@ -244,13 +244,13 @@ export function Destinos({
       </div>
 
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
 
       {visibles.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-[28px] italic text-col-slate">
+        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
           {items.length ? "Nada con ese filtro." : "Todavía no hay destinos. Creá el primero."}
         </p>
       ) : (
@@ -267,7 +267,7 @@ export function Destinos({
         </DndContext>
       )}
       {ordenable && visibles.length > 1 && (
-        <p className="mt-12 text-center text-[13px] text-col-slate/70">Arrastrá las tarjetas para cambiar el orden en el sitio.</p>
+        <p className="mt-12 text-center text-col-sm text-col-muted">Arrastrá las tarjetas para cambiar el orden en el sitio.</p>
       )}
 
       <Hoja abierta={!!actual} titulo={actual?.nombre || "Destino"} estado={guardado.estado} onCerrar={cerrar}>
@@ -296,12 +296,12 @@ function payload(d: DestinoItem): Payload {
     estado: d.estado,
     paisIds: d.paises.map((p) => p.id),
     seoTitulo: d.seoTitulo,
-    seoDescripcion: d.seoDescripcion,
-  };
+    seoDescripcion: d.seoDescripcion };
 }
 
 function Item({ d, i, ordenable, onAbrir }: { d: DestinoItem; i: number; ordenable: boolean; onAbrir: () => void }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: d.id, disabled: !ordenable });
+  const orden = useSortable({ id: d.id, disabled: !ordenable });
+  const { setNodeRef, transform, transition, isDragging } = orden;
   return (
     <motion.li
       ref={setNodeRef}
@@ -316,12 +316,12 @@ function Item({ d, i, ordenable, onAbrir }: { d: DestinoItem; i: number; ordenab
       <button
         type="button"
         onClick={onAbrir}
-        {...(ordenable ? { ...attributes, ...listeners } : {})}
         aria-label={`Editar ${d.nombre || "destino sin nombre"}`}
-        className={cn("block w-full text-left", ordenable && "cursor-grab active:cursor-grabbing", isDragging && "opacity-90")}
+        className={cn("block w-full rounded-col-sm text-left", isDragging && "opacity-90")}
       >
         <TarjetaDestino d={d} admin sizes="(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, 50vw" />
       </button>
+      {ordenable && <AsaTarjeta nombre={d.nombre || "destino sin nombre"} orden={orden} />}
     </motion.li>
   );
 }
@@ -332,8 +332,7 @@ function EditorDestino({
   editable,
   error,
   cambiar,
-  onEliminar,
-}: {
+  onEliminar }: {
   d: DestinoItem;
   paises: PaisCatalogo[];
   editable: boolean;
@@ -348,14 +347,14 @@ function EditorDestino({
         <TarjetaDestino d={d} sizes="200px" />
         <div className="flex flex-col gap-3 pt-1">
           <Eyebrow>Vista previa</Eyebrow>
-          <p className="text-[14px] leading-relaxed text-col-slate">Así aparece en el mosaico de destinos del sitio.</p>
+          <p className="text-col-md leading-relaxed text-col-slate">Así aparece en el mosaico de destinos del sitio.</p>
           <PillDestino estado={d.estado} className="self-start" />
           {error && (
-            <p role="alert" className="text-[13px] text-col-alerta">
+            <p role="alert" className="text-col-sm text-col-alerta">
               {error}
             </p>
           )}
-          {ro && <p className="text-[13px] text-col-slate">Solo lectura: te falta el permiso para editar destinos.</p>}
+          {ro && <p className="text-col-sm text-col-slate">Solo lectura: te falta el permiso para editar destinos.</p>}
         </div>
       </div>
 
@@ -367,13 +366,15 @@ function EditorDestino({
             maxLength={80}
             disabled={ro}
             onChange={(e) => cambiar({ nombre: e.target.value })}
-            className={cn(inputLinea, "font-col-display text-[26px]")}
+            className={cn(entradaTitulo, "text-col-2xl leading-tight")}
           />
         </Campo>
 
         <Campo etiqueta="Dirección web" htmlFor="d-slug">
-          <div className="flex items-baseline border-b border-col-slate/40 focus-within:border-col-gold">
-            <span className="shrink-0 py-2 text-[14px] text-col-slate/70">{DOMINIO_COLLECTION}/destinos/</span>
+          <div className={cn(cajaCompuesta, "pl-3.5")}>
+            <span className="shrink-0 text-col-md text-col-muted" title={`${DOMINIO_COLLECTION}/destinos/`}>
+              …/destinos/
+            </span>
             <input
               id="d-slug"
               value={d.slug}
@@ -381,7 +382,7 @@ function EditorDestino({
               disabled={ro}
               onChange={(e) => cambiar({ slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-") })}
               onBlur={() => cambiar({ slug: slugify(d.slug) || slugify(d.nombre) })}
-              className="min-w-0 flex-1 border-0 bg-transparent px-0 py-2 text-[15px] text-col-ink focus:outline-none focus:ring-0"
+              className={cn(entradaInterna, "pl-0")}
             />
           </div>
         </Campo>
@@ -394,8 +395,8 @@ function EditorDestino({
             maxLength={240}
             disabled={ro}
             onChange={(e) => cambiar({ bajada: e.target.value })}
-            placeholder="Una línea que invite. Templos, mercados y trenes nocturnos."
-            className={cn(inputLinea, "resize-none")}
+            placeholder="Ej.: Templos, mercados y trenes nocturnos."
+            className={entradaArea}
           />
         </Campo>
 
@@ -424,7 +425,7 @@ function EditorDestino({
 
         <div className="flex flex-col gap-3">
           <span className={etiquetaCampo}>Estado</span>
-          <div role="radiogroup" aria-label="Estado" className="grid grid-cols-4 rounded-sm border border-col-line p-1">
+          <div role="radiogroup" aria-label="Estado" className="grid grid-cols-4 rounded-col-sm border border-col-line p-1">
             {ORDEN_ESTADOS.map((e) => (
               <button
                 key={e}
@@ -434,7 +435,7 @@ function EditorDestino({
                 disabled={ro}
                 onClick={() => cambiar({ estado: e })}
                 className={cn(
-                  "h-10 rounded-sm text-[12px] uppercase tracking-[0.1em] transition-colors duration-200 ease-col disabled:cursor-not-allowed",
+                  "h-10 rounded-col-sm text-col-md font-medium transition-colors duration-col ease-col disabled:cursor-not-allowed",
                   d.estado === e ? "bg-col-ink text-col-base" : "text-col-slate hover:text-col-ink",
                 )}
               >
@@ -442,7 +443,7 @@ function EditorDestino({
               </button>
             ))}
           </div>
-          <p className="text-[13px] text-col-slate/80">
+          <p className="text-col-sm text-col-muted">
             {d.estado === "PROXIMAMENTE"
               ? "Se ve en el mosaico, sin experiencias y sin entrar."
               : d.estado === "PUBLICADO"
@@ -454,34 +455,42 @@ function EditorDestino({
         </div>
 
         <section className="flex flex-col gap-7 border-t border-col-line pt-8">
-          <h3 className="font-col-display text-[24px] leading-tight text-col-ink">Google y compartir</h3>
-          <Campo etiqueta="Título" htmlFor="d-seo-t" accion={<Contador n={d.seoTitulo.length} max={60} ideal={50} />}>
+          <h3 className="font-col-display text-col-xl leading-tight text-col-ink">Google y compartir</h3>
+          <Campo
+            etiqueta="Título"
+            htmlFor="d-seo-t"
+            accion={<Contador n={d.seoTitulo.length} max={60} ideal={50} />}
+            ayuda={!d.seoTitulo && d.nombre ? `Si lo dejás vacío se usa: ${d.nombre} | Traveloz Collection` : undefined}
+          >
             <input
               id="d-seo-t"
               value={d.seoTitulo}
               maxLength={70}
               disabled={ro}
-              placeholder={d.nombre ? `${d.nombre} | Traveloz Collection` : ""}
               onChange={(e) => cambiar({ seoTitulo: e.target.value })}
-              className={inputLinea}
+              className={entrada}
             />
           </Campo>
-          <Campo etiqueta="Descripción" htmlFor="d-seo-d" accion={<Contador n={d.seoDescripcion.length} max={155} ideal={130} />}>
+          <Campo
+            etiqueta="Descripción"
+            htmlFor="d-seo-d"
+            accion={<Contador n={d.seoDescripcion.length} max={155} ideal={130} />}
+            ayuda={!d.seoDescripcion && d.bajada ? "Si la dejás vacía se usa la bajada." : undefined}
+          >
             <textarea
               id="d-seo-d"
               rows={3}
               value={d.seoDescripcion}
               maxLength={170}
               disabled={ro}
-              placeholder={d.bajada}
               onChange={(e) => cambiar({ seoDescripcion: e.target.value })}
-              className={cn(inputLinea, "resize-none")}
+              className={entradaArea}
             />
           </Campo>
         </section>
 
         {editable && (
-          <ZonaEliminar texto={`¿Eliminar ${d.nombre || "este destino"}? No se puede deshacer.`} onEliminar={onEliminar} />
+          <ZonaEliminar texto={`¿Eliminar ${d.nombre || "este destino"}? Vas a tener unos segundos para deshacerlo.`} onEliminar={onEliminar} />
         )}
       </div>
     </>
@@ -498,8 +507,7 @@ const RECORTES = [
 function CampoPortada({
   portada,
   editable,
-  onCambio,
-}: {
+  onCambio }: {
   portada: MedioVista | null;
   editable: boolean;
   onCambio: (m: MedioVista | null) => void;
@@ -514,43 +522,46 @@ function CampoPortada({
             <button
               type="button"
               onClick={() => setAbierto(true)}
-              className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.12em] text-col-slate hover:text-col-ink"
+              className="flex items-center gap-1.5 text-col-sm font-medium text-col-slate hover:text-col-ink"
             >
               <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} /> Cambiar
             </button>
             <button
               type="button"
               onClick={() => onCambio(null)}
-              className="flex items-center gap-1.5 text-[12px] uppercase tracking-[0.12em] text-col-slate hover:text-col-alerta"
+              className="flex items-center gap-1.5 text-col-sm font-medium text-col-slate hover:text-col-alerta"
             >
               <X className="h-3.5 w-3.5" strokeWidth={1.5} /> Quitar
             </button>
           </span>
         )}
       </div>
+      <SoltarAqui tipo="FOTO" deshabilitado={!editable} onMedio={(m) => onCambio(m)}>
       {portada ? (
         <>
           <div className="flex items-end gap-3">
             {RECORTES.map((r) => (
               <figure key={r.label} className="min-w-0" style={{ flexGrow: r.a, flexBasis: 0 }}>
-                <MedioImagen medio={portada} aspecto={r.a} sizes="240px" className="w-full rounded-sm" />
-                <figcaption className="mt-1.5 text-[11px] tracking-wide text-col-slate">{r.label}</figcaption>
+                <MedioImagen medio={portada} aspecto={r.a} sizes="240px" className="w-full rounded-col-sm" />
+                <figcaption className="mt-1.5 text-col-xs tracking-wide text-col-slate">{r.label}</figcaption>
               </figure>
             ))}
           </div>
-          <p className="text-[13px] text-col-slate/80">El recorte sigue el punto de foco. Se ajusta desde la biblioteca.</p>
+          <p className="text-col-sm text-col-muted">El recorte sigue el punto de foco. Se ajusta desde la biblioteca.</p>
         </>
       ) : (
         <button
           type="button"
           disabled={!editable}
           onClick={() => setAbierto(true)}
-          className="flex aspect-[16/7] w-full flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 bg-col-base text-col-slate transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
+          className="flex aspect-[16/7] w-full flex-col items-center justify-center gap-2 rounded-col-sm border border-dashed border-col-slate/30 bg-col-base text-col-slate transition-colors duration-col ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
         >
           <ImagePlus className="h-5 w-5 text-col-gold" strokeWidth={1.4} aria-hidden />
-          <span className="text-[11px] uppercase tracking-[0.14em]">Elegir portada</span>
+          <span className="text-col-sm font-medium">Elegir portada</span>
+          {editable && <span className="text-col-xs text-col-muted">o soltá una foto</span>}
         </button>
       )}
+      </SoltarAqui>
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}
@@ -567,8 +578,7 @@ function SelectorPaises({
   elegidos,
   paises,
   deshabilitado,
-  onCambio,
-}: {
+  onCambio }: {
   elegidos: { id: string; nombre: string }[];
   paises: PaisCatalogo[];
   deshabilitado: boolean;
@@ -590,16 +600,16 @@ function SelectorPaises({
   };
   return (
     <div className="relative">
-      <div className="flex flex-wrap items-center gap-2 border-b border-col-slate/40 pb-2 focus-within:border-col-gold">
+      <div className={cn(cajaCompuesta, "flex-wrap gap-1.5 px-2 py-[7px]")}>
         {elegidos.map((p) => (
-          <span key={p.id} className="flex h-8 items-center gap-1.5 rounded-sm bg-col-base pl-3 pr-1.5 text-[13px] text-col-ink">
+          <span key={p.id} className="flex h-7 items-center gap-1 rounded-col-sm bg-col-base pl-2.5 pr-1 text-col-sm text-col-ink">
             {p.nombre}
             {!deshabilitado && (
               <button
                 type="button"
                 aria-label={`Quitar ${p.nombre}`}
                 onClick={() => onCambio(elegidos.filter((x) => x.id !== p.id))}
-                className="flex h-5 w-5 items-center justify-center rounded-sm text-col-slate hover:bg-col-line hover:text-col-ink"
+                className="flex h-5 w-5 items-center justify-center rounded-col-sm text-col-slate hover:bg-col-line hover:text-col-ink"
               >
                 <X className="h-3 w-3" strokeWidth={2} />
               </button>
@@ -608,7 +618,7 @@ function SelectorPaises({
         ))}
         {!deshabilitado && (
           <label className="relative flex min-w-[180px] flex-1 items-center">
-            <Search className="pointer-events-none absolute left-0 h-4 w-4 text-col-slate/60" strokeWidth={1.5} aria-hidden />
+            <Search className="pointer-events-none absolute left-1.5 h-4 w-4 text-col-muted" strokeWidth={1.5} aria-hidden />
             <input
               role="combobox"
               aria-controls={lista}
@@ -625,17 +635,17 @@ function SelectorPaises({
                 }
               }}
               placeholder={paises.length ? "Buscar país" : "Sin catálogo de países"}
-              className="h-8 w-full border-0 bg-transparent py-0 pl-6 pr-0 text-[15px] text-col-ink placeholder:text-col-slate/60 focus:outline-none focus:ring-0"
+              className={cn(entradaInterna, "h-7 w-full py-0 pl-8 pr-1.5")}
             />
           </label>
         )}
-        {deshabilitado && elegidos.length === 0 && <span className="py-1 text-[14px] text-col-slate/60">Sin países</span>}
+        {deshabilitado && elegidos.length === 0 && <span className="py-1 text-col-md text-col-muted">Sin países</span>}
       </div>
       {foco && opciones.length > 0 && (
         <ul
           id={lista}
           role="listbox"
-          className="absolute inset-x-0 top-full z-10 mt-1 max-h-72 overflow-y-auto rounded-sm border border-col-line bg-col-surface p-1 shadow-[0_20px_40px_-20px_rgba(50,55,59,0.45)]"
+          className="absolute inset-x-0 top-full z-10 mt-1 max-h-72 overflow-y-auto rounded-col-sm border border-col-line bg-col-surface p-1 shadow-col-3"
         >
           {opciones.map((p) => (
             <li key={p.id} role="option" aria-selected={false}>
@@ -643,10 +653,10 @@ function SelectorPaises({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => sumar(p)}
-                className="flex h-10 w-full items-center justify-between gap-3 rounded-sm px-3 text-left text-[14px] text-col-ink hover:bg-col-base"
+                className="flex h-10 w-full items-center justify-between gap-3 rounded-col-sm px-3 text-left text-col-md text-col-ink hover:bg-col-base"
               >
                 {p.nombre}
-                {p.regionNombre && <span className="text-[12px] text-col-slate">{p.regionNombre}</span>}
+                {p.regionNombre && <span className="text-col-xs text-col-slate">{p.regionNombre}</span>}
               </button>
             </li>
           ))}

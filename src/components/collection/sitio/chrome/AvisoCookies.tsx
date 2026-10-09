@@ -42,7 +42,7 @@ export function AvisoCookies() {
       <button
         type="button"
         onClick={aceptar}
-        className="h-10 shrink-0 rounded-sm bg-col-ink px-5 text-[12px] font-medium uppercase tracking-[0.12em] text-col-base transition-colors duration-200 ease-col hover:bg-col-slate active:translate-y-px"
+        className="h-10 shrink-0 rounded-sm bg-col-ink px-5 text-[12px] uppercase tracking-[0.14em] text-col-base transition-colors duration-200 ease-col hover:bg-col-slate active:translate-y-px"
       >
         Entendido
       </button>

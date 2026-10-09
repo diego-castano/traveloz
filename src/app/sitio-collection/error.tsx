@@ -21,13 +21,13 @@ export default function ErrorSitio({ error, reset }: { error: Error & { digest?:
           <button
             type="button"
             onClick={reset}
-            className="inline-flex h-12 items-center rounded-sm bg-col-ink px-6 text-[13px] font-medium uppercase tracking-[0.12em] text-col-base transition-colors duration-200 ease-col hover:bg-col-slate active:translate-y-px"
+            className="inline-flex h-12 items-center rounded-sm bg-col-ink px-6 text-[12px] uppercase tracking-[0.14em] text-col-base transition-colors duration-200 ease-col hover:bg-col-slate active:translate-y-px"
           >
             Reintentar
           </button>
           <Link
             href="/"
-            className="inline-flex h-12 items-center rounded-sm border border-col-ink/25 px-6 text-[13px] font-medium uppercase tracking-[0.12em] text-col-ink transition-colors duration-200 ease-col hover:border-col-ink"
+            className="inline-flex h-12 items-center rounded-sm border border-col-ink/25 px-6 text-[12px] uppercase tracking-[0.14em] text-col-ink transition-colors duration-200 ease-col hover:border-col-ink"
           >
             Ir al inicio
           </Link>

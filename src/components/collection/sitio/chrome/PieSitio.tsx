@@ -6,7 +6,7 @@ import { MarcaCollection } from "@/components/collection/shell/MarcaCollection";
 import type { AjustesCollection } from "@/lib/collection/ajustes";
 import { CONTACTO_SITIO, LEGALES_SITIO, MENU_SITIO } from "./menu";
 
-const titulo = "text-[12px] font-medium uppercase tracking-[0.12em] text-white/50";
+const titulo = "text-[12px] uppercase tracking-[0.14em] text-white/50";
 const enlace = "text-[15px] font-light text-white/85 transition-colors duration-200 ease-col hover:text-col-gold";
 
 const FRASE = "Viajes de autor, diseñados a tu medida por un especialista.";
@@ -40,7 +40,7 @@ export function PieSitio({ ajustes }: { ajustes: AjustesCollection }) {
           </p>
           <Link
             href={CONTACTO_SITIO.href}
-            className="inline-flex h-12 items-center rounded-sm border border-white/30 px-6 text-[13px] font-medium uppercase tracking-[0.12em] transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-gold"
+            className="inline-flex h-12 items-center rounded-sm border border-white/30 px-6 text-[12px] uppercase tracking-[0.14em] transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-gold"
           >
             {CONTACTO_SITIO.nombre}
           </Link>

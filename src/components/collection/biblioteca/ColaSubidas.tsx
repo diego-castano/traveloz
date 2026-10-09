@@ -1,11 +1,15 @@
 "use client";
 
-// Panel flotante con la cola de subidas (abajo a la derecha).
+// Panel flotante con la cola de subidas (abajo a la derecha): avance total
+// arriba, cada archivo con su miniatura y anillo, y un resumen al terminar.
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Check, ChevronDown, Film, LoaderCircle, RotateCw, X } from "lucide-react";
+import { ChevronDown, Film, RotateCw, X } from "lucide-react";
 import { cn } from "@/components/lib/cn";
+import { CheckAnimado, EASE, transiciones } from "../movimiento";
+import { ProgresoCircular, textoEstado } from "./ZonaSubida";
+import { errorAmigable } from "../shell/Avisos";
 import type { Subida } from "./useSubidas";
 
 export function ColaSubidas({
@@ -22,112 +26,129 @@ export function ColaSubidas({
   const errores = subidas.filter((s) => s.estado === "error").length;
   const listas = subidas.filter((s) => s.estado === "listo").length;
   const total = subidas.length;
-  const avance = total ? subidas.reduce((a, s) => a + (s.estado === "listo" ? 100 : s.progreso * 0.9), 0) / total : 0;
+  const avance = total
+    ? subidas.reduce((a, s) => a + (s.estado === "listo" || s.estado === "error" ? 100 : s.progreso * 0.9), 0) / total
+    : 0;
 
   const titulo =
     enCurso > 0
       ? `Subiendo ${Math.min(listas + errores + 1, total)} de ${total}`
       : errores > 0
         ? `${errores} ${errores === 1 ? "archivo" : "archivos"} con error`
-        : `${listas} ${listas === 1 ? "medio listo" : "medios listos"}`;
+        : "Listo";
+  const detalle =
+    enCurso > 0
+      ? `${Math.round(avance)} % del total`
+      : `${listas} ${listas === 1 ? "medio subido" : "medios subidos"}${errores ? `, ${errores} sin subir` : ""}`;
 
   return (
     <AnimatePresence>
       {total > 0 && (
         <motion.section
           aria-label="Subidas"
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 24 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed bottom-4 right-4 z-40 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded bg-col-surface shadow-[0_24px_48px_-20px_rgba(50,55,59,0.4)] ring-1 ring-col-line"
+          {...transiciones.aviso}
+          className="fixed bottom-4 right-4 z-40 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-md bg-col-surface shadow-col-3 ring-1 ring-col-line"
         >
-          <div className="relative flex h-12 items-center gap-2 border-b border-col-line pl-4 pr-2">
-            <p className="flex-1 truncate text-[13px] uppercase tracking-[0.12em] text-col-ink" aria-live="polite">
-              {titulo}
+          <div className="relative flex h-14 items-center gap-3 pl-3.5 pr-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center text-col-ink">
+              {enCurso > 0 ? (
+                <ProgresoCircular valor={avance} tam={30} />
+              ) : errores > 0 ? (
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-col-alerta/10 text-col-sm text-col-alerta">!</span>
+              ) : (
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-col-gold text-col-noche">
+                  <CheckAnimado className="h-4 w-4" />
+                </span>
+              )}
+            </span>
+            <p className="min-w-0 flex-1" aria-live="polite">
+              <span className="block truncate text-col-md text-col-ink">{titulo}</span>
+              <span className="block truncate text-col-xs text-col-slate">{detalle}</span>
             </p>
             <button
               type="button"
               onClick={() => setPlegada((p) => !p)}
               aria-label={plegada ? "Mostrar subidas" : "Ocultar subidas"}
               aria-expanded={!plegada}
-              className="flex h-8 w-8 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
+              className="flex h-8 w-8 items-center justify-center rounded-col text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
             >
-              <ChevronDown
-                className={cn("h-4 w-4 transition-transform duration-200 ease-col", plegada && "rotate-180")}
-                strokeWidth={1.5}
-              />
+              <ChevronDown className={cn("h-4 w-4 transition-transform duration-col ease-col", plegada && "rotate-180")} strokeWidth={1.5} />
             </button>
             {enCurso === 0 && (
               <button
                 type="button"
                 onClick={onLimpiar}
                 aria-label="Cerrar panel de subidas"
-                className="flex h-8 w-8 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-col text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
               >
                 <X className="h-4 w-4" strokeWidth={1.5} />
               </button>
             )}
-            {enCurso > 0 && (
+            <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-col-line">
               <span
-                aria-hidden
-                className="absolute bottom-0 left-0 h-px bg-col-gold transition-[width] duration-500 ease-col"
+                className={cn("block h-full transition-[width] duration-col-lento ease-col", errores && !enCurso ? "bg-col-alerta/50" : "bg-col-gold")}
                 style={{ width: `${avance}%` }}
               />
-            )}
+            </span>
           </div>
-          {!plegada && (
-            <ul className="max-h-[320px] divide-y divide-col-line overflow-y-auto">
-              {subidas.map((s) => (
-                <li key={s.id} className="relative flex items-center gap-3 px-4 py-3">
-                  <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-sm bg-col-base">
-                    {s.preview ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={s.preview} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <Film className="m-auto h-full w-4 text-col-slate" strokeWidth={1.5} aria-hidden />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] text-col-ink">{s.file.name}</span>
-                    <span
-                      className={cn(
-                        "block truncate text-[12px]",
-                        s.estado === "error" ? "text-col-alerta" : "text-col-slate",
+          <AnimatePresence initial={false}>
+            {!plegada && (
+              <motion.ul
+                key="lista"
+                initial={{ height: 0 }}
+                animate={{ height: "auto" }}
+                exit={{ height: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="max-h-[320px] overflow-y-auto"
+              >
+                <AnimatePresence initial={false}>
+                  {subidas.map((s) => (
+                    <motion.li
+                      key={s.id}
+                      layout
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, ease: EASE }}
+                      className="flex items-center gap-3 px-3.5 py-2.5"
+                    >
+                      <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-col bg-col-base">
+                        {s.preview ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={s.preview} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <Film className="m-auto h-full w-4 text-col-slate" strokeWidth={1.5} aria-hidden />
+                        )}
+                        {(s.estado === "subiendo" || s.estado === "procesando" || s.estado === "espera") && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-col-noche/45 text-white">
+                            <ProgresoCircular valor={s.estado === "subiendo" ? s.progreso : s.estado === "espera" ? 0 : undefined} tam={26} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-col-sm text-col-ink">{s.file.name}</span>
+                        <span className={cn("block truncate text-col-xs", s.estado === "error" ? "text-col-alerta" : "text-col-slate")} title={s.error && errorAmigable(s.error)}>
+                          {textoEstado(s)}
+                        </span>
+                      </span>
+                      {s.estado === "listo" && <CheckAnimado className="h-4 w-4 shrink-0 text-col-ok" />}
+                      {s.estado === "error" && (
+                        <button
+                          type="button"
+                          onClick={() => onReintentar(s.id)}
+                          aria-label={`Reintentar ${s.file.name}`}
+                          className="flex h-8 shrink-0 items-center gap-1.5 rounded-col px-2 text-col-md font-medium text-col-ink transition-colors hover:bg-col-base"
+                        >
+                          <RotateCw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                          Reintentar
+                        </button>
                       )}
-                    >
-                      {s.estado === "espera" && "En espera"}
-                      {s.estado === "subiendo" && `${s.progreso} %`}
-                      {s.estado === "procesando" && "Procesando"}
-                      {s.estado === "listo" && "Listo"}
-                      {s.estado === "error" && s.error}
-                    </span>
-                  </span>
-                  {s.estado === "listo" && <Check className="h-4 w-4 text-col-gold" strokeWidth={2} aria-label="Listo" />}
-                  {s.estado === "procesando" && (
-                    <LoaderCircle className="h-4 w-4 animate-spin text-col-slate" strokeWidth={1.5} aria-hidden />
-                  )}
-                  {s.estado === "error" && (
-                    <button
-                      type="button"
-                      onClick={() => onReintentar(s.id)}
-                      className="flex h-8 items-center gap-1.5 rounded-sm px-2 text-[12px] uppercase tracking-[0.12em] text-col-ink hover:bg-col-base"
-                    >
-                      <RotateCw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                      Reintentar
-                    </button>
-                  )}
-                  {s.estado === "subiendo" && (
-                    <span
-                      aria-hidden
-                      className="absolute bottom-0 left-0 h-0.5 bg-col-gold transition-[width] duration-200 ease-col"
-                      style={{ width: `${s.progreso}%` }}
-                    />
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
+              </motion.ul>
+            )}
+          </AnimatePresence>
         </motion.section>
       )}
     </AnimatePresence>

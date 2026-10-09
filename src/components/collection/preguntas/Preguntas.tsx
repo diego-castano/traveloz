@@ -16,20 +16,19 @@ import {
   crearPregunta,
   eliminarPregunta,
   reordenarPreguntas,
-  type PreguntaItem,
-} from "@/actions/collection/preguntas.actions";
+  type PreguntaItem } from "@/actions/collection/preguntas.actions";
 import type { Resultado } from "@/lib/collection/ejecutar";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { useAviso } from "../shell/Avisos";
+import { useAviso, useDeshacer } from "../shell/Avisos";
 import { IndicadorGuardado } from "../biblioteca/DetalleMedio";
-import { Boton, EncabezadoPagina, Eyebrow, Filtros, Interruptor, etiquetaCampo, inputLinea } from "../ui";
+import { Boton, EncabezadoPagina, Eyebrow, Filtros, Interruptor, etiquetaCampo, entradaSelect, entrada, entradaTitulo } from "../ui";
 import { Campo, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
 import { ItemPregunta } from "../sitio/tarjetas";
 import { Cabecera, ListaVacia } from "../sitio/bloques/comun";
 import "../sitio/sitio.css";
-import { ZonaEliminar, useGuardadoDiferido } from "../contenido/comun";
+import { ZonaEliminar, reponer, useGuardadoDiferido } from "../contenido/comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -47,15 +46,13 @@ const apiReal: ApiPreguntas = {
   crear: crearPregunta,
   actualizar: actualizarPregunta,
   reordenar: reordenarPreguntas,
-  eliminar: eliminarPregunta,
-};
+  eliminar: eliminarPregunta };
 
 const payload = (p: PreguntaItem): Payload => ({
   pregunta: p.pregunta,
   respuesta: p.respuesta,
   categoria: p.categoria,
-  publicada: p.publicada,
-});
+  publicada: p.publicada });
 
 const ordenar = (l: string[]) => Array.from(new Set(l)).sort((a, b) => a.localeCompare(b, "es"));
 
@@ -63,14 +60,14 @@ export function Preguntas({
   inicial,
   categorias,
   api = apiReal,
-  abrirId = null,
-}: {
+  abrirId = null }: {
   inicial: PreguntaItem[] | { error: string };
   categorias: string[];
   api?: ApiPreguntas;
   abrirId?: string | null;
 }) {
   const avisar = useAviso();
+  const deshacible = useDeshacer();
   const { puede } = useCollection();
   const editable = puede("sitio.editar");
   const sensores = useSensoresOrden();
@@ -129,7 +126,7 @@ export function Preguntas({
     return true;
   };
 
-  const publicar = async (p: PreguntaItem, publicada: boolean) => {
+  const guardarVisible = async (p: PreguntaItem, publicada: boolean) => {
     // Si es la fila abierta, el guardado automático se encarga.
     if (p.id === abierta) return cambiar(p.id, { publicada });
     cambiar(p.id, { publicada });
@@ -137,8 +134,17 @@ export function Preguntas({
     if (!r.ok) {
       cambiar(p.id, { publicada: !publicada });
       avisar(r.error, "error");
+      return false;
     }
   };
+
+  // Publicar u ocultar cambia el sitio al toque: el aviso ofrece volver atrás (acción inversa).
+  const publicar = (p: PreguntaItem, publicada: boolean) =>
+    deshacible({
+      mensaje: publicada ? "La pregunta ya se ve en el sitio." : "La pregunta ya no se ve en el sitio.",
+      aplicar: () => guardarVisible(p, publicada),
+      deshacer: () => void guardarVisible({ ...p, publicada }, !publicada),
+    });
 
   // Se ordena dentro de la categoría; al servidor va la lista completa.
   const alSoltar = async (e: DragEndEvent) => {
@@ -159,12 +165,25 @@ export function Preguntas({
     }
   };
 
+  // Borrado diferido: sale de la lista al toque y el servidor se entera
+  // cuando vence el aviso. "Deshacer" la repone sin llamar a nadie.
   const eliminar = async (id: string) => {
-    const r = await api.eliminar(id);
-    if (!r.ok) return r.error;
+    const i = items.findIndex((y) => y.id === id);
+    const x = items[i];
+    if (!x) return null;
     setAbierta(null);
-    setItems((l) => l.filter((x) => x.id !== id));
-    avisar("Pregunta eliminada.");
+    void deshacible({
+      mensaje: "Eliminaste la pregunta.",
+      aplicar: () => setItems((l) => l.filter((y) => y.id !== id)),
+      deshacer: () => setItems((l) => reponer(l, i, x)),
+      confirmar: async () => {
+        const r = await api.eliminar(id);
+        if (!r.ok) {
+          setItems((l) => reponer(l, i, x));
+          avisar(r.error, "error");
+        }
+      },
+    });
     return null;
   };
 
@@ -176,13 +195,12 @@ export function Preguntas({
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Preguntas"
         titulo="Lo que nos preguntan"
         descripcion={`${items.length} ${items.length === 1 ? "pregunta" : "preguntas"} · ${items.filter((p) => p.publicada).length} en el sitio`}
       />
 
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
@@ -217,7 +235,7 @@ export function Preguntas({
 
           <div className="border-t border-col-ink">
             {visibles.length === 0 && !agregando && (
-              <p className="py-14 text-center font-col-display text-[24px] italic text-col-slate">
+              <p className="py-14 text-center font-col-display text-col-xl italic text-col-slate">
                 Todavía no hay preguntas en {cat}.
               </p>
             )}
@@ -254,7 +272,7 @@ export function Preguntas({
                 <Plus className="h-4 w-4" strokeWidth={1.5} />
                 Nueva pregunta
               </Boton>
-              {visibles.length > 1 && <p className="text-[13px] text-col-slate/70">Arrastrá desde el asa para cambiar el orden.</p>}
+              {visibles.length > 1 && <p className="text-col-sm text-col-muted">Arrastrá desde el asa para cambiar el orden.</p>}
             </div>
           )}
         </div>
@@ -262,9 +280,9 @@ export function Preguntas({
         <aside className="lg:sticky lg:top-24">
           <div className="mb-4 flex items-baseline justify-between gap-4">
             <Eyebrow>Vista previa</Eyebrow>
-            <span className="text-[12px] text-col-slate">Solo las publicadas, en este orden</span>
+            <span className="text-col-xs text-col-slate">Solo las publicadas, en este orden</span>
           </div>
-          <div className="max-h-[calc(100vh-150px)] overflow-y-auto rounded-sm border border-col-line">
+          <div className="max-h-[calc(100vh-150px)] overflow-y-auto rounded-col-sm border border-col-line">
             <div className="cs-raiz" data-modo="preview" onClickCapture={(e) => (e.target as HTMLElement).closest("a") && e.preventDefault()}>
               <div className="cs-bloque bg-col-surface">
                 <div className="cs-envolvente cs-preguntas">
@@ -303,8 +321,7 @@ function Fila({
   onPublicar,
   cambiar,
   onMover,
-  onEliminar,
-}: {
+  onEliminar }: {
   p: PreguntaItem;
   abierta: boolean;
   editable: boolean;
@@ -323,9 +340,9 @@ function Fila({
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
       className={cn(
-        "relative border-b border-col-line transition-[background-color,box-shadow] duration-300 ease-col",
-        abierta ? "bg-col-surface shadow-[0_18px_40px_-30px_rgba(50,55,59,0.5)]" : "hover:bg-col-surface/60",
-        isDragging && "bg-col-surface shadow-[0_24px_50px_-24px_rgba(50,55,59,0.55)]",
+        "relative border-b border-col-line transition-[background-color,box-shadow] duration-col-lento ease-col",
+        abierta ? "bg-col-surface shadow-col-2" : "hover:bg-col-surface/60",
+        isDragging && "bg-col-surface shadow-col-2",
       )}
     >
       {abierta && <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-col-gold" />}
@@ -336,7 +353,7 @@ function Fila({
             aria-label={`Arrastrar ${p.pregunta}`}
             {...attributes}
             {...listeners}
-            className="flex h-9 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-col-slate/40 transition-colors hover:text-col-ink active:cursor-grabbing"
+            className="flex h-9 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-col-sm text-col-subtle transition-colors hover:text-col-ink active:cursor-grabbing"
           >
             <GripVertical className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -352,7 +369,7 @@ function Fila({
             maxLength={300}
             onChange={(e) => cambiar({ pregunta: e.target.value })}
             placeholder="Escribí la pregunta"
-            className="min-w-0 flex-1 border-0 border-b border-transparent bg-transparent px-0 py-0.5 font-col-display text-[22px] leading-[1.25] text-col-ink transition-colors duration-200 ease-col hover:border-col-line focus:border-col-gold focus:outline-none focus:ring-0"
+            className={cn(entradaTitulo, "flex-1 border-transparent pb-1.5 text-col-xl leading-[1.25]")}
           />
         ) : (
           <button
@@ -360,14 +377,14 @@ function Fila({
             aria-expanded={abierta}
             onClick={onAlternar}
             className={cn(
-              "min-w-0 flex-1 text-left font-col-display text-[22px] leading-[1.25] transition-colors duration-200 ease-col",
-              abierta ? "text-col-ink" : p.publicada ? "text-col-ink/90 hover:text-col-ink" : "text-col-slate/70 hover:text-col-ink",
+              "min-w-0 flex-1 text-left font-col-display text-col-xl leading-[1.25] transition-colors duration-col ease-col",
+              abierta ? "text-col-ink" : p.publicada ? "text-col-ink/90 hover:text-col-ink" : "text-col-muted hover:text-col-ink",
             )}
           >
-            {p.pregunta || <span className="italic text-col-slate/50">Pregunta sin texto</span>}
+            {p.pregunta || <span className="italic text-col-subtle">Pregunta sin texto</span>}
           </button>
         )}
-        <span className="hidden w-[68px] text-right text-[11px] uppercase tracking-[0.12em] text-col-slate sm:block">
+        <span className="hidden w-[68px] text-right text-col-sm font-medium text-col-slate sm:block">
           {p.publicada ? "Publicada" : "Oculta"}
         </span>
         <Interruptor checked={p.publicada} onCheckedChange={onPublicar} disabled={ro} label={`Publicar ${p.pregunta}`} />
@@ -375,9 +392,9 @@ function Fila({
           type="button"
           aria-label={abierta ? "Cerrar" : "Editar"}
           onClick={onAlternar}
-          className="ml-1 flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
+          className="ml-1 flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:text-col-ink"
         >
-          <ChevronDown className={cn("h-4 w-4 transition-transform duration-300 ease-col", abierta && "rotate-180")} strokeWidth={1.5} />
+          <ChevronDown className={cn("h-4 w-4 transition-transform duration-col-lento ease-col", abierta && "rotate-180")} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -411,7 +428,7 @@ function Fila({
                     value={p.categoria}
                     disabled={ro}
                     onChange={(e) => onMover(e.target.value)}
-                    className={cn(inputLinea, "cursor-pointer appearance-none bg-none pr-6")}
+                    className={entradaSelect}
                   >
                     {cats.map((c) => (
                       <option key={c} value={c}>
@@ -419,15 +436,14 @@ function Fila({
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} aria-hidden />
                 </div>
               </Campo>
               {error && (
-                <p role="alert" className="text-[13px] text-col-alerta">
+                <p role="alert" className="text-col-sm text-col-alerta">
                   {error}
                 </p>
               )}
-              {editable && <ZonaEliminar texto="¿Eliminar esta pregunta? No se puede deshacer." onEliminar={onEliminar} />}
+              {editable && <ZonaEliminar texto="¿Eliminar esta pregunta? Vas a tener unos segundos para deshacerlo." onEliminar={onEliminar} />}
             </div>
           </motion.div>
         )}
@@ -464,7 +480,7 @@ function FilaNueva({ onCrear, onCancelar }: { onCrear: (texto: string) => Promis
         onChange={(e) => setTexto(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && onCancelar()}
         placeholder="Escribí la pregunta y apretá Enter"
-        className="min-w-0 flex-1 border-0 bg-transparent px-0 font-col-display text-[22px] text-col-ink placeholder:italic placeholder:text-col-slate/50 focus:outline-none focus:ring-0"
+        className={cn(entradaTitulo, "flex-1 pb-1.5 text-col-xl leading-[1.25]")}
       />
       <Boton type="submit" tam="sm" disabled={!texto.trim() || creando}>
         {creando ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={1.5} />}
@@ -474,7 +490,7 @@ function FilaNueva({ onCrear, onCancelar }: { onCrear: (texto: string) => Promis
         type="button"
         aria-label="Cancelar"
         onClick={onCancelar}
-        className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
+        className="flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:text-col-ink"
       >
         <X className="h-4 w-4" strokeWidth={1.5} />
       </button>
@@ -499,7 +515,7 @@ function NuevaCategoria({ existentes, onCrear }: { existentes: string[]; onCrear
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="flex h-9 items-center gap-1.5 rounded-sm border border-dashed border-col-slate/40 px-4 text-[13px] uppercase tracking-[0.12em] text-col-slate transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-ink"
+        className="flex h-9 items-center gap-1.5 rounded-col-sm border border-dashed border-col-slate/40 px-4 text-col-sm font-medium text-col-slate transition-colors duration-col ease-col hover:border-col-gold hover:text-col-ink"
       >
         <Plus className="h-3.5 w-3.5" strokeWidth={1.5} /> Nueva categoría
       </button>
@@ -517,8 +533,8 @@ function NuevaCategoria({ existentes, onCrear }: { existentes: string[]; onCrear
         if (e.key === "Escape") setAbierto(false);
       }}
       onBlur={listo}
-      placeholder="Reservas, Pagos…"
-      className="h-9 w-48 border-0 border-b border-col-gold bg-transparent px-1 text-[14px] text-col-ink placeholder:text-col-slate/60 focus:outline-none focus:ring-0"
+      placeholder="Ej.: Visados"
+      className={cn(entrada, "min-h-9 w-52 px-3 py-[5px] text-col-md")}
     />
   );
 }

@@ -14,7 +14,7 @@ import { canalLegible, textoFechas, textoViajeros } from "@/lib/collection/consu
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton, Buscador, EncabezadoPagina, Filtros, Skeleton, barraHerramientas, boton, type OpcionFiltro } from "../ui";
+import { Boton, Buscador, EncabezadoPagina, Estado, type TonoEstado, Filtros, Skeleton, barraHerramientas, boton, type OpcionFiltro, entradaArea } from "../ui";
 import { Hoja, useGuardadoDiferido } from "../contenido/comun";
 import { haceTiempo } from "../constructor/formato";
 import { rutaSitio } from "../sitio/tarjetas";
@@ -27,35 +27,35 @@ type Estado = ConsultaFila["estado"];
 type Inicial = { items: ConsultaFila[]; siguiente: string | null } | { error: string };
 type FiltroEstado = Estado | "TODAS";
 
-const ESTADOS: Record<Estado, { label: string; clase: string }> = {
-  NUEVA: { label: "Nueva", clase: "border-col-gold bg-col-gold/20 text-col-ink" },
-  EN_CURSO: { label: "En curso", clase: "border-col-ink bg-col-ink text-col-base" },
-  CERRADA: { label: "Cerrada", clase: "border-col-line bg-col-surface text-col-slate" },
-  DESCARTADA: { label: "Descartada", clase: "border-transparent bg-transparent text-col-slate/70 line-through decoration-col-slate/40" },
+const ESTADOS: Record<Estado, { label: string; tono: TonoEstado }> = {
+  NUEVA: { label: "Nueva", tono: "info" },
+  EN_CURSO: { label: "En curso", tono: "aviso" },
+  CERRADA: { label: "Cerrada", tono: "ok" },
+  DESCARTADA: { label: "Descartada", tono: "neutro" },
 };
 
 const FILTROS: OpcionFiltro<FiltroEstado>[] = [
+  { id: "TODAS", label: "Todas" },
   { id: "NUEVA", label: "Nuevas" },
   { id: "EN_CURSO", label: "En curso" },
   { id: "CERRADA", label: "Cerradas" },
   { id: "DESCARTADA", label: "Descartadas" },
-  { id: "TODAS", label: "Todas" },
 ];
 
 const CRM = {
-  OK: { punto: "bg-[#3E7C5A]", texto: "En Bitrix" },
-  ERROR: { punto: "bg-col-alerta", texto: "Error al enviar a Bitrix" },
-  PENDIENTE: { punto: "bg-col-gold", texto: "Enviando a Bitrix" },
-  NADA: { punto: "border border-col-slate/50 bg-transparent", texto: "Sin enviar a Bitrix" },
+  OK: { punto: "bg-col-ok", texto: "Enviada a Bitrix" },
+  ERROR: { punto: "bg-col-error", texto: "Falló el envío a Bitrix" },
+  PENDIENTE: { punto: "bg-col-aviso", texto: "Enviando a Bitrix" },
+  NADA: { punto: "border border-col-subtle bg-transparent", texto: "No se manda a Bitrix" },
 };
 const crmDe = (e: ConsultaFila["crmEstado"]) => CRM[e ?? "NADA"];
 
 function PildoraEstado({ estado, className }: { estado: Estado; className?: string }) {
   const e = ESTADOS[estado];
   return (
-    <span className={cn("inline-flex h-6 items-center whitespace-nowrap rounded-sm border px-2 text-[10.5px] uppercase tracking-[0.14em]", e.clase, className)}>
+    <Estado tono={e.tono} className={className}>
       {e.label}
-    </span>
+    </Estado>
   );
 }
 
@@ -92,7 +92,6 @@ export function Consultas({
   return (
     <div className="mx-auto max-w-[1280px]">
       <EncabezadoPagina
-        eyebrow="Gestión"
         titulo="Consultas"
         descripcion="Lo que llega desde el sitio de Collection, con su paso por Bitrix."
       />
@@ -105,7 +104,7 @@ export function Consultas({
             aria-selected={pestana === p}
             onClick={() => setPestana(p)}
             className={cn(
-              "relative -mb-px h-11 text-[13px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col",
+              "relative -mb-px h-11 text-col-md font-medium transition-colors duration-col ease-col",
               pestana === p ? "text-col-ink" : "text-col-slate hover:text-col-ink",
             )}
           >
@@ -184,7 +183,7 @@ function ListaConsultas({
       </div>
 
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
@@ -198,17 +197,26 @@ function ListaConsultas({
       ) : items.length === 0 ? (
         <div className="flex flex-col items-start gap-4 border-t border-col-line py-16">
           <span aria-hidden className="h-px w-12 bg-col-gold" />
-          <p className="font-col-display text-[30px] leading-tight text-col-ink">
+          <p className="font-col-display text-col-2xl leading-tight text-col-ink">
             {q || filtro !== "TODAS" ? "Nada con ese filtro" : "Todavía no llegaron consultas"}
           </p>
-          <p className="max-w-[52ch] text-[15px] leading-relaxed text-col-slate">
+          <p className="max-w-[52ch] text-col-cuerpo leading-relaxed text-col-slate">
             {q || filtro !== "TODAS"
               ? "Probá con otro estado o borrá la búsqueda."
               : "Cuando alguien escriba desde una experiencia o desde Contactanos, aparece acá y le llega el aviso al especialista."}
           </p>
         </div>
       ) : (
-        <ul className={cn("flex flex-col border-t border-col-line transition-opacity duration-200", cargando && "opacity-60")}>
+        <>
+        <div aria-hidden className="hidden px-4 pb-2 text-col-xs font-medium text-col-muted lg:grid lg:grid-cols-[104px_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_112px_24px] lg:gap-x-6">
+          <span>Código</span>
+          <span>Persona</span>
+          <span>Origen</span>
+          <span>Especialista</span>
+          <span>Estado</span>
+          <span title="Bitrix">CRM</span>
+        </div>
+        <ul className={cn("flex flex-col border-t border-col-line transition-opacity duration-col", cargando && "opacity-60")}>
           {items.map((c, i) => (
             <motion.li
               key={c.id}
@@ -221,26 +229,26 @@ function ListaConsultas({
                 type="button"
                 onClick={() => onAbrir(c.id)}
                 className={cn(
-                  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-2 py-4 text-left transition-colors duration-200 ease-col hover:bg-col-surface lg:grid-cols-[104px_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_112px_24px] lg:gap-x-6 lg:px-4",
+                  "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1.5 px-2 py-4 text-left transition-colors duration-col ease-col hover:bg-col-surface lg:grid-cols-[104px_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_112px_24px] lg:gap-x-6 lg:px-4",
                   abierta === c.id && "bg-col-surface",
                 )}
               >
                 <span className="col-start-1 flex items-baseline gap-3 lg:flex-col lg:gap-0.5">
-                  <span className="font-mono text-[12px] text-col-ink">{c.numero}</span>
-                  <span className="text-[12px] text-col-slate">{haceTiempo(c.fecha)}</span>
+                  <span className="font-mono text-col-xs text-col-ink">{c.numero}</span>
+                  <span className="text-col-xs text-col-slate">{haceTiempo(c.fecha)}</span>
                 </span>
                 <span className="col-start-1 flex min-w-0 flex-col lg:col-start-2 lg:row-start-1">
-                  <span className={cn("truncate text-[15px] text-col-ink", c.estado === "NUEVA" && "font-medium")}>{c.nombre}</span>
-                  <span className="truncate text-[13px] text-col-slate">{c.email}</span>
+                  <span className={cn("truncate text-col-cuerpo text-col-ink", c.estado === "NUEVA" && "font-bold")}>{c.nombre}</span>
+                  <span className="truncate text-col-sm text-col-slate">{c.email}</span>
                 </span>
-                <span className="col-span-2 col-start-1 min-w-0 truncate text-[14px] text-col-ink lg:col-span-1 lg:col-start-3 lg:row-start-1">
+                <span className="col-span-2 col-start-1 min-w-0 truncate text-col-md text-col-ink lg:col-span-1 lg:col-start-3 lg:row-start-1">
                   {c.experiencia ? (
-                    <span className="font-col-display text-[17px]">{c.experiencia}</span>
+                    <span className="font-col-display text-col-lg">{c.experiencia}</span>
                   ) : (
-                    <span className="text-[12px] uppercase tracking-[0.12em] text-col-slate">Contactanos</span>
+                    <span className="text-col-sm text-col-slate">Contactanos</span>
                   )}
                 </span>
-                <span className="col-start-1 hidden min-w-0 truncate text-[13px] text-col-slate lg:col-start-4 lg:row-start-1 lg:block">
+                <span className="col-start-1 hidden min-w-0 truncate text-col-sm text-col-slate lg:col-start-4 lg:row-start-1 lg:block">
                   {c.especialista ?? "Sin especialista"}
                 </span>
                 <span className="col-start-2 row-span-2 row-start-1 flex items-center justify-end gap-2 self-start lg:col-start-5 lg:row-span-1 lg:justify-start lg:self-center">
@@ -256,6 +264,7 @@ function ListaConsultas({
             </motion.li>
           ))}
         </ul>
+        </>
       )}
 
       {siguiente && (
@@ -367,7 +376,7 @@ function DetalleHoja({
   return (
     <Hoja abierta={!!id} titulo={c ? `${c.numeroTexto} · ${c.nombre}` : "Consulta"} estado={estadoNota} onCerrar={cerrar}>
       {error ? (
-        <p role="alert" className="p-6 text-[14px] text-col-alerta">
+        <p role="alert" className="p-6 text-col-md text-col-alerta">
           {error}
         </p>
       ) : !c ? (
@@ -393,7 +402,7 @@ function DetalleHoja({
 function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-4 border-t border-col-line px-5 py-6 sm:px-6">
-      <h3 className="flex items-center gap-3 text-[12px] uppercase tracking-[0.14em] text-col-slate">
+      <h3 className="flex items-center gap-3 text-col-xs uppercase tracking-[0.14em] text-col-slate">
         <span aria-hidden className="h-px w-5 bg-col-gold" />
         {titulo}
       </h3>
@@ -404,13 +413,13 @@ function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode
 
 function Datos({ filas }: { filas: { t: string; v: React.ReactNode }[] }) {
   const visibles = filas.filter((f) => f.v !== "" && f.v !== null && f.v !== undefined);
-  if (!visibles.length) return <p className="text-[14px] text-col-slate">Sin datos.</p>;
+  if (!visibles.length) return <p className="text-col-md text-col-slate">Sin datos.</p>;
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-[132px_minmax(0,1fr)]">
       {visibles.map((f) => (
         <div key={f.t} className="contents">
-          <dt className="text-[13px] text-col-slate">{f.t}</dt>
-          <dd className="-mt-2 min-w-0 break-words text-[15px] text-col-ink sm:mt-0">{f.v}</dd>
+          <dt className="text-col-sm text-col-slate">{f.t}</dt>
+          <dd className="-mt-2 min-w-0 break-words text-col-cuerpo text-col-ink sm:mt-0">{f.v}</dd>
         </div>
       ))}
     </dl>
@@ -460,7 +469,7 @@ function ContenidoDetalle({
   return (
     <div className="flex flex-col pb-10">
       <div className="flex flex-col gap-5 px-5 py-6 sm:px-6">
-        <div role="radiogroup" aria-label="Estado de la consulta" className="grid grid-cols-2 overflow-hidden rounded-sm border border-col-ink/25 sm:grid-cols-4">
+        <div role="radiogroup" aria-label="Estado de la consulta" className="grid grid-cols-2 overflow-hidden rounded-col-sm border border-col-ink/25 sm:grid-cols-4">
           {(Object.keys(ESTADOS) as Estado[]).map((e) => (
             <button
               key={e}
@@ -469,7 +478,7 @@ function ContenidoDetalle({
               aria-checked={c.estado === e}
               onClick={() => onEstado(e)}
               className={cn(
-                "h-10 border-col-ink/15 text-[12px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col [&:not(:first-child)]:border-l max-sm:[&:nth-child(3)]:border-l-0 max-sm:[&:nth-child(n+3)]:border-t",
+                "h-10 border-col-ink/15 text-col-md font-medium transition-colors duration-col ease-col [&:not(:first-child)]:border-l max-sm:[&:nth-child(3)]:border-l-0 max-sm:[&:nth-child(n+3)]:border-t",
                 c.estado === e ? "bg-col-ink text-col-base" : "bg-col-surface text-col-slate hover:text-col-ink",
               )}
             >
@@ -491,8 +500,8 @@ function ContenidoDetalle({
             </a>
           ))}
         </div>
-        <p className="text-[13px] text-col-slate">
-          Prefiere {canalLegible(c.canal).toLowerCase()} · llegó {haceTiempo(new Date(c.createdAt).getTime())}
+        <p className="text-col-sm text-col-slate">
+          Prefiere {canalLegible(c.canal)} · llegó {haceTiempo(new Date(c.createdAt).getTime())}
           {c.especialista ? ` · para ${c.especialista.nombre}` : ""}
         </p>
       </div>
@@ -504,8 +513,8 @@ function ContenidoDetalle({
               t: "Origen",
               v: c.experiencia ? (
                 <span className="flex flex-col gap-1">
-                  <span className="font-col-display text-[19px] leading-tight">{c.experiencia.titulo}</span>
-                  <span className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] uppercase tracking-[0.12em]">
+                  <span className="font-col-display text-col-xl leading-tight">{c.experiencia.titulo}</span>
+                  <span className="flex flex-wrap gap-x-4 gap-y-1 text-col-sm font-medium">
                     <Link href={`/backend/collection/experiencias/${c.experiencia.id}`} className="text-col-slate underline decoration-col-gold/60 underline-offset-4 hover:text-col-ink">
                       Abrir en el constructor
                     </Link>
@@ -555,7 +564,7 @@ function ContenidoDetalle({
 
       {c.comentarios && (
         <Grupo titulo="Comentarios">
-          <blockquote className="border-l-2 border-col-gold pl-4 font-col-display text-[20px] leading-snug text-col-ink">{c.comentarios}</blockquote>
+          <blockquote className="border-l-2 border-col-gold pl-4 font-col-display text-col-xl leading-snug text-col-ink">{c.comentarios}</blockquote>
         </Grupo>
       )}
 
@@ -589,14 +598,14 @@ function ContenidoDetalle({
           value={nota}
           onChange={(e) => onNota(e.target.value)}
           placeholder="Lo que el equipo tiene que saber de esta consulta. Se guarda sola."
-          className="w-full resize-y rounded-sm border border-col-line bg-col-base/50 px-3 py-2.5 text-[15px] leading-relaxed text-col-ink placeholder:text-col-slate/60 focus:border-col-gold focus:outline-none focus:ring-0"
+          className={cn(entradaArea, "min-h-[120px] resize-y")}
         />
       </Grupo>
 
       <Grupo titulo="Bitrix">
         <div className="flex items-center gap-2.5">
           <span aria-hidden className={cn("h-2.5 w-2.5 rounded-full", crm.punto)} />
-          <span className="text-[15px] text-col-ink">{crm.texto}</span>
+          <span className="text-col-cuerpo text-col-ink">{crm.texto}</span>
         </div>
         <Datos
           filas={[
@@ -607,7 +616,7 @@ function ContenidoDetalle({
           ]}
         />
         {c.crmError && (
-          <p className="rounded-sm border border-col-alerta/30 bg-col-alerta/5 px-3 py-2.5 font-mono text-[12px] leading-relaxed text-col-alerta">{c.crmError}</p>
+          <p className="rounded-col-sm border border-col-alerta/30 bg-col-alerta/5 px-3 py-2.5 font-mono text-col-xs leading-relaxed text-col-alerta">{c.crmError}</p>
         )}
         {(c.crmEstado === "ERROR" || c.crmEstado === null) && (
           <Boton tam="sm" onClick={onReintentar} disabled={reintentando} className="self-start">
@@ -620,10 +629,10 @@ function ContenidoDetalle({
       <Grupo titulo="Recorrido">
         <ol className="flex flex-col gap-3">
           {linea.map((l) => (
-            <li key={l.t} className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-3 text-[14px]">
+            <li key={l.t} className="grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-3 text-col-md">
               <span aria-hidden className={cn("h-2 w-2 rounded-full", l.ok ? "bg-col-gold" : "border border-col-slate/50")} />
               <span className={l.ok ? "text-col-ink" : "text-col-slate"}>{l.t}</span>
-              {l.f && <span className="text-[12px] tabular-nums text-col-slate">{fmtFechaHora(l.f)}</span>}
+              {l.f && <span className="text-col-xs tabular-nums text-col-slate">{fmtFechaHora(l.f)}</span>}
             </li>
           ))}
         </ol>
@@ -641,11 +650,20 @@ const FILTROS_SUSCRIPTOR: OpcionFiltro<FiltroSuscriptor>[] = [
   { id: "PENDIENTE", label: "Sin confirmar" },
   { id: "BAJA", label: "Bajas" },
 ];
-const ESTADO_SUSCRIPTOR: Record<string, { label: string; clase: string }> = {
-  CONFIRMADO: { label: "Confirmado", clase: "border-col-ink bg-col-ink text-col-base" },
-  PENDIENTE: { label: "Sin confirmar", clase: "border-col-gold bg-col-gold/20 text-col-ink" },
-  BAJA: { label: "Baja", clase: "border-col-line text-col-slate" },
+const ESTADO_SUSCRIPTOR: Record<string, { label: string; tono: TonoEstado }> = {
+  CONFIRMADO: { label: "Confirmado", tono: "ok" },
+  PENDIENTE: { label: "Sin confirmar", tono: "aviso" },
+  BAJA: { label: "Baja", tono: "neutro" },
 };
+
+/** "newsletter /nosotros" → "Newsletter · Nosotros"; la raíz es el inicio. */
+function origenLegible(o: string) {
+  if (o.startsWith("consulta")) return "Desde una consulta";
+  const ultimo = o.replace(/^newsletter\s*/, "").split(/[/?#]/).filter(Boolean)[0] ?? "";
+  if (!ultimo) return "Newsletter · Inicio";
+  const t = decodeURIComponent(ultimo).replace(/-/g, " ");
+  return `Newsletter · ${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+}
 
 function Newsletter({ api }: { api: ApiConsultas }) {
   const avisar = useAviso();
@@ -701,9 +719,9 @@ function Newsletter({ api }: { api: ApiConsultas }) {
           Exportar CSV
         </Boton>
       </div>
-      <p className="-mt-6 mb-8 text-[13px] text-col-slate">El CSV lleva solo a quienes confirmaron desde el mail (doble confirmación).</p>
+      <p className="-mt-6 mb-8 text-col-sm text-col-slate">El CSV lleva solo a quienes confirmaron desde el mail (doble confirmación).</p>
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
@@ -714,7 +732,7 @@ function Newsletter({ api }: { api: ApiConsultas }) {
           ))}
         </div>
       ) : items.length === 0 ? (
-        <p className="border-t border-col-line py-12 text-[15px] text-col-slate">
+        <p className="border-t border-col-line py-12 text-col-cuerpo text-col-slate">
           {filtro === "TODOS" ? "Todavía nadie se suscribió." : "Nadie en este estado."}
         </p>
       ) : (
@@ -726,17 +744,19 @@ function Newsletter({ api }: { api: ApiConsultas }) {
                 key={s.id}
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 border-b border-col-line px-2 py-3.5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_140px_130px] lg:px-4"
               >
-                <span className="min-w-0 truncate text-[15px] text-col-ink">{s.email}</span>
-                <span className="col-start-1 min-w-0 truncate text-[13px] text-col-slate lg:col-start-2 lg:row-start-1">
-                  {s.origen.startsWith("consulta") ? "Desde una consulta" : s.origen.replace(/^newsletter\s*/, "Newsletter ")}
+                <span className="min-w-0 truncate text-col-cuerpo text-col-ink">{s.email}</span>
+                <span className="col-start-1 min-w-0 truncate text-col-sm text-col-slate lg:col-start-2 lg:row-start-1">
+                  {origenLegible(s.origen)}
                 </span>
-                <span className="col-start-1 text-[12px] text-col-slate lg:col-start-3 lg:row-start-1">
-                  {s.confirmadoEn ? `Confirmó ${haceTiempo(s.confirmadoEn)}` : `Alta ${haceTiempo(s.createdAt)}`}
+                <span className="col-start-1 text-col-xs text-col-slate lg:col-start-3 lg:row-start-1">
+                  {s.estado === "BAJA"
+                    ? "Se dio de baja"
+                    : s.confirmadoEn
+                      ? `Confirmó ${haceTiempo(s.confirmadoEn)}`
+                      : `Se anotó ${haceTiempo(s.createdAt)}`}
                 </span>
                 <span className="col-start-2 row-span-3 row-start-1 self-start lg:col-start-4 lg:row-span-1 lg:self-center">
-                  <span className={cn("inline-flex h-6 items-center whitespace-nowrap rounded-sm border px-2 text-[10.5px] uppercase tracking-[0.14em]", e.clase)}>
-                    {e.label}
-                  </span>
+                  <Estado tono={e.tono}>{e.label}</Estado>
                 </span>
               </li>
             );

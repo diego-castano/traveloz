@@ -2,7 +2,8 @@
 
 // Ajustes de Collection: contacto, Bitrix, redes, pie y SEO global. Se guarda
 // con un botón explícito (la barra aparece cuando hay cambios). La indexación
-// no se toca acá: la decide la variable COLLECTION_INDEXAR de Railway.
+// no se toca acá: la decide una variable de entorno (COLLECTION_INDEXAR), y al
+// cliente solo le contamos si el sitio aparece o no en Google.
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
@@ -16,18 +17,18 @@ import { useAviso } from "../shell/Avisos";
 import { useApi } from "../constructor/api";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { MedioImagen } from "../sitio/medios";
-import { Boton, EncabezadoPagina, etiquetaCampo, inputLinea } from "../ui";
+import { Boton, EncabezadoPagina, Estado, Selector, etiquetaCampo, entrada, entradaArea } from "../ui";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 const E164 = /^\+\d{8,15}$/;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2 }$/;
 
 function Tarjeta({ titulo, texto, children, className }: { titulo: string; texto?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={cn("flex min-w-0 flex-col gap-7 rounded-sm border border-col-line bg-col-surface p-6 md:p-8", className)}>
+    <section className={cn("flex min-w-0 flex-col gap-7 rounded-col-sm border border-col-line bg-col-surface p-6 md:p-8", className)}>
       <div className="flex flex-col gap-2">
-        <h2 className="font-col-display text-[28px] font-normal leading-tight text-col-ink">{titulo}</h2>
-        {texto && <p className="max-w-[60ch] text-[14px] leading-relaxed text-col-slate">{texto}</p>}
+        <h2 className="font-col-display text-col-2xl font-normal leading-tight text-col-ink">{titulo}</h2>
+        {texto && <p className="max-w-[60ch] text-col-md leading-relaxed text-col-slate">{texto}</p>}
       </div>
       {children}
     </section>
@@ -40,8 +41,7 @@ function Campo({
   ayuda,
   error,
   contador,
-  children,
-}: {
+  children }: {
   id: string;
   label: string;
   ayuda?: React.ReactNode;
@@ -56,18 +56,18 @@ function Campo({
           {label}
         </label>
         {contador && (
-          <span className={cn("text-[12px] tabular-nums", contador.n > contador.ideal ? "text-[#B07A2A]" : "text-col-slate/70")}>
+          <span className={cn("text-col-xs tabular-nums", contador.n > contador.ideal ? "text-col-aviso" : "text-col-muted")}>
             {contador.n} / {contador.ideal}
           </span>
         )}
       </div>
       {children}
       {error ? (
-        <p role="alert" className="text-[13px] text-col-alerta">
+        <p role="alert" className="text-col-sm text-col-alerta">
           {error}
         </p>
       ) : (
-        ayuda && <p className="text-[13px] leading-relaxed text-col-slate">{ayuda}</p>
+        ayuda && <p className="text-col-sm leading-relaxed text-col-slate">{ayuda}</p>
       )}
     </div>
   );
@@ -77,8 +77,7 @@ export function Ajustes({
   inicial,
   origenes,
   indexa,
-  guardar = guardarAjustesCollection,
-}: {
+  guardar = guardarAjustesCollection }: {
   inicial: AjustesCollection;
   /** Orígenes de Bitrix; null si no se pudieron leer (se edita el id a mano). */
   origenes: { id: string; nombre: string }[] | null;
@@ -122,7 +121,6 @@ export function Ajustes({
   return (
     <div className="mx-auto max-w-[1280px] pb-24">
       <EncabezadoPagina
-        eyebrow="Gestión"
         titulo="Ajustes"
         descripcion={editable ? "Datos de contacto, Bitrix, redes y cómo aparece el sitio en Google." : "Estás viendo los ajustes en modo lectura: tu usuario no tiene permiso para editar el sitio."}
       />
@@ -151,8 +149,8 @@ export function Ajustes({
               inputMode="tel"
               value={a.whatsapp}
               onChange={(e) => cambiar({ whatsapp: e.target.value.replace(/[^\d+]/g, "") })}
-              placeholder="+59899123456"
-              className={inputLinea}
+              placeholder="Ej.: +59899123456"
+              className={entrada}
             />
           </Campo>
           <Campo id="aj-horario" label="Horario de atención" ayuda="Va en el pie del sitio y en el mail que recibe el viajero.">
@@ -161,8 +159,8 @@ export function Ajustes({
               value={a.horario}
               maxLength={120}
               onChange={(e) => cambiar({ horario: e.target.value })}
-              placeholder="Lunes a viernes de 9 a 18"
-              className={inputLinea}
+              placeholder="Ej.: Lunes a viernes de 9 a 18"
+              className={entrada}
             />
           </Campo>
           <ChipsEmails valores={emails} onChange={(v) => cambiar({ emailsConsultas: v.join(", ") })} editable={editable} />
@@ -179,15 +177,17 @@ export function Ajustes({
         >
           <Campo id="aj-origen" label="Origen (SOURCE_ID)" ayuda="Si lo dejás por defecto, entra como Web.">
             {origenes ? (
-              <select id="aj-origen" value={a.bitrixOrigen} onChange={(e) => cambiar({ bitrixOrigen: e.target.value })} className={cn(inputLinea, "cursor-pointer")}>
-                <option value="">Por defecto (Web)</option>
-                {origenes.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.nombre}
-                  </option>
-                ))}
-                {a.bitrixOrigen && !origenes.some((o) => o.id === a.bitrixOrigen) && <option value={a.bitrixOrigen}>{a.bitrixOrigen}</option>}
-              </select>
+              <Selector
+                id="aj-origen"
+                valor={a.bitrixOrigen}
+                onCambio={(v) => cambiar({ bitrixOrigen: v })}
+                deshabilitado={!editable}
+                opciones={[
+                  { valor: "", label: "Por defecto (Web)" },
+                  ...origenes.map((o) => ({ valor: o.id, label: o.nombre })),
+                  ...(a.bitrixOrigen && !origenes.some((o) => o.id === a.bitrixOrigen) ? [{ valor: a.bitrixOrigen, label: a.bitrixOrigen }] : []),
+                ]}
+              />
             ) : (
               <input
                 id="aj-origen"
@@ -195,11 +195,11 @@ export function Ajustes({
                 maxLength={60}
                 onChange={(e) => cambiar({ bitrixOrigen: e.target.value.trim() })}
                 placeholder="Vacío = por defecto (Web)"
-                className={inputLinea}
+                className={entrada}
               />
             )}
           </Campo>
-          {!origenes && <p className="-mt-3 text-[13px] text-col-slate">No pudimos leer la lista de orígenes de Bitrix. Escribí el id a mano o dejalo vacío.</p>}
+          {!origenes && <p className="-mt-3 text-col-sm text-col-slate">No pudimos leer la lista de orígenes de Bitrix. Escribí el id a mano o dejalo vacío.</p>}
         </Tarjeta>
 
         <Tarjeta titulo="Redes" texto="Links completos. Las vacías no aparecen en el pie.">
@@ -211,7 +211,7 @@ export function Ajustes({
             ] as const
           ).map(([k, label, ej]) => (
             <Campo key={k} id={`aj-${k}`} label={label} error={a[k] && !/^https?:\/\//.test(a[k]) ? "Tiene que empezar con https://" : null}>
-              <input id={`aj-${k}`} type="url" value={a[k]} maxLength={300} onChange={(e) => cambiar({ [k]: e.target.value.trim() })} placeholder={ej} className={inputLinea} />
+              <input id={`aj-${k}`} type="url" value={a[k]} maxLength={300} onChange={(e) => cambiar({ [k]: e.target.value.trim() })} placeholder={`Ej.: ${ej}`} className={entrada} />
             </Campo>
           ))}
         </Tarjeta>
@@ -224,8 +224,8 @@ export function Ajustes({
               maxLength={600}
               value={a.textoFooter}
               onChange={(e) => cambiar({ textoFooter: e.target.value })}
-              placeholder="Viajes de autor, diseñados a tu medida por un especialista."
-              className={cn(inputLinea, "resize-none leading-relaxed")}
+              placeholder="Ej.: Viajes de autor, diseñados a tu medida por un especialista."
+              className={entradaArea}
             />
           </Campo>
         </Tarjeta>
@@ -234,7 +234,7 @@ export function Ajustes({
           <div className="grid min-w-0 gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-7">
               <Campo id="aj-seo-titulo" label="Título" contador={{ n: a.seoTitulo.length, ideal: 60 }}>
-                <input id="aj-seo-titulo" value={a.seoTitulo} maxLength={120} onChange={(e) => cambiar({ seoTitulo: e.target.value })} placeholder="Traveloz Collection" className={inputLinea} />
+                <input id="aj-seo-titulo" value={a.seoTitulo} maxLength={120} onChange={(e) => cambiar({ seoTitulo: e.target.value })} placeholder="Ej.: Traveloz Collection" className={entrada} />
               </Campo>
               <Campo id="aj-seo-desc" label="Descripción" contador={{ n: a.seoDescripcion.length, ideal: 160 }}>
                 <textarea
@@ -243,18 +243,18 @@ export function Ajustes({
                   maxLength={320}
                   value={a.seoDescripcion}
                   onChange={(e) => cambiar({ seoDescripcion: e.target.value })}
-                  placeholder="Viajes de autor diseñados por especialistas de Traveloz."
-                  className={cn(inputLinea, "resize-none leading-relaxed")}
+                  placeholder="Ej.: Viajes de autor diseñados por especialistas de Traveloz."
+                  className={entradaArea}
                 />
               </Campo>
               <ImagenSeo id={a.seoImagenId} onChange={(id) => cambiar({ seoImagenId: id })} editable={editable} />
             </div>
             <div className="flex min-w-0 flex-col gap-3">
               <span className={etiquetaCampo}>Así se ve en Google</span>
-              <div className="min-w-0 rounded-sm border border-col-line bg-white p-5 font-[arial,sans-serif]">
-                <p className="truncate text-[12px] text-[#4d5156]">https://collection.traveloz.com.uy</p>
-                <p className="mt-1 truncate text-[20px] leading-snug text-[#1a0dab]">{a.seoTitulo || "Traveloz Collection"}</p>
-                <p className={cn("mt-1 line-clamp-2 text-[14px] leading-[1.58]", a.seoDescripcion ? "text-[#4d5156]" : "italic text-[#9aa0a6]")}>
+              <div className="min-w-0 rounded-col-sm border border-col-line bg-white p-5 font-[arial,sans-serif]">
+                <p className="truncate text-col-xs text-[#4d5156]">https://collection.traveloz.com.uy</p>
+                <p className="mt-1 truncate text-col-xl leading-snug text-[#1a0dab]">{a.seoTitulo || "Traveloz Collection"}</p>
+                <p className={cn("mt-1 line-clamp-2 text-col-md leading-[1.58]", a.seoDescripcion ? "text-[#4d5156]" : "italic text-[#9aa0a6]")}>
                   {a.seoDescripcion || "Sin descripción: Google va a elegir un pedazo de la página."}
                 </p>
               </div>
@@ -262,19 +262,13 @@ export function Ajustes({
           </div>
         </Tarjeta>
 
-        <Tarjeta titulo="Indexación" className="xl:col-span-2">
-          <div className="flex items-start gap-4">
-            <span aria-hidden className={cn("mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full", indexa ? "bg-[#3E7C5A]" : "bg-col-gold")} />
-            <p className="max-w-[70ch] text-[15px] leading-relaxed text-col-ink">
-              {indexa ? (
-                <>
-                  El sitio se deja indexar: Google lo puede mostrar. Lo decide la variable <code className="font-mono text-[13px]">COLLECTION_INDEXAR=1</code> en Railway.
-                </>
-              ) : (
-                <>
-                  El sitio no se indexa hasta el lanzamiento. Se activa con la variable <code className="font-mono text-[13px]">COLLECTION_INDEXAR=1</code> en Railway.
-                </>
-              )}
+        <Tarjeta titulo="Google" className="xl:col-span-2">
+          <div className="flex flex-wrap items-center gap-4">
+            <Estado tono={indexa ? "ok" : "neutro"}>{indexa ? "Visible en Google" : "Todavía no aparece"}</Estado>
+            <p className="max-w-[70ch] text-col-cuerpo text-col-ink">
+              {indexa
+                ? "Google ya puede mostrar el sitio en sus resultados."
+                : "El sitio todavía no aparece en Google. Se activa el día del lanzamiento."}
             </p>
           </div>
         </Tarjeta>
@@ -287,9 +281,9 @@ export function Ajustes({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 24, opacity: 0 }}
             transition={{ duration: 0.35, ease: EASE }}
-            className="sticky bottom-4 z-20 mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-sm bg-col-noche px-5 py-4 text-white shadow-[0_24px_48px_-24px_rgba(4,7,31,0.6)]"
+            className="sticky bottom-4 z-20 mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-col-sm bg-col-noche px-5 py-4 text-white shadow-col-3"
           >
-            <p className={cn("min-w-0 flex-1 text-[14px]", error ? "text-[#F2B8A8]" : "text-white/80")} role={error ? "alert" : undefined}>
+            <p className={cn("min-w-0 flex-1 text-col-md", error ? "text-[#F2B8A8]" : "text-white/80")} role={error ? "alert" : undefined}>
               {error ?? "Hay cambios sin guardar."}
             </p>
             <div className="flex items-center gap-3">
@@ -299,7 +293,7 @@ export function Ajustes({
                   setA(base);
                   setError(null);
                 }}
-                className="h-10 px-3 text-[12px] uppercase tracking-[0.12em] text-white/70 transition-colors duration-200 ease-col hover:text-white"
+                className="h-10 px-3 text-col-sm font-medium text-white/70 transition-colors duration-col ease-col hover:text-white"
               >
                 Descartar
               </button>
@@ -332,14 +326,14 @@ function ChipsEmails({ valores, onChange, editable }: { valores: string[]; onCha
       {valores.length > 0 && (
         <ul className="flex flex-wrap gap-2">
           {valores.map((e) => (
-            <li key={e} className="flex h-8 max-w-full items-center gap-1.5 rounded-sm border border-col-line bg-col-base pl-3 pr-1 text-[13px] text-col-ink">
+            <li key={e} className="flex h-8 max-w-full items-center gap-1.5 rounded-col-sm border border-col-line bg-col-base pl-3 pr-1 text-col-sm text-col-ink">
               <span className="truncate">{e}</span>
               {editable && (
                 <button
                   type="button"
                   aria-label={`Quitar ${e}`}
                   onClick={() => onChange(valores.filter((x) => x !== e))}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-col-slate hover:text-col-alerta"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-col-sm text-col-slate hover:text-col-alerta"
                 >
                   <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </button>
@@ -363,8 +357,8 @@ function ChipsEmails({ valores, onChange, editable }: { valores: string[]; onCha
           }
         }}
         onBlur={sumar}
-        placeholder="consultas@traveloz.com.uy"
-        className={inputLinea}
+        placeholder="Ej.: consultas@traveloz.com.uy"
+        className={entrada}
       />
     </Campo>
   );
@@ -394,24 +388,29 @@ function ImagenSeo({ id, onChange, editable }: { id: string; onChange: (id: stri
           type="button"
           onClick={() => setAbierto(true)}
           disabled={!editable}
-          className="group relative aspect-[1200/630] w-[220px] max-w-full overflow-hidden rounded-sm border border-dashed border-col-slate/40 bg-col-base text-col-slate transition-colors duration-200 ease-col hover:border-col-ink disabled:cursor-default"
+          className="group relative aspect-[1200/630] w-[220px] max-w-full overflow-hidden rounded-col-sm border border-dashed border-col-slate/40 bg-col-base text-col-slate transition-colors duration-col ease-col hover:border-col-ink disabled:cursor-default"
         >
           {medio ? (
             <MedioImagen medio={medio} relleno sizes="220px" />
           ) : (
-            <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[12px] uppercase tracking-[0.12em]">
+            <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-col-sm font-medium">
               <ImagePlus className="h-5 w-5" strokeWidth={1.25} aria-hidden />
               Elegir imagen
             </span>
           )}
         </button>
         {id && editable && (
-          <button type="button" onClick={() => onChange("")} className="text-[12px] uppercase tracking-[0.12em] text-col-slate hover:text-col-alerta">
-            Quitar
-          </button>
+          <span className="flex gap-1">
+            <Boton variante="fantasma" tam="sm" onClick={() => setAbierto(true)}>
+              Cambiar
+            </Boton>
+            <Boton variante="fantasma" tam="sm" onClick={() => onChange("")} className="hover:text-col-error">
+              Quitar
+            </Boton>
+          </span>
         )}
       </div>
-      <p className="text-[13px] text-col-slate">Horizontal, idealmente 1200 × 630.</p>
+      <p className="text-col-sm text-col-slate">Horizontal, idealmente 1200 × 630.</p>
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}

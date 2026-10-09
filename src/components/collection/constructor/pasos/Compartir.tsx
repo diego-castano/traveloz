@@ -5,7 +5,7 @@
 
 import { cn } from "@/components/lib/cn";
 import { MedioFantasma, MedioImagen } from "../../sitio/medios";
-import { Campo, Contador, Grupo, SlotMedio, inputLinea } from "../campos";
+import { Campo, Contador, Grupo, SlotMedio, entrada, entradaArea } from "../campos";
 import { useConstructor } from "../contexto";
 
 const DOMINIO = "collection.traveloz.com.uy";
@@ -24,7 +24,7 @@ export function PasoCompartir() {
       <button
         type="button"
         onClick={onClick}
-        className="text-[12px] uppercase tracking-[0.12em] text-col-slate underline decoration-col-gold underline-offset-4 hover:text-col-ink"
+        className="text-col-sm font-medium text-col-slate underline decoration-col-gold underline-offset-4 hover:text-col-ink"
       >
         {texto}
       </button>
@@ -45,7 +45,7 @@ export function PasoCompartir() {
             maxLength={70}
             onChange={(e) => setCampos({ seoTitulo: e.target.value })}
             placeholder={c.titulo || "Filipinas en 11 noches: Manila, El Nido y Boracay"}
-            className={cn(inputLinea, "text-[17px]")}
+            className={cn(entrada, "text-col-cuerpo")}
           />
         </Campo>
         <Campo
@@ -65,28 +65,28 @@ export function PasoCompartir() {
             maxLength={170}
             onChange={(e) => setCampos({ seoDescripcion: e.target.value })}
             placeholder="Al menos 50 caracteres. Qué es, cuánto dura y por qué vale la pena."
-            className={cn(inputLinea, "resize-none text-[15px] leading-relaxed [field-sizing:content] min-h-[4.5em]")}
+            className={entradaArea}
           />
         </Campo>
       </div>
 
       <Grupo titulo="En Google">
-        <div className="rounded-sm border border-col-line bg-white p-5 font-[arial,sans-serif]">
+        <div className="rounded-col-sm border border-col-line bg-white p-5 font-[arial,sans-serif]">
           <div className="flex items-center gap-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-col-ink font-col-display text-[15px] italic text-col-base">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-col-ink font-col-display text-col-cuerpo italic text-col-base">
               C
             </span>
             <span className="min-w-0">
-              <span className="block text-[14px] leading-tight text-[#202124]">Traveloz Collection</span>
-              <span className="block truncate text-[12px] leading-tight text-[#4d5156]">
+              <span className="block text-col-md leading-tight text-[#202124]">Traveloz Collection</span>
+              <span className="block truncate text-col-xs leading-tight text-[#4d5156]">
                 https://{DOMINIO} › experiencias › {c.slug || "…"}
               </span>
             </span>
           </div>
-          <p className={cn("mt-2 text-[20px] leading-snug", titulo ? "text-[#1a0dab]" : "italic text-[#9aa0a6]")}>
+          <p className={cn("mt-2 text-col-xl leading-snug", titulo ? "text-[#1a0dab]" : "italic text-[#9aa0a6]")}>
             {titulo ? corte(titulo, 60) : "Sin título"}
           </p>
-          <p className={cn("mt-1 text-[14px] leading-[1.58]", descripcion ? "text-[#4d5156]" : "italic text-[#9aa0a6]")}>
+          <p className={cn("mt-1 text-col-md leading-[1.58]", descripcion ? "text-[#4d5156]" : "italic text-[#9aa0a6]")}>
             {descripcion ? corte(descripcion, 155) : "Sin descripción: Google va a elegir un pedazo de la página."}
           </p>
         </div>
@@ -95,7 +95,7 @@ export function PasoCompartir() {
       <Grupo titulo="En WhatsApp" ayuda="Así se ve el link cuando alguien lo comparte.">
         <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-[1fr_200px]">
           <div className="rounded-lg bg-[#E7DED4] p-4">
-            <div className="ml-auto max-w-[360px] rounded-lg rounded-tr-none bg-[#D9FDD3] p-1 shadow-[0_1px_0.5px_rgba(11,20,26,0.13)]">
+            <div className="ml-auto max-w-[360px] rounded-lg rounded-tr-none bg-[#D9FDD3] p-1 shadow-col-1">
               <div className="overflow-hidden rounded-md bg-[#CFEFC6]">
                 {imagen ? (
                   <MedioImagen medio={imagen} aspecto={1200 / 630} sizes="360px" />
@@ -103,14 +103,14 @@ export function PasoCompartir() {
                   <MedioFantasma aspecto={1200 / 630} texto="Sin imagen" />
                 )}
                 <div className="px-3 py-2">
-                  <p className="line-clamp-2 text-[14px] font-medium leading-snug text-[#111B21]">
+                  <p className="line-clamp-2 text-col-md font-bold leading-snug text-[#111B21]">
                     {titulo || "Traveloz Collection"}
                   </p>
-                  <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-[#667781]">{descripcion}</p>
-                  <p className="mt-1 text-[12px] text-[#667781]">{DOMINIO}</p>
+                  <p className="mt-0.5 line-clamp-2 text-col-sm leading-snug text-[#667781]">{descripcion}</p>
+                  <p className="mt-1 text-col-xs text-[#667781]">{DOMINIO}</p>
                 </div>
               </div>
-              <p className="px-2 pb-1 pt-1.5 text-[14px] text-[#111B21]">
+              <p className="px-2 pb-1 pt-1.5 text-col-md text-[#111B21]">
                 Mirá este viaje{" "}
                 <span className="text-[#027EB5]">
                   https://{DOMINIO}/experiencias/{c.slug || "…"}

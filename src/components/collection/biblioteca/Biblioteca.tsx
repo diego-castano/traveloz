@@ -10,12 +10,15 @@ import { Upload, X } from "lucide-react";
 import { eliminarMedio, listarMedios, type ColMedioDto } from "@/actions/collection/medios.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { useAviso } from "../shell/Avisos";
+import { errorAmigable, useAviso, useDeshacer } from "../shell/Avisos";
+import { reponer } from "../contenido/comun";
 import { Boton, Buscador, EncabezadoPagina, Filtros, barraHerramientas } from "../ui";
 import { ColaSubidas } from "./ColaSubidas";
 import { DetalleMedio } from "./DetalleMedio";
 import { Grilla, GrillaSkeleton } from "./Grilla";
 import { useSubidas } from "./useSubidas";
+import { ACEPTA_TODO, ZonaSubida, nombrarPegados, revisarArchivos } from "./ZonaSubida";
+import { resorteSuave } from "../movimiento";
 
 export type FiltroBiblioteca = "todo" | "fotos" | "videos" | "sin-alt" | "sin-credito";
 
@@ -23,11 +26,11 @@ const FILTROS: { id: FiltroBiblioteca; label: string }[] = [
   { id: "todo", label: "Todo" },
   { id: "fotos", label: "Fotos" },
   { id: "videos", label: "Videos" },
-  { id: "sin-alt", label: "Sin alt" },
-  { id: "sin-credito", label: "Sin crédito" },
+  { id: "sin-alt", label: "Sin descripción" },
+  { id: "sin-credito", label: "Sin autor" },
 ];
 
-const ACEPTA = "image/jpeg,image/png,image/webp,image/avif,video/mp4,video/webm,video/quicktime";
+const ACEPTA = ACEPTA_TODO;
 const POR_PAGINA = 48;
 
 function parametros(filtro: FiltroBiblioteca, q: string) {
@@ -59,6 +62,7 @@ export function Biblioteca({
 }) {
   const { puede } = useCollection();
   const avisar = useAviso();
+  const deshacible = useDeshacer();
   const editable = puede("medios.editar");
 
   const [filtro, setFiltro] = useState<FiltroBiblioteca>(filtroInicial);
@@ -67,18 +71,20 @@ export function Biblioteca({
   const [items, setItems] = useState<ColMedioDto[]>("items" in inicial ? inicial.items : []);
   const [cursor, setCursor] = useState<string | null>("items" in inicial ? inicial.nextCursor : null);
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>("error" in inicial ? inicial.error : null);
+  const [error, setError] = useState<string | null>("error" in inicial ? errorAmigable(inicial.error) : null);
   const [abierto, setAbierto] = useState<string | null>(abrirId);
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
   const [confirmar, setConfirmar] = useState(false);
   const [borrando, setBorrando] = useState(false);
-  const [arrastrando, setArrastrando] = useState(false);
+  const [arrastrando, setArrastrando] = useState(0);
 
   const pedido = useRef(0);
   const ancla = useRef<number | null>(null);
   const inputArchivos = useRef<HTMLInputElement>(null);
   const centinela = useRef<HTMLDivElement>(null);
-  const primeraCarga = useRef(true);
+  // Qué filtro y búsqueda muestra la grilla. Arranca con lo que vino del
+  // servidor; así el doble efecto de StrictMode no vuelve a pedir la página.
+  const mostrado = useRef(`${filtroInicial}|`);
 
   // --- Carga ---------------------------------------------------------------
 
@@ -90,7 +96,7 @@ export function Biblioteca({
       if (n !== pedido.current) return;
       setCargando(false);
       if (!r.ok) {
-        setError(r.error);
+        setError(errorAmigable(r.error));
         return;
       }
       setError(null);
@@ -106,14 +112,11 @@ export function Biblioteca({
   }, [texto]);
 
   useEffect(() => {
-    // La primera página ya vino del servidor.
-    if (primeraCarga.current) {
-      primeraCarga.current = false;
-      return;
-    }
+    if (mostrado.current === `${filtro}|${q}`) return;
+    mostrado.current = `${filtro}|${q}`;
     setSeleccion(new Set());
     void cargar(null);
-  }, [cargar]);
+  }, [cargar, filtro, q]);
 
   useEffect(() => {
     const el = centinela.current;
@@ -142,9 +145,11 @@ export function Biblioteca({
   const subir = useCallback(
     (files: File[]) => {
       if (!editable || files.length === 0) return;
-      agregar(files);
+      const { validos, motivos } = revisarArchivos(files, ACEPTA_TODO);
+      if (motivos.length) avisar(motivos.length === 1 ? motivos[0] : `${motivos[0]} (y ${motivos.length - 1} más)`, "error");
+      if (validos.length) agregar(validos);
     },
-    [editable, agregar],
+    [editable, agregar, avisar],
   );
 
   useEffect(() => {
@@ -155,7 +160,7 @@ export function Biblioteca({
       if (!conArchivos(e)) return;
       e.preventDefault();
       profundidad++;
-      setArrastrando(true);
+      setArrastrando(Math.max(1, Array.from(e.dataTransfer?.items ?? []).filter((i) => i.kind === "file").length));
     };
     const over = (e: DragEvent) => {
       if (conArchivos(e)) e.preventDefault();
@@ -163,26 +168,22 @@ export function Biblioteca({
     const leave = (e: DragEvent) => {
       if (!conArchivos(e)) return;
       profundidad = Math.max(0, profundidad - 1);
-      if (profundidad === 0) setArrastrando(false);
+      if (profundidad === 0) setArrastrando(0);
     };
     const drop = (e: DragEvent) => {
       if (!conArchivos(e)) return;
-      e.preventDefault();
       profundidad = 0;
-      setArrastrando(false);
+      setArrastrando(0);
+      // Si cayó sobre una zona de subida, ella ya lo tomó.
+      if (e.defaultPrevented) return;
+      e.preventDefault();
       subir(Array.from(e.dataTransfer?.files ?? []));
     };
     const pegar = (e: ClipboardEvent) => {
       const files = Array.from(e.clipboardData?.files ?? []);
       if (files.length === 0) return;
       e.preventDefault();
-      // Las capturas pegadas llegan como "image.png": les damos un nombre útil.
-      const sello = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
-      subir(
-        files.map((f, i) =>
-          /^image\.\w+$/.test(f.name) ? new File([f], `pegada-${sello}-${i + 1}.${f.name.split(".")[1]}`, { type: f.type }) : f,
-        ),
-      );
+      subir(nombrarPegados(files));
     };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragover", over);
@@ -222,25 +223,35 @@ export function Biblioteca({
     [items],
   );
 
-  const eliminarSeleccion = async () => {
-    setBorrando(true);
-    const ids = Array.from(seleccion);
-    const fallidos: string[] = [];
-    let ultimoError = "";
-    for (const id of ids) {
-      const r = await eliminarMedio(id);
-      if (!r.ok) {
-        fallidos.push(id);
-        ultimoError = r.error;
-      }
-    }
-    const borrados = new Set(ids.filter((id) => !fallidos.includes(id)));
-    setItems((prev) => prev.filter((m) => !borrados.has(m.id)));
-    setSeleccion(new Set(fallidos));
-    setBorrando(false);
+  // Borrado diferido: los medios salen de la grilla al toque y el servidor
+  // recién los borra cuando vence el aviso. "Deshacer" los repone.
+  const eliminarSeleccion = () => {
+    const ids = new Set(seleccion);
+    const previos = items;
+    setSeleccion(new Set());
     setConfirmar(false);
-    if (fallidos.length) avisar(`${fallidos.length} sin eliminar: ${ultimoError}`, "error");
-    else avisar(borrados.size === 1 ? "Medio eliminado." : `${borrados.size} medios eliminados.`);
+    void deshacible({
+      mensaje: ids.size === 1 ? "Eliminaste el medio." : `Eliminaste ${ids.size} medios.`,
+      aplicar: () => setItems((prev) => prev.filter((m) => !ids.has(m.id))),
+      deshacer: () => setItems(previos),
+      confirmar: async () => {
+        setBorrando(true);
+        const fallidos: ColMedioDto[] = [];
+        let ultimoError = "";
+        for (const id of Array.from(ids)) {
+          const r = await eliminarMedio(id);
+          if (!r.ok) {
+            fallidos.push(previos.find((m) => m.id === id)!);
+            ultimoError = r.error;
+          }
+        }
+        setBorrando(false);
+        if (fallidos.length) {
+          setItems((prev) => fallidos.reduce((l, m) => reponer(l, previos.indexOf(m), m), prev));
+          avisar(`${fallidos.length} sin eliminar: ${errorAmigable(ultimoError)}`, "error");
+        }
+      },
+    });
   };
 
   // --- Detalle -------------------------------------------------------------
@@ -255,11 +266,23 @@ export function Biblioteca({
   const alEliminar = useCallback(
     (id: string) => {
       const i = items.findIndex((m) => m.id === id);
+      const medio = items[i];
       const siguiente = items[i + 1] ?? items[i - 1] ?? null;
-      setItems((prev) => prev.filter((m) => m.id !== id));
       setAbierto(siguiente?.id ?? null);
+      void deshacible({
+        mensaje: "Eliminaste el medio.",
+        aplicar: () => setItems((prev) => prev.filter((m) => m.id !== id)),
+        deshacer: () => setItems((prev) => reponer(prev, i, medio)),
+        confirmar: async () => {
+          const r = await eliminarMedio(id);
+          if (!r.ok) {
+            setItems((prev) => reponer(prev, i, medio));
+            avisar(r.error, "error");
+          }
+        },
+      });
     },
-    [items],
+    [items, deshacible, avisar],
   );
 
   const vacia = !cargando && !error && items.length === 0;
@@ -269,7 +292,6 @@ export function Biblioteca({
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Biblioteca"
         titulo="Fotos y videos"
         descripcion="Arrastrá archivos a cualquier parte de la página para subirlos."
         acciones={
@@ -298,7 +320,7 @@ export function Biblioteca({
       />
       <div className={barraHerramientas}>
         <Filtros etiqueta="Mostrar" opciones={FILTROS} valor={filtro} onChange={setFiltro} />
-        <Buscador valor={texto} onChange={setTexto} placeholder="Buscar por nombre, alt o etiqueta" etiqueta="Buscar en la biblioteca" />
+        <Buscador valor={texto} onChange={setTexto} placeholder="Buscar por nombre, descripción o etiqueta" etiqueta="Buscar en la biblioteca" />
       </div>
 
       <AnimatePresence>
@@ -308,7 +330,7 @@ export function Biblioteca({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="sticky top-20 z-20 mb-6 flex flex-wrap items-center gap-3 rounded bg-col-ink px-4 py-2.5 text-col-base shadow-[0_16px_32px_-20px_rgba(50,55,59,0.6)]"
+            className="sticky top-20 z-20 mb-6 flex flex-wrap items-center gap-3 rounded-col bg-col-ink px-4 py-2.5 text-col-base shadow-col-3"
           >
             <button
               type="button"
@@ -317,18 +339,18 @@ export function Biblioteca({
                 setConfirmar(false);
               }}
               aria-label="Salir de la selección"
-              className="flex h-8 w-8 items-center justify-center rounded-sm text-col-base/70 hover:text-col-base"
+              className="flex h-8 w-8 items-center justify-center rounded-col-sm text-col-base/70 hover:text-col-base"
             >
               <X className="h-4 w-4" strokeWidth={1.5} />
             </button>
-            <p className="text-[14px]" aria-live="polite">
+            <p className="text-col-md" aria-live="polite">
               {seleccion.size === 1 ? "1 seleccionado" : `${seleccion.size} seleccionados`}
             </p>
-            <p className="hidden text-[12px] text-col-base/60 md:block">Shift + clic para elegir un rango</p>
+            <p className="hidden text-col-xs text-col-base/60 md:block">Shift + clic para elegir un rango</p>
             <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
               {confirmar ? (
                 <>
-                  <span className="text-[14px]">¿Eliminar {seleccion.size === 1 ? "este medio" : `estos ${seleccion.size} medios`}? No se puede deshacer.</span>
+                  <span className="text-col-md">¿Eliminar {seleccion.size === 1 ? "este medio" : `estos ${seleccion.size} medios`}? Vas a tener unos segundos para deshacerlo.</span>
                   <Boton tam="sm" variante="fantasma" className="text-col-base/70 hover:text-col-base" onClick={() => setConfirmar(false)} disabled={borrando}>
                     Cancelar
                   </Boton>
@@ -357,7 +379,7 @@ export function Biblioteca({
       </AnimatePresence>
 
       {error && (
-        <div role="alert" className="mb-6 flex items-center gap-4 rounded-sm border border-col-alerta/30 px-4 py-3 text-[14px] text-col-alerta">
+        <div role="alert" className="mb-6 flex items-center gap-4 rounded-col-sm border border-col-alerta/30 px-4 py-3 text-col-md text-col-alerta">
           <span className="flex-1">{error}</span>
           <Boton tam="sm" variante="secundario" onClick={() => void cargar(null)}>
             Reintentar
@@ -366,24 +388,24 @@ export function Biblioteca({
       )}
 
       {vacia && sinFiltros ? (
-        <Vacia editable={editable} onSubir={() => inputArchivos.current?.click()} />
+        <Vacia editable={editable} onArchivos={subir} />
       ) : vacia ? (
         <div className="py-24 text-center">
-          <p className="font-col-display text-[34px] font-light italic text-col-ink">
+          <p className="font-col-display text-col-3xl font-light italic text-col-ink">
             {filtro === "sin-alt" && !q
-              ? "Todas las fotos tienen su alt."
+              ? "Todas las fotos tienen su descripción."
               : filtro === "sin-credito" && !q
-                ? "Todos los medios tienen crédito."
+                ? "Todos los medios tienen su autor."
                 : "Nada por acá."}
           </p>
-          <p className="mt-2 text-[14px] text-col-slate">
+          <p className="mt-2 text-col-md text-col-slate">
             {q ? "Probá con otra palabra o sacá el filtro." : "Probá con otro filtro."}
           </p>
         </div>
       ) : cargando && items.length === 0 ? (
         <GrillaSkeleton />
       ) : (
-        <div className={cn("transition-opacity duration-200 ease-col", cargando && !cursor && "opacity-60")}>
+        <div className={cn("transition-opacity duration-col ease-col", cargando && !cursor && "opacity-60")}>
           <Grilla
             items={items}
             seleccion={seleccion}
@@ -397,25 +419,37 @@ export function Biblioteca({
 
       <div ref={centinela} aria-hidden className="h-px" />
       {cargando && items.length > 0 && cursor && (
-        <p className="py-8 text-center text-[13px] uppercase tracking-[0.12em] text-col-slate">Cargando más</p>
+        <p className="py-8 text-center text-col-sm text-col-slate">Cargando más</p>
       )}
 
       <AnimatePresence>
-        {arrastrando && (
+        {arrastrando > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-col-ink/80 p-6 backdrop-blur-sm"
+            className="pointer-events-none fixed inset-0 z-[80] flex items-center justify-center bg-col-noche/80 p-6 backdrop-blur-sm"
           >
-            <div className="flex h-full w-full flex-col items-center justify-center rounded border border-dashed border-col-gold/80">
-              <Upload className="h-8 w-8 text-col-gold" strokeWidth={1.25} aria-hidden />
-              <p className="mt-6 font-col-display text-[48px] font-light italic leading-none text-col-base md:text-[64px]">
-                Soltá para subir
+            <motion.div
+              initial={{ scale: 0.97 }}
+              animate={{ scale: 1 }}
+              transition={resorteSuave}
+              className="flex h-full w-full flex-col items-center justify-center rounded-md border-[1.5px] border-dashed border-col-gold/80"
+            >
+              <motion.span
+                initial={{ y: 8 }}
+                animate={{ y: 0 }}
+                transition={resorteSuave}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-col-gold text-col-noche"
+              >
+                <Upload className="h-7 w-7" strokeWidth={1.5} aria-hidden />
+              </motion.span>
+              <p className="mt-6 font-col-display text-col-display font-light italic leading-none text-col-base md:text-col-display-lg">
+                Soltá {arrastrando === 1 ? "para subir" : `${arrastrando} archivos`}
               </p>
-              <p className="mt-4 text-[14px] text-col-base/70">Fotos JPG, PNG, WebP o AVIF hasta 30 MB. Videos MP4, WebM o MOV hasta 200 MB.</p>
-            </div>
+              <p className="mt-4 text-col-md text-col-base/70">Fotos JPG, PNG, WebP o AVIF hasta 30 MB. Videos MP4, WebM o MOV hasta 200 MB.</p>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -436,35 +470,21 @@ export function Biblioteca({
   );
 }
 
-function Vacia({ editable, onSubir }: { editable: boolean; onSubir: () => void }) {
+function Vacia({ editable, onArchivos }: { editable: boolean; onArchivos: (files: File[]) => void }) {
   if (!editable) {
     return (
       <div className="py-28 text-center">
-        <p className="font-col-display text-[44px] font-light italic text-col-ink">Todavía no hay medios.</p>
-        <p className="mt-3 text-[15px] text-col-slate">Cuando el equipo suba fotos y videos, aparecen acá.</p>
+        <p className="font-col-display text-col-display font-light italic text-col-ink">Todavía no hay medios.</p>
+        <p className="mt-3 text-col-cuerpo text-col-slate">Cuando el equipo suba fotos y videos, aparecen acá.</p>
       </div>
     );
   }
   return (
-    <button
-      type="button"
-      onClick={onSubir}
-      className="group flex min-h-[60vh] w-full flex-col items-center justify-center rounded border border-dashed border-col-slate/30 px-6 text-center transition-colors duration-500 ease-col hover:border-col-gold hover:bg-col-surface"
-    >
-      <Upload
-        className="h-8 w-8 text-col-slate transition-colors duration-200 ease-col group-hover:text-col-gold"
-        strokeWidth={1.25}
-        aria-hidden
-      />
-      <span className="mt-8 font-col-display text-[44px] font-light leading-[1.05] text-col-ink md:text-[64px]">
+    <div className="mx-auto max-w-[880px] py-6">
+      <p className="mb-6 text-center font-col-display text-col-display font-light leading-[1.05] text-col-ink md:text-col-display-lg">
         Tu biblioteca <em className="italic">empieza acá</em>
-      </span>
-      <span className="mt-5 max-w-[46ch] text-[15px] leading-relaxed text-col-slate">
-        Arrastrá fotos y videos a cualquier parte de la pantalla, pegalos con ⌘V o hacé clic para elegirlos.
-      </span>
-      <span className="mt-8 inline-flex h-12 items-center rounded-sm bg-col-ink px-6 text-[13px] uppercase tracking-[0.12em] text-col-base transition-colors duration-200 ease-col group-hover:bg-col-slate">
-        Elegir archivos
-      </span>
-    </button>
+      </p>
+      <ZonaSubida onArchivos={onArchivos} className="[&>button]:min-h-[320px]" />
+    </div>
   );
 }

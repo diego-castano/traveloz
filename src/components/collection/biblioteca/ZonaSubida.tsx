@@ -1,0 +1,464 @@
+"use client";
+
+// Piezas de subida que comparten la Biblioteca, el selector de medios y los
+// lugares de una sola foto (portadas, retratos): la zona para soltar o elegir
+// archivos, la tarjeta de cada subida con su progreso y el envoltorio que deja
+// soltar un archivo directo sobre un lugar.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertCircle, Film, RotateCw, Upload } from "lucide-react";
+import type { ColMedioDto } from "@/actions/collection/medios.actions";
+import type { MedioVista } from "@/lib/collection/experiencia/contenido";
+import { cn } from "@/components/lib/cn";
+import { useCollection } from "../shell/contexto";
+import { useApi } from "../constructor/api";
+import { CheckAnimado, EASE, resorteSuave } from "../movimiento";
+import { useSubidas, type Subida } from "./useSubidas";
+import { errorAmigable } from "../shell/Avisos";
+
+export const ACEPTA_FOTO = "image/jpeg,image/png,image/webp,image/avif";
+export const ACEPTA_VIDEO = "video/mp4,video/webm,video/quicktime";
+export const ACEPTA_TODO = `${ACEPTA_FOTO},${ACEPTA_VIDEO}`;
+
+const MB = 1024 * 1024;
+const TOPE_FOTO = 30 * MB;
+const TOPE_VIDEO = 200 * MB;
+
+export function aceptaDe(tipo?: "FOTO" | "VIDEO") {
+  return tipo === "FOTO" ? ACEPTA_FOTO : tipo === "VIDEO" ? ACEPTA_VIDEO : ACEPTA_TODO;
+}
+
+function textoLimites(acepta: string) {
+  const fotos = acepta.includes("image/") ? "Fotos JPG, PNG, WebP o AVIF hasta 30 MB." : "";
+  const videos = acepta.includes("video/") ? "Videos MP4, WebM o MOV hasta 200 MB." : "";
+  return [fotos, videos].filter(Boolean).join(" ");
+}
+
+/** Separa lo que se puede subir de lo que no, con el motivo en criollo. */
+export function revisarArchivos(files: File[], acepta: string) {
+  const tipos = acepta.split(",");
+  const validos: File[] = [];
+  const motivos: string[] = [];
+  for (const f of files) {
+    if (!tipos.includes(f.type)) motivos.push(`${f.name}: formato no admitido`);
+    else if (f.type.startsWith("image/") && f.size > TOPE_FOTO) motivos.push(`${f.name}: pesa más de 30 MB`);
+    else if (f.type.startsWith("video/") && f.size > TOPE_VIDEO) motivos.push(`${f.name}: pesa más de 200 MB`);
+    else validos.push(f);
+  }
+  return { validos, motivos };
+}
+
+/** Las capturas pegadas llegan como "image.png": les damos un nombre útil. */
+export function nombrarPegados(files: File[]) {
+  const sello = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+  return files.map((f, i) =>
+    /^image\.\w+$/.test(f.name) ? new File([f], `pegada-${sello}-${i + 1}.${f.name.split(".")[1]}`, { type: f.type }) : f,
+  );
+}
+
+function cuantosArchivos(e: React.DragEvent) {
+  return Array.from(e.dataTransfer.items ?? []).filter((i) => i.kind === "file").length;
+}
+
+const conArchivos = (e: React.DragEvent) => Array.from(e.dataTransfer.types).includes("Files");
+
+/**
+ * Zona grande para subir: soltar, pegar (si `pegar`) o elegir. Es un botón, así
+ * que se abre con Enter o espacio. Al arrastrar encima se ilumina en dorado y
+ * cuenta los archivos.
+ */
+export function ZonaSubida({
+  acepta = ACEPTA_TODO,
+  multiple = true,
+  pegar = false,
+  onArchivos,
+  className,
+}: {
+  acepta?: string;
+  multiple?: boolean;
+  /** Escucha ⌘V mientras la zona está en pantalla. */
+  pegar?: boolean;
+  onArchivos: (files: File[]) => void;
+  className?: string;
+}) {
+  const [encima, setEncima] = useState(0);
+  const [motivos, setMotivos] = useState<string[]>([]);
+  const input = useRef<HTMLInputElement>(null);
+  const profundidad = useRef(0);
+
+  const recibir = useCallback(
+    (files: File[]) => {
+      const { validos, motivos } = revisarArchivos(files, acepta);
+      setMotivos(motivos);
+      if (validos.length) onArchivos(multiple ? validos : validos.slice(0, 1));
+    },
+    [acepta, multiple, onArchivos],
+  );
+
+  useEffect(() => {
+    if (!motivos.length) return;
+    const t = window.setTimeout(() => setMotivos([]), 7000);
+    return () => window.clearTimeout(t);
+  }, [motivos]);
+
+  useEffect(() => {
+    if (!pegar) return;
+    const alPegar = (e: ClipboardEvent) => {
+      const files = Array.from(e.clipboardData?.files ?? []);
+      if (!files.length) return;
+      e.preventDefault();
+      recibir(nombrarPegados(files));
+    };
+    window.addEventListener("paste", alPegar);
+    return () => window.removeEventListener("paste", alPegar);
+  }, [pegar, recibir]);
+
+  const fotos = acepta.includes("image/");
+  const videos = acepta.includes("video/");
+  const que = fotos && videos ? "fotos o videos" : videos ? (multiple ? "videos" : "un video") : multiple ? "fotos" : "una foto";
+
+  return (
+    <div className={cn("flex flex-col gap-3", className)}>
+      <motion.button
+        type="button"
+        data-zona-subida
+        onClick={() => input.current?.click()}
+        onDragEnter={(e) => {
+          if (!conArchivos(e)) return;
+          e.preventDefault();
+          profundidad.current++;
+          setEncima(Math.max(1, cuantosArchivos(e)));
+        }}
+        onDragOver={(e) => {
+          if (!conArchivos(e)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }}
+        onDragLeave={(e) => {
+          if (!conArchivos(e)) return;
+          profundidad.current = Math.max(0, profundidad.current - 1);
+          if (profundidad.current === 0) setEncima(0);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          profundidad.current = 0;
+          setEncima(0);
+          recibir(Array.from(e.dataTransfer.files));
+        }}
+        animate={{ scale: encima ? 1.012 : 1 }}
+        transition={resorteSuave}
+        className={cn(
+          "col-anillo group relative flex min-h-[240px] w-full flex-col items-center justify-center gap-4 overflow-hidden rounded-md border-[1.5px] border-dashed px-6 py-10 text-center transition-[border-color,background-color,box-shadow] duration-col ease-col focus-visible:shadow-col-anillo",
+          encima
+            ? "border-col-gold bg-[#FDF6EA] shadow-col-3"
+            : "border-col-slate/30 bg-col-surface hover:border-col-slate/60 hover:bg-[#FCFCFB]",
+        )}
+      >
+        <motion.span
+          aria-hidden
+          animate={{ y: encima ? -4 : 0, scale: encima ? 1.06 : 1 }}
+          transition={resorteSuave}
+          className={cn(
+            "flex h-14 w-14 items-center justify-center rounded-full transition-colors duration-col ease-col",
+            encima ? "bg-col-gold text-col-noche" : "bg-col-base text-col-gold group-hover:bg-[#FDF6EA]",
+          )}
+        >
+          <Upload className="h-6 w-6" strokeWidth={1.5} />
+        </motion.span>
+        <span className="min-h-[34px] font-col-display text-col-2xl leading-tight text-col-ink" aria-live="polite">
+          {encima ? `Soltá ${encima === 1 ? "el archivo" : `${encima} archivos`}` : `Arrastrá ${que} acá`}
+        </span>
+        <span className="max-w-[60ch] text-col-md leading-relaxed text-col-slate">
+          {pegar ? "Pegá desde el portapapeles con ⌘V o " : "O "}
+          <span className="text-col-ink underline decoration-col-gold underline-offset-4">elegí {multiple ? "archivos" : "un archivo"}</span> de
+          tu computadora.
+        </span>
+        <span className="text-col-xs text-col-muted">{textoLimites(acepta)}</span>
+      </motion.button>
+      <input
+        ref={input}
+        type="file"
+        multiple={multiple}
+        accept={acepta}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+        onChange={(e) => {
+          recibir(Array.from(e.target.files ?? []));
+          e.target.value = "";
+        }}
+      />
+      <AnimatePresence>
+        {motivos.length > 0 && (
+          <motion.ul
+            role="alert"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: EASE }}
+            className="flex flex-col gap-1 rounded-col bg-col-alerta/[0.07] px-4 py-3 text-col-sm text-col-alerta"
+          >
+            {motivos.slice(0, 4).map((m) => (
+              <li key={m} className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+                {m}
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Anillo de progreso. Sin `valor`, gira (procesando). */
+export function ProgresoCircular({ valor, tam = 40, className }: { valor?: number; tam?: number; className?: string }) {
+  const r = 15;
+  const c = 2 * Math.PI * r;
+  return (
+    <svg
+      viewBox="0 0 36 36"
+      width={tam}
+      height={tam}
+      aria-hidden
+      className={cn("-rotate-90", valor === undefined && "animate-spin [animation-duration:1.1s]", className)}
+    >
+      <circle cx="18" cy="18" r={r} fill="none" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2.5" />
+      <circle
+        cx="18"
+        cy="18"
+        r={r}
+        fill="none"
+        stroke="#F4B860"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeDasharray={`${c * (valor === undefined ? 0.28 : Math.max(valor, 2) / 100)} ${c}`}
+        className="transition-[stroke-dasharray] duration-col-lento ease-col"
+      />
+    </svg>
+  );
+}
+
+export function textoEstado(s: Subida) {
+  if (s.estado === "espera") return "En espera";
+  if (s.estado === "subiendo") return `Subiendo, ${s.progreso} %`;
+  if (s.estado === "procesando") return "Procesando";
+  if (s.estado === "listo") return "Listo";
+  return s.error ? errorAmigable(s.error) : "No pudimos subirlo";
+}
+
+/** Tarjeta de una subida: miniatura en vivo, anillo de progreso y estado. */
+export function TarjetaSubida({ s, onReintentar, listo = "Listo" }: { s: Subida; onReintentar: (id: string) => void; listo?: string }) {
+  const enCurso = s.estado === "espera" || s.estado === "subiendo" || s.estado === "procesando";
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.35, ease: EASE }}
+      className="overflow-hidden rounded-col bg-col-surface ring-1 ring-col-line"
+    >
+      <div className="relative aspect-[4/3] bg-col-base">
+        {s.preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={s.preview} alt="" className={cn("absolute inset-0 h-full w-full object-cover transition-[filter] duration-col-lento", enCurso && "brightness-[0.7]")} />
+        ) : (
+          <Film className="absolute inset-0 m-auto h-6 w-6 text-col-muted" strokeWidth={1.25} aria-hidden />
+        )}
+        <span className="absolute inset-0 flex items-center justify-center">
+          <AnimatePresence mode="wait" initial={false}>
+            {enCurso && (
+              <motion.span key="p" exit={{ opacity: 0, scale: 0.8 }} className="relative flex items-center justify-center text-white">
+                <ProgresoCircular valor={s.estado === "subiendo" ? s.progreso : s.estado === "espera" ? 0 : undefined} tam={48} />
+                {s.estado === "subiendo" && (
+                  <span className="absolute text-col-xs tabular-nums text-white">{s.progreso}</span>
+                )}
+              </motion.span>
+            )}
+            {s.estado === "listo" && (
+              <motion.span
+                key="ok"
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={resorteSuave}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-col-gold text-col-noche shadow-col-3"
+              >
+                <CheckAnimado className="h-5 w-5" />
+              </motion.span>
+            )}
+            {s.estado === "error" && (
+              <motion.span key="e" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center bg-col-alerta/55">
+                <button
+                  type="button"
+                  onClick={() => onReintentar(s.id)}
+                  className="col-anillo flex h-8 items-center gap-1.5 rounded-col bg-white px-3 text-col-md font-medium text-col-alerta transition-transform active:scale-[0.97] focus-visible:shadow-col-anillo"
+                >
+                  <RotateCw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> Reintentar
+                </button>
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
+      </div>
+      <div className="px-3 py-2.5">
+        <p className="truncate text-col-sm text-col-ink" title={s.file.name}>
+          {s.file.name}
+        </p>
+        <p className={cn("mt-0.5 line-clamp-2 text-col-xs leading-snug", s.estado === "error" ? "text-col-alerta" : "text-col-slate")}>
+          {s.estado === "listo" ? listo : textoEstado(s)}
+        </p>
+      </div>
+    </motion.li>
+  );
+}
+
+/**
+ * Envuelve un lugar de una sola foto (portada, retrato): soltar un archivo
+ * encima lo sube y lo asigna. Mientras sube muestra la miniatura con el anillo.
+ */
+export function SoltarAqui({
+  tipo,
+  onMedio,
+  deshabilitado,
+  className,
+  children,
+}: {
+  tipo?: "FOTO" | "VIDEO";
+  onMedio: (m: MedioVista) => void;
+  deshabilitado?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const api = useApi();
+  const { puede } = useCollection();
+  const activo = !deshabilitado && puede("medios.editar");
+  const [encima, setEncima] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const profundidad = useRef(0);
+  const onMedioRef = useRef(onMedio);
+  onMedioRef.current = onMedio;
+
+  const opciones = useMemo(
+    () => ({ preparar: api.prepararSubidaMedio, registrar: api.registrarMedio, put: api.subirArchivo }),
+    [api],
+  );
+  const alListo = useCallback(
+    async (m: ColMedioDto) => {
+      const r = await api.obtenerMediosVista([m.id]).catch(() => null);
+      if (r?.ok && r.data[0]) onMedioRef.current(r.data[0]);
+      else setAviso("Se subió, pero no pudimos asignarla. Elegila desde la biblioteca.");
+    },
+    [api],
+  );
+  const { subidas, agregar, reintentar, limpiar } = useSubidas(alListo, opciones);
+  const actual = subidas[subidas.length - 1];
+
+  useEffect(() => {
+    if (actual?.estado !== "listo") return;
+    const t = window.setTimeout(limpiar, 1200);
+    return () => window.clearTimeout(t);
+  }, [actual?.estado, limpiar]);
+
+  useEffect(() => {
+    if (!aviso) return;
+    const t = window.setTimeout(() => setAviso(null), 7000);
+    return () => window.clearTimeout(t);
+  }, [aviso]);
+
+  if (!activo) return <div className={className}>{children}</div>;
+
+  return (
+    <div
+      className={cn("relative", className)}
+      onDragEnter={(e) => {
+        if (!conArchivos(e)) return;
+        e.preventDefault();
+        profundidad.current++;
+        setEncima(true);
+      }}
+      onDragOver={(e) => {
+        if (!conArchivos(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+      }}
+      onDragLeave={(e) => {
+        if (!conArchivos(e)) return;
+        profundidad.current = Math.max(0, profundidad.current - 1);
+        if (profundidad.current === 0) setEncima(false);
+      }}
+      onDrop={(e) => {
+        if (!conArchivos(e)) return;
+        e.preventDefault();
+        profundidad.current = 0;
+        setEncima(false);
+        const { validos, motivos } = revisarArchivos(Array.from(e.dataTransfer.files), aceptaDe(tipo));
+        if (validos[0]) {
+          setAviso(null);
+          limpiar();
+          agregar([validos[0]]);
+        } else if (motivos[0]) setAviso(motivos[0]);
+      }}
+    >
+      {children}
+      <AnimatePresence>
+        {encima && (
+          <motion.div
+            key="encima"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-col border-[1.5px] border-dashed border-col-gold bg-col-noche/60 text-center text-white backdrop-blur-[2px]"
+          >
+            <Upload className="h-5 w-5 text-col-gold" strokeWidth={1.5} aria-hidden />
+            <span className="px-3 text-col-sm font-medium">Soltá para subir y usar</span>
+          </motion.div>
+        )}
+        {actual && actual.estado !== "error" && (
+          <motion.div
+            key="subiendo"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 z-10 overflow-hidden rounded-col"
+            aria-live="polite"
+          >
+            {actual.preview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={actual.preview} alt="" className="absolute inset-0 h-full w-full object-cover brightness-[0.65]" />
+            )}
+            <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-col-noche/30 text-white">
+              {actual.estado === "listo" ? (
+                <motion.span
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={resorteSuave}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-col-gold text-col-noche"
+                >
+                  <CheckAnimado className="h-5 w-5" />
+                </motion.span>
+              ) : (
+                <ProgresoCircular valor={actual.estado === "subiendo" ? actual.progreso : undefined} tam={44} />
+              )}
+              <span className="text-col-xs">{textoEstado(actual)}</span>
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {(aviso || actual?.estado === "error") && (
+        <p role="alert" className="mt-2 flex items-start gap-2 text-col-sm text-col-alerta">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+          <span className="flex-1">{aviso ?? actual?.error}</span>
+          {!aviso && actual && (
+            <button type="button" onClick={() => reintentar(actual.id)} className="text-col-sm font-medium text-col-ink underline decoration-col-gold underline-offset-4">
+              Reintentar
+            </button>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}

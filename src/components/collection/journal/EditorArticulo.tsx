@@ -13,17 +13,16 @@ import {
   NOMBRE_TIPO_ARTICULO,
   TIPOS_ARTICULO,
   type ArticuloVista,
-  type ContenidoArticulo,
-} from "@/lib/collection/paginas/contenido";
+  type ContenidoArticulo } from "@/lib/collection/paginas/contenido";
 import type { AccionArticulo, ArticuloDetalle, CamposArticulo } from "@/actions/collection/journal.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton, VerEnSitio } from "../ui";
+import { Boton, Estado, VerEnSitio } from "../ui";
 import { rutaSitio } from "../sitio/tarjetas";
 import { EditorTexto } from "../editor/EditorTexto";
 import { apiReal, ApiProvider, type ApiConstructor } from "../constructor/api";
-import { Campo, Contador, Grupo, MediosCtx, SlotMedio, TiraMedios, inputLinea } from "../constructor/campos";
+import { Campo, Contador, Grupo, MediosCtx, SlotMedio, TiraMedios, entrada, entradaArea, entradaTitulo } from "../constructor/campos";
 import { IndicadorGuardado } from "../constructor/Constructor";
 import { Elegidos, Segmentado } from "../constructor/Elegidos";
 import { slugDe } from "../constructor/estado";
@@ -70,8 +69,7 @@ export function EditorArticulo({
   detalle,
   api = apiJournalReal,
   apiMedios = apiReal,
-  className,
-}: {
+  className }: {
   detalle: ArticuloDetalle;
   api?: ApiJournal;
   apiMedios?: ApiConstructor;
@@ -83,8 +81,7 @@ export function EditorArticulo({
 
   const [estado, setEstado] = useState<{ borrador: Borrador; cambios: number }>({
     borrador: { campos: detalle.campos, contenido: detalle.contenido },
-    cambios: 0,
-  });
+    cambios: 0 });
   const { campos: c, contenido } = estado.borrador;
   const setCampos = useCallback(
     (p: Partial<CamposArticulo>) =>
@@ -122,8 +119,7 @@ export function EditorArticulo({
     guardarCon,
     estado,
     revisionInicial: detalle.revision,
-    activo: puedeEditar,
-  });
+    activo: puedeEditar });
   const conflicto = guardado.tipo === "conflicto";
   const editable = puedeEditar && !conflicto;
 
@@ -158,8 +154,7 @@ export function EditorArticulo({
     galeria: contenido.galeria.length > 0,
     relacionadas: c.experienciaIds.length > 0,
     google: req.filter((r) => r.seccion === "google").every((r) => r.ok),
-    publicar: estadoArt === "PUBLICADO" && !hayCambios,
-  };
+    publicar: estadoArt === "PUBLICADO" && !hayCambios };
 
   // ── Vista previa ──
   const diferido = useDeferredValue(estado.borrador);
@@ -181,8 +176,7 @@ export function EditorArticulo({
         return m ? [m] : [];
       }),
       autor: detalle.especialistas.find((e) => e.id === k.autorId) ?? null,
-      experiencias: k.experienciaIds.flatMap((id) => detalle.experiencias.filter((e) => e.id === id)),
-    };
+      experiencias: k.experienciaIds.flatMap((id) => detalle.experiencias.filter((e) => e.id === id)) };
   }, [diferido, mediosDiferidos, publicadoEn, detalle.id, detalle.especialistas, detalle.experiencias]);
   const actualizando = diferido !== estado.borrador;
 
@@ -214,8 +208,7 @@ export function EditorArticulo({
         publicar: estadoArt === "PUBLICADO" ? "Cambios publicados." : "Artículo publicado.",
         despublicar: "El artículo salió del sitio.",
         archivar: "Artículo archivado.",
-        "volver-borrador": "El artículo volvió a borrador.",
-      }[accion],
+        "volver-borrador": "El artículo volvió a borrador." }[accion],
     );
   };
 
@@ -230,7 +223,7 @@ export function EditorArticulo({
       <button
         type="button"
         onClick={onClick}
-        className="text-[12px] uppercase tracking-[0.12em] text-col-slate underline decoration-col-gold underline-offset-4 hover:text-col-ink"
+        className="text-col-sm font-medium text-col-slate underline decoration-col-gold underline-offset-4 hover:text-col-ink"
       >
         {texto}
       </button>
@@ -247,16 +240,16 @@ export function EditorArticulo({
             <div className="px-5 pb-5 pt-5">
               <Link
                 href="/backend/collection/journal"
-                className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.16em] text-col-slate transition-colors hover:text-col-ink"
+                className="inline-flex items-center gap-1.5 text-col-sm font-medium text-col-slate transition-colors hover:text-col-ink"
               >
                 <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden /> Journal
               </Link>
-              <p className={cn("mt-4 line-clamp-3 font-col-display text-[24px] leading-[1.1] text-col-ink", !c.titulo.trim() && "italic text-col-slate/50")}>
+              <p className={cn("mt-4 line-clamp-3 font-col-display text-col-xl leading-[1.1] text-col-ink", !c.titulo.trim() && "italic text-col-subtle")}>
                 {c.titulo.trim() || "Sin título"}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <EstadoArticuloPill estado={estadoArt} />
-                {hayCambios && <span className="text-[11px] text-[#B07A2A]">Cambios sin publicar</span>}
+                {hayCambios && <Estado tono="aviso">Cambios sin publicar</Estado>}
               </div>
             </div>
             <nav aria-label="Partes del artículo" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
@@ -268,7 +261,7 @@ export function EditorArticulo({
                       onClick={() => ir(s.id)}
                       aria-current={activa === s.id ? "location" : undefined}
                       className={cn(
-                        "relative flex h-11 w-full items-center gap-3 rounded-sm px-3 text-left text-[14px] transition-colors duration-200 ease-col",
+                        "relative flex h-11 w-full items-center gap-3 rounded-col-sm px-3 text-left text-col-md transition-colors duration-col ease-col",
                         activa === s.id ? "bg-col-base text-col-ink" : "text-col-slate hover:bg-col-base/60 hover:text-col-ink",
                       )}
                     >
@@ -297,7 +290,7 @@ export function EditorArticulo({
           <div className="flex min-w-0 flex-1 flex-col">
             <BannerConflicto visible={conflicto} />
             {!puedeEditar && (
-              <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-[13px] text-col-slate">
+              <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-col-sm text-col-slate">
                 Estás viendo este artículo en modo lectura: tu usuario no tiene permiso para editar el sitio.
               </p>
             )}
@@ -321,7 +314,7 @@ export function EditorArticulo({
                       maxLength={140}
                       onChange={(e) => cambiarTitulo(e.target.value.replace(/\n/g, " "))}
                       placeholder="Kioto en otoño: los templos que valen el madrugón"
-                      className={cn(inputLinea, "resize-none py-3 font-col-display text-[36px] leading-[1.1] placeholder:italic [field-sizing:content] md:text-[42px]")}
+                      className={cn(entradaTitulo, "resize-none text-col-3xl leading-[1.1] [field-sizing:content] md:text-col-display")}
                     />
                   </Campo>
                   <Campo etiqueta="Bajada" htmlFor="art-bajada" accion={<Contador n={c.bajada.length} ideal={140} max={240} />}>
@@ -332,7 +325,7 @@ export function EditorArticulo({
                       maxLength={240}
                       onChange={(e) => setCampos({ bajada: e.target.value })}
                       placeholder="Una línea que invite a leer."
-                      className={cn(inputLinea, "resize-none text-[17px] leading-relaxed [field-sizing:content]")}
+                      className={cn(entradaArea, "text-col-lg")}
                     />
                   </Campo>
                   <Campo
@@ -356,12 +349,11 @@ export function EditorArticulo({
                             .toLowerCase()
                             .replace(/\s+/g, "-")
                             .replace(/[^a-z0-9-]/g, "")
-                            .replace(/-{2,}/g, "-"),
-                        })
+                            .replace(/-{2 }/g, "-") })
                       }
                       onBlur={() => setCampos({ slug: slugDe(c.slug) })}
                       placeholder="kioto-en-otono"
-                      className={cn(inputLinea, "font-mono text-[14px]")}
+                      className={cn(entrada, "font-mono text-col-md")}
                     />
                   </Campo>
                   <Campo etiqueta="Portada" ayuda="Horizontal, se ve ancha arriba del texto y en la tarjeta del journal.">
@@ -385,26 +377,26 @@ export function EditorArticulo({
                             aria-checked={activo}
                             onClick={() => setCampos({ autorId: activo ? null : e.id })}
                             className={cn(
-                              "flex items-center gap-3 rounded-sm border p-2.5 text-left transition-[border-color,background-color] duration-200 ease-col",
+                              "flex items-center gap-3 rounded-col-sm border p-2.5 text-left transition-[border-color,background-color] duration-col ease-col",
                               activo ? "border-col-gold bg-col-surface ring-1 ring-col-gold" : "border-col-line bg-col-surface hover:border-col-slate/50",
                             )}
                           >
-                            <span className="relative h-14 w-11 shrink-0 overflow-hidden rounded-sm bg-col-base">
+                            <span className="relative h-14 w-11 shrink-0 overflow-hidden rounded-col-sm bg-col-base">
                               {e.retrato ? (
                                 <MedioImagen medio={e.retrato} relleno sizes="60px" />
                               ) : (
-                                <UserRound className="absolute inset-0 m-auto h-5 w-5 text-col-slate/40" strokeWidth={1.25} />
+                                <UserRound className="absolute inset-0 m-auto h-5 w-5 text-col-subtle" strokeWidth={1.25} />
                               )}
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate font-col-display text-[19px] leading-tight text-col-ink">{e.nombre}</span>
-                              <span className="block truncate text-[12px] text-col-slate">{e.region || "Sin región"}</span>
+                              <span className="block truncate font-col-display text-col-xl leading-tight text-col-ink">{e.nombre}</span>
+                              <span className="block truncate text-col-xs text-col-slate">{e.region || "Sin región"}</span>
                             </span>
                             {activo && <Check className="ml-auto h-4 w-4 shrink-0 text-col-gold" strokeWidth={2} aria-hidden />}
                           </button>
                         );
                       })}
-                      {!detalle.especialistas.length && <p className="text-[14px] italic text-col-slate">Todavía no hay especialistas cargados.</p>}
+                      {!detalle.especialistas.length && <p className="text-col-md italic text-col-slate">Todavía no hay especialistas cargados.</p>}
                     </div>
                   </Campo>
                 </section>
@@ -423,8 +415,8 @@ export function EditorArticulo({
                         placeholder="Empezá por lo que viste o probaste. Después, lo práctico."
                         deshabilitado={!editable}
                       />
-                      <p className="mt-3 flex items-center justify-between text-[12px] tabular-nums text-col-slate">
-                        <span className={cn(cuerpoChars >= 300 && "text-[#B07A2A]")}>
+                      <p className="mt-3 flex items-center justify-between text-col-xs tabular-nums text-col-slate">
+                        <span className={cn(cuerpoChars >= 300 && "text-col-ok")}>
                           {cuerpoChars} caracteres{cuerpoChars < 300 ? ` (mínimo 300 para publicar)` : ""}
                         </span>
                         <span aria-live="polite">{minutos} min de lectura</span>
@@ -447,8 +439,7 @@ export function EditorArticulo({
                         id: e.id,
                         titulo: e.titulo,
                         detalle: e.destinos.join(", "),
-                        medio: e.portada,
-                      }))}
+                        medio: e.portada }))}
                       onCambio={(experienciaIds) => setCampos({ experienciaIds })}
                       max={6}
                       etiqueta="experiencias"
@@ -472,7 +463,7 @@ export function EditorArticulo({
                         maxLength={70}
                         onChange={(e) => setCampos({ seoTitulo: e.target.value })}
                         placeholder={c.titulo || "Kioto en otoño: los templos que valen el madrugón"}
-                        className={cn(inputLinea, "text-[17px]")}
+                        className={cn(entrada, "text-col-cuerpo")}
                       />
                     </Campo>
                     <Campo
@@ -488,23 +479,23 @@ export function EditorArticulo({
                         maxLength={170}
                         onChange={(e) => setCampos({ seoDescripcion: e.target.value })}
                         placeholder="Al menos 50 caracteres. De qué trata y por qué leerlo."
-                        className={cn(inputLinea, "min-h-[4.5em] resize-none text-[15px] leading-relaxed [field-sizing:content]")}
+                        className={entradaArea}
                       />
                     </Campo>
-                    <div className="rounded-sm border border-col-line bg-white p-5 font-[arial,sans-serif]">
+                    <div className="rounded-col-sm border border-col-line bg-white p-5 font-[arial,sans-serif]">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-col-ink font-col-display text-[15px] italic text-col-base">C</span>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-col-ink font-col-display text-col-cuerpo italic text-col-base">C</span>
                         <span className="min-w-0">
-                          <span className="block text-[14px] leading-tight text-[#202124]">Traveloz Collection</span>
-                          <span className="block truncate text-[12px] leading-tight text-[#4d5156]">
+                          <span className="block text-col-md leading-tight text-[#202124]">Traveloz Collection</span>
+                          <span className="block truncate text-col-xs leading-tight text-[#4d5156]">
                             https://{DOMINIO} › journal › {c.slug || "…"}
                           </span>
                         </span>
                       </div>
-                      <p className={cn("mt-2 text-[20px] leading-snug", seoTitulo ? "text-[#1a0dab]" : "italic text-[#9aa0a6]")}>
+                      <p className={cn("mt-2 text-col-xl leading-snug", seoTitulo ? "text-[#1a0dab]" : "italic text-[#9aa0a6]")}>
                         {seoTitulo ? corte(seoTitulo, 60) : "Sin título"}
                       </p>
-                      <p className={cn("mt-1 text-[14px] leading-[1.58]", seoDesc ? "text-[#4d5156]" : "italic text-[#9aa0a6]")}>
+                      <p className={cn("mt-1 text-col-md leading-[1.58]", seoDesc ? "text-[#4d5156]" : "italic text-[#9aa0a6]")}>
                         {seoDesc ? corte(seoDesc, 155) : "Sin descripción: Google va a elegir un pedazo del artículo."}
                       </p>
                     </div>
@@ -514,12 +505,12 @@ export function EditorArticulo({
 
               {/* Publicar: fuera del fieldset para que los botones respondan al permiso, no al bloqueo de edición */}
               <section id="art-publicar" className="mx-auto w-full max-w-[700px] px-5 pb-24 md:px-10">
-                <div className="rounded-sm bg-col-ink p-6 text-col-base">
+                <div className="rounded-col-sm bg-col-ink p-6 text-col-base">
                   <div className="flex flex-wrap items-center gap-3">
-                    <EstadoArticuloPill estado={estadoArt} className={estadoArt === "PUBLICADO" ? "border-col-gold" : undefined} />
-                    {hayCambios && <span className="text-[13px] text-col-gold">Hay cambios sin publicar</span>}
+                    <EstadoArticuloPill estado={estadoArt} />
+                    {hayCambios && <Estado tono="aviso">Cambios sin publicar</Estado>}
                   </div>
-                  <p className="mt-4 max-w-[52ch] font-col-display text-[24px] leading-snug">
+                  <p className="mt-4 max-w-[52ch] font-col-display text-col-xl leading-snug">
                     {estadoArt === "BORRADOR"
                       ? "Solo lo ve el equipo. Cuando esté listo, publicalo."
                       : estadoArt === "PUBLICADO"
@@ -535,7 +526,7 @@ export function EditorArticulo({
                         <button
                           type="button"
                           onClick={() => ir(r.seccion)}
-                          className="flex w-full items-center gap-3 rounded-sm px-1 py-2 text-left text-[14px] transition-colors hover:bg-col-base/5"
+                          className="flex w-full items-center gap-3 rounded-col-sm px-1 py-2 text-left text-col-md transition-colors hover:bg-col-base/5"
                         >
                           <span
                             className={cn(
@@ -578,20 +569,20 @@ export function EditorArticulo({
                       )}
                       {estadoArt !== "ARCHIVADO" &&
                         (confirmarArchivo ? (
-                          <span className="ml-auto flex items-center gap-3 text-[13px] text-col-base/80">
+                          <span className="ml-auto flex items-center gap-3 text-col-sm text-col-base/80">
                             ¿Archivarlo? Sale del sitio.
                             <button
                               type="button"
                               onClick={() => void hacer("archivar")}
                               disabled={!!enCurso}
-                              className="text-[12px] uppercase tracking-[0.12em] text-[#E9A08F] underline underline-offset-4"
+                              className="text-col-sm font-medium text-[#E9A08F] underline underline-offset-4"
                             >
                               {enCurso === "archivar" ? "Archivando…" : "Sí, archivar"}
                             </button>
                             <button
                               type="button"
                               onClick={() => setConfirmarArchivo(false)}
-                              className="text-[12px] uppercase tracking-[0.12em] text-col-base/60 hover:text-col-base"
+                              className="text-col-sm font-medium text-col-base/60 hover:text-col-base"
                             >
                               No
                             </button>
@@ -600,7 +591,7 @@ export function EditorArticulo({
                           <button
                             type="button"
                             onClick={() => setConfirmarArchivo(true)}
-                            className="ml-auto text-[12px] uppercase tracking-[0.12em] text-col-base/50 transition-colors hover:text-col-base"
+                            className="ml-auto text-col-sm font-medium text-col-base/70 transition-colors hover:text-col-base"
                           >
                             Archivar
                           </button>
@@ -608,7 +599,7 @@ export function EditorArticulo({
                     </div>
                   )}
                   {errorEstado && (
-                    <p role="alert" className="mt-4 flex items-start gap-2 text-[14px] text-[#E9A08F]">
+                    <p role="alert" className="mt-4 flex items-start gap-2 text-col-md text-[#E9A08F]">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden /> {errorEstado}
                     </p>
                   )}

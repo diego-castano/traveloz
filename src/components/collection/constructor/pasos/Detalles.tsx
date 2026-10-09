@@ -6,8 +6,8 @@ import { useState } from "react";
 import { Check, CloudSun, Coins, EyeOff, HeartPulse, Languages, Plane, Plus, Stamp, X } from "lucide-react";
 import type { InfoPractica } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
-import { Interruptor } from "../../ui";
-import { Asa, Campo, Contador, Grupo, ListaOrdenable, inputLinea } from "../campos";
+import { Interruptor, cajaCompuesta, entradaInterna } from "../../ui";
+import { Asa, Campo, Contador, Grupo, ListaOrdenable, entrada, entradaArea } from "../campos";
 import { useConstructor } from "../contexto";
 import { nuevoId } from "../estado";
 import { fmtMiles } from "../formato";
@@ -35,14 +35,14 @@ export function PasoDetalles() {
           icono="si"
           valores={k.incluye}
           onCambio={(incluye) => setContenido(() => ({ incluye }))}
-          placeholder="Traslados privados en cada destino"
+          placeholder="Ej.: Seguro de viaje"
         />
         <ListaTexto
           titulo="No incluye"
           icono="no"
           valores={k.noIncluye}
           onCambio={(noIncluye) => setContenido(() => ({ noIncluye }))}
-          placeholder="Vuelos internacionales"
+          placeholder="Ej.: Propinas"
         />
       </div>
 
@@ -56,7 +56,7 @@ export function PasoDetalles() {
               accion={k.info[id].length > max * 0.7 ? <Contador n={k.info[id].length} max={max} /> : null}
             >
               <div className="relative">
-                <Icono className="pointer-events-none absolute left-0 top-3 h-4 w-4 text-col-gold" strokeWidth={1.4} aria-hidden />
+                <Icono className="pointer-events-none absolute left-3.5 top-[14px] h-4 w-4 text-col-gold" strokeWidth={1.4} aria-hidden />
                 <textarea
                   id={`info-${id}`}
                   rows={1}
@@ -64,7 +64,7 @@ export function PasoDetalles() {
                   maxLength={max}
                   onChange={(e) => setContenido((x) => ({ info: { ...x.info, [id]: e.target.value } }))}
                   placeholder={ejemplo}
-                  className={cn(inputLinea, "resize-none pl-7 text-[14px] leading-relaxed [field-sizing:content]")}
+                  className={cn(entradaArea, "min-h-11 pl-10 text-col-md")}
                 />
               </div>
             </Campo>
@@ -75,8 +75,8 @@ export function PasoDetalles() {
       <Grupo titulo="Precio">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-[15px] text-col-ink">Mostrar precio</p>
-            <p className="mt-0.5 text-[13px] text-col-slate">Un monto «desde» en dólares, por persona.</p>
+            <p className="text-col-cuerpo text-col-ink">Mostrar precio</p>
+            <p className="mt-0.5 text-col-sm text-col-slate">Un monto «desde» en dólares, por persona.</p>
           </div>
           <Interruptor
             checked={c.mostrarPrecio}
@@ -92,8 +92,8 @@ export function PasoDetalles() {
               htmlFor="precio-monto"
               error={(c.precioDesde ?? 0) > 0 ? null : "Falta el monto."}
             >
-              <div className="flex items-baseline gap-2 border-b border-col-slate/40 focus-within:border-col-gold">
-                <span className="text-[13px] uppercase tracking-[0.12em] text-col-slate">USD</span>
+              <div className={cn(cajaCompuesta, "pl-3.5")}>
+                <span className="text-col-xs uppercase tracking-[0.14em] text-col-slate">USD</span>
                 <input
                   id="precio-monto"
                   inputMode="numeric"
@@ -104,7 +104,7 @@ export function PasoDetalles() {
                     setCampos({ precioDesde: n ? Math.min(n, 1_000_000) : null });
                   }}
                   placeholder="5.099"
-                  className="w-full border-0 bg-transparent px-0 py-2 font-col-display text-[32px] tabular-nums lining-nums text-col-ink focus:outline-none focus:ring-0"
+                  className={cn(entradaInterna, "px-2.5 py-1 font-col-display text-col-2xl leading-9 tabular-nums lining-nums")}
                 />
               </div>
             </Campo>
@@ -114,13 +114,13 @@ export function PasoDetalles() {
                 value={k.precioNota}
                 maxLength={200}
                 onChange={(e) => setContenido(() => ({ precioNota: e.target.value }))}
-                className={cn(inputLinea, "mt-3 text-[14px]")}
+                className={cn(entrada, "mt-3 text-col-md")}
               />
             </Campo>
           </div>
         ) : (
-          <p className="flex items-center gap-3 rounded-sm bg-col-base px-4 py-3 text-[14px] text-col-slate">
-            <EyeOff className="h-4 w-4 shrink-0 text-col-slate/70" strokeWidth={1.5} aria-hidden />
+          <p className="flex items-center gap-3 rounded-col-sm bg-col-base px-4 py-3 text-col-md text-col-slate">
+            <EyeOff className="h-4 w-4 shrink-0 text-col-muted" strokeWidth={1.5} aria-hidden />
             El sitio no muestra ningún precio. La consulta lleva al especialista.
           </p>
         )}
@@ -134,8 +134,7 @@ function ListaTexto({
   icono,
   valores,
   onCambio,
-  placeholder,
-}: {
+  placeholder }: {
   titulo: string;
   icono: "si" | "no";
   valores: string[];
@@ -160,7 +159,7 @@ function ListaTexto({
 
   return (
     <section>
-      <h3 className="mb-4 font-col-display text-[24px] font-normal leading-none text-col-ink">{titulo}</h3>
+      <h3 className="mb-4 font-col-display text-col-xl font-normal leading-none text-col-ink">{titulo}</h3>
       <ListaOrdenable
         items={items}
         deshabilitado={!editable}
@@ -170,9 +169,9 @@ function ListaTexto({
         }}
         className="flex flex-col"
         render={(it, i, asa) => (
-          <div className={cn("group flex items-center gap-1 bg-col-base", asa.arrastrando && "shadow-[0_12px_24px_-12px_rgba(50,55,59,0.4)]")}>
+          <div className={cn("group flex items-center gap-1 bg-col-base", asa.arrastrando && "shadow-col-2")}>
             {editable && <Asa asa={asa} label={it.texto} className="-ml-2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100" />}
-            <Icono className={cn("h-3.5 w-3.5 shrink-0", icono === "si" ? "text-col-gold" : "text-col-slate/60")} strokeWidth={2} aria-hidden />
+            <Icono className={cn("h-3.5 w-3.5 shrink-0", icono === "si" ? "text-col-gold" : "text-col-muted")} strokeWidth={2} aria-hidden />
             <input
               aria-label={`${titulo}, ítem ${i + 1}`}
               value={it.texto}
@@ -184,7 +183,7 @@ function ListaTexto({
                   onCambio(valores.filter((_, j) => j !== i));
                 }
               }}
-              className="min-w-0 flex-1 border-0 border-b border-transparent bg-transparent px-1 py-2 text-[14px] text-col-ink hover:border-col-line focus:border-col-gold focus:outline-none focus:ring-0"
+              className={cn(entrada, "min-h-10 flex-1 border-transparent bg-transparent px-2.5 py-[7px] text-col-md hover:border-col-line focus:bg-col-surface")}
             />
             {editable && (
               <button
@@ -194,7 +193,7 @@ function ListaTexto({
                   setIds(idsAlineados.filter((_, j) => j !== i));
                   onCambio(valores.filter((_, j) => j !== i));
                 }}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-col-slate/50 opacity-0 transition-opacity hover:text-col-alerta focus:opacity-100 group-hover:opacity-100"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-col-sm text-col-subtle opacity-0 transition-opacity hover:text-col-alerta focus:opacity-100 group-hover:opacity-100"
               >
                 <X className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
@@ -204,7 +203,7 @@ function ListaTexto({
       />
       {editable && valores.length < 30 && (
         <div className="mt-2 flex items-center gap-2">
-          <Plus className="h-3.5 w-3.5 shrink-0 text-col-slate/60" strokeWidth={1.75} aria-hidden />
+          <Plus className="h-3.5 w-3.5 shrink-0 text-col-muted" strokeWidth={1.75} aria-hidden />
           <input
             aria-label={`Sumar a ${titulo}`}
             value={nuevo}
@@ -216,8 +215,8 @@ function ListaTexto({
                 agregar();
               }
             }}
-            placeholder={`${placeholder} y Enter`}
-            className={cn(inputLinea, "px-1 py-2 text-[14px]")}
+            placeholder={`${placeholder} (Enter para sumar)`}
+            className={cn(entrada, "text-col-md")}
           />
         </div>
       )}

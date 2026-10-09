@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { ExperienciaCardVista } from "@/lib/collection/paginas/contenido";
 import { TarjetaExperiencia } from "../tarjetas";
 
-const etiqueta = "text-[13px] font-medium uppercase tracking-[0.12em]";
+const etiqueta = "text-[12px] uppercase tracking-[0.14em]";
 
 export function GraciasConsulta({
   numero,

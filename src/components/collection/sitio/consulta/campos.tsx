@@ -9,7 +9,7 @@ import { defaultCountries, parseCountry, usePhoneInput, type CountryIso2 } from 
 import { ArrowLeft, ArrowRight, Check, ChevronDown, Minus, Plus } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 
-export const etiqueta = "text-[13px] font-medium uppercase tracking-[0.12em]";
+export const etiqueta = "text-[12px] uppercase tracking-[0.14em]";
 
 export type Canal = "whatsapp" | "llamada" | "email";
 export type TipoFecha = "rango" | "mes" | "";
@@ -189,7 +189,7 @@ export const claseInput = (error?: boolean) =>
 export function ErrorCampo({ id, children }: { id?: string; children: React.ReactNode }) {
   return (
     <span id={id} role="alert" className="flex items-start gap-2 text-[13px] leading-5 text-col-alerta">
-      <span aria-hidden className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-col-alerta text-[11px] font-medium leading-none text-white">
+      <span aria-hidden className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-col-alerta text-[11px] font-bold leading-none text-white">
         !
       </span>
       {children}

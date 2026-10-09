@@ -9,26 +9,25 @@ import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ImagePlus, RefreshCw, X } from "lucide-react";
+import { ImagePlus, RefreshCw, X } from "lucide-react";
 import {
   actualizarTestimonio,
   crearTestimonio,
   eliminarTestimonio,
   reordenarTestimonios,
-  type TestimonioItem,
-} from "@/actions/collection/testimonios.actions";
+  type TestimonioItem } from "@/actions/collection/testimonios.actions";
 import type { Resultado } from "@/lib/collection/ejecutar";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
-import { useAviso } from "../shell/Avisos";
-import { EncabezadoPagina, Eyebrow, Interruptor, etiquetaCampo, inputLinea } from "../ui";
+import { useAviso, useDeshacer } from "../shell/Avisos";
+import { EncabezadoPagina, Eyebrow, Interruptor, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { TestimonioSlide } from "../sitio/tarjetas";
 import "../sitio/sitio.css";
-import { Escalado, Hoja, NuevoEnLinea, ZonaEliminar, tonoDe, useGuardadoDiferido } from "../contenido/comun";
+import { AsaTarjeta, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, reponer, tonoDe, useGuardadoDiferido } from "../contenido/comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 /** Largo que todavía se lee cómodo en el slider. */
@@ -48,8 +47,7 @@ const apiReal: ApiTestimonios = {
   crear: crearTestimonio,
   actualizar: actualizarTestimonio,
   reordenar: reordenarTestimonios,
-  eliminar: eliminarTestimonio,
-};
+  eliminar: eliminarTestimonio };
 
 function payload(t: TestimonioItem): Payload {
   return {
@@ -60,22 +58,21 @@ function payload(t: TestimonioItem): Payload {
     fotoId: t.foto?.id ?? null,
     experienciaId: t.experienciaId,
     fecha: t.fecha,
-    publicado: t.publicado,
-  };
+    publicado: t.publicado };
 }
 
 export function Testimonios({
   inicial,
   experiencias,
   api = apiReal,
-  abrirId = null,
-}: {
+  abrirId = null }: {
   inicial: TestimonioItem[] | { error: string };
   experiencias: { id: string; titulo: string }[];
   api?: ApiTestimonios;
   abrirId?: string | null;
 }) {
   const avisar = useAviso();
+  const deshacible = useDeshacer();
   const { puede } = useCollection();
   const editable = puede("sitio.editar");
   const sensores = useSensoresOrden();
@@ -114,21 +111,30 @@ export function Testimonios({
       publicado: false,
       orden: items.length,
       experienciaId: null,
-      fecha: null,
-    };
+      fecha: null };
     setItems((l) => [...l, nuevo]);
     setAbierto(nuevo.id);
     return true;
   };
 
-  const publicar = async (t: TestimonioItem, publicado: boolean) => {
+  const guardarVisible = async (t: TestimonioItem, publicado: boolean) => {
     setItems((l) => l.map((x) => (x.id === t.id ? { ...x, publicado } : x)));
     const r = await api.actualizar(t.id, payload({ ...t, publicado }));
     if (!r.ok) {
       setItems((l) => l.map((x) => (x.id === t.id ? { ...x, publicado: !publicado } : x)));
       avisar(r.error, "error");
+      return false;
     }
+    return true;
   };
+
+  // Publicar u ocultar cambia el sitio al toque: el aviso ofrece volver atrás (acción inversa).
+  const publicar = (t: TestimonioItem, publicado: boolean) =>
+    deshacible({
+      mensaje: `El testimonio de ${t.nombre} ${publicado ? "ya se ve" : "ya no se ve"} en el sitio.`,
+      aplicar: () => guardarVisible(t, publicado),
+      deshacer: () => void guardarVisible({ ...t, publicado }, !publicado),
+    });
 
   const alSoltar = async (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return;
@@ -146,13 +152,25 @@ export function Testimonios({
     }
   };
 
+  // Borrado diferido: sale de la grilla al toque y el servidor se entera
+  // cuando vence el aviso. "Deshacer" lo repone sin llamar a nadie.
   const eliminar = async () => {
     if (!actual) return null;
-    const r = await api.eliminar(actual.id);
-    if (!r.ok) return r.error;
+    const x = actual;
+    const i = items.findIndex((y) => y.id === x.id);
     setAbierto(null);
-    setItems((l) => l.filter((x) => x.id !== actual.id));
-    avisar("Testimonio eliminado.");
+    void deshacible({
+      mensaje: `Eliminaste el testimonio de ${x.nombre}.`,
+      aplicar: () => setItems((l) => l.filter((y) => y.id !== x.id)),
+      deshacer: () => setItems((l) => reponer(l, i, x)),
+      confirmar: async () => {
+        const r = await api.eliminar(x.id);
+        if (!r.ok) {
+          setItems((l) => reponer(l, i, x));
+          avisar(r.error, "error");
+        }
+      },
+    });
     return null;
   };
 
@@ -162,20 +180,19 @@ export function Testimonios({
   return (
     <div className="mx-auto max-w-[1600px]">
       <EncabezadoPagina
-        eyebrow="Testimonios"
         titulo="Historias de viajeros"
         descripcion={`${items.length} ${items.length === 1 ? "testimonio" : "testimonios"} · ${publicados} en el sitio`}
         acciones={editable && <NuevoEnLinea etiqueta="Nuevo testimonio" placeholder="Quiénes viajaron" onCrear={crear} />}
       />
 
       {error && (
-        <p role="alert" className="mb-6 text-[14px] text-col-alerta">
+        <p role="alert" className="mb-6 text-col-md text-col-alerta">
           {error}
         </p>
       )}
 
       {items.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-[28px] italic text-col-slate">
+        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
           Todavía no hay testimonios. Cargá el primero.
         </p>
       ) : (
@@ -200,7 +217,7 @@ export function Testimonios({
         </DndContext>
       )}
       {editable && items.length > 1 && (
-        <p className="mt-12 text-center text-[13px] text-col-slate/70">Arrastrá las tarjetas para cambiar el orden del slider.</p>
+        <p className="mt-12 text-center text-col-sm text-col-muted">Arrastrá las tarjetas para cambiar el orden del slider.</p>
       )}
 
       <Hoja abierta={!!actual} titulo={actual?.nombre || "Testimonio"} estado={guardado.estado} onCerrar={cerrar}>
@@ -233,8 +250,7 @@ function Tarjeta({
   experiencia,
   editable,
   onAbrir,
-  onPublicar,
-}: {
+  onPublicar }: {
   t: TestimonioItem;
   i: number;
   experiencia: string | null;
@@ -242,7 +258,8 @@ function Tarjeta({
   onAbrir: () => void;
   onPublicar: (v: boolean) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: t.id, disabled: !editable });
+  const orden = useSortable({ id: t.id, disabled: !editable });
+  const { setNodeRef, transform, transition, isDragging } = orden;
   return (
     <motion.li
       ref={setNodeRef}
@@ -252,45 +269,42 @@ function Tarjeta({
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.5, ease: EASE, delay: Math.min(i, 10) * 0.03 }}
       style={{ transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 20 : undefined }}
-      className="group relative flex flex-col rounded-sm border border-col-line bg-col-surface transition-shadow duration-300 ease-col hover:shadow-[0_18px_40px_-28px_rgba(50,55,59,0.5)]"
+      className="group relative flex flex-col rounded-col-sm border border-col-line bg-col-surface transition-shadow duration-col-lento ease-col hover:shadow-col-2"
     >
       <button
         type="button"
         onClick={onAbrir}
-        {...(editable ? { ...attributes, ...listeners } : {})}
         aria-label={`Editar el testimonio de ${t.nombre}`}
-        className={cn(
-          "grid flex-1 grid-cols-[112px_minmax(0,1fr)] gap-6 p-5 text-left",
-          editable && "cursor-grab active:cursor-grabbing",
-        )}
+        className="grid flex-1 grid-cols-[112px_minmax(0,1fr)] gap-6 rounded-col-sm p-5 text-left"
       >
-        <div className={cn("relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line", !t.publicado && "grayscale-[0.6]")}>
+        <div className={cn("relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line", !t.publicado && "grayscale-[0.6]")}>
           <Foto t={t} sizes="112px" />
         </div>
         <div className="flex min-w-0 flex-col gap-3">
-          <span aria-hidden className="h-6 font-col-display text-[64px] font-light leading-[0.75] text-col-slate/70">
+          <span aria-hidden className="h-6 font-col-display text-col-display-lg font-light leading-[0.75] text-col-muted">
             “
           </span>
           <p
             className={cn(
-              "line-clamp-4 font-col-display text-[21px] leading-[1.3]",
-              t.cita ? "text-col-ink" : "italic text-col-slate/50",
+              "line-clamp-4 font-col-display text-col-xl leading-[1.3]",
+              t.cita ? "text-col-ink" : "italic text-col-subtle",
             )}
           >
             {t.cita || "Todavía sin cita."}
           </p>
           <div className="mt-auto flex flex-col gap-1 pt-1">
-            <span className="flex items-center gap-3 text-[12px] uppercase tracking-[0.12em] text-col-ink">
+            <span className="flex items-center gap-3 text-col-xs uppercase tracking-[0.14em] text-col-ink">
               <span aria-hidden className="h-px w-6 shrink-0 bg-col-gold" />
               <span className="truncate">{[t.nombre, t.lugar].filter(Boolean).join(" · ")}</span>
             </span>
-            {t.viaje && <span className="pl-9 text-[13px] text-col-slate">{t.viaje}</span>}
+            {t.viaje && <span className="pl-9 text-col-sm text-col-slate">{t.viaje}</span>}
           </div>
         </div>
       </button>
+      {editable && <AsaTarjeta nombre={`el testimonio de ${t.nombre}`} orden={orden} />}
       <div className="flex items-center justify-between gap-3 border-t border-col-line px-5 py-3">
-        <span className="min-w-0 truncate text-[12px] text-col-slate">{experiencia ?? "Sin experiencia relacionada"}</span>
-        <label className="flex shrink-0 items-center gap-2 text-[12px] text-col-slate">
+        <span className="min-w-0 truncate text-col-xs text-col-slate">{experiencia ? `Viaje: ${experiencia}` : "Sin viaje relacionado"}</span>
+        <label className="flex shrink-0 items-center gap-2 text-col-xs text-col-slate">
           {t.publicado ? "Publicado" : "Oculto"}
           <Interruptor checked={t.publicado} onCheckedChange={onPublicar} disabled={!editable} label={`Publicar el testimonio de ${t.nombre}`} />
         </label>
@@ -305,8 +319,7 @@ function EditorTestimonio({
   editable,
   error,
   cambiar,
-  onEliminar,
-}: {
+  onEliminar }: {
   t: TestimonioItem;
   experiencias: { id: string; titulo: string }[];
   editable: boolean;
@@ -326,7 +339,7 @@ function EditorTestimonio({
       <div className="bg-col-base px-6 py-7">
         <div className="mb-4 flex items-baseline justify-between gap-4">
           <Eyebrow>Vista previa</Eyebrow>
-          <span className="text-[12px] text-col-slate">
+          <span className="text-col-xs text-col-slate">
             {t.publicado ? "Así sale en el slider de testimonios" : "Oculto: no sale en el sitio"}
           </span>
         </div>
@@ -338,11 +351,11 @@ function EditorTestimonio({
           </div>
         </Escalado>
         {error && (
-          <p role="alert" className="mt-3 text-[13px] text-col-alerta">
+          <p role="alert" className="mt-3 text-col-sm text-col-alerta">
             {error}
           </p>
         )}
-        {ro && <p className="mt-3 text-[13px] text-col-slate">Solo lectura: te falta el permiso para editar el sitio.</p>}
+        {ro && <p className="mt-3 text-col-sm text-col-slate">Solo lectura: te falta el permiso para editar el sitio.</p>}
       </div>
 
       <div className="flex flex-col gap-9 px-6 py-8">
@@ -357,7 +370,7 @@ function EditorTestimonio({
                 disabled={ro}
                 placeholder="Carolina y Martín"
                 onChange={(e) => cambiar({ nombre: e.target.value })}
-                className={cn(inputLinea, "font-col-display text-[26px]")}
+                className={cn(entradaTitulo, "text-col-2xl leading-tight")}
               />
             </Campo>
             <Campo etiqueta="De dónde son" htmlFor="t-lugar">
@@ -368,7 +381,7 @@ function EditorTestimonio({
                 disabled={ro}
                 placeholder="Montevideo"
                 onChange={(e) => cambiar({ lugar: e.target.value })}
-                className={inputLinea}
+                className={entrada}
               />
             </Campo>
           </div>
@@ -382,7 +395,7 @@ function EditorTestimonio({
             disabled={ro}
             placeholder="Filipinas, enero 2026"
             onChange={(e) => cambiar({ viaje: e.target.value })}
-            className={inputLinea}
+            className={entrada}
           />
         </Campo>
 
@@ -404,7 +417,7 @@ function EditorTestimonio({
             disabled={ro}
             placeholder="Volvimos con la sensación de haber tenido el mar para nosotros solos."
             onChange={(e) => cambiar({ cita: e.target.value })}
-            className={cn(inputLinea, "resize-none font-col-display text-[21px] leading-[1.4]")}
+            className={cn(entradaArea, "font-col-display text-col-xl leading-[1.4]")}
           />
         </Campo>
 
@@ -416,7 +429,7 @@ function EditorTestimonio({
                 value={t.experienciaId ?? ""}
                 disabled={ro}
                 onChange={(e) => cambiar({ experienciaId: e.target.value || null })}
-                className={cn(inputLinea, "cursor-pointer appearance-none truncate bg-none pr-6")}
+                className={entradaSelect}
               >
                 <option value="">Ninguna</option>
                 {opciones.map((e) => (
@@ -425,7 +438,6 @@ function EditorTestimonio({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} aria-hidden />
             </div>
           </Campo>
           <Campo etiqueta="Fecha" htmlFor="t-fecha">
@@ -435,21 +447,21 @@ function EditorTestimonio({
               value={t.fecha?.slice(0, 10) ?? ""}
               disabled={ro}
               onChange={(e) => cambiar({ fecha: e.target.value || null })}
-              className={inputLinea}
+              className={entrada}
             />
           </Campo>
         </div>
 
         <div className="flex items-center justify-between gap-4 border-t border-col-line pt-8">
           <div>
-            <p className="text-[15px] text-col-ink">Publicado</p>
-            <p className="mt-1 text-[13px] text-col-slate">Apagado, no aparece en el slider del sitio.</p>
+            <p className="text-col-cuerpo text-col-ink">Publicado</p>
+            <p className="mt-1 text-col-sm text-col-slate">Apagado, no aparece en el slider del sitio.</p>
           </div>
           <Interruptor checked={t.publicado} onCheckedChange={(v) => cambiar({ publicado: v })} disabled={ro} label="Publicado" />
         </div>
 
         {editable && (
-          <ZonaEliminar texto={`¿Eliminar el testimonio de ${t.nombre || "este viajero"}? No se puede deshacer.`} onEliminar={onEliminar} />
+          <ZonaEliminar texto={`¿Eliminar el testimonio de ${t.nombre || "este viajero"}? Vas a tener unos segundos para deshacerlo.`} onEliminar={onEliminar} />
         )}
       </div>
     </>
@@ -459,8 +471,7 @@ function EditorTestimonio({
 function CampoFoto({
   t,
   editable,
-  onCambio,
-}: {
+  onCambio }: {
   t: TestimonioItem;
   editable: boolean;
   onCambio: (m: MedioVista | null) => void;
@@ -470,15 +481,15 @@ function CampoFoto({
     <div className="flex flex-col gap-2">
       <span className={etiquetaCampo}>Foto</span>
       {t.foto ? (
-        <div className="group relative aspect-[4/5] overflow-hidden rounded-sm">
+        <div className="group relative aspect-[4/5] overflow-hidden rounded-col-sm">
           <Foto t={t} sizes="160px" />
           {editable && (
-            <div className="absolute inset-x-1.5 bottom-1.5 flex justify-end gap-1.5 opacity-0 transition-opacity duration-200 ease-col focus-within:opacity-100 group-hover:opacity-100">
+            <div className="absolute inset-x-1.5 bottom-1.5 flex justify-end gap-1.5 opacity-0 transition-opacity duration-col ease-col focus-within:opacity-100 group-hover:opacity-100">
               <button
                 type="button"
                 aria-label="Cambiar foto"
                 onClick={() => setAbierto(true)}
-                className="flex h-8 w-8 items-center justify-center rounded-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-col-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
               >
                 <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
@@ -486,7 +497,7 @@ function CampoFoto({
                 type="button"
                 aria-label="Quitar foto"
                 onClick={() => onCambio(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
+                className="flex h-8 w-8 items-center justify-center rounded-col-sm bg-col-ink/70 text-col-base backdrop-blur-sm hover:bg-col-ink"
               >
                 <X className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
@@ -498,13 +509,13 @@ function CampoFoto({
           type="button"
           disabled={!editable}
           onClick={() => setAbierto(true)}
-          className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 bg-col-base text-col-slate transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
+          className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-2 rounded-col-sm border border-dashed border-col-slate/30 bg-col-base text-col-slate transition-colors duration-col ease-col hover:border-col-gold hover:text-col-ink disabled:pointer-events-none"
         >
           <ImagePlus className="h-5 w-5 text-col-gold" strokeWidth={1.4} aria-hidden />
-          <span className="text-[11px] uppercase tracking-[0.14em]">Elegir</span>
+          <span className="text-col-sm font-medium">Elegir</span>
         </button>
       )}
-      <p className="text-[12px] leading-snug text-col-slate/80">Del viaje, no un retrato a cámara.</p>
+      <p className="text-col-xs leading-snug text-col-muted">Del viaje, no un retrato a cámara.</p>
       <SelectorMedios
         abierto={abierto}
         onCerrar={() => setAbierto(false)}

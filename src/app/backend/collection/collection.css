@@ -6,9 +6,22 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Un solo foco para botones, links, tarjetas e interruptores: dorado oscuro
+   (#A8722A, col-foco), 3:1 o más sobre base, blanco y azul noche. */
 [data-collection-shell] :focus-visible {
-  outline: 2px solid #f4b860;
+  outline: 2px solid #a8722a;
   outline-offset: 2px;
+}
+
+/* Los campos no llevan el contorno: dibujan su propio borde y halo (ver
+   `entrada` en ui.tsx). Así el texto nunca queda pegado a una caja ajena. */
+[data-collection-shell] :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable="true"]):focus-visible {
+  outline: none;
+}
+
+/* Cifras y códigos con números modernos, también en Cormorant. */
+[data-collection-shell] {
+  font-variant-numeric: lining-nums;
 }
 
 [data-collection-shell] ::selection {
@@ -20,10 +33,30 @@
   100% { background-position: -200% 0; }
 }
 
+/* Esqueleto: brillo suave y lento, sin parpadeo. */
 [data-collection-shell] .col-skeleton {
-  background: linear-gradient(90deg, #e6e6e6 0%, #eeeeee 50%, #e6e6e6 100%);
-  background-size: 200% 100%;
-  animation: col-brillo 1.6s ease-in-out infinite;
+  background: linear-gradient(100deg, #e7e7e7 30%, #f1f1f1 50%, #e7e7e7 70%);
+  background-size: 220% 100%;
+  animation: col-brillo 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Piezas con foco propio (campos y paneles que reciben el foco al abrir). */
+[data-collection-shell] .col-anillo:focus-visible {
+  outline: none;
+}
+
+/* Flecha de los select nativos con caja (entradaSelect). */
+[data-collection-shell] .col-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234A5859' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px 16px;
+}
+
+/* Entrada de menús, globos y desplegables. */
+@keyframes col-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

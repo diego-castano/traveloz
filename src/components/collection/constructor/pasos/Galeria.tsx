@@ -5,7 +5,7 @@
 // el video a sangre aparte.
 
 import { useCallback, useMemo, useState } from "react";
-import { Film, ImagePlus, Upload, X } from "lucide-react";
+import { Check, Film, ImagePlus, Upload, X } from "lucide-react";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import type { ColMedioDto } from "@/actions/collection/medios.actions";
 import { cn } from "@/components/lib/cn";
@@ -14,7 +14,7 @@ import { Boton } from "../../ui";
 import { MedioFantasma } from "../../sitio/medios";
 import { SelectorMedios } from "../../pickers/SelectorMedios";
 import { useSubidas } from "../../biblioteca/useSubidas";
-import { Campo, Contador, Grupo, ListaOrdenable, Miniatura, SlotMedio, inputLinea } from "../campos";
+import { Campo, Contador, Grupo, ListaOrdenable, Miniatura, SlotMedio, entrada } from "../campos";
 import { useConstructor } from "../contexto";
 
 const MAX = 60;
@@ -36,8 +36,7 @@ const vistaDeDto = (m: ColMedioDto): MedioVista => ({
   focoX: m.focoX,
   focoY: m.focoY,
   posterUrl: m.posterUrl,
-  duracion: m.duracion,
-});
+  duracion: m.duracion });
 
 export function PasoGaleria() {
   const { borrador, setContenido, mapas, agregarMedios, api, editable } = useConstructor();
@@ -69,8 +68,7 @@ export function PasoGaleria() {
   const items = galeria.map((r) => ({ ...r, id: r.medioId }));
   const cambiarLeyenda = (id: string, leyenda: string) =>
     setContenido((k) => ({
-      galeria: k.galeria.map((r) => (r.medioId === id ? { ...r, leyenda: leyenda || undefined } : r)),
-    }));
+      galeria: k.galeria.map((r) => (r.medioId === id ? { ...r, leyenda: leyenda || undefined } : r)) }));
 
   return (
     <div className="flex flex-col gap-12">
@@ -91,21 +89,22 @@ export function PasoGaleria() {
           if (files.length) agregar(files.slice(0, MAX - galeria.length));
         }}
         className={cn(
-          "relative -m-3 rounded p-3 transition-colors duration-200 ease-col",
+          "relative -m-3 rounded-col p-3 transition-colors duration-col ease-col",
           encima && "bg-col-gold/10 outline-dashed outline-1 outline-col-gold",
         )}
       >
         <div className="mb-5 flex items-end gap-4">
           <div className="min-w-0">
-            <p
-              className={cn(
-                "whitespace-nowrap font-col-display text-[26px] tabular-nums lining-nums leading-none",
-                galeria.length >= MINIMO ? "text-[#B07A2A]" : "text-col-ink",
-              )}
-            >
-              {galeria.length} de {MINIMO} mínimo
+            <p className="flex items-baseline gap-3 whitespace-nowrap">
+              <span className="font-col-display text-col-2xl tabular-nums leading-none text-col-ink">
+                {galeria.length} {galeria.length === 1 ? "foto" : "fotos"}
+              </span>
+              <span className={cn("flex items-center gap-1 text-col-sm", galeria.length >= MINIMO ? "text-col-ok" : "text-col-muted")}>
+                · mínimo {MINIMO}
+                {galeria.length >= MINIMO && <Check className="h-3.5 w-3.5" strokeWidth={2} aria-label="cumplido" />}
+              </span>
             </p>
-            <p className="mt-1.5 text-[13px] text-col-slate">
+            <p className="mt-1.5 text-col-sm text-col-slate">
               {puedeSubir ? "Arrastrá para ordenar. Soltá archivos acá para subirlos." : "Arrastrá para ordenar."}
             </p>
           </div>
@@ -128,15 +127,15 @@ export function PasoGaleria() {
               <span
                 key={i}
                 className={cn(
-                  "flex aspect-[4/5] items-center justify-center rounded-sm border border-dashed border-col-slate/25 bg-col-surface",
+                  "flex aspect-[4/5] items-center justify-center rounded-col-sm border border-dashed border-col-slate/25 bg-col-surface",
                   i === 0 && "col-span-2 row-span-2 aspect-auto",
                 )}
               >
                 {i === 0 && (
                   <span className="flex flex-col items-center gap-3 px-6 text-center">
                     <ImagePlus className="h-7 w-7 text-col-gold" strokeWidth={1.2} />
-                    <span className="font-col-display text-[26px] leading-tight text-col-ink">Seis fotos, como mínimo</span>
-                    <span className="text-[13px] text-col-slate">Elegí de la biblioteca o soltá archivos acá.</span>
+                    <span className="font-col-display text-col-2xl leading-tight text-col-ink">Seis fotos, como mínimo</span>
+                    <span className="text-col-sm text-col-slate">Elegí de la biblioteca o soltá archivos acá.</span>
                   </span>
                 )}
               </span>
@@ -157,8 +156,8 @@ export function PasoGaleria() {
                     {...asa.props}
                     aria-label={`Mover foto ${i + 1}`}
                     className={cn(
-                      "relative cursor-grab touch-none overflow-hidden rounded-sm active:cursor-grabbing",
-                      asa.arrastrando && "shadow-[0_24px_48px_-20px_rgba(50,55,59,0.55)]",
+                      "relative cursor-grab touch-none overflow-hidden rounded-col-sm active:cursor-grabbing",
+                      asa.arrastrando && "shadow-col-2",
                     )}
                   >
                     {m ? (
@@ -166,7 +165,7 @@ export function PasoGaleria() {
                     ) : (
                       <MedioFantasma aspecto={4 / 5} texto="No encontrada" />
                     )}
-                    <span className="absolute left-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-sm bg-col-ink/70 px-1.5 text-[11px] tabular-nums lining-nums text-col-base backdrop-blur-sm">
+                    <span className="absolute left-2 top-2 flex h-6 min-w-6 items-center justify-center rounded-col-sm bg-col-ink/70 px-1.5 text-col-xs tabular-nums lining-nums text-col-base backdrop-blur-sm">
                       {i + 1}
                     </span>
                     {editable && (
@@ -175,7 +174,7 @@ export function PasoGaleria() {
                         aria-label={`Quitar foto ${i + 1}`}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => setContenido((k) => ({ galeria: k.galeria.filter((x) => x.medioId !== r.medioId) }))}
-                        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-sm bg-col-ink/70 text-col-base opacity-0 backdrop-blur-sm transition-opacity hover:bg-col-ink focus:opacity-100 group-hover:opacity-100"
+                        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-col-sm bg-col-ink/70 text-col-base opacity-0 backdrop-blur-sm transition-opacity hover:bg-col-ink focus:opacity-100 group-hover:opacity-100"
                       >
                         <X className="h-3.5 w-3.5" strokeWidth={1.75} />
                       </button>
@@ -188,7 +187,7 @@ export function PasoGaleria() {
                       maxLength={300}
                       onChange={(e) => cambiarLeyenda(r.medioId, e.target.value)}
                       placeholder={m?.leyenda || "Leyenda"}
-                      className={cn(inputLinea, "border-transparent py-1 text-[13px] hover:border-col-slate/30")}
+                      className={cn(entrada, "min-h-9 border-transparent bg-transparent px-2 py-1 text-col-sm hover:border-col-line focus:bg-col-surface")}
                     />
                   </figcaption>
                 </figure>
@@ -199,17 +198,17 @@ export function PasoGaleria() {
         {enCurso.length > 0 && (
           <ul className="mt-4 grid grid-cols-3 gap-3" aria-label="Subiendo">
             {enCurso.map((s) => (
-              <li key={s.id} className="relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line">
+              <li key={s.id} className="relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line">
                 {s.preview && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={s.preview} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
                 )}
-                <span className="absolute inset-x-3 bottom-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.12em] text-col-ink">
+                <span className="absolute inset-x-3 bottom-3 flex items-center gap-2 text-col-sm text-col-ink">
                   <Upload className="h-3.5 w-3.5" strokeWidth={1.5} />
                   {s.estado === "procesando" ? "Procesando" : `${s.progreso}%`}
                 </span>
                 <span className="absolute inset-x-0 bottom-0 h-1 bg-col-ink/15">
-                  <span className="block h-full bg-col-gold transition-[width] duration-300" style={{ width: `${s.progreso}%` }} />
+                  <span className="block h-full bg-col-gold transition-[width] duration-col-lento" style={{ width: `${s.progreso}%` }} />
                 </span>
               </li>
             ))}
@@ -234,7 +233,7 @@ export function PasoGaleria() {
             ayuda={video ? undefined : "Elegí primero el video."}
           >
             <div className="relative">
-              <Film className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate/60" strokeWidth={1.5} />
+              <Film className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-col-muted" strokeWidth={1.5} />
               <input
                 id="video-titulo"
                 disabled={!video}
@@ -242,7 +241,7 @@ export function PasoGaleria() {
                 maxLength={160}
                 onChange={(e) => setContenido((k) => ({ video: k.video ? { ...k.video, titulo: e.target.value } : null }))}
                 placeholder="Bacuit, un día en el agua"
-                className={cn(inputLinea, "pl-6 font-col-display text-[20px]")}
+                className={cn(entrada, "pl-10 font-col-display text-col-xl")}
               />
             </div>
           </Campo>

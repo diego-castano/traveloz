@@ -3,30 +3,23 @@
 // Textos y piezas chicas que comparten el constructor y la grilla de experiencias.
 
 import type { EstadoExperiencia } from "@/lib/collection/experiencia/contenido";
-import { cn } from "@/components/lib/cn";
+import { Estado, type TonoEstado } from "../ui";
 import type { EventoHistorial } from "./contexto";
 
-export const ESTADOS: Record<EstadoExperiencia, { label: string; clase: string; punto: string }> = {
-  BORRADOR: { label: "Borrador", clase: "border-col-line text-col-slate bg-col-surface", punto: "bg-col-slate/40" },
-  EN_REVISION: { label: "En revisión", clase: "border-col-gold/60 text-col-ink bg-col-gold/15", punto: "bg-col-gold" },
-  PUBLICADA: { label: "Publicada", clase: "border-col-ink bg-col-ink text-col-base", punto: "bg-col-gold" },
-  PAUSADA: { label: "Pausada", clase: "border-col-slate/40 text-col-slate bg-col-base", punto: "bg-col-slate" },
-  ARCHIVADA: { label: "Archivada", clase: "border-col-line text-col-slate/70 bg-transparent", punto: "bg-col-line" },
+export const ESTADOS: Record<EstadoExperiencia, { label: string; tono: TonoEstado }> = {
+  BORRADOR: { label: "Borrador", tono: "neutro" },
+  EN_REVISION: { label: "En revisión", tono: "info" },
+  PUBLICADA: { label: "Publicada", tono: "ok" },
+  PAUSADA: { label: "Pausada", tono: "aviso" },
+  ARCHIVADA: { label: "Archivada", tono: "neutro" },
 };
 
 export function EstadoPill({ estado, className }: { estado: EstadoExperiencia; className?: string }) {
   const e = ESTADOS[estado];
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-sm border px-2 text-[10.5px] uppercase tracking-[0.14em]",
-        e.clase,
-        className,
-      )}
-    >
-      <span aria-hidden className={cn("h-1.5 w-1.5 rounded-full", e.punto)} />
+    <Estado tono={e.tono} className={className}>
       {e.label}
-    </span>
+    </Estado>
   );
 }
 
@@ -62,15 +55,15 @@ export function haceTiempo(fecha: string | number, ahora = Date.now()) {
 export const fmtMiles = (n: number) => new Intl.NumberFormat("es-UY", { maximumFractionDigits: 0 }).format(n);
 
 export function ListaHistorial({ historial }: { historial: EventoHistorial[] }) {
-  if (!historial.length) return <p className="px-3 py-4 text-[13px] text-col-slate">Todavía no hay movimientos.</p>;
+  if (!historial.length) return <p className="px-3 py-4 text-col-sm text-col-slate">Todavía no hay movimientos.</p>;
   return (
     <ol className="flex flex-col">
       {historial.map((h) => (
-        <li key={h.id} className="flex gap-3 rounded-sm px-3 py-2.5">
+        <li key={h.id} className="flex gap-3 rounded-col-sm px-3 py-2.5">
           <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-col-gold/70" />
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] text-col-ink">{textoAccion(h.accion)}</span>
-            <span className="block text-[12px] text-col-slate">
+            <span className="block text-col-sm text-col-ink">{textoAccion(h.accion)}</span>
+            <span className="block text-col-xs text-col-slate">
               {h.userNombre ?? "Alguien del equipo"}, {haceTiempo(h.createdAt)}
             </span>
           </span>

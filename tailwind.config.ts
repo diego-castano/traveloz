@@ -85,6 +85,17 @@ const config: Config = {
           noche: "#04071F",
           "noche-2": "#0E1436",
           "noche-linea": "rgba(255,255,255,0.08)",
+          // Texto secundario y terciario sólidos: los dos pasan AA (4.5:1)
+          // sobre base y sobre blanco. Nada de grises por opacidad en texto.
+          muted: "#5A6667",
+          subtle: "#636E6F",
+          // Estados. El dorado queda solo como acento de marca.
+          ok: "#3F6B4F",
+          aviso: "#8A5D17",
+          error: "#9E3D2F",
+          info: "#2C4A6E",
+          // Anillo de foco: 3:1 o más sobre base, blanco y azul noche.
+          foco: "#A8722A",
         },
       },
       spacing: {
@@ -97,6 +108,17 @@ const config: Config = {
         row: ["13.5px", { lineHeight: "20px" }],
         // Monospace metadata
         meta: ["12px", { lineHeight: "16px" }],
+        // Escala de Collection. Prohibido text-[Npx] en components/collection.
+        "col-xs": ["12px", { lineHeight: "16px" }],
+        "col-sm": ["13px", { lineHeight: "18px" }],
+        "col-md": ["14px", { lineHeight: "20px" }],
+        "col-cuerpo": ["15px", { lineHeight: "24px" }],
+        "col-lg": ["17px", { lineHeight: "26px" }],
+        "col-xl": ["22px", { lineHeight: "28px" }],
+        "col-2xl": ["28px", { lineHeight: "34px" }],
+        "col-3xl": ["34px", { lineHeight: "40px" }],
+        "col-display": ["44px", { lineHeight: "48px" }],
+        "col-display-lg": ["56px", { lineHeight: "60px" }],
       },
       fontFamily: {
         display: ["Playfair Display", "Georgia", "serif"],
@@ -108,6 +130,11 @@ const config: Config = {
       transitionTimingFunction: {
         col: "cubic-bezier(0.22, 1, 0.36, 1)",
       },
+      transitionDuration: {
+        "col-rapido": "150ms",
+        col: "200ms",
+        "col-lento": "320ms",
+      },
       backdropBlur: {
         glass: "20px",
         "glass-lg": "30px",
@@ -115,6 +142,12 @@ const config: Config = {
         "glass-xl": "40px",
       },
       boxShadow: {
+        // Elevaciones de Collection, tintadas con azul noche.
+        "col-1": "0 1px 2px rgba(4,7,31,0.08)",
+        "col-2": "0 18px 40px -22px rgba(4,7,31,0.38)",
+        "col-3": "0 28px 64px -28px rgba(4,7,31,0.5)",
+        // Halo dorado de los campos enfocados (va con el borde tinta).
+        "col-anillo": "0 0 0 3px rgba(244,184,96,0.3)",
         glass:
           "0 8px 32px rgba(26,26,46,0.06), 0 1px 3px rgba(26,26,46,0.04), inset 0 1px 0 rgba(255,255,255,0.5)",
         "glass-hover":
@@ -142,6 +175,9 @@ const config: Config = {
           "0 32px 64px -12px rgba(26,26,46,0.15), 0 12px 24px -8px rgba(26,26,46,0.08)",
       },
       borderRadius: {
+        "col-sm": "4px",
+        col: "6px",
+        "col-lg": "10px",
         glass: "16px",
         "glass-sm": "12px",
         "glass-lg": "20px",

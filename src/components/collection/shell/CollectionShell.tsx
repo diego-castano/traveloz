@@ -102,7 +102,7 @@ export function CollectionShell({
               {/* Riel de escritorio */}
               <motion.aside
                 initial={false}
-                animate={{ width: plegado ? 76 : 256 }}
+                animate={{ width: plegado ? 64 : 216 }}
                 transition={quieto ? { duration: 0 } : RESORTE}
                 className="sticky top-0 z-40 hidden h-screen shrink-0 flex-col overflow-hidden bg-col-noche text-white lg:flex"
               >
@@ -140,7 +140,7 @@ export function CollectionShell({
                       </Dialog.Overlay>
                       <Dialog.Content asChild forceMount>
                         <motion.div
-                          className="fixed inset-y-0 left-0 z-50 flex w-[288px] max-w-[85vw] flex-col overflow-hidden bg-col-noche text-white shadow-[24px_0_60px_-24px_rgba(4,7,31,0.6)] focus:outline-none lg:hidden"
+                          className="fixed inset-y-0 left-0 z-50 flex w-[248px] max-w-[85vw] flex-col overflow-hidden bg-col-noche text-white shadow-col-3 focus:outline-none lg:hidden"
                           initial={{ x: "-100%" }}
                           animate={{ x: 0 }}
                           exit={{ x: "-100%" }}
@@ -160,7 +160,7 @@ export function CollectionShell({
                             pie={
                               <Dialog.Close
                                 aria-label="Cerrar menú"
-                                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-white/60 transition-colors duration-200 ease-col hover:bg-col-noche-2 hover:text-white"
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-col-sm text-white/60 transition-colors duration-col ease-col hover:bg-col-noche-2 hover:text-white"
                               >
                                 <X className="h-[18px] w-[18px]" strokeWidth={1.5} />
                               </Dialog.Close>
@@ -179,12 +179,12 @@ export function CollectionShell({
                     type="button"
                     onClick={() => setMenuMovil(true)}
                     aria-label="Abrir menú"
-                    className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-col-slate transition-colors duration-200 ease-col hover:text-col-ink lg:hidden"
+                    className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-col-sm text-col-slate transition-colors duration-col ease-col hover:text-col-ink lg:hidden"
                   >
                     <Menu className="h-5 w-5" strokeWidth={1.5} />
                   </button>
-                  <p className="flex min-w-0 flex-1 items-center gap-2 text-[12px] uppercase tracking-[0.16em] text-col-slate">
-                    <Link href="/backend/collection" className="hidden shrink-0 transition-colors duration-200 ease-col hover:text-col-ink sm:inline">
+                  <p className="flex min-w-0 flex-1 items-center gap-2 text-col-sm text-col-slate">
+                    <Link href="/backend/collection" className="hidden shrink-0 transition-colors duration-col ease-col hover:text-col-ink sm:inline">
                       Collection
                     </Link>
                     {activo && activo.id !== "inicio" && (
@@ -200,16 +200,16 @@ export function CollectionShell({
                     aria-label="Buscar o ir a un módulo"
                     aria-keyshortcuts="Meta+K Control+K"
                     title="Buscar o ir a… (⌘K)"
-                    className="group flex h-10 shrink-0 items-center gap-2.5 rounded-sm border border-col-line bg-col-surface px-2.5 text-[13px] text-col-slate transition-[border-color,color,box-shadow] duration-200 ease-col hover:border-col-slate/40 hover:text-col-ink hover:shadow-[0_8px_20px_-14px_rgba(50,55,59,0.5)] xl:w-64 xl:px-3"
+                    className="group flex h-10 shrink-0 items-center gap-2.5 rounded-col-sm border border-col-line bg-col-surface px-2.5 text-col-sm text-col-slate transition-[border-color,color,box-shadow] duration-col ease-col hover:border-col-slate/40 hover:text-col-ink hover:shadow-col-2 xl:w-64 xl:px-3"
                   >
                     <Search className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                     <span className="hidden flex-1 text-left xl:inline">Ir a…</span>
-                    <kbd className="hidden rounded-sm border border-col-line px-1.5 py-0.5 font-col-text text-[11px] text-col-slate md:inline">
+                    <kbd className="hidden rounded-col-sm border border-col-line px-1.5 py-0.5 font-col-text text-col-xs text-col-slate md:inline">
                       ⌘K
                     </kbd>
                   </button>
                 </header>
-                <main className={cn("min-w-0 flex-1", !enConstructor && "px-4 pb-24 pt-8 md:px-8 lg:px-12 lg:pt-10")}>
+                <main className={cn("min-w-0 flex-1", !enConstructor && "px-4 pb-24 pt-6 md:px-8 lg:px-12")}>
                   <motion.div
                     key={pathname}
                     initial={{ opacity: 0, y: 10 }}
@@ -278,7 +278,7 @@ function Riel({
       <Link
         href="/backend/collection"
         aria-label="Traveloz Collection, inicio"
-        className={cn("flex h-[104px] shrink-0 items-center", plegado ? "justify-center" : "px-7")}
+        className={cn("flex h-[76px] shrink-0 items-center", plegado ? "justify-center" : "px-5")}
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
@@ -313,18 +313,18 @@ function Navegacion({
 }) {
   let n = 0;
   return (
-    <nav aria-label="Módulos de Collection" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4">
+    <nav aria-label="Módulos de Collection" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2.5 pb-3">
       {GRUPOS_NAV.map((g, i) => {
         const modulos = g.modulos.filter(visibles);
         if (modulos.length === 0) return null;
         return (
-          <div key={i} className={cn(i > 0 && "mt-7")}>
+          <div key={i} className={cn(i > 0 && "mt-5")}>
             {g.titulo && (
-              <div className="mb-2 flex h-4 items-center px-3">
+              <div className="mb-1.5 flex h-4 items-center px-2.5">
                 {plegado ? (
                   <span aria-hidden className="mx-auto h-px w-6 bg-col-noche-linea" />
                 ) : (
-                  <Etiqueta className="whitespace-nowrap text-[11px] uppercase tracking-[0.16em] text-white/40">{g.titulo}</Etiqueta>
+                  <Etiqueta className="whitespace-nowrap text-col-xs uppercase tracking-[0.16em] text-white/60">{g.titulo}</Etiqueta>
                 )}
               </div>
             )}
@@ -371,7 +371,7 @@ function ConGlobo({ texto, activo, children }: { texto: string; activo: boolean;
         <Tooltip.Content
           side="right"
           sideOffset={12}
-          className="z-[80] rounded-sm bg-col-noche px-3 py-1.5 font-col-text text-[12px] uppercase tracking-[0.12em] text-white shadow-[0_12px_28px_-12px_rgba(4,7,31,0.7)] ring-1 ring-col-noche-linea"
+          className="z-[80] rounded-col-sm bg-col-noche px-3 py-1.5 font-col-text text-col-sm text-white shadow-col-3 ring-1 ring-col-noche-linea"
         >
           {texto}
         </Tooltip.Content>
@@ -395,12 +395,12 @@ function ItemNav({
 }) {
   const Icono = m.icono;
   const base = cn(
-    "group relative flex h-10 items-center gap-3 rounded-sm text-[14px] transition-colors duration-200 ease-col",
-    plegado ? "justify-center px-0" : "px-3",
+    "group relative flex h-9 items-center gap-2.5 rounded-col-sm text-col-md transition-colors duration-col ease-col",
+    plegado ? "justify-center px-0" : "px-2.5",
   );
   const icono = (
     <Icono
-      className="relative h-[18px] w-[18px] shrink-0 transition-transform duration-200 ease-col group-hover:translate-x-0.5"
+      className="relative h-[18px] w-[18px] shrink-0 transition-transform duration-col ease-col group-hover:translate-x-0.5"
       strokeWidth={1.5}
       aria-hidden
     />
@@ -415,7 +415,7 @@ function ItemNav({
           ) : (
             <>
               <Etiqueta className="flex-1 whitespace-nowrap">{m.label}</Etiqueta>
-              <Etiqueta className="rounded-sm border border-white/15 px-1.5 py-0.5 text-[9.5px] uppercase tracking-[0.16em] text-white/45">
+              <Etiqueta className="rounded-col-sm border border-white/15 px-1.5 py-0.5 text-col-xs uppercase tracking-[0.16em] text-white/60">
                 Pronto
               </Etiqueta>
             </>
@@ -435,10 +435,10 @@ function ItemNav({
           <motion.span
             layoutId={`col-nav-${idIndicador}`}
             aria-hidden
-            className="absolute inset-0 rounded-sm bg-col-noche-2 ring-1 ring-inset ring-col-noche-linea"
+            className="absolute inset-0 rounded-col-sm bg-col-noche-2 ring-1 ring-inset ring-col-noche-linea"
             transition={{ type: "spring", stiffness: 420, damping: 36 }}
           >
-            <span className="absolute inset-y-2.5 left-0 w-[2px] rounded-full bg-col-gold shadow-[0_0_10px_rgba(244,184,96,0.6)]" />
+            <span className="absolute inset-y-2 left-0 w-[2px] rounded-full bg-col-gold shadow-none" />
           </motion.span>
         )}
         {icono}
@@ -447,8 +447,8 @@ function ItemNav({
           <span
             aria-label={`${insignia} ${insignia === 1 ? "nueva" : "nuevas"}`}
             className={cn(
-              "relative flex h-5 min-w-5 items-center justify-center rounded-full bg-col-gold px-1.5 text-[11px] font-medium tabular-nums leading-none text-col-noche",
-              plegado && "absolute right-2 top-1 h-4 min-w-4 px-1 text-[10px]",
+              "relative flex h-5 min-w-5 items-center justify-center rounded-full bg-col-gold px-1.5 text-col-xs font-bold tabular-nums leading-none text-col-noche",
+              plegado && "absolute right-1 top-0.5 h-4 min-w-4 px-1 text-col-xs",
             )}
           >
             {insignia > 99 ? "99+" : insignia}
@@ -459,49 +459,33 @@ function ItemNav({
   );
 }
 
+/** Pie del riel en una sola fila: sesión, volver a Traveloz y plegar. Plegado, en columna y con globos. */
 function PieRiel({ plegado, usuario, pie }: { plegado: boolean; usuario: UsuarioCollection; pie: React.ReactNode }) {
-  const volver = (
-    <Link
-      href="/backend/dashboard"
-      aria-label={plegado ? "Volver a Traveloz" : undefined}
-      className={cn(
-        "group flex h-9 items-center gap-2 rounded-sm text-[12px] uppercase tracking-[0.14em] text-white/55 transition-colors duration-200 ease-col hover:bg-col-noche-2 hover:text-white",
-        plegado ? "w-10 justify-center" : "px-2",
-      )}
-    >
-      <ArrowLeft className="h-4 w-4 shrink-0 transition-transform duration-200 ease-col group-hover:-translate-x-0.5" strokeWidth={1.5} aria-hidden />
-      {!plegado && <Etiqueta className="whitespace-nowrap">Volver a Traveloz</Etiqueta>}
-    </Link>
-  );
   return (
-    <div className={cn("shrink-0 border-t border-col-noche-linea p-3", plegado && "flex flex-col items-center gap-2")}>
-      <div className={cn("flex items-center gap-3", !plegado && "px-1 pb-2")}>
-        <ConGlobo texto={usuario.nombre || "Sesión"} activo={plegado}>
-          <span
-            aria-label={`Sesión de ${usuario.nombre}`}
-            tabIndex={plegado ? 0 : undefined}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-col-display text-[15px] text-white ring-1 ring-col-gold ring-offset-2 ring-offset-col-noche"
-          >
-            {iniciales(usuario.nombre)}
-          </span>
-        </ConGlobo>
-        {!plegado && (
-          <>
-            <Etiqueta className="min-w-0 flex-1 truncate text-[13px] text-white/85">{usuario.nombre}</Etiqueta>
-            {pie}
-          </>
-        )}
-      </div>
-      {plegado ? (
-        <>
-          <ConGlobo texto="Volver a Traveloz" activo>
-            {volver}
-          </ConGlobo>
-          {pie}
-        </>
-      ) : (
-        volver
-      )}
+    <div className={cn("flex shrink-0 items-center gap-1 border-t border-col-noche-linea px-2.5 py-2.5", plegado && "flex-col")}>
+      <ConGlobo texto={usuario.nombre || "Sesión"} activo={plegado}>
+        <span
+          aria-label={`Sesión de ${usuario.nombre}`}
+          tabIndex={plegado ? 0 : undefined}
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-col-display text-col-sm text-white ring-1 ring-col-gold ring-offset-2 ring-offset-col-noche",
+            plegado ? "my-1" : "ml-1 mr-1.5",
+          )}
+        >
+          {iniciales(usuario.nombre)}
+        </span>
+      </ConGlobo>
+      {!plegado && <Etiqueta className="min-w-0 flex-1 truncate text-col-sm text-white/80">{usuario.nombre}</Etiqueta>}
+      <ConGlobo texto="Volver a Traveloz" activo>
+        <Link
+          href="/backend/dashboard"
+          aria-label="Volver a Traveloz"
+          className="group flex h-8 w-8 shrink-0 items-center justify-center rounded-col-sm text-white/55 transition-colors duration-col ease-col hover:bg-col-noche-2 hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform duration-col ease-col group-hover:-translate-x-0.5" strokeWidth={1.5} aria-hidden />
+        </Link>
+      </ConGlobo>
+      {pie}
     </div>
   );
 }
@@ -525,7 +509,7 @@ function BotonRiel({
         onClick={onClick}
         aria-label={etiqueta}
         aria-expanded={expandido}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-white/55 transition-colors duration-200 ease-col hover:bg-col-noche-2 hover:text-white"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-col-sm text-white/55 transition-colors duration-col ease-col hover:bg-col-noche-2 hover:text-white"
       >
         <Icono className="h-[18px] w-[18px]" strokeWidth={1.5} aria-hidden />
       </button>

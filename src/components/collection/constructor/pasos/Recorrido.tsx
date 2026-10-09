@@ -12,7 +12,7 @@ import type { HotelBusqueda } from "@/actions/collection/experiencias.actions";
 import { cn } from "@/components/lib/cn";
 import { EditorTexto } from "../../editor/EditorTexto";
 import { FotoCatalogoImagen, MedioFantasma, MedioImagen } from "../../sitio/medios";
-import { Asa, Campo, ChipsTexto, ListaOrdenable, SlotMedio, Stepper, TiraMedios, etiquetaCampo, inputLinea } from "../campos";
+import { Asa, Campo, ChipsTexto, ListaOrdenable, SlotMedio, Stepper, TiraMedios, etiquetaCampo, entrada } from "../campos";
 import { useConstructor } from "../contexto";
 import { nuevoId } from "../estado";
 
@@ -34,17 +34,17 @@ export function PasoRecorrido() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center gap-6 rounded-sm bg-col-ink px-6 py-4 text-col-base">
+      <div className="flex items-center gap-6 rounded-col-sm bg-col-ink px-6 py-4 text-col-base">
         <div>
-          <p className="font-col-display text-[36px] leading-none tabular-nums lining-nums">{noches}</p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-col-base/60">{noches === 1 ? "Noche" : "Noches"}</p>
+          <p className="font-col-display text-col-3xl leading-none tabular-nums lining-nums">{noches}</p>
+          <p className="mt-1 text-col-xs uppercase tracking-[0.16em] text-col-base/60">{noches === 1 ? "Noche" : "Noches"}</p>
         </div>
         <span aria-hidden className="h-10 w-px bg-col-base/15" />
         <div>
-          <p className="font-col-display text-[36px] leading-none tabular-nums lining-nums">{tramos.length}</p>
-          <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-col-base/60">{tramos.length === 1 ? "Parada" : "Paradas"}</p>
+          <p className="font-col-display text-col-3xl leading-none tabular-nums lining-nums">{tramos.length}</p>
+          <p className="mt-1 text-col-xs uppercase tracking-[0.16em] text-col-base/60">{tramos.length === 1 ? "Parada" : "Paradas"}</p>
         </div>
-        <p className="ml-auto hidden min-w-0 truncate text-[14px] text-col-base/70 sm:block">
+        <p className="ml-auto hidden min-w-0 truncate text-col-md text-col-base/70 sm:block">
           {tramos.map((t) => t.ciudadNombre).filter(Boolean).join("  ›  ") || "Sumá la primera parada"}
         </p>
       </div>
@@ -70,7 +70,7 @@ export function PasoRecorrido() {
         <button
           type="button"
           onClick={agregar}
-          className="flex h-14 items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
+          className="flex h-14 items-center justify-center gap-2 rounded-col-sm border border-dashed border-col-slate/30 text-col-sm font-medium text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} /> Sumar parada
         </button>
@@ -85,8 +85,7 @@ function TarjetaTramo({
   abierto,
   onAlternar,
   asa,
-  arrastrando,
-}: {
+  arrastrando }: {
   tramo: Tramo;
   n: number;
   abierto: boolean;
@@ -104,14 +103,14 @@ function TarjetaTramo({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-sm border bg-col-surface transition-[border-color,box-shadow] duration-200 ease-col",
+        "overflow-hidden rounded-col-sm border bg-col-surface transition-[border-color,box-shadow] duration-col ease-col",
         abierto ? "border-col-slate/30" : "border-col-line",
-        arrastrando && "shadow-[0_24px_48px_-24px_rgba(50,55,59,0.5)]",
+        arrastrando && "shadow-col-2",
       )}
     >
       <div className="flex items-center gap-3 p-2.5 pl-1">
         {asa ?? <span className="w-2" />}
-        <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-sm">
+        <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-col-sm">
           {thumb ? (
             <MedioImagen medio={thumb} relleno sizes="60px" />
           ) : fotoHotel ? (
@@ -128,19 +127,19 @@ function TarjetaTramo({
         >
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-2">
-              <span className="font-col-display text-[15px] text-col-gold">{String(n).padStart(2, "0")}</span>
-              <span className={cn("truncate font-col-display text-[24px] leading-tight", t.ciudadNombre ? "text-col-ink" : "italic text-col-slate/50")}>
+              <span className="font-col-display text-col-cuerpo text-col-muted">{String(n).padStart(2, "0")}</span>
+              <span className={cn("truncate font-col-display text-col-xl leading-tight", t.ciudadNombre ? "text-col-ink" : "italic text-col-subtle")}>
                 {t.ciudadNombre || "Ciudad sin elegir"}
               </span>
             </span>
-            <span className="mt-0.5 flex items-center gap-2 truncate text-[12px] text-col-slate">
+            <span className="mt-0.5 flex items-center gap-2 truncate text-col-xs text-col-slate">
               {t.paisNombre && <span>{t.paisNombre}</span>}
               {t.hotel?.nombre && (
                 <span className="flex items-center gap-1 truncate">
                   <BedDouble className="h-3 w-3" strokeWidth={1.5} aria-hidden /> {t.hotel.nombre}
                 </span>
               )}
-              {falta && <span className="text-[#B07A2A]">Falta completar</span>}
+              {falta && <span className="text-col-aviso">Falta completar</span>}
             </span>
           </span>
         </button>
@@ -155,9 +154,9 @@ function TarjetaTramo({
             type="button"
             onClick={onAlternar}
             aria-label={abierto ? "Cerrar parada" : "Abrir parada"}
-            className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:bg-col-base hover:text-col-ink"
+            className="flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:bg-col-base hover:text-col-ink"
           >
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-300 ease-col", abierto && "rotate-180")} strokeWidth={1.5} />
+            <ChevronDown className={cn("h-4 w-4 transition-transform duration-col-lento ease-col", abierto && "rotate-180")} strokeWidth={1.5} />
           </button>
         )}
       </div>
@@ -201,7 +200,7 @@ function TarjetaTramo({
                 <button
                   type="button"
                   onClick={() => setContenido((k) => ({ tramos: k.tramos.filter((x) => x.id !== t.id) }))}
-                  className="flex items-center gap-2 self-start text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors hover:text-col-alerta"
+                  className="flex items-center gap-2 self-start text-col-sm font-medium text-col-slate transition-colors hover:text-col-alerta"
                 >
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} /> Quitar parada
                 </button>
@@ -262,7 +261,7 @@ function BuscadorCiudad({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (c: Pa
   return (
     <Campo etiqueta="Ciudad" htmlFor={`${lista}-in`} ayuda={t.ciudadId ? "Del catálogo de Traveloz." : t.ciudadNombre ? "Escrita a mano." : undefined}>
       <div className="relative">
-        <MapPin className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-gold" strokeWidth={1.5} />
+        <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-col-gold" strokeWidth={1.5} />
         <input
           id={`${lista}-in`}
           role="combobox"
@@ -288,16 +287,16 @@ function BuscadorCiudad({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (c: Pa
             if (e.key.startsWith("Arrow")) e.preventDefault();
           }}
           placeholder="Buscá una ciudad"
-          className={cn(inputLinea, "pl-6 text-[17px]")}
+          className={cn(entrada, "pl-10 text-col-cuerpo")}
         />
         {b.abierta && (
           <ul
             id={lista}
             role="listbox"
-            className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-sm border border-col-line bg-col-surface py-1 shadow-[0_20px_40px_-20px_rgba(50,55,59,0.45)]"
+            className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-col-sm border border-col-line bg-col-surface py-1 shadow-col-3"
           >
             {b.cargando && b.items.length === 0 && (
-              <li className="flex items-center gap-2 px-4 py-3 text-[13px] text-col-slate">
+              <li className="flex items-center gap-2 px-4 py-3 text-col-sm text-col-slate">
                 <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> Buscando
               </li>
             )}
@@ -309,14 +308,14 @@ function BuscadorCiudad({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (c: Pa
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => b.setActivo(i)}
                 onClick={() => elegir(c)}
-                className={cn("flex cursor-pointer items-baseline gap-2 px-4 py-2.5 text-[15px]", i === b.activo && "bg-col-base")}
+                className={cn("flex cursor-pointer items-baseline gap-2 px-4 py-2.5 text-col-cuerpo", i === b.activo && "bg-col-base")}
               >
                 <span className="text-col-ink">{c.nombre}</span>
-                <span className="text-[12px] text-col-slate">{c.paisNombre}</span>
+                <span className="text-col-xs text-col-slate">{c.paisNombre}</span>
               </li>
             ))}
             {!b.cargando && b.items.length === 0 && !b.q.trim() && (
-              <li className="px-4 py-3 text-[13px] text-col-slate">Escribí para buscar en el catálogo.</li>
+              <li className="px-4 py-3 text-col-sm text-col-slate">Escribí para buscar en el catálogo.</li>
             )}
             {b.q.trim() && (
               <li
@@ -324,7 +323,7 @@ function BuscadorCiudad({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (c: Pa
                 aria-selected={false}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={usarTexto}
-                className="cursor-pointer border-t border-col-line px-4 py-2.5 text-[13px] text-col-slate hover:bg-col-base hover:text-col-ink"
+                className="cursor-pointer border-t border-col-line px-4 py-2.5 text-col-sm text-col-slate hover:bg-col-base hover:text-col-ink"
               >
                 Usar «{b.q.trim()}» como está
               </li>
@@ -359,12 +358,12 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
   const fotosCatalogo = h?.alojamientoId ? mapas.fotosHotel.get(h.alojamientoId) ?? [] : [];
 
   return (
-    <div className="flex flex-col gap-6 rounded-sm bg-col-base/70 p-5">
+    <div className="flex flex-col gap-6 rounded-col-sm bg-col-base/70 p-5">
       <div className="flex items-center gap-3">
         <BedDouble className="h-5 w-5 text-col-gold" strokeWidth={1.4} aria-hidden />
-        <p className="font-col-display text-[22px] leading-none text-col-ink">Hotel</p>
+        <p className="font-col-display text-col-xl leading-none text-col-ink">Hotel</p>
         {h?.nombre && (
-          <span className="rounded-sm border border-col-line bg-col-surface px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] text-col-slate">
+          <span className="rounded-col-sm border border-col-line bg-col-surface px-2 py-0.5 text-col-xs uppercase tracking-[0.14em] text-col-slate">
             {h.alojamientoId ? "Del catálogo" : "Nombre escrito"}
           </span>
         )}
@@ -372,7 +371,7 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
           <button
             type="button"
             onClick={() => onCambio(null)}
-            className="ml-auto flex items-center gap-1 text-[11px] uppercase tracking-[0.12em] text-col-slate hover:text-col-alerta"
+            className="ml-auto flex items-center gap-1 text-col-sm font-medium text-col-slate hover:text-col-alerta"
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.5} /> Quitar hotel
           </button>
@@ -384,7 +383,7 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
           {h?.nombre ? "Cambiar hotel" : "Buscar en el catálogo"}
         </label>
         <div className="relative mt-2">
-          <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
           <input
             id={`${lista}-in`}
             role="combobox"
@@ -409,16 +408,16 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
               if (e.key.startsWith("Arrow")) e.preventDefault();
             }}
             placeholder={t.ciudadId ? `Hoteles en ${t.ciudadNombre}` : "Nombre del hotel"}
-            className={cn(inputLinea, "pl-6 font-col-display text-[20px]")}
+            className={cn(entrada, "pl-10 font-col-display text-col-xl")}
           />
           {b.abierta && (
             <ul
               id={lista}
               role="listbox"
-              className="absolute inset-x-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-sm border border-col-line bg-col-surface py-1 shadow-[0_20px_40px_-20px_rgba(50,55,59,0.45)]"
+              className="absolute inset-x-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-col-sm border border-col-line bg-col-surface py-1 shadow-col-3"
             >
               {b.cargando && b.items.length === 0 && (
-                <li className="flex items-center gap-2 px-4 py-3 text-[13px] text-col-slate">
+                <li className="flex items-center gap-2 px-4 py-3 text-col-sm text-col-slate">
                   <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> Buscando
                 </li>
               )}
@@ -432,12 +431,12 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
                   onClick={() => elegir(x)}
                   className={cn("flex cursor-pointer items-center gap-3 px-3 py-2", i === b.activo && "bg-col-base")}
                 >
-                  <span className="relative h-10 w-14 shrink-0 overflow-hidden rounded-sm bg-col-line">
+                  <span className="relative h-10 w-14 shrink-0 overflow-hidden rounded-col-sm bg-col-line">
                     {x.fotos[0] && <FotoCatalogoImagen foto={x.fotos[0]} relleno />}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] text-col-ink">{x.nombre}</span>
-                    <span className="flex items-center gap-2 text-[12px] text-col-slate">
+                    <span className="block truncate text-col-cuerpo text-col-ink">{x.nombre}</span>
+                    <span className="flex items-center gap-2 text-col-xs text-col-slate">
                       {x.ciudadNombre}
                       {x.categoria ? (
                         <span className="flex items-center gap-0.5 text-col-gold" aria-label={`${x.categoria} estrellas`}>
@@ -451,7 +450,7 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
                 </li>
               ))}
               {!b.cargando && b.items.length === 0 && (
-                <li className="px-4 py-3 text-[13px] text-col-slate">
+                <li className="px-4 py-3 text-col-sm text-col-slate">
                   {b.q.trim() ? "No está en el catálogo." : "Escribí el nombre para buscar."}
                 </li>
               )}
@@ -461,7 +460,7 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
                   aria-selected={false}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={usarNombre}
-                  className="cursor-pointer border-t border-col-line px-4 py-2.5 text-[13px] text-col-slate hover:bg-col-base hover:text-col-ink"
+                  className="cursor-pointer border-t border-col-line px-4 py-2.5 text-col-sm text-col-slate hover:bg-col-base hover:text-col-ink"
                 >
                   Usar el nombre escrito: «{b.q.trim()}»
                 </li>
@@ -511,14 +510,14 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
             {h.medios.length === 0 && fotosCatalogo.length > 0 && (
               <div className="grid grid-cols-4 gap-2 opacity-80">
                 {fotosCatalogo.slice(0, 4).map((f) => (
-                  <FotoCatalogoImagen key={f.url} foto={f} aspecto={1} className="rounded-sm" />
+                  <FotoCatalogoImagen key={f.url} foto={f} aspecto={1} className="rounded-col-sm" />
                 ))}
               </div>
             )}
           </Campo>
         </>
       )}
-      {!h && <p className="-mt-2 text-[13px] text-col-slate">{plural(t.noches, "noche", "noches")} sin hotel elegido.</p>}
+      {!h && <p className="-mt-2 text-col-sm text-col-slate">{plural(t.noches, "noche", "noches")} sin hotel elegido.</p>}
     </div>
   );
 }

@@ -35,7 +35,7 @@ const usePagina = () => useContext(PaginaCtx);
 
 type V = { v: ExperienciaVista };
 
-export const etiqueta = "text-[13px] font-medium uppercase tracking-[0.12em]";
+export const etiqueta = "text-[12px] uppercase tracking-[0.14em]";
 const fantasma = "italic text-col-slate/40";
 const botonClaro = "bg-col-base text-col-ink hover:bg-col-gold";
 
@@ -89,7 +89,7 @@ export function Seccion({
 function BotonConsultar({ claro, className }: { claro?: boolean; className?: string }) {
   const { consultar } = usePagina();
   return (
-    <button type="button" onClick={consultar} className={cn(boton(), claro && botonClaro, className)}>
+    <button type="button" onClick={consultar} className={cn(boton({ tam: "lg" }), claro && botonClaro, className)}>
       Consultar
     </button>
   );

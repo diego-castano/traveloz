@@ -5,12 +5,12 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { AlertTriangle, CalendarRange, ChevronDown, Plus, Trash2, Wand2 } from "lucide-react";
+import { AlertTriangle, CalendarRange, Plus, Trash2, Wand2 } from "lucide-react";
 import type { Dia } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { Boton } from "../../ui";
 import { EditorTexto } from "../../editor/EditorTexto";
-import { Campo, Stepper, TiraMedios, inputLinea } from "../campos";
+import { Campo, Stepper, TiraMedios, entrada, entradaSelect } from "../campos";
 import { useConstructor } from "../contexto";
 import { nuevoId } from "../estado";
 
@@ -41,8 +41,7 @@ export function PasoDias() {
         tramoId: t.id,
         titulo: t.ciudadNombre,
         texto: "",
-        medios: [],
-      });
+        medios: [] });
       acc += n;
     }
     setContenido(() => ({ dias: nuevos }));
@@ -53,16 +52,15 @@ export function PasoDias() {
     const ultimo = dias.reduce((m, d) => Math.max(m, d.hasta, d.desde), 0);
     const desde = Math.min(90, ultimo + 1);
     setContenido((k) => ({
-      dias: ordenar([...k.dias, { id: nuevoId(), desde, hasta: desde, tramoId: null, titulo: "", texto: "", medios: [] }]),
-    }));
+      dias: ordenar([...k.dias, { id: nuevoId(), desde, hasta: desde, tramoId: null, titulo: "", texto: "", medios: [] }]) }));
   };
 
   return (
     <div className="flex flex-col gap-8">
       {editable && tramos.length > 0 && (
-        <div className="flex flex-wrap items-center gap-4 rounded-sm border border-col-line bg-col-surface p-4">
+        <div className="flex flex-wrap items-center gap-4 rounded-col-sm border border-col-line bg-col-surface p-4">
           <Wand2 className="h-5 w-5 shrink-0 text-col-gold" strokeWidth={1.4} aria-hidden />
-          <p className="min-w-0 flex-1 text-[14px] text-col-slate">
+          <p className="min-w-0 flex-1 text-col-md text-col-slate">
             {confirmar
               ? `Esto reemplaza los ${dias.length} días cargados por uno por parada.`
               : "Un bloque por parada del recorrido, con los días según las noches."}
@@ -85,10 +83,10 @@ export function PasoDias() {
       )}
 
       {dias.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-sm border border-dashed border-col-slate/30 px-6 py-14 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-col-sm border border-dashed border-col-slate/30 px-6 py-14 text-center">
           <CalendarRange className="h-7 w-7 text-col-gold" strokeWidth={1.2} aria-hidden />
-          <p className="font-col-display text-[26px] text-col-ink">El viaje, día por día</p>
-          <p className="max-w-[42ch] text-[14px] text-col-slate">
+          <p className="font-col-display text-col-2xl text-col-ink">El viaje, día por día</p>
+          <p className="max-w-[42ch] text-col-md text-col-slate">
             Podés contar cada día o agrupar varios en un rango, como «Días 4 a 5: lagunas de Bacuit».
           </p>
         </div>
@@ -102,7 +100,7 @@ export function PasoDias() {
               <motion.li key={d.id} layout transition={{ duration: 0.4, ease: EASE }} className="relative">
                 <span
                   aria-hidden
-                  className="absolute -left-8 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-col-gold bg-col-base font-col-display text-[12px] text-col-ink"
+                  className="absolute -left-8 top-5 flex h-6 w-6 items-center justify-center rounded-full border border-col-gold bg-col-base font-col-display text-col-xs text-col-ink"
                 >
                   {d.desde}
                 </span>
@@ -117,7 +115,7 @@ export function PasoDias() {
         <button
           type="button"
           onClick={agregar}
-          className="flex h-12 items-center justify-center gap-2 rounded-sm border border-dashed border-col-slate/30 text-[12px] uppercase tracking-[0.12em] text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
+          className="flex h-12 items-center justify-center gap-2 rounded-col-sm border border-dashed border-col-slate/30 text-col-sm font-medium text-col-slate transition-colors hover:border-col-gold hover:text-col-ink"
         >
           <Plus className="h-4 w-4" strokeWidth={1.5} /> Sumar día
         </button>
@@ -142,13 +140,13 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
   const tramo = tramos.find((t) => t.id === d.tramoId);
 
   return (
-    <div className="rounded-sm border border-col-line bg-col-surface p-5">
+    <div className="rounded-col-sm border border-col-line bg-col-surface p-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <p className="min-w-[110px] font-col-display text-[22px] leading-none text-col-ink">{etiquetaDias(d.desde, d.hasta)}</p>
+        <p className="min-w-[110px] font-col-display text-col-xl leading-none text-col-ink">{etiquetaDias(d.desde, d.hasta)}</p>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-[0.12em] text-col-slate">Del</span>
+          <span className="text-col-sm text-col-slate">Del</span>
           <Stepper valor={d.desde} min={1} max={90} label="Día de inicio" onCambio={(desde) => cambiar({ desde })} deshabilitado={!editable} />
-          <span className="text-[11px] uppercase tracking-[0.12em] text-col-slate">al</span>
+          <span className="text-col-sm text-col-slate">al</span>
           <Stepper valor={d.hasta} min={d.desde} max={90} label="Día final" onCambio={(hasta) => cambiar({ hasta })} deshabilitado={!editable} />
         </div>
         {editable && (
@@ -156,14 +154,14 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
             type="button"
             aria-label={`Quitar ${etiquetaDias(d.desde, d.hasta)}`}
             onClick={() => setContenido((k) => ({ dias: k.dias.filter((x) => x.id !== d.id) }))}
-            className="ml-auto flex h-8 w-8 items-center justify-center rounded-sm text-col-slate/60 transition-colors hover:bg-col-base hover:text-col-alerta"
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-col-sm text-col-muted transition-colors hover:bg-col-base hover:text-col-alerta"
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.5} />
           </button>
         )}
       </div>
       {choca && (
-        <p className="mt-3 flex items-center gap-2 text-[13px] text-[#B07A2A]">
+        <p className="mt-3 flex items-center gap-2 text-col-sm text-col-aviso">
           <AlertTriangle className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
           Se superpone con {etiquetaDias(choca.desde, choca.hasta).toLowerCase()}.
         </p>
@@ -176,7 +174,7 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
             maxLength={160}
             onChange={(e) => cambiar({ titulo: e.target.value })}
             placeholder={tramo?.ciudadNombre ? `Un día en ${tramo.ciudadNombre}` : "Llegada y traslado privado"}
-            className={cn(inputLinea, "text-[17px]")}
+            className={cn(entrada, "text-col-cuerpo")}
           />
         </Campo>
         <Campo etiqueta="Parada" htmlFor={`dia-t-${d.id}`}>
@@ -185,7 +183,7 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
               id={`dia-t-${d.id}`}
               value={d.tramoId ?? ""}
               onChange={(e) => cambiar({ tramoId: e.target.value || null })}
-              className={cn(inputLinea, "appearance-none pr-8")}
+              className={entradaSelect}
             >
               <option value="">Sin parada</option>
               {tramos.map((t, i) => (
@@ -194,7 +192,6 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
                 </option>
               ))}
             </select>
-            <ChevronDown className="pointer-events-none absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} />
           </div>
         </Campo>
       </div>

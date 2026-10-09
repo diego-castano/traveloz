@@ -7,11 +7,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Dialog } from "radix-ui";
 import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink, LoaderCircle, Trash2, X } from "lucide-react";
-import { actualizarMedio, eliminarMedio, type ColMedioDto } from "@/actions/collection/medios.actions";
+import { actualizarMedio, type ColMedioDto } from "@/actions/collection/medios.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton, etiquetaCampo, inputLinea } from "../ui";
+import { CheckAnimado } from "../movimiento";
+import { Boton, Estado, etiquetaCampo, entrada, entradaArea, cajaCompuesta, entradaInterna } from "../ui";
 import { MedioImagen, aspectoDe, fmtDuracion, fmtPeso, srcDe } from "./MedioImagen";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -32,8 +33,7 @@ export function DetalleMedio({
   onAnterior,
   onSiguiente,
   onCambio,
-  onEliminado,
-}: {
+  onEliminado }: {
   medio: ColMedioDto | null;
   posicion: string;
   subidoPor: Record<string, string>;
@@ -60,7 +60,7 @@ export function DetalleMedio({
             </Dialog.Overlay>
             <Dialog.Content asChild forceMount aria-describedby={undefined}>
               <motion.div
-                className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[560px] flex-col bg-col-surface shadow-[-24px_0_60px_-30px_rgba(50,55,59,0.45)] focus:outline-none"
+                className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[560px] flex-col bg-col-surface shadow-col-3 focus:outline-none"
                 initial={{ x: "100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
@@ -92,8 +92,7 @@ function Cuerpo({
   onAnterior,
   onSiguiente,
   onCambio,
-  onEliminado,
-}: {
+  onEliminado }: {
   medio: ColMedioDto;
   posicion: string;
   subidoPor: Record<string, string>;
@@ -110,7 +109,6 @@ function Cuerpo({
   const [foco, setFoco] = useState({ x: medio.focoX, y: medio.focoY });
   const [estado, setEstado] = useState<EstadoGuardado>("quieto");
   const [confirmar, setConfirmar] = useState(false);
-  const [borrando, setBorrando] = useState(false);
 
   // Último valor confirmado por el servidor, para mandar solo lo que cambió.
   const guardado = useRef(medio);
@@ -176,16 +174,9 @@ function Cuerpo({
     return () => window.removeEventListener("keydown", onKey);
   }, [onAnterior, onSiguiente]);
 
-  const eliminar = async () => {
-    setBorrando(true);
-    const r = await eliminarMedio(medio.id);
-    setBorrando(false);
-    if (!r.ok) {
-      avisar(r.error, "error");
-      return;
-    }
+  // El borrado real lo hace la biblioteca cuando vence el aviso con "Deshacer".
+  const eliminar = () => {
     eliminado.current = true;
-    avisar("Medio eliminado.");
     onEliminado(medio.id);
   };
 
@@ -204,8 +195,7 @@ function Cuerpo({
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    timeZone: "America/Montevideo",
-  }).format(new Date(medio.createdAt));
+    timeZone: "America/Montevideo" }).format(new Date(medio.createdAt));
   const autor = medio.subidoPorId
     ? medio.subidoPorId === usuario.id
       ? "Vos"
@@ -224,7 +214,7 @@ function Cuerpo({
             onClick={() => onAnterior?.()}
             disabled={!onAnterior}
             aria-label="Medio anterior"
-            className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:text-col-ink disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:text-col-ink disabled:opacity-30"
           >
             <ChevronLeft className="h-5 w-5" strokeWidth={1.5} />
           </button>
@@ -233,19 +223,19 @@ function Cuerpo({
             onClick={() => onSiguiente?.()}
             disabled={!onSiguiente}
             aria-label="Medio siguiente"
-            className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:text-col-ink disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:text-col-ink disabled:opacity-30"
           >
             <ChevronRight className="h-5 w-5" strokeWidth={1.5} />
           </button>
-          <span className="ml-1 text-[12px] tabular-nums text-col-slate">{posicion}</span>
+          <span className="ml-1 text-col-xs tabular-nums text-col-slate">{posicion}</span>
         </div>
-        <Dialog.Title className="min-w-0 flex-1 truncate px-2 text-[14px] font-normal text-col-ink">
+        <Dialog.Title className="min-w-0 flex-1 truncate px-2 text-col-md font-normal text-col-ink">
           {medio.nombre}
         </Dialog.Title>
         <IndicadorGuardado estado={estado} />
         <Dialog.Close
           aria-label="Cerrar"
-          className="flex h-9 w-9 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
+          className="flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate hover:text-col-ink"
         >
           <X className="h-5 w-5" strokeWidth={1.5} />
         </Dialog.Close>
@@ -261,14 +251,14 @@ function Cuerpo({
               controls
               playsInline
               preload="metadata"
-              className="mx-auto max-h-[420px] w-full rounded-sm bg-col-ink"
+              className="mx-auto max-h-[420px] w-full rounded-col-sm bg-col-ink"
             />
           ) : (
             <EditorFoco medio={medio} aspecto={a} foco={foco} editable={editable} onMover={setFoco} onSoltar={(f) => void guardar({ focoX: f.x, focoY: f.y })} />
           )}
           {medio.tipo === "FOTO" && (
             <div className="mt-5">
-              <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-col-slate">Así se recorta</p>
+              <p className="mb-2 text-col-xs uppercase tracking-[0.14em] text-col-slate">Así se recorta</p>
               <div className="flex items-end gap-3">
                 {RECORTES.map((r) => (
                   <figure key={r.label} className="min-w-0" style={{ flexGrow: r.a, flexBasis: 0 }}>
@@ -278,9 +268,9 @@ function Cuerpo({
                       ancho={480}
                       aspecto={r.a}
                       objectPosition={posicionCss}
-                      className="w-full rounded-sm"
+                      className="w-full rounded-col-sm"
                     />
-                    <figcaption className="mt-1.5 text-[11px] tracking-wide text-col-slate">{r.label}</figcaption>
+                    <figcaption className="mt-1.5 text-col-xs tracking-wide text-col-slate">{r.label}</figcaption>
                   </figure>
                 ))}
               </div>
@@ -291,8 +281,8 @@ function Cuerpo({
         <div className="space-y-7 px-5 py-7">
           <Campo
             id="alt"
-            label="Texto alternativo"
-            ayuda="Describí la foto para Google y lectores de pantalla."
+            label="Descripción para Google y lectores de pantalla"
+            ayuda="Contá qué se ve, en una frase."
             aviso={medio.tipo === "FOTO" && !textos.alt.trim()}
           >
             <textarea
@@ -303,8 +293,8 @@ function Cuerpo({
               maxLength={300}
               onChange={(e) => setTextos((t) => ({ ...t, alt: e.target.value }))}
               onBlur={() => flush.current()}
-              placeholder="Atardecer sobre las dunas de Sossusvlei, Namibia"
-              className={cn(inputLinea, "resize-none leading-relaxed")}
+              placeholder="Ej.: Atardecer sobre las dunas de Sossusvlei, Namibia"
+              className={entradaArea}
             />
           </Campo>
           <Campo id="leyenda" label="Leyenda" ayuda="Se muestra debajo de la foto en el sitio.">
@@ -315,10 +305,10 @@ function Cuerpo({
               maxLength={300}
               onChange={(e) => setTextos((t) => ({ ...t, leyenda: e.target.value }))}
               onBlur={() => flush.current()}
-              className={inputLinea}
+              className={entrada}
             />
           </Campo>
-          <Campo id="credito" label="Crédito" ayuda="Fotógrafo o fuente." aviso={!textos.credito.trim()}>
+          <Campo id="credito" label="Autor de la foto (crédito)" ayuda="Quién la sacó o de dónde viene." aviso={!textos.credito.trim()}>
             <input
               id="credito"
               value={textos.credito}
@@ -326,7 +316,7 @@ function Cuerpo({
               maxLength={300}
               onChange={(e) => setTextos((t) => ({ ...t, credito: e.target.value }))}
               onBlur={() => flush.current()}
-              className={inputLinea}
+              className={entrada}
             />
           </Campo>
           <Etiquetas
@@ -335,7 +325,7 @@ function Cuerpo({
             onCambio={(etiquetas) => void guardar({ etiquetas })}
           />
 
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-col-line pt-6 text-[14px]">
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-col-line pt-6 text-col-md">
             {medio.ancho && medio.alto ? <Dato t="Dimensiones">{`${medio.ancho} × ${medio.alto} px`}</Dato> : null}
             {medio.tipo === "VIDEO" && medio.duracion ? <Dato t="Duración">{fmtDuracion(medio.duracion)}</Dato> : null}
             <Dato t="Peso">{fmtPeso(medio.peso)}</Dato>
@@ -344,7 +334,7 @@ function Cuerpo({
                 <span className="inline-flex items-center gap-2">
                   <span
                     aria-hidden
-                    className="h-4 w-4 rounded-sm ring-1 ring-col-line"
+                    className="h-4 w-4 rounded-col-sm ring-1 ring-col-line"
                     style={{ backgroundColor: medio.colorDominante }}
                   />
                   {medio.colorDominante.toUpperCase()}
@@ -364,7 +354,7 @@ function Cuerpo({
               href={medio.url}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-9 items-center gap-2 rounded-sm border border-col-ink/25 px-4 text-[12px] uppercase tracking-[0.12em] text-col-ink transition-colors duration-200 ease-col hover:border-col-ink"
+              className="inline-flex h-9 items-center gap-2 rounded-col-sm border border-col-ink/25 px-4 text-col-md font-medium text-col-ink transition-colors duration-col ease-col hover:border-col-ink"
             >
               <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
               Abrir original
@@ -377,13 +367,13 @@ function Cuerpo({
             )}
           </div>
           {editable && confirmar && (
-            <div role="alert" className="flex flex-wrap items-center gap-3 rounded-sm bg-col-base px-4 py-3">
-              <p className="flex-1 text-[14px] text-col-ink">¿Eliminar este medio? No se puede deshacer.</p>
-              <Boton variante="fantasma" tam="sm" onClick={() => setConfirmar(false)} disabled={borrando}>
+            <div role="alert" className="flex flex-wrap items-center gap-3 rounded-col-sm bg-col-base px-4 py-3">
+              <p className="flex-1 text-col-md text-col-ink">¿Eliminar este medio? Vas a tener unos segundos para deshacerlo.</p>
+              <Boton variante="fantasma" tam="sm" onClick={() => setConfirmar(false)}>
                 Cancelar
               </Boton>
-              <Boton variante="peligro" tam="sm" onClick={eliminar} disabled={borrando} autoFocus>
-                {borrando ? "Eliminando" : "Eliminar"}
+              <Boton variante="peligro" tam="sm" onClick={eliminar} autoFocus>
+                Eliminar
               </Boton>
             </div>
           )}
@@ -399,8 +389,7 @@ function EditorFoco({
   foco,
   editable,
   onMover,
-  onSoltar,
-}: {
+  onSoltar }: {
   medio: ColMedioDto;
   aspecto: number;
   foco: { x: number; y: number };
@@ -417,8 +406,7 @@ function EditorFoco({
     const r = ref.current!.getBoundingClientRect();
     const f = {
       x: Math.round(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * 1000) / 1000,
-      y: Math.round(Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) * 1000) / 1000,
-    };
+      y: Math.round(Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) * 1000) / 1000 };
     ultimo.current = f;
     onMover(f);
   };
@@ -430,8 +418,7 @@ function EditorFoco({
     e.preventDefault();
     const f = {
       x: Math.round(Math.min(1, Math.max(0, foco.x + d[0])) * 1000) / 1000,
-      y: Math.round(Math.min(1, Math.max(0, foco.y + d[1])) * 1000) / 1000,
-    };
+      y: Math.round(Math.min(1, Math.max(0, foco.y + d[1])) * 1000) / 1000 };
     onMover(f);
     window.clearTimeout(teclas.current);
     teclas.current = window.setTimeout(() => onSoltar(f), 600);
@@ -463,14 +450,13 @@ function EditorFoco({
       }}
       onKeyDown={editable ? onKeyDown : undefined}
       className={cn(
-        "relative mx-auto touch-none select-none overflow-hidden rounded-sm",
+        "relative mx-auto touch-none select-none overflow-hidden rounded-col-sm",
         editable && "cursor-crosshair",
       )}
       style={{
         aspectRatio: String(aspecto),
         width: `min(100%, ${Math.round(420 * aspecto)}px)`,
-        backgroundColor: medio.colorDominante ?? "#E2E2E2",
-      }}
+        backgroundColor: medio.colorDominante ?? "#E2E2E2" }}
     >
       {src && (
         // eslint-disable-next-line @next/next/no-img-element
@@ -489,7 +475,7 @@ function EditorFoco({
 
 export function IndicadorGuardado({ estado }: { estado: EstadoGuardado }) {
   return (
-    <span aria-live="polite" className="flex w-24 items-center justify-end gap-1.5 text-[12px] text-col-slate">
+    <span aria-live="polite" className="flex w-24 items-center justify-end gap-1.5 text-col-xs text-col-slate">
       <AnimatePresence mode="wait" initial={false}>
         {estado === "guardando" && (
           <motion.span key="g" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -498,8 +484,8 @@ export function IndicadorGuardado({ estado }: { estado: EstadoGuardado }) {
           </motion.span>
         )}
         {estado === "guardado" && (
-          <motion.span key="ok" className="flex items-center gap-1.5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <Check className="h-3.5 w-3.5 text-col-gold" strokeWidth={2} aria-hidden />
+          <motion.span key="ok" className="flex items-center gap-1.5" initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <CheckAnimado className="text-col-ok" />
             Guardado
           </motion.span>
         )}
@@ -518,8 +504,7 @@ function Campo({
   label,
   ayuda,
   aviso,
-  children,
-}: {
+  children }: {
   id: string;
   label: string;
   ayuda: string;
@@ -530,10 +515,10 @@ function Campo({
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className={cn(etiquetaCampo, "flex items-center gap-2")}>
         {label}
-        {aviso && <span className="rounded-sm bg-col-gold/30 px-1.5 py-0.5 text-[10px] tracking-[0.14em] text-col-ink">Falta</span>}
+        {aviso && <Estado tono="aviso">Falta</Estado>}
       </label>
       {children}
-      <p className="text-[12px] text-col-slate">{ayuda}</p>
+      <p className="text-col-xs text-col-slate">{ayuda}</p>
     </div>
   );
 }
@@ -541,7 +526,7 @@ function Campo({
 function Dato({ t, children }: { t: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-[0.14em] text-col-slate">{t}</dt>
+      <dt className="text-col-sm text-col-slate">{t}</dt>
       <dd className="mt-1 text-col-ink">{children}</dd>
     </div>
   );
@@ -550,8 +535,7 @@ function Dato({ t, children }: { t: string; children: React.ReactNode }) {
 function Etiquetas({
   valor,
   editable,
-  onCambio,
-}: {
+  onCambio }: {
   valor: string[];
   editable: boolean;
   onCambio: (v: string[]) => void;
@@ -575,16 +559,16 @@ function Etiquetas({
       <label htmlFor="etiquetas" className={etiquetaCampo}>
         Etiquetas
       </label>
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-col-slate/40 py-1.5 transition-colors duration-200 ease-col focus-within:border-col-gold">
+      <div className={cn(cajaCompuesta, "flex-wrap gap-1.5 px-2 py-[7px]")}>
         {lista.map((e) => (
-          <span key={e} className="inline-flex items-center gap-1 rounded-sm bg-col-base py-1 pl-2 pr-1 text-[13px] text-col-ink">
+          <span key={e} className="inline-flex h-7 items-center gap-1 rounded-col-sm bg-col-base pl-2.5 pr-1 text-col-sm text-col-ink">
             {e}
             {editable && (
               <button
                 type="button"
                 onClick={() => cambiar(lista.filter((x) => x !== e))}
                 aria-label={`Quitar ${e}`}
-                className="flex h-5 w-5 items-center justify-center rounded-sm text-col-slate hover:text-col-ink"
+                className="flex h-5 w-5 items-center justify-center rounded-col-sm text-col-slate hover:text-col-ink"
               >
                 <X className="h-3 w-3" strokeWidth={2} />
               </button>
@@ -606,12 +590,12 @@ function Etiquetas({
             }}
             onBlur={() => texto.trim() && agregar()}
             placeholder={lista.length ? "" : "playa, safari, invierno"}
-            className="min-w-[120px] flex-1 border-0 bg-transparent px-0 py-1 text-[15px] text-col-ink placeholder:text-col-slate/60 focus:outline-none focus:ring-0 focus-visible:outline-none"
+            className={cn(entradaInterna, "h-7 min-w-[120px] px-1.5 py-0")}
           />
         )}
-        {!editable && lista.length === 0 && <span className="py-1 text-[14px] text-col-slate">Sin etiquetas</span>}
+        {!editable && lista.length === 0 && <span className="py-1 text-col-md text-col-slate">Sin etiquetas</span>}
       </div>
-      {editable && <p className="text-[12px] text-col-slate">Enter para agregar. Sirven para buscar.</p>}
+      {editable && <p className="text-col-xs text-col-slate">Enter para agregar. Sirven para buscar.</p>}
     </div>
   );
 }

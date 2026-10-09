@@ -33,7 +33,7 @@ export function ProveedorWhatsApp({ numero, children }: { numero: string; childr
           rel="noopener noreferrer"
           aria-label="Escribinos por WhatsApp"
           className={cn(
-            "group fixed right-4 z-40 flex h-14 max-w-14 items-center gap-3 overflow-hidden whitespace-nowrap rounded-full bg-col-noche pl-[17px] pr-5 text-[13px] font-medium uppercase tracking-[0.12em] text-white shadow-[0_14px_36px_-12px_rgba(4,7,31,0.6)] ring-1 ring-col-gold/50 transition-[max-width,box-shadow] duration-[400ms] ease-col hover:max-w-[260px] hover:ring-col-gold focus-visible:max-w-[260px] sm:right-6",
+            "group fixed right-4 z-40 flex h-14 max-w-14 items-center gap-3 overflow-hidden whitespace-nowrap rounded-full bg-col-noche pl-[17px] pr-5 text-[12px] uppercase tracking-[0.14em] text-white shadow-[0_14px_36px_-12px_rgba(4,7,31,0.6)] ring-1 ring-col-gold/50 transition-[max-width,box-shadow] duration-[400ms] ease-col hover:max-w-[260px] hover:ring-col-gold focus-visible:max-w-[260px] sm:right-6",
             asunto ? "bottom-[92px] md:bottom-6" : "bottom-4 sm:bottom-6",
           )}
         >

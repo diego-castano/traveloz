@@ -45,7 +45,7 @@ export function EstadoVacio({ titulo, texto }: { titulo: string; texto: string }
       <p className="max-w-[52ch] text-[17px] font-light leading-[1.65] text-col-slate">{texto}</p>
       <Link
         href={CONTACTO_SITIO.href}
-        className="mt-2 inline-flex h-12 items-center rounded-sm bg-col-ink px-6 text-[13px] font-medium uppercase tracking-[0.12em] text-col-base transition-colors duration-200 ease-col hover:bg-col-slate active:translate-y-px"
+        className="mt-2 inline-flex h-12 items-center rounded-sm bg-col-ink px-6 text-[12px] uppercase tracking-[0.14em] text-col-base transition-colors duration-200 ease-col hover:bg-col-slate active:translate-y-px"
       >
         {CONTACTO_SITIO.nombre}
       </Link>
@@ -64,7 +64,7 @@ export function EnPreparacion({ titulo = "Muy pronto", texto }: { titulo?: strin
         <p className="max-w-[44ch] text-[17px] font-light leading-[1.65] text-white/75">{texto}</p>
         <Link
           href={CONTACTO_SITIO.href}
-          className="inline-flex h-12 items-center rounded-sm border border-white/40 px-6 text-[13px] font-medium uppercase tracking-[0.12em] transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-gold"
+          className="inline-flex h-12 items-center rounded-sm border border-white/40 px-6 text-[12px] uppercase tracking-[0.14em] transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-gold"
         >
           {CONTACTO_SITIO.nombre}
         </Link>

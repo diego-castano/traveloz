@@ -134,7 +134,7 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
         onClick={() => setCajon(true)}
         aria-expanded={cajon}
         className={cn(
-          "fixed bottom-6 right-5 z-40 flex h-12 items-center gap-2 rounded-sm bg-col-ink px-5 text-[12px] uppercase tracking-[0.14em] text-col-base shadow-[0_16px_40px_-16px_rgba(50,55,59,0.6)] transition-[transform,opacity] duration-300 ease-col hover:-translate-y-0.5",
+          "fixed bottom-6 right-5 z-40 flex h-12 items-center gap-2 rounded-col-sm bg-col-ink px-5 text-col-md font-medium text-col-base shadow-col-3 transition-[transform,opacity] duration-col-lento ease-col hover:-translate-y-0.5",
           cajon && "pointer-events-none translate-y-2 opacity-0",
         )}
       >
@@ -145,7 +145,7 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
           {!escritorio && <Drawer.Overlay className="fixed inset-0 z-40 bg-col-ink/40" />}
           <Drawer.Content
             aria-describedby={undefined}
-            className="fixed bottom-0 right-0 top-0 z-50 flex w-screen flex-col bg-col-surface shadow-[-24px_0_60px_-30px_rgba(50,55,59,0.5)] !outline-none lg:w-[min(860px,60vw)]"
+            className="fixed bottom-0 right-0 top-0 z-50 flex w-screen flex-col bg-col-surface shadow-col-3 !outline-none lg:w-[min(860px,60vw)]"
           >
             <Drawer.Title className="sr-only">Vista previa</Drawer.Title>
             {cajon &&
@@ -158,7 +158,7 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
               <button
                 type="button"
                 onClick={() => cambiar({ colapsada: false })}
-                className="absolute bottom-4 left-4 flex h-9 items-center gap-2 rounded-sm bg-col-ink/85 px-3 text-[11px] uppercase tracking-[0.14em] text-col-base backdrop-blur-sm hover:bg-col-ink"
+                className="absolute bottom-4 left-4 flex h-9 items-center gap-2 rounded-col-sm bg-col-ink/85 px-3 text-col-md font-medium text-col-base backdrop-blur-sm hover:bg-col-ink"
               >
                 Fijar al costado
               </button>
@@ -183,7 +183,7 @@ export function BannerConflicto({ visible }: { visible: boolean }) {
         >
           <div className="flex items-center gap-4 px-6 py-4">
             <AlertTriangle className="h-5 w-5 shrink-0 text-col-gold" strokeWidth={1.5} aria-hidden />
-            <p className="flex-1 text-[14px] leading-snug">
+            <p className="flex-1 text-col-md leading-snug">
               Alguien más guardó cambios. Recargá para ver la última versión.
               <span className="block text-col-base/60">Lo que escribiste después de eso no se guardó.</span>
             </p>

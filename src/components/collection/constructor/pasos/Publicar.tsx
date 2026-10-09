@@ -8,7 +8,7 @@ import { AlertTriangle, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { PASOS, puedePublicar, requisitos, type Requisito } from "@/lib/collection/experiencia/contenido";
 import type { AccionEstado } from "@/actions/collection/experiencias.actions";
 import { cn } from "@/components/lib/cn";
-import { Boton, VerEnSitio } from "../../ui";
+import { Boton, Estado, VerEnSitio } from "../../ui";
 import { rutaSitio } from "../../sitio/tarjetas";
 import { Grupo } from "../campos";
 import { useConstructor } from "../contexto";
@@ -35,25 +35,23 @@ export function PasoPublicar() {
 
   return (
     <div className="flex flex-col gap-12">
-      <section className="rounded-sm bg-col-ink p-6 text-col-base">
+      <section className="rounded-col-sm bg-col-ink p-6 text-col-base">
         <div className="flex flex-wrap items-center gap-3">
-          <EstadoPill estado={estado} className={estado === "PUBLICADA" ? "border-col-gold" : undefined} />
-          {cambiosSinPublicar && (
-            <span className="text-[13px] text-col-gold">Hay cambios sin publicar</span>
-          )}
+          <EstadoPill estado={estado} />
+          {cambiosSinPublicar && <Estado tono="aviso">Cambios sin publicar</Estado>}
         </div>
-        <p className="mt-4 max-w-[52ch] font-col-display text-[24px] leading-snug">{TEXTO_ESTADO[estado]}</p>
+        <p className="mt-4 max-w-[52ch] font-col-display text-col-xl leading-snug">{TEXTO_ESTADO[estado]}</p>
         {estado === "PUBLICADA" && borrador.campos.slug && (
           <VerEnSitio ruta={rutaSitio.experiencia(borrador.campos.slug)} className="mt-3 text-col-base/80 hover:text-col-base" />
         )}
         <div className="mt-6 flex items-center gap-4">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-col-base/15">
             <div
-              className="h-full bg-col-gold transition-[width] duration-700 ease-col"
+              className="h-full bg-col-gold transition-[width] duration-col-lento ease-col"
               style={{ width: `${(listos / obligatorios.length) * 100}%` }}
             />
           </div>
-          <span className="text-[13px] tabular-nums lining-nums text-col-base/70">
+          <span className="text-col-sm tabular-nums lining-nums text-col-base/70">
             {listos} de {obligatorios.length} obligatorios
           </span>
         </div>
@@ -85,7 +83,7 @@ function ListaRequisitos({ items, onIr }: { items: Requisito[]; onIr: (p: Requis
             <button
               type="button"
               onClick={() => onIr(r.paso)}
-              className="group flex w-full items-center gap-4 rounded-sm px-2 py-3 text-left transition-colors hover:bg-col-surface"
+              className="group flex w-full items-center gap-4 rounded-col-sm px-2 py-3 text-left transition-colors hover:bg-col-surface"
             >
               <span
                 className={cn(
@@ -95,13 +93,13 @@ function ListaRequisitos({ items, onIr }: { items: Requisito[]; onIr: (p: Requis
               >
                 {r.ok && <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
               </span>
-              <span className={cn("flex-1 text-[15px]", r.ok ? "text-col-slate" : "text-col-ink")}>
+              <span className={cn("flex-1 text-col-cuerpo", r.ok ? "text-col-slate" : "text-col-ink")}>
                 {r.texto}
                 <span className="sr-only">{r.ok ? ", listo" : ", falta"}</span>
               </span>
-              <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.12em] text-col-slate/70 transition-colors group-hover:text-col-ink">
+              <span className="flex items-center gap-1.5 text-col-sm font-medium text-col-muted transition-colors group-hover:text-col-ink">
                 {paso?.titulo}
-                <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-[opacity,transform] duration-200 ease-col group-hover:translate-x-0 group-hover:opacity-100" strokeWidth={1.5} />
+                <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition-[opacity,transform] duration-col ease-col group-hover:translate-x-0 group-hover:opacity-100" strokeWidth={1.5} />
               </span>
             </button>
           </li>
@@ -157,7 +155,7 @@ function Acciones() {
 
   if (!botones.length && !puedeArchivar) {
     return (
-      <p className="mt-6 text-[13px] text-col-base/60">Tu usuario no tiene permiso para cambiar el estado.</p>
+      <p className="mt-6 text-col-sm text-col-base/60">Tu usuario no tiene permiso para cambiar el estado.</p>
     );
   }
 
@@ -182,20 +180,20 @@ function Acciones() {
         ))}
         {puedeArchivar &&
           (confirmarArchivo ? (
-            <span className="ml-auto flex items-center gap-3 text-[13px] text-col-base/80">
+            <span className="ml-auto flex items-center gap-3 text-col-sm text-col-base/80">
               ¿Archivarla? Sale del sitio.
               <button
                 type="button"
                 onClick={() => void hacer("archivar")}
                 disabled={!!enCurso}
-                className="text-[12px] uppercase tracking-[0.12em] text-[#E9A08F] underline underline-offset-4"
+                className="text-col-sm font-medium text-[#E9A08F] underline underline-offset-4"
               >
                 {enCurso === "archivar" ? "Archivando…" : "Sí, archivar"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmarArchivo(false)}
-                className="text-[12px] uppercase tracking-[0.12em] text-col-base/60 hover:text-col-base"
+                className="text-col-sm font-medium text-col-base/60 hover:text-col-base"
               >
                 No
               </button>
@@ -204,24 +202,24 @@ function Acciones() {
             <button
               type="button"
               onClick={() => setConfirmarArchivo(true)}
-              className="ml-auto text-[12px] uppercase tracking-[0.12em] text-col-base/50 transition-colors hover:text-col-base"
+              className="ml-auto text-col-sm font-medium text-col-base/70 transition-colors hover:text-col-base"
             >
               Archivar
             </button>
           ))}
       </div>
       {!listo && permisoPublicar && estado !== "ARCHIVADA" && (
-        <p className="mt-4 text-[13px] text-col-base/60">
+        <p className="mt-4 text-col-sm text-col-base/60">
           Para publicar falta:{" "}
           {requisitos(borrador)
             .filter((r) => r.obligatorio && !r.ok)
-            .map((r) => r.texto.toLowerCase())
+            .map((r) => r.texto.charAt(0).toLowerCase() + r.texto.slice(1))
             .join(", ")}
           .
         </p>
       )}
       {error && (
-        <p role="alert" className="mt-4 flex items-start gap-2 text-[14px] text-[#E9A08F]">
+        <p role="alert" className="mt-4 flex items-start gap-2 text-col-md text-[#E9A08F]">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.5} aria-hidden /> {error}
         </p>
       )}
