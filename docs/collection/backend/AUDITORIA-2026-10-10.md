@@ -474,3 +474,13 @@ Alcance no cubierto en vivo: Inicio y Equipo no tienen ruta en `/dev/collection`
 13. **B8 + B10 + C2.** Avisos con deshacer para todo lo que cambia el sitio público, y confirmación para super admin (E25).
 14. **A1 + A5 + A6 + C1.** Escalas de tipo, sombra, radio y duración como tokens en `tailwind.config.ts`, con lint contra los valores arbitrarios. **[en curso]** en parte.
 15. **Copy.** Arreglar los bugs 4, 5, 6, 7, 9 y 10, y la jerga de D4 ("alt", "crédito", Railway).
+
+## Estado de los arreglos (10/10/2026)
+
+Aplicados en `fff1fa0` (base del sistema + tanda 1) y `5505dd9` (tanda 2).
+Quedan parciales:
+
+- B9: la vista previa de las hojas laterales no queda fija al hacer scroll.
+- B8: los interruptores de las filas de Ajustes conservan su posición.
+- E19: el cálculo de minutos de lectura no se pudo comparar con artículos
+  reales (producción no tiene ninguno todavía).
