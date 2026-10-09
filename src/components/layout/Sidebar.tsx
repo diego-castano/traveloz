@@ -35,6 +35,7 @@ import {
   Calculator,
   Receipt,
   Store,
+  Gem,
 } from "lucide-react";
 import { Tooltip } from "radix-ui";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -44,6 +45,7 @@ import { cn } from "@/components/lib/cn";
 import { Avatar } from "@/components/ui/Avatar";
 import { esRutaCotizador } from "@/app/backend/cotizador/tipos";
 import type { LucideIcon } from "lucide-react";
+import { getMiAccesoCollection } from "@/actions/collection/equipo.actions";
 
 // ---------------------------------------------------------------------------
 // Sidebar context -- allows Topbar (and others) to control mobile sidebar
@@ -200,6 +202,21 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+// Grupo aparte, solo para quienes tienen acceso a Traveloz Collection.
+const collectionGroup: NavGroup = {
+  group: "collection",
+  label: "Collection",
+  items: [
+    {
+      id: "collection",
+      label: "Collection",
+      sublabel: "segundo backend",
+      icon: Gem,
+      href: "/backend/collection",
+    },
+  ],
+};
+
 // Etiquetas legibles por rol (footer de usuario)
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
@@ -233,16 +250,30 @@ export function Sidebar() {
   const prefetchedRoutesRef = useRef<Set<string>>(new Set());
   const reduceMotion = useReducedMotion();
 
+  // Collection: el link aparece solo si la persona tiene acceso (ColPermiso).
+  const [tieneCollection, setTieneCollection] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    getMiAccesoCollection()
+      .then((a) => vivo && setTieneCollection(a !== null))
+      .catch(() => {});
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
   // Filter nav groups by role-visible modules
   const filteredGroups = useMemo(
     () =>
-      navGroups
+      [...navGroups, ...(tieneCollection ? [collectionGroup] : [])]
         .map((group) => ({
           ...group,
-          items: group.items.filter((item) => visibleModules.includes(item.id)),
+          items: group.items.filter(
+            (item) => item.id === "collection" || visibleModules.includes(item.id),
+          ),
         }))
         .filter((group) => group.items.length > 0),
-    [visibleModules],
+    [visibleModules, tieneCollection],
   );
 
   // Detect active nav item

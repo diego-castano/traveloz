@@ -132,6 +132,8 @@ model User {
   presupuestos     Presupuesto[]
   hotelesFavoritos HotelFavorito[]
   hotelesPropios   HotelPropio[]
+  colPermiso       ColPermiso?     @relation("ColPermisoUser")
+  colMedios        ColMedio[]      @relation("ColMedioSubidoPor")
 
   @@index([brandId])
 }
@@ -1536,4 +1538,67 @@ model Aerolinea {
   // IATA de 2 caracteres (LA, CM, G3…).
   codigo String @id
   nombre String
+}
+
+// ── Traveloz Collection ─────────────────────────────────────────────
+// Segundo negocio dentro de Traveloz (ver docs/collection/backend/PLAN.md).
+// Sin brandId: los modelos Col* son de Collection por construcción.
+
+// Permisos de Collection por usuario, independientes del rol de Traveloz.
+model ColPermiso {
+  userId      String   @id
+  superAdmin  Boolean  @default(false)
+  permisos    String[] @default([])
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  user        User     @relation("ColPermisoUser", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ColTipoMedio {
+  FOTO
+  VIDEO
+}
+
+// Biblioteca de medios de Collection. El original queda en el bucket y las
+// variantes webp se generan al registrar la foto.
+model ColMedio {
+  id             String       @id @default(cuid())
+  tipo           ColTipoMedio
+  nombre         String
+  key            String       @unique
+  url            String
+  contentType    String
+  peso           Int
+  ancho          Int?
+  alto           Int?
+  duracion       Float?
+  colorDominante String?
+  placeholder    String?      @db.Text
+  variantes      Json         @default("[]")
+  posterUrl      String?
+  alt            String       @default("")
+  leyenda        String       @default("")
+  credito        String       @default("")
+  focoX          Float        @default(0.5)
+  focoY          Float        @default(0.5)
+  etiquetas      String[]     @default([])
+  subidoPorId    String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  subidoPor      User?        @relation("ColMedioSubidoPor", fields: [subidoPorId], references: [id], onDelete: SetNull)
+
+  @@index([tipo, createdAt(sort: Desc)])
+}
+
+// Historial de Collection: quién publicó o cambió qué.
+model ColEvento {
+  id        String   @id @default(cuid())
+  entidad   String
+  entidadId String
+  accion    String
+  userId    String?
+  detalle   Json?
+  createdAt DateTime @default(now())
+
+  @@index([entidad, entidadId, createdAt(sort: Desc)])
 }

@@ -104,6 +104,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return <PrimerLoginGate />;
   }
 
+  // Collection es un segundo backend con su propio shell y design system:
+  // va sin el chrome de Traveloz (el acceso lo valida su layout de servidor).
+  if (pathname.startsWith("/backend/collection")) {
+    return <>{children}</>;
+  }
+
   // VENDEDOR role bypasses the admin chrome (sidebar + breadcrumb + command
   // palette) entirely. The vendor only ever lands on the dashboard table and
   // the mockup at /mockups/vendedor.html is the spec — no other navigation

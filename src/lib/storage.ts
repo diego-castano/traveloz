@@ -193,6 +193,31 @@ export async function getObjectBuffer(key: string): Promise<Buffer> {
 }
 
 /**
+ * Escribe un objeto en una key exacta (las variantes de Collection necesitan
+ * una key predecible, a diferencia de uploadBuffer que le agrega timestamp).
+ */
+export async function putObject(
+  key: string,
+  buffer: Buffer,
+  contentType: string,
+  cacheControl = "public, max-age=31536000, immutable",
+): Promise<void> {
+  const client = getClient();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket!,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      CacheControl: cacheControl,
+      Metadata: {
+        sha256: crypto.createHash("sha256").update(buffer).digest("hex"),
+      },
+    }),
+  );
+}
+
+/**
  * Delete a single object from the bucket. Best-effort: callers may swallow
  * errors so that orphaning a row in the DB never blocks user-visible delete.
  */
