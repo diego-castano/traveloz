@@ -23,13 +23,13 @@ import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
 import { IndicadorGuardado } from "../biblioteca/DetalleMedio";
-import { Boton, Eyebrow, Interruptor, etiquetaCampo, inputLinea } from "../ui";
+import { Boton, EncabezadoPagina, Eyebrow, Filtros, Interruptor, etiquetaCampo, inputLinea } from "../ui";
 import { Campo, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
 import { ItemPregunta } from "../sitio/tarjetas";
 import { Cabecera, ListaVacia } from "../sitio/bloques/comun";
 import "../sitio/sitio.css";
-import { ChipFiltro, ZonaEliminar, useGuardadoDiferido } from "../contenido/comun";
+import { ZonaEliminar, useGuardadoDiferido } from "../contenido/comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -175,12 +175,11 @@ export function Preguntas({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-8">
-        <p className="font-col-display text-[34px] font-light leading-tight text-col-ink">Lo que nos preguntan</p>
-        <p className="mt-2 text-[14px] text-col-slate">
-          {items.length} {items.length === 1 ? "pregunta" : "preguntas"} · {items.filter((p) => p.publicada).length} en el sitio
-        </p>
-      </div>
+      <EncabezadoPagina
+        eyebrow="Preguntas"
+        titulo="Lo que nos preguntan"
+        descripcion={`${items.length} ${items.length === 1 ? "pregunta" : "preguntas"} · ${items.filter((p) => p.publicada).length} en el sitio`}
+      />
 
       {error && (
         <p role="alert" className="mb-6 text-[14px] text-col-alerta">
@@ -190,12 +189,13 @@ export function Preguntas({
 
       <div className="grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)]">
         <div className="min-w-0">
-          <div role="group" aria-label="Categorías" className="mb-8 flex flex-wrap items-center gap-2">
-            {cats.map((c) => (
-              <ChipFiltro key={c} activo={cat === c} n={items.filter((p) => p.categoria === c).length} onClick={() => elegirCat(c)}>
-                {c}
-              </ChipFiltro>
-            ))}
+          <Filtros
+            className="mb-8"
+            etiqueta="Categoría"
+            opciones={cats.map((c) => ({ id: c, label: c, n: items.filter((p) => p.categoria === c).length }))}
+            valor={cat}
+            onChange={elegirCat}
+          >
             {editable && (
               <NuevaCategoria
                 existentes={cats}
@@ -206,7 +206,7 @@ export function Preguntas({
                 }}
               />
             )}
-          </div>
+          </Filtros>
 
           <div className="mb-3 flex items-center justify-between gap-4">
             <span className={etiquetaCampo}>

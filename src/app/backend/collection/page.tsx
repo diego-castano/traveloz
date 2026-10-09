@@ -96,7 +96,7 @@ export default async function InicioCollection() {
     <div className="mx-auto max-w-[1280px]">
       <section className="pb-12 pt-2">
         <Eyebrow>Traveloz Collection</Eyebrow>
-        <h2 className="mt-5 font-col-display text-[44px] font-light leading-[1.05] text-col-ink md:text-[60px]">
+        <h1 className="mt-5 font-col-display text-[44px] font-light leading-[1.05] text-col-ink md:text-[60px]">
           {saludo()}
           {nombre && (
             <>
@@ -104,7 +104,7 @@ export default async function InicioCollection() {
             </>
           )}
           .
-        </h2>
+        </h1>
         <p className="mt-3 text-[15px] capitalize text-col-slate">{fecha}</p>
       </section>
 
@@ -211,9 +211,14 @@ export default async function InicioCollection() {
             <span className="mt-2 text-[14px] text-col-slate">Subí las primeras desde la biblioteca.</span>
           </Link>
         ) : (
-          <ul className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+          // Filas justificadas que envuelven (nada de scroll horizontal); se ven hasta dos.
+          <ul className="flex max-h-[412px] flex-wrap gap-3 overflow-hidden">
             {medios.map((m) => (
-              <li key={m.id} className="shrink-0" style={{ width: `${Math.round(200 * aspectoDe(m))}px` }}>
+              <li
+                key={m.id}
+                className="min-w-0"
+                style={{ flexGrow: aspectoDe(m), flexBasis: `${Math.round(200 * aspectoDe(m))}px` }}
+              >
                 <Link
                   href={`/backend/collection/biblioteca?medio=${m.id}`}
                   aria-label={m.alt || m.nombre}
@@ -223,7 +228,7 @@ export default async function InicioCollection() {
                     medio={m}
                     sizes="320px"
                     ancho={480}
-                    className="h-[200px]"
+                    className="h-[200px] w-full"
                     imgClassName="group-hover:scale-[1.03]"
                   />
                 </Link>

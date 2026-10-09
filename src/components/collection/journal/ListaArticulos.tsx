@@ -13,9 +13,8 @@ import type { Resultado } from "@/lib/collection/ejecutar";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton, Eyebrow } from "../ui";
+import { Boton, EncabezadoPagina, Eyebrow, Filtros, barraHerramientas } from "../ui";
 import { ESTADOS } from "../constructor/formato";
-import { ChipFiltro } from "../contenido/comun";
 import { MedioImagen } from "../sitio/medios";
 import { etiquetaArticulo } from "../sitio/tarjetas";
 import type { EstadoArticulo } from "./api";
@@ -85,20 +84,26 @@ export function ListaArticulos({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-10 flex flex-col gap-5 xl:flex-row xl:items-center">
-        <div role="group" aria-label="Filtrar por estado" className="-mx-4 flex gap-2 overflow-x-auto px-4 xl:mx-0 xl:px-0">
-          {FILTROS.map((f) => (
-            <ChipFiltro key={f.id} activo={filtro === f.id} n={items.filter((x) => pasa(x, f.id)).length} onClick={() => setFiltro(f.id)}>
-              {f.label}
-            </ChipFiltro>
-          ))}
-        </div>
-        {editable && (
-          <Boton className="xl:ml-auto" onClick={() => void nuevo()} disabled={creando}>
-            {creando ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={1.5} />}
-            Nuevo artículo
-          </Boton>
-        )}
+      <EncabezadoPagina
+        eyebrow="Journal"
+        titulo="Relatos y guías"
+        descripcion={`${items.length} ${items.length === 1 ? "artículo" : "artículos"} · ${items.filter((x) => pasa(x, "PUBLICADO")).length} publicados`}
+        acciones={
+          editable && (
+            <Boton onClick={() => void nuevo()} disabled={creando}>
+              {creando ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={1.5} />}
+              Nuevo artículo
+            </Boton>
+          )
+        }
+      />
+      <div className={barraHerramientas}>
+        <Filtros
+          etiqueta="Estado"
+          opciones={FILTROS.map((f) => ({ ...f, n: items.filter((x) => pasa(x, f.id)).length }))}
+          valor={filtro}
+          onChange={setFiltro}
+        />
       </div>
 
       {!Array.isArray(inicial) && (

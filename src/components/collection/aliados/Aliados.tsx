@@ -22,12 +22,12 @@ import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Eyebrow, Interruptor, etiquetaCampo, inputLinea } from "../ui";
+import { EncabezadoPagina, Eyebrow, Filtros, Interruptor, barraHerramientas, etiquetaCampo, inputLinea } from "../ui";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { LogoAliado } from "../sitio/tarjetas";
 import "../sitio/sitio.css";
-import { ChipFiltro, Escalado, Hoja, NuevoEnLinea, ZonaEliminar, useGuardadoDiferido } from "../contenido/comun";
+import { Escalado, Hoja, NuevoEnLinea, ZonaEliminar, useGuardadoDiferido } from "../contenido/comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 export const TIPOS_ALIADO = ["Hotel", "Naviera", "Aerolínea", "Operador", "Otro"];
@@ -177,29 +177,22 @@ export function Aliados({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-end">
-        <div>
-          <p className="font-col-display text-[34px] font-light leading-tight text-col-ink">Con quiénes viajamos</p>
-          <p className="mt-2 text-[14px] text-col-slate">
-            {items.length} {items.length === 1 ? "aliado" : "aliados"} · {publicados} en el sitio
-          </p>
-        </div>
-        {editable && (
-          <div className="xl:ml-auto">
-            <NuevoEnLinea etiqueta="Nuevo aliado" placeholder="Nombre del aliado" onCrear={crear} />
-          </div>
-        )}
-      </div>
-
-      <div role="group" aria-label="Filtrar por tipo" className="-mx-4 mb-10 flex gap-2 overflow-x-auto px-4 xl:mx-0 xl:px-0">
-        <ChipFiltro activo={filtro === null} n={items.length} onClick={() => setFiltro(null)}>
-          Todos
-        </ChipFiltro>
-        {tipos.map((t) => (
-          <ChipFiltro key={t} activo={filtro === t} n={items.filter((x) => x.tipo === t).length} onClick={() => setFiltro(t)}>
-            {t}
-          </ChipFiltro>
-        ))}
+      <EncabezadoPagina
+        eyebrow="Aliados"
+        titulo="Con quiénes viajamos"
+        descripcion={`${items.length} ${items.length === 1 ? "aliado" : "aliados"} · ${publicados} en el sitio`}
+        acciones={editable && <NuevoEnLinea etiqueta="Nuevo aliado" placeholder="Nombre del aliado" onCrear={crear} />}
+      />
+      <div className={barraHerramientas}>
+        <Filtros
+          etiqueta="Tipo"
+          opciones={[
+            { id: "", label: "Todos", n: items.length },
+            ...tipos.map((t) => ({ id: t, label: t, n: items.filter((x) => x.tipo === t).length })),
+          ]}
+          valor={filtro ?? ""}
+          onChange={(t) => setFiltro(t || null)}
+        />
       </div>
 
       {error && (

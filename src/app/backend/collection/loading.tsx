@@ -15,9 +15,9 @@ export default function Cargando() {
           </div>
         ))}
       </div>
-      <div className="mt-16 flex gap-3 overflow-hidden">
+      <div className="mt-16 flex max-h-[412px] flex-wrap gap-3 overflow-hidden">
         {[300, 160, 260, 200, 300, 160].map((w, i) => (
-          <Skeleton key={i} className="h-[200px] shrink-0" style={{ width: w }} />
+          <Skeleton key={i} className="h-[200px] min-w-0" style={{ flexGrow: w, flexBasis: w }} />
         ))}
       </div>
     </div>

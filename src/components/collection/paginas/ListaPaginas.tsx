@@ -10,6 +10,7 @@ import { ArrowUpRight } from "lucide-react";
 import type { PaginaVista } from "@/lib/collection/paginas/contenido";
 import type { PaginaItem } from "@/actions/collection/paginas.actions";
 import { cn } from "@/components/lib/cn";
+import { EncabezadoPagina } from "../ui";
 import { PaginaRender } from "../sitio/pagina/PaginaRender";
 import { PaginaLegal } from "../sitio/pagina/PaginaLegal";
 import { fechaLarga } from "../sitio/tarjetas";
@@ -61,9 +62,12 @@ export function ListaPaginas({ inicial }: { inicial: TarjetaPagina[] | { error: 
   const legales = inicial.filter((x) => x.legal);
   return (
     <div className="mx-auto flex max-w-[1600px] flex-col gap-16">
-      <p className="max-w-[60ch] text-[15px] leading-relaxed text-col-slate">
-        Cada página se arma con bloques. Lo que edites se guarda solo y llega al sitio cuando tocás Publicar cambios.
-      </p>
+      <EncabezadoPagina
+        className="mb-0"
+        eyebrow="Páginas"
+        titulo="El sitio, por bloques"
+        descripcion="Lo que edites se guarda solo y llega al sitio cuando tocás Publicar cambios."
+      />
       <section className="grid grid-cols-1 gap-x-8 gap-y-12 lg:grid-cols-2">
         {principales.map((x, i) => (
           <Tarjeta key={x.item.slug} x={x} i={i} grande />

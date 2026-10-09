@@ -80,6 +80,11 @@ const config: Config = {
           gold: "#F4B860",
           line: "#DCDCDC",
           alerta: "#9E3D2F",
+          // Azul noche del fondo del logo: el color de contraste del chrome.
+          // Muestreado a ojo; se cambia acá cuando llegue el archivo del diseñador.
+          noche: "#04071F",
+          "noche-2": "#0E1436",
+          "noche-linea": "rgba(255,255,255,0.08)",
         },
       },
       spacing: {

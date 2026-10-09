@@ -26,20 +26,20 @@ export function PaginasEditorDemo({
   });
   if (!datos) {
     return (
-      <DevShell lectura={lectura} lista>
+      <DevShell lectura={lectura} ruta="/backend/collection/paginas">
         <ListaPaginas inicial={tarjetasDemo()} />
       </DevShell>
     );
   }
   return (
-    <DevShell lectura={lectura}>
+    <DevShell lectura={lectura} ruta={`/backend/collection/paginas/${pagina}`}>
       <EditorPagina
         detalle={datos.detalle}
         api={datos.api}
         apiMedios={datos.apiMedios}
         bloqueInicial={bloque}
         catalogoAbierto={catalogo}
-        className="h-screen"
+        className="h-[calc(100dvh-4rem)]"
       />
     </DevShell>
   );

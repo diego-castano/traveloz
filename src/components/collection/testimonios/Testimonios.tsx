@@ -22,7 +22,7 @@ import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Eyebrow, Interruptor, etiquetaCampo, inputLinea } from "../ui";
+import { EncabezadoPagina, Eyebrow, Interruptor, etiquetaCampo, inputLinea } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { SelectorMedios } from "../pickers/SelectorMedios";
@@ -161,19 +161,12 @@ export function Testimonios({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-10 flex flex-col gap-5 xl:flex-row xl:items-end">
-        <div>
-          <p className="font-col-display text-[34px] font-light leading-tight text-col-ink">Historias de viajeros</p>
-          <p className="mt-2 text-[14px] text-col-slate">
-            {items.length} {items.length === 1 ? "testimonio" : "testimonios"} · {publicados} en el sitio
-          </p>
-        </div>
-        {editable && (
-          <div className="xl:ml-auto">
-            <NuevoEnLinea etiqueta="Nuevo testimonio" placeholder="Quiénes viajaron" onCrear={crear} />
-          </div>
-        )}
-      </div>
+      <EncabezadoPagina
+        eyebrow="Testimonios"
+        titulo="Historias de viajeros"
+        descripcion={`${items.length} ${items.length === 1 ? "testimonio" : "testimonios"} · ${publicados} en el sitio`}
+        acciones={editable && <NuevoEnLinea etiqueta="Nuevo testimonio" placeholder="Quiénes viajaron" onCrear={crear} />}
+      />
 
       {error && (
         <p role="alert" className="mb-6 text-[14px] text-col-alerta">

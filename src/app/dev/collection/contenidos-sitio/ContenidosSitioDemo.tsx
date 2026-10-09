@@ -4,18 +4,16 @@
 // Testimonios y Preguntas sin base de datos. Nada de esto toca el servidor.
 
 import { useState } from "react";
-import { MotionConfig } from "motion/react";
 import type { AliadoItem } from "@/actions/collection/aliados.actions";
 import type { TestimonioItem } from "@/actions/collection/testimonios.actions";
 import type { PreguntaItem } from "@/actions/collection/preguntas.actions";
-import { CollectionContext } from "@/components/collection/shell/contexto";
-import { AvisosProvider } from "@/components/collection/shell/Avisos";
 import { ApiProvider } from "@/components/collection/constructor/api";
 import { crearApiMock, datosDemo } from "@/components/collection/constructor/api-mock";
 import { medio } from "@/components/collection/sitio/demo";
 import { Aliados } from "@/components/collection/aliados/Aliados";
 import { Testimonios } from "@/components/collection/testimonios/Testimonios";
 import { Preguntas } from "@/components/collection/preguntas/Preguntas";
+import { DevShell } from "../DevShell";
 
 export type VistaDemo = "aliados" | "testimonios" | "preguntas";
 
@@ -155,34 +153,22 @@ const PREGUNTAS: PreguntaItem[] = [
   orden: i,
 }));
 
-const TITULOS: Record<VistaDemo, string> = { aliados: "Aliados", testimonios: "Testimonios", preguntas: "Preguntas frecuentes" };
-
 export function ContenidosSitioDemo({ vista, abrir, lectura }: { vista: VistaDemo; abrir: string | null; lectura: boolean }) {
-  const [raiz, setRaiz] = useState<HTMLElement | null>(null);
   const [api] = useState(() => {
     const d = datosDemo();
     return crearApiMock(d.biblioteca, d.detalle.revision);
   });
-  const acceso = lectura ? { superAdmin: false, permisos: ["panel" as const] } : { superAdmin: true, permisos: [] };
   return (
-    <CollectionContext.Provider value={{ acceso, usuario: { id: "dev", nombre: "Diego Castaño" }, raiz }}>
-      <MotionConfig reducedMotion="user">
-        <AvisosProvider>
-          <ApiProvider value={api}>
-            <div ref={setRaiz} data-collection-shell className="min-h-screen px-10 py-10">
-              <h1 className="mb-10 font-col-display text-[44px] font-light text-col-ink">{TITULOS[vista]}</h1>
-              {raiz &&
-                (vista === "aliados" ? (
-                  <Aliados inicial={ALIADOS} proveedores={PROVEEDORES} api={apiDemo("a")} abrirId={abrir} />
-                ) : vista === "testimonios" ? (
-                  <Testimonios inicial={TESTIMONIOS} experiencias={EXPERIENCIAS} api={apiDemo("t")} abrirId={abrir} />
-                ) : (
-                  <Preguntas inicial={PREGUNTAS} categorias={["General"]} api={apiDemo("q")} abrirId={abrir} />
-                ))}
-            </div>
-          </ApiProvider>
-        </AvisosProvider>
-      </MotionConfig>
-    </CollectionContext.Provider>
+    <DevShell lectura={lectura} ruta={`/backend/collection/${vista}`}>
+      <ApiProvider value={api}>
+        {vista === "aliados" ? (
+          <Aliados inicial={ALIADOS} proveedores={PROVEEDORES} api={apiDemo("a")} abrirId={abrir} />
+        ) : vista === "testimonios" ? (
+          <Testimonios inicial={TESTIMONIOS} experiencias={EXPERIENCIAS} api={apiDemo("t")} abrirId={abrir} />
+        ) : (
+          <Preguntas inicial={PREGUNTAS} categorias={["General"]} api={apiDemo("q")} abrirId={abrir} />
+        )}
+      </ApiProvider>
+    </DevShell>
   );
 }

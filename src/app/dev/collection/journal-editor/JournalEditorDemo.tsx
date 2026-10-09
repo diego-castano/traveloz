@@ -15,14 +15,14 @@ export function JournalEditorDemo({ vista, vacio, lectura }: { vista: string; va
   });
   if (vista === "lista") {
     return (
-      <DevShell lectura={lectura} lista>
+      <DevShell lectura={lectura} ruta="/backend/collection/journal">
         <ListaArticulos inicial={articulosListaDemo()} crear={async () => ({ ok: true, data: { id: "nuevo" } })} />
       </DevShell>
     );
   }
   return (
-    <DevShell lectura={lectura}>
-      <EditorArticulo detalle={datos.detalle} api={datos.api} apiMedios={datos.apiMedios} className="h-screen" />
+    <DevShell lectura={lectura} ruta="/backend/collection/journal/demo">
+      <EditorArticulo detalle={datos.detalle} api={datos.api} apiMedios={datos.apiMedios} className="h-[calc(100dvh-4rem)]" />
     </DevShell>
   );
 }

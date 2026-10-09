@@ -6,12 +6,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { Search, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { eliminarMedio, listarMedios, type ColMedioDto } from "@/actions/collection/medios.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton } from "../ui";
+import { Boton, Buscador, EncabezadoPagina, Filtros, barraHerramientas } from "../ui";
 import { ColaSubidas } from "./ColaSubidas";
 import { DetalleMedio } from "./DetalleMedio";
 import { Grilla, GrillaSkeleton } from "./Grilla";
@@ -268,38 +268,12 @@ export function Biblioteca({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-center">
-        <div role="group" aria-label="Filtros" className="-mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
-          {FILTROS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              aria-pressed={filtro === f.id}
-              onClick={() => setFiltro(f.id)}
-              className={cn(
-                "h-9 shrink-0 rounded-sm border px-4 text-[13px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col",
-                filtro === f.id
-                  ? "border-col-ink bg-col-ink text-col-base"
-                  : "border-col-line text-col-slate hover:border-col-slate/50 hover:text-col-ink",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-4 lg:ml-auto">
-          <label className="relative flex-1 lg:w-72 lg:flex-none">
-            <span className="sr-only">Buscar en la biblioteca</span>
-            <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} aria-hidden />
-            <input
-              type="search"
-              value={texto}
-              onChange={(e) => setTexto(e.target.value)}
-              placeholder="Buscar por nombre, alt o etiqueta"
-              className="h-10 w-full border-0 border-b border-col-slate/40 bg-transparent pl-7 pr-2 text-[15px] text-col-ink placeholder:text-col-slate/60 transition-colors duration-200 ease-col focus:border-col-gold focus:outline-none focus:ring-0 focus-visible:outline-none"
-            />
-          </label>
-          {editable && (
+      <EncabezadoPagina
+        eyebrow="Biblioteca"
+        titulo="Fotos y videos"
+        descripcion="Arrastrá archivos a cualquier parte de la página para subirlos."
+        acciones={
+          editable && (
             <>
               <Boton onClick={() => inputArchivos.current?.click()}>
                 <Upload className="h-4 w-4" strokeWidth={1.5} aria-hidden />
@@ -319,8 +293,12 @@ export function Biblioteca({
                 }}
               />
             </>
-          )}
-        </div>
+          )
+        }
+      />
+      <div className={barraHerramientas}>
+        <Filtros etiqueta="Mostrar" opciones={FILTROS} valor={filtro} onChange={setFiltro} />
+        <Buscador valor={texto} onChange={setTexto} placeholder="Buscar por nombre, alt o etiqueta" etiqueta="Buscar en la biblioteca" />
       </div>
 
       <AnimatePresence>
@@ -347,7 +325,7 @@ export function Biblioteca({
               {seleccion.size === 1 ? "1 seleccionado" : `${seleccion.size} seleccionados`}
             </p>
             <p className="hidden text-[12px] text-col-base/60 md:block">Shift + clic para elegir un rango</p>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
               {confirmar ? (
                 <>
                   <span className="text-[14px]">¿Eliminar {seleccion.size === 1 ? "este medio" : `estos ${seleccion.size} medios`}? No se puede deshacer.</span>

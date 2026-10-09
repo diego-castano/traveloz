@@ -12,7 +12,7 @@ import { DropdownMenu } from "radix-ui";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Archive, Compass, Copy, LoaderCircle, MoreHorizontal, Plus, Search, Star } from "lucide-react";
+import { Archive, Copy, LoaderCircle, MoreHorizontal, Plus, Star } from "lucide-react";
 import {
   alternarDestacada,
   cambiarEstadoExperiencia,
@@ -26,7 +26,7 @@ import type { EstadoExperiencia } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton } from "../ui";
+import { AnilloCompletitud, Boton, Buscador, EncabezadoPagina, Filtros, barraHerramientas, tarjetaElevable } from "../ui";
 import { MedioImagen } from "../sitio/medios";
 import { EstadoPill } from "../constructor/formato";
 import { useSensoresOrden } from "../constructor/campos";
@@ -125,50 +125,32 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-10 flex flex-col gap-5 xl:flex-row xl:items-center">
-        <div role="group" aria-label="Filtrar por estado" className="-mx-4 flex gap-2 overflow-x-auto px-4 xl:mx-0 xl:px-0">
-          {FILTROS.map((f) => {
-            const n = conteo(f.id);
-            return (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={filtro === f.id}
-                onClick={() => void elegirFiltro(f.id)}
-                className={cn(
-                  "flex h-9 shrink-0 items-center gap-2 rounded-sm border px-4 text-[13px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col",
-                  filtro === f.id
-                    ? "border-col-ink bg-col-ink text-col-base"
-                    : "border-col-line text-col-slate hover:border-col-slate/50 hover:text-col-ink",
-                )}
-              >
-                {f.label}
-                {n !== undefined && n > 0 && (
-                  <span className={cn("text-[11px] tabular-nums lining-nums", filtro === f.id ? "text-col-gold" : "text-col-slate/60")}>{n}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        <div className="flex items-center gap-4 xl:ml-auto">
-          <label className="relative flex-1 xl:w-72 xl:flex-none">
-            <span className="sr-only">Buscar experiencias</span>
-            <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-col-slate" strokeWidth={1.5} aria-hidden />
-            <input
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar por título"
-              className="h-10 w-full border-0 border-b border-col-slate/40 bg-transparent pl-7 pr-2 text-[15px] text-col-ink placeholder:text-col-slate/60 focus:border-col-gold focus:outline-none focus:ring-0"
-            />
-          </label>
-          {editable && (
+      <EncabezadoPagina
+        eyebrow="Experiencias"
+        titulo="Los viajes de Collection"
+        descripcion={
+          items.length
+            ? `${plural(items.length, "experiencia", "experiencias")} · ${items.filter((x) => x.estado === "PUBLICADA").length} en el sitio`
+            : "Cada viaje se arma paso a paso, con vista previa."
+        }
+        acciones={
+          editable &&
+          items.length > 0 && (
             <Boton onClick={() => void nueva()} disabled={creando}>
               {creando ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={1.5} />}
               Nueva experiencia
             </Boton>
-          )}
-        </div>
+          )
+        }
+      />
+      <div className={barraHerramientas}>
+        <Filtros
+          etiqueta="Estado"
+          opciones={FILTROS.map((f) => ({ ...f, n: conteo(f.id) }))}
+          valor={filtro}
+          onChange={(f) => void elegirFiltro(f)}
+        />
+        <Buscador valor={q} onChange={setQ} placeholder="Buscar por título" etiqueta="Buscar experiencias" />
       </div>
 
       {error && (
@@ -178,7 +160,16 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
       )}
 
       {visibles.length === 0 ? (
-        <Vacia hayAlgo={items.length > 0} editable={editable} onNueva={() => void nueva()} creando={creando} />
+        <Vacia
+          hayAlgo={items.length > 0 || filtro !== "todas"}
+          editable={editable}
+          onNueva={() => void nueva()}
+          onTodas={() => {
+            setFiltro("todas");
+            setQ("");
+          }}
+          creando={creando}
+        />
       ) : (
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={visibles.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!ordenable}>
@@ -249,8 +240,8 @@ function Tarjeta({
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line transition-shadow duration-300 ease-col",
-            isDragging ? "shadow-[0_32px_64px_-24px_rgba(50,55,59,0.6)]" : "group-hover:shadow-[0_24px_48px_-28px_rgba(50,55,59,0.5)]",
+            "relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line",
+            isDragging ? "shadow-[0_32px_64px_-24px_rgba(50,55,59,0.6)]" : tarjetaElevable,
           )}
         >
           {x.portada ? (
@@ -261,8 +252,10 @@ function Tarjeta({
               imgClassName="group-hover:scale-[1.03]"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#D9D9D9] to-[#C9CDCE]">
-              <Compass className="h-10 w-10 text-col-base/80" strokeWidth={1} aria-hidden />
+            // Sin portada: un lienzo claro con el anillo de completitud, que invita a seguir.
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 border border-dashed border-col-slate/25 bg-[radial-gradient(120%_80%_at_30%_15%,#FFFFFF_0%,#F4F4F4_55%,#E9EAEA_100%)] text-col-ink">
+              <AnilloCompletitud valor={x.completitud} tam={72} />
+              <span className="text-[11px] uppercase tracking-[0.16em] text-col-slate/70">Falta la portada</span>
             </div>
           )}
           <div className="absolute left-3 top-3 flex items-center gap-1.5">
@@ -273,16 +266,18 @@ function Tarjeta({
               </span>
             )}
           </div>
-          {x.completitud < 1 && (
+          {x.portada && x.completitud < 1 && (
             <div className="absolute inset-x-0 bottom-0 h-1 bg-col-ink/25" aria-label={`${Math.round(x.completitud * 100)} por ciento completa`}>
               <div className="h-full bg-col-gold" style={{ width: `${x.completitud * 100}%` }} />
             </div>
           )}
         </div>
         <div className="mt-4">
-          <p className={cn("font-col-display text-[26px] leading-[1.1]", x.titulo ? "text-col-ink" : "italic text-col-slate/50")}>
-            {x.titulo || "Sin título"}
-          </p>
+          {x.titulo ? (
+            <p className="font-col-display text-[26px] leading-[1.1] text-col-ink">{x.titulo}</p>
+          ) : (
+            <p className="font-col-display text-[26px] italic leading-[1.1] text-col-slate/45">Sin título</p>
+          )}
           <p className="mt-2 flex items-center gap-2 text-[13px] text-col-slate">
             <span className="truncate">
               {[destinos || null, x.noches ? plural(x.noches, "noche", "noches") : null].filter(Boolean).join(" · ") || "Sin destino"}
@@ -375,15 +370,24 @@ function Vacia({
   hayAlgo,
   editable,
   onNueva,
+  onTodas,
   creando,
 }: {
   hayAlgo: boolean;
   editable: boolean;
   onNueva: () => void;
+  onTodas: () => void;
   creando: boolean;
 }) {
   if (hayAlgo) {
-    return <p className="py-24 text-center font-col-display text-[26px] italic text-col-slate">Nada con ese filtro.</p>;
+    return (
+      <div className="flex flex-col items-center py-24 text-center">
+        <p className="font-col-display text-[28px] italic text-col-slate">Nada con ese filtro.</p>
+        <Boton variante="secundario" tam="sm" className="mt-6" onClick={onTodas}>
+          Ver todas
+        </Boton>
+      </div>
+    );
   }
   return (
     <div className="grid grid-cols-1 items-center gap-12 py-10 lg:grid-cols-[1.1fr_1fr]">
@@ -418,7 +422,7 @@ function Vacia({
         {editable && (
           <Boton className="mt-8" onClick={onNueva} disabled={creando}>
             {creando ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={1.5} />}
-            Crear la primera
+            Nueva experiencia
           </Boton>
         )}
       </div>

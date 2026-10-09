@@ -1,19 +1,17 @@
-import { Skeleton } from "@/components/collection/ui";
+import { EncabezadoSkeleton, Skeleton, barraHerramientas } from "@/components/collection/ui";
 import { GrillaSkeleton } from "@/components/collection/biblioteca/Grilla";
 
 export default function Cargando() {
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-center">
-        <div className="flex gap-2">
-          {[64, 76, 84, 88, 120].map((w, i) => (
+      <EncabezadoSkeleton />
+      <div className={barraHerramientas}>
+        <div className="flex min-w-0 flex-[1_1_440px] flex-wrap gap-2">
+          {[72, 88, 96, 100, 128].map((w, i) => (
             <Skeleton key={i} className="h-9" style={{ width: w }} />
           ))}
         </div>
-        <div className="flex items-center gap-4 lg:ml-auto">
-          <Skeleton className="h-10 flex-1 lg:w-72 lg:flex-none" />
-          <Skeleton className="h-12 w-28" />
-        </div>
+        <Skeleton className="ml-auto h-10 min-w-[200px] flex-[1_1_240px] sm:max-w-[320px]" />
       </div>
       <GrillaSkeleton />
     </div>

@@ -1,25 +1,24 @@
 "use client";
 
-// Contexto del shell (permisos, portales, avisos) para las rutas de desarrollo
-// de los editores de páginas y del journal. `lista` simula el padding del shell.
+// Shell real de Collection (riel, barra, paleta, avisos) para las rutas de
+// desarrollo. `ruta` hace de cuenta que estamos en esa ruta del backend, así
+// el riel marca el módulo y los editores ocupan todo el alto.
 
-import { useState } from "react";
-import { MotionConfig } from "motion/react";
-import { CollectionContext } from "@/components/collection/shell/contexto";
-import { AvisosProvider } from "@/components/collection/shell/Avisos";
+import { CollectionShell } from "@/components/collection/shell/CollectionShell";
+import { useCollection } from "@/components/collection/shell/contexto";
 
-export function DevShell({ lectura, lista, children }: { lectura: boolean; lista?: boolean; children: React.ReactNode }) {
-  const [raiz, setRaiz] = useState<HTMLElement | null>(null);
+function ConRaiz({ children }: { children: React.ReactNode }) {
+  // Los portales (hojas, selectores) necesitan la raíz montada.
+  return useCollection().raiz ? <>{children}</> : null;
+}
+
+export function DevShell({ lectura, ruta, children }: { lectura: boolean; ruta: string; children: React.ReactNode }) {
   const acceso = lectura ? { superAdmin: false, permisos: ["panel" as const] } : { superAdmin: true, permisos: [] };
   return (
-    <CollectionContext.Provider value={{ acceso, usuario: { id: "dev", nombre: "Diego Castaño" }, raiz }}>
-      <MotionConfig reducedMotion="user">
-        <AvisosProvider>
-          <div ref={setRaiz} data-collection-shell className={lista ? "min-h-screen px-12 pb-24 pt-10" : "h-screen"}>
-            {raiz && children}
-          </div>
-        </AvisosProvider>
-      </MotionConfig>
-    </CollectionContext.Provider>
+    <div data-collection-shell className="min-h-screen bg-col-base">
+      <CollectionShell acceso={acceso} usuario={{ id: "dev", nombre: "Diego Castaño" }} ruta={ruta}>
+        <ConRaiz>{children}</ConRaiz>
+      </CollectionShell>
+    </div>
   );
 }

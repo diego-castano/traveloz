@@ -4,16 +4,14 @@
 // Especialistas sin base de datos. Nada de esto toca el servidor.
 
 import { useState } from "react";
-import { MotionConfig } from "motion/react";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import type { DestinoItem } from "@/actions/collection/destinos.actions";
 import type { EspecialistaItem } from "@/actions/collection/especialistas.actions";
-import { CollectionContext } from "@/components/collection/shell/contexto";
-import { AvisosProvider } from "@/components/collection/shell/Avisos";
 import { ApiProvider } from "@/components/collection/constructor/api";
 import { crearApiMock, datosDemo } from "@/components/collection/constructor/api-mock";
 import { Destinos, type ApiDestinos } from "@/components/collection/contenido/Destinos";
 import { Especialistas, type ApiEspecialistas } from "@/components/collection/contenido/Especialistas";
+import { DevShell } from "../DevShell";
 
 const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const ok = <T,>(data: T) => ({ ok: true as const, data });
@@ -179,31 +177,19 @@ export function ContenidoDemo({
   abrir: string | null;
   lectura: boolean;
 }) {
-  const [raiz, setRaiz] = useState<HTMLElement | null>(null);
   const [api] = useState(() => {
     const d = datosDemo();
     return crearApiMock(d.biblioteca, d.detalle.revision);
   });
-  const acceso = lectura ? { superAdmin: false, permisos: ["panel" as const] } : { superAdmin: true, permisos: [] };
   return (
-    <CollectionContext.Provider value={{ acceso, usuario: { id: "dev", nombre: "Diego Castaño" }, raiz }}>
-      <MotionConfig reducedMotion="user">
-        <AvisosProvider>
-          <ApiProvider value={api}>
-            <div ref={setRaiz} data-collection-shell className="min-h-screen px-10 py-10">
-              <h1 className="mb-10 font-col-display text-[44px] font-light text-col-ink">
-                {vista === "destinos" ? "Destinos" : "Especialistas"}
-              </h1>
-              {raiz &&
-                (vista === "destinos" ? (
-                  <Destinos inicial={DESTINOS} paises={PAISES} api={apiDestinos} abrirId={abrir} />
-                ) : (
-                  <Especialistas inicial={ESPECIALISTAS} usuarios={USUARIOS} api={apiEspecialistas} abrirId={abrir} />
-                ))}
-            </div>
-          </ApiProvider>
-        </AvisosProvider>
-      </MotionConfig>
-    </CollectionContext.Provider>
+    <DevShell lectura={lectura} ruta={`/backend/collection/${vista}`}>
+      <ApiProvider value={api}>
+        {vista === "destinos" ? (
+          <Destinos inicial={DESTINOS} paises={PAISES} api={apiDestinos} abrirId={abrir} />
+        ) : (
+          <Especialistas inicial={ESPECIALISTAS} usuarios={USUARIOS} api={apiEspecialistas} abrirId={abrir} />
+        )}
+      </ApiProvider>
+    </DevShell>
   );
 }

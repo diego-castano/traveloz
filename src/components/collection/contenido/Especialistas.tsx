@@ -22,7 +22,7 @@ import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { iniciales, useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Eyebrow, Interruptor, etiquetaCampo, inputLinea } from "../ui";
+import { EncabezadoPagina, Eyebrow, Interruptor, tarjetaElevable, etiquetaCampo, inputLinea } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, ChipsTexto, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
@@ -170,21 +170,12 @@ export function Especialistas({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-10 flex flex-col gap-5 xl:flex-row xl:items-end">
-        <div>
-          <p className="font-col-display text-[34px] font-light leading-tight text-col-ink">
-            Quienes arman cada viaje
-          </p>
-          <p className="mt-2 text-[14px] text-col-slate">
-            {plural(items.length, "especialista", "especialistas")} · {publicados} en el sitio
-          </p>
-        </div>
-        {editable && (
-          <div className="xl:ml-auto">
-            <NuevoEnLinea etiqueta="Nuevo especialista" placeholder="Nombre y apellido" onCrear={crear} />
-          </div>
-        )}
-      </div>
+      <EncabezadoPagina
+        eyebrow="Especialistas"
+        titulo="Quienes arman cada viaje"
+        descripcion={`${plural(items.length, "especialista", "especialistas")} · ${publicados} en el sitio`}
+        acciones={editable && <NuevoEnLinea etiqueta="Nuevo especialista" placeholder="Nombre y apellido" onCrear={crear} />}
+      />
 
       {error && (
         <p role="alert" className="mb-6 text-[14px] text-col-alerta">
@@ -280,7 +271,8 @@ function Tarjeta({
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line transition-[filter] duration-300 ease-col",
+            "relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line",
+            tarjetaElevable,
             !e.publicado && "grayscale-[0.6]",
           )}
         >
@@ -294,7 +286,7 @@ function Tarjeta({
         <p className="mt-4 font-col-display text-[24px] leading-[1.15] text-col-ink">{e.nombre}</p>
         <p className="mt-1 truncate text-[13px] text-col-slate">{e.region || "Sin región"}</p>
       </button>
-      <div className="mt-3 flex items-center justify-between gap-3 border-t border-col-line pt-3">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-col-line pt-3">
         <span className="text-[12px] uppercase tracking-[0.12em] text-col-slate">
           {plural(e.experiencias, "experiencia", "experiencias")}
         </span>

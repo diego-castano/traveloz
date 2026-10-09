@@ -172,7 +172,7 @@ export function NuevoEnLinea({
         e.preventDefault();
         void crear();
       }}
-      className="flex items-center gap-3"
+      className="flex max-w-full flex-wrap items-center gap-3"
     >
       <input
         autoFocus
@@ -182,7 +182,7 @@ export function NuevoEnLinea({
         onChange={(e) => setNombre(e.target.value)}
         onKeyDown={(e) => e.key === "Escape" && setAbierto(false)}
         placeholder={placeholder}
-        className="h-12 w-60 border-0 border-b border-col-gold bg-transparent px-0 font-col-display text-[22px] text-col-ink placeholder:text-col-slate/50 focus:outline-none focus:ring-0"
+        className="h-12 w-60 min-w-0 max-w-full border-0 border-b border-col-gold bg-transparent px-0 font-col-display text-[22px] text-col-ink placeholder:text-col-slate/50 focus:outline-none focus:ring-0"
       />
       <Boton type="submit" disabled={!nombre.trim() || creando}>
         {creando ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" strokeWidth={1.5} />}
@@ -245,34 +245,6 @@ export function ZonaEliminar({ texto, onEliminar }: { texto: string; onEliminar:
         </p>
       )}
     </section>
-  );
-}
-
-/** Botones de filtro en mayúscula con su conteo (como en Experiencias). */
-export function ChipFiltro({
-  activo,
-  n,
-  onClick,
-  children,
-}: {
-  activo: boolean;
-  n?: number;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={activo}
-      onClick={onClick}
-      className={cn(
-        "flex h-9 shrink-0 items-center gap-2 rounded-sm border px-4 text-[13px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col",
-        activo ? "border-col-ink bg-col-ink text-col-base" : "border-col-line text-col-slate hover:border-col-slate/50 hover:text-col-ink",
-      )}
-    >
-      {children}
-      {!!n && <span className={cn("text-[11px] tabular-nums lining-nums", activo ? "text-col-gold" : "text-col-slate/60")}>{n}</span>}
-    </button>
   );
 }
 

@@ -12,7 +12,8 @@ export const fuenteDisplay = Cormorant_Garamond({
 
 export const fuenteTexto = Jost({
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  // 600 solo para la marca (MarcaCollection).
+  weight: ["300", "400", "500", "600"],
   variable: "--font-col-text",
   display: "swap",
 });

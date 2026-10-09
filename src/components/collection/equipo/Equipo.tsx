@@ -15,7 +15,7 @@ import type { PermisoCollection } from "@/lib/collection/permisos";
 import { cn } from "@/components/lib/cn";
 import { iniciales, useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Interruptor } from "../ui";
+import { EncabezadoPagina, Filtros, Interruptor } from "../ui";
 
 const ROLES: Record<string, string> = { ADMIN: "Admin", VENDEDOR: "Vendedor", MARKETING: "Marketing" };
 
@@ -79,39 +79,27 @@ export function Equipo({ inicial, permisos }: { inicial: MiembroCollection[]; pe
 
   return (
     <div className="mx-auto max-w-[1080px]">
-      <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h2 className="font-col-display text-[40px] font-light leading-tight text-col-ink">
+      <EncabezadoPagina
+        eyebrow="Equipo"
+        titulo={
+          <>
             Quién trabaja en <em className="italic">Collection</em>
-          </h2>
-          <p className="mt-2 max-w-[56ch] text-[15px] leading-relaxed text-col-slate">
-            Los permisos son propios de Collection y no cambian el rol en Traveloz. Cada cambio se guarda solo.
-          </p>
-        </div>
-        <div role="group" aria-label="Filtro" className="flex shrink-0 gap-2">
-          {(
-            [
-              ["acceso", `Con acceso (${conAcceso})`],
-              ["todos", `Todos (${miembros.length})`],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={filtro === id}
-              onClick={() => setFiltro(id)}
-              className={cn(
-                "h-9 rounded-sm border px-4 text-[13px] uppercase tracking-[0.12em] transition-colors duration-200 ease-col",
-                filtro === id
-                  ? "border-col-ink bg-col-ink text-col-base"
-                  : "border-col-line text-col-slate hover:border-col-slate/50 hover:text-col-ink",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+          </>
+        }
+        descripcion="Los permisos son propios de Collection y no cambian el rol en Traveloz. Cada cambio se guarda solo."
+        acciones={
+          <Filtros
+            className="flex-none"
+            etiqueta="Mostrar"
+            opciones={[
+              { id: "acceso" as const, label: "Con acceso", n: conAcceso },
+              { id: "todos" as const, label: "Todos", n: miembros.length },
+            ]}
+            valor={filtro}
+            onChange={setFiltro}
+          />
+        }
+      />
 
       {visibles.length === 0 ? (
         <p className="py-20 text-center font-col-display text-[30px] font-light italic text-col-ink">

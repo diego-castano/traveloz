@@ -24,12 +24,12 @@ import { slugify } from "@/lib/utils";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Eyebrow, etiquetaCampo, inputLinea } from "../ui";
+import { EncabezadoPagina, Eyebrow, Filtros, barraHerramientas, etiquetaCampo, inputLinea, tarjetaElevable } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
 import { SelectorMedios } from "../pickers/SelectorMedios";
-import { ChipFiltro, Hoja, NuevoEnLinea, ZonaEliminar, tonoDe, useGuardadoDiferido } from "./comun";
+import { Hoja, NuevoEnLinea, ZonaEliminar, tonoDe, useGuardadoDiferido } from "./comun";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 export const DOMINIO_COLLECTION = "collection.traveloz.com.uy";
@@ -96,7 +96,7 @@ export function TarjetaDestino({
   const proximamente = d.estado === "PROXIMAMENTE";
   return (
     <div>
-      <div className="relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line">
+      <div className={cn("relative aspect-[4/5] overflow-hidden rounded-sm bg-col-line", admin && tarjetaElevable)}>
         {d.portada ? (
           <MedioImagen medio={d.portada} relleno sizes={sizes} imgClassName={admin ? "group-hover:scale-[1.03]" : undefined} />
         ) : (
@@ -225,22 +225,22 @@ export function Destinos({
 
   return (
     <div className="mx-auto max-w-[1600px]">
-      <div className="mb-10 flex flex-col gap-5 xl:flex-row xl:items-center">
-        <div role="group" aria-label="Filtrar por estado" className="-mx-4 flex gap-2 overflow-x-auto px-4 xl:mx-0 xl:px-0">
-          <ChipFiltro activo={filtro === "todos"} n={conteo("todos")} onClick={() => setFiltro("todos")}>
-            Todos
-          </ChipFiltro>
-          {ORDEN_ESTADOS.map((e) => (
-            <ChipFiltro key={e} activo={filtro === e} n={conteo(e)} onClick={() => setFiltro(e)}>
-              {ESTADOS_DESTINO[e].label}
-            </ChipFiltro>
-          ))}
-        </div>
-        {editable && (
-          <div className="xl:ml-auto">
-            <NuevoEnLinea etiqueta="Nuevo destino" placeholder="Nombre del destino" onCrear={crear} />
-          </div>
-        )}
+      <EncabezadoPagina
+        eyebrow="Destinos"
+        titulo="Adónde viajamos"
+        descripcion={`${items.length} ${items.length === 1 ? "destino" : "destinos"} · ${items.filter((x) => x.estado === "PUBLICADO").length} en el sitio`}
+        acciones={editable && <NuevoEnLinea etiqueta="Nuevo destino" placeholder="Nombre del destino" onCrear={crear} />}
+      />
+      <div className={barraHerramientas}>
+        <Filtros
+          etiqueta="Estado"
+          opciones={[
+            { id: "todos" as Filtro, label: "Todos", n: conteo("todos") },
+            ...ORDEN_ESTADOS.map((e) => ({ id: e as Filtro, label: ESTADOS_DESTINO[e].label, n: conteo(e) })),
+          ]}
+          valor={filtro}
+          onChange={setFiltro}
+        />
       </div>
 
       {error && (
