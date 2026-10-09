@@ -142,6 +142,9 @@ export async function prepararSubidaMedio(input: {
       contentType,
       expiresIn: 600,
       metadata: { uploader: userId },
+      // El navegador sube directo al bucket: solo el formato con el bucket en
+      // la ruta pasa el preflight CORS del proveedor.
+      pathStyle: true,
     });
     return { url: r.url, key: r.key, publicUrl: publica(r.key) };
   });

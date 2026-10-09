@@ -71,6 +71,16 @@ const config: Config = {
         // Hairline + rail tokens used by DataTable, Field, FormSection
         hairline: "rgba(17,17,36,0.07)",
         rail: "rgba(17,17,36,0.025)",
+        // Traveloz Collection (solo bajo /backend/collection)
+        col: {
+          base: "#F0F0F0",
+          surface: "#FFFFFF",
+          ink: "#32373B",
+          slate: "#4A5859",
+          gold: "#F4B860",
+          line: "#DCDCDC",
+          alerta: "#9E3D2F",
+        },
       },
       spacing: {
         row: "44px",
@@ -87,6 +97,11 @@ const config: Config = {
         display: ["Playfair Display", "Georgia", "serif"],
         body: ["DM Sans", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "SF Mono", "monospace"],
+        "col-display": ["var(--font-col-display)", "Georgia", "serif"],
+        "col-text": ["var(--font-col-text)", "system-ui", "sans-serif"],
+      },
+      transitionTimingFunction: {
+        col: "cubic-bezier(0.22, 1, 0.36, 1)",
       },
       backdropBlur: {
         glass: "20px",

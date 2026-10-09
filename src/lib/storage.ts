@@ -55,6 +55,22 @@ export function getStorageClient(): S3Client {
   return getClient();
 }
 
+let cachedPathStyleClient: S3Client | null = null;
+
+/** Mismo bucket y credenciales, con el bucket en la ruta (ver getPresignedPutUrl). */
+function getPathStyleClient(): S3Client {
+  getClient();
+  if (!cachedPathStyleClient) {
+    cachedPathStyleClient = new S3Client({
+      endpoint,
+      region,
+      credentials: { accessKeyId: accessKeyId!, secretAccessKey: secretAccessKey! },
+      forcePathStyle: true,
+    });
+  }
+  return cachedPathStyleClient;
+}
+
 export interface UploadResult {
   key: string;
   url: string;
@@ -117,9 +133,15 @@ export async function getPresignedPutUrl(params: {
   contentType: string;
   expiresIn?: number;
   metadata?: Record<string, string>;
+  /**
+   * Firma con el bucket en la ruta (host/bucket/key). El proveedor responde el
+   * preflight CORS del navegador solo en ese formato; con el bucket como
+   * subdominio no devuelve las cabeceras y el PUT desde el navegador falla.
+   */
+  pathStyle?: boolean;
 }): Promise<{ url: string; key: string; expiresIn: number }> {
-  const { key, contentType, expiresIn = 300, metadata } = params;
-  const client = getClient();
+  const { key, contentType, expiresIn = 300, metadata, pathStyle = false } = params;
+  const client = pathStyle ? getPathStyleClient() : getClient();
   const cmd = new PutObjectCommand({
     Bucket: bucket!,
     Key: key,

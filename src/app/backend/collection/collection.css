@@ -1,0 +1,38 @@
+/* Estilos de Traveloz Collection. Todo cuelga de [data-collection-shell]
+   para no tocar nada del admin de Traveloz. */
+
+[data-collection-shell] {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-collection-shell] :focus-visible {
+  outline: 2px solid #f4b860;
+  outline-offset: 2px;
+}
+
+[data-collection-shell] ::selection {
+  background: rgba(244, 184, 96, 0.35);
+}
+
+@keyframes col-brillo {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+[data-collection-shell] .col-skeleton {
+  background: linear-gradient(90deg, #e6e6e6 0%, #eeeeee 50%, #e6e6e6 100%);
+  background-size: 200% 100%;
+  animation: col-brillo 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-collection-shell] *,
+  [data-collection-shell] *::before,
+  [data-collection-shell] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
