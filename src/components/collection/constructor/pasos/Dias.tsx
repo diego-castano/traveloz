@@ -143,7 +143,8 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
     <div className="rounded-col-sm border border-col-line bg-col-surface p-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <p className="min-w-[110px] font-col-display text-col-xl leading-none text-col-ink">{etiquetaDias(d.desde, d.hasta)}</p>
-        <div className="flex items-center gap-2">
+        {/* En celular, "al" baja de renglón: los dos selectores no entran en 310 px. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span className="text-col-sm text-col-slate">Del</span>
           <Stepper valor={d.desde} min={1} max={90} label="Día de inicio" onCambio={(desde) => cambiar({ desde })} deshabilitado={!editable} />
           <span className="text-col-sm text-col-slate">al</span>
@@ -168,13 +169,14 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
       )}
       <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-[1fr_200px]">
         <Campo etiqueta="Título" htmlFor={`dia-${d.id}`}>
-          <input
+          <textarea
             id={`dia-${d.id}`}
+            rows={1}
             value={d.titulo}
             maxLength={160}
-            onChange={(e) => cambiar({ titulo: e.target.value })}
-            placeholder={tramo?.ciudadNombre ? `Un día en ${tramo.ciudadNombre}` : "Llegada y traslado privado"}
-            className={cn(entrada, "text-col-cuerpo")}
+            onChange={(e) => cambiar({ titulo: e.target.value.replace(/\n/g, " ") })}
+            placeholder={tramo?.ciudadNombre ? `Ej.: Un día en ${tramo.ciudadNombre}` : "Ej.: Llegada y traslado privado"}
+            className={cn(entrada, "resize-none text-col-cuerpo [field-sizing:content]")}
           />
         </Campo>
         <Campo etiqueta="Parada" htmlFor={`dia-t-${d.id}`}>

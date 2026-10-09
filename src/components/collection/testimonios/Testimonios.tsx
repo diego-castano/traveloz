@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ImagePlus, RefreshCw, X } from "lucide-react";
+import { ImagePlus, Quote, RefreshCw, X } from "lucide-react";
 import {
   actualizarTestimonio,
   crearTestimonio,
@@ -21,7 +21,7 @@ import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
-import { EncabezadoPagina, Eyebrow, Interruptor, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
+import { EncabezadoPagina, Eyebrow, Vacio, Interruptor, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { SelectorMedios } from "../pickers/SelectorMedios";
@@ -182,7 +182,7 @@ export function Testimonios({
       <EncabezadoPagina
         titulo="Historias de viajeros"
         descripcion={`${items.length} ${items.length === 1 ? "testimonio" : "testimonios"} · ${publicados} en el sitio`}
-        acciones={editable && <NuevoEnLinea etiqueta="Nuevo testimonio" placeholder="Quiénes viajaron" onCrear={crear} />}
+        acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo testimonio" placeholder="Quiénes viajaron" onCrear={crear} />}
       />
 
       {error && (
@@ -192,9 +192,12 @@ export function Testimonios({
       )}
 
       {items.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
-          Todavía no hay testimonios. Cargá el primero.
-        </p>
+        <Vacio
+          icono={Quote}
+          titulo="Todavía no hay testimonios"
+          texto="Lo que cuentan los viajeros al volver. Se muestran en el slider de la portada."
+          accion={editable && <NuevoEnLinea etiqueta="Nuevo testimonio" placeholder="Quiénes viajaron" onCrear={crear} />}
+        />
       ) : (
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={items.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!editable}>
@@ -304,10 +307,13 @@ function Tarjeta({
       {editable && <AsaTarjeta nombre={`el testimonio de ${t.nombre}`} orden={orden} />}
       <div className="flex items-center justify-between gap-3 border-t border-col-line px-5 py-3">
         <span className="min-w-0 truncate text-col-xs text-col-slate">{experiencia ? `Viaje: ${experiencia}` : "Sin viaje relacionado"}</span>
-        <label className="flex shrink-0 items-center gap-2 text-col-xs text-col-slate">
-          {t.publicado ? "Publicado" : "Oculto"}
-          <Interruptor checked={t.publicado} onCheckedChange={onPublicar} disabled={!editable} label={`Publicar el testimonio de ${t.nombre}`} />
-        </label>
+        <Interruptor
+          checked={t.publicado}
+          onCheckedChange={onPublicar}
+          disabled={!editable}
+          label={`Publicar el testimonio de ${t.nombre}`}
+          texto={t.publicado ? "Publicado" : "Oculto"}
+        />
       </div>
     </motion.li>
   );
@@ -359,7 +365,7 @@ function EditorTestimonio({
       </div>
 
       <div className="flex flex-col gap-9 px-6 py-8">
-        <div className="grid grid-cols-[132px_minmax(0,1fr)] items-start gap-6">
+        <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[132px_minmax(0,1fr)] [&>:first-child]:max-w-[132px]">
           <CampoFoto t={t} editable={editable} onCambio={(m) => cambiar({ foto: m })} />
           <div className="flex flex-col gap-7">
             <Campo etiqueta="Quiénes viajaron" htmlFor="t-nombre">
@@ -421,7 +427,7 @@ function EditorTestimonio({
           />
         </Campo>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_180px] gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,1fr)_180px]">
           <Campo etiqueta="Experiencia relacionada" htmlFor="t-exp" ayuda="Opcional. Para saber de qué viaje habla.">
             <div className="relative">
               <select

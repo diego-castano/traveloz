@@ -78,10 +78,18 @@ export function Hoja({
               asChild
               forceMount
               aria-describedby={undefined}
-              // El foco va al panel y no al primer botón, así no se abre su globo.
+              // El foco va al primer campo (no a la cruz, que abriría su globo). Si no hay campos, al panel.
               onOpenAutoFocus={(e) => {
                 e.preventDefault();
-                (e.target as HTMLElement | null)?.focus();
+                const panel = e.target as HTMLElement | null;
+                // La hoja entra animada: se espera un cuadro para que el campo ya esté montado.
+                requestAnimationFrame(() => {
+                  const campo = panel?.querySelector<HTMLElement>(
+                    "input:not([type=hidden]):not(:disabled):not([type=file]), textarea:not(:disabled), [contenteditable=true]",
+                  );
+                  // En pantallas táctiles no: abriría el teclado tapando media hoja.
+                  (window.matchMedia("(hover: hover)").matches ? campo ?? panel : panel)?.focus({ preventScroll: true });
+                });
               }}
             >
               <motion.div
@@ -92,7 +100,6 @@ export function Hoja({
                   <Dialog.Title className="min-w-0 flex-1 truncate font-col-display text-col-xl font-normal text-col-ink">
                     {titulo}
                   </Dialog.Title>
-                  <IndicadorGuardado estado={estado} />
                   <Dialog.Close asChild>
                     <BotonIcono etiqueta="Cerrar" lado="left">
                       <X strokeWidth={1.5} />
@@ -107,6 +114,14 @@ export function Hoja({
                 >
                   {children}
                 </motion.div>
+                {/* Pie fijo: el estado del guardado y la salida, siempre a la vista. */}
+                <footer className="flex h-14 shrink-0 items-center gap-3 border-t border-col-line px-6">
+                  <p className="min-w-0 flex-1 truncate text-col-xs text-col-muted">Los cambios se guardan solos.</p>
+                  <IndicadorGuardado estado={estado} />
+                  <Dialog.Close asChild>
+                    <Boton tam="sm">Listo</Boton>
+                  </Dialog.Close>
+                </footer>
               </motion.div>
             </Dialog.Content>
           </Dialog.Portal>
@@ -177,12 +192,14 @@ export function NuevoEnLinea({
   etiqueta,
   placeholder,
   onCrear,
+  abiertoInicial = false,
 }: {
   etiqueta: string;
   placeholder: string;
   onCrear: (nombre: string) => Promise<boolean>;
+  abiertoInicial?: boolean;
 }) {
-  const [abierto, setAbierto] = useState(false);
+  const [abierto, setAbierto] = useState(abiertoInicial);
   const [nombre, setNombre] = useState("");
   const [creando, setCreando] = useState(false);
 
@@ -256,11 +273,12 @@ export function ZonaEliminar({ texto, onEliminar }: { texto: string; onEliminar:
     if (e) setConfirmar(false);
   };
   return (
-    <section className="border-t border-col-line pt-8">
+    // Zona de peligro: separada del formulario por el fondo.
+    <section className="rounded-col bg-col-alerta/[0.05] px-4 py-3">
       <div className="flex flex-wrap items-center gap-3">
         {confirmar ? (
           <>
-            <p className="mr-auto text-col-md text-col-ink">{texto}</p>
+            <p className="mr-auto min-w-0 basis-full text-col-md text-col-ink sm:basis-auto">{texto}</p>
             <Boton variante="fantasma" tam="sm" onClick={() => setConfirmar(false)}>
               Cancelar
             </Boton>

@@ -4,7 +4,7 @@
 // completitud; filtros por estado, búsqueda, orden arrastrando (con el
 // filtro "Todas") y menú por tarjeta.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
@@ -46,7 +46,14 @@ const FILTROS: { id: Filtro; label: string }[] = [
 
 const plural = (n: number, a: string, b: string) => `${n} ${n === 1 ? a : b}`;
 
-export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { error: string } }) {
+export function ListaExperiencias({
+  inicial,
+  nuevaAlEntrar = false,
+}: {
+  inicial: ExperienciaItem[] | { error: string };
+  /** Desde la paleta ("Nueva experiencia"): la crea al entrar y abre el constructor. */
+  nuevaAlEntrar?: boolean;
+}) {
   const router = useRouter();
   const avisar = useAviso();
   const { puede, raiz } = useCollection();
@@ -87,6 +94,16 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
     }
     router.push(`/backend/collection/experiencias/${r.data.id}`);
   };
+
+  const yaCreada = useRef(false);
+  useEffect(() => {
+    if (!nuevaAlEntrar || !editable || yaCreada.current) return;
+    yaCreada.current = true;
+    // Saca el ?nueva=1 primero: recargar no crea otra.
+    router.replace("/backend/collection/experiencias");
+    void nueva();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nuevaAlEntrar, editable]);
 
   const alSoltar = async (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return;
@@ -143,15 +160,18 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
           )
         }
       />
-      <div className={barraHerramientas}>
-        <Filtros
-          etiqueta="Estado"
-          opciones={FILTROS.map((f) => ({ ...f, n: conteo(f.id) }))}
-          valor={filtro}
-          onChange={(f) => void elegirFiltro(f)}
-        />
-        <Buscador valor={q} onChange={setQ} placeholder="Buscar por título" etiqueta="Buscar experiencias" />
-      </div>
+      {/* Sin ninguna experiencia, filtros y buscador no dicen nada: se ocultan. */}
+      {(items.length > 0 || filtro !== "todas") && (
+        <div className={barraHerramientas}>
+          <Filtros
+            etiqueta="Estado"
+            opciones={FILTROS.map((f) => ({ ...f, n: conteo(f.id) }))}
+            valor={filtro}
+            onChange={(f) => void elegirFiltro(f)}
+          />
+          <Buscador valor={q} onChange={setQ} placeholder="Buscar por título" etiqueta="Buscar experiencias" />
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="mb-6 text-col-md text-col-alerta">
@@ -173,7 +193,7 @@ export function ListaExperiencias({ inicial }: { inicial: ExperienciaItem[] | { 
       ) : (
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={visibles.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!ordenable}>
-            <ul className="grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <ul className="grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-10 lg:grid-cols-3 xl:grid-cols-4">
               <AnimatePresence initial={false}>
                 {visibles.map((x, i) => (
                   <Tarjeta
@@ -236,11 +256,12 @@ function Tarjeta({
       <Link
         href={`/backend/collection/experiencias/${x.id}`}
         aria-label={`Abrir ${x.titulo || "experiencia sin título"}`}
-        className="block rounded-col-sm"
+        // En celular, fila compacta (miniatura de 72 px, título y estado); desde sm, tarjeta.
+        className="flex items-center gap-4 rounded-col-sm bg-col-surface p-2 pr-24 sm:block sm:bg-transparent sm:p-0"
       >
         <div
           className={cn(
-            "relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line",
+            "relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-col-sm bg-col-line sm:aspect-[4/3] sm:w-auto",
             isDragging ? "shadow-col-2" : tarjetaElevable,
           )}
         >
@@ -248,18 +269,23 @@ function Tarjeta({
             <MedioImagen
               medio={x.portada}
               relleno
-              sizes="(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, 50vw"
+              sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 72px"
               imgClassName="group-hover:scale-[1.03]"
             />
           ) : (
             // Sin portada: un lienzo claro con el anillo de completitud, que invita a seguir.
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 border border-dashed border-col-slate/25 bg-[radial-gradient(120%_80%_at_30%_15%,#FFFFFF_0%,#F4F4F4_55%,#E9EAEA_100%)] text-col-ink">
-              <AnilloCompletitud valor={x.completitud} tam={72} />
-              <span className="text-col-sm font-medium text-col-slate">Falta la portada</span>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 border border-dashed border-col-slate/25 bg-[radial-gradient(120%_80%_at_30%_15%,#FFFFFF_0%,#F4F4F4_55%,#E9EAEA_100%)] text-col-ink">
+              <AnilloCompletitud valor={x.completitud} tam={64} className="hidden sm:inline-flex" />
+              <span className="hidden text-col-sm font-medium text-col-slate sm:block">Falta la portada</span>
             </div>
           )}
-          <div className="absolute left-3 top-3 flex items-center gap-1.5">
+          <div className="absolute left-3 top-3 hidden items-center gap-1.5 sm:flex">
             <EstadoPill estado={x.estado} className="shadow-col-1" />
+            {x.completitud < 1 && (
+              <Estado tono="neutro" className="tabular-nums shadow-col-1" title="Completitud">
+                {Math.round(x.completitud * 100)} %
+              </Estado>
+            )}
             {x.destacada && (
               <span className="flex h-6 w-6 items-center justify-center rounded-col-sm bg-col-ink/70 backdrop-blur-sm" title="Destacada">
                 <Star className="h-3 w-3 fill-col-gold text-col-gold" strokeWidth={1.5} aria-label="Destacada" />
@@ -267,18 +293,22 @@ function Tarjeta({
             )}
           </div>
           {x.portada && x.completitud < 1 && (
-            <div className="absolute inset-x-0 bottom-0 h-1 bg-col-ink/25" aria-label={`${Math.round(x.completitud * 100)} por ciento completa`}>
+            <div className="absolute inset-x-0 bottom-0 h-0.5 bg-col-ink/25" aria-label={`${Math.round(x.completitud * 100)} por ciento completa`}>
               <div className="h-full bg-col-gold" style={{ width: `${x.completitud * 100}%` }} />
             </div>
           )}
         </div>
-        <div className="mt-4">
+        <div className="min-w-0 flex-1 sm:mt-4">
           {x.titulo ? (
-            <p className="font-col-display text-col-2xl leading-[1.1] text-col-ink">{x.titulo}</p>
+            <p className="line-clamp-2 font-col-display text-col-xl leading-[1.1] text-col-ink sm:line-clamp-none sm:text-col-2xl">{x.titulo}</p>
           ) : (
-            <p className="font-col-display text-col-2xl italic leading-[1.1] text-col-subtle">Sin título</p>
+            <p className="font-col-display text-col-xl italic leading-[1.1] text-col-subtle sm:text-col-2xl">Sin título</p>
           )}
-          <p className="mt-2 flex items-center gap-2 text-col-sm text-col-slate">
+          <p className="mt-1.5 flex items-center gap-2 sm:hidden">
+            <EstadoPill estado={x.estado} />
+            {x.completitud < 1 && <span className="text-col-xs tabular-nums text-col-muted">{Math.round(x.completitud * 100)} %</span>}
+          </p>
+          <p className="mt-2 hidden items-center gap-2 text-col-sm text-col-slate sm:flex">
             <span className="truncate">
               {[destinos || null, x.noches ? plural(x.noches, "noche", "noches") : null].filter(Boolean).join(" · ") || "Sin destino"}
             </span>
@@ -288,19 +318,20 @@ function Tarjeta({
               </Estado>
             )}
           </p>
-          {x.completitud < 1 && (
-            <p className="mt-1 text-col-xs tabular-nums lining-nums text-col-muted">{Math.round(x.completitud * 100)} % completa</p>
-          )}
         </div>
       </Link>
       {ordenable && (
-        <AsaTarjeta nombre={x.titulo || "experiencia sin título"} orden={orden} className={hayMenu ? "right-[52px]" : undefined} />
+        <AsaTarjeta
+          nombre={x.titulo || "experiencia sin título"}
+          orden={orden}
+          className={cn("top-1/2 -translate-y-1/2 sm:top-3 sm:translate-y-0", hayMenu && "right-[52px]")}
+        />
       )}
       {hayMenu && (
         <DropdownMenu.Root onOpenChange={(o) => !o && setConfirmar(false)}>
           <DropdownMenu.Trigger
             aria-label={`Opciones de ${x.titulo || "la experiencia"}`}
-            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-col bg-col-surface/95 text-col-ink opacity-70 shadow-col-1 backdrop-blur-sm transition-opacity duration-col ease-col hover:bg-col-surface focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
+            className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-col bg-col-surface/95 sm:top-3 sm:translate-y-0 text-col-ink opacity-70 shadow-col-1 backdrop-blur-sm transition-opacity duration-col ease-col hover:bg-col-surface focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 [@media(hover:none)]:opacity-100"
           >
             <MoreHorizontal className="h-4 w-4" strokeWidth={1.5} />
           </DropdownMenu.Trigger>

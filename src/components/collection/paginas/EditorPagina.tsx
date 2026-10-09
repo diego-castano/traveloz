@@ -13,6 +13,7 @@ import {
   AlignLeft,
   ArrowLeft,
   BookOpen,
+  ChevronDown,
   CircleHelp,
   Columns2,
   Compass,
@@ -25,7 +26,6 @@ import {
   Heart,
   Image as ImageIcon,
   LayoutGrid,
-  LoaderCircle,
   Mail,
   Map as MapIcon,
   MessageSquareQuote,
@@ -52,13 +52,14 @@ import type { PaginaDetalle } from "@/actions/collection/paginas.actions";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso } from "../shell/Avisos";
-import { Boton, Eyebrow, VerEnSitio } from "../ui";
+import { Boton, BotonIcono, Eyebrow, VerEnSitio } from "../ui";
+import { transiciones } from "../movimiento";
 import { apiReal, ApiProvider, type ApiConstructor } from "../constructor/api";
 import { Asa, ListaOrdenable, MediosCtx } from "../constructor/campos";
-import { IndicadorGuardado } from "../constructor/Constructor";
+import { FranjaLectura, IndicadorGuardado } from "../constructor/Constructor";
 import { nuevoId } from "../constructor/estado";
 import { haceTiempo } from "../constructor/formato";
-import { BannerConflicto, PanelPrevia } from "../constructor/marco";
+import { BannerConflicto, BotonPrevia, PanelPrevia, usePrevia } from "../constructor/marco";
 import { useAutoguardado } from "../constructor/useAutoguardado";
 import { VistaPrevia } from "../constructor/VistaPrevia";
 import { PaginaRender } from "../sitio/pagina/PaginaRender";
@@ -165,6 +166,7 @@ export function EditorPagina({
   const lista = useRef<HTMLDivElement>(null);
   const centro = useRef<HTMLDivElement>(null);
   const elegirDesdeLista = (id: string) => {
+    setHojaBloques(false);
     setElegido(id);
     setPulso((p) => p + 1);
     centro.current?.scrollTo({ top: 0 });
@@ -175,6 +177,10 @@ export function EditorPagina({
     lista.current?.querySelector(`[data-item-bloque="${id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, []);
   const bloque = bloques.find((b) => b.id === elegido) ?? null;
+  // Legales con un solo bloque de texto: se editan directo, sin lista ni "Agregar bloque".
+  const directo = legal && bloques.length === 1 && bloques[0].tipo === "texto";
+  const [hojaBloques, setHojaBloques] = useState(false);
+  const previa = usePrevia("col.paginas.previa", 1440);
 
   // ── Acciones de bloque ──
   const [catalogo, setCatalogo] = useState(catalogoAbierto);
@@ -185,6 +191,7 @@ export function EditorPagina({
       return i < 0 ? [...bs, nuevo] : [...bs.slice(0, i + 1), nuevo, ...bs.slice(i + 1)];
     });
     setCatalogo(false);
+    setHojaBloques(false);
     setElegido(nuevo.id);
     setPulso((p) => p + 1);
   };
@@ -242,6 +249,33 @@ export function EditorPagina({
 
   const Icono = bloque ? iconoBloque(bloque.tipo) : null;
 
+  // La lista va en el aside (escritorio) y en una hoja (celular y tablet).
+  const listaBloques = (
+    <ListaOrdenable
+      items={bloques}
+      deshabilitado={!editable}
+      onOrden={(bs) => cambiarBloques(() => bs)}
+      className="flex flex-col gap-1"
+      render={(b, _i, asa) => (
+        <ItemBloque
+          b={b}
+          activo={b.id === elegido}
+          editable={editable}
+          asa={asa}
+          onElegir={() => elegirDesdeLista(b.id)}
+          onOcultar={() => alternarOculto(b.id)}
+          onDuplicar={() => duplicar(b.id)}
+          onEliminar={() => eliminar(b.id)}
+        />
+      )}
+    />
+  );
+  const botonAgregar = editable ? (
+    <Boton variante="secundario" tam="sm" className="w-full" disabled={bloques.length >= MAX_BLOQUES} onClick={() => setCatalogo(true)}>
+      <Plus className="h-4 w-4" strokeWidth={1.5} /> Agregar bloque
+    </Boton>
+  ) : null;
+
   return (
     <ApiProvider value={apiMedios}>
       <MediosCtx.Provider value={{ medios, agregarMedios, editable }}>
@@ -274,108 +308,123 @@ export function EditorPagina({
             </p>
             {publicadaEn && <VerEnSitio ruta={ruta} className="hidden shrink-0 text-col-slate hover:text-col-ink sm:inline-flex" />}
             {puedeEditar && (
-              <Boton tam="sm" disabled={!sinPublicar || publicando || conflicto} onClick={() => void publicar()}>
-                {publicando && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
+              <Boton
+                tam="sm"
+                disabled={!sinPublicar || conflicto}
+                cargando={publicando}
+                motivo={conflicto ? "Recargá la página para seguir" : "No hay cambios para publicar"}
+                onClick={() => void publicar()}
+              >
                 Publicar cambios
               </Boton>
             )}
           </header>
           <BannerConflicto visible={conflicto} />
-          {!puedeEditar && (
-            <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-col-sm text-col-slate">
-              Estás viendo esta página en modo lectura: tu usuario no tiene permiso para editar el sitio.
-            </p>
-          )}
+          {!puedeEditar && <FranjaLectura>Modo lectura: podés ver esta página, pero tu usuario no tiene permiso para editar el sitio.</FranjaLectura>}
 
           <div className="flex min-h-0 flex-1">
-            {/* Lista de bloques */}
-            <aside className="flex w-[300px] shrink-0 flex-col border-r border-col-line bg-col-surface">
-              <div className="flex items-center justify-between px-5 pb-3 pt-5">
-                <p className="text-col-xs uppercase tracking-[0.16em] text-col-slate">
-                  Bloques <span className="tabular-nums text-col-muted">{bloques.length}</span>
-                </p>
-              </div>
-              <div ref={lista} className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
-                <ListaOrdenable
-                  items={bloques}
-                  deshabilitado={!editable}
-                  onOrden={(bs) => cambiarBloques(() => bs)}
-                  className="flex flex-col gap-1"
-                  render={(b, _i, asa) => (
-                    <ItemBloque
-                      b={b}
-                      activo={b.id === elegido}
-                      editable={editable}
-                      asa={asa}
-                      onElegir={() => elegirDesdeLista(b.id)}
-                      onOcultar={() => alternarOculto(b.id)}
-                      onDuplicar={() => duplicar(b.id)}
-                      onEliminar={() => eliminar(b.id)}
-                    />
-                  )}
-                />
-              </div>
-              {editable && (
-                <div className="border-t border-col-line p-3">
-                  <Boton
-                    variante="secundario"
-                    tam="sm"
-                    className="w-full"
-                    disabled={bloques.length >= MAX_BLOQUES}
-                    onClick={() => setCatalogo(true)}
-                  >
-                    <Plus className="h-4 w-4" strokeWidth={1.5} /> Agregar bloque
-                  </Boton>
+            {/* Lista de bloques (desde 1024 px; abajo de eso va en una hoja) */}
+            {!directo && (
+              <aside className="hidden w-[300px] shrink-0 flex-col border-r border-col-line bg-col-surface lg:flex">
+                <div className="flex items-center justify-between px-5 pb-3 pt-5">
+                  <p className="text-col-sm font-medium text-col-ink">
+                    Bloques <span className="tabular-nums text-col-muted">{bloques.length}</span>
+                  </p>
                 </div>
-              )}
-            </aside>
+                <div ref={lista} className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+                  {listaBloques}
+                </div>
+                {botonAgregar && <div className="border-t border-col-line p-3">{botonAgregar}</div>}
+              </aside>
+            )}
 
             {/* Formulario */}
-            <div ref={centro} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-              {bloque && Icono ? (
-                <motion.div
-                  key={bloque.id}
-                  initial={reducido ? false : { opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, ease: EASE }}
-                  className="mx-auto w-full max-w-[680px] px-6 pb-20 pt-10 md:px-10"
-                >
-                  <header className="mb-10 flex items-start gap-5">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-col-sm bg-col-ink text-col-gold">
-                      <Icono className="h-5 w-5" strokeWidth={1.4} aria-hidden />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <Eyebrow>Bloque {bloques.findIndex((b) => b.id === bloque.id) + 1} de {bloques.length}</Eyebrow>
-                      <h2 className="mt-3 font-col-display text-col-display font-normal leading-[1.05] text-col-ink">{INFO[bloque.tipo].nombre}</h2>
-                      <p className="mt-1 text-col-cuerpo text-col-slate">{INFO[bloque.tipo].descripcion}</p>
-                    </div>
-                    {bloque.oculto && (
-                      <span className="mt-1 flex items-center gap-1.5 rounded-col-sm border border-col-line px-2 py-1 text-col-xs uppercase tracking-[0.12em] text-col-slate">
-                        <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden /> Oculto
+            <div className="flex min-w-0 flex-1 flex-col">
+              {!directo && bloques.length > 0 && (
+                <div className="shrink-0 border-b border-col-line bg-col-surface px-4 py-2.5 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setHojaBloques(true)}
+                    aria-haspopup="dialog"
+                    className="flex min-h-11 w-full items-center gap-3 rounded-col border border-col-line bg-col-surface px-3 text-left transition-colors hover:border-col-slate/40"
+                  >
+                    {Icono && (
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-col-sm bg-col-ink text-col-gold">
+                        <Icono className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                       </span>
                     )}
-                  </header>
-                  <fieldset disabled={!editable} className="m-0 min-w-0 border-0 p-0">
-                    <legend className="sr-only">{INFO[bloque.tipo].nombre}</legend>
-                    <FormBloque key={bloque.id} bloque={bloque} onCambio={cambiarBloque} mapas={mapas} editable={editable} />
-                  </fieldset>
-                </motion.div>
-              ) : (
-                <div className="flex h-full flex-col items-center justify-center gap-5 px-8 text-center">
-                  <p className="max-w-[22ch] font-col-display text-col-3xl leading-tight text-col-ink">
-                    {bloques.length ? "Elegí un bloque para editarlo." : "Esta página todavía no tiene bloques."}
-                  </p>
-                  {editable && !bloques.length && (
-                    <Boton onClick={() => setCatalogo(true)}>
-                      <Plus className="h-4 w-4" strokeWidth={1.5} /> Agregar el primero
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-col-md text-col-ink">{bloque ? INFO[bloque.tipo].nombre : "Elegí un bloque"}</span>
+                      <span className="block text-col-xs text-col-muted">
+                        {bloque ? `Bloque ${bloques.findIndex((b) => b.id === bloque.id) + 1} de ${bloques.length}` : `${bloques.length} bloques`} · Ver todos
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-col-slate" strokeWidth={1.5} aria-hidden />
+                  </button>
+                </div>
+              )}
+              <div ref={centro} className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+                {bloque && Icono ? (
+                  <motion.div
+                    key={bloque.id}
+                    initial={reducido ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, ease: EASE }}
+                    className="mx-auto w-full max-w-[680px] px-5 pb-20 pt-8 md:px-10 md:pt-10"
+                  >
+                    <header className="mb-10 flex items-start gap-4 sm:gap-5">
+                      <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-col-sm bg-col-ink text-col-gold sm:flex">
+                        <Icono className="h-5 w-5" strokeWidth={1.4} aria-hidden />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        {!directo && <Eyebrow className="mb-3">Bloque {bloques.findIndex((b) => b.id === bloque.id) + 1} de {bloques.length}</Eyebrow>}
+                        <h2 className="font-col-display text-col-3xl font-normal leading-[1.05] text-col-ink md:text-col-display">
+                          {directo ? "Texto de la página" : INFO[bloque.tipo].nombre}
+                        </h2>
+                        <p className="mt-1 text-col-cuerpo text-col-slate">
+                          {directo ? "Escribí o pegá el texto legal. Los cambios se ven en el sitio cuando tocás Publicar cambios." : INFO[bloque.tipo].descripcion}
+                        </p>
+                      </div>
+                      {bloque.oculto && (
+                        <span className="mt-1 flex items-center gap-1.5 rounded-col-sm border border-col-line px-2 py-1 text-col-xs text-col-slate">
+                          <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden /> Oculto
+                        </span>
+                      )}
+                    </header>
+                    <fieldset disabled={!editable} className={cn("m-0 min-w-0 border-0 p-0", !editable && "[&_:disabled]:pointer-events-none")}>
+                      <legend className="sr-only">{INFO[bloque.tipo].nombre}</legend>
+                      <FormBloque key={bloque.id} bloque={bloque} onCambio={cambiarBloque} mapas={mapas} editable={editable} legal={directo} />
+                    </fieldset>
+                  </motion.div>
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center gap-5 px-8 text-center">
+                    <p className="max-w-[22ch] font-col-display text-col-3xl leading-tight text-col-ink">
+                      {bloques.length ? "Elegí un bloque para editarlo." : "Esta página todavía no tiene bloques."}
+                    </p>
+                    {editable && !bloques.length && (
+                      <Boton onClick={() => setCatalogo(true)}>
+                        <Plus className="h-4 w-4" strokeWidth={1.5} /> Agregar el primero
+                      </Boton>
+                    )}
+                  </div>
+                )}
+              </div>
+              {!previa.enLinea && (
+                <footer className="flex shrink-0 items-center gap-3 border-t border-col-line bg-col-base/95 px-4 py-3 backdrop-blur-sm md:px-10">
+                  {!directo && editable && (
+                    <Boton variante="fantasma" tam="sm" className="px-2 lg:hidden" disabled={bloques.length >= MAX_BLOQUES} onClick={() => setCatalogo(true)}>
+                      <Plus className="h-4 w-4" strokeWidth={1.5} /> Agregar bloque
                     </Boton>
                   )}
-                </div>
+                  <span className="flex-1" />
+                  <BotonPrevia previa={previa} />
+                </footer>
               )}
             </div>
 
             <PanelPrevia
-              clave="col.paginas.previa"
+              previa={previa}
+              reserva={(previa.escritorio && !directo ? 308 : 0) + 640}
               render={(c) => (
                 <VistaPrevia
                   {...c}
@@ -391,6 +440,9 @@ export function EditorPagina({
           </div>
         </div>
 
+        <HojaBloques abierta={hojaBloques} onCerrar={() => setHojaBloques(false)} cantidad={bloques.length} pie={botonAgregar}>
+          {listaBloques}
+        </HojaBloques>
         <Catalogo abierto={catalogo} onCerrar={() => setCatalogo(false)} onElegir={agregar} legal={legal} />
       </MediosCtx.Provider>
     </ApiProvider>
@@ -421,7 +473,7 @@ function ItemBloque({
   const [confirmar, setConfirmar] = useState(false);
   const Icono = iconoBloque(b.tipo);
   const resumen = resumenBloque(b);
-  const accion = "flex h-7 w-7 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink";
+  const accion = "flex h-9 w-9 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink";
 
   return (
     <div
@@ -460,7 +512,7 @@ function ItemBloque({
             <button
               type="button"
               onClick={onEliminar}
-              className="h-7 rounded-col-sm bg-col-alerta px-2 text-col-sm font-medium text-col-base"
+              className="h-9 rounded-col-sm bg-col-alerta px-3 text-col-sm font-medium text-col-base"
             >
               Eliminar
             </button>
@@ -469,7 +521,7 @@ function ItemBloque({
             </button>
           </span>
         ) : (
-          <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-col-sm bg-col-base opacity-0 transition-opacity duration-col ease-col focus-within:opacity-100 group-hover:opacity-100">
+          <span className="absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-0.5 rounded-col-sm bg-col-base opacity-0 transition-opacity duration-col ease-col focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:static [@media(hover:none)]:translate-y-0 [@media(hover:none)]:bg-transparent [@media(hover:none)]:opacity-100">
             <button type="button" onClick={onOcultar} aria-label={b.oculto ? "Mostrar" : "Ocultar"} title={b.oculto ? "Mostrar" : "Ocultar"} className={accion}>
               {b.oculto ? <Eye className="h-3.5 w-3.5" strokeWidth={1.5} /> : <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} />}
             </button>
@@ -482,6 +534,71 @@ function ItemBloque({
           </span>
         ))}
     </div>
+  );
+}
+
+// ── Hoja de bloques (debajo de 1024 px) ─────────────────────────────────────
+
+function HojaBloques({
+  abierta,
+  onCerrar,
+  cantidad,
+  pie,
+  children,
+}: {
+  abierta: boolean;
+  onCerrar: () => void;
+  cantidad: number;
+  pie: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const { raiz } = useCollection();
+  return (
+    <Dialog.Root open={abierta} onOpenChange={(o) => !o && onCerrar()}>
+      <AnimatePresence>
+        {abierta && (
+          <Dialog.Portal forceMount container={raiz}>
+            <Dialog.Overlay asChild forceMount>
+              <motion.div className="fixed inset-0 z-[60] bg-col-noche/40 lg:hidden" {...transiciones.velo} />
+            </Dialog.Overlay>
+            <Dialog.Content
+              asChild
+              forceMount
+              aria-describedby={undefined}
+              // El foco va al bloque elegido, no a la cruz.
+              onOpenAutoFocus={(e) => {
+                const actual = (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>("[aria-current=true]");
+                if (actual) {
+                  e.preventDefault();
+                  actual.focus();
+                }
+              }}
+            >
+              <motion.div
+                className="fixed inset-x-0 bottom-0 z-[60] flex max-h-[85dvh] flex-col rounded-t-col-lg bg-col-surface shadow-col-3 focus:outline-none lg:hidden"
+                initial={{ y: "100%" }}
+                animate={{ y: 0, transition: { type: "spring", stiffness: 320, damping: 34 } }}
+                exit={{ y: "100%", transition: { duration: 0.2 } }}
+              >
+                <div className="flex items-center gap-3 border-b border-col-line px-5 py-3">
+                  <Dialog.Title className="flex-1 font-col-display text-col-2xl font-normal text-col-ink">
+                    Bloques <span className="font-col-text text-col-sm tabular-nums text-col-muted">{cantidad}</span>
+                  </Dialog.Title>
+                  <Dialog.Close asChild>
+                    <BotonIcono etiqueta="Cerrar" lado="left">
+                      <X strokeWidth={1.5} />
+                    </BotonIcono>
+                  </Dialog.Close>
+                </div>
+                <p className="px-5 pt-3 text-col-sm text-col-muted">Tocá un bloque para editarlo. Para moverlo, arrastralo desde el asa.</p>
+                <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">{children}</div>
+                {pie && <div className="border-t border-col-line p-3 pb-[max(12px,env(safe-area-inset-bottom))]">{pie}</div>}
+              </motion.div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        )}
+      </AnimatePresence>
+    </Dialog.Root>
   );
 }
 

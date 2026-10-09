@@ -7,7 +7,7 @@ import { forwardRef, useContext, useEffect, useId, useRef, useState } from "reac
 import { cva, type VariantProps } from "class-variance-authority";
 import { AnimatePresence, motion } from "motion/react";
 import { Popover, Select, Switch, Tooltip } from "radix-ui";
-import { Check, ChevronDown, ExternalLink, LoaderCircle, Search, X } from "lucide-react";
+import { Check, ChevronDown, ExternalLink, LoaderCircle, Search, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/components/lib/cn";
 import { EASE, resorteSuave, transiciones } from "./movimiento";
 import { urlAbsoluta } from "@/lib/collection/sitio";
@@ -72,15 +72,17 @@ export function Estado({
 
 export const boton = cva(
   cn(
-    "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-col text-col-md font-medium transition-[background-color,color,border-color,box-shadow,transform] duration-col ease-col active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0",
+    "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-col text-col-md font-medium transition-[background-color,color,border-color,box-shadow,transform] duration-col ease-col active:scale-[0.98] disabled:cursor-not-allowed disabled:active:scale-100 [&>svg]:h-4 [&>svg]:w-4 [&>svg]:shrink-0",
   ),
   {
     variants: {
       variante: {
-        primario: "bg-col-ink text-col-base hover:bg-col-slate",
-        secundario: "border border-col-ink/25 bg-col-surface/0 text-col-ink hover:border-col-ink hover:bg-col-surface",
-        fantasma: "text-col-slate hover:bg-col-ink/[0.05] hover:text-col-ink",
-        peligro: "bg-col-alerta text-col-base hover:bg-[#86321F]",
+        // Deshabilitado: gris sólido y legible (nada de opacidad), con el motivo en `motivo`.
+        primario: "bg-col-ink text-col-base hover:bg-col-slate disabled:bg-col-line disabled:text-col-muted",
+        secundario:
+          "border border-col-ink/25 bg-col-surface/0 text-col-ink hover:border-col-ink hover:bg-col-surface disabled:border-col-line disabled:bg-transparent disabled:text-col-muted",
+        fantasma: "text-col-slate hover:bg-col-ink/[0.05] hover:text-col-ink disabled:bg-transparent disabled:text-col-muted",
+        peligro: "bg-col-alerta text-col-base hover:bg-[#86321F] disabled:bg-col-line disabled:text-col-muted",
       },
       tam: {
         sm: "h-8 px-3",
@@ -101,30 +103,35 @@ type BotonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof boton> & {
     /** Muestra la ruedita, deshabilita y avisa a lectores de pantalla. */
     cargando?: boolean;
+    /** Por qué está deshabilitado: globo nativo y texto para lectores de pantalla. */
+    motivo?: string;
   };
 
 export const Boton = forwardRef<HTMLButtonElement, BotonProps>(function Boton(
-  { className, variante, tam, type = "button", cargando, disabled, children, ...props },
+  { className, variante, tam, type = "button", cargando, disabled, motivo, children, ...props },
   ref,
 ) {
+  const conMotivo = disabled && !cargando && motivo;
   return (
     <button
       ref={ref}
       type={type}
       disabled={disabled || cargando}
       aria-busy={cargando || undefined}
+      title={conMotivo ? motivo : undefined}
       className={cn(boton({ variante, tam }), className)}
       {...props}
     >
       {cargando && <Spinner />}
       {children}
+      {conMotivo && <span className="sr-only">. {motivo}</span>}
     </button>
   );
 });
 
 const botonIcono = cva(
   cn(
-    "inline-flex shrink-0 items-center justify-center rounded-col transition-[background-color,color,border-color,box-shadow,transform] duration-col ease-col active:scale-[0.94] disabled:pointer-events-none disabled:opacity-40",
+    "inline-flex shrink-0 items-center justify-center rounded-col transition-[background-color,color,border-color,box-shadow,transform] duration-col ease-col active:scale-[0.94] disabled:cursor-not-allowed disabled:bg-transparent disabled:text-col-subtle disabled:active:scale-100",
   ),
   {
     variants: {
@@ -384,26 +391,42 @@ export function Interruptor({
   disabled,
   label,
   id,
+  texto,
 }: {
   checked: boolean;
   onCheckedChange: (v: boolean) => void;
   disabled?: boolean;
   label: string;
   id?: string;
+  /** Texto visible a la derecha ("Publicado" / "Oculto"). Tocarlo también cambia. */
+  texto?: string;
 }) {
-  return (
+  const propio = useId();
+  const idSw = id ?? propio;
+  const sw = (
     <Switch.Root
-      id={id}
+      id={idSw}
       checked={checked}
       onCheckedChange={onCheckedChange}
       disabled={disabled}
       aria-label={label}
       className={cn(
-        "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full bg-col-line transition-colors duration-col ease-col hover:bg-col-slate/30 data-[state=checked]:bg-col-ink disabled:cursor-not-allowed disabled:opacity-50",
+        // El ::before agranda el área táctil a 44 px de alto sin mover nada.
+        "relative inline-flex h-6 w-10 shrink-0 items-center rounded-full bg-col-line transition-colors duration-col ease-col before:absolute before:-inset-x-1 before:-inset-y-2.5 before:content-[''] hover:bg-col-slate/30 data-[state=checked]:bg-col-ink disabled:cursor-not-allowed disabled:opacity-50",
       )}
     >
       <Switch.Thumb className="block h-[18px] w-[18px] translate-x-[3px] rounded-full bg-col-surface shadow-col-1 transition-transform duration-col-lento ease-col data-[state=checked]:translate-x-[19px] data-[state=checked]:bg-col-gold" />
     </Switch.Root>
+  );
+  if (!texto) return sw;
+  // Etiqueta siempre a la derecha, igual en todos los módulos.
+  return (
+    <span className="inline-flex shrink-0 items-center gap-2.5">
+      {sw}
+      <label htmlFor={idSw} aria-hidden className={cn("min-w-[52px] cursor-pointer select-none text-col-sm text-col-slate", disabled && "cursor-not-allowed")}>
+        {texto}
+      </label>
+    </span>
   );
 }
 
@@ -501,7 +524,7 @@ export function Chips({
                 type="button"
                 aria-label={`Quitar ${v}`}
                 onClick={() => onCambio(valores.filter((x) => x !== v))}
-                className="flex h-5 w-5 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-line hover:text-col-ink"
+                className="relative flex h-5 w-5 items-center justify-center rounded-col-sm text-col-slate transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:bg-col-line hover:text-col-ink"
               >
                 <X className="h-3 w-3" strokeWidth={2} />
               </button>
@@ -573,6 +596,35 @@ export function EncabezadoSkeleton({ acciones = 1 }: { acciones?: number }) {
         <Skeleton className="h-4 w-[min(220px,60%)]" />
       </div>
       {acciones > 0 && <Skeleton className="h-10 w-48" />}
+    </div>
+  );
+}
+
+/**
+ * Estado vacío de un módulo: ícono en un círculo, una frase, una ayuda corta y
+ * la acción principal. Con `compacto`, para "nada con ese filtro".
+ */
+export function Vacio({
+  icono: Icono,
+  titulo,
+  texto,
+  accion,
+  compacto,
+}: {
+  icono: LucideIcon;
+  titulo: string;
+  texto?: string;
+  accion?: React.ReactNode;
+  compacto?: boolean;
+}) {
+  return (
+    <div className={cn("flex flex-col items-center text-center", compacto ? "py-16" : "rounded-col-lg border border-dashed border-col-line px-6 py-20")}>
+      <span aria-hidden className="flex h-14 w-14 items-center justify-center rounded-full bg-col-surface text-col-slate shadow-col-1">
+        <Icono className="h-6 w-6" strokeWidth={1.4} />
+      </span>
+      <p className="mt-5 max-w-[30ch] font-col-display text-col-2xl leading-tight text-col-ink">{titulo}</p>
+      {texto && <p className="mt-2 max-w-[46ch] text-col-cuerpo text-col-muted">{texto}</p>}
+      {accion && <div className="mt-6 flex flex-wrap justify-center gap-3">{accion}</div>}
     </div>
   );
 }

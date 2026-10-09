@@ -25,6 +25,22 @@ const SUBIDAS: Subida[] = [
     progreso: 0,
     error: "Se cortó la conexión durante la subida.",
   },
+  {
+    id: "6",
+    file: archivo("mapa-recorrido-final-version-2.jpg", "image/jpeg"),
+    preview: color("#7A8B5D"),
+    estado: "error",
+    progreso: 0,
+    error: "El archivo no llegó a subirse. Probá de nuevo.",
+  },
+  {
+    id: "7",
+    file: archivo("retrato-lucia.jpg", "image/jpeg"),
+    preview: color("#9C7A6B"),
+    estado: "error",
+    progreso: 0,
+    error: "No autorizado. Debe iniciar sesion.",
+  },
 ];
 
 export function SubidasDemo() {
@@ -33,6 +49,7 @@ export function SubidasDemo() {
       <div className="mx-auto max-w-[1100px]">
         <EncabezadoPagina eyebrow="Biblioteca" titulo="Subidas" descripcion="Zona, tarjetas y cola con estados de prueba." />
         <ZonaSubida pegar onArchivos={() => {}} />
+        <ZonaSubida pegar compacta onArchivos={() => {}} className="mt-6" />
         <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-4">
           <AnimatePresence>
             {SUBIDAS.map((s) => (
@@ -41,7 +58,7 @@ export function SubidasDemo() {
           </AnimatePresence>
         </ul>
       </div>
-      <ColaSubidas subidas={SUBIDAS} onReintentar={() => {}} onLimpiar={() => {}} />
+      <ColaSubidas subidas={SUBIDAS} onReintentar={() => {}} onReintentarTodo={() => {}} onLimpiar={() => {}} />
     </DevShell>
   );
 }

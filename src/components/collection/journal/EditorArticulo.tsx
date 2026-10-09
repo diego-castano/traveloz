@@ -22,11 +22,11 @@ import { Boton, Estado, VerEnSitio } from "../ui";
 import { rutaSitio } from "../sitio/tarjetas";
 import { EditorTexto } from "../editor/EditorTexto";
 import { apiReal, ApiProvider, type ApiConstructor } from "../constructor/api";
-import { Campo, Contador, Grupo, MediosCtx, SlotMedio, TiraMedios, entrada, entradaArea, entradaTitulo } from "../constructor/campos";
-import { IndicadorGuardado } from "../constructor/Constructor";
+import { Campo, Contador, Grupo, MediosCtx, SlotMedio, TiraMedios, entrada, entradaArea, entradaSelect, entradaTitulo } from "../constructor/campos";
+import { FranjaLectura, IndicadorGuardado } from "../constructor/Constructor";
 import { Elegidos, Segmentado } from "../constructor/Elegidos";
 import { slugDe } from "../constructor/estado";
-import { BannerConflicto, PanelPrevia } from "../constructor/marco";
+import { BannerConflicto, BotonPrevia, PanelPrevia, usePrevia } from "../constructor/marco";
 import { useAutoguardado } from "../constructor/useAutoguardado";
 import { VistaPrevia } from "../constructor/VistaPrevia";
 import { MedioImagen } from "../sitio/medios";
@@ -136,6 +136,7 @@ export function EditorArticulo({
     const el = centro.current?.querySelector<HTMLElement>(`#art-${id}`);
     centro.current?.scrollTo({ top: Math.max(0, (el?.offsetTop ?? 0) - 24), behavior: "smooth" });
   };
+  const previa = usePrevia("col.journal.previa", 1440);
   const alScroll = () => {
     const s = centro.current;
     if (!s) return;
@@ -289,13 +290,40 @@ export function EditorArticulo({
           {/* Formulario */}
           <div className="flex min-w-0 flex-1 flex-col">
             <BannerConflicto visible={conflicto} />
-            {!puedeEditar && (
-              <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-col-sm text-col-slate">
-                Estás viendo este artículo en modo lectura: tu usuario no tiene permiso para editar el sitio.
-              </p>
-            )}
+            {/* Debajo de 1024 px el índice pasa a un desplegable arriba del formulario. */}
+            <div className="flex shrink-0 items-center gap-3 border-b border-col-line bg-col-surface px-4 py-2.5 lg:hidden">
+              <Link
+                href="/backend/collection/journal"
+                aria-label="Volver al journal"
+                className="-ml-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-col-sm text-col-slate hover:bg-col-base hover:text-col-ink"
+              >
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+              </Link>
+              <label className="relative min-w-0 flex-1">
+                <span className="sr-only">Ir a una parte del artículo</span>
+                <select
+                  value={activa}
+                  onChange={(e) => ir(e.target.value as SeccionId)}
+                  className={cn(entradaSelect, "min-h-10 py-[7px] text-col-md")}
+                >
+                  {SECCIONES.map((s, n) => (
+                    <option key={s.id} value={s.id}>
+                      {n + 1}. {s.titulo}
+                      {completas[s.id] ? "  ✓" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="hidden w-[150px] sm:block">
+                <IndicadorGuardado g={guardado} editable={puedeEditar} />
+              </div>
+            </div>
+            {!puedeEditar && <FranjaLectura>Modo lectura: podés ver este artículo, pero tu usuario no tiene permiso para editar el sitio.</FranjaLectura>}
             <div ref={centro} onScroll={alScroll} className="relative min-h-0 flex-1 overflow-y-auto">
-              <fieldset disabled={!editable} className="m-0 mx-auto w-full min-w-0 max-w-[700px] border-0 px-5 pb-24 pt-10 md:px-10">
+              <fieldset
+                disabled={!editable}
+                className={cn("m-0 mx-auto w-full min-w-0 max-w-[700px] border-0 px-5 pb-24 pt-10 md:px-10", !editable && "[&_:disabled]:pointer-events-none")}
+              >
                 <legend className="sr-only">Artículo</legend>
 
                 <section id="art-datos" className="flex flex-col gap-10">
@@ -606,10 +634,17 @@ export function EditorArticulo({
                 </div>
               </section>
             </div>
+            {!previa.enLinea && (
+              <footer className="flex shrink-0 items-center gap-3 border-t border-col-line bg-col-base/95 px-4 py-3 backdrop-blur-sm md:px-10">
+                <span className="flex-1" />
+                <BotonPrevia previa={previa} />
+              </footer>
+            )}
           </div>
 
           <PanelPrevia
-            clave="col.journal.previa"
+            previa={previa}
+            reserva={(previa.escritorio ? 268 : 0) + 640}
             render={(k) => (
               <VistaPrevia {...k} titulo={c.titulo || "Artículo"} actualizando={actualizando}>
                 <ArticuloPagina vista={vista} modo="preview" />

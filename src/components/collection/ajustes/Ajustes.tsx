@@ -333,7 +333,7 @@ function ChipsEmails({ valores, onChange, editable }: { valores: string[]; onCha
                   type="button"
                   aria-label={`Quitar ${e}`}
                   onClick={() => onChange(valores.filter((x) => x !== e))}
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-col-sm text-col-slate hover:text-col-alerta"
+                  className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-col-sm text-col-slate before:absolute before:-inset-2 before:content-[''] hover:text-col-alerta"
                 >
                   <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </button>

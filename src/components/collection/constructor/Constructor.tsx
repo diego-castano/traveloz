@@ -1,29 +1,33 @@
 "use client";
 
-// Constructor de experiencias: pasos a la izquierda, formulario al centro y
-// vista previa a la derecha (redimensionable y plegable; en pantallas de menos
-// de 1440 px, o plegada, se abre como cajón). Guarda solo.
+// Constructor de experiencias: pasos a la izquierda (riel de 200 px o de
+// íconos, se recuerda), formulario al centro y vista previa a la derecha
+// desde 1280 px (redimensionable, sin bajar el formulario de 560 px). Con
+// menos lugar, la vista previa se abre como cajón desde la barra inferior.
+// Guarda solo.
 
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Drawer } from "vaul";
-import { Popover } from "radix-ui";
+import { Popover, Tooltip } from "radix-ui";
 import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
   Check,
   CloudOff,
-  Eye,
   History,
   LoaderCircle,
+  Lock,
+  PanelLeftClose,
+  PanelLeftOpen,
   RotateCw,
 } from "lucide-react";
 import {
   PASOS,
   armarVista,
   completitudPorPaso,
+  requisitos,
   type EspecialistaVista,
   type FotoCatalogo,
   type MedioVista,
@@ -49,7 +53,8 @@ import {
 } from "./estado";
 import { EstadoPill, ListaHistorial, haceTiempo } from "./formato";
 import { useAutoguardado, type EstadoGuardado } from "./useAutoguardado";
-import { VistaPrevia, type Dispositivo } from "./VistaPrevia";
+import { VistaPrevia } from "./VistaPrevia";
+import { BotonPrevia, PanelPrevia, usePrevia } from "./marco";
 import { PasoEsencial } from "./pasos/Esencial";
 import { PasoPortada } from "./pasos/Portada";
 import { PasoRelato } from "./pasos/Relato";
@@ -87,33 +92,10 @@ const COMPONENTES: Record<PasoId, () => JSX.Element> = {
   publicar: PasoPublicar,
 };
 
-function useMedia(q: string) {
-  const [ok, setOk] = useState(false);
-  useEffect(() => {
-    const m = window.matchMedia(q);
-    setOk(m.matches);
-    const h = () => setOk(m.matches);
-    m.addEventListener("change", h);
-    return () => m.removeEventListener("change", h);
-  }, [q]);
-  return ok;
-}
-
-interface PrefsPrevia {
-  ancho: number;
-  colapsada: boolean;
-  dispositivo: Dispositivo;
-}
-
-function leerPrefs(): PrefsPrevia {
-  const def: PrefsPrevia = { ancho: 42, colapsada: false, dispositivo: "escritorio" };
-  try {
-    const p = JSON.parse(localStorage.getItem(CLAVE_PREVIA) ?? "null") as Partial<PrefsPrevia> | null;
-    return { ...def, ...(p ?? {}), ancho: Math.min(55, Math.max(35, Number(p?.ancho) || def.ancho)) };
-  } catch {
-    return def;
-  }
-}
+const CLAVE_PASOS = "col.constructor.pasos";
+const RIEL = { amplio: 200, compacto: 64 } as const;
+// Lo mínimo que se le deja a la columna del formulario: 560 px de campos más el aire de los costados.
+const MIN_FORMULARIO = 640;
 
 export function Constructor({
   detalle,
@@ -149,9 +131,14 @@ export function Constructor({
 
   // ── Pasos ──
   const centro = useRef<HTMLDivElement>(null);
-  const irAPaso = useCallback((p: PasoId) => {
+  const tituloPaso = useRef<HTMLHeadingElement>(null);
+  const [visitados, setVisitados] = useState<Set<PasoId>>(() => new Set([pasoInicial]));
+  const irAPaso = useCallback((p: PasoId, enfocar = false) => {
     setPaso(p);
+    setVisitados((v) => (v.has(p) ? v : new Set(v).add(p)));
     centro.current?.scrollTo({ top: 0 });
+    // Desde la barra inferior, el foco va al título del paso nuevo (lectores de pantalla y teclado).
+    if (enfocar) requestAnimationFrame(() => tituloPaso.current?.focus({ preventScroll: true }));
   }, []);
   const indice = PASOS.findIndex((p) => p.id === paso);
 
@@ -166,6 +153,27 @@ export function Constructor({
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [paso, irAPaso]);
+
+  // Riel amplio o de íconos. Sin preferencia guardada: de íconos por debajo de 1440 px.
+  const [compacto, setCompacto] = useState(false);
+  useEffect(() => {
+    try {
+      const g = localStorage.getItem(CLAVE_PASOS);
+      setCompacto(g ? g === "1" : window.innerWidth < 1440);
+    } catch {
+      setCompacto(window.innerWidth < 1440);
+    }
+  }, []);
+  const alternarRiel = () =>
+    setCompacto((c) => {
+      try {
+        localStorage.setItem(CLAVE_PASOS, c ? "0" : "1");
+      } catch {
+        // Queda en memoria.
+      }
+      return !c;
+    });
+  const anchoRiel = compacto ? RIEL.compacto : RIEL.amplio;
 
   // ── Valor del contexto ──
   const setCampos = useCallback<ValorConstructor["setCampos"]>((c) => despachar({ t: "campos", c }), []);
@@ -227,60 +235,21 @@ export function Constructor({
   const vista = useMemo(() => armarVista(borradorDiferido, mapasDiferidos), [borradorDiferido, mapasDiferidos]);
   const actualizando = borradorDiferido !== estado.borrador;
 
-  const ancha = useMedia("(min-width: 1440px)");
-  const escritorio = useMedia("(min-width: 1024px)");
-  const [prefs, setPrefs] = useState<PrefsPrevia>({ ancho: 42, colapsada: false, dispositivo: "escritorio" });
-  useEffect(() => setPrefs(leerPrefs()), []);
-  const cambiarPrefs = useCallback((c: Partial<PrefsPrevia>) => {
-    setPrefs((p) => {
-      const n = { ...p, ...c };
-      try {
-        localStorage.setItem(CLAVE_PREVIA, JSON.stringify(n));
-      } catch {
-        // Sin localStorage: queda en memoria.
-      }
-      return n;
-    });
-  }, []);
-  const [cajon, setCajon] = useState(false);
-  const enLinea = ancha && !prefs.colapsada;
-  useEffect(() => {
-    if (enLinea) setCajon(false);
-  }, [enLinea]);
-
-  const raiz = useRef<HTMLDivElement>(null);
-  const arrastrarBorde = (e: React.PointerEvent) => {
-    e.preventDefault();
-    const rect = raiz.current?.getBoundingClientRect();
-    if (!rect) return;
-    const mover = (ev: PointerEvent) => {
-      const pct = ((rect.right - ev.clientX) / rect.width) * 100;
-      setPrefs((p) => ({ ...p, ancho: Math.min(55, Math.max(35, pct)) }));
-    };
-    const soltar = () => {
-      window.removeEventListener("pointermove", mover);
-      window.removeEventListener("pointerup", soltar);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      setPrefs((p) => {
-        cambiarPrefs({ ancho: p.ancho });
-        return p;
-      });
-    };
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    window.addEventListener("pointermove", mover);
-    window.addEventListener("pointerup", soltar);
-  };
-  const teclasBorde = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft") cambiarPrefs({ ancho: Math.min(55, prefs.ancho + 2) });
-    if (e.key === "ArrowRight") cambiarPrefs({ ancho: Math.max(35, prefs.ancho - 2) });
-  };
-
+  const previa = usePrevia(CLAVE_PREVIA, 1280);
+  const { prefs, cambiar: cambiarPrefs, setCajon } = previa;
   const seccion = PASOS[indice].seccion;
-  const onDispositivo = useCallback((d: Dispositivo) => cambiarPrefs({ dispositivo: d }), [cambiarPrefs]);
-  const colapsar = useCallback(() => cambiarPrefs({ colapsada: true }), [cambiarPrefs]);
-  const cerrarCajon = useCallback(() => setCajon(false), []);
+  const cerrarCajon = useCallback(() => setCajon(false), [setCajon]);
+
+  // Qué falta en cada paso, para el globo del riel.
+  const faltan = useMemo(() => {
+    const req = requisitos(estado.borrador);
+    return Object.fromEntries(
+      PASOS.map((p) => [
+        p.id,
+        req.filter((r) => !r.ok && (p.id === "publicar" ? r.obligatorio : r.paso === p.id)).map((r) => r.texto),
+      ]),
+    ) as Record<PasoId, string[]>;
+  }, [estado.borrador]);
 
   const Paso = COMPONENTES[paso];
   const reducido = useReducedMotion();
@@ -289,35 +258,52 @@ export function Constructor({
   return (
     <ApiProvider value={api}>
       <ConstructorCtx.Provider value={valor}>
-        <div ref={raiz} className={cn("flex min-h-0 bg-col-base lining-nums", className)}>
-          {/* Riel de pasos */}
-          <aside className="hidden w-[260px] shrink-0 flex-col border-r border-col-line bg-col-surface lg:flex">
-            <div className="px-5 pb-5 pt-5">
-              <Link
-                href="/backend/collection/experiencias"
-                className="inline-flex items-center gap-1.5 text-col-sm font-medium text-col-slate transition-colors hover:text-col-ink"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden /> Experiencias
-              </Link>
-              <p
-                className={cn(
-                  "mt-4 line-clamp-3 font-col-display text-col-xl leading-[1.1] text-col-ink",
-                  !titulo && "italic text-col-subtle",
-                )}
-              >
-                {titulo || "Sin título"}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <EstadoPill estado={estadoExp} />
-                {estadoExp === "PUBLICADA" && publicadoRevision !== revision && (
-                  <Estado tono="aviso">Cambios sin publicar</Estado>
+        <div className={cn("flex min-h-0 bg-col-base lining-nums", className)}>
+          {/* Riel de pasos: amplio (200 px) o de íconos (64 px) */}
+          <aside
+            className="hidden shrink-0 flex-col border-r border-col-line bg-col-surface transition-[width] duration-col-lento ease-col lg:flex"
+            style={{ width: anchoRiel }}
+          >
+            {compacto ? (
+              <div className="flex justify-center pb-3 pt-4">
+                <Globo texto="Volver a experiencias" lado="right">
+                  <Link
+                    href="/backend/collection/experiencias"
+                    aria-label="Volver a experiencias"
+                    className="flex h-10 w-10 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
+                  >
+                    <ArrowLeft className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+                  </Link>
+                </Globo>
+              </div>
+            ) : (
+              <div className="px-4 pb-4 pt-5">
+                <Link
+                  href="/backend/collection/experiencias"
+                  className="inline-flex items-center gap-1.5 text-col-sm font-medium text-col-slate transition-colors hover:text-col-ink"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden /> Experiencias
+                </Link>
+                <p
+                  className={cn(
+                    "mt-4 line-clamp-3 break-words font-col-display text-col-xl leading-[1.1] text-col-ink",
+                    !titulo && "italic text-col-subtle",
+                  )}
+                >
+                  {titulo || "Sin título"}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <EstadoPill estado={estadoExp} />
+                  {estadoExp === "PUBLICADA" && publicadoRevision !== revision && (
+                    <Estado tono="aviso">Cambios sin publicar</Estado>
+                  )}
+                </div>
+                {estadoExp === "PUBLICADA" && estado.borrador.campos.slug && (
+                  <VerEnSitio ruta={rutaSitio.experiencia(estado.borrador.campos.slug)} className="mt-3 text-col-slate hover:text-col-ink" />
                 )}
               </div>
-              {estadoExp === "PUBLICADA" && estado.borrador.campos.slug && (
-                <VerEnSitio ruta={rutaSitio.experiencia(estado.borrador.campos.slug)} className="mt-3 text-col-slate hover:text-col-ink" />
-              )}
-            </div>
-            <nav aria-label="Pasos" className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+            )}
+            <nav aria-label="Pasos" className={cn("min-h-0 flex-1 overflow-y-auto pb-4", compacto ? "px-2" : "px-2.5")}>
               <ol className="space-y-0.5">
                 {PASOS.map((p, i) => (
                   <li key={p.id}>
@@ -325,19 +311,35 @@ export function Constructor({
                       n={i + 1}
                       titulo={p.titulo}
                       valor={completitud[p.id]}
+                      visitado={visitados.has(p.id)}
+                      faltan={faltan[p.id]}
                       activo={p.id === paso}
+                      compacto={compacto}
                       onClick={() => irAPaso(p.id)}
                     />
                   </li>
                 ))}
               </ol>
-              <p className="mt-4 px-3 text-col-xs leading-relaxed text-col-muted">
-                <kbd className="font-col-text">Alt</kbd> + <kbd className="font-col-text">↑ ↓</kbd> para moverte entre pasos
-              </p>
+              {!compacto && (
+                <p className="mt-4 px-2.5 text-col-xs leading-relaxed text-col-muted">
+                  <kbd className="font-col-text">Alt</kbd> + <kbd className="font-col-text">↑ ↓</kbd> para moverte entre pasos
+                </p>
+              )}
             </nav>
-            <div className="flex items-center gap-2 border-t border-col-line px-4 py-3">
-              <IndicadorGuardado g={guardado} editable={puedeEditar} />
+            <div className={cn("flex items-center gap-1 border-t border-col-line py-2", compacto ? "flex-col px-2" : "px-3")}>
               <Historial historial={historial} />
+              {!compacto && <span className="flex-1" />}
+              <Globo texto={compacto ? "Mostrar los nombres de los pasos" : "Achicar el riel de pasos"} lado="right">
+                <button
+                  type="button"
+                  onClick={alternarRiel}
+                  aria-label={compacto ? "Mostrar los nombres de los pasos" : "Achicar el riel de pasos"}
+                  aria-expanded={!compacto}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-col-sm text-col-slate transition-colors hover:bg-col-base hover:text-col-ink"
+                >
+                  {compacto ? <PanelLeftOpen className="h-4 w-4" strokeWidth={1.5} /> : <PanelLeftClose className="h-4 w-4" strokeWidth={1.5} />}
+                </button>
+              </Globo>
             </div>
           </aside>
 
@@ -366,11 +368,7 @@ export function Constructor({
                 </motion.div>
               )}
             </AnimatePresence>
-            {!puedeEditar && (
-              <p className="shrink-0 border-b border-col-line bg-col-surface px-6 py-2.5 text-col-sm text-col-slate">
-                Estás viendo esta experiencia en modo lectura: tu usuario no tiene permiso para editarla.
-              </p>
-            )}
+            {!puedeEditar && <FranjaLectura>Modo lectura: podés ver esta experiencia, pero tu usuario no tiene permiso para editarla.</FranjaLectura>}
             <div ref={centro} className="min-h-0 flex-1 overflow-y-auto">
               <motion.div
                 key={paso}
@@ -383,112 +381,56 @@ export function Constructor({
                   <Eyebrow>
                     Paso {indice + 1} de {PASOS.length}
                   </Eyebrow>
-                  <h2 className="mt-4 font-col-display text-col-display font-normal leading-[1.05] text-col-ink">
+                  <h2
+                    ref={tituloPaso}
+                    tabIndex={-1}
+                    className="mt-4 font-col-display text-col-3xl font-normal leading-[1.05] text-col-ink focus:outline-none md:text-col-display"
+                  >
                     {PASOS[indice].titulo}
                   </h2>
                   <p className="mt-2 text-col-cuerpo text-col-slate">{AYUDA[paso]}</p>
                 </header>
-                <fieldset disabled={!editable && paso !== "publicar"} className="m-0 min-w-0 border-0 p-0">
+                <fieldset
+                  disabled={!editable && paso !== "publicar"}
+                  className={cn("m-0 min-w-0 border-0 p-0", !editable && "[&_:disabled]:pointer-events-none")}
+                >
                   <legend className="sr-only">{PASOS[indice].titulo}</legend>
                   <Paso />
                 </fieldset>
               </motion.div>
             </div>
-            <footer className="flex shrink-0 items-center gap-3 border-t border-col-line bg-col-base/95 px-5 py-3 backdrop-blur-sm md:px-10">
+            <footer className="flex shrink-0 items-center gap-2 border-t border-col-line bg-col-base/95 px-4 py-3 backdrop-blur-sm sm:gap-3 md:px-10">
               <Boton
                 variante="fantasma"
                 tam="sm"
                 disabled={indice === 0}
-                onClick={() => irAPaso(PASOS[indice - 1].id)}
+                onClick={() => irAPaso(PASOS[indice - 1].id, true)}
+                aria-label="Paso anterior"
                 className="px-2"
               >
-                <ArrowLeft className="h-4 w-4" strokeWidth={1.5} /> Anterior
+                <ArrowLeft className="h-4 w-4" strokeWidth={1.5} /> <span className="hidden sm:inline">Anterior</span>
               </Boton>
+              <div className="hidden min-w-0 max-w-[220px] flex-1 lg:block">
+                <IndicadorGuardado g={guardado} editable={puedeEditar} />
+              </div>
               <span className="flex-1" />
+              <BotonPrevia previa={previa} />
               {indice < PASOS.length - 1 && (
-                <Boton tam="sm" onClick={() => irAPaso(PASOS[indice + 1].id)}>
-                  <span className="hidden text-col-base/60 sm:inline">Siguiente:</span> {PASOS[indice + 1].titulo}
+                <Boton tam="sm" onClick={() => irAPaso(PASOS[indice + 1].id, true)} className="min-w-0">
+                  <span className="hidden text-col-base/60 sm:inline">Siguiente:</span>
+                  <span className="truncate">{PASOS[indice + 1].titulo}</span>
                   <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
                 </Boton>
               )}
             </footer>
           </div>
 
-          {/* Vista previa en línea */}
-          {enLinea && (
-            <>
-              <div
-                role="separator"
-                aria-orientation="vertical"
-                aria-label="Ancho de la vista previa"
-                aria-valuemin={35}
-                aria-valuemax={55}
-                aria-valuenow={Math.round(prefs.ancho)}
-                tabIndex={0}
-                onPointerDown={arrastrarBorde}
-                onKeyDown={teclasBorde}
-                className="group relative z-10 -mr-1 w-2 shrink-0 cursor-col-resize"
-              >
-                <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-col-line transition-colors group-hover:bg-col-gold group-focus-visible:bg-col-gold" />
-              </div>
-              <section aria-label="Vista previa" className="min-w-0 shrink-0" style={{ width: `${prefs.ancho}%` }}>
-                <PreviaMemo
-                  vista={vista}
-                  seccion={seccion}
-                  dispositivo={prefs.dispositivo}
-                  onDispositivo={onDispositivo}
-                  onColapsar={colapsar}
-                  actualizando={actualizando}
-                />
-              </section>
-            </>
-          )}
+          <PanelPrevia
+            previa={previa}
+            reserva={anchoRiel + 8 + MIN_FORMULARIO}
+            render={(c) => <PreviaMemo vista={vista} seccion={seccion} actualizando={actualizando} {...c} onCerrar={c.onCerrar ? cerrarCajon : undefined} />}
+          />
         </div>
-
-        {/* Vista previa como cajón */}
-        {!enLinea && (
-          <>
-            <button
-              type="button"
-              onClick={() => setCajon(true)}
-              aria-expanded={cajon}
-              className={cn(
-                "fixed bottom-[76px] right-5 z-40 flex h-12 items-center gap-2 rounded-col-sm bg-col-ink px-5 text-col-md font-medium text-col-base shadow-col-3 transition-[transform,opacity] duration-col-lento ease-col hover:-translate-y-0.5",
-                cajon && "pointer-events-none translate-y-2 opacity-0",
-              )}
-            >
-              <Eye className="h-4 w-4 text-col-gold" strokeWidth={1.5} aria-hidden /> Vista previa
-            </button>
-            <Drawer.Root open={cajon} onOpenChange={setCajon} direction="right" modal={!escritorio} handleOnly container={raizShell}>
-              <Drawer.Portal container={raizShell}>
-                {!escritorio && <Drawer.Overlay className="fixed inset-0 z-40 bg-col-ink/40" />}
-                <Drawer.Content
-                  aria-describedby={undefined}
-                  className="fixed bottom-0 right-0 top-0 z-50 flex w-screen flex-col bg-col-surface shadow-col-3 !outline-none lg:w-[min(860px,60vw)]"
-                >
-                  <Drawer.Title className="sr-only">Vista previa</Drawer.Title>
-                  <PreviaMemo
-                    vista={vista}
-                    seccion={seccion}
-                    dispositivo={escritorio ? prefs.dispositivo : "celular"}
-                    onDispositivo={onDispositivo}
-                    onCerrar={cerrarCajon}
-                    actualizando={actualizando}
-                  />
-                  {ancha && prefs.colapsada && (
-                    <button
-                      type="button"
-                      onClick={() => cambiarPrefs({ colapsada: false })}
-                      className="absolute bottom-4 left-4 flex h-9 items-center gap-2 rounded-col-sm bg-col-ink/85 px-3 text-col-md font-medium text-col-base backdrop-blur-sm hover:bg-col-ink"
-                    >
-                      Fijar al costado
-                    </button>
-                  )}
-                </Drawer.Content>
-              </Drawer.Portal>
-            </Drawer.Root>
-          </>
-        )}
       </ConstructorCtx.Provider>
     </ApiProvider>
   );
@@ -496,34 +438,60 @@ export function Constructor({
 
 const PreviaMemo = memo(VistaPrevia);
 
+/** Franja de solo lectura: candado y fondo gris, para que no parezca un aviso más. */
+export function FranjaLectura({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="flex shrink-0 items-center gap-2.5 border-b border-col-line bg-col-line/40 px-5 py-2.5 text-col-sm text-col-ink md:px-6">
+      <Lock className="h-4 w-4 shrink-0 text-col-slate" strokeWidth={1.5} aria-hidden />
+      {children}
+    </p>
+  );
+}
+
+/** Globo de ayuda (Radix), montado dentro del shell. */
+function Globo({ texto, lado = "right", children }: { texto: React.ReactNode; lado?: "right" | "top"; children: React.ReactNode }) {
+  const { raiz } = useCollection();
+  return (
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>{children}</Tooltip.Trigger>
+      <Tooltip.Portal container={raiz}>
+        <Tooltip.Content
+          side={lado}
+          sideOffset={8}
+          className="z-[95] max-w-[260px] rounded-col bg-col-ink px-3 py-2 font-col-text text-col-xs leading-snug text-col-base shadow-col-3"
+        >
+          {texto}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
+  );
+}
+
 // ── Riel ──────────────────────────────────────────────────────────────────
 
-function Anillo({ valor, n, activo }: { valor: number; n: number; activo: boolean }) {
-  const r = 12;
-  const c = 2 * Math.PI * r;
-  const listo = valor >= 1;
+/**
+ * Tres estados del paso: completo (tilde sobre dorado), incompleto (número con
+ * un punto ámbar: ya se tocó y falta algo) y sin tocar (número gris).
+ */
+function Marca({ estado, n, activo }: { estado: "completo" | "incompleto" | "sin-tocar"; n: number; activo: boolean }) {
+  if (estado === "completo") {
+    return (
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-col-gold text-col-ink">
+        <Check className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+      </span>
+    );
+  }
   return (
-    <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
-      <svg viewBox="0 0 28 28" className="absolute inset-0 -rotate-90" aria-hidden>
-        <circle cx="14" cy="14" r={r} fill={listo ? "#F4B860" : "none"} stroke="#DCDCDC" strokeWidth="1.5" />
-        {!listo && valor > 0 && (
-          <circle
-            cx="14"
-            cy="14"
-            r={r}
-            fill="none"
-            stroke="#F4B860"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeDasharray={`${c * valor} ${c}`}
-            className="transition-[stroke-dasharray] duration-col-lento ease-col"
-          />
-        )}
-      </svg>
-      {listo ? (
-        <Check className="relative h-3.5 w-3.5 text-col-ink" strokeWidth={2.25} aria-hidden />
-      ) : (
-        <span className={cn("relative text-col-xs tabular-nums lining-nums", activo ? "text-col-ink" : "text-col-slate")}>{n}</span>
+    <span
+      className={cn(
+        "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-col-xs tabular-nums lining-nums",
+        activo ? "border-col-ink text-col-ink" : "border-col-line text-col-slate",
+        estado === "incompleto" && !activo && "border-col-aviso/50",
+      )}
+    >
+      {n}
+      {estado === "incompleto" && (
+        <span aria-hidden className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-col-aviso ring-2 ring-col-surface" />
       )}
     </span>
   );
@@ -533,30 +501,53 @@ function ItemPaso({
   n,
   titulo,
   valor,
+  visitado,
+  faltan,
   activo,
+  compacto,
   onClick,
 }: {
   n: number;
   titulo: string;
   valor: number;
+  visitado: boolean;
+  faltan: string[];
   activo: boolean;
+  compacto: boolean;
   onClick: () => void;
 }) {
-  return (
+  const estado = valor >= 1 ? "completo" : valor > 0 || visitado ? "incompleto" : "sin-tocar";
+  const detalle = estado === "completo" ? "Completo" : estado === "incompleto" ? `Falta: ${faltan.join(", ")}` : "Sin empezar";
+  const boton = (
     <button
       type="button"
       onClick={onClick}
       aria-current={activo ? "step" : undefined}
-      aria-label={`${titulo}, ${valor >= 1 ? "completo" : `${Math.round(valor * 100)} por ciento`}`}
+      aria-label={`${n}. ${titulo}. ${detalle}`}
       className={cn(
-        "relative flex h-11 w-full items-center gap-3 rounded-col-sm px-3 text-left text-col-md transition-colors duration-col ease-col",
+        "relative flex w-full items-center rounded-col-sm text-left text-col-md transition-colors duration-col ease-col",
+        compacto ? "h-11 justify-center" : "min-h-11 gap-2.5 px-2.5 py-1.5",
         activo ? "bg-col-base text-col-ink" : "text-col-slate hover:bg-col-base/60 hover:text-col-ink",
       )}
     >
       {activo && <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 bg-col-gold" />}
-      <Anillo valor={valor} n={n} activo={activo} />
-      <span className="truncate">{titulo}</span>
+      <Marca estado={estado} n={n} activo={activo} />
+      {!compacto && <span className="min-w-0 flex-1 leading-snug">{titulo}</span>}
     </button>
+  );
+  // Compacto: el globo dice el nombre y el estado. Amplio: solo si falta algo.
+  if (!compacto && estado !== "incompleto") return boton;
+  return (
+    <Globo
+      texto={
+        <>
+          {compacto && <span className="block font-medium">{titulo}</span>}
+          <span className={cn("block", compacto && "text-col-base/75")}>{detalle}</span>
+        </>
+      }
+    >
+      {boton}
+    </Globo>
   );
 }
 

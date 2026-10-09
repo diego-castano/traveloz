@@ -1,9 +1,9 @@
 "use client";
 
-// Marco que comparten los editores de páginas y del journal: la vista previa
-// al costado (redimensionable y plegable; cajón en pantallas de menos de
-// 1440 px o plegada) y el aviso de conflicto. Copia el comportamiento del
-// constructor de experiencias sin tocarlo.
+// Marco que comparten los editores (experiencias, páginas y journal): la
+// vista previa al costado (redimensionable y plegable) o, si no entra, como
+// cajón que se abre desde la barra inferior del editor. Nunca flota encima
+// del formulario.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
@@ -16,7 +16,7 @@ import type { Dispositivo } from "./VistaPrevia";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-function useMedia(q: string) {
+export function useMedia(q: string) {
   const [ok, setOk] = useState(false);
   useEffect(() => {
     const m = window.matchMedia(q);
@@ -41,16 +41,19 @@ export interface ControlesPrevia {
   onCerrar?: () => void;
 }
 
-/** Va como último hijo de la fila flex del editor. */
-export function PanelPrevia({ clave, render }: { clave: string; render: (c: ControlesPrevia) => React.ReactNode }) {
-  const { raiz: raizShell } = useCollection();
-  const ancha = useMedia("(min-width: 1440px)");
+// Celular por defecto: en un panel de 500 px el escritorio escalado no se lee.
+const DEF: Prefs = { ancho: 42, colapsada: false, dispositivo: "celular" };
+const acotar = (n: number) => Math.min(55, Math.max(30, n));
+
+/** Estado de la vista previa de un editor. `desde`: ancho de pantalla a partir del cual va al costado. */
+export function usePrevia(clave: string, desde = 1280) {
+  const ancha = useMedia(`(min-width: ${desde}px)`);
   const escritorio = useMedia("(min-width: 1024px)");
-  const [prefs, setPrefs] = useState<Prefs>({ ancho: 42, colapsada: false, dispositivo: "escritorio" });
+  const [prefs, setPrefs] = useState<Prefs>(DEF);
   useEffect(() => {
     try {
       const p = JSON.parse(localStorage.getItem(clave) ?? "null") as Partial<Prefs> | null;
-      if (p) setPrefs((x) => ({ ...x, ...p, ancho: Math.min(55, Math.max(35, Number(p.ancho) || 42)) }));
+      if (p) setPrefs({ ...DEF, ...p, ancho: acotar(Number(p.ancho) || DEF.ancho) });
     } catch {
       // Sin localStorage: valores por defecto.
     }
@@ -73,6 +76,45 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
   useEffect(() => {
     if (enLinea) setCajon(false);
   }, [enLinea]);
+  return { ancha, escritorio, prefs, setPrefs, cambiar, cajon, setCajon, enLinea };
+}
+
+export type EstadoPrevia = ReturnType<typeof usePrevia>;
+
+/** Botón "Vista previa" para la barra inferior del editor. No se dibuja si la vista previa ya está al costado. */
+export function BotonPrevia({ previa, className }: { previa: EstadoPrevia; className?: string }) {
+  if (previa.enLinea) return null;
+  return (
+    <Boton
+      variante="secundario"
+      tam="sm"
+      onClick={() => previa.setCajon(true)}
+      aria-expanded={previa.cajon}
+      aria-label="Vista previa"
+      className={cn("shrink-0 px-2.5 sm:px-3", className)}
+    >
+      <Eye className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+      <span className="hidden sm:inline">Vista previa</span>
+    </Boton>
+  );
+}
+
+/**
+ * Va como último hijo de la fila flex del editor. `reserva`: píxeles que la
+ * vista previa le deja al resto de la fila (riel + formulario), así el
+ * formulario nunca queda más angosto que eso aunque el ancho guardado sea mayor.
+ */
+export function PanelPrevia({
+  previa,
+  reserva = 0,
+  render,
+}: {
+  previa: EstadoPrevia;
+  reserva?: number;
+  render: (c: ControlesPrevia) => React.ReactNode;
+}) {
+  const { raiz: raizShell } = useCollection();
+  const { ancha, escritorio, prefs, setPrefs, cambiar, cajon, setCajon, enLinea } = previa;
 
   const borde = useRef<HTMLDivElement>(null);
   const arrastrar = (e: React.PointerEvent) => {
@@ -81,7 +123,7 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
     if (!rect) return;
     let ancho = prefs.ancho;
     const mover = (ev: PointerEvent) => {
-      ancho = Math.min(55, Math.max(35, ((rect.right - ev.clientX) / rect.width) * 100));
+      ancho = acotar(((rect.right - ev.clientX) / rect.width) * 100);
       setPrefs((p) => ({ ...p, ancho }));
     };
     const soltar = () => {
@@ -97,8 +139,8 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
     window.addEventListener("pointerup", soltar);
   };
   const teclas = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft") cambiar({ ancho: Math.min(55, prefs.ancho + 2) });
-    if (e.key === "ArrowRight") cambiar({ ancho: Math.max(35, prefs.ancho - 2) });
+    if (e.key === "ArrowLeft") cambiar({ ancho: acotar(prefs.ancho + 2) });
+    if (e.key === "ArrowRight") cambiar({ ancho: acotar(prefs.ancho - 2) });
   };
   const onDispositivo = useCallback((d: Dispositivo) => cambiar({ dispositivo: d }), [cambiar]);
 
@@ -110,7 +152,7 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
           role="separator"
           aria-orientation="vertical"
           aria-label="Ancho de la vista previa"
-          aria-valuemin={35}
+          aria-valuemin={30}
           aria-valuemax={55}
           aria-valuenow={Math.round(prefs.ancho)}
           tabIndex={0}
@@ -120,7 +162,11 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
         >
           <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-col-line transition-colors group-hover:bg-col-gold group-focus-visible:bg-col-gold" />
         </div>
-        <section aria-label="Vista previa" className="min-w-0 shrink-0" style={{ width: `${prefs.ancho}%` }}>
+        <section
+          aria-label="Vista previa"
+          className="min-w-0 shrink-0"
+          style={{ width: reserva ? `min(${prefs.ancho}%, calc(100% - ${reserva}px))` : `${prefs.ancho}%` }}
+        >
           {render({ dispositivo: prefs.dispositivo, onDispositivo, onColapsar: () => cambiar({ colapsada: true }) })}
         </section>
       </>
@@ -128,45 +174,32 @@ export function PanelPrevia({ clave, render }: { clave: string; render: (c: Cont
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setCajon(true)}
-        aria-expanded={cajon}
-        className={cn(
-          "fixed bottom-6 right-5 z-40 flex h-12 items-center gap-2 rounded-col-sm bg-col-ink px-5 text-col-md font-medium text-col-base shadow-col-3 transition-[transform,opacity] duration-col-lento ease-col hover:-translate-y-0.5",
-          cajon && "pointer-events-none translate-y-2 opacity-0",
-        )}
-      >
-        <Eye className="h-4 w-4 text-col-gold" strokeWidth={1.5} aria-hidden /> Vista previa
-      </button>
-      <Drawer.Root open={cajon} onOpenChange={setCajon} direction="right" modal={!escritorio} handleOnly container={raizShell}>
-        <Drawer.Portal container={raizShell}>
-          {!escritorio && <Drawer.Overlay className="fixed inset-0 z-40 bg-col-ink/40" />}
-          <Drawer.Content
-            aria-describedby={undefined}
-            className="fixed bottom-0 right-0 top-0 z-50 flex w-screen flex-col bg-col-surface shadow-col-3 !outline-none lg:w-[min(860px,60vw)]"
-          >
-            <Drawer.Title className="sr-only">Vista previa</Drawer.Title>
-            {cajon &&
-              render({
-                dispositivo: escritorio ? prefs.dispositivo : "celular",
-                onDispositivo,
-                onCerrar: () => setCajon(false),
-              })}
-            {ancha && prefs.colapsada && (
-              <button
-                type="button"
-                onClick={() => cambiar({ colapsada: false })}
-                className="absolute bottom-4 left-4 flex h-9 items-center gap-2 rounded-col-sm bg-col-ink/85 px-3 text-col-md font-medium text-col-base backdrop-blur-sm hover:bg-col-ink"
-              >
-                Fijar al costado
-              </button>
-            )}
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
-    </>
+    <Drawer.Root open={cajon} onOpenChange={setCajon} direction="right" modal={!escritorio} handleOnly container={raizShell}>
+      <Drawer.Portal container={raizShell}>
+        {!escritorio && <Drawer.Overlay className="fixed inset-0 z-40 bg-col-ink/40" />}
+        <Drawer.Content
+          aria-describedby={undefined}
+          className="fixed bottom-0 right-0 top-0 z-50 flex w-screen flex-col bg-col-surface shadow-col-3 !outline-none lg:w-[min(860px,60vw)]"
+        >
+          <Drawer.Title className="sr-only">Vista previa</Drawer.Title>
+          {cajon &&
+            render({
+              dispositivo: escritorio ? prefs.dispositivo : "celular",
+              onDispositivo,
+              onCerrar: () => setCajon(false),
+            })}
+          {ancha && prefs.colapsada && (
+            <button
+              type="button"
+              onClick={() => cambiar({ colapsada: false })}
+              className="absolute bottom-4 left-4 flex h-9 items-center gap-2 rounded-col-sm bg-col-ink/85 px-3 text-col-md font-medium text-col-base backdrop-blur-sm hover:bg-col-ink"
+            >
+              Fijar al costado
+            </button>
+          )}
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
 

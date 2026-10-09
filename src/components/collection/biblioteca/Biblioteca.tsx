@@ -53,11 +53,14 @@ export function Biblioteca({
   inicial,
   filtroInicial,
   abrirId,
+  subirAlEntrar = false,
   subidoPor,
 }: {
   inicial: { items: ColMedioDto[]; nextCursor: string | null } | { error: string };
   filtroInicial: FiltroBiblioteca;
   abrirId: string | null;
+  /** Desde la paleta ("Subir fotos"): enfoca Subir y abre el selector de archivos si el navegador lo deja. */
+  subirAlEntrar?: boolean;
   subidoPor: Record<string, string>;
 }) {
   const { puede } = useCollection();
@@ -81,6 +84,12 @@ export function Biblioteca({
   const pedido = useRef(0);
   const ancla = useRef<number | null>(null);
   const inputArchivos = useRef<HTMLInputElement>(null);
+  const botonSubir = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!subirAlEntrar) return;
+    botonSubir.current?.focus();
+    inputArchivos.current?.click();
+  }, [subirAlEntrar]);
   const centinela = useRef<HTMLDivElement>(null);
   // Qué filtro y búsqueda muestra la grilla. Arranca con lo que vino del
   // servidor; así el doble efecto de StrictMode no vuelve a pedir la página.
@@ -140,7 +149,7 @@ export function Biblioteca({
     },
     [filtro, q],
   );
-  const { subidas, agregar, reintentar, limpiar } = useSubidas(alListo);
+  const { subidas, agregar, reintentar, reintentarTodo, limpiar } = useSubidas(alListo);
 
   const subir = useCallback(
     (files: File[]) => {
@@ -297,7 +306,7 @@ export function Biblioteca({
         acciones={
           editable && (
             <>
-              <Boton onClick={() => inputArchivos.current?.click()}>
+              <Boton ref={botonSubir} onClick={() => inputArchivos.current?.click()}>
                 <Upload className="h-4 w-4" strokeWidth={1.5} aria-hidden />
                 Subir
               </Boton>
@@ -454,7 +463,7 @@ export function Biblioteca({
         )}
       </AnimatePresence>
 
-      <ColaSubidas subidas={subidas} onReintentar={reintentar} onLimpiar={limpiar} />
+      <ColaSubidas subidas={subidas} onReintentar={reintentar} onReintentarTodo={reintentarTodo} onLimpiar={limpiar} />
 
       <DetalleMedio
         medio={medioAbierto}

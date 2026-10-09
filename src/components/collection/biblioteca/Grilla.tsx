@@ -153,9 +153,18 @@ function Mosaico({
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-col-ink/75 via-col-ink/0 to-col-ink/0 opacity-0 transition-opacity duration-col ease-col group-hover:opacity-100 group-focus-within:opacity-100"
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-gradient-to-t from-col-ink/75 via-col-ink/0 to-col-ink/0 opacity-0 transition-opacity duration-col ease-col group-hover:opacity-100 group-focus-within:opacity-100",
+            // Al elegir, el nombre y las medidas quedan siempre a la vista.
+            modoSeleccion && "opacity-100",
+          )}
         />
-        <span className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-1 p-3 text-left opacity-0 transition-[opacity,transform] duration-col ease-col group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100">
+        <span
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 translate-y-1 p-3 text-left opacity-0 transition-[opacity,transform] duration-col ease-col group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:translate-y-0 group-focus-within:opacity-100",
+            modoSeleccion && "translate-y-0 p-2.5 opacity-100",
+          )}
+        >
           <span className="block truncate text-col-sm text-col-base">{m.nombre}</span>
           {m.ancho && m.alto && (
             <span className="block text-col-xs tracking-wide text-col-base/70">
@@ -187,7 +196,7 @@ function Mosaico({
           aria-label={`Seleccionar ${m.nombre}`}
           onClick={(e) => onAlternar(indice, e.shiftKey)}
           className={cn(
-            "absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border transition-[opacity,background-color,transform] duration-col ease-col active:scale-90",
+            "absolute left-2 top-2 flex h-7 w-7 items-center justify-center rounded-full border transition-[opacity,background-color,transform] before:absolute before:-inset-2 before:content-[''] duration-col ease-col active:scale-90",
             seleccionado
               ? "border-col-gold bg-col-gold text-col-ink opacity-100"
               : "border-col-base/90 bg-col-ink/25 text-transparent backdrop-blur-sm",

@@ -24,6 +24,12 @@ export interface Subida {
   error?: string;
 }
 
+/** Errores que no se arreglan reintentando: sesión vencida, permisos o formato. */
+export function esReintentable(s: Subida) {
+  return s.estado === "error" && !/no autorizado|sesión venció|acceso restringido|permiso|formato|pesa más/i.test(s.error ?? "");
+}
+export const esDeSesion = (s: Subida) => /no autorizado|sesión venció/i.test(s.error ?? "");
+
 // presignedUpload firma su propia URL contra /api/upload/presigned; acá la
 // URL y la key las da prepararSubidaMedio, así que el PUT va directo.
 function subirPut(url: string, blob: Blob, onProgreso?: (p: number) => void) {
@@ -192,6 +198,11 @@ export function useSubidas(onListo: (m: ColMedioDto) => void, opciones: Opciones
     [actualizar],
   );
 
+  const reintentarTodo = useCallback(
+    () => setSubidas((s) => s.map((x) => (esReintentable(x) ? { ...x, estado: "espera", progreso: 0, error: undefined } : x))),
+    [],
+  );
+
   /** Saca de la lista lo terminado (listo o con error). */
   const limpiar = useCallback(() => {
     setSubidas((s) => {
@@ -202,5 +213,5 @@ export function useSubidas(onListo: (m: ColMedioDto) => void, opciones: Opciones
     });
   }, []);
 
-  return { subidas, agregar, reintentar, limpiar };
+  return { subidas, agregar, reintentar, reintentarTodo, limpiar };
 }

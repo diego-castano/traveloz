@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ImagePlus, RefreshCw, X } from "lucide-react";
+import { Handshake, ImagePlus, RefreshCw, X } from "lucide-react";
 import {
   actualizarAliado,
   crearAliado,
@@ -21,7 +21,7 @@ import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
-import { EncabezadoPagina, Estado, Eyebrow, Filtros, Interruptor, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
+import { EncabezadoPagina, Estado, Eyebrow, Filtros, Interruptor, Vacio, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { SelectorMedios } from "../pickers/SelectorMedios";
 import { LogoAliado } from "../sitio/tarjetas";
@@ -198,8 +198,9 @@ export function Aliados({
       <EncabezadoPagina
         titulo="Con quiénes viajamos"
         descripcion={`${items.length} ${items.length === 1 ? "aliado" : "aliados"} · ${publicados} en el sitio`}
-        acciones={editable && <NuevoEnLinea etiqueta="Nuevo aliado" placeholder="Nombre del aliado" onCrear={crear} />}
+        acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo aliado" placeholder="Nombre del aliado" onCrear={crear} />}
       />
+      {items.length > 0 && (
       <div className={barraHerramientas}>
         <Filtros
           etiqueta="Tipo"
@@ -211,6 +212,7 @@ export function Aliados({
           onChange={(t) => setFiltro(t || null)}
         />
       </div>
+      )}
 
       {error && (
         <p role="alert" className="mb-6 text-col-md text-col-alerta">
@@ -219,9 +221,16 @@ export function Aliados({
       )}
 
       {visibles.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
-          {items.length ? "Nada de ese tipo todavía." : "Todavía no hay aliados. Sumá el primero."}
-        </p>
+        items.length ? (
+          <Vacio compacto icono={Handshake} titulo="Nada de ese tipo todavía" />
+        ) : (
+          <Vacio
+            icono={Handshake}
+            titulo="Todavía no hay aliados"
+            texto="Hoteles, navieras y socios con los que viajamos. Cada uno lleva su logo en el sitio."
+            accion={editable && <NuevoEnLinea etiqueta="Nuevo aliado" placeholder="Nombre del aliado" onCrear={crear} />}
+          />
+        )
       ) : (
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={visibles.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!ordenable}>
@@ -330,12 +339,19 @@ function Ficha({
         )}
       </button>
       {ordenable && <AsaTarjeta nombre={a.nombre || "aliado sin nombre"} orden={orden} className="right-2 top-2" />}
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      {/* Si no entra al lado del nombre, el interruptor baja de renglón. */}
+      <div className="mt-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+        <div className="min-w-0 flex-[1_1_110px]">
           <p className="truncate text-col-cuerpo text-col-ink">{a.nombre || "Sin nombre"}</p>
           <p className="mt-0.5 truncate text-col-sm text-col-slate">{a.tipo || "Sin tipo"}</p>
         </div>
-        <Interruptor checked={a.publicado} onCheckedChange={onPublicar} disabled={!editable} label={`Publicar ${a.nombre}`} />
+        <Interruptor
+          checked={a.publicado}
+          onCheckedChange={onPublicar}
+          disabled={!editable}
+          label={`Publicar ${a.nombre}`}
+          texto={a.publicado ? "Publicado" : "Oculto"}
+        />
       </div>
     </motion.li>
   );
@@ -441,7 +457,7 @@ function EditorAliado({
                 disabled={ro}
                 onClick={() => cambiar({ tipo: a.tipo === t ? "" : t })}
                 className={cn(
-                  "h-9 rounded-col-sm border px-4 text-col-md font-medium transition-colors duration-col ease-col disabled:cursor-not-allowed",
+                  "h-10 rounded-col border px-4 text-col-md transition-colors duration-col ease-col disabled:cursor-not-allowed",
                   a.tipo === t ? "border-col-ink bg-col-ink text-col-base" : "border-col-line text-col-slate hover:border-col-slate/50 hover:text-col-ink",
                 )}
               >
@@ -461,8 +477,8 @@ function EditorAliado({
                   }
                 }}
                 onBlur={sumarTipo}
-                placeholder="+ Otro tipo"
-                className={cn(entrada, "min-h-9 w-40 border-dashed px-3 py-[5px] text-col-md focus:border-solid")}
+                placeholder="Otro tipo…"
+                className={cn(entrada, "min-h-10 w-40 px-3 py-[7px] text-col-md")}
               />
             )}
           </div>

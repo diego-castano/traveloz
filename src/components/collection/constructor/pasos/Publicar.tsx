@@ -152,6 +152,10 @@ function Acciones() {
     botones.push({ accion: "volver-borrador", label: "Volver a borrador" });
   }
   const puedeArchivar = permisoPublicar && estado !== "ARCHIVADA";
+  const faltan = requisitos(borrador)
+    .filter((r) => r.obligatorio && !r.ok)
+    .map((r) => r.texto.charAt(0).toLowerCase() + r.texto.slice(1))
+    .join(", ");
 
   if (!botones.length && !puedeArchivar) {
     return (
@@ -167,6 +171,7 @@ function Acciones() {
             key={b.label}
             tam="sm"
             disabled={b.deshabilitado || !!enCurso}
+            motivo={!listo ? `Falta: ${faltan}` : "No hay cambios para publicar"}
             onClick={() => void hacer(b.accion)}
             className={
               b.primario
@@ -210,12 +215,7 @@ function Acciones() {
       </div>
       {!listo && permisoPublicar && estado !== "ARCHIVADA" && (
         <p className="mt-4 text-col-sm text-col-base/60">
-          Para publicar falta:{" "}
-          {requisitos(borrador)
-            .filter((r) => r.obligatorio && !r.ok)
-            .map((r) => r.texto.charAt(0).toLowerCase() + r.texto.slice(1))
-            .join(", ")}
-          .
+          Para publicar falta: {faltan}.
         </p>
       )}
       {error && (

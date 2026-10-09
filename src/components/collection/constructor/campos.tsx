@@ -207,7 +207,7 @@ export function Asa({ asa, label, className }: { asa: AsaProps; label: string; c
       aria-label={`Arrastrar ${label}`}
       {...asa.props}
       className={cn(
-        "flex h-8 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-col-sm text-col-subtle transition-colors hover:text-col-ink active:cursor-grabbing",
+        "relative flex h-8 w-6 shrink-0 cursor-grab touch-none before:absolute before:-inset-x-2 before:-inset-y-1 before:content-[''] items-center justify-center rounded-col-sm text-col-subtle transition-colors hover:text-col-ink active:cursor-grabbing",
         className,
       )}
     >

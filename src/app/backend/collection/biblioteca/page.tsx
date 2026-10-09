@@ -7,7 +7,7 @@ const FILTROS: FiltroBiblioteca[] = ["todo", "fotos", "videos", "sin-alt", "sin-
 export default async function BibliotecaPage({
   searchParams,
 }: {
-  searchParams: { filtro?: string; medio?: string };
+  searchParams: { filtro?: string; medio?: string; subir?: string };
 }) {
   const filtro = FILTROS.includes(searchParams.filtro as FiltroBiblioteca)
     ? (searchParams.filtro as FiltroBiblioteca)
@@ -26,6 +26,7 @@ export default async function BibliotecaPage({
       inicial={r.ok ? r.data : { error: r.error }}
       filtroInicial={filtro}
       abrirId={searchParams.medio ?? null}
+      subirAlEntrar={!!searchParams.subir}
       subidoPor={Object.fromEntries(usuarios.map((u) => [u.id, u.name]))}
     />
   );

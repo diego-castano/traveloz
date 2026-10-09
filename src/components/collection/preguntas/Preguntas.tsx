@@ -384,10 +384,13 @@ function Fila({
             {p.pregunta || <span className="italic text-col-subtle">Pregunta sin texto</span>}
           </button>
         )}
-        <span className="hidden w-[68px] text-right text-col-sm font-medium text-col-slate sm:block">
-          {p.publicada ? "Publicada" : "Oculta"}
-        </span>
-        <Interruptor checked={p.publicada} onCheckedChange={onPublicar} disabled={ro} label={`Publicar ${p.pregunta}`} />
+        <Interruptor
+          checked={p.publicada}
+          onCheckedChange={onPublicar}
+          disabled={ro}
+          label={`Publicar ${p.pregunta}`}
+          texto={p.publicada ? "Publicada" : "Oculta"}
+        />
         <button
           type="button"
           aria-label={abierta ? "Cerrar" : "Editar"}
@@ -515,7 +518,7 @@ function NuevaCategoria({ existentes, onCrear }: { existentes: string[]; onCrear
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="flex h-9 items-center gap-1.5 rounded-col-sm border border-dashed border-col-slate/40 px-4 text-col-sm font-medium text-col-slate transition-colors duration-col ease-col hover:border-col-gold hover:text-col-ink"
+        className="flex h-10 items-center gap-1.5 rounded-col border border-dashed border-col-slate/40 px-3.5 text-col-md text-col-slate transition-colors duration-col ease-col hover:border-col-ink hover:text-col-ink"
       >
         <Plus className="h-3.5 w-3.5" strokeWidth={1.5} /> Nueva categoría
       </button>

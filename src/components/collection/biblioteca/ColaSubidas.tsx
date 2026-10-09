@@ -10,21 +10,24 @@ import { cn } from "@/components/lib/cn";
 import { CheckAnimado, EASE, transiciones } from "../movimiento";
 import { ProgresoCircular, textoEstado } from "./ZonaSubida";
 import { errorAmigable } from "../shell/Avisos";
-import type { Subida } from "./useSubidas";
+import { esDeSesion, esReintentable, type Subida } from "./useSubidas";
 
 export function ColaSubidas({
   subidas,
   onReintentar,
+  onReintentarTodo,
   onLimpiar,
 }: {
   subidas: Subida[];
   onReintentar: (id: string) => void;
+  onReintentarTodo: () => void;
   onLimpiar: () => void;
 }) {
   const [plegada, setPlegada] = useState(false);
   const enCurso = subidas.filter((s) => s.estado !== "listo" && s.estado !== "error").length;
   const errores = subidas.filter((s) => s.estado === "error").length;
   const listas = subidas.filter((s) => s.estado === "listo").length;
+  const reintentables = subidas.filter(esReintentable).length;
   const total = subidas.length;
   const avance = total
     ? subidas.reduce((a, s) => a + (s.estado === "listo" || s.estado === "error" ? 100 : s.progreso * 0.9), 0) / total
@@ -65,6 +68,16 @@ export function ColaSubidas({
               <span className="block truncate text-col-md text-col-ink">{titulo}</span>
               <span className="block truncate text-col-xs text-col-slate">{detalle}</span>
             </p>
+            {reintentables > 1 && (
+              <button
+                type="button"
+                onClick={onReintentarTodo}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-col px-2 text-col-sm font-medium text-col-ink transition-colors hover:bg-col-base"
+              >
+                <RotateCw className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                Reintentar todo
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setPlegada((p) => !p)}
@@ -127,12 +140,24 @@ export function ColaSubidas({
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-col-sm text-col-ink">{s.file.name}</span>
-                        <span className={cn("block truncate text-col-xs", s.estado === "error" ? "text-col-alerta" : "text-col-slate")} title={s.error && errorAmigable(s.error)}>
+                        {/* El motivo del error en hasta dos renglones; completo en el globo. */}
+                        <span
+                          className={cn("block text-col-xs leading-snug", s.estado === "error" ? "line-clamp-2 text-col-alerta" : "truncate text-col-slate")}
+                          title={s.error && errorAmigable(s.error)}
+                        >
                           {textoEstado(s)}
                         </span>
                       </span>
                       {s.estado === "listo" && <CheckAnimado className="h-4 w-4 shrink-0 text-col-ok" />}
-                      {s.estado === "error" && (
+                      {s.estado === "error" && esDeSesion(s) && (
+                        <a
+                          href="/backend/login"
+                          className="flex h-8 shrink-0 items-center rounded-col px-2 text-col-md font-medium text-col-ink underline decoration-col-gold underline-offset-4"
+                        >
+                          Volvé a entrar
+                        </a>
+                      )}
+                      {esReintentable(s) && (
                         <button
                           type="button"
                           onClick={() => onReintentar(s.id)}

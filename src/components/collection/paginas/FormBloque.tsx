@@ -35,7 +35,7 @@ type Def =
   | { c: "galeria" | "cifras" | "estilos" | "categoria" }
   | { c: "nota"; texto: string };
 
-const eyebrow: Def = { c: "linea", k: "eyebrow", label: "Antetítulo", max: 80, ph: "Viajes de autor" };
+const eyebrow: Def = { c: "linea", k: "eyebrow", label: "Antetítulo", max: 80, ph: "Ej.: Viajes de autor" };
 const titulo: Def = { c: "linea", k: "titulo", label: "Título", max: 160, grande: true };
 const bajada: Def = { c: "area", k: "bajada", label: "Bajada", max: 300 };
 const cta: Def[] = [
@@ -152,34 +152,38 @@ export function FormBloque({
   bloque,
   onCambio,
   mapas,
-  editable }: {
+  editable,
+  legal }: {
   bloque: Bloque;
   onCambio: (p: Patch) => void;
   mapas: MapasPagina;
   editable: boolean;
+  /** Página legal editada directo: sin antetítulo. */
+  legal?: boolean;
 }) {
   const v = bloque as unknown as Valores;
   const str = (k: string) => String(v[k] ?? "");
   return (
     <div className="flex flex-col gap-8">
-      {CAMPOS[bloque.tipo].map((d, i) => {
+      {CAMPOS[bloque.tipo].filter((d) => !legal || d !== eyebrow).map((d, i) => {
         const key = "k" in d ? d.k : `${d.c}-${i}`;
         switch (d.c) {
           case "linea":
           case "area": {
             const id = `b-${bloque.id}-${d.k}`;
-            const Comp = d.c === "linea" ? "input" : "textarea";
+            // Los títulos grandes son textarea que crece: un título largo baja de renglón y nunca se corta.
+            const Comp = d.c === "linea" && !d.grande ? "input" : "textarea";
             return (
               <Campo key={key} etiqueta={d.label} htmlFor={id} ayuda={d.ayuda} accion={<Contador n={str(d.k).length} max={d.max} />}>
                 <Comp
                   id={id}
                   value={str(d.k)}
                   maxLength={d.max}
-                  rows={d.c === "area" ? 2 : undefined}
+                  rows={d.c === "area" ? 2 : Comp === "textarea" ? 1 : undefined}
                   placeholder={d.ph}
-                  onChange={(e) => onCambio({ [d.k]: e.target.value })}
+                  onChange={(e) => onCambio({ [d.k]: d.c === "linea" ? e.target.value.replace(/\n/g, " ") : e.target.value })}
                   className={d.grande
-                    ? cn(entradaTitulo, "text-col-2xl leading-tight", d.c === "area" && "resize-none [field-sizing:content]")
+                    ? cn(entradaTitulo, "resize-none text-col-2xl leading-tight [field-sizing:content]")
                     : d.c === "area"
                       ? entradaArea
                       : entrada}

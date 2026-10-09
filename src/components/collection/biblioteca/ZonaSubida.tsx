@@ -14,7 +14,7 @@ import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useApi } from "../constructor/api";
 import { CheckAnimado, EASE, resorteSuave } from "../movimiento";
-import { useSubidas, type Subida } from "./useSubidas";
+import { esDeSesion, esReintentable, useSubidas, type Subida } from "./useSubidas";
 import { errorAmigable } from "../shell/Avisos";
 
 export const ACEPTA_FOTO = "image/jpeg,image/png,image/webp,image/avif";
@@ -72,6 +72,8 @@ export function ZonaSubida({
   acepta = ACEPTA_TODO,
   multiple = true,
   pegar = false,
+  compacta = false,
+  abierta = false,
   onArchivos,
   className,
 }: {
@@ -79,6 +81,10 @@ export function ZonaSubida({
   multiple?: boolean;
   /** Escucha ⌘V mientras la zona está en pantalla. */
   pegar?: boolean;
+  /** Franja finita (cuando ya hay medios); se agranda al arrastrar archivos encima. */
+  compacta?: boolean;
+  /** Fuerza la franja agrandada (por ejemplo, si arrastran archivos sobre el diálogo). */
+  abierta?: boolean;
   onArchivos: (files: File[]) => void;
   className?: string;
 }) {
@@ -117,6 +123,7 @@ export function ZonaSubida({
   const fotos = acepta.includes("image/");
   const videos = acepta.includes("video/");
   const que = fotos && videos ? "fotos o videos" : videos ? (multiple ? "videos" : "un video") : multiple ? "fotos" : "una foto";
+  const finita = compacta && !encima && !abierta;
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
@@ -149,8 +156,11 @@ export function ZonaSubida({
         animate={{ scale: encima ? 1.012 : 1 }}
         transition={resorteSuave}
         className={cn(
-          "col-anillo group relative flex min-h-[240px] w-full flex-col items-center justify-center gap-4 overflow-hidden rounded-md border-[1.5px] border-dashed px-6 py-10 text-center transition-[border-color,background-color,box-shadow] duration-col ease-col focus-visible:shadow-col-anillo",
-          encima
+          "col-anillo group relative flex w-full flex-1 items-center overflow-hidden rounded-md border-[1.5px] border-dashed transition-[border-color,background-color,box-shadow,min-height] duration-col ease-col focus-visible:shadow-col-anillo",
+          finita
+            ? "min-h-14 flex-row gap-3 px-4 py-2.5 text-left"
+            : cn("flex-col justify-center px-6 text-center", compacta ? "min-h-[140px] gap-3 py-6" : "min-h-[240px] gap-4 py-10"),
+          encima || abierta
             ? "border-col-gold bg-[#FDF6EA] shadow-col-3"
             : "border-col-slate/30 bg-col-surface hover:border-col-slate/60 hover:bg-[#FCFCFB]",
         )}
@@ -160,21 +170,34 @@ export function ZonaSubida({
           animate={{ y: encima ? -4 : 0, scale: encima ? 1.06 : 1 }}
           transition={resorteSuave}
           className={cn(
-            "flex h-14 w-14 items-center justify-center rounded-full transition-colors duration-col ease-col",
-            encima ? "bg-col-gold text-col-noche" : "bg-col-base text-col-gold group-hover:bg-[#FDF6EA]",
+            "flex shrink-0 items-center justify-center rounded-full transition-colors duration-col ease-col",
+            finita ? "h-9 w-9" : "h-14 w-14",
+            encima || abierta ? "bg-col-gold text-col-noche" : "bg-col-base text-col-gold group-hover:bg-[#FDF6EA]",
           )}
         >
-          <Upload className="h-6 w-6" strokeWidth={1.5} />
+          <Upload className={finita ? "h-4 w-4" : "h-6 w-6"} strokeWidth={1.5} />
         </motion.span>
-        <span className="min-h-[34px] font-col-display text-col-2xl leading-tight text-col-ink" aria-live="polite">
-          {encima ? `Soltá ${encima === 1 ? "el archivo" : `${encima} archivos`}` : `Arrastrá ${que} acá`}
-        </span>
-        <span className="max-w-[60ch] text-col-md leading-relaxed text-col-slate">
-          {pegar ? "Pegá desde el portapapeles con ⌘V o " : "O "}
-          <span className="text-col-ink underline decoration-col-gold underline-offset-4">elegí {multiple ? "archivos" : "un archivo"}</span> de
-          tu computadora.
-        </span>
-        <span className="text-col-xs text-col-muted">{textoLimites(acepta)}</span>
+        {finita ? (
+          <>
+            <span className="min-w-0 flex-1 text-col-md text-col-slate">
+              Arrastrá {que} acá o <span className="text-col-ink underline decoration-col-gold underline-offset-4">elegí {multiple ? "archivos" : "un archivo"}</span>
+              {pegar && <span className="hidden md:inline">. También podés pegar con ⌘V</span>}
+            </span>
+            <span className="hidden shrink-0 text-col-xs text-col-muted lg:block">{textoLimites(acepta)}</span>
+          </>
+        ) : (
+          <>
+            <span className={cn("font-col-display leading-tight text-col-ink", compacta ? "text-col-xl" : "min-h-[34px] text-col-2xl")} aria-live="polite">
+              {encima ? `Soltá ${encima === 1 ? "el archivo" : `${encima} archivos`}` : `Arrastrá ${que} acá`}
+            </span>
+            <span className="max-w-[60ch] text-col-md leading-relaxed text-col-slate">
+              {pegar ? "Pegá desde el portapapeles con ⌘V o " : "O "}
+              <span className="text-col-ink underline decoration-col-gold underline-offset-4">elegí {multiple ? "archivos" : "un archivo"}</span> de
+              tu computadora.
+            </span>
+            <span className="text-col-xs text-col-muted">{textoLimites(acepta)}</span>
+          </>
+        )}
       </motion.button>
       <input
         ref={input}
@@ -290,13 +313,25 @@ export function TarjetaSubida({ s, onReintentar, listo = "Listo" }: { s: Subida;
             )}
             {s.estado === "error" && (
               <motion.span key="e" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 flex items-center justify-center bg-col-alerta/55">
-                <button
-                  type="button"
-                  onClick={() => onReintentar(s.id)}
-                  className="col-anillo flex h-8 items-center gap-1.5 rounded-col bg-white px-3 text-col-md font-medium text-col-alerta transition-transform active:scale-[0.97] focus-visible:shadow-col-anillo"
-                >
-                  <RotateCw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> Reintentar
-                </button>
+                {esDeSesion(s) ? (
+                  <a
+                    href="/backend/login"
+                    className="col-anillo flex h-9 items-center rounded-col bg-white px-3 text-col-md font-medium text-col-alerta focus-visible:shadow-col-anillo"
+                  >
+                    Volvé a entrar
+                  </a>
+                ) : esReintentable(s) ? (
+                  <button
+                    type="button"
+                    onClick={() => onReintentar(s.id)}
+                    aria-label={`Reintentar ${s.file.name}`}
+                    className="col-anillo flex h-9 items-center gap-1.5 rounded-col bg-white px-3 text-col-md font-medium text-col-alerta transition-transform active:scale-[0.97] focus-visible:shadow-col-anillo"
+                  >
+                    <RotateCw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden /> Reintentar
+                  </button>
+                ) : (
+                  <AlertCircle className="h-6 w-6 text-white" strokeWidth={1.5} aria-hidden />
+                )}
               </motion.span>
             )}
           </AnimatePresence>
@@ -306,7 +341,10 @@ export function TarjetaSubida({ s, onReintentar, listo = "Listo" }: { s: Subida;
         <p className="truncate text-col-sm text-col-ink" title={s.file.name}>
           {s.file.name}
         </p>
-        <p className={cn("mt-0.5 line-clamp-2 text-col-xs leading-snug", s.estado === "error" ? "text-col-alerta" : "text-col-slate")}>
+        <p
+          title={s.estado === "error" ? textoEstado(s) : undefined}
+          className={cn("mt-0.5 line-clamp-2 text-col-xs leading-snug", s.estado === "error" ? "text-col-alerta" : "text-col-slate")}
+        >
           {s.estado === "listo" ? listo : textoEstado(s)}
         </p>
       </div>

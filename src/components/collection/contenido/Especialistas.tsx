@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ImagePlus, RefreshCw, X } from "lucide-react";
+import { ImagePlus, RefreshCw, UserRound, X } from "lucide-react";
 import {
   actualizarEspecialista,
   crearEspecialista,
@@ -21,7 +21,7 @@ import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 import { cn } from "@/components/lib/cn";
 import { iniciales, useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
-import { EncabezadoPagina, Estado, Eyebrow, Interruptor, tarjetaElevable, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
+import { EncabezadoPagina, Estado, Vacio, Eyebrow, Interruptor, tarjetaElevable, etiquetaCampo, entrada, entradaArea, entradaSelect, entradaTitulo } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, ChipsTexto, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
@@ -192,7 +192,7 @@ export function Especialistas({
       <EncabezadoPagina
         titulo="Quienes arman cada viaje"
         descripcion={`${plural(items.length, "especialista", "especialistas")} · ${publicados} en el sitio`}
-        acciones={editable && <NuevoEnLinea etiqueta="Nuevo especialista" placeholder="Nombre y apellido" onCrear={crear} />}
+        acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo especialista" placeholder="Nombre y apellido" onCrear={crear} />}
       />
 
       {error && (
@@ -202,9 +202,12 @@ export function Especialistas({
       )}
 
       {items.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
-          Todavía no hay especialistas. Sumá el primero.
-        </p>
+        <Vacio
+          icono={UserRound}
+          titulo="Todavía no hay especialistas"
+          texto="Quienes arman los viajes: cada experiencia muestra a su especialista con foto y contacto."
+          accion={editable && <NuevoEnLinea etiqueta="Nuevo especialista" placeholder="Nombre y apellido" onCrear={crear} />}
+        />
       ) : (
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={items.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!editable}>
@@ -308,10 +311,13 @@ function Tarjeta({
         <span className="text-col-sm text-col-slate">
           {plural(e.experiencias, "experiencia", "experiencias")}
         </span>
-        <label className="flex items-center gap-2 text-col-xs text-col-slate">
-          {e.publicado ? "Publicado" : "Oculto"}
-          <Interruptor checked={e.publicado} onCheckedChange={onPublicar} disabled={!editable} label={`Publicar a ${e.nombre}`} />
-        </label>
+        <Interruptor
+          checked={e.publicado}
+          onCheckedChange={onPublicar}
+          disabled={!editable}
+          label={`Publicar a ${e.nombre}`}
+          texto={e.publicado ? "Publicado" : "Oculto"}
+        />
       </div>
     </motion.li>
   );
@@ -361,7 +367,7 @@ function EditorEspecialista({
       </div>
 
       <div className="flex flex-col gap-9 px-6 py-8">
-        <div className="grid grid-cols-[132px_minmax(0,1fr)] items-start gap-6">
+        <div className="grid grid-cols-1 items-start gap-6 sm:grid-cols-[132px_minmax(0,1fr)] [&>:first-child]:max-w-[132px]">
           <CampoRetrato retrato={e.retrato} nombre={e.nombre} editable={editable} onCambio={(m) => cambiar({ retrato: m })} />
           <div className="flex flex-col gap-7">
             <Campo etiqueta="Nombre" htmlFor="e-nombre">

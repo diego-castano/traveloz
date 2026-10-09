@@ -34,13 +34,15 @@ export function PasoEsencial() {
     <div className="flex flex-col gap-12">
       <div className="flex flex-col gap-8">
         <Campo etiqueta="Título" htmlFor="exp-titulo" accion={<Contador n={c.titulo.length} ideal={60} max={140} />}>
-          <input
+          {/* Textarea que crece: un título largo baja de renglón y nunca se corta. */}
+          <textarea
             id="exp-titulo"
+            rows={1}
             value={c.titulo}
             maxLength={140}
-            onChange={(e) => cambiarTitulo(e.target.value)}
-            placeholder="Filipinas: Manila, El Nido y Boracay"
-            className={cn(entradaTitulo, "text-col-2xl leading-tight md:text-col-3xl")}
+            onChange={(e) => cambiarTitulo(e.target.value.replace(/\n/g, " "))}
+            placeholder="Ej.: Filipinas: Manila, El Nido y Boracay"
+            className={cn(entradaTitulo, "resize-none text-col-2xl leading-tight [field-sizing:content] md:text-col-3xl")}
           />
         </Campo>
         <Campo

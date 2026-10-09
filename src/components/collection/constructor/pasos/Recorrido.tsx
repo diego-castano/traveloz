@@ -126,21 +126,25 @@ function TarjetaTramo({
           className="flex min-w-0 flex-1 items-center gap-3 self-stretch text-left"
         >
           <span className="min-w-0 flex-1">
-            <span className="flex items-baseline gap-2">
-              <span className="font-col-display text-col-cuerpo text-col-muted">{String(n).padStart(2, "0")}</span>
+            <span className="flex min-w-0 items-baseline gap-2">
+              <span className="shrink-0 font-col-display text-col-cuerpo text-col-muted">{String(n).padStart(2, "0")}</span>
               <span className={cn("truncate font-col-display text-col-xl leading-tight", t.ciudadNombre ? "text-col-ink" : "italic text-col-subtle")}>
                 {t.ciudadNombre || "Ciudad sin elegir"}
               </span>
             </span>
-            <span className="mt-0.5 flex items-center gap-2 truncate text-col-xs text-col-slate">
-              {t.paisNombre && <span>{t.paisNombre}</span>}
-              {t.hotel?.nombre && (
-                <span className="flex items-center gap-1 truncate">
-                  <BedDouble className="h-3 w-3" strokeWidth={1.5} aria-hidden /> {t.hotel.nombre}
-                </span>
-              )}
-              {falta && <span className="text-col-aviso">Falta completar</span>}
-            </span>
+            {(t.paisNombre || falta) && (
+              <span className="mt-0.5 flex min-w-0 items-center gap-2 text-col-xs text-col-slate">
+                {t.paisNombre && <span className="truncate">{t.paisNombre}</span>}
+                {falta && <span className="shrink-0 text-col-aviso">Falta completar</span>}
+              </span>
+            )}
+            {/* El hotel en su propio renglón, con puntos suspensivos si no entra. */}
+            {t.hotel?.nombre && (
+              <span className="mt-0.5 flex min-w-0 items-center gap-1 text-col-xs text-col-slate" title={t.hotel.nombre}>
+                <BedDouble className="h-3 w-3 shrink-0" strokeWidth={1.5} aria-hidden />
+                <span className="truncate">{t.hotel.nombre}</span>
+              </span>
+            )}
           </span>
         </button>
         <Stepper

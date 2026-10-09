@@ -18,7 +18,8 @@ import { cn } from "@/components/lib/cn";
 import { CollectionContext, iniciales, type UsuarioCollection } from "./contexto";
 import { AvisosProvider } from "./Avisos";
 import { GRUPOS_NAV, moduloActivo, type ModuloNav } from "./nav";
-import { PaletaComandos } from "./PaletaComandos";
+import { PaletaComandos, type BuscarCollection } from "./PaletaComandos";
+import { buscarEnCollection } from "@/actions/collection/buscar.actions";
 import { MarcaCollection } from "./MarcaCollection";
 
 const CLAVE_RIEL = "col.riel.plegado";
@@ -30,6 +31,7 @@ export function CollectionShell({
   usuario,
   ruta,
   contarNuevas = contarConsultasNuevas,
+  buscar = buscarEnCollection,
   children,
 }: {
   acceso: MiAccesoCollection;
@@ -38,6 +40,8 @@ export function CollectionShell({
   ruta?: string;
   /** Las rutas de desarrollo lo cambian por uno en memoria. */
   contarNuevas?: () => Promise<Resultado<number>>;
+  /** Búsqueda de la paleta ⌘K; las rutas de desarrollo la cambian por una en memoria. */
+  buscar?: BuscarCollection;
   children: React.ReactNode;
 }) {
   const pathnameReal = usePathname();
@@ -99,6 +103,13 @@ export function CollectionShell({
         <Tooltip.Provider delayDuration={120} skipDelayDuration={300}>
           <AvisosProvider>
             <div ref={setRaiz} className="flex min-h-screen">
+              {/* Primer foco de la página: salta el riel y la barra. */}
+              <a
+                href="#contenido"
+                className="sr-only rounded-col bg-col-ink px-4 py-3 text-col-md font-medium text-col-base shadow-col-3 focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[100]"
+              >
+                Saltar al contenido
+              </a>
               {/* Riel de escritorio */}
               <motion.aside
                 initial={false}
@@ -184,7 +195,7 @@ export function CollectionShell({
                     <Menu className="h-5 w-5" strokeWidth={1.5} />
                   </button>
                   <p className="flex min-w-0 flex-1 items-center gap-2 text-col-sm text-col-slate">
-                    <Link href="/backend/collection" className="hidden shrink-0 transition-colors duration-col ease-col hover:text-col-ink sm:inline">
+                    <Link href="/backend/collection" className="hidden h-10 shrink-0 items-center transition-colors duration-col ease-col hover:text-col-ink sm:inline-flex">
                       Collection
                     </Link>
                     {activo && activo.id !== "inicio" && (
@@ -197,19 +208,19 @@ export function CollectionShell({
                   <button
                     type="button"
                     onClick={() => setPaleta(true)}
-                    aria-label="Buscar o ir a un módulo"
+                    aria-label="Buscar en Collection"
                     aria-keyshortcuts="Meta+K Control+K"
-                    title="Buscar o ir a… (⌘K)"
+                    title="Buscar (⌘K)"
                     className="group flex h-10 shrink-0 items-center gap-2.5 rounded-col-sm border border-col-line bg-col-surface px-2.5 text-col-sm text-col-slate transition-[border-color,color,box-shadow] duration-col ease-col hover:border-col-slate/40 hover:text-col-ink hover:shadow-col-2 xl:w-64 xl:px-3"
                   >
                     <Search className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-                    <span className="hidden flex-1 text-left xl:inline">Ir a…</span>
+                    <span className="hidden flex-1 text-left xl:inline">Buscar…</span>
                     <kbd className="hidden rounded-col-sm border border-col-line px-1.5 py-0.5 font-col-text text-col-xs text-col-slate md:inline">
                       ⌘K
                     </kbd>
                   </button>
                 </header>
-                <main className={cn("min-w-0 flex-1", !enConstructor && "px-4 pb-24 pt-6 md:px-8 lg:px-12")}>
+                <main id="contenido" tabIndex={-1} className={cn("min-w-0 flex-1 focus:outline-none", !enConstructor && "px-4 pb-24 pt-6 md:px-8 lg:px-12")}>
                   <motion.div
                     key={pathname}
                     initial={{ opacity: 0, y: 10 }}
@@ -221,7 +232,7 @@ export function CollectionShell({
                 </main>
               </div>
             </div>
-            <PaletaComandos abierta={paleta} onAbiertaChange={setPaleta} superAdmin={acceso.superAdmin} />
+            <PaletaComandos abierta={paleta} onAbiertaChange={setPaleta} superAdmin={acceso.superAdmin} buscar={buscar} />
           </AvisosProvider>
         </Tooltip.Provider>
       </MotionConfig>

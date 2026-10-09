@@ -9,7 +9,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { DndContext, closestCenter, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ImagePlus, RefreshCw, Search, X } from "lucide-react";
+import { ImagePlus, MapPinned, RefreshCw, Search, X } from "lucide-react";
 import {
   actualizarDestino,
   crearDestino,
@@ -23,7 +23,7 @@ import { slugify } from "@/lib/utils";
 import { cn } from "@/components/lib/cn";
 import { useCollection } from "../shell/contexto";
 import { useAviso, useDeshacer } from "../shell/Avisos";
-import { EncabezadoPagina, Estado, type TonoEstado, Eyebrow, Filtros, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaTitulo, tarjetaElevable, cajaCompuesta, entradaInterna } from "../ui";
+import { EncabezadoPagina, Estado, Vacio, type TonoEstado, Eyebrow, Filtros, barraHerramientas, etiquetaCampo, entrada, entradaArea, entradaTitulo, tarjetaElevable, cajaCompuesta, entradaInterna } from "../ui";
 import { MedioImagen, fondoDeColor } from "../sitio/medios";
 import { Campo, Contador, useSensoresOrden } from "../constructor/campos";
 import { EditorTexto } from "../editor/EditorTexto";
@@ -84,20 +84,31 @@ export function TarjetaDestino({
   admin?: boolean;
 }) {
   const proximamente = d.estado === "PROXIMAMENTE";
+  // En el admin y en celular, fila compacta: miniatura de 72 px, nombre y estado.
   return (
-    <div>
-      <div className={cn("relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line", admin && tarjetaElevable)}>
+    <div className={cn(admin && "flex items-center gap-4 rounded-col-sm bg-col-surface p-2 pr-14 sm:block sm:bg-transparent sm:p-0")}>
+      <div
+        className={cn(
+          "relative aspect-[4/5] overflow-hidden rounded-col-sm bg-col-line",
+          admin && cn(tarjetaElevable, "aspect-square w-[72px] shrink-0 sm:aspect-[4/5] sm:w-auto"),
+        )}
+      >
         {d.portada ? (
           <MedioImagen medio={d.portada} relleno sizes={sizes} imgClassName={admin ? "group-hover:scale-[1.03]" : undefined} />
         ) : (
           <div className="absolute inset-0" style={{ background: fondoDeColor(tonoDe(d.nombre || "destino")) }}>
-            <span className="absolute bottom-4 left-5 font-col-display text-col-display-lg font-light italic leading-none text-col-base/70">
+            <span
+              className={cn(
+                "absolute bottom-4 left-5 font-col-display text-col-display-lg font-light italic leading-none text-col-base/70",
+                admin && "bottom-2 left-3 text-col-3xl sm:bottom-4 sm:left-5 sm:text-col-display-lg",
+              )}
+            >
               {(d.nombre.trim()[0] ?? "·").toUpperCase()}
             </span>
           </div>
         )}
         {admin ? (
-          <PillDestino estado={d.estado} className="absolute left-3 top-3 shadow-sm" />
+          <PillDestino estado={d.estado} className="absolute left-3 top-3 hidden shadow-sm sm:inline-flex" />
         ) : (
           proximamente && (
             <span className="absolute left-4 top-4 bg-col-base px-3 py-2 text-col-xs uppercase tracking-[0.14em] text-col-ink">
@@ -106,14 +117,23 @@ export function TarjetaDestino({
           )
         )}
       </div>
-      <div className="mt-5 flex flex-col gap-2">
-        <span className="text-col-xs uppercase tracking-[0.14em] text-col-slate">
+      <div className={cn("mt-5 flex flex-col gap-2", admin && "mt-0 min-w-0 flex-1 gap-1.5 sm:mt-5 sm:gap-2")}>
+        <span className={cn("text-col-xs uppercase tracking-[0.14em] text-col-slate", admin && "hidden sm:block")}>
           {proximamente ? "Destino · Próximamente" : `Destino · ${plural(d.experiencias, "experiencia", "experiencias")}`}
         </span>
-        <span className={cn("font-col-display text-col-2xl leading-[1.15]", d.nombre ? "text-col-ink" : "italic text-col-subtle")}>
+        <span
+          className={cn(
+            "font-col-display text-col-2xl leading-[1.15]",
+            admin && "truncate text-col-xl sm:whitespace-normal sm:text-col-2xl",
+            d.nombre ? "text-col-ink" : "italic text-col-subtle",
+          )}
+        >
           {d.nombre || "Sin nombre"}
         </span>
-        {d.bajada && <span className="line-clamp-2 text-col-cuerpo leading-relaxed text-col-slate">{d.bajada}</span>}
+        {admin && <PillDestino estado={d.estado} className="self-start sm:hidden" />}
+        {d.bajada && (
+          <span className={cn("line-clamp-2 text-col-cuerpo leading-relaxed text-col-slate", admin && "hidden sm:[display:-webkit-box]")}>{d.bajada}</span>
+        )}
       </div>
     </div>
   );
@@ -125,11 +145,14 @@ export function Destinos({
   inicial,
   paises,
   api = apiReal,
-  abrirId = null }: {
+  abrirId = null,
+  nuevoAlEntrar = false }: {
   inicial: DestinoItem[] | { error: string };
   paises: PaisCatalogo[];
   api?: ApiDestinos;
   abrirId?: string | null;
+  /** Desde la paleta ("Nuevo destino"): arranca con el campo del nombre abierto. */
+  nuevoAlEntrar?: boolean;
 }) {
   const avisar = useAviso();
   const deshacible = useDeshacer();
@@ -229,8 +252,9 @@ export function Destinos({
       <EncabezadoPagina
         titulo="Adónde viajamos"
         descripcion={`${items.length} ${items.length === 1 ? "destino" : "destinos"} · ${items.filter((x) => x.estado === "PUBLICADO").length} en el sitio`}
-        acciones={editable && <NuevoEnLinea etiqueta="Nuevo destino" placeholder="Nombre del destino" onCrear={crear} />}
+        acciones={editable && items.length > 0 && <NuevoEnLinea etiqueta="Nuevo destino" placeholder="Nombre del destino" onCrear={crear} abiertoInicial={nuevoAlEntrar} />}
       />
+      {items.length > 0 && (
       <div className={barraHerramientas}>
         <Filtros
           etiqueta="Estado"
@@ -242,6 +266,7 @@ export function Destinos({
           onChange={setFiltro}
         />
       </div>
+      )}
 
       {error && (
         <p role="alert" className="mb-6 text-col-md text-col-alerta">
@@ -250,13 +275,20 @@ export function Destinos({
       )}
 
       {visibles.length === 0 ? (
-        <p className="py-24 text-center font-col-display text-col-2xl italic text-col-slate">
-          {items.length ? "Nada con ese filtro." : "Todavía no hay destinos. Creá el primero."}
-        </p>
+        items.length ? (
+          <Vacio compacto icono={MapPinned} titulo="Nada con ese filtro" />
+        ) : (
+          <Vacio
+            icono={MapPinned}
+            titulo="Todavía no hay destinos"
+            texto="Cada destino agrupa sus experiencias y tiene su propia página en el sitio."
+            accion={editable && <NuevoEnLinea etiqueta="Nuevo destino" placeholder="Nombre del destino" onCrear={crear} abiertoInicial={nuevoAlEntrar} />}
+          />
+        )
       ) : (
         <DndContext sensors={sensores} collisionDetection={closestCenter} onDragEnd={(e) => void alSoltar(e)}>
           <SortableContext items={visibles.map((x) => x.id)} strategy={rectSortingStrategy} disabled={!ordenable}>
-            <ul className="grid grid-cols-1 gap-x-6 gap-y-14 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <ul className="grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-14 lg:grid-cols-3 xl:grid-cols-4">
               <AnimatePresence initial={false}>
                 {visibles.map((d, i) => (
                   <Item key={d.id} d={d} i={i} ordenable={ordenable} onAbrir={() => setAbierto(d.id)} />
@@ -319,9 +351,11 @@ function Item({ d, i, ordenable, onAbrir }: { d: DestinoItem; i: number; ordenab
         aria-label={`Editar ${d.nombre || "destino sin nombre"}`}
         className={cn("block w-full rounded-col-sm text-left", isDragging && "opacity-90")}
       >
-        <TarjetaDestino d={d} admin sizes="(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, 50vw" />
+        <TarjetaDestino d={d} admin sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 72px" />
       </button>
-      {ordenable && <AsaTarjeta nombre={d.nombre || "destino sin nombre"} orden={orden} />}
+      {ordenable && (
+        <AsaTarjeta nombre={d.nombre || "destino sin nombre"} orden={orden} className="top-1/2 -translate-y-1/2 sm:top-3 sm:translate-y-0" />
+      )}
     </motion.li>
   );
 }
@@ -343,7 +377,7 @@ function EditorDestino({
   const ro = !editable;
   return (
     <>
-      <div className="grid grid-cols-[200px_minmax(0,1fr)] items-start gap-6 bg-col-base px-6 py-7">
+      <div className="grid grid-cols-1 items-start gap-6 bg-col-base px-5 py-6 sm:grid-cols-[200px_minmax(0,1fr)] sm:px-6 sm:py-7 [&>:first-child]:max-w-[200px]">
         <TarjetaDestino d={d} sizes="200px" />
         <div className="flex flex-col gap-3 pt-1">
           <Eyebrow>Vista previa</Eyebrow>
