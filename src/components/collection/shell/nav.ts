@@ -29,7 +29,7 @@ export const GRUPOS_NAV: { titulo: string | null; modulos: ModuloNav[] }[] = [
   {
     titulo: "Contenido",
     modulos: [
-      { id: "experiencias", label: "Experiencias", icono: Compass },
+      { id: "experiencias", label: "Experiencias", icono: Compass, href: "/backend/collection/experiencias" },
       { id: "destinos", label: "Destinos", icono: MapPinned },
       { id: "biblioteca", label: "Biblioteca", icono: Images, href: "/backend/collection/biblioteca" },
       { id: "especialistas", label: "Especialistas", icono: UserRound },

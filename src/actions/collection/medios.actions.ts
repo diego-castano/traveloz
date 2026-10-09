@@ -19,6 +19,8 @@ import {
 } from "@/lib/storage";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
 import { procesarFoto } from "@/lib/collection/medios-proceso";
+import { medioAVista } from "@/lib/collection/vista-servidor";
+import type { MedioVista } from "@/lib/collection/experiencia/contenido";
 
 const log = logger.child({ module: "collection.medios.actions" });
 
@@ -344,5 +346,17 @@ export async function eliminarMedio(id: string): Promise<Resultado<null>> {
       log.warn("eliminarMedio.bucket", { err, id });
     }
     return null;
+  });
+}
+
+/** Medios por id en formato de vista (para dibujar lo que ya usa una experiencia). */
+export async function obtenerMediosVista(ids: string[]): Promise<Resultado<MedioVista[]>> {
+  return ejecutar("obtenerMediosVista", async () => {
+    await requireCollection("panel");
+    const p = z.array(z.string().min(1).max(40)).max(500).safeParse(ids);
+    if (!p.success) fallar("Lista inválida.");
+    if (!p.data.length) return [];
+    const filas = await prisma.colMedio.findMany({ where: { id: { in: p.data } } });
+    return filas.map(medioAVista);
   });
 }

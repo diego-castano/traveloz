@@ -1,0 +1,672 @@
+/* Páginas del sitio de Collection. Todo lo responsive va por @container sobre
+   .cs-raiz y no por el ancho de la ventana: así la misma página se ve bien en
+   el sitio y dentro del panel de vista previa del constructor (390 o 1280). */
+
+.cs-raiz {
+  container: cs / inline-size;
+  position: relative;
+  background: #f0f0f0;
+  color: #32373b;
+  font-family: var(--font-col-text), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: lining-nums;
+}
+
+.cs-raiz :focus-visible {
+  outline: 2px solid #f4b860;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.cs-raiz ::selection {
+  background: rgba(244, 184, 96, 0.35);
+}
+
+.cs-seccion {
+  position: relative;
+  scroll-margin-top: 64px;
+}
+
+.cs-envolvente {
+  width: 100%;
+  max-width: 1408px;
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.cs-bloque {
+  padding-block: 72px;
+}
+
+/* ── Tipografía ─────────────────────────────────────────────────────────── */
+
+.cs-h1 {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+.cs-h2 {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.cs-nombre {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 48px;
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+}
+
+.cs-frase {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-style: italic;
+  font-weight: 300;
+  font-size: 30px;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.cs-dato {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.cs-dato--texto {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+/* Texto rico que viene del editor (ya sanitizado en el servidor). */
+.cs-prosa {
+  font-size: 17px;
+  line-height: 1.75;
+  font-weight: 300;
+}
+.cs-prosa > * + * {
+  margin-top: 1em;
+}
+.cs-prosa strong,
+.cs-prosa b {
+  font-weight: 500;
+}
+.cs-prosa em {
+  font-style: italic;
+}
+.cs-prosa a {
+  text-decoration: underline;
+  text-decoration-color: #f4b860;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: text-decoration-thickness 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cs-prosa a:hover {
+  text-decoration-thickness: 2px;
+}
+.cs-prosa h2,
+.cs-prosa h3 {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 1.6em;
+  line-height: 1.2;
+  margin-top: 1.4em;
+}
+.cs-prosa ul,
+.cs-prosa ol {
+  padding-left: 1.2em;
+}
+.cs-prosa ul {
+  list-style: disc;
+}
+.cs-prosa ol {
+  list-style: decimal;
+}
+.cs-prosa li::marker {
+  color: #f4b860;
+}
+.cs-prosa blockquote {
+  border-left: 1px solid #f4b860;
+  padding-left: 1.2em;
+  font-family: var(--font-col-display), Georgia, serif;
+  font-size: 1.35em;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* La intro: el primer párrafo en serif grande, el resto en texto. */
+.cs-intro > p:first-child {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-weight: 400;
+  font-size: 25px;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+/* ── Portada ────────────────────────────────────────────────────────────── */
+
+.cs-hero {
+  position: relative;
+  height: min(88svh, 920px);
+  min-height: 560px;
+  overflow: hidden;
+  background: #32373b;
+  color: #fff;
+}
+.cs-raiz[data-modo="preview"] .cs-hero {
+  height: 600px;
+  min-height: 0;
+}
+.cs-hero-velo {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to top, rgba(50, 55, 59, 0.82) 0%, rgba(50, 55, 59, 0.35) 45%, rgba(50, 55, 59, 0) 70%),
+    linear-gradient(to bottom, rgba(50, 55, 59, 0.35), rgba(50, 55, 59, 0) 25%);
+}
+.cs-hero-texto {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.cs-hero-pie {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.cs-datos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cs-datos > *:nth-child(n + 3) {
+  border-top: 1px solid #dcdcdc;
+}
+.cs-datos > *:nth-child(odd) {
+  padding-left: 0;
+  border-right: 1px solid #dcdcdc;
+}
+
+/* ── Subnavegación ──────────────────────────────────────────────────────── */
+
+.cs-subnav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.cs-subnav-titulo {
+  display: none;
+}
+.cs-subnav-links {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cs-subnav-links::-webkit-scrollbar {
+  display: none;
+}
+.cs-subnav-consultar {
+  display: none;
+}
+
+/* ── Intro e imperdibles ────────────────────────────────────────────────── */
+
+.cs-imperdibles {
+  display: grid;
+  gap: 40px;
+}
+
+/* ── Relato por destino ─────────────────────────────────────────────────── */
+
+.cs-tramos {
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+}
+.cs-tramo {
+  display: grid;
+  gap: 28px;
+}
+
+/* ── Hoteles ────────────────────────────────────────────────────────────── */
+
+.cs-hotel {
+  display: grid;
+  gap: 32px;
+}
+.cs-hotel-fotos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.cs-hotel-fotos > :first-child {
+  grid-column: span 2;
+  aspect-ratio: 4 / 3;
+}
+.cs-hotel-fotos > :not(:first-child) {
+  aspect-ratio: 1 / 1;
+}
+.cs-hotel-fotos--una > :first-child {
+  aspect-ratio: 4 / 3;
+}
+
+/* ── Video a sangre ─────────────────────────────────────────────────────── */
+
+.cs-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: 760px;
+  overflow: hidden;
+  background: #32373b;
+}
+
+/* ── Día a día ──────────────────────────────────────────────────────────── */
+
+.cs-dias {
+  display: grid;
+  gap: 40px;
+}
+.cs-dia-cuerpo {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cs-dia-cuerpo[data-abierto="true"] {
+  grid-template-rows: 1fr;
+}
+.cs-dia-cuerpo > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.cs-dia-fotos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+/* ── Galería ────────────────────────────────────────────────────────────── */
+
+.cs-galeria {
+  columns: 2;
+  column-gap: 6px;
+}
+.cs-galeria > * {
+  break-inside: avoid;
+  margin-bottom: 6px;
+}
+.cs-galeria-leyenda {
+  display: none;
+}
+
+/* ── Detalles ───────────────────────────────────────────────────────────── */
+
+.cs-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  border-top: 1px solid #32373b;
+}
+.cs-info-grid > * {
+  border-bottom: 1px solid #dcdcdc;
+}
+.cs-detalles-pie {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── Especialista ───────────────────────────────────────────────────────── */
+
+.cs-especialista {
+  display: grid;
+  gap: 32px;
+}
+.cs-especialista-retrato {
+  width: min(100%, 280px);
+}
+
+/* ── Cierre y barra inferior ────────────────────────────────────────────── */
+
+.cs-cierre {
+  position: relative;
+  min-height: 520px;
+  overflow: hidden;
+  background: #32373b;
+  color: #f0f0f0;
+}
+
+/* Sticky y no fixed: .cs-raiz es contenedor (contención de layout), así que
+   un fixed quedaría atado a la raíz. Sticky al final de la raíz se pega al
+   borde inferior de la ventana en el sitio y del panel en la vista previa. */
+.cs-barra {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+}
+
+/* ── Vista previa: fantasmas y resaltado ────────────────────────────────── */
+
+.cs-fantasma {
+  background-color: #e4e4e4;
+  background-image: repeating-linear-gradient(135deg, rgba(74, 88, 89, 0.07) 0 1px, transparent 1px 12px);
+}
+.cs-fantasma--oscuro {
+  background-color: #3c4246;
+  background-image: repeating-linear-gradient(135deg, rgba(240, 240, 240, 0.05) 0 1px, transparent 1px 14px);
+}
+
+.cs-resaltada::after,
+.cs-resaltada::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+.cs-resaltada::after {
+  box-shadow: inset 0 0 0 1px #f4b860;
+  animation: cs-entra 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.cs-resaltada::before {
+  box-shadow: inset 0 0 64px rgba(244, 184, 96, 0.35);
+  animation: cs-brillo 2200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cs-entra {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cs-brillo {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0.25; }
+}
+
+/* ── Desde 560 de ancho ─────────────────────────────────────────────────── */
+
+@container cs (min-width: 560px) {
+  .cs-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .cs-info-grid > *:nth-child(odd) {
+    padding-right: 28px;
+  }
+  .cs-info-grid > *:nth-child(even) {
+    padding-left: 28px;
+    border-left: 1px solid #dcdcdc;
+  }
+  .cs-dia-fotos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* ── Escritorio: desde 768 ──────────────────────────────────────────────── */
+
+@container cs (min-width: 768px) {
+  .cs-envolvente {
+    padding-inline: 40px;
+  }
+  .cs-bloque {
+    padding-block: 112px;
+  }
+  .cs-h1 {
+    font-size: 56px;
+  }
+  .cs-h2 {
+    font-size: 44px;
+  }
+  .cs-nombre {
+    font-size: 64px;
+  }
+  .cs-frase {
+    font-size: 44px;
+  }
+  .cs-dato {
+    font-size: 52px;
+  }
+  .cs-dato--texto {
+    font-size: 52px;
+    line-height: 1;
+  }
+  .cs-prosa {
+    font-size: 18px;
+  }
+  .cs-intro > p:first-child {
+    font-size: 32px;
+    line-height: 1.35;
+  }
+
+  .cs-raiz[data-modo="preview"] .cs-hero {
+    height: 720px;
+  }
+  .cs-hero-texto {
+    padding-bottom: 56px;
+  }
+  .cs-hero-pie {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 48px;
+  }
+
+  .cs-datos {
+    grid-template-columns: repeat(var(--cs-n, 4), minmax(0, 1fr));
+  }
+  .cs-datos > *:nth-child(n) {
+    padding-left: 32px;
+    border-top: 0;
+    border-right: 0;
+  }
+  .cs-datos > *:first-child {
+    padding-left: 0;
+  }
+  .cs-datos > * + * {
+    border-left: 1px solid #dcdcdc;
+  }
+
+  .cs-subnav-titulo {
+    display: flex;
+  }
+  .cs-subnav-consultar {
+    display: inline-flex;
+  }
+  .cs-subnav .cs-subnav-links {
+    justify-content: center;
+  }
+
+  .cs-imperdibles--con-foto {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 72px;
+    align-items: start;
+  }
+
+  .cs-tramos {
+    gap: 120px;
+  }
+  .cs-tramo {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    gap: 72px;
+    align-items: center;
+  }
+  .cs-tramo--inverso {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+  .cs-tramo--inverso > :first-child {
+    order: 2;
+  }
+
+  .cs-hotel {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 64px;
+    align-items: start;
+  }
+  .cs-hotel-fotos {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    aspect-ratio: 3 / 2;
+    gap: 8px;
+  }
+  .cs-hotel-fotos > :first-child {
+    grid-column: auto;
+    grid-row: span 2;
+    aspect-ratio: auto;
+  }
+  .cs-hotel-fotos > :not(:first-child) {
+    aspect-ratio: auto;
+  }
+  .cs-hotel-fotos--una {
+    grid-template-columns: 1fr;
+  }
+
+  .cs-video {
+    aspect-ratio: 16 / 9;
+  }
+
+  .cs-dias {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 72px;
+    align-items: start;
+  }
+  .cs-dias-aside {
+    position: sticky;
+    top: 104px;
+  }
+
+  .cs-galeria {
+    columns: 3;
+    column-gap: 8px;
+  }
+  .cs-galeria > * {
+    margin-bottom: 8px;
+  }
+  .cs-galeria-leyenda {
+    display: block;
+  }
+
+  .cs-detalles-pie {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cs-especialista {
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 48px;
+    align-items: center;
+  }
+  .cs-especialista-canales {
+    grid-column: 2;
+  }
+
+  .cs-barra {
+    display: none;
+  }
+}
+
+/* ── Escritorio ancho: desde 1100 ───────────────────────────────────────── */
+
+@container cs (min-width: 1100px) {
+  .cs-envolvente {
+    padding-inline: 64px;
+  }
+  .cs-h1 {
+    font-size: 72px;
+  }
+  .cs-h2 {
+    font-size: 48px;
+  }
+  .cs-nombre {
+    font-size: 72px;
+  }
+  .cs-frase {
+    font-size: 52px;
+  }
+  .cs-dato,
+  .cs-dato--texto {
+    font-size: 56px;
+  }
+
+  .cs-imperdibles--con-foto {
+    gap: 96px;
+  }
+  .cs-tramo {
+    gap: 96px;
+  }
+
+  .cs-info-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cs-info-grid > *:nth-child(odd),
+  .cs-info-grid > *:nth-child(even) {
+    padding-inline: 28px;
+    border-left: 1px solid #dcdcdc;
+  }
+  .cs-info-grid > *:nth-child(3n + 1) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .cs-especialista {
+    grid-template-columns: 280px minmax(0, 1fr) 300px;
+    gap: 56px;
+  }
+  .cs-especialista-canales {
+    grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-raiz *,
+  .cs-raiz *::before,
+  .cs-raiz *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Variantes sin foto y con dos fotos ─────────────────────────────────── */
+
+.cs-dia-cuerpo > div {
+  visibility: hidden;
+  transition: visibility 0s linear 500ms;
+}
+.cs-dia-cuerpo[data-abierto="true"] > div {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.cs-hotel-fotos.cs-hotel-fotos--dos {
+  grid-template-columns: 3fr 2fr;
+  grid-template-rows: none;
+  aspect-ratio: auto;
+}
+.cs-hotel-fotos.cs-hotel-fotos--dos > :first-child {
+  grid-column: auto;
+  grid-row: auto;
+  aspect-ratio: 4 / 5;
+}
+
+@container cs (min-width: 768px) {
+  .cs-tramo.cs-tramo--solo,
+  .cs-hotel.cs-hotel--solo {
+    grid-template-columns: minmax(0, 760px);
+  }
+}

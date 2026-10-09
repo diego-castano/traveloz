@@ -45,6 +45,7 @@ export function Grilla({
   puedeSeleccionar,
   onAbrir,
   onAlternar,
+  orden,
 }: {
   items: ColMedioDto[];
   seleccion: Set<string>;
@@ -52,6 +53,8 @@ export function Grilla({
   puedeSeleccionar: boolean;
   onAbrir: (indice: number) => void;
   onAlternar: (indice: number, rango: boolean) => void;
+  /** Número de orden de cada elegido (selector múltiple): reemplaza el tilde. */
+  orden?: Map<string, number>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [ancho, setAncho] = useState(0);
@@ -85,6 +88,7 @@ export function Grilla({
                   puedeSeleccionar={puedeSeleccionar}
                   onAbrir={onAbrir}
                   onAlternar={onAlternar}
+                  numero={orden?.get(c.medio.id)}
                 />
               ))}
             </div>
@@ -102,7 +106,9 @@ function Mosaico({
   puedeSeleccionar,
   onAbrir,
   onAlternar,
+  numero,
 }: {
+  numero?: number;
   celda: Celda;
   seleccionado: boolean;
   modoSeleccion: boolean;
@@ -169,7 +175,11 @@ function Mosaico({
             !seleccionado && !modoSeleccion && "opacity-0 focus-visible:opacity-100 group-hover:opacity-100",
           )}
         >
-          <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+          {numero && seleccionado ? (
+            <span className="text-[12px] font-medium leading-none">{numero}</span>
+          ) : (
+            <Check className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+          )}
         </button>
       )}
     </div>

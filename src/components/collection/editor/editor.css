@@ -1,0 +1,52 @@
+/* Texto del editor de Collection: la misma prosa que dibuja el sitio, en chico. */
+
+.col-prosa-editor {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #32373b;
+  min-height: 100%;
+}
+.col-prosa-editor > * + * {
+  margin-top: 0.75em;
+}
+.col-prosa-editor h3 {
+  font-family: var(--font-col-display), Georgia, serif;
+  font-size: 22px;
+  line-height: 1.2;
+  margin-top: 1.1em;
+}
+.col-prosa-editor ul,
+.col-prosa-editor ol {
+  padding-left: 1.25em;
+}
+.col-prosa-editor ul {
+  list-style: disc;
+}
+.col-prosa-editor ol {
+  list-style: decimal;
+}
+.col-prosa-editor li::marker {
+  color: #f4b860;
+}
+.col-prosa-editor blockquote {
+  border-left: 2px solid #f4b860;
+  padding-left: 1em;
+  font-family: var(--font-col-display), Georgia, serif;
+  font-style: italic;
+  font-size: 19px;
+  color: #4a5859;
+}
+.col-prosa-editor a {
+  color: #32373b;
+  text-decoration: underline;
+  text-decoration-color: #f4b860;
+  text-underline-offset: 3px;
+}
+.col-prosa-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: rgba(74, 88, 89, 0.55);
+  font-style: italic;
+}

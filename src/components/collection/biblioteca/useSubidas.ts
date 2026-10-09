@@ -86,7 +86,17 @@ async function leerVideo(file: File): Promise<{ duracion?: number; poster: Blob 
   }
 }
 
-export function useSubidas(onListo: (m: ColMedioDto) => void) {
+/** Para la ruta de prueba del constructor: reemplaza las actions y el PUT. */
+export interface OpcionesSubidas {
+  preparar?: typeof prepararSubidaMedio;
+  registrar?: typeof registrarMedio;
+  put?: typeof subirPut;
+}
+
+export function useSubidas(onListo: (m: ColMedioDto) => void, opciones: OpcionesSubidas = {}) {
+  const preparar = opciones.preparar ?? prepararSubidaMedio;
+  const registrar = opciones.registrar ?? registrarMedio;
+  const put = opciones.put ?? subirPut;
   const [subidas, setSubidas] = useState<Subida[]>([]);
   const [vuelta, setVuelta] = useState(0);
   const activas = useRef(new Set<string>());
@@ -112,25 +122,25 @@ export function useSubidas(onListo: (m: ColMedioDto) => void) {
             actualizar(s.id, { preview: URL.createObjectURL(info.poster) });
             const ext = info.poster.type === "image/webp" ? "webp" : "png";
             const base = file.name.replace(/\.[^.]+$/, "");
-            const prep = await prepararSubidaMedio({
+            const prep = await preparar({
               nombre: `${base}-poster.${ext}`,
               contentType: info.poster.type,
               peso: info.poster.size,
             });
             if (prep.ok) {
-              await subirPut(prep.data.url, info.poster);
+              await put(prep.data.url, info.poster);
               posterKey = prep.data.key;
             }
           }
         }
 
-        const prep = await prepararSubidaMedio({ nombre: file.name, contentType: file.type, peso: file.size });
+        const prep = await preparar({ nombre: file.name, contentType: file.type, peso: file.size });
         if (!prep.ok) throw new Error(prep.error);
         actualizar(s.id, { estado: "subiendo", progreso: 0 });
-        await subirPut(prep.data.url, file, (p) => actualizar(s.id, { progreso: p }));
+        await put(prep.data.url, file, (p) => actualizar(s.id, { progreso: p }));
 
         actualizar(s.id, { estado: "procesando", progreso: 100 });
-        const reg = await registrarMedio({
+        const reg = await registrar({
           key: prep.data.key,
           nombre: file.name,
           contentType: file.type,
@@ -148,7 +158,7 @@ export function useSubidas(onListo: (m: ColMedioDto) => void) {
         });
       }
     },
-    [actualizar],
+    [actualizar, preparar, registrar, put],
   );
 
   useEffect(() => {

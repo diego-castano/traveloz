@@ -33,13 +33,21 @@ export function CollectionShell({
   const [menuMovil, setMenuMovil] = useState(false);
   const [paleta, setPaleta] = useState(false);
 
+  // El constructor de experiencias ocupa todo el alto y pliega el riel para
+  // dejarle lugar a la vista previa; al salir vuelve lo que estaba guardado.
+  const enConstructor = /^\/backend\/collection\/experiencias\/[^/]+/.test(pathname);
+
   useEffect(() => {
+    if (enConstructor) {
+      setPlegado(true);
+      return;
+    }
     try {
       setPlegado(localStorage.getItem(CLAVE_RIEL) === "1");
     } catch {
       // Sin localStorage (modo privado estricto): arranca desplegado.
     }
-  }, []);
+  }, [enConstructor]);
 
   const alternarRiel = useCallback(() => {
     setPlegado((p) => {
@@ -166,7 +174,7 @@ export function CollectionShell({
                   {iniciales(usuario.nombre)}
                 </span>
               </header>
-              <main className="flex-1 px-4 pb-24 pt-8 md:px-8 lg:px-12 lg:pt-10">{children}</main>
+              <main className={cn("flex-1", !enConstructor && "px-4 pb-24 pt-8 md:px-8 lg:px-12 lg:pt-10")}>{children}</main>
             </div>
           </div>
           <PaletaComandos abierta={paleta} onAbiertaChange={setPaleta} superAdmin={acceso.superAdmin} />
