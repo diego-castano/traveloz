@@ -118,3 +118,31 @@ con póster.
 - Server actions con contrato `{ ok, data } | { ok, error }`.
 - pgbouncer: sin `prisma.$transaction`.
 - Nada de `../destinico`.
+
+## Estado al 10/10/2026
+
+Las 5 fases están en producción: fundaciones `cdf8807` + `bab7341`,
+experiencias `addb878` + `404b8a4`, contenidos `beaa10b`, pulido `3af3f1b`,
+sitio y consultas `012e4b4` + `abb0678`.
+
+Pendiente para el lanzamiento:
+
+1. DNS en Cloudflare: CNAME `collection` → `u1yhsgcr.up.railway.app` (el
+   dominio ya está creado en el servicio `traveloz` de Railway).
+2. Del diseñador: hex exacto del azul (`col-noche`, hoy `#04071F` a ojo) y
+   el logo de Collection en PNG o SVG (`shell/MarcaCollection.tsx` es una
+   aproximación con tipografías).
+3. Cargar y publicar contenido: destinos, especialistas, experiencias,
+   páginas (Inicio y Nosotros), legales, aliados, testimonios, preguntas.
+4. Ajustes: WhatsApp, mails de aviso de consultas, origen en Bitrix.
+5. Indexar: `COLLECTION_INDEXAR=1` en Railway y redeploy.
+
+Detalles abiertos:
+
+- "Ver en el sitio" usa el slug del borrador; si se cambia después de
+  publicar, el link apunta a la dirección nueva hasta republicar.
+- En las legales, tocar un bloque en la vista previa no lo selecciona.
+- La vista previa del artículo no sigue las secciones del índice.
+- Nada se probó todavía con sesión iniciada contra datos reales: las
+  verificaciones fueron con rutas `/dev/collection/*` (404 en producción),
+  curl y chequeos de tipos.
