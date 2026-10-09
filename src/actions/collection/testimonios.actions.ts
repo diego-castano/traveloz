@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { testimonioVista } from "@/lib/collection/paginas-servidor";
 import { medioAVista } from "@/lib/collection/vista-servidor";
@@ -49,6 +50,7 @@ export async function crearTestimonio(input: { nombre: string }): Promise<Result
       data: { nombre: p.data.nombre, orden: (ultimo._max.orden ?? -1) + 1 },
       select: { id: true },
     });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: fila.id, accion: "crear", userId, detalle: { nombre: p.data.nombre } });
     return fila;
   });
@@ -92,6 +94,7 @@ export async function actualizarTestimonio(
       if (!e) fallar("La experiencia elegida ya no existe.");
     }
     await prisma.colTestimonio.update({ where: { id }, data: { ...d, fecha } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "editar", userId, detalle: { publicado: d.publicado } });
     return null;
   });
@@ -105,6 +108,7 @@ export async function reordenarTestimonios(ids: string[]): Promise<Resultado<nul
     for (let orden = 0; orden < p.data.length; orden++) {
       await prisma.colTestimonio.updateMany({ where: { id: p.data[orden] }, data: { orden } });
     }
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: "lista", accion: "reordenar", userId });
     return null;
   });
@@ -116,6 +120,7 @@ export async function eliminarTestimonio(id: string): Promise<Resultado<null>> {
     const t = await prisma.colTestimonio.findUnique({ where: { id }, select: { nombre: true } });
     if (!t) fallar("No encontramos ese testimonio.");
     await prisma.colTestimonio.delete({ where: { id } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "eliminar", userId, detalle: { nombre: t.nombre } });
     return null;
   });

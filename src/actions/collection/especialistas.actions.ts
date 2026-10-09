@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { sanitizarHtml } from "@/lib/collection/sanitizar";
 import { especialistaAVista } from "@/lib/collection/vista-servidor";
@@ -64,6 +65,7 @@ export async function crearEspecialista(input: {
       data: { nombre: p.data.nombre, userId: p.data.userId ?? null, orden: (ultimo._max.orden ?? -1) + 1 },
       select: { id: true },
     });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: fila.id, accion: "crear", userId, detalle: { nombre: p.data.nombre } });
     return fila;
   });
@@ -107,6 +109,7 @@ export async function actualizarEspecialista(
       if (!m) fallar("El retrato elegido ya no existe.");
     }
     await prisma.colEspecialista.update({ where: { id }, data: { ...d, bio: sanitizarHtml(d.bio) } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "editar", userId, detalle: { publicado: d.publicado } });
     return null;
   });
@@ -121,6 +124,7 @@ export async function reordenarEspecialistas(ids: string[]): Promise<Resultado<n
       const id = p.data[orden];
       await prisma.colEspecialista.updateMany({ where: { id }, data: { orden } });
     }
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: "lista", accion: "reordenar", userId });
     return null;
   });
@@ -136,6 +140,7 @@ export async function eliminarEspecialista(id: string): Promise<Resultado<null>>
       fallar(`Tiene ${usos} experiencia${usos === 1 ? "" : "s"} a cargo. Despublicalo en vez de eliminarlo.`);
     }
     await prisma.colEspecialista.delete({ where: { id } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "eliminar", userId, detalle: { nombre: e.nombre } });
     return null;
   });

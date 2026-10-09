@@ -9,6 +9,7 @@ import { BRAND_ID } from "@/lib/brand";
 import { slugify } from "@/lib/utils";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { sanitizarHtml } from "@/lib/collection/sanitizar";
 import { medioAVista } from "@/lib/collection/vista-servidor";
@@ -149,6 +150,7 @@ export async function actualizarDestino(
     if (paises.length) {
       await prisma.colDestinoPais.createMany({ data: paises.map((x) => ({ destinoId: id, paisId: x.id })) });
     }
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "editar", userId, detalle: { estado: resto.estado } });
     return null;
   });
@@ -163,6 +165,7 @@ export async function reordenarDestinos(ids: string[]): Promise<Resultado<null>>
       const id = p.data[orden];
       await prisma.colDestino.updateMany({ where: { id }, data: { orden } });
     }
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: "lista", accion: "reordenar", userId });
     return null;
   });
@@ -178,6 +181,7 @@ export async function eliminarDestino(id: string): Promise<Resultado<null>> {
       fallar(`Este destino tiene ${usos} experiencia${usos === 1 ? "" : "s"}. Archivalo en vez de eliminarlo.`);
     }
     await prisma.colDestino.delete({ where: { id } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "eliminar", userId, detalle: { nombre: d.nombre } });
     return null;
   });

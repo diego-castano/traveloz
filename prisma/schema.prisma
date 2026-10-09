@@ -1690,6 +1690,7 @@ model ColEspecialista {
   retrato      ColMedio?        @relation("ColEspecialistaRetrato", fields: [retratoId], references: [id], onDelete: SetNull)
   experiencias ColExperiencia[]
   articulos    ColArticulo[]
+  consultas    ColConsulta[]
 }
 
 model ColExperiencia {
@@ -1732,6 +1733,7 @@ model ColExperiencia {
   hoteles      ColExperienciaHotel[]
   testimonios  ColTestimonio[]
   articulos    ColArticuloExperiencia[]
+  consultas    ColConsulta[]
 
   @@index([estado, orden])
 }
@@ -1871,4 +1873,82 @@ model ColPagina {
   publicadaEn       DateTime?
   actualizadaPorId  String?
   updatedAt         DateTime  @updatedAt
+}
+
+enum ColEstadoConsulta {
+  NUEVA
+  EN_CURSO
+  CERRADA
+  DESCARTADA
+}
+
+enum ColEstadoSuscriptor {
+  PENDIENTE
+  CONFIRMADO
+  BAJA
+}
+
+// Consulta del sitio de Collection ("experiencia" desde una ficha, "contacto"
+// desde Contactanos). `numero` se muestra como TC-0412.
+model ColConsulta {
+  id                  String            @id @default(cuid())
+  numero              Int               @unique @default(autoincrement())
+  tipo                String
+  experienciaId       String?
+  especialistaId      String?
+  nombre              String
+  email               String
+  telefono            String            @default("")
+  paisCodigo          String?
+  ocasion             String            @default("")
+  destinos            String[]          @default([])
+  estilo              String            @default("")
+  fechaTipo           String            @default("")
+  fechaDesde          DateTime?
+  fechaHasta          DateTime?
+  mesAproximado       String            @default("")
+  noches              Int?
+  adultos             Int               @default(2)
+  ninos               Int               @default(0)
+  edadesNinos         Int[]             @default([])
+  inversion           String            @default("")
+  canal               String            @default("")
+  comentarios         String            @default("") @db.Text
+  aceptaNovedades     Boolean           @default(false)
+  origenUrl           String            @default("")
+  atribFirst          Json?
+  atribLast           Json?
+  visitanteId         String?
+  estado              ColEstadoConsulta @default(NUEVA)
+  notaInterna         String            @default("") @db.Text
+  crmEstado           CrmEstado?
+  crmDealId           String?
+  crmContactId        String?
+  crmModo             String?
+  crmError            String?
+  crmEnviadoEn        DateTime?
+  crmIntentos         Int               @default(0)
+  avisoEnviado        Boolean           @default(false)
+  confirmacionEnviada Boolean           @default(false)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  experiencia  ColExperiencia?  @relation(fields: [experienciaId], references: [id], onDelete: SetNull)
+  especialista ColEspecialista? @relation(fields: [especialistaId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([estado])
+  @@index([experienciaId])
+  @@index([especialistaId])
+}
+
+model ColSuscriptor {
+  id           String              @id @default(cuid())
+  email        String              @unique
+  estado       ColEstadoSuscriptor @default(PENDIENTE)
+  token        String              @unique
+  origen       String              @default("")
+  createdAt    DateTime            @default(now())
+  confirmadoEn DateTime?
+  bajaEn       DateTime?
 }

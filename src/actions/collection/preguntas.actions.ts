@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { sanitizarHtml } from "@/lib/collection/sanitizar";
 import { preguntaVista } from "@/lib/collection/paginas-servidor";
@@ -41,6 +42,7 @@ export async function crearPregunta(input: { pregunta: string; categoria?: strin
       data: { pregunta: p.data.pregunta, categoria: p.data.categoria ?? "General", orden: (ultimo._max.orden ?? -1) + 1 },
       select: { id: true },
     });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: fila.id, accion: "crear", userId });
     return fila;
   });
@@ -64,6 +66,7 @@ export async function actualizarPregunta(
     const f = await prisma.colPregunta.findUnique({ where: { id }, select: { id: true } });
     if (!f) fallar("No encontramos esa pregunta.");
     await prisma.colPregunta.update({ where: { id }, data: { ...p.data, respuesta: sanitizarHtml(p.data.respuesta) } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "editar", userId, detalle: { publicada: p.data.publicada } });
     return null;
   });
@@ -77,6 +80,7 @@ export async function reordenarPreguntas(ids: string[]): Promise<Resultado<null>
     for (let orden = 0; orden < p.data.length; orden++) {
       await prisma.colPregunta.updateMany({ where: { id: p.data[orden] }, data: { orden } });
     }
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: "lista", accion: "reordenar", userId });
     return null;
   });
@@ -88,6 +92,7 @@ export async function eliminarPregunta(id: string): Promise<Resultado<null>> {
     const f = await prisma.colPregunta.findUnique({ where: { id }, select: { id: true } });
     if (!f) fallar("No encontramos esa pregunta.");
     await prisma.colPregunta.delete({ where: { id } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "eliminar", userId });
     return null;
   });

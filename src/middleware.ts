@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth.config";
+import { esHostCollection } from "@/lib/collection/sitio";
 
 // Protect /backend/* routes. Public site (/, /destinos, /about, /contact, etc.)
 // is open. A few /backend/* routes must stay reachable without auth so
@@ -11,6 +12,11 @@ const PUBLIC_BACKEND_ROUTES = new Set([
 
 export default auth((req) => {
   const { pathname, search } = req.nextUrl;
+  // En el dominio de Collection el admin no existe: se va al de Traveloz con
+  // la misma ruta (el host sale de los headers, ver la nota de abajo).
+  if (esHostCollection(req.headers.get("x-forwarded-host") ?? req.headers.get("host"))) {
+    return Response.redirect(`https://www.traveloz.com.uy${pathname}${search}`);
+  }
   if (PUBLIC_BACKEND_ROUTES.has(pathname)) return;
   if (!req.auth) {
     // Nos guardamos a donde queria ir para devolverlo despues de loguearse.

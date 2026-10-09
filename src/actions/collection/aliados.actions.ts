@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { aliadoVista } from "@/lib/collection/paginas-servidor";
 import { medioAVista } from "@/lib/collection/vista-servidor";
@@ -48,6 +49,7 @@ export async function crearAliado(input: { nombre: string }): Promise<Resultado<
       data: { nombre: p.data.nombre, orden: (ultimo._max.orden ?? -1) + 1 },
       select: { id: true },
     });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: fila.id, accion: "crear", userId, detalle: { nombre: p.data.nombre } });
     return fila;
   });
@@ -85,6 +87,7 @@ export async function actualizarAliado(
       if (!pr) fallar("El proveedor elegido ya no existe.");
     }
     await prisma.colAliado.update({ where: { id }, data: d });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "editar", userId, detalle: { publicado: d.publicado } });
     return null;
   });
@@ -98,6 +101,7 @@ export async function reordenarAliados(ids: string[]): Promise<Resultado<null>> 
     for (let orden = 0; orden < p.data.length; orden++) {
       await prisma.colAliado.updateMany({ where: { id: p.data[orden] }, data: { orden } });
     }
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: "lista", accion: "reordenar", userId });
     return null;
   });
@@ -109,6 +113,7 @@ export async function eliminarAliado(id: string): Promise<Resultado<null>> {
     const a = await prisma.colAliado.findUnique({ where: { id }, select: { nombre: true } });
     if (!a) fallar("No encontramos a ese aliado.");
     await prisma.colAliado.delete({ where: { id } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: "eliminar", userId, detalle: { nombre: a.nombre } });
     return null;
   });

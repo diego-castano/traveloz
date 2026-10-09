@@ -18,6 +18,7 @@ import {
   putObject,
 } from "@/lib/storage";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { procesarFoto } from "@/lib/collection/medios-proceso";
 import { medioAVista } from "@/lib/collection/vista-servidor";
 import type { MedioVista } from "@/lib/collection/experiencia/contenido";
@@ -321,6 +322,7 @@ export async function actualizarMedio(
     const previo = await prisma.colMedio.findUnique({ where: { id } });
     if (!previo) fallar("No encontramos ese medio.");
     const fila = await prisma.colMedio.update({ where: { id }, data });
+    invalidarSitio();
     await registrarEventoCol({ entidad: "medio", entidadId: id, accion: "editar", userId, detalle: { campos: Object.keys(data) } });
     return aDto(fila);
   });
@@ -333,6 +335,7 @@ export async function eliminarMedio(id: string): Promise<Resultado<null>> {
     if (!fila) fallar("No encontramos ese medio.");
 
     await prisma.colMedio.delete({ where: { id } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: "medio", entidadId: id, accion: "eliminar", userId, detalle: { nombre: fila.nombre } });
 
     const keys = [

@@ -1,0 +1,68 @@
+// Pie del sitio: banda azul noche con la marca, el menú, los legales y el
+// endoso de Traveloz.
+
+import Link from "next/link";
+import { MarcaCollection } from "@/components/collection/shell/MarcaCollection";
+import { CONTACTO_SITIO, LEGALES_SITIO, MENU_SITIO } from "./menu";
+
+const titulo = "text-[12px] font-medium uppercase tracking-[0.12em] text-white/50";
+const enlace = "text-[15px] font-light text-white/85 transition-colors duration-200 ease-col hover:text-col-gold";
+
+export function PieSitio() {
+  return (
+    <footer className="border-t border-col-noche-linea bg-col-noche text-white">
+      <div className="sitio-ancho grid gap-14 py-16 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] md:py-20">
+        <div className="flex flex-col items-start gap-7">
+          <Link href="/" aria-label="Traveloz Collection, inicio">
+            <MarcaCollection tono="oscuro" />
+          </Link>
+          <p className="max-w-[34ch] font-col-display text-[24px] font-light leading-[1.3] text-white/85">
+            Viajes de autor, diseñados a tu medida por un especialista.
+          </p>
+          <Link
+            href={CONTACTO_SITIO.href}
+            className="inline-flex h-12 items-center rounded-sm border border-white/30 px-6 text-[13px] font-medium uppercase tracking-[0.12em] transition-colors duration-200 ease-col hover:border-col-gold hover:text-col-gold"
+          >
+            {CONTACTO_SITIO.nombre}
+          </Link>
+        </div>
+
+        <nav aria-label="Sitio" className="flex flex-col gap-4">
+          <span className={titulo}>Explorar</span>
+          {MENU_SITIO.map((i) => (
+            <Link key={i.href} href={i.href} className={enlace}>
+              {i.nombre}
+            </Link>
+          ))}
+          <Link href="/journal" className={enlace}>
+            Journal
+          </Link>
+        </nav>
+
+        <nav aria-label="Legales" className="flex flex-col gap-4">
+          <span className={titulo}>Legales</span>
+          {LEGALES_SITIO.map((i) => (
+            <Link key={i.href} href={i.href} className={enlace}>
+              {i.nombre}
+            </Link>
+          ))}
+        </nav>
+      </div>
+
+      <div className="border-t border-col-noche-linea">
+        <div className="sitio-ancho flex flex-col gap-3 py-6 text-[13px] text-white/60 sm:flex-row sm:items-center sm:justify-between">
+          <p>
+            Una propuesta de{" "}
+            <a
+              href="https://www.traveloz.com.uy"
+              className="text-white/85 underline decoration-white/30 underline-offset-4 transition-colors duration-200 ease-col hover:text-col-gold"
+            >
+              Traveloz
+            </a>
+          </p>
+          <p>© {new Date().getFullYear()} Traveloz. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </footer>
+  );
+}

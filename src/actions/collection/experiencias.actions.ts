@@ -11,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { BRAND_ID } from "@/lib/brand";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ConflictoDeVersion, ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { sanitizarContenido } from "@/lib/collection/sanitizar";
 import {
@@ -371,6 +372,7 @@ export async function cambiarEstadoExperiencia(
     const { count } = await prisma.colExperiencia.updateMany({ where: { id, revision: fila.revision }, data });
     if (count === 0) throw new ConflictoDeVersion(MSG_CONFLICTO);
 
+    invalidarSitio();
     await registrarEventoCol({
       entidad: ENTIDAD,
       entidadId: id,
@@ -427,6 +429,7 @@ export async function reordenarExperiencias(ids: string[]): Promise<Resultado<nu
       const id = p.data[orden];
       await prisma.colExperiencia.updateMany({ where: { id }, data: { orden } });
     }
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: "lista", accion: "reordenar", userId });
     return null;
   });
@@ -439,6 +442,7 @@ export async function alternarDestacada(id: string): Promise<Resultado<{ destaca
     if (!f) fallar(MSG_NO_EXISTE);
     const destacada = !f.destacada;
     await prisma.colExperiencia.update({ where: { id }, data: { destacada } });
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: id, accion: destacada ? "destacar" : "quitar-destacada", userId });
     return { destacada };
   });

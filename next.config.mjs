@@ -86,6 +86,17 @@ const securityHeaders = [
       ]),
 ];
 
+// Sitio público de Traveloz Collection: lo sirve esta misma app cuando el host
+// es uno de estos. Las reescrituras de abajo mandan cada ruta a la carpeta
+// interna src/app/sitio-collection (menos _next, api y los íconos). Las mismas
+// dos variables las lee src/lib/collection/sitio.ts en runtime.
+const collectionHosts = (process.env.COLLECTION_HOSTS || "collection.traveloz.com.uy")
+  .split(",")
+  .map((h) => h.trim().toLowerCase())
+  .filter(Boolean)
+  .concat("collection.localhost");
+const collectionIndexa = process.env.COLLECTION_INDEXAR === "1";
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
@@ -129,6 +140,14 @@ const nextConfig = {
   },
   async headers() {
     return [
+      // Collection no se indexa hasta el lanzamiento (ver sitioIndexable()).
+      ...(collectionIndexa
+        ? []
+        : collectionHosts.map((value) => ({
+            source: "/:path*",
+            has: [{ type: "host", value }],
+            headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+          }))),
       {
         source: "/:path*",
         headers: securityHeaders,
@@ -215,16 +234,36 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: "/presentacion_traveloz",
-        destination: "/presentacion_traveloz/index.html",
-      },
-      {
-        source: "/collection",
-        destination: "/collection/index.html",
-      },
-    ];
+    return {
+      // Antes que las rutas de la app: en el host de Collection todo va a
+      // src/app/sitio-collection. Quedan afuera los assets de Next, la API
+      // (imágenes del bucket, /api/visita) y los íconos de la raíz.
+      beforeFiles: collectionHosts.flatMap((value) => [
+        {
+          source: "/:path((?!_next/|api/|icon\\.|apple-icon\\.|favicon\\.ico).+)",
+          has: [{ type: "host", value }],
+          destination: "/sitio-collection/:path",
+        },
+        // Va después: Next encadena las reescrituras de esta lista y "/" ya
+        // reescrito volvería a entrar en la de arriba.
+        {
+          source: "/",
+          has: [{ type: "host", value }],
+          destination: "/sitio-collection",
+        },
+      ]),
+      afterFiles: [
+        {
+          source: "/presentacion_traveloz",
+          destination: "/presentacion_traveloz/index.html",
+        },
+        {
+          source: "/collection",
+          destination: "/collection/index.html",
+        },
+      ],
+      fallback: [],
+    };
   },
 };
 

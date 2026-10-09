@@ -10,6 +10,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ConflictoDeVersion, ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { sanitizarBloques } from "@/lib/collection/sanitizar";
 import { cargarMapasPagina } from "@/lib/collection/paginas-servidor";
@@ -172,6 +173,7 @@ export async function publicarPagina(slug: string): Promise<Resultado<{ publicad
       },
     });
     if (count === 0) throw new ConflictoDeVersion(MSG_CONFLICTO);
+    invalidarSitio();
     await registrarEventoCol({ entidad: ENTIDAD, entidadId: slug, accion: "publicar", userId, detalle: { revision: fila.revision } });
     return { publicadaEn: ahora.toISOString() };
   });

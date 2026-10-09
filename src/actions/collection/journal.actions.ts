@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { fallar } from "@/lib/presupuesto/acceso";
 import { requireCollection, registrarEventoCol } from "@/lib/collection/permisos";
+import { invalidarSitio } from "@/lib/collection/sitio-datos";
 import { ConflictoDeVersion, ejecutar, type Resultado } from "@/lib/collection/ejecutar";
 import { sanitizarHtml } from "@/lib/collection/sanitizar";
 import { cargarMapasPagina, type FotoArticulo } from "@/lib/collection/paginas-servidor";
@@ -323,6 +324,7 @@ export async function cambiarEstadoArticulo(
     const { count } = await prisma.colArticulo.updateMany({ where: { id, revision: fila.revision }, data });
     if (count === 0) throw new ConflictoDeVersion(MSG_CONFLICTO);
 
+    invalidarSitio();
     await registrarEventoCol({
       entidad: ENTIDAD,
       entidadId: id,
