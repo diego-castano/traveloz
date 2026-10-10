@@ -132,7 +132,7 @@ export function Equipo({
                     onClick={() => setAbierto(expandido ? null : m.id)}
                     aria-expanded={expandido}
                     aria-controls={`permisos-${m.id}`}
-                    className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                    className="flex min-h-11 min-w-0 flex-1 items-center gap-4 text-left"
                   >
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">

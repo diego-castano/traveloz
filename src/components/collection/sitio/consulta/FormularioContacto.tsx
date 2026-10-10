@@ -549,7 +549,7 @@ export function FormularioContacto({
             type="button"
             onClick={() => irA(paso - 1)}
             disabled={paso === 1}
-            className={cn(etiqueta, "inline-flex items-center gap-3 py-3 text-col-ink transition-colors duration-200 ease-col disabled:text-col-slate/50")}
+            className={cn(etiqueta, "inline-flex min-h-11 items-center gap-3 py-3 text-col-ink transition-colors duration-200 ease-col disabled:text-col-slate/50")}
           >
             <ArrowLeft aria-hidden className="h-[18px] w-[18px]" strokeWidth={1.25} />
             Volver
@@ -560,7 +560,7 @@ export function FormularioContacto({
             disabled={envio.estado === "enviando"}
             className={cn(
               boton({ tam: "lg" }),
-              "group h-[52px] gap-3 bg-[linear-gradient(#F4B860,#F4B860)] bg-[length:0%_2px] bg-[position:0_100%] bg-no-repeat px-6 transition-[background-size,gap] duration-[400ms] hover:gap-[18px] hover:bg-[length:100%_2px] sm:px-8 disabled:opacity-80",
+              "group h-[52px] gap-3 bg-[linear-gradient(#F4B860,#F4B860)] bg-[length:0%_2px] bg-[position:0_100%] bg-no-repeat px-4 transition-[background-size,gap] min-[360px]:px-6 duration-[400ms] hover:gap-[18px] hover:bg-[length:100%_2px] sm:px-8 disabled:opacity-80",
             )}
           >
             {envio.estado === "enviando" ? (

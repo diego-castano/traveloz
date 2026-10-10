@@ -301,7 +301,7 @@ export function EditorPagina({
             </Link>
             <div className="min-w-0">
               <p className="truncate font-col-display text-col-2xl leading-none text-col-ink">{detalle.titulo}</p>
-              <p className="mt-1 truncate font-mono text-col-xs text-col-slate">collection.traveloz.com.uy{ruta}</p>
+              <p title={`collection.traveloz.com.uy${ruta}`} className="mt-1 truncate font-mono text-col-xs text-col-slate">collection.traveloz.com.uy{ruta}</p>
             </div>
             <span className="flex-1" />
             <div className="hidden w-[190px] md:block">
@@ -511,7 +511,7 @@ function ItemBloque({
     >
       {activo && <span aria-hidden className="absolute inset-y-2 left-0 w-0.5 bg-col-gold" />}
       {editable ? <Asa asa={asa} label={INFO[b.tipo].nombre} /> : <span className="w-2" />}
-      <button type="button" onClick={onElegir} aria-current={activo ? "true" : undefined} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+      <button type="button" onClick={onElegir} aria-current={activo ? "true" : undefined} className="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left">
         <span
           className={cn(
             "flex h-9 w-9 shrink-0 items-center justify-center rounded-col-sm border",

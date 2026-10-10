@@ -186,7 +186,7 @@ export const BotonIcono = forwardRef<
           <Tooltip.Content
             side={lado}
             sideOffset={6}
-            className="z-[95] rounded-col bg-col-ink px-2.5 py-1.5 font-col-text text-col-xs text-col-base shadow-col-3 col-globo"
+            className="z-[95] max-w-[min(280px,calc(100vw-1rem))] rounded-col bg-col-ink px-2.5 py-1.5 font-col-text text-col-xs text-col-base shadow-col-3 col-globo"
           >
             {etiqueta}
           </Tooltip.Content>
@@ -544,7 +544,7 @@ export function Chips({
                 type="button"
                 aria-label={`Quitar ${v}`}
                 onClick={() => onCambio(valores.filter((x) => x !== v))}
-                className="relative flex h-5 w-5 items-center justify-center rounded-col-sm text-col-slate transition-colors before:absolute before:-inset-2.5 before:content-[''] hover:bg-col-line hover:text-col-ink"
+                className="relative flex h-5 w-5 items-center justify-center rounded-col-sm text-col-slate transition-colors before:absolute before:-inset-3 before:content-[''] hover:bg-col-line hover:text-col-ink"
               >
                 <X className="h-3 w-3" strokeWidth={2} />
               </button>

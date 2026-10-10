@@ -34,7 +34,10 @@ export function ProveedorWhatsApp({ numero, children }: { numero: string; childr
           aria-label="Escribinos por WhatsApp"
           className={cn(
             "group fixed right-4 z-40 flex h-14 max-w-14 items-center gap-3 overflow-hidden whitespace-nowrap rounded-full bg-col-noche pl-[17px] pr-5 text-[12px] uppercase tracking-[0.14em] text-white shadow-[0_14px_36px_-12px_rgba(4,7,31,0.6)] ring-1 ring-col-gold/50 transition-[max-width,box-shadow] duration-[400ms] ease-col hover:max-w-[260px] hover:ring-col-gold focus-visible:max-w-[260px] sm:right-6",
-            asunto ? "bottom-[92px] md:bottom-6" : "bottom-4 sm:bottom-6",
+            // Sobre la barra de consulta, el aviso de cookies y la zona segura del iPhone.
+            asunto
+              ? "bottom-[calc(92px+var(--sitio-aviso,0px)+env(safe-area-inset-bottom))] md:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]"
+              : "bottom-[calc(1rem+var(--sitio-aviso,0px)+env(safe-area-inset-bottom))] sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))]",
           )}
         >
           <span className="relative shrink-0">

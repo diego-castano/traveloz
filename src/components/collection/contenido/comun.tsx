@@ -242,7 +242,7 @@ export function NuevoEnLinea({
             e.preventDefault();
             void crear();
           }}
-          className="flex max-w-full flex-wrap items-center gap-2"
+          className="flex w-full max-w-full items-center gap-2 sm:w-auto"
         >
           <Entrada
             ref={campo}
@@ -253,7 +253,7 @@ export function NuevoEnLinea({
             onChange={(e) => setNombre(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && setAbierto(false)}
             placeholder={placeholder}
-            className="min-h-10 w-64 max-w-full py-[7px]"
+            className="min-h-10 w-64 min-w-0 flex-1 py-[7px] sm:flex-none"
           />
           <Boton type="submit" disabled={!nombre.trim()} cargando={creando}>
             {!creando && <Plus strokeWidth={1.5} />}

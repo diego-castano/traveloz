@@ -160,7 +160,7 @@ function Barra({ editor, compacto }: { editor: Editor | null; compacto?: boolean
     <div
       role="toolbar"
       aria-label="Formato del texto"
-      className="flex h-10 items-center gap-0.5 border-b border-col-line/70 px-1.5"
+      className="flex min-h-10 items-center gap-0.5 border-b border-col-line/70 px-1.5"
     >
       <BotonBarra label="Negrita" atajo="Meta+B" activo={activo?.negrita} onClick={() => c().toggleBold().run()}>
         <Bold />
@@ -263,7 +263,7 @@ function Enlace({ editor, activo }: { editor: Editor; activo: boolean }) {
           side="bottom"
           align="start"
           sideOffset={6}
-          className="col-desplegable z-[60] w-80 rounded-col-sm border border-col-line bg-col-surface p-4 shadow-col-3"
+          className="col-desplegable z-[60] w-[min(20rem,calc(100vw-1rem))] rounded-col-sm border border-col-line bg-col-surface p-4 shadow-col-3"
         >
           <form
             onSubmit={(e) => {

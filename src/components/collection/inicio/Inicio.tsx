@@ -215,7 +215,7 @@ export function Inicio({ d }: { d: DatosInicio }) {
 
 function VerTodo({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="flex shrink-0 items-center gap-2 text-col-sm font-medium text-col-slate transition-colors duration-col ease-col hover:text-col-ink">
+    <Link href={href} className="-my-3 flex shrink-0 items-center gap-2 py-3 text-col-sm font-medium text-col-slate transition-colors duration-col ease-col hover:text-col-ink">
       {children}
       <ArrowRight className="h-4 w-4" strokeWidth={1.5} aria-hidden />
     </Link>

@@ -108,7 +108,8 @@ function TarjetaTramo({
         arrastrando && "shadow-col-2",
       )}
     >
-      <div className="flex items-center gap-3 p-2.5 pl-1">
+      {/* En celular las noches bajan a su renglón: si no, el nombre de la parada queda sin lugar. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-2.5 pl-1 sm:flex-nowrap">
         {asa ?? <span className="w-2" />}
         <div className="relative h-16 w-14 shrink-0 overflow-hidden rounded-col-sm">
           {thumb ? (
@@ -147,12 +148,15 @@ function TarjetaTramo({
             )}
           </span>
         </button>
-        <Stepper
-          valor={t.noches}
-          onCambio={(noches) => cambiar({ noches })}
-          label={`Noches en ${t.ciudadNombre || `la parada ${n}`}`}
-          deshabilitado={!editable}
-        />
+        <div className="order-last flex w-full items-center justify-between gap-3 border-t border-col-line pl-2 pt-2 sm:order-none sm:w-auto sm:border-0 sm:p-0">
+          <span className="text-col-sm text-col-slate sm:hidden">Noches</span>
+          <Stepper
+            valor={t.noches}
+            onCambio={(noches) => cambiar({ noches })}
+            label={`Noches en ${t.ciudadNombre || `la parada ${n}`}`}
+            deshabilitado={!editable}
+          />
+        </div>
         {editable && (
           <button
             type="button"
@@ -172,7 +176,7 @@ function TarjetaTramo({
             className="overflow-hidden"
           >
             <div className="flex flex-col gap-8 border-t border-col-line px-5 pb-6 pt-6">
-              <div className="grid grid-cols-[1fr_140px] gap-6">
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,1fr)_140px]">
                 <BuscadorCiudad tramo={t} onCambio={cambiar} />
                 <Campo etiqueta="Foto de la parada">
                   <SlotMedio
@@ -201,7 +205,7 @@ function TarjetaTramo({
                 <button
                   type="button"
                   onClick={() => setContenido((k) => ({ tramos: k.tramos.filter((x) => x.id !== t.id) }))}
-                  className="flex items-center gap-2 self-start text-col-sm font-medium text-col-slate transition-colors hover:text-col-alerta"
+                  className="-my-3 flex items-center gap-2 self-start py-3 text-col-sm font-medium text-col-slate transition-colors hover:text-col-alerta"
                 >
                   <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} /> Quitar parada
                 </button>
@@ -372,7 +376,7 @@ function Hotel({ tramo: t, onCambio }: { tramo: Tramo; onCambio: (h: HotelTramo 
           <button
             type="button"
             onClick={() => onCambio(null)}
-            className="ml-auto flex items-center gap-1 text-col-sm font-medium text-col-slate hover:text-col-alerta"
+            className="-my-1 ml-auto flex min-h-11 items-center gap-1 text-col-sm font-medium text-col-slate hover:text-col-alerta"
           >
             <X className="h-3.5 w-3.5" strokeWidth={1.5} /> Quitar hotel
           </button>

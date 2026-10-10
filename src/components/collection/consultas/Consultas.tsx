@@ -237,7 +237,7 @@ function ListaConsultas({
                   <span className={cn("truncate text-col-cuerpo text-col-ink", c.estado === "NUEVA" && "font-bold")}>{c.nombre}</span>
                   <span className="truncate text-col-sm text-col-slate">{c.email}</span>
                 </span>
-                <span className="col-span-2 col-start-1 min-w-0 truncate text-col-md text-col-ink lg:col-span-1 lg:col-start-3 lg:row-start-1">
+                <span title={c.experiencia ?? undefined} className="col-span-2 col-start-1 min-w-0 truncate text-col-md text-col-ink lg:col-span-1 lg:col-start-3 lg:row-start-1">
                   {c.experiencia ? (
                     <span className="font-col-display text-col-lg">{c.experiencia}</span>
                   ) : (

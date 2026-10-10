@@ -50,7 +50,7 @@ export function ColaSubidas({
         <motion.section
           aria-label="Subidas"
           {...transiciones.aviso}
-          className="fixed bottom-4 right-4 z-40 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-md bg-col-surface shadow-col-3 ring-1 ring-col-line"
+          className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-40 w-[min(360px,calc(100vw-2rem))] overflow-hidden rounded-md bg-col-surface shadow-col-3 ring-1 ring-col-line"
         >
           <div className="relative flex h-14 items-center gap-3 pl-3.5 pr-2">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center text-col-ink">
@@ -109,7 +109,7 @@ export function ColaSubidas({
               <motion.ul
                 key="lista"
                 {...transiciones.acordeon}
-                className="max-h-[320px] overflow-y-auto"
+                className="max-h-[min(320px,calc(100dvh-9rem))] overflow-y-auto"
               >
                 <AnimatePresence initial={false}>
                   {subidas.map((s) => (

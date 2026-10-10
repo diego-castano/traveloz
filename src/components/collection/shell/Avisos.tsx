@@ -103,7 +103,7 @@ export function AvisosProvider({ children }: { children: React.ReactNode }) {
   return (
     <AvisosContext.Provider value={avisar}>
       {children}
-      <div className="pointer-events-none fixed bottom-6 right-4 z-[70] flex w-[min(420px,calc(100vw-2rem))] flex-col items-end gap-2 md:right-6">
+      <div className="pointer-events-none fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-4 z-[70] flex w-[min(420px,calc(100vw-2rem))] flex-col items-end gap-2 md:right-6">
         <div aria-live="assertive" role="alert" className="contents">
           <AnimatePresence initial={false}>{lista("error")}</AnimatePresence>
         </div>

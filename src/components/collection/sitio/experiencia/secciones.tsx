@@ -313,7 +313,7 @@ export function Hoteles({ v }: V) {
                 onClick={() => setActivo(i)}
                 className={cn(
                   etiqueta,
-                  "relative mr-8 shrink-0 pb-4 pt-1 transition-colors duration-200 ease-col",
+                  "relative -mt-1.5 mr-8 shrink-0 pb-4 pt-2.5 transition-colors duration-200 ease-col",
                   i === activo ? "text-col-ink" : "text-col-slate/70 hover:text-col-ink",
                 )}
               >
@@ -646,7 +646,7 @@ export function Detalles({ v }: V) {
                   onClick={() => setPestana(l.id)}
                   className={cn(
                     etiqueta,
-                    "relative pb-4 transition-colors duration-200 ease-col",
+                    "relative -mt-2.5 pb-4 pt-2.5 transition-colors duration-200 ease-col",
                     l.id === lista.id ? "text-col-ink" : "text-col-slate/70 hover:text-col-ink",
                   )}
                 >
@@ -830,7 +830,7 @@ export function Barra({ v }: V) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <div className="cs-barra items-center justify-between gap-3 border-t border-col-line bg-col-surface px-5 py-3">
+    <div className="cs-barra items-center justify-between gap-3 border-t border-col-line bg-col-surface px-5 pt-3">
       <div className="flex min-w-0 flex-col gap-1">
         <span className="truncate font-col-display text-[20px] font-medium leading-6">{tituloCorto(v.titulo) || "Experiencia"}</span>
         {datos && <span className={cn(etiqueta, "text-[12px] text-col-slate")}>{datos}</span>}

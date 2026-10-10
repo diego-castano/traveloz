@@ -196,7 +196,7 @@ function ConsultarSubnav() {
           onClick={consultar}
           className={cn(
             etiqueta,
-            "cs-subnav-consultar h-10 shrink-0 items-center rounded-sm bg-col-base px-5 text-col-ink transition-colors duration-200 ease-col hover:bg-col-gold",
+            "cs-subnav-consultar h-11 shrink-0 items-center rounded-sm bg-col-base px-5 text-col-ink transition-colors duration-200 ease-col hover:bg-col-gold",
           )}
         >
           Consultar

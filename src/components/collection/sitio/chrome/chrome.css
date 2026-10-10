@@ -83,6 +83,12 @@
   transform-origin: left;
   transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* En táctil el link del menú crece a 44 px de toque (la cabecera mide 72). */
+@media (pointer: coarse) {
+  .sitio-enlace {
+    padding-block: 13px;
+  }
+}
 .sitio-enlace:hover,
 .sitio-enlace[aria-current="page"] {
   opacity: 1;
@@ -167,7 +173,7 @@
   z-index: 45;
   left: 12px;
   right: 12px;
-  bottom: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
   display: flex;
   align-items: center;
   gap: 20px;
@@ -178,13 +184,25 @@
   box-shadow: 0 12px 40px rgba(4, 7, 31, 0.12);
   animation: sitio-sube 600ms cubic-bezier(0.22, 1, 0.36, 1) 800ms both;
 }
+/* En los celulares más angostos el botón va abajo, a todo el ancho. */
+@media (max-width: 374px) {
+  .sitio-cookies {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+}
 @media (min-width: 640px) {
   .sitio-cookies {
     left: 24px;
     right: auto;
-    bottom: 24px;
+    bottom: calc(24px + env(safe-area-inset-bottom));
     max-width: 460px;
   }
+}
+/* Con el aviso abierto, el final del pie no queda escondido detrás. */
+.sitio footer:last-of-type {
+  padding-bottom: var(--sitio-aviso, 0px);
 }
 
 @keyframes sitio-aparece {

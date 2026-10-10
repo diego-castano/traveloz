@@ -93,8 +93,8 @@ export function PasoGaleria() {
           encima && "bg-col-gold/10 outline-dashed outline-1 outline-col-gold",
         )}
       >
-        <div className="mb-5 flex items-end gap-4">
-          <div className="min-w-0">
+        <div className="mb-5 flex flex-wrap items-end gap-x-4 gap-y-3">
+          <div className="min-w-[min(100%,13rem)] flex-1">
             <p className="flex items-baseline gap-3 whitespace-nowrap">
               <span className="font-col-display text-col-2xl tabular-nums leading-none text-col-ink">
                 {galeria.length} {galeria.length === 1 ? "foto" : "fotos"}

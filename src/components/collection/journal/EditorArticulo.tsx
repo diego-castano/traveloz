@@ -400,7 +400,7 @@ export function EditorArticulo({
                     />
                   </Campo>
                   <Campo etiqueta="Autor">
-                    <div role="radiogroup" aria-label="Autor" className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div role="radiogroup" aria-label="Autor" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                       {detalle.especialistas.map((e) => {
                         const activo = e.id === c.autorId;
                         return (
@@ -423,7 +423,7 @@ export function EditorArticulo({
                               )}
                             </span>
                             <span className="min-w-0">
-                              <span className="block truncate font-col-display text-col-xl leading-tight text-col-ink">{e.nombre}</span>
+                              <span title={e.nombre} className="block truncate font-col-display text-col-xl leading-tight text-col-ink">{e.nombre}</span>
                               <span className="block truncate text-col-xs text-col-slate">{e.region || "Sin región"}</span>
                             </span>
                             {activo && <Check className="ml-auto h-4 w-4 shrink-0 text-col-gold" strokeWidth={2} aria-hidden />}

@@ -185,3 +185,40 @@
     animation: col-pulso-error calc(var(--col-dur-micro) * 6) ease-in-out !important;
   }
 }
+
+/* Pantallas táctiles (teléfono y tablet). Solo cambia lo que hace falta para
+   el dedo; con mouse todo queda igual. */
+@media (pointer: coarse) {
+  /* iOS Safari acerca la página al enfocar un campo con letra de menos de
+     16 px. Los campos con letra grande (títulos) quedan como están. */
+  [data-collection-shell] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select, [contenteditable="true"]):not([class*="text-col-lg"]):not([class*="text-col-xl"]):not([class*="text-col-2xl"]):not([class*="text-col-3xl"]):not([class*="text-col-display"]) {
+    font-size: 16px;
+  }
+
+  /* Botones, pestañas, links y campos de 32 a 40 px crecen a 44 px de toque. */
+  [data-collection-shell] :is(button, a[href], [role="button"], [role="tab"], [role="radio"], [role="menuitem"], [role="option"]):is(.h-7, .h-8, .h-9, .h-10) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  [data-collection-shell] :is(button, a[href], [role="button"], [role="tab"], [role="radio"]):is(.w-7, .w-8, .w-9, .w-10) {
+    min-width: 44px;
+  }
+  [data-collection-shell] :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select) {
+    min-height: 44px;
+  }
+
+  /* La barra de formato no entra con botones de 44 en un celular: se reparten
+     el ancho (hasta 44 cada uno) y conservan los 44 de alto. */
+  [data-collection-shell] [role="toolbar"][aria-label="Formato del texto"] > button.flex {
+    min-width: 0;
+    flex: 1 1 0;
+    max-width: 44px;
+  }
+
+  /* Links de texto subrayados: el área de toque crece hacia arriba y abajo
+     sin mover el renglón. */
+  [data-collection-shell] :is(a[href], button).underline {
+    padding-block: 13px;
+    margin-block: -13px;
+  }
+}

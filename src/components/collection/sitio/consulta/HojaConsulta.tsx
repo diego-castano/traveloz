@@ -114,7 +114,7 @@ export function HojaConsulta({
                   </div>
                   <Dialog.Close
                     aria-label="Cerrar"
-                    className="-mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-white/70 transition-colors duration-200 ease-col hover:text-white"
+                    className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-sm text-white/70 transition-colors duration-200 ease-col hover:text-white"
                   >
                     <X className="h-5 w-5" strokeWidth={1.5} />
                   </Dialog.Close>

@@ -281,7 +281,7 @@ export function Preguntas({
             <Eyebrow>Vista previa</Eyebrow>
             <span className="text-col-xs text-col-slate">Solo las publicadas, en este orden</span>
           </div>
-          <div className="max-h-[calc(100vh-150px)] overflow-y-auto rounded-col-sm border border-col-line">
+          <div className="max-h-[calc(100dvh-150px)] overflow-y-auto rounded-col-sm border border-col-line">
             <div className="cs-raiz" data-modo="preview" onClickCapture={(e) => (e.target as HTMLElement).closest("a") && e.preventDefault()}>
               <div className="cs-bloque bg-col-surface">
                 <div className="cs-envolvente cs-preguntas">
@@ -353,7 +353,7 @@ function Fila({
             aria-label={`Arrastrar ${p.pregunta}`}
             {...attributes}
             {...listeners}
-            className="flex h-9 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-col-sm text-col-subtle transition-colors hover:text-col-ink active:cursor-grabbing"
+            className="relative flex h-9 w-6 shrink-0 cursor-grab touch-none items-center before:absolute before:-inset-x-2.5 before:inset-y-0 before:content-[''] justify-center rounded-col-sm text-col-subtle transition-colors hover:text-col-ink active:cursor-grabbing"
           >
             <GripVertical className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -377,20 +377,23 @@ function Fila({
             aria-expanded={abierta}
             onClick={onAlternar}
             className={cn(
-              "min-w-0 flex-1 text-left font-col-display text-col-xl leading-[1.25] transition-colors duration-col ease-col",
+              "min-h-11 min-w-0 flex-1 text-left font-col-display text-col-lg leading-[1.25] transition-colors sm:text-col-xl duration-col ease-col",
               abierta ? "text-col-ink" : p.publicada ? "text-col-ink/90 hover:text-col-ink" : "text-col-muted hover:text-col-ink",
             )}
           >
             {p.pregunta || <span className="italic text-col-subtle">Pregunta sin texto</span>}
           </button>
         )}
-        <Interruptor
-          checked={p.publicada}
-          onCheckedChange={onPublicar}
-          disabled={ro}
-          label={`Publicar ${p.pregunta}`}
-          texto={p.publicada ? "Publicada" : "Oculta"}
-        />
+        {/* En celular el interruptor va sin texto: la pregunta necesita el ancho. */}
+        <span className="contents max-sm:[&_label]:hidden">
+          <Interruptor
+            checked={p.publicada}
+            onCheckedChange={onPublicar}
+            disabled={ro}
+            label={`Publicar ${p.pregunta}`}
+            texto={p.publicada ? "Publicada" : "Oculta"}
+          />
+        </span>
         <button
           type="button"
           aria-label={abierta ? "Cerrar" : "Editar"}

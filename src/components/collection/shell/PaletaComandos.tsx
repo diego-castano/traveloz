@@ -185,7 +185,7 @@ export function PaletaComandos({
       value={elegido}
       onValueChange={setElegido}
       overlayClassName="col-velo fixed inset-0 z-[60] bg-col-ink/30 backdrop-blur-[2px]"
-      contentClassName="col-modal fixed left-1/2 top-[12vh] z-[60] flex max-h-[76vh] w-[min(620px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-col-lg bg-col-surface shadow-col-3 focus:outline-none [&_[cmdk-root]]:flex [&_[cmdk-root]]:min-h-0 [&_[cmdk-root]]:flex-1 [&_[cmdk-root]]:flex-col"
+      contentClassName="col-modal fixed left-1/2 top-[12dvh] z-[60] flex max-h-[76dvh] w-[min(620px,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-col-lg bg-col-surface shadow-col-3 focus:outline-none [&_[cmdk-root]]:flex [&_[cmdk-root]]:min-h-0 [&_[cmdk-root]]:flex-1 [&_[cmdk-root]]:flex-col"
     >
       <div className="flex items-center gap-3 border-b border-col-line px-5">
         <Search className="h-4 w-4 shrink-0 text-col-slate" strokeWidth={1.5} aria-hidden />

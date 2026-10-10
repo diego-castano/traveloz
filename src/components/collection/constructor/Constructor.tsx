@@ -368,9 +368,9 @@ export function Constructor({
                   exit={{ height: 0, opacity: 0, transition: { duration: DUR.quick, ease: EASE } }}
                   className="shrink-0 overflow-hidden bg-col-ink text-col-base"
                 >
-                  <div className="flex items-center gap-4 px-6 py-4">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-6 py-4">
                     <AlertTriangle className="h-5 w-5 shrink-0 text-col-gold" strokeWidth={1.5} aria-hidden />
-                    <p className="flex-1 text-col-md leading-snug">
+                    <p className="min-w-[min(100%,14rem)] flex-1 text-col-md leading-snug">
                       Alguien más guardó cambios. Recargá para ver la última versión.
                       <span className="block text-col-base/60">Lo que escribiste después de eso no se guardó.</span>
                     </p>
@@ -659,7 +659,7 @@ function Historial({ historial }: { historial: EventoHistorial[] }) {
           side="top"
           align="start"
           sideOffset={8}
-          className="col-desplegable z-50 max-h-[420px] w-80 overflow-y-auto rounded-col-sm border border-col-line bg-col-surface p-2 shadow-col-3"
+          className="col-desplegable z-50 max-h-[min(420px,var(--radix-popover-content-available-height))] w-[min(20rem,calc(100vw-1rem))] overflow-y-auto rounded-col-sm border border-col-line bg-col-surface p-2 shadow-col-3"
         >
           <p className="px-3 pb-2 pt-2 text-col-xs uppercase tracking-[0.16em] text-col-slate">Historial</p>
           <ListaHistorial historial={historial} />

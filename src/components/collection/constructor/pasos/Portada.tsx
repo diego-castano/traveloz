@@ -76,7 +76,7 @@ export function PasoPortada() {
             </p>
           )}
 
-          <div className="grid grid-cols-[1fr_auto] items-end gap-6">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-6">
             <div>
               <p className={etiquetaCampo}>Así se recorta</p>
               <div className="mt-3 grid grid-cols-[2fr_1fr] gap-4">
@@ -103,7 +103,7 @@ export function PasoPortada() {
                 <Crosshair className="h-4 w-4 text-col-gold" strokeWidth={1.5} aria-hidden /> Ajustar foco
               </a>
             )}
-            <p className={cn("min-w-0 flex-1 text-col-sm", medio.alt ? "text-col-slate" : "text-col-aviso")}>
+            <p className={cn("min-w-[min(100%,16rem)] flex-1 text-col-sm", medio.alt ? "text-col-slate" : "text-col-aviso")}>
               {medio.alt ? `Descripción: ${medio.alt}` : "Sin descripción. Completala en la biblioteca: ayuda a Google y a quien usa lector de pantalla."}
             </p>
           </div>

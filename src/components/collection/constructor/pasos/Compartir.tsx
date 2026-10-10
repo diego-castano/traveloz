@@ -93,7 +93,7 @@ export function PasoCompartir() {
       </Grupo>
 
       <Grupo titulo="En WhatsApp" ayuda="Así se ve el link cuando alguien lo comparte.">
-        <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-[1fr_200px]">
+        <div className="grid grid-cols-1 items-start gap-8 sm:grid-cols-[minmax(0,1fr)_200px]">
           <div className="rounded-lg bg-[#E7DED4] p-4">
             <div className="ml-auto max-w-[360px] rounded-lg rounded-tr-none bg-[#D9FDD3] p-1 shadow-col-1">
               <div className="overflow-hidden rounded-md bg-[#CFEFC6]">
@@ -112,7 +112,7 @@ export function PasoCompartir() {
               </div>
               <p className="px-2 pb-1 pt-1.5 text-col-md text-[#111B21]">
                 Mirá este viaje{" "}
-                <span className="text-[#027EB5]">
+                <span className="break-all text-[#027EB5]">
                   https://{DOMINIO}/experiencias/{c.slug || "…"}
                 </span>
               </p>

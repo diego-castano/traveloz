@@ -3,7 +3,7 @@ import { ContactoDemo } from "./ContactoDemo";
 import "@/components/collection/sitio/chrome/chrome.css";
 
 // Formularios del sitio con envíos de mentira (no llama a las actions reales).
-// ?vista=form|gracias|hoja&paso=1..4&exp=1&falla=1
+// ?vista=form|gracias|hoja|experiencia|newsletter|inicio|nosotros|terminos|articulo&paso=1..4&exp=1&falla=1
 
 export default function DevContacto({
   searchParams,

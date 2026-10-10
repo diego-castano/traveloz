@@ -7,7 +7,8 @@ import type { AjustesCollection } from "@/lib/collection/ajustes";
 import { CONTACTO_SITIO, LEGALES_SITIO, MENU_SITIO } from "./menu";
 
 const titulo = "text-[12px] uppercase tracking-[0.14em] text-white/50";
-const enlace = "text-[15px] font-light text-white/85 transition-colors duration-200 ease-col hover:text-col-gold";
+// En pantallas táctiles cada link mide 44 px de alto: el aire sale del padding y no del gap.
+const enlace = "[@media(pointer:coarse)]:py-[11px] text-[15px] font-light text-white/85 transition-colors duration-200 ease-col hover:text-col-gold";
 
 const FRASE = "Viajes de autor, diseñados a tu medida por un especialista.";
 
@@ -46,7 +47,7 @@ export function PieSitio({ ajustes }: { ajustes: AjustesCollection }) {
           </Link>
         </div>
 
-        <nav aria-label="Sitio" className="flex flex-col gap-4">
+        <nav aria-label="Sitio" className="flex flex-col gap-4 [@media(pointer:coarse)]:gap-0">
           <span className={titulo}>Explorar</span>
           {MENU_SITIO.map((i) => (
             <Link key={i.href} href={i.href} className={enlace}>
@@ -59,7 +60,7 @@ export function PieSitio({ ajustes }: { ajustes: AjustesCollection }) {
         </nav>
 
         {hayContacto && (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 [@media(pointer:coarse)]:gap-0">
             <span className={titulo}>Contacto</span>
             {wa.length >= 8 && (
               <a href={`https://wa.me/${wa}`} target="_blank" rel="noopener noreferrer" className={enlace}>
@@ -75,7 +76,7 @@ export function PieSitio({ ajustes }: { ajustes: AjustesCollection }) {
           </div>
         )}
 
-        <nav aria-label="Legales" className="flex flex-col gap-4">
+        <nav aria-label="Legales" className="flex flex-col gap-4 [@media(pointer:coarse)]:gap-0">
           <span className={titulo}>Legales</span>
           {LEGALES_SITIO.map((i) => (
             <Link key={i.href} href={i.href} className={enlace}>

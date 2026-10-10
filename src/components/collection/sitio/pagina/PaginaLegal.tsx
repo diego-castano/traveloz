@@ -72,7 +72,7 @@ export function PaginaLegal({ vista, modo }: { vista: PaginaVista; modo: Modo })
               <a
                 key={h.id}
                 href={`#${h.id}`}
-                className="flex gap-3 border-t border-col-line py-2.5 text-col-slate transition-colors duration-200 ease-col hover:text-col-ink"
+                className="flex gap-3 border-t border-col-line py-3 text-col-slate transition-colors duration-200 ease-col hover:text-col-ink"
               >
                 <span className="tabular-nums text-col-slate/60">{pad2(i + 1)}</span>
                 {h.texto}

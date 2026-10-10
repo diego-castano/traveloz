@@ -101,7 +101,7 @@ export function CollectionShell({
       <MotionConfig reducedMotion="user">
         <Tooltip.Provider delayDuration={80} skipDelayDuration={300}>
           <AvisosProvider>
-            <div ref={setRaiz} className="flex min-h-screen">
+            <div ref={setRaiz} className="flex min-h-dvh">
               {/* Primer foco de la página: salta el riel y la barra. */}
               <a
                 href="#contenido"
@@ -115,7 +115,7 @@ export function CollectionShell({
                 animate={{ width: plegado ? 64 : 216 }}
                 // Panel: se despliega en 400 y se pliega en 350.
                 transition={quieto ? { duration: 0 } : { duration: plegado ? DUR.medium : DUR.slow, ease: EASE }}
-                className="sticky top-0 z-40 hidden h-screen shrink-0 flex-col overflow-hidden bg-col-noche text-white lg:flex"
+                className="sticky top-0 z-40 hidden h-dvh shrink-0 flex-col overflow-hidden bg-col-noche text-white lg:flex"
               >
                 <Riel
                   plegado={plegado}

@@ -64,7 +64,7 @@ export function GraciasConsulta({
               <h2 className="cs-h2 max-w-[22ch]">Mientras tanto, para seguir mirando</h2>
               <Link
                 href="/experiencias"
-                className={`${etiqueta} text-col-ink underline decoration-col-line underline-offset-8 transition-colors duration-200 ease-col hover:decoration-col-gold`}
+                className={`${etiqueta} -my-3 py-3 text-col-ink underline decoration-col-line underline-offset-8 transition-colors duration-200 ease-col hover:decoration-col-gold`}
               >
                 Ver todas las experiencias
               </Link>

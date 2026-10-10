@@ -5,6 +5,8 @@ import { PieSitio } from "@/components/collection/sitio/chrome/PieSitio";
 import { CabeceraPagina, RaizSitio } from "@/components/collection/sitio/chrome/piezas";
 import { ExperienciaSitio } from "@/components/collection/sitio/chrome/ExperienciaSitio";
 import { ProveedorWhatsApp } from "@/components/collection/sitio/chrome/WhatsAppFlotante";
+import { AvisoCookies } from "@/components/collection/sitio/chrome/AvisoCookies";
+import { PaginasDemo } from "../paginas/PaginasDemo";
 import { FormularioContacto } from "@/components/collection/sitio/consulta/FormularioContacto";
 import { GraciasConsulta } from "@/components/collection/sitio/consulta/Gracias";
 import { ProveedorEnvios, type EnviosSitio } from "@/components/collection/sitio/consulta/envios";
@@ -71,12 +73,15 @@ export function ContactoDemo({
   const experiencias = mapasDemo.experiencias.map(({ destacada: _d, ...e }) => e);
 
   let cuerpo: React.ReactNode;
-  if (vista === "hoja") {
+  if (vista === "hoja" || vista === "experiencia") {
     cuerpo = (
       <div data-portada="">
-        <ExperienciaSitio vista={demo} consultaAbierta />
+        <ExperienciaSitio vista={demo} consultaAbierta={vista === "hoja"} />
       </div>
     );
+  } else if (["inicio", "nosotros", "terminos", "articulo"].includes(vista)) {
+    // Las páginas de la demo con el marco completo del sitio (cabecera, pie, avisos).
+    cuerpo = <PaginasDemo pagina={vista} modo="sitio" vacia={false} />;
   } else if (vista === "gracias") {
     cuerpo = (
       <RaizSitio>
@@ -117,6 +122,7 @@ export function ContactoDemo({
           <CabeceraSitio />
           <main className="sitio-main">{cuerpo}</main>
           <PieSitio ajustes={AJUSTES} />
+          <AvisoCookies />
         </ProveedorWhatsApp>
       </div>
     </ProveedorEnvios>

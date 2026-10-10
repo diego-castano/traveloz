@@ -303,7 +303,7 @@ const Tarjeta = forwardRef<HTMLLIElement, {
           <div className="mt-auto flex flex-col gap-1 pt-1">
             <span className="flex items-center gap-3 text-col-xs uppercase tracking-[0.14em] text-col-ink">
               <span aria-hidden className="h-px w-6 shrink-0 bg-col-gold" />
-              <span className="truncate">{[t.nombre, t.lugar].filter(Boolean).join(" · ")}</span>
+              <span className="truncate" title={[t.nombre, t.lugar].filter(Boolean).join(" · ")}>{[t.nombre, t.lugar].filter(Boolean).join(" · ")}</span>
             </span>
             {t.viaje && <span className="pl-9 text-col-sm text-col-slate">{t.viaje}</span>}
           </div>

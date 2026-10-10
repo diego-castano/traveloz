@@ -48,7 +48,11 @@ export default function Visor({
       captions={{ descriptionTextAlign: "start" }}
       animation={{ fade: 300, swipe: 500, easing: { fade: "cubic-bezier(0.22,1,0.36,1)", swipe: "cubic-bezier(0.22,1,0.36,1)" } }}
       styles={{
-        container: { backgroundColor: "rgba(50,55,59,0.97)" },
+        // El contador va abajo a la derecha: arriba a la izquierda pisaba el título de la foto.
+        container: {
+          backgroundColor: "rgba(50,55,59,0.97)",
+          ...({ "--yarl__counter_top": "unset", "--yarl__counter_bottom": "0", "--yarl__counter_left": "unset", "--yarl__counter_right": "0" } as React.CSSProperties),
+        },
         captionsTitle: { fontFamily: "var(--font-col-display), Georgia, serif", fontWeight: 400, fontSize: 22 },
         captionsDescription: { fontFamily: "var(--font-col-text), sans-serif", fontSize: 13, color: "#DCDCDC" },
       }}

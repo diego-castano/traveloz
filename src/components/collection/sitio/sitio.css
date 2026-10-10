@@ -356,7 +356,9 @@
    borde inferior de la ventana en el sitio y del panel en la vista previa. */
 .cs-barra {
   position: sticky;
-  bottom: 0;
+  /* Sube sobre el aviso de cookies mientras está abierto (lo mide AvisoCookies). */
+  bottom: var(--sitio-aviso, 0px);
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   z-index: 20;
   display: flex;
 }
@@ -694,6 +696,13 @@
   line-height: 16px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+/* En táctil el link crece a 44 px de toque sin mover nada. */
+@media (pointer: coarse) {
+  .cs-enlace {
+    padding-block: 14px;
+    margin-block: -14px;
+  }
 }
 .cs-enlace > span:first-child {
   padding-bottom: 6px;

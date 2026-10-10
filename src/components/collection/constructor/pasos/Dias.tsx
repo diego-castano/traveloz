@@ -60,7 +60,7 @@ export function PasoDias() {
       {editable && tramos.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 rounded-col-sm border border-col-line bg-col-surface p-4">
           <Wand2 className="h-5 w-5 shrink-0 text-col-gold" strokeWidth={1.4} aria-hidden />
-          <p className="min-w-0 flex-1 text-col-md text-col-slate">
+          <p className="min-w-[min(100%,14rem)] flex-1 text-col-md text-col-slate">
             {confirmar
               ? `Esto reemplaza los ${dias.length} días cargados por uno por parada.`
               : "Un bloque por parada del recorrido, con los días según las noches."}
@@ -143,19 +143,24 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
     <div className="rounded-col-sm border border-col-line bg-col-surface p-5">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <p className="min-w-[110px] font-col-display text-col-xl leading-none text-col-ink">{etiquetaDias(d.desde, d.hasta)}</p>
-        {/* En celular, "al" baja de renglón: los dos selectores no entran en 310 px. */}
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span className="text-col-sm text-col-slate">Del</span>
-          <Stepper valor={d.desde} min={1} max={90} label="Día de inicio" onCambio={(desde) => cambiar({ desde })} deshabilitado={!editable} />
-          <span className="text-col-sm text-col-slate">al</span>
-          <Stepper valor={d.hasta} min={d.desde} max={90} label="Día final" onCambio={(hasta) => cambiar({ hasta })} deshabilitado={!editable} />
+        {/* En celular, "al" baja de renglón con su selector (los dos no entran en 310 px)
+            y el tacho queda arriba, al lado del título. */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 max-sm:order-2 max-sm:w-full">
+          <span className="flex items-center gap-2">
+            <span className="w-6 text-col-sm text-col-slate sm:w-auto">Del</span>
+            <Stepper valor={d.desde} min={1} max={90} label="Día de inicio" onCambio={(desde) => cambiar({ desde })} deshabilitado={!editable} />
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="w-6 text-col-sm text-col-slate sm:w-auto">al</span>
+            <Stepper valor={d.hasta} min={d.desde} max={90} label="Día final" onCambio={(hasta) => cambiar({ hasta })} deshabilitado={!editable} />
+          </span>
         </div>
         {editable && (
           <button
             type="button"
             aria-label={`Quitar ${etiquetaDias(d.desde, d.hasta)}`}
             onClick={() => setContenido((k) => ({ dias: k.dias.filter((x) => x.id !== d.id) }))}
-            className="ml-auto flex h-8 w-8 items-center justify-center rounded-col-sm text-col-muted transition-colors hover:bg-col-base hover:text-col-alerta"
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-col-sm text-col-muted max-sm:order-1 transition-colors hover:bg-col-base hover:text-col-alerta"
           >
             <Trash2 className="h-4 w-4" strokeWidth={1.5} />
           </button>
@@ -167,7 +172,7 @@ function TarjetaDia({ dia: d, choca }: { dia: Dia; choca: Dia | null }) {
           Se superpone con {etiquetaDias(choca.desde, choca.hasta).toLowerCase()}.
         </p>
       )}
-      <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-[1fr_200px]">
+      <div className="mt-5 grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,1fr)_200px]">
         <Campo etiqueta="Título" htmlFor={`dia-${d.id}`}>
           <textarea
             id={`dia-${d.id}`}
